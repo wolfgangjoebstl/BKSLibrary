@@ -276,7 +276,7 @@ class SNMP_OperationCenter
 	public function update($nolog=false, $download="", $upload="")
 		{
 
-		$localDebug=false;
+		$localDebug=true;
 		$download_val=0; $upload_val=0;
 
 		if($this->debug) 
@@ -504,6 +504,7 @@ class SNMP_OperationCenter
 			if($this->debug) echo "Execute SNMP-Query: ". $this->binary, " ".$exec_param."  ===> ".$value."\n";			
 			echo "getSNMObject, Wert von SSNMPQ script für $oid empfangen : ".$value."\n";
 			}
+        else echo "Fehler, gar nix empfangen. SNMP Modul und SNMP Script Selektor undefiniert.\n";
 		return ($value);
 		}
 		
@@ -1088,28 +1089,27 @@ class SNMP_OperationCenter
      *  wird gleich bei construct aufgerufen.
      */
 
-	public function findSNMPModul($findlibrary="Babenschneider Symcon Modules",$findname="IPSSNMP",$IPAdresse="default")
+	public function findSNMPModul($findlibrary="Babenschneider Symcon Modules",$findname="IPSSNMP",$IPAdresse="default",$localDebug=false)
 		{
 		$localDebug=true;
-		if (($this->debug) && $localDebug) echo "Übersicht der verwendeten Bibliotheken:\n";
-		$librarylist=IPS_GetLibraryList(); 
-		foreach ($librarylist as $libraryID)
-			{
-			$Leintrag=IPS_GetLibrary($libraryID);
-			if ($Leintrag["Name"]==$findlibrary) 
-				{
-				$foundlibraryID=$libraryID;
-				if (($this->debug)  && $localDebug) echo "** ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
-				}
-			else
+		if (($this->debug) && $localDebug) 
+            {
+            echo "Übersicht der verwendeten Bibliotheken, suche \"$findlibrary\", markiere mit **:\n";
+            $librarylist=IPS_GetLibraryList(); 
+            foreach ($librarylist as $libraryID)
                 {
-                if (($this->debug) && $localDebug) echo "   ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
+                $Leintrag=IPS_GetLibrary($libraryID);
+                if ($Leintrag["Name"]==$findlibrary) 
+                    {
+                    $foundlibraryID=$libraryID;
+                    if (($this->debug)  && $localDebug) echo "** ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
+                    }
+                else
+                    {
+                    if (($this->debug) && $localDebug) echo "   ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
+                    }
                 }
-			}
-		//echo "\n";
-		if (false)
-			{
-			echo "Modulliste für Bibliothek \"".$findlibrary."\":   ".$foundlibraryID."\n";
+			echo "Modulliste für Bibliothek \"".$findlibrary."\"  ".$foundlibraryID.", suche Modul \"".$findname."\", markiere mit **:\n";
 			$modullist=IPS_GetLibraryModules ($foundlibraryID);
 			foreach ($modullist as $modulID)
 				{
@@ -1125,17 +1125,18 @@ class SNMP_OperationCenter
 		$modul=array();
 
 		$instanzSNMPModuleID=false;
-		foreach ($instanzlist as $instanzID)
+		foreach ($instanzlist as $instanzID)                    // jetzt wirklich die ganze Instanzliste durchgehen
 			{
 			$werte=IPS_GetInstance($instanzID);
 			$instanzname=IPS_GetName($instanzID);
 			$modulname=$werte["ModuleInfo"]["ModuleName"];
-			if (($this->debug) && $localDebug) echo "     ".$instanzID."   ".$modulname."\n";
+			//if (($this->debug) && $localDebug) echo "     ".$instanzID."   ".$modulname."\n";
 			//print_r($werte); break;
 			if (isset($modul[$modulname])==true) $modul[$modulname].="|".$instanzname;
 			else $modul[$modulname]=$instanzname;
 			if ($modulname==$findname)
 				{
+                if (($this->debug) && $localDebug) echo "     ".$instanzID."   ".$modulname."\n";
 				$configuration=IPS_GetConfiguration($instanzID);
 				$confObject=json_decode($configuration);
                 if (($this->debug)  && $localDebug)

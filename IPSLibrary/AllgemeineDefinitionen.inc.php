@@ -1286,33 +1286,32 @@ function send_status($aktuell, $startexec=0, $debug=false)
 					}
 				}
 			$guthaben .= "\n\n";			
+            $guthaben.="Ausgabe Status der aktiven SIM Karten :\n\n";
+            $guthaben.="    Nummer       Name                             letztes File von             letzte Aenderung Guthaben    letzte Aufladung\n";		
+            foreach ($GuthabenConfig as $TelNummer)
+                {
+                //print_r($TelNummer);
+                $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+
+                $phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+                $dateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
+                $ldateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_loadDate", 3);
+                $udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
+                $userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
+                if (strtoupper($TelNummer["STATUS"])=="ACTIVE") 
+                    {
+                    $guthaben.="    ".$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
+                    }
+                //echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
+                }
+            $guthaben.="\n";    
 			}
 		else
 			{
 			$guthaben="";
 			}
         echo $guthaben;
-
-		$guthaben.="Ausgabe Status der aktiven SIM Karten :\n\n";
-        $guthaben.="    Nummer       Name                             letztes File von             letzte Aenderung Guthaben    letzte Aufladung\n";		
-        foreach ($GuthabenConfig as $TelNummer)
-			{
-			//print_r($TelNummer);
-			$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
-
-			$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
-			$dateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
-			$ldateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_loadDate", 3);
-			$udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
-			$userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
-			if (strtoupper($TelNummer["STATUS"])=="ACTIVE") 
-				{
-				$guthaben.="    ".$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
-				}
-			//echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
-			}
-         $guthaben.="\n";    
-
+        
     	/*****************************************************************************************
 		 *
 		 * SystemInfo des jeweiligen PCs ausgeben
@@ -1985,7 +1984,7 @@ function CreateVariableByName2($name, $type, $profile, $action, $visible)
  *
  *
  *
- **********************************************************/
+ *********************************************************
 
 function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault=null, $Icon='')
 	{
@@ -2007,10 +2006,10 @@ function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Act
 				{
 				switch($Type)
 					{
-					case 0: SetValue($VariableId, false); break; /*Boolean*/
-					case 1: SetValue($VariableId, 0); break; /*Integer*/
-					case 2: SetValue($VariableId, 0.0); break; /*Float*/
-					case 3: SetValue($VariableId, ""); break; /*String*/
+					case 0: SetValue($VariableId, false); break; //Boolean
+					case 1: SetValue($VariableId, 0); break; //Integer
+					case 2: SetValue($VariableId, 0.0); break; //Float
+					case 3: SetValue($VariableId, ""); break; //String
 					default:
 					}
 				}
@@ -2040,7 +2039,7 @@ function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Act
 			}
 		UpdateObjectData2($VariableId, $Position, $Icon);
 		return $VariableId;
-	}
+	}   */
 
 /*****************************************************************
 
@@ -3480,7 +3479,13 @@ class sysOps
         return ($taskList);
         }
     
-    /************************************************************************************/
+    /***********************************************************************************
+     *
+     * eine Liste der aktuell aktiven Prozesse auslesen
+     * die Prgramme die in processStart übergeben wurden, überprüfen ob sie enthalten sind
+     *
+     *
+     */
 
     public function checkProcess($processStart)
         {
@@ -3492,10 +3497,10 @@ class sysOps
             {
             foreach ($processStart as $key => &$start)
                 {
-            if ($process==$key)
-                {
-                $start="Off";
-                }
+                if ( ($process==$key) || (strtoupper($process)==strtoupper($key)) )
+                    {
+                    $start="Off";
+                    }
                 }
             unset($start);
             }
@@ -4902,7 +4907,7 @@ class ComponentHandling
                 if ($debug) echo $result;
                 return ($component);
                 break;
-            case "Install":
+            case "Install":         // InstallComponentFull ruft mit keyword "install" auf, zurück kommt $install[Name] => keyname
                 //if ($debug) echo $result;
                 return ($install);
                 break;
@@ -4910,6 +4915,7 @@ class ComponentHandling
                 return ($result);
                 break;
             }
+        return (false);             // Ergebnis wird schon vorher zurückgemeldet, abhängig von write
 		}	
 
     /* Handle Keys and Keywords on deviceList 
@@ -4930,8 +4936,8 @@ class ComponentHandling
 
     function workOnDeviceList($Key, $keywords, $debug=false)
         {
-        $debug=false;     
-        //if ($debug) echo "workOnDeviceList(...\n";  
+        //$debug=false;     
+        //if ($debug) echo "workOnDeviceList aufgerufen von getComponent mit den Parametern (".json_encode($Key).", ".json_encode($keywords).",$debug):\n";  
         $keyName=array();
         $once=false;
         $typeChanKey="?"; $typeRegKey="?"; 
@@ -4954,7 +4960,7 @@ class ComponentHandling
                 //print_r($instance);
                 if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
                     {
-                    if ($debug) echo "    workOnDeviceList, first success \"$typeChanKey\" found ".json_encode($instance[$typeChanKey]).". Check now register \"$typeRegKey\" as well.\n";         // Register may still be wrong, then return empty array 
+                    //if ($debug) echo "    workOnDeviceList, first success \"$typeChanKey\" found ".json_encode($instance[$typeChanKey]).". Check now register \"$typeRegKey\" as well.\n";         // Register may still be wrong, then return empty array 
                     $keyName["OID"] = $Key["Instances"][$index]["OID"];
                     $oid = $keyName["OID"];
                     $channelTypes   = $Key["Channels"][$index]["TYPECHAN"];
@@ -4980,13 +4986,17 @@ class ComponentHandling
                                 {
                                 $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
                                 $keyName["KEY"]=$varName;
-                                if ($debug) echo "        DeviceList für TYPECHAN => $typeChanKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";                                
+                                if ($debug) 
+                                    {
+                                    if (isset($keyName["Name"])) echo "        DeviceList für TYPECHAN => $typeChanKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";                                
+                                    else echo "        DeviceList für TYPECHAN => $typeChanKey gefunden : ".$keyName["OID"]."(".IPS_GetName($keyName["OID"]).")  $channelTypes \n";
+                                    }
                                 }
                             }
                         }
                     //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
                     //print_r($Key["Channels"][$index]);
-                    if ($keyName["COID"]==false) echo "COID in $oid (".IPS_GetName($oid).") nicht gefunden, IPS_GetObjectIDByName($varName,$oid)\n";
+                    //if ($keyName["COID"]==false) echo "COID in $oid (".IPS_GetName($oid).") nicht gefunden, IPS_GetObjectIDByName($varName,$oid)\n";
                     $keyName["Name"]=$instance["Name"];
                     //if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
                     } 
@@ -4996,7 +5006,10 @@ class ComponentHandling
         if ($debug)
             {
             if (isset($keyName["Name"])) print_r($keyName);
-            else echo "   workOnDeviceList, Eingabe auf $typeChanKey und $typeRegKey in ".sizeof($Key)." Cheannels nicht gefunden.\n";
+            else 
+                {
+                //echo "   workOnDeviceList, Eingabe auf $typeChanKey und $typeRegKey in ".sizeof($Key)." Channels nicht gefunden.\n";
+                }
             }
         return $keyName;
         }
@@ -5543,6 +5556,7 @@ class ComponentHandling
 							//$struktur[$Name][$result]["newName"]=$Key["Name"];	// könnte nun der IndexName sein, wenn weiterhin benötigt						
 							}	
 						/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+                        if ($InitComponent=="") echo "  >>>>Error, Component Missing in RegisterEvent($oid,\"OnChange\",$InitComponent,".$entry["OID"].",$parameter,".$entry["KEY"].",$InitModule,$commentField)   -> ".json_encode($entry)."\n";
     		            $this->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter.','.$entry["KEY"],$InitModule,$commentField);
 						}
 					else

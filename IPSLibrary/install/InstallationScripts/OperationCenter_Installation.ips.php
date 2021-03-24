@@ -126,6 +126,8 @@
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
 	
+	$modulhandling = new ModuleHandling();
+
 	$dosOps = new dosOps();
     $ipsOps = new ipsOps();
 	
@@ -360,6 +362,74 @@
 		IPS_SetVariableProfileAssociation($pname, 9, "DetectMovement", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
 		IPS_SetVariableProfileAssociation($pname, 10, "Autosteuerung", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color			
 		echo "Profil ".$pname." upgedated.\n";
+
+
+    /* welche SNMP Module sind verfügbar, gibt es das IPSSNMP Modul von Babenschneider, dann können kurze Request-Response Timings implementiert werden */
+
+    if (false)          // nur zum lokalen Debuggung
+        {
+        echo "Ausgabe der geladenen Bibliotheken:\n"; 
+        $modulhandling->printrLibraries();
+        echo "Ausgabe der Symcon Module aus der Babenschneider Bibliothek:\n"; 
+        $modulhandling->printModules("Babenschneider Symcon Modules");
+        echo "Diese SNMP Instanzen sind bereits instaliert:\n";
+        $modulhandling->printInstances("IPSSNMP");
+        echo "mit folgenden Funktionen:\n";
+        $modulhandling->getFunctions("IPSSNMP");
+        }
+    $modules=$modulhandling->getModules("Babenschneider Symcon Modules");
+    if (count($modules)>0) echo "IPSSNMP Module können installiert werden. Klären ob benötigt.\n";
+    $instances=$modulhandling->getInstances("IPSSNMP");
+    if (count($instances)==0) echo "IPSSNMP Module müssen erst installiert werden. Klären ob benötigt.\n";
+    $instanceTable=array();
+    foreach ($instances as $instance) $instanceTable[IPS_GetName($instance)]=$instance;
+    //print_R($instanceTable);
+
+    $snmpCount=0; $snmp=array();
+   	foreach ($OperationCenterConfig['ROUTER'] as $router)
+		{
+    	echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+        if ( (isset($router['READMODE'])) && (strtoupper($router['READMODE'])=="SNMP") ) 
+            {
+            echo "   ->SNMP Abfrage zahlt sich aus.\n";
+            $snmpCount++;
+            $snmp[]=$router;
+            }
+		//print_r($router);
+        }
+    if ( (count($modules)>0) && ($snmpCount>0) )
+        {
+        $categoryId_Snmp = CreateCategoryPath('Hardware.SNMP');	            
+        foreach ($snmp as $router)
+            {
+        	echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." bekommt eine eigene SNMP Instanz.\n";
+            if ( (isset($instanceTable[$router['NAME']."_SNMP"])) === false)
+                {
+                $instanceId = IPS_CreateInstance("{2F4FB7B0-AF13-46F1-9DEA-1DEBE0C3E324}");
+                IPS_SetParent($instanceId, $categoryId_Snmp);
+                IPS_SetName($instanceId, $router['NAME']."_SNMP");
+                }
+            else 
+                {
+                $instanceId = $instanceTable[$router['NAME']."_SNMP"];
+                }
+            $config = IPS_GetConfiguration($instanceId);
+            echo "Instance ".$router['NAME']."_SNMP bereits bekannt: $instanceId mit Konfiguration $config\n";
+            $configArray=json_decode($config,true); // als Array ausgeben
+            $update=false;
+            if ($configArray["SNMPIPAddress"] != $router["IPADRESSE"]) { $update=true; $configArray["SNMPIPAddress"] = $router["IPADRESSE"]; };
+            if ($configArray["SNMPTimeout"] != 5) { $update=true; $configArray["SNMPTimeout"] = 5; };
+            if ($configArray["SNMPInterval"] != 3600) { $update=true; $configArray["SNMPInterval"] = 3600; };
+            if ( (isset($router["COMMUNITY"])) && ($configArray["SNMPCommunity"] != $router["COMMUNITY"]) ) { $update=true; $configArray["SNMPCommunity"] = $router["COMMUNITY"]; };
+            if ( (isset($router["VERSION"])) && ($configArray["SNMPVersion"] != $router["VERSION"]) ) { $update=true; $configArray["SNMPVersion"] = $router["VERSION"]; };
+            if ($update)
+                {
+                $config = json_encode($configArray);           
+                IPS_SetConfiguration($instanceId,$config);
+                IPS_ApplyChanges($instanceId);
+                }
+            }
+        }
 
 	echo "\nRouter Erstellung der iMacro Programmierung, Vorbereitung Tab für SNMP basierte Geräte :\n";
 	$routerSnmpLinks=array();								// Sammlung der SNMP Variablen im OperationCenterWebfront unter Router
@@ -1138,7 +1208,7 @@
 	 *
 	 ***************************************************/
 		
-	$modulhandling = new ModuleHandling();
+
 	$HUE=$modulhandling->getInstances('HUEBridge');	
 	$countHue = sizeof($HUE);
 	echo "Es gibt insgesamt ".$countHue." SymCon Hue Instanzen.\n";

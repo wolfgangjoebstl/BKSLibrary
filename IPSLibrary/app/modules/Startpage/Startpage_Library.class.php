@@ -2760,6 +2760,8 @@
          * die Bottom Table Line ist am unteren Ende des Bild und Wetter Bildschirms angesiedelt
          *
          * es wird eine eigene Tabellenzeile aufgebaut, die Zellen von darüber werden zusammengefasst und eine neue Tabelle in einer Zeile aufgebaut
+         * Input pro Eintrag ist immer die Objekt OID
+         *
          *
          */
 			
@@ -2769,52 +2771,135 @@
 	        if ( (isset($this->configuration["Display"]["BottomLine"])) && (sizeof($this->configuration["Display"]["BottomLine"])>0) )
 	            {
                 $wert.='<table><tr>';
-	            foreach($this->configuration["Display"]["BottomLine"] as $tableEntry)
+	            foreach($this->configuration["Display"]["BottomLine"] as $tableEntry)       // jeden Eintrag durchgehen
 	                {
-                    configfileParser($tableEntry, $config["Display"]["BottomLine"], ["OID","Oid"],"OID",false); 
-                    if (isset($config["Display"]["BottomLine"]["OID"])) $oid=(integer)$config["Display"]["BottomLine"]["OID"];
-                    if ( (IPS_ObjectExists($oid)) && ($oid !== false) )
+                    /* check ob eine oder mehrere OIDs angegeben wurden */
+                    configfileParser($tableEntry, $config["Display"]["BottomLine"], ["OID","Oid"],"OID",false);                 //configfile als tableEntry vereinheitlichen, überprüfen, Wert für OID muss vorhanden sein und das Objekt erreichbar
+                    if (isset($config["Display"]["BottomLine"]["OID"])) $oid=$config["Display"]["BottomLine"]["OID"];
+                    if ($oid !== false)
                         {
-                        $wert.='<td>';
-                        configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Name","NAME"],"Name",IPS_GetName($oid)); 
-                        configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Icon","ICON"],"Icon","IPS");
-                        if ($debug) echo "   Eintrag : Name ".$config["Display"]["BottomLine"]["Name"]." OID ".$config["Display"]["BottomLine"]["OID"]." Icon ".$config["Display"]["BottomLine"]["Icon"]." Value ".GetValue($oid)."\n";
-                        $wert.='<img src="user/Startpage/user/icons/'.$config["Display"]["BottomLine"]["Icon"].'.svg" alt="'.$config["Display"]["BottomLine"]["Icon"].' Icon">';
-                        $wert.='</td><td>';                        
-                        //$wert .='<addText>'.$config["Display"]["BottomLine"]["Name"].'   ';
-                        //$wert .='</addText></td><td><addText>';
-                        if (isset($tableEntry["Profile"]))
+                        if (is_array($oid)) $oidArray=$oid;                     // auch Arrays zulassen, dann sollten zwei Werte nebeneinander stehen
+                        else $oidArray=[$oid];
+                        /* check ob die Objekte vorhanden sind */
+                        $objectExists=false;
+                        $entries=count($oidArray);
+                        if ($debug) echo "--------BottomLine ($entries) \n";
+                        foreach ($oidArray as $oid) if (IPS_ObjectExists($oid)) $objectExists=true;         // wenn zumindest eines der Objekte existiert weitermachen
+                        if ($objectExists)
                             {
-                            $profileConfig=IPS_GetVariableProfile ($tableEntry["Profile"]);
-                            if (isset($profileConfig["Associations"]))  
-                                {
-                                foreach ($profileConfig["Associations"] as $index => $association)
-                                    {
-                                    if ($association["Value"]<=GetValue($oid))                  // Wert groesser 0 color setzen usw.
-                                        {
-                                        //print_R($association);
-                                        $color = "000000".dechex($association["Color"]);
-                                        $color = substr($color,-6);
-                                        if ($debug) echo "Farbe Association ist #$color  (".$association["Color"].")\n";
-                                        //if (hexdec($color) > 1000000) $color="1F2F1F";
-                                        }
-                                    }
-                                //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
-                                //$result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
-                                }
-                            else $color="F1F1F1";
+                            $wert.='<td>';
+                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Name","NAME"],"Name",IPS_GetName($oid)); 
+                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Icon","ICON"],"Icon","IPS");
+                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Integrate","INTEGRATE","integrate"],"Integrate",false);
+                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Property","PROPERTY","property"],"Property",null);            // default kein Eintrag wenn kein Eintrag
                             if ($debug) 
                                 {
-                                //print_R($profileConfig);
-                                echo "Letzte Farbe Association ist #$color\n";
+                                $i=1;
+                                if (count($oidArray)==1) echo "   Eintrag : Name ".$config["Display"]["BottomLine"]["Name"]." OID $oid Icon ".$config["Display"]["BottomLine"]["Icon"]." Value ".GetValue($oid)."\n";
+                                else foreach ($oidArray as $oid) echo "   ".$i++.":Eintrag : Name ".$config["Display"]["BottomLine"]["Name"]." OID $oid Icon ".$config["Display"]["BottomLine"]["Icon"]." Value ".GetValue($oid)."\n";
                                 }
-                            $wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$config["Display"]["BottomLine"]["Name"].'   ';
-                            $wert .= $this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
+                            $wert.='<img src="user/Startpage/user/icons/'.$config["Display"]["BottomLine"]["Icon"].'.svg" alt="'.$config["Display"]["BottomLine"]["Icon"].' Icon">';
+                            $wert.='</td><td>';
+                            $init=true; $addInfo="";
+                            foreach ($oidArray as $oid)
+                                {
+                                $archiveID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                                if (isset($tableEntry["Property"])) 
+                                    {
+                                    $variableChanged=IPS_GetVariable($oid)["VariableChanged"];
+                                    $timeGone=time()-$variableChanged;
+                                    $startOfToday=mktime(0,0,0,date("m"), date("d"), date("Y"));
+                                    if ($timeGone<(time()-$startOfToday))                   $addInfo=date("H:i",$variableChanged);
+                                    elseif ($timeGone<(time()-($startOfToday-7*24*60*60)))  $addInfo=date("D H:i",$variableChanged);
+                                    elseif ($timeGone<(time()-($startOfToday-60*24*60*60))) $addInfo=date("d.m H:i",$variableChanged); 
+                                    else                                                    $addInfo=date("d.m.Y H:i",$variableChanged);
+                                    if ($debug) 
+                                        {
+                                        echo "      ".date("d.m.Y H:i:s",$startOfToday)."\n";
+                                        echo "      Variable Changed $addInfo, got from Property:".$tableEntry["Property"]."   ".json_encode(IPS_GetVariable($oid))."\n";
+                                        $endtime=time();
+                                        $starttime=$endtime-$timeGone-(10*60*60);
+                                        $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
+                                        if ($werteLog===false) ;        // $oid bleibt unverändert
+                                        else
+                                            {
+                                            $count=0; $sum=0; $init=true;
+                                            foreach ($werteLog as $eintrag)
+                                                {
+                                                if ($init) { $start=$eintrag["Value"]; $init=false; }
+                                                echo "             ".date("d.m.Y H:i",$eintrag["TimeStamp"])."    ".$eintrag["Value"]."\n";
+                                                $count++;
+                                                }
+                                            //$value = (float)$sum/$count;
+                                            //if ($debug) echo "     Integrate Values from last ".$config["Display"]["BottomLine"]["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")."\n";
+                                            //$oid=$value;            // formatEntry erkennt oid (wenn integer) und oid als value
+                                            }
+                                        }
+                                    }
+                                if ($config["Display"]["BottomLine"]["Integrate"]>59) 
+                                    {
+    		                        $endtime=time();
+	    	                        $starttime=$endtime-$config["Display"]["BottomLine"]["Integrate"];   // die Werte entsprechend dem angegebenen Zeitraum laden
+                                    $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
+                                    if ($werteLog===false) ;        // $oid bleibt unverändert
+                                    else
+                                        {
+                                        $count=0; $sum=0;
+                                        foreach ($werteLog as $eintrag)
+                                            {
+                                            $sum += $eintrag["Value"];
+                                            $count++;
+                                            }
+                                        $value = (float)$sum/$count;
+                                        if ($debug) echo "     Integrate Values from last ".$config["Display"]["BottomLine"]["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")."\n";
+                                        $oid=$value;            // formatEntry erkennt oid (wenn integer) und oid als value
+                                        }
+                                    }
+                                if (isset($tableEntry["Profile"]))                          // es gibt ein IP Symcon Profil
+                                    {
+                                    $profileConfig=IPS_GetVariableProfile ($tableEntry["Profile"]);
+                                    if (isset($profileConfig["Associations"]))  
+                                        {
+                                        foreach ($profileConfig["Associations"] as $index => $association)
+                                            {
+                                            if ($association["Value"]<=GetValue($oid))                  // Wert groesser 0 color setzen usw.
+                                                {
+                                                //print_R($association);
+                                                $color = "000000".dechex($association["Color"]);
+                                                $color = substr($color,-6);
+                                                if ($debug) echo "     Farbe Association ist #$color  (".$association["Color"].")\n";
+                                                //if (hexdec($color) > 1000000) $color="1F2F1F";
+                                                }
+                                            }
+                                        //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
+                                        //$result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
+                                        }
+                                    else $color="F1F1F1";
+                                    if ($debug) 
+                                        {
+                                        //print_R($profileConfig);
+                                        echo "Letzte Farbe Association ist #$color\n";
+                                        }
+                                    if ($init) { $wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$config["Display"]["BottomLine"]["Name"].'   '; $init=false; }
+                                    else $wert .= '<addText style="background-color:#'.$color.';color:darkgrey;">|';
+                                    $wert .= $this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
+                                    }
+                                elseif (isset($tableEntry["UNIT"]))                         // es gibt eine Einheitsbezeichnung
+                                    {
+                                    if ($init) { $wert .= '<addText>'.$config["Display"]["BottomLine"]["Name"].'   ';$init=false; }
+                                    else $wert .= '<addText>|';
+                                    $wert .= $this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
+                                    }
+                                else                                                        // es gibt nix
+                                    {
+                                    if ($init) { $wert .= '<addText>'.$config["Display"]["BottomLine"]["Name"].'   ';$init=false; }
+                                    else $wert .= '<addText>|';
+                                    $wert .= $this->formatEntry($oid, "").'</addtext>';
+                                    }
+                                if ($addInfo != "") $wert .= '<addText>    '.$addInfo.'</addtext>';
+                                }
+                            $wert.='</td>';                                
                             }
-                        elseif (isset($tableEntry["UNIT"])) $wert .= '<addText>'.$config["Display"]["BottomLine"]["Name"].'   '.$this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
-                        else $wert .= '<addText>'.$config["Display"]["BottomLine"]["Name"].'   '.$this->formatEntry($oid, "").'</addtext>';;
-                        
-                        $wert.='</td>';
                         }
 	                }
                 $wert.='</tr></table>';
@@ -2826,8 +2911,9 @@
 	        }
 
         /* formatting with hints 
-         *
-         * array  Name 
+         * es wird die OID übergeben. Wenn die OID nicht integer ist dann als Wert betrachten. Übergabe in diesem Fall als float
+         * return ist der formattierte Wert
+         * 
          */
 
         function formatEntry($oid, $format)
@@ -2848,8 +2934,18 @@
                     if (is_integer($oid)) $wert.=number_format(GetValue($oid), 1, ",", "" ).'°C';                    
                     else $wert.=number_format($oid, 1, ",", "" ).'°C';
                     break;
+                case "MM":
+                    if (is_integer($oid)) $wert.=number_format(GetValue($oid), 1, ",", "" ).'mm';                    
+                    else $wert.=number_format($oid, 1, ",", "" ).'mm';
+                    break;                    
+                case "BPS":
+                    if (is_integer($oid)) $value=GetValue($oid);
+                    else $value=$oid;
+                    if ($value > 10000) $wert.=number_format($value/1000, 0, ",", "." )."kbps";
+                    else $wert.=number_format($value, 0, ",", "." )."bps";               // schöne grosse Integer Zahlen klar darstellen
+                    break;
                 default:   
-                    if (is_integer($oid)) $wert.=number_format(GetValue($oid), 3, ",", "" ).$format;
+                    if (is_integer($oid)) $wert.=number_format(GetValue($oid), 3, ",", "." ).$format;               // schöne grosse Integer Zahlen klar darstellen
                     else $wert.=number_format($oid, 3, ",", "" ).$format;
                     break;
                 }

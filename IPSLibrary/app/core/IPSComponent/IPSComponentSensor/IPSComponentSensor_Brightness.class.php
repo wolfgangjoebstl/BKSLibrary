@@ -53,7 +53,7 @@
 	 *
 	 ************************************************************************************************************/
 
-	class IPSComponentSensor_Motion extends IPSComponentSensor {
+	class IPSComponentSensor_Brightness extends IPSComponentSensor {
 
 		private $tempObject;
 		private $RemoteOID;

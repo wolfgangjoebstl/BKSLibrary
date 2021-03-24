@@ -6542,8 +6542,11 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		for ($i=1; $i<17;$i++)	
 			{
 			//echo $i."  ";
-			/* Create Variable macht Probleme mit den Profilen. Besser createVariable2 verwenden */ 
-			$this->zeile[$i] = CreateVariable2("Zeile".$i,$type,$pvid, $i*10,$profile,$this->scriptIdHeatControl,0 );
+			/* Create Variable macht Probleme mit den Profilen. Besser createVariable2 oder gleich CreateVariableByName verwenden 
+            function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault=null, $Icon='')
+            function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)    */
+
+			$this->zeile[$i] = CreateVariableByName($pvid,"Zeile".$i,$type, $profile,false,$i*10,$this->scriptIdHeatControl,0 );
 			IPS_SetHidden($this->zeile[$i],true);
 			$this->CreateLink($i,$pvid,$vid); 
 			}

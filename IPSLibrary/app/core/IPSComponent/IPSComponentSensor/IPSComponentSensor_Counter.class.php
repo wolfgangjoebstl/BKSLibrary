@@ -70,13 +70,12 @@
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
 
-		public function __construct($var1=null, $lightObject=null, $lightValue=null)
+		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-			//echo "IPSComponentSensor_Counter: Construct Counter Sensor with ".$var1.".\n";			
-
-			$this->RemoteOID    = $var1;
-			$this->tempObject   = $lightObject;
-			$this->tempValue    = $lightValue;
+			//echo "IPSComponentSensor_Counter: Construct Counter Sensor with ($instanceId,$remoteOID,$tempValue).\n";		
+            //$this->RemoteOID    = instanceID;                // par1 manchmal auch par2		
+			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1
+			$this->tempValue    = $tempValue;           // par3                
 
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -116,11 +115,13 @@
 			{
 			//echo "Counter Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
-			
+
+			$debug=false;
 			$log=new Counter_Logging($variable);
-			$result=$log->Counter_LogValue();
-			
-			if ($this->RemoteOID != Null)
+			$result=$log->Counter_LogValue($value, $debug);
+            $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID,$debug);   
+
+			/*if ($this->RemoteOID != Null)
 				{
 				//print_r($this);
 				//print_r($module);
@@ -144,7 +145,7 @@
 							}
 						}
 					}
-				}
+				}*/
 			}
 
 		/**
@@ -283,43 +284,50 @@
 			parent::__construct($filename,$vid);
 			}
 
-		function Counter_LogValue()
+        /******************************
+         *  Log Counter Value in different formats
+         *  es wird nur gelogged wenn der Wert einen Unterschied aufweist, diff
+         *
+         *  variable            ID vom Input Wert, für Debug Aufgaben ist der Wert auch in value
+         *  counterLogID        iD vom Spiegelregister als Float, $variablename."_Counter"
+         *  variableLogID       ID für den diff Wert als Float, $variablename
+         *
+         *
+         *
+         *
+         **************/
+
+		function Counter_LogValue($value, $debug)
 			{
 			// result formatieren für Ausgabe in den LogNachrichten
-			$variabletyp=IPS_GetVariable($this->variable);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				$result=GetValueFormatted($this->variable);
-				}
-			else
-				{
-				$result=number_format(GetValue($this->variable),2,',','.');
-				}		
+			$resultLog=GetValueFormatted($this->variable);
 
 			$unchanged=time()-$variabletyp["VariableChanged"];
-
-			$diff=GetValue($this->variable)-GetValue($this->counterLogID);
+            if ($debug)                 
+                {
+                echo "Keine Änderung seit ".round($unchanged/3600,1)." Sekunden.\n";
+    			$diff=$value-GetValue($this->counterLogID);                                         // Neue Werte vorgaukeln
+                }
+			else $diff=GetValue($this->variable)-GetValue($this->counterLogID);
 			if ($diff != 0)
 				{
 				if ($diff>0)
 					{
 					SetValue($this->variableLogID,GetValue($this->variable)-GetValue($this->counterLogID));
 					SetValue($this->counterLogID,GetValue($this->variable));
-					SetValue($this->counterLogID,GetValue($this->variable)+GetValue($this->counterOffsetLogID));
-					echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." Änderung auf letzten Wert ".GetValue($this->counterLogID);
+					//SetValue($this->counterLogID,GetValue($this->variable)+GetValue($this->counterOffsetLogID));
+					echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." Änderung auf letzten Wert ".GetValue($this->counterLogID)."\n";
 					}
 				else
 					{
 					SetValue($this->counterOffsetLogID,GetValue($this->counterOffsetLogID)-$diff);
 					}						
+                $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+                $installedmodules=$moduleManager->GetInstalledModules();
 
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$installedmodules=$moduleManager->GetInstalledModules();
-
-				parent::LogMessage($result);
-				parent::LogNachrichten($this->variablename." mit Wert ".$result);
+				parent::LogMessage($resultLog);
+				parent::LogNachrichten($this->variablename." mit Wert ".$resultLog,$debug);
 				}
-				
 			}
 
 		public function GetComponent() {

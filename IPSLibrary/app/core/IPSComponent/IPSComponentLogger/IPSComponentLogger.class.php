@@ -1076,15 +1076,16 @@ class Logging
         * Wert auf die konfigurierten remoteServer laden, gemeinsame Funktion im Component
         */
 
-    public function RemoteLogValue($value, $remServer, $RemoteOID )
+    public function RemoteLogValue($value, $remServer, $RemoteOID, $debug=false )
         {
         if ($RemoteOID != Null)
             {
+            if ($debug) echo "RemoteLogValue($value,...,$RemoteOID) aufgerufen.\n";
             $params= explode(';', $RemoteOID);
             foreach ($params as $val)
                 {
                 $para= explode(':', $val);
-                //echo "Wert :".$val." Anzahl ",count($para)." \n";
+                if ($debug) echo "Wert :".$val." Anzahl ",count($para)." \n";
                 if (count($para)==2)
                     {
                     $Server=$remServer[$para[0]]["Url"];

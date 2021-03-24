@@ -408,6 +408,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                 $log_Anwesenheitserkennung->LogMessage('Änderung Status Anwesenheit auf '.($StatusAnwesend?"Anwesend":"Abwesend"));
                 $log_Anwesenheitserkennung->LogNachrichten('Änderung Status Anwesenheit auf '.($StatusAnwesend?"Anwesend":"Abwesend"));                    
 			    SetValue($StatusAnwesendID,$StatusAnwesend);
+                $state=$StatusAnwesend;                         // nur für Anzeige im IPSLogger
                 $changesDetected=true;
                 }
 			/* Kurzüberblick als Tabelle machen über Bewegnung in den Räumen */

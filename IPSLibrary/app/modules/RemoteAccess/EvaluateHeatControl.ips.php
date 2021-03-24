@@ -82,10 +82,10 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
         echo "\n\n==ACTUATOR based on MySQL ===============================================================================\n";
         $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_ACTUATOR"],"","","",true);                   // true ist Debug
         }
-   elseif ( (function_exists('deviceList')) && false)
+   elseif ( (function_exists('deviceList')) && true)
         {
         echo "Aktuatoren von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_ACTUATOR"],'','',$commentField, true);				/* true ist Debug,  */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_ACTUATOR","REGISTER" => "VALVE_STATE"],'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All',$commentField, true);				/* true ist Debug,  */
         }
 	elseif (function_exists('HomematicList'))
 		{
@@ -122,7 +122,18 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Set Temperature Handler wird ausgeführt.\n";
 	
-	if (function_exists('HomematicList'))
+	if ( (getfromDataBase()) && false)
+        {
+        echo "\n\n==THERMOSTAT based on MySQL ===============================================================================\n";
+        $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_THERMOSTAT"],"","","",true);                   // true ist Debug, nur SQL kennt die richtigen Components/Modules, die dann 
+        }
+   elseif ( (function_exists('deviceList')) && true)                // haendisch ein/ausschalten, wir vertrauen der Sache noch nicht
+        {
+        echo "Thermostat von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_THERMOSTAT"],'','',$commentField, true);				/* true ist Debug,  */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_ACTUATOR","REGISTER" => "SET_TEMPERATURE"],'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All',$commentField, true);				/* true ist Debug,  */        
+        }
+	elseif (function_exists('HomematicList'))
 		{
 		echo "\n";
 		echo "Homematic Heat Set Werte aus den Thermostaten werden registriert.\n";

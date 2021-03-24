@@ -258,7 +258,7 @@ class OperationCenter
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Status","STATUS","status"], "Status","disabled"); 
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Directory"], "Directory","/Backup/IpSymcon");  
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FREQUENCE", "Frequence"], "FREQUENCE","Day");  
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FULL", "Full"], "FULL",'{"Mon","Wed"}');  
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FULL", "Full"], "FULL",'["Mon","Wed"]');  
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPDAY", "KeepDay","Keepday"], "KEEPDAY",10);
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPMONTH", "KeepMonth","Keepmonth"], "KEEPMONTH",10);
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPYEAR", "KeepYear","Keepyear"], "KEEPYEAR",2);
@@ -281,12 +281,21 @@ class OperationCenter
             {
             $configInput = OperationCenter_Configuration();            
             configfileParser($configInput, $config, ["INTERNET" ],"INTERNET" ,"[]");  
-            configfileParser($configInput, $config, ["ROUTER" ],"ROUTER" ,"[]");  
+
+            /* Router, nur die aktiven, kopieren */
+            configfileParser($configInput, $configRouter, ["ROUTER" ],"ROUTER" ,"[]");  
+            foreach ($configRouter['ROUTER'] as $name => $router)
+                {
+                if (!( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") ))           // wenn Status und nicht als active gekennzeichnet, Konfig ist raus und wird nicht übernommen
+                    {
+                    $config["ROUTER"][$name]=$router;
+                    }
+                }
             configfileParser($configInput, $config, ["CAM" ],"CAM" ,"[]");  
             configfileParser($configInput, $config, ["LED" ],"LED" ,"[]");  
             configfileParser($configInput, $config, ["DENON" ],"DENON" ,"[]");  
 
-            /* Router, nur die aktiven, kopieren */
+
 
             }
         //$this->oc_Configuration = $config;

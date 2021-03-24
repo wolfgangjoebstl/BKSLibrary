@@ -62,8 +62,9 @@ $startexec=microtime(true);
 	echo "\n";
     if (function_exists('deviceList'))
         {
-        echo "Temperatur Sensoren von verschiedenen Geräten werden registriert.\n";
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField, false);				/* true ist Debug, Temperatursensoren und Homematic Thermostat */
+        echo "Temperatur Sensoren von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
+        $debug=false;
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField, $debug);				/* true ist Debug, Temperatursensoren und Homematic Thermostat */
         //print_r($result);
         }
 
