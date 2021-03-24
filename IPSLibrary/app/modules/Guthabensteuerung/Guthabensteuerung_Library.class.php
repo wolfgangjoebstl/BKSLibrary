@@ -39,9 +39,21 @@
 
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
-
+            $this->CategoryIdSelenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
     		}
 			
+        /* Kategorie für Daten ist gekapselt, hier  ausgeben */
+
+		public function getCategoryIdData()
+	        {
+	        return ($this->CategoryIdData);
+	        }
+
+		public function getCategoryIdSelenium()
+	        {
+	        return ($this->CategoryIdSelenium);
+	        }
+            
         /* Konfiguration ist gekapselt, hier die gesamte Konfiguration ausgeben */
 
 		public function getConfiguration()
@@ -54,9 +66,10 @@
 		public function setConfiguration($ausgeben,$ergebnisse,$speichern)
 	        {
             if ( ((function_exists("get_GuthabenConfiguration"))===false) || ((function_exists("get_GuthabenAllgemeinConfig"))===false) ) IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
-            if ( (function_exists("get_GuthabenConfiguration")) && (function_exists("get_GuthabenAllgemeinConfig")) )
+            $phoneID=array();  $config=array();
+            /* nur die aktiven Telefonnummern in die Konfiguration übernehmen */
+            if (function_exists("get_GuthabenConfiguration")) 
                 {
-                $phoneID=array();
                 $i=0;
                 foreach (get_GuthabenConfiguration() as $TelNummerInput)
                     {
@@ -74,17 +87,20 @@
                         $i++;
                         }
                     } // ende foreach
-
+                }
                 $configuration["CONTRACTS"] = $phoneID;
-                $configInput=get_GuthabenAllgemeinConfig();
 
+            if (function_exists("get_GuthabenAllgemeinConfig")) 
+                {
+                $configInput=get_GuthabenAllgemeinConfig();
+                /* Web result Directory */
                 configfileParser($configInput, $config, ["WebResultDirectory","Webresultdirectory","webresultdirectory" ],"WebResultDirectory" ,"/Guthaben/"); 
                 $dosOps = new dosOps();
                	$systemDir     = $dosOps->getWorkDirectory(); 
                 if (strpos($config["WebResultDirectory"],"C:/Scripts/")===0) $config["WebResultDirectory"]=substr($config["WebResultDirectory"],10);      // Workaround für C:/Scripts"
                 $config["WebResultDirectory"] = $dosOps->correctDirName($systemDir.$config["WebResultDirectory"]);
                 $dosOps->mkdirtree($config["WebResultDirectory"]);
-
+                /* Operating Mode : kein Eintrag bedeutet iMacroDefault, sonst iMacro (veraltet) oder Selenium */
                 configfileParser($configInput, $config, ["OPERATINGMODE","OperatingMode","Operatingmode","operatingmode" ],"OperatingMode" ,"iMacroDefault");  
                 if ( (strtoupper($config["OperatingMode"]))=="IMACRODEFAULT") 
                     {       /* bestehende alte Konfiguration vor Bearbeitung ummodeln */
@@ -93,16 +109,17 @@
                     }
                 if ( (strtoupper($config["OperatingMode"]))=="SELENIUM")
                     {
-                    echo "Operating Mode is Selenium WebDriver.\n";
+                    //echo "Operating Mode is Selenium WebDriver.\n";
                     configfileParser($configInput, $config, ["Selenium","SELENIUM","selenium" ],"Selenium" , null);  
+                    configfileParser($configInput["Selenium"], $config["Selenium"], ["WEBDRIVERS","WebDrivers","webdrivers" ],"WebDrivers" , null);  
+
                     configfileParser($configInput["Selenium"], $config["Selenium"], ["BROWSER","Browser","browser" ],"Browser" , "Chrome");  
                     configfileParser($configInput["Selenium"], $config["Selenium"], ["WEBDRIVER","WebDriver","Webdriver","webdriver" ],"WebDriver" , 'http://10.0.0.34:4444/wd/hub');
-
                     }
                 elseif  ( (strtoupper($config["OperatingMode"]))=="IMACRO")
                     {
-
-
+                    //echo "Operating Mode is iMacro.\n";
+                    configfileParser($configInput, $config, ["iMacro","IMACRO","imacro" ],"iMacro" , null);  
 
                     }
                 elseif  ( (strtoupper($config["OperatingMode"]))=="NONE")
@@ -113,8 +130,9 @@
                     }
 
                 else echo "ERROR GuthabenHandler::setConfiguration, Do not know the Operating Mode ".$config["OperatingMode"]."\n";
-                $configuration["CONFIG"]    = $config;
                 }
+
+            $configuration["CONFIG"]    = $config;
 
             $configuration["EXECUTE"]["AUSGEBEN"]=$ausgeben;
             $configuration["EXECUTE"]["ERGEBNISSE"]=$ergebnisse;
@@ -141,6 +159,30 @@
                 return $result;
                 }
 	        }
+
+        /* nur die Telefonnummern als Array ausgeben, Informationen aus CONTRACTS zusammenfassen 
+         *
+         */
+
+        public function getPhoneNumberConfiguration()
+            {
+            $phoneID=array();
+            $i=0;
+            foreach ($this->configuration["CONTRACTS"] as $TelNummer)
+                {
+                //echo "Telefonnummer ".$TelNummer["NUMMER"]."\n";
+                if ($TelNummer["Status"]=="Active")
+                    {
+                    $phoneID[$i]["Short"]=substr($TelNummer["Nummer"],(strlen($TelNummer["Nummer"])-3),10);
+                    $phoneID[$i]["Nummer"]=$TelNummer["Nummer"];
+                    $phoneID[$i]["Password"]=$TelNummer["Password"];
+                    if (isset($TelNummer["Typ"])) $phoneID[$i]["Typ"]=$TelNummer["Typ"];
+                    else $phoneID[$i]["Typ"]="Drei";
+                    $i++;
+                    }
+                } // ende foreach
+            return ($phoneID);
+            }
 
 		public function getGuthabenConfiguration()
 	        {
@@ -170,11 +212,17 @@
          * wenn es die Session noch gibt wird kein neues Fenster aufgemacht
           */
 
-        public function getSeleniumSessionID()
+        public function getSeleniumSessionID($webDriverName=false)
             {
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
-            $categoryId_Selenium    = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
-            $sessionID              = @IPS_GetObjectIDByName("SessionId", $categoryId_Selenium,); 
+            $categoryId_Selenium    = $this->getCategoryIdSelenium();
+            if ( ($webDriverName) && ($webDriverName != "default") )
+                {
+                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $categoryId_Selenium);
+                if ($categoryId_Named===false) return (false);                    
+                $sessionID              = @IPS_GetObjectIDByName("SessionId", $categoryId_Named); 
+                }
+            else $sessionID              = @IPS_GetObjectIDByName("SessionId", $categoryId_Selenium);             
             return ($sessionID);
             }
 
@@ -182,11 +230,21 @@
          * diese Window ID gemeinsam mit einem passenden Index serialisieren und wegspeichern
          */
 
-        public function setSeleniumHandler($handler)
+        public function setSeleniumHandler($handler,$webDriverName=false)
             {
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
             $categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
-            $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Selenium,); 
+            if ($categoryId_Selenium===false) return (false);  
+            if ( ($webDriverName) && ($webDriverName != "default") )
+                {
+                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $categoryId_Selenium);
+                if ($categoryId_Named===false) return (false);    
+                $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Named);                                   
+                }
+            else
+                {
+                $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Selenium); 
+                }
             if ($handlerID)
                 {
                 SetValue($handlerID,json_encode($handler));
@@ -195,19 +253,96 @@
             else return (false);
             }
 
-        public function getSeleniumHandler()
+        public function getSeleniumHandler($webDriverName=false, $debug=false)
             {
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
             $categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
-            $handleID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Selenium,); 
-            echo "getSeleniumHandler Werte gespeichert in $handleID.\n";
-            if ($handleID)
+            if ($categoryId_Selenium===false) return (false);  
+            if ( ($webDriverName) && ($webDriverName != "default") )
                 {
-                echo "  --> Wert ist ".GetValue($handleID)."\n";
-                return (GetValue($handleID));
+                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $categoryId_Selenium);
+                if ($categoryId_Named===false) return (false);  
+                $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Named);   
+                }
+            else
+                {                      
+                $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Selenium); 
+                }
+            if ($debug) echo "getSeleniumHandler Werte gespeichert in $handlerID.\n";
+            if ($handlerID)
+                {
+                if ($debug) echo "  --> Wert ist ".GetValue($handlerID)."\n";
+                return (GetValue($handlerID));
                 }
             else return (false);
             }
+
+        /* Routinen für mehrere Webdriver */
+
+        public function getSeleniumWebDrivers()
+            {
+            $result = array();
+            if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false); 
+            if (isset($this->configuration["CONFIG"]["Selenium"]["WebDrivers"]))
+                {
+                foreach ($this->configuration["CONFIG"]["Selenium"]["WebDrivers"] as $name => $entry)
+                    {
+                    $result[]=$name;
+                    }
+                } 
+            else $result[]="default";
+            return ($result);
+            }
+
+        /* aus der Config die Configuration für den richtigen WebDriver raussuchen */
+
+        public function getSeleniumWebDriverConfig($name=false)
+            {
+            $result = array();
+            if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
+            $categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            if ($categoryId_Selenium===false) return (false);
+            if ( ($name) && ($name != "default") && (isset($this->configuration["CONFIG"]["Selenium"]["WebDrivers"][$name])))
+                {
+                $result = $this->configuration["CONFIG"]["Selenium"]["WebDrivers"][$name];
+                }
+            else
+                {
+                $result["WebDriver"] = $this->configuration["CONFIG"]["Selenium"]["WebDriver"];
+                $result["Browser"]   = $this->configuration["CONFIG"]["Selenium"]["Browser"];
+                }
+            return ($result);
+            }
+
+        /* extend phoneID array with Selenium results information
+        *
+        */
+
+        public function extendPhoneNumberConfiguration(&$phoneID,$category,$debug=false)
+            {
+            $registers=array();
+            $childrens=IPS_GetChildrenIDs($category);
+            foreach ($childrens as $children) 
+                {
+                $name = IPS_GetName($children);
+                //echo "  $name   \n";
+                $register[$name]["LastUpdated"]=IPS_GetVariable($children)["VariableUpdated"];
+                $register[$name]["OID"]=$children;
+                }
+            if ($debug) echo "Register in IP Symcon:\n";
+            //print_R($register);
+            foreach ($phoneID as $index => $entry)
+                {
+                if ($debug) echo "   ".$entry["Nummer"]."    : ";
+                if (isset($register[$entry["Nummer"]])) 
+                    {
+                    if ($debug) echo "available, last update was ".date("d.m.Y H:i:s",$register[$entry["Nummer"]]["LastUpdated"])."\n";
+                    $phoneID[$index]+=$register[$entry["Nummer"]];
+                    }
+                else if ($debug) echo "NOT available\n";
+                }
+            }
+
 
         /******************************************************************************/
 
@@ -309,9 +444,27 @@
 
         /*************************************************************************************************
         *
-        * Function Parse textfile
+        * Function Parse textfile, drei Optionen Ausgeben, Speichern, Ergebnis
         *
         * bestimmte Textfelder/Marker finden und denn Wert dahinter auslesen und einer Variablen zuordnen
+        * Inputvariablen: lookfor   Nummer/username die gesucht wird, Verzeichnis/Filename für das Input Dokument, type kann array/file sein
+        *
+        * return ist ein Ergebnis String als lesbarer text
+        * Phone_$nummer_Summary         Speicherort für selben Ergebnis String
+        * Phone_$nummer
+        * Phone_$nummer_Summary
+        * Phone_$nummer_User
+        * Phone_$nummer_Date
+        * Phone_$nummer_loadDate
+        * Phone_$nummer_unchangedDate
+        * Phone_$nummer_Bonus
+        * Phone_$nummer_Volume
+        * Phone_$nummer_VolumeCumm
+        * Phone_$nummer_Cost
+        * Phone_$nummer_Load
+        * Phone_Cost
+        * Phone_Load
+        * Phone_CL_Change
         *
         * $result1 	Username
         * $result2 	Telefonnummer
@@ -324,15 +477,32 @@
         *
         ************************************************************************************************************/
 
-        function parsetxtfile($lookfor="",$verzeichnis=false,$filename=false)
+        function parsetxtfile($lookfor="",$verzeichnis=false,$filename=false,$type="file")
             {
             if ($lookfor=="") return (false);
-            if ($verzeichnis === false) $verzeichnis=$this->getGuthabenConfiguration()["iMacro"]["DownloadDirectory"];
+            if ( ($type == "file") && ($verzeichnis === false) ) $verzeichnis=$this->getGuthabenConfiguration()["iMacro"]["DownloadDirectory"];
             $config=$this->getContractsConfiguration($lookfor);
             //print_r($config);
             $nummer=$config["Nummer"];
             $typ=strtoupper($config["Typ"]);
-            if ($filename === false) $filename = "/report_dreiat_".$nummer.".txt";
+            if ( ($type == "file") && ($filename === false) ) $filename = "/report_dreiat_".$nummer.".txt";
+
+            // Ergebnisvariablen, IDs anlegen
+
+            $phone1ID               = IPS_GetObjectIDByName("Phone_".$nummer,           $this->CategoryIdData);
+            $phone_Summ_ID          = IPS_GetObjectIDByName("Phone_".$nummer."_Summary",$phone1ID);
+            $phone_User_ID          = IPS_GetObjectIDByName("Phone_".$nummer."_User",   $phone1ID);
+            $phone_Date_ID          = IPS_GetObjectIDByName("Phone_".$nummer."_Date",   $phone1ID);
+            $phone_loadDate_ID      = IPS_GetObjectIDByName("Phone_".$nummer."_loadDate",$phone1ID);
+            $phone_unchangedDate_ID = IPS_GetObjectIDByName("Phone_".$nummer."_unchangedDate",$phone1ID);
+            $phone_Bonus_ID         = IPS_GetObjectIDByName("Phone_".$nummer."_Bonus",  $phone1ID);
+            $phone_Volume_ID        = IPS_GetObjectIDByName("Phone_".$nummer."_Volume", $phone1ID);
+            $phone_VolumeCumm_ID    = IPS_GetObjectIDByName("Phone_".$nummer."_VolumeCumm",$phone1ID);
+            $phone_nCost_ID         = IPS_GetObjectIDByName("Phone_".$nummer."_Cost",   $phone1ID);
+            $phone_nLoad_ID         = IPS_GetObjectIDByName("Phone_".$nummer."_Load",   $phone1ID);
+            $phone_Cost_ID          = IPS_GetObjectIDByName("Phone_Cost",               $this->CategoryIdData);
+            $phone_Load_ID          = IPS_GetObjectIDByName("Phone_Load",               $this->CategoryIdData);
+            $phone_CL_Change_ID     = IPS_GetObjectIDByName("Phone_CL_Change",          $this->CategoryIdData);
 
             //$startdatenguthaben=7;
             $startdatenguthaben=0;
@@ -340,8 +510,12 @@
             $ergebnisse = $this->configuration["EXECUTE"]["ERGEBNISSE"];
             $speichern  = $this->configuration["EXECUTE"]["SPEICHERN"];
 
-            if ($ausgeben) echo "Parse Textfile $filename / ".$config["Name"]." für $lookfor in Verzeichnis $verzeichnis . Typ ist $typ :\n";
-            $handle = @fopen($verzeichnis.$filename, "r");
+            if ($type=="file") 
+                {
+                if ($ausgeben) echo "Parse Textfile $filename / ".$config["Name"]." für $lookfor in Verzeichnis $verzeichnis . Typ ist $typ :\n";
+                $handle = @fopen($verzeichnis.$filename, "r");
+                }
+            else $handle=$verzeichnis;      //dann ist Verzeichnis ein Zeilen Array
 
             $result1="";$result2="";$result3="";$result4="";$result5="";$result6="";
             $result4g="";$result4v="";$result4f="";  $result4unlimited = false; $result7=""; $result8="";
@@ -361,9 +535,10 @@
                     if ($ergebnisse) echo "==========================================================================================================================\n";
                     //print_r($config);
                     }
-                
-                while (($buffer = fgets($handle, 4096)) !== false) /* liest bis zum Zeilenende */
-                    {
+                $nobreak=true; $line=0;         // array oder file Zeile für Zeile durchgehen
+                do  {
+                    if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break;            // line ist ein Pointer               
+
                     /* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
             
                     /********** zuerst den User ermitteln, steht hinter Willkommen 
@@ -419,14 +594,15 @@
                         if (isset($tarif)==false)
                             {
                             /* nur beim ersten mal machen */
-                            $buffer=fgets($handle, 4096);	// hier koennte auch das Datum der letzten Aufladung stehen, danach gleich bearbeiten
+                            if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break;	// hier koennte auch das Datum der letzten Aufladung stehen, danach gleich bearbeiten
                             if ($ausgeben) echo $buffer;
                             if ( !(preg_match('/Aufladung/i',$buffer)) )
                                 {
-                                $buffer2=fgets($handle, 4096);
+                                if  (($buffer2 = $this->getfromFileorArray($handle, $type, $line)) === false) break;
                                 if ($ausgeben) echo $buffer2;
-                                $buffer3=fgets($handle, 4096);
+                                if  (($buffer3 = $this->getfromFileorArray($handle, $type, $line)) === false) break;
                                 if ($ausgeben) echo $buffer3;
+
                                 $tarif=json_encode($buffer.$buffer2.$buffer3);
                                 //echo "****Tarif :".$buffer.$buffer2.$buffer3;
                                 $order   = array('\r\n', '\n', '\r');
@@ -445,7 +621,8 @@
                         {
                         if (strpos($buffer,"Wertkarte")==0)
                             {
-                            $buffer = fgets($handle, 4096); if ($ausgeben) echo $buffer;
+                            if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break; 
+                            if ($ausgeben) echo $buffer;
                             $tarif1=trim($buffer);
                             if ($ergebnisse) echo "********* Tarif : ".$tarif1."\n";
                             }
@@ -704,7 +881,7 @@
                             }
                         }				
                         
-                    }  /* ende while buffer schleife */
+                    }  while ($nobreak); /* ende while buffer schleife */
                     
 
                 if ($result1=="") $result1=$config["Tarif"];	// wenn der Username nicht gefunden wurde einen Ersatzwert nehmen
@@ -719,21 +896,6 @@
                     echo "\n-----------------------------\n";
                     }
                     
-                $phone1ID = CreateVariableByName($this->CategoryIdData, "Phone_".$nummer, 3);
-                $phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Summary", 3);
-                $phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_User", 3);
-                //$phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Status", 3);
-                $phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Date", 3);
-                $phone_loadDate_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_loadDate", 3);
-                $phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_unchangedDate", 3);
-                $phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Bonus", 3);
-                $phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Volume", 2);
-                $phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_VolumeCumm", 2);
-                $phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Cost", 2);
-                $phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Load", 2);
-                $phone_Cost_ID = CreateVariableByName($this->CategoryIdData, "Phone_Cost", 2);
-                $phone_Load_ID = CreateVariableByName($this->CategoryIdData, "Phone_Load", 2);
-                $phone_CL_Change_ID = CreateVariableByName($this->CategoryIdData, "Phone_CL_Change", 2);
                 //$ergebnis="User:".$result1." Status:".$result4." Guthaben:".$result5." Euro\n";
                 SetValue($phone_User_ID,$result1);
                 if ($speichern) echo "--> ".IPS_GetName($phone_User_ID)." : ".$result1."\n";
@@ -878,35 +1040,36 @@
                             }
                         }			
                     }
-                if (!feof($handle))
+                if ($type == "file")
                     {
-                    $ergebnis="Fehler: unerwarteter fgets() Fehlschlag\n";
-                    }	
-                fclose($handle);
+                    if (!feof($handle))
+                        {
+                        $ergebnis="Fehler: unerwarteter fgets() Fehlschlag\n";
+                        }	
+                    fclose($handle);
+                    }
                 }
             else
                 {
                 $ergebnis="Handle nicht definiert. Kein Ergebnis des Macroscripts erhalten.\n";
-                $phone1ID = CreateVariableByName($this->CategoryIdData, "Phone_".$nummer, 3);
-                $phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Summary", 3);
-                
-                //$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_User", 3);
-                //$phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Date", 3);
-                //$phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_unchangedDate", 3);
-                //$phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Bonus", 3);
-                //$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Volume", 2);
-                //$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_VolumeCumm", 2);
-                //$phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Cost", 2);
-                //$phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Load", 2);
-                //$phone_Cost_ID = CreateVariableByName($this->CategoryIdData, "Phone_Cost", 2);
-                //$phone_Load_ID = CreateVariableByName($this->CategoryIdData, "Phone_Load", 2);
-                //$phone_CL_Change_ID = CreateVariableByName($this->CategoryIdData, "Phone_CL_Change", 2);
                 }
             //$ergebnis.=$result4g." ".$result4v." ".$result4f;
 
             if ($speichern) echo "--> ".IPS_GetName($phone_Summ_ID)." : ".$ergebnis."\n";
             SetValue($phone_Summ_ID,$ergebnis);
             return $ergebnis;
+            }
+
+        function getfromFileorArray($handle, $type, &$line)
+            {
+            if  ($type == "file") $buffer = fgets($handle, 4096);/* liest bis zum Zeilenende */
+            else 
+                {
+                if (($line+1)>(count($handle))) return (false);
+                $buffer=$handle[$line];
+                $line++;
+                }
+            return($buffer);
             }
 
         }   // Ende class Guthabenhandler
