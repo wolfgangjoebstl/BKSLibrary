@@ -130,12 +130,14 @@
                 //$sessionID          = CreateVariable("SessionId", 3, $categoryId_Selenium,1000,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
                 $sessionID          = CreateVariableByName($CategoryId_Mode,"SessionId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 $handleID           = CreateVariableByName($CategoryId_Mode,"HandleId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+                }
             break;
         case "NONE":
             $DoInstall=false;
             break;
         default:    
             echo "Guthaben Mode \"".$GuthabenAllgConfig["OperatingMode"]."\" not supported.\n";
+            break;
         }
 	
 
