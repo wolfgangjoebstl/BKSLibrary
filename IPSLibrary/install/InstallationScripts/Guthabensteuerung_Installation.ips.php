@@ -104,20 +104,32 @@
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
         case "IMACRO":
-           	$categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 10);
-            $categoryId_iMacro          = CreateCategory('iMacro',          $CategoryIdData, 90);
-            $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 900);
-            $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_iMacro,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-            $testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMacro,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-	        $startImacroID      = CreateVariable("StartImacro", 1, $CategoryId_iMacro,1000,$pname,$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+																								 
+            $CategoryId_Mode          = CreateCategory('iMacro',          $CategoryIdData, 90);
+																								  
+            $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_iMode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+            $testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMode,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             break;
         case "SELENIUM":
-           	$categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 10);
-            $categoryId_Selenium        = CreateCategory('Selenium',        $CategoryIdData, 20);
-            $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 900);
-            //$sessionID          = CreateVariable("SessionId", 3, $categoryId_Selenium,1000,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-            $sessionID          = CreateVariableByName($categoryId_Selenium,"SessionId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-            $handleID           = CreateVariableByName($categoryId_Selenium,"HandleId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+            $CategoryId_Mode        = CreateCategory('Selenium',        $CategoryIdData, 20);
+            $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+            if (isset($GuthabenAllgConfig["Selenium"]["WebDrivers"])) 
+                {
+                echo "Mehrere Webdriver Server konfiguriert.\n";
+                $pos=10;
+                foreach ($GuthabenAllgConfig["Selenium"]["WebDrivers"] as $category => $entry)
+                    {
+                    $categoryId_WebDriver        = CreateCategory($category,        $CategoryId_Mode, $pos);
+                    $sessionID          = CreateVariableByName($categoryId_WebDriver,"SessionId", 3);                       
+                    $handleID           = CreateVariableByName($categoryId_WebDriver,"HandleId", 3);                        
+                    $pos=$pos+10;
+                    }
+                }
+            else
+                {
+                //$sessionID          = CreateVariable("SessionId", 3, $categoryId_Selenium,1000,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+                $sessionID          = CreateVariableByName($CategoryId_Mode,"SessionId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+                $handleID           = CreateVariableByName($CategoryId_Mode,"HandleId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
             break;
         case "NONE":
             $DoInstall=false;
@@ -133,6 +145,8 @@
 	
     if ($DoInstall)
         {
+        $categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 10);
+        $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 900);																							 
         $phoneID=array();           // wird für die Links im Webfront verwendet, nur die aktiven SIM Karten bekommen einen Link
         $i=0;
         foreach ($GuthabenConfig as $TelNummer)
@@ -267,6 +281,15 @@
             echo "Profil ".$pname." überarbeitet;\n";		
             }
 
+
+         if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
+            {
+            $startImacroID      = CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+            }
+        else
+            {
+            $startImacroID      = CreateVariable("StartImacro", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+            }
         }
 
 	/****************************************************************
@@ -400,20 +423,20 @@
 			{
 			echo "Variable Summary neu anlegen.\n";
 			}			
+        EmptyCategory($categoryId_WebFront);											
 		$phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
 		foreach ($phoneID as $phone)
 			{
 	   		CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
 			}
 		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID, $categoryId_WebFront,  20);
-        switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
-            {
-            case "IMACRO":        
-        		CreateLinkByDestination(IPS_GetName($startImacroID), $startImacroID, $categoryId_WebFront,  30);
-                CreateLinkByDestination(IPS_GetName($statusReadID), $statusReadID, $categoryId_WebFront,  40);
-                CreateLinkByDestination(IPS_GetName($testInputID), $testInputID, $categoryId_WebFront,  50);
-                break;
-            }
+																 
+			 
+								  
+        CreateLinkByDestination(IPS_GetName($startImacroID), $startImacroID, $categoryId_WebFront,  30);
+        CreateLinkByDestination(IPS_GetName($statusReadID), $statusReadID, $categoryId_WebFront,  40);
+        //CreateLinkByDestination(IPS_GetName($testInputID), $testInputID, $categoryId_WebFront,  50);
+					  
 		}
 
 	if ( ($WFC10User_Enabled) && ($DoInstall) )

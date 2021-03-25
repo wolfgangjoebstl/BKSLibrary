@@ -15,7 +15,7 @@
 		{
 
 		private $configuration = array();				// die angepasste, standardisierte Konfiguration
-		private $CategoryIdData, $CategoryIdApp;			// die passenden Verzeichnisse
+		private $CategoryIdData, $CategoryIdApp, $CategoryIdSelenium;			// die passenden Kategorien
 
 		/**
 		 * @public
@@ -140,7 +140,7 @@
 	        return ($configuration);
 	        }
 
-        /* nur dei SIM Karten Informationen ausgeben, zusaetztlich
+        /* nur die SIM Karten Informationen ausgeben, zusaetztlich
          * nach einer bestimmten telefonnummer suchen und nur diese ausgeben
          */ 
 
@@ -479,7 +479,7 @@
 
         function parsetxtfile($lookfor="",$verzeichnis=false,$filename=false,$type="file")
             {
-            if ($lookfor=="") return (false);
+            if ($lookfor == "") return (false);
             if ( ($type == "file") && ($verzeichnis === false) ) $verzeichnis=$this->getGuthabenConfiguration()["iMacro"]["DownloadDirectory"];
             $config=$this->getContractsConfiguration($lookfor);
             //print_r($config);
@@ -528,7 +528,7 @@
                 if ($ausgeben) 
                     {
                     //echo "Rückmeldung fopen : "; print_r($handle); echo "\n";
-                    print_r($config);
+                    //print_r($config);
                     echo "Aufruf von parsetxtfile mit folgender Config: ".$config["Name"]." / ".$config["Nummer"]." (".$config["Password"].")  -> ".$config["Tarif"]."   ";
                     if ($typ=="DREI") echo "Drei prepaid oder postpaid Karte.\n";
                     else echo "Alternative erkannt, UPC.\n";
@@ -758,8 +758,10 @@
                         $posDatum=strpos($buffer,"Datum zeit");
                         if ($posDatum !== false)				
                             { /* interessant, uebernaechste Zeile holen */
-                            $buffer = fgets($handle, 4096); if ($ausgeben) echo $buffer;
-                            $buffer = fgets($handle, 4096); if ($ausgeben) echo $buffer;
+                            if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break; 
+                            if ($ausgeben) echo $buffer;
+                            if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break; 
+                            if ($ausgeben) echo $buffer;
                             $pos=strpos($buffer,"-");
                             if ($pos)
                                 { // wenn ein bis Zeichen ist das ein hinweis auf postpaid System
@@ -792,7 +794,7 @@
                             }
                         if ($Ende === false)   // manchmal steht das Guthaben auch in der nächsten Zeile
                             {
-                            $buffer = fgets($handle, 4096);
+                            if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break;
                             if ($ausgeben) echo $buffer;
                             $Ende=strpos($buffer,",")-3;       /* Eurozeichen laesst sich nicht finden */
                             if ($Ende<0) $Ende=0;
@@ -812,7 +814,7 @@
                             }
                         if ($Ende === false)   // manchmal steht das Guthaben auch in der nächsten Zeile
                             {
-                            $buffer = fgets($handle, 4096);
+                            if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break;
                             if ($ausgeben) echo $buffer;
                             $pos=strpos($buffer,",");       /* Eurozeichen laesst sich nicht finden */
                             $pos1=strpos($buffer,"€");

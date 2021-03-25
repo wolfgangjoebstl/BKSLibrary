@@ -33,8 +33,8 @@ IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config:
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
         case "IMACRO":
-            $categoryId_iMacro          = CreateCategory('iMacro',          $CategoryIdData, 90);
-	        $startImacroID      = CreateVariable("StartImacro", 1, $CategoryId_iMacro,1000,$pname,$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+            $CategoryId_Mode        = CreateCategory('iMacro',          $CategoryIdData, 90);
+            $startImacroID          = IPS_GetObjectIdByName("StartImacro",$CategoryId_Mode);
             $firefox=$GuthabenAllgConfig["FirefoxDirectory"]."firefox.exe";
             //echo "Firefox verzeichnis : ".$firefox."\n";				
             /*  $firefox=ADR_Programs."Mozilla Firefox/firefox.exe";
@@ -117,7 +117,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			$ScriptCounter=GetValue($ScriptCounterID);
 			//IPS_SetScriptTimer($_IPS['SELF'], 150);
             $note="";            
-			if ($ScriptCounter < $maxcount)
+			if ($ScriptCounter < $maxcount)                                     // normale Abfrage, Nummer für Nummer bis fertig
 				{
                 switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                     {
@@ -186,8 +186,8 @@ if ($_IPS['SENDER']=="WebFront")
 
 	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 	$value=$_IPS['VALUE']; $variable=$_IPS['VARIABLE'];
-    switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
-        {    
+    switch ($variable)
+        {
         case ($startImacroID):
             switch ($value)
                 {
@@ -246,7 +246,7 @@ if ($_IPS['SENDER']=="WebFront")
                         default:
                             break;	
                         }
-                    break;
+                    break;			// ende case maxcount
                 default:
                     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                         {    

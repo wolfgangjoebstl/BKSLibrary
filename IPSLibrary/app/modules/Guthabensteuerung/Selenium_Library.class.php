@@ -120,7 +120,7 @@ class SeleniumHandler
             }
         else
             {
-            echo "SeleniumHandler::initHost($hostIP,$browser) aufgerufen.\n";
+            if ($debug) echo "SeleniumHandler::initHost($hostIP,$browser) aufgerufen.\n";
             try { 
                 $webDriver = RemoteWebDriver::create($hostIP, $capabilities); 
                 static::$webDriver = $webDriver; 
@@ -228,7 +228,7 @@ class SeleniumHandler
         }
 
     /* pressButtonIf
-     * sucht einen xpathund überprüft:
+     * sucht einen xpath und überprüft:
      * wenn vorhanden               findElements
      * wenn clickable/visible       elementToBeClickable
      * drückt er da darauf den Button
@@ -254,12 +254,14 @@ class SeleniumHandler
                 $statusDisplayed=$element->isDisplayed();
                 if ($debug) echo "Element Status Enabled $statusEnabled Displayed $statusDisplayed\n";
                 if ($statusEnabled)
-                if ($statusDisplayed)
-                    {
-                    $element->click();
-                    if ($debug) print "found xpath , click Button\n";
-                    return (true);                                          // nur hier erfolgreich
-                    }
+					{
+					if ($statusDisplayed)
+						{
+						$element->click();
+						if ($debug) print "found xpath , click Button\n";
+						return (true);                                          // nur hier erfolgreich
+						}
+					}
                 //print_r($element);
                 }
             }
