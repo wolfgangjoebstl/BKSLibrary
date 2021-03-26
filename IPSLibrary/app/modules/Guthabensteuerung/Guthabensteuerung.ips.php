@@ -320,8 +320,11 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
             print_R($phoneID);
             foreach ($phoneID as $entry)
                 {
-                echo "   ".$entry["Nummer"]."    : register (".$entry["OID"].") available, last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"])."\n";
-                $result=GetValue($entry["OID"]);
+                if (isset($entry["OID"]))
+                    {
+                    echo "   ".$entry["Nummer"]."    : register (".$entry["OID"].") available, last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"])."\n";
+                    $result=GetValue($entry["OID"]);
+                    }
 
                 }
 

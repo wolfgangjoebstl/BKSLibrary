@@ -559,7 +559,9 @@ class SeleniumOperations
         if ($sub === false) return ($this->CategoryIdData);
         else
             {
+            //echo "Get Category $sub in ".$this->CategoryIdData."\n";    
             $categoryID = @IPS_GetObjectIDByName($sub, $this->CategoryIdData);
+            if ($categoryID===false) $categoryID = CreateCategoryByName($this->CategoryIdData,$sub);            // wenn noch nicht da halt anlegen
             return ($categoryID);
             }
         }

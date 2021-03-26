@@ -127,7 +127,7 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
         echo "\n\n==THERMOSTAT based on MySQL ===============================================================================\n";
         $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_THERMOSTAT"],"","","",true);                   // true ist Debug, nur SQL kennt die richtigen Components/Modules, die dann 
         }
-   elseif ( (function_exists('deviceList')) && true)                // haendisch ein/ausschalten, wir vertrauen der Sache noch nicht
+   elseif ( (function_exists('deviceList')) && false)                // haendisch ein/ausschalten, wir vertrauen der Sache noch nicht
         {
         echo "Thermostat von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_THERMOSTAT"],'','',$commentField, true);				/* true ist Debug,  */

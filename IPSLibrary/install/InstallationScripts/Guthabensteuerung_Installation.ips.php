@@ -111,6 +111,9 @@
             $testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMode,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             break;
         case "SELENIUM":
+            IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+            //echo "Do Init for Operating Mode Selenium.\n";
+            $seleniumOperations = new SeleniumOperations();            
             $CategoryId_Mode        = CreateCategory('Selenium',        $CategoryIdData, 20);
             $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             if (isset($GuthabenAllgConfig["Selenium"]["WebDrivers"])) 
@@ -131,6 +134,8 @@
                 $sessionID          = CreateVariableByName($CategoryId_Mode,"SessionId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 $handleID           = CreateVariableByName($CategoryId_Mode,"HandleId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 }
+            $categoryDreiID = $seleniumOperations->getCategory("DREI");                
+            echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";                 
             break;
         case "NONE":
             $DoInstall=false;

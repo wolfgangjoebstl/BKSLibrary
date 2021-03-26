@@ -2858,6 +2858,7 @@
                                 if (isset($tableEntry["Profile"]))                          // es gibt ein IP Symcon Profil
                                     {
                                     $profileConfig=IPS_GetVariableProfile ($tableEntry["Profile"]);
+                                    $color="F1F1F1";                                // default color
                                     if (isset($profileConfig["Associations"]))  
                                         {
                                         foreach ($profileConfig["Associations"] as $index => $association)
@@ -2874,10 +2875,9 @@
                                         //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
                                         //$result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
                                         }
-                                    else $color="F1F1F1";
                                     if ($debug) 
                                         {
-                                        //print_R($profileConfig);
+                                        print_R($profileConfig);
                                         echo "Letzte Farbe Association ist #$color\n";
                                         }
                                     if ($init) { $wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$config["Display"]["BottomLine"]["Name"].'   '; $init=false; }
