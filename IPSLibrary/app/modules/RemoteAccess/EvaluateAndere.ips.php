@@ -31,7 +31,7 @@
     * EvaluateHomematic			Homematic Temperatur und Feuchtigkeitswerte
     * EvaluateMotion				Homematic und FS20 Bewegungsmelder, und die Bewegungsmelder der Cams
     * EvaluateStronverbrauch 	die von AMIS angelegten Register
-    * EvaluateSwitch				Homematic, HomematicIP udn FS20 Schalter 
+    * EvaluateSwitch				Homematic, HomematicIP und FS20 Schalter 
     * EvaluateVariables			Guthaben, SysInfo und RouterDaten Register
     *
     *
@@ -68,12 +68,12 @@
     $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateAndere um ".date("h:i am d.m.Y ").".";   
     $debug=false; 
 
-    if (getfromDataBase())
+    if (getfromDataBase() && false)
         {
         echo "\n\n==CLIMATE based on MySQL ===============================================================================\n";
         $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"],"","","",$debug);                   // true ist Debug
         $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BAROPRESSURE"],"","","",$debug);          // true ist Debug
-        $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "RAIN"],"","","",$debug);                  // true ist Debug
+        $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "RAIN_COUNTER"],"","","",$debug);                  // true ist Debug
         }
     elseif ( (function_exists('deviceList')) )
         {

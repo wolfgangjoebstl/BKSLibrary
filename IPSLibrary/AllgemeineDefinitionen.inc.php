@@ -259,7 +259,7 @@ define("ADR_Programs",'C:/Program Files (x86)/');
                 {
                 $outputArray[$tag] = $inputArray[$synonym];
                 if ($found === false) $found=true;
-                else echo "*****configfileParser, Configuration Fehler, Synonym mehrmals vorhanden.\n";
+                else echo "*****configfileParser, Configuration Fehler, Synonym mehrmals vorhanden. $tag\n";
                 }
             }
         if ($found===false)         // keines der Synonyme vorhanden, den json dekodierten Defaultwert übernehmen
@@ -1908,10 +1908,11 @@ function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=fa
         }
     else 
         {
-        $VariableData = IPS_GetVariable ($VariableId);
+        $VariableData = IPS_GetVariable($VariableId);
+        $objectInfo   = IPS_GetObject($VariableId); 
         if ($VariableData['VariableType'] <> $type)
             {
-            IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." <> $type. Delete and create new.");
+            IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." <> \"$type\". Delete and create new.");
             IPS_DeleteVariable($VariableId); 
             $VariableId=CreateVariableByName($parentID, $name, $type, $profile, $ident, $position, $action);  
             $VariableData = IPS_GetVariable ($VariableId);            
@@ -1932,6 +1933,12 @@ function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=fa
 			//Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
 			echo "Set VariableCustomAction='$action' for Variable='$name' \n";
 			IPS_SetVariableCustomAction($VariableId, $action);
+			}
+		if ($ident && ($objectInfo['ObjectIdent'] <> $ident) )
+			{
+			//Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+			echo "Set VariableIdent='$ident' for Variable='$name' \n";
+			IPS_SetIdent($VariableId, $ident);
 			}
    
         }

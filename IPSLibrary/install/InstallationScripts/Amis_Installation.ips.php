@@ -390,10 +390,12 @@ $cutter=true;
 	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0, "Zaehlt","",0,$scriptIdAmis,$MeterReadDefault);  /* 0 Boolean 1 Integer 2 Float 3 String */		
 	SetValue($MeterReadID,$MeterReadDefault);
 	
-	/* Links für Webfront identifizieren 
+	/*************************************************************************************************************
+     * Links für Webfront identifizieren 
 	 *  Struktur [Tab] [Left, Right] [LINKID] ["NAME"]="Name"
 	 *  umgesetzt auf [AMIS,Homematic, HomematicIP etc] 
-	 */
+	 *****************************************************************************************************************/
+     
 	$webfront_links=array();
 	$pos=100;
 	foreach ($MeterConfig as $identifier => $meter)

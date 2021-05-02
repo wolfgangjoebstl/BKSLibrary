@@ -116,8 +116,8 @@
 			//echo "Counter Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
-			$debug=false;
-			$log=new Counter_Logging($variable);
+			$debug=true;
+			$log=new Counter_Logging($variable,null,$debug);
 			$result=$log->Counter_LogValue($value, $debug);
             $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID,$debug);   
 
@@ -188,7 +188,7 @@
 		protected $CounterAuswertungID;			// Kategorie für Register
 		protected $CounterNachrichtenID;			// Kategorie für Nachrichten
         
-		function __construct($variable,$variablename=Null)
+		function __construct($variable,$variablename=Null,$debug=false)
 			{
             $dosOps= new dosOps();
             $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
@@ -301,7 +301,7 @@
 			{
 			// result formatieren für Ausgabe in den LogNachrichten
 			$resultLog=GetValueFormatted($this->variable);
-
+			$variabletyp=IPS_GetVariable($this->variable);
 			$unchanged=time()-$variabletyp["VariableChanged"];
             if ($debug)                 
                 {

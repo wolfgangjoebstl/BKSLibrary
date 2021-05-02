@@ -398,7 +398,22 @@ class RemoteAccess
 				$servID=RPC_CreateCategoryByName($rpc, $raID,$visname);
 				$this->includefile.="\n         ".'"ServerName" => "'.$servID.'", ';
 
-				$this->listofOIDs["Temp"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Temperatur");
+            	// $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion","Pressure","CO2","Rainfall","Helligkeit");      // diese Profile werden installiert
+
+                $profiles=array(
+                    "Temperature"   => ["Tag"       => "Temp",      "Profil"    =>"Temperatur"],          // name => [tag => profil]
+                    "Switch"        => ["Tag"       => "Switch",    "Profil"    =>"Schalter"],
+                    "Kontakt"       => ["Tag"       => "Contact",   "Profil"    =>"Kontakte"],
+                    "Taster"        => ["Tag"       => "Button",    "Profil"    =>"Taster"],
+                    "Bewegung"      => ["Tag"       => "Motion"],
+                    "Feuchtigkeit"=>"Humidity",
+                    "SysInfo"=>"SysInfo",
+                    "Klima"=>"Klima",
+                    "Andere"=>"Other",
+                    );
+                foreach ($profiles as $profile) 
+                    {}
+    			$this->listofOIDs["Temp"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Temperatur");
 				$this->includefile.="\n         ".'"Temperatur" => "'.$this->listofOIDs["Temp"][$Name].'", ';
 
 				$this->listofOIDs["Switch"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Schalter");
@@ -491,12 +506,14 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * Profile aus den Remote Servern lesen und anlegen
-	 *
+	 * Profile aus den Remote Servern lesen und anzeigen ob am jeweiligen Server vorhanden
+	 * die Namen der Profile sind in profilname gespeichert, als constant in der Variablendefinition     
+	 * die remServer werden aus der Config angelegt, available gibt die Erreichbarkeit des Servers an
 	 *
 	 */
-	public function rpc_showProfiles($available=Array())
+	public function rpc_showProfiles($available=Array(),$debug=false)
 		{
+        if ($debug) print_R($this->remServer);
 		foreach ($this->remServer as $Name => $Server)
 			{
 			$read=true;
@@ -527,8 +544,8 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * Profile aus den Remote Servern löschen
-	 *
+	 * alle Profile aus den Remote Servern löschen
+	 * die Profilnamen sind in profilname gespeichert
 	 *
 	 */
 	public function rpc_deleteProfiles($available=Array())
@@ -565,7 +582,8 @@ class RemoteAccess
 	 * @public
 	 *
 	 * Profile aus den Remote Servern anlegen
-	 *
+	 * die Namen der Profile sind in profilname gespeichert     
+	 * Die Konfiguration der Profile ist hier Hardcoded ausprogrammiert
 	 *
 	 */
 	public function rpc_createProfiles($available=Array())
@@ -685,80 +703,31 @@ class RemoteAccess
 	 * @public
 	 *
 	 * alle Ergebnisse ausgeben
-	 *
+	 * benötigt aufruf funktion add_RemoteServer
 	 *
 	 */
 	public function write_classresult($available=Array())
 		{
-		echo "\nOID          :";
+        $profiles=array("Temperature" => "Temp","Switch"=>"Switch","Kontakt"=>"Contact","Taster"=>"Button","Bewegung"=>"Motion","Feuchtigkeit"=>"Humidity","SysInfo"=>"SysInfo","Klima"=>"Klima","Andere"=>"Other");
+		echo "\n".str_pad("OID",20).":";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($Name,10); } }
+				{ echo str_pad($Name,15); } }
 			}
-			
-		echo "\nTemperature  :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Temp"][$Name],10); } }
-			}
-			
-		echo "\nSwitch       :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Switch"][$Name],10); } }
-			}
-			
-		echo "\nKontakt      :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Contact"][$Name],10); } }
-			}
-			
-		echo "\nTaster      :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Button"][$Name],10); } }
-			}
-			
-		echo "\nBewegung     :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Motion"][$Name],10); } }
-			}
-			
-		echo "\nFeuchtigkeit :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Humidity"][$Name],10); } }
-			}
-			
-		echo "\nSysInfo     :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["SysInfo"][$Name],10); } }
-			}
-			
-		echo "\nKlima     :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Klima"][$Name],10); } }
-			}
-
-		echo "\nAndere       :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Other"][$Name],10); } }
-			}
+		foreach ($profiles as $nameProfile => $profile)
+            {
+		    echo "\n".str_pad($nameProfile,20).":";
+    		foreach ($this->remServer as $Name => $Server)
+	    		{
+		    	if ( isset($available[$Name]["Status"]) ) 
+                    {	if ($available[$Name]["Status"] == true ) 
+				        { 
+                        if (isset($this->listofOIDs[$profile][$Name])) echo str_pad($this->listofOIDs[$profile][$Name],15); 
+                        } 
+                    }
+			    }
+            }
 		echo "\n\n";
 		}
 

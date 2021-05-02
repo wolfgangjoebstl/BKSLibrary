@@ -241,14 +241,15 @@
     else
         {       // Profil kann sich bei Erweiterungen jederzeit ändern, daher immer konfigurieren
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, 0, "Explorer", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=grau
-  		IPS_SetVariableProfileAssociation($pname, 1, "FullScreen", "", 0x00f0c0); //P-Name, Value, Assotiation, Icon, Color
-  		IPS_SetVariableProfileAssociation($pname, 2, "Station", "", 0xf040f0); //P-Name, Value, Assotiation, Icon, Color
-  		IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 4, "Topologie", "", 0xc0f0c0); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 5, "Hierarchie", "", 0x40f0f0); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 6, "Off", "", 0xf0f0f0); //P-Name, Value, Assotiation, Icon, Color        
+		IPS_SetVariableProfileValues($pname, 0, 7, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Explorer", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=dunkelgrau
+  		IPS_SetVariableProfileAssociation($pname, 1, "FullScreen", "", 0x00f0c0); //P-Name, Value, Assotiation, Icon, Color=dunkelgrün
+  		IPS_SetVariableProfileAssociation($pname, 2, "Station", "", 0xf040f0); //P-Name, Value, Assotiation, Icon, Color=pink
+  		IPS_SetVariableProfileAssociation($pname, 3, "Media", "", 0xf04040); //P-Name, Value, Assotiation, Icon, Color=pink
+  		IPS_SetVariableProfileAssociation($pname, 4, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color=gold
+		IPS_SetVariableProfileAssociation($pname, 5, "Topologie", "", 0xc0f0c0); //P-Name, Value, Assotiation, Icon, Color=mittelgrau
+		IPS_SetVariableProfileAssociation($pname, 6, "Hierarchie", "", 0x40f0f0); //P-Name, Value, Assotiation, Icon, Color=cyan
+		IPS_SetVariableProfileAssociation($pname, 7, "Off", "", 0xf0f0f0); //P-Name, Value, Assotiation, Icon, Color        
 		echo "Profil $pname erstellt;\n";
 		}
 

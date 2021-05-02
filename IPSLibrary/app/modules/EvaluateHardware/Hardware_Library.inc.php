@@ -750,7 +750,7 @@ class HardwareNetatmoWeather extends Hardware
             {
             //$typedev=$this->getNetatmoDeviceType($oid,4,$debug);
             $typedev=$this->getNetatmoDeviceType($oid,4,false);
-            //echo "Werte für $oid aus getNetatmoDeviceType:\n"; print_r($result);
+            //echo "getDeviceChannels, Werte für $oid aus getNetatmoDeviceType:\n"; print_r($typedev);
             if ($typedev<>"")  
                 {
                 /* Umstellung der neutralen Ausgabe von typedev auf Channel typische Ausgaben 
@@ -832,8 +832,35 @@ class HardwareNetatmoWeather extends Hardware
             echo "\"\n";
             }
 
+        /* result wird geschrieben, 4 Ausgabevarianten, Variante 4 wird für die devicelist verwendet
+         *
+         * 0 Textuelle Beschreibung
+         * 1 Medium und Textuelle Beschreibung
+         * 2 Typbeschreibung wie TYPECHAN in der DeviceList
+         * 3 Dieses Register und alle register
+         * 4 TYPECHAN Zusammenfassung und registerAll 
+         *
+         */
+
+        /*--Regensensor-----------------------------------*/
+        if ( array_search("Regenmenge",$registerNew) !== false)            /* Sensor Raumklima */
+            {
+            $resultRegCounter["RAIN_COUNTER"]="Regenmenge";
+
+            $result[0] = "Regensensor";
+            $result[1] = "Funk Regensensor";
+            $result[2] = "TYPE_METER_CLIMATE";
+
+            $result[3]["Type"] = "TYPE_METER_CLIMATE";            
+            $result[3]["Register"] = $resultRegCounter;
+            $result[3]["RegisterAll"]=$registerNew;  
+            $result[4]["TYPECHAN"] = "TYPE_METER_CLIMATE";   
+            $result[4]["TYPE_METER_CLIMATE"] = $resultRegCounter;                       
+            $result[4]["RegisterAll"]=$registerNew;                      
+            }
+
         /*--Raumklimasensor-----------------------------------*/
-        if ( array_search("CO2",$registerNew) !== false)            /* Sensor Raumklima */
+        elseif ( array_search("CO2",$registerNew) !== false)            /* Sensor Raumklima */
             {
             if ($debug) echo "                     Sensor Raumklima gefunden.\n";
             $resultRegTemp["TEMPERATURE"]="Temperatur";
@@ -855,6 +882,7 @@ class HardwareNetatmoWeather extends Hardware
             $result[4]["TYPE_METER_HUMIDITY"] = $resultRegHumi;
             $result[4]["RegisterAll"]=$registerNew;
             }
+
         /*--Temperatursensor, Aussen-----------------------------------*/
         elseif ( array_search("Temperatur",$registerNew) !== false)            /* Sensor Temperatur */
             {

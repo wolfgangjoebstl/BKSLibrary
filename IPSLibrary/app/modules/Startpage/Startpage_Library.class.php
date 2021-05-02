@@ -412,7 +412,8 @@
                         //echo "Anzeige Startpage Typ 2";   */
                         }
                     break;
-                case 1:
+                case 5:         // mit Media
+                case 1:         // mit Picture
                     /*******************************************
                      *
                      * PageType==1,Diese Art der Darstellung der Startpage wird Bildschirmschoner genannt , Standard und bewährte Darstellung
@@ -425,7 +426,8 @@
                     //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
                     $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
                     $wert.='<td height="40%">';     // sonst zu gross
-                    $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
+                    if ($PageType==5) $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
+                    else $wert.= $this->showMediaWidget();
                     if ( $noweather==false ) 
                         {
                         $wert.= $this->showWeatherTemperatureWidget($debug);     // zweite Zelle, eine dritte gibt es nicht
@@ -1561,6 +1563,37 @@
             }
 
 
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Darstellung eines BestOf Bildes
+         *
+         *
+         **************************************/
+
+		function showMediaWidget($showfile=false, $debug=false)
+			{
+            $wert="";
+            /*$file=$this->readPicturedir();
+            $maxcount=count($file);
+            if ($showfile===false) $showfile=rand(1,$maxcount-1);
+            $filename = 'user/Startpage/user/pictures/SmallPics/'.$file[$showfile];
+            $filegroesse=number_format((filesize(IPS_GetKernelDir()."webfront/".$filename)/1024/1024),2);
+            $info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
+            if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
+                {
+                if ($debug) echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
+                }
+            //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";   
+            $wert.='<div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
+            $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
+            $wert.='</div>';*/
+            $wert .='<iframe src="https://oe3.orf.at/player" width="900" height="800"
+    <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
+       Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
+    <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
+     </p></iframe>';
+            return ($wert);
+            }
 
         /********************
          *

@@ -89,15 +89,18 @@
         case ($switchScreenID):
         	switch ($_IPS['VALUE'])
 		        {
-        		case "6":	/* Monitor off/on, Off */
+        		case "7":	/* Monitor off/on, Off */
 		        	controlMonitor("off",$configuration);
         			break;
-                case "5":   /* Hierarchy, new one with picture drawing of geographical position*/
+                case "6":   /* Hierarchy, new one with picture drawing of geographical position*/
         			SetValue($StartPageTypeID,4);
 					break;
-                case "4":   /* Topologie, new one with picture drawing of geographical position*/
+                case "5":   /* Topologie, new one with picture drawing of geographical position*/
         			SetValue($StartPageTypeID,3);
 					break;
+    	        case "4":  	/* Bildschirmschoner, Media */
+        			SetValue($StartPageTypeID,5);
+		        	break;
     	        case "3":  	/* Bildschirmschoner, Picture */
         			SetValue($StartPageTypeID,1);
 		        	break;

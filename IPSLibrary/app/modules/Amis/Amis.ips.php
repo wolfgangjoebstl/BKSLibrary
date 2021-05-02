@@ -42,18 +42,123 @@ else
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+    $installedModules = $moduleManager->GetInstalledModules();
+    $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
 	$amis=new Amis();
 
 	$MeterConfig = $amis->getMeterConfig();
 	//print_r($MeterConfig);
 
+    if (isset($installedModules["OperationCenter"]))
+        {
+        echo "Modul OperationCenter installiert. Qualität des Inventory evaluieren.\n";
+        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');            
+        $DeviceManager = new DeviceManagement();
+        echo "--------------------------------\n";
+        $result=$DeviceManager->updateHomematicAddressList();
+        if ($result) echo "Alles in Ordnung.\n";
+        else "Fehler HMI_CreateReport muss schon wieder aufgerufen werden.\n";
+        }
+
+    if (isset($installedModules["EvaluateHardware"]))
+        {
+        echo "Modul EvaluateHardware installiert. Ausführliches Inventory vorhanden.\n";
+        IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+        IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+
+        IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+        IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');           // sonst werden die Event Listen überschrieben
+        IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+
+        echo "========================================================================\n";    
+        $hardwareTypeDetect = new Hardware();
+        $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
+        if (false)
+            {
+            echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
+            $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList,false);                // false keine Warnings ausgeben
+            print_r($statistic);
+            echo "========================================================================\n";    
+            echo "Statistik der Register nach Typen:\n";
+            $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
+            $hardwareTypeDetect->writeRegisterStatistics($statistic);        
+            }
+        $deviceListFiltered = $hardwareTypeDetect->getDeviceListFiltered(deviceList(),["TYPECHAN" => "TYPE_METER_POWER"],"Install",true);     // true with Debug, Install hat keinen Einfluss mehr, gibt nur mehr das
+        //print_r($deviceListFiltered);
+        $powerMeter=array();
+        $energyMeter=array();
+        foreach ($deviceListFiltered as $name => $entry)
+            {
+            foreach ($entry["Instances"] as $index => $instance)
+                {
+                if ($instance["TYPEDEV"]=="TYPE_METER_POWER") 
+                    {
+                    $powerMeter[$instance["OID"]]["NAME"]=$instance["NAME"];
+                    $powerMeter[$instance["OID"]]["REGISTER_NAME"]=$entry["Channels"][$index]["TYPE_METER_POWER"]["ENERGY"];
+                    $childrens=IPS_GetChildrenIDs($instance["OID"]);
+                    foreach ($childrens as $children)
+                        {
+                        if (IPS_GetName($children)==$powerMeter[$instance["OID"]]["REGISTER_NAME"]) 
+                            {
+                            $powerMeter[$instance["OID"]]["REGISTER_OID"] = $children;
+                            $energyMeter[$children]=$instance["NAME"];
+                            }
+                        }
+                    print_R($childrens);
+                    }
+                }
+            }
+        print_r($energyMeter);
+        $energyMeterAll=$energyMeter;
+        $powerMeterAll=$powerMeter;
+        $energyMeterName=array();
+        echo"-------------------------------------------------------------\n";
+        foreach ($MeterConfig as $identifier => $meter)
+            {
+            if (strtoupper($meter["TYPE"])=="HOMEMATIC")
+                {
+                $variableID = $amis->getWirkenergieID($meter); 
+                echo " ".str_pad($meter["NAME"],35).IPS_GetName($meter["OID"])." Konfig : ".json_encode($meter)."     $variableID ".IPS_GetName($variableID)."\n";
+                $oid=$meter["OID"];
+                if (isset($powerMeter[$meter["OID"]])) 
+                    {
+                    //print_r($meter);
+                    $oid=$powerMeter[$meter["OID"]]["REGISTER_OID"];
+                    unset($powerMeter[$meter["OID"]]);
+                    }
+                if (isset($energyMeter[$oid])) 
+                    {
+                    $energyMeterName[$oid]=$meter["NAME"];
+                    unset($energyMeter[$oid]);
+                    }
+                else echo "   --> unknown ".$meter["OID"]." ".IPS_GetName($meter["OID"])."\n"; 
+
+                }
+            }
+        //echo"-------------------------------------------------------------\n";
+        //print_r($energyMeter);
+        echo"-------------------------------------------------------------\n";
+        foreach ($energyMeterAll as $oid => $register)
+            {
+            $props=IPS_GetVariable($oid);
+            if (isset($energyMeter[$oid])) echo " *** $oid : ";
+            else                           echo "     $oid : ";
+            echo str_pad(IPS_GetName(IPS_GetParent($oid)),50).str_pad(GetValueIfFormatted($oid),20," ",STR_PAD_LEFT)."   ".date("d.m.Y H:i:s",$props["VariableChanged"])."      ";
+            if (isset($energyMeterName[$oid])) echo $energyMeterName[$oid]."\n";
+            else echo "\n";            
+            }
+        echo"-------------------------------------------------------------\n";
+        } 
+
+
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$configPort=array();
 
+    echo"-------------------------------------------------------------\n";
 	foreach ($MeterConfig as $identifier => $meter)
 		{
-		echo"-------------------------------------------------------------\n";
 		echo "Create Variableset for : ".str_pad($meter["NAME"],35)." Konfig : ".json_encode($meter)."\n";
 		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Amis")

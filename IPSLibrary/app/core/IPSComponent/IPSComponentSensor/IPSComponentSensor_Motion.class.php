@@ -22,6 +22,8 @@
     *
     * Definiert ein IPSComponentSensor_Motion Object, das ein IPSComponentSensor Object für einen Bewegungsmelder implementiert.
 	*
+    * kann bereits Motion, Contact und Brightness
+    *
 	* Eine Veränderung der Variable im Gerät löst ein Event aus und ruft den MessageHandler auf:  IPSMessageHandler::HandleEvent($variable, $value);
 	* HandleEvent im IPSMessageHandler sucht sich die passende Konfiguration und ermittelt den richtigen Component und das übergeordnet Modul für mehrere Components
 	* für den Component aus der Config wird wieder HandleEvent aufgerufen component::HandleEvent, hier IPSComponentSensor_Motion::HandleEvent
@@ -72,6 +74,8 @@
 		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
+         *
+         * Andere Reihenfolge bei Remote und Temperatur: $instanceId=null, $remoteOID=null, $tempValue=null     hier        $remoteOID=null, $instanceId=null, $tempValue=null 
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null)
 			{
@@ -203,7 +207,7 @@
 		 * es werden alle notwendigen Variablen erstmalig angelegt, bei Set_logValue werden keine Variablen angelegt, nur die Register gesetzt
          *
          * Die Spiegelregister anlegen:
-         *      CustomComonents schreibt Nachrichten und Süiegelregister in der eigenen Data Kategorie mit
+         *      CustomComonents schreibt Nachrichten und Spiegelregister in der eigenen Data Kategorie mit
          *      DetectMovement macht dasselbe in seiner Kategorie. Es werden mehrere Spiegelregister angelegt.
          *
          * Initialisiserung erfolgt allgemein mit do_init für die lokalen Variablen und in der parent class dann die zusätzlich Typ spezifischen Variablen
@@ -217,23 +221,28 @@
             else $this->debug=$debug;
             if ($this->debug) echo "Motion_Logging::construct mit \"$typedev\" aufrufen für $variable, jetzt do_init aufrufen:\n";
 
-            $this->constructFirst();
+            $this->constructFirst();            // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
             $NachrichtenID=$this->do_init($variable,$variablename,$value, $typedev, $this->debug);              // $variable kann auch false sein
 			parent::__construct($this->filename,$NachrichtenID);                                       // this->filename wird von do_init_xxx geschrieben
 			}
 
         /* allgemeine Initialisierung.
-         * Es wird bereits ein typedev übergeben, trotzdem Datenbank befragen
-         * 
+         * Es wird bereits ein typedev sozusagen als zweitletze Instanz übergeben, trotzdem Datenbank befragen
+         * es gibt auch die Variante dass variable false ist, dann das spezielle Initialisieren ueberspringen
+         *
+         * setzt bereits variable
+         * leitet variableProfile und variableType von den Eigenschaften von variable ab
+         * irgendwie variableTypeReg bestimmen, das ist der 3. Wert bei IPSComponent oder in der Datenbank oder irgendwie anhand des Typs erfinden
+         *
          */
 
-        private function do_init($variable,$variablename=NULL,$value, $typedev, $debug=false)
+        protected function do_init($variable,$variablename=NULL,$value, $typedev, $debug=false)
             {
             $debugSql=false;
-            /**************** installierte Module und verfügbare Konfigurationen herausfinden */
-            $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-            $this->installedmodules=$moduleManager->GetInstalledModules();     
+            /**************** installierte Module und verfügbare Konfigurationen herausfinden 
+            $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);                        // wird bereits in constructFirst gemacht 
+            $this->installedmodules=$moduleManager->GetInstalledModules();     */
             if (isset ($this->installedmodules["DetectMovement"]))
                 {
                 /* Detect Movement agreggiert die Bewegungs Ereignisse (oder Verknüpfung) */
@@ -242,7 +251,7 @@
                 }             
             if ($variable!==false)
                 {
-                if ($debug) echo "Motion_Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
+                if ($debug) echo "Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
                 $this->$variable=$variable;
                 $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
                 if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
@@ -251,28 +260,28 @@
                 $rows=getfromDatabase("COID",$variable,false,$debugSql);                // Bestandteil der MySQL_Library, false Alternative
                 if ( ($rows === false) || (sizeof($rows) != 1) )
                     {
-                    if ($typedev==Null)
+                    if ($typedev==Null)                 // das sind dann bald definitiv zu wenig Angaben um drauf zu kommen was es ist.
                         {
                         if ($debug) echo "\ndo_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs.\n";    
                         if (IPS_GetVariable($variable)["VariableType"]==0) $this->variableTypeReg = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache
                         else $this->variableTypeReg = "BRIGHTNESS";
                         }
-                    else
+                    else                                // Übergabe über IPSComponent
                         {
                         if ($debug) echo "\ndo_init,getfromDatabase ohne Ergebnis, dann übergebenes typedev $typedev nehmen.\n";    
                         switch (strtoupper($typedev))
                             {
+                            case "CO2":
+                            case "BAROPRESSURE":
                             case "MOTION":
-                                $this->variableTypeReg = "MOTION";
-                                break;    
                             case "BRIGHTNESS":
-                                $this->variableTypeReg = "BRIGHTNESS";
-                                break;    
                             case "CONTACT":
-                                $this->variableTypeReg = "CONTACT";
+                                $this->variableTypeReg = strtoupper($typedev);
                                 break;   
                             default: 
-                                echo "\ndo_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ übergeben -> Fehler.\n";    
+                                //$NachrichtenID = $this->do_init_sensor($variable, $variablename);                            
+                                echo "\ndo_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben -> Fehler.\n";    
+                                break;
                             }    
                         }
                     }
@@ -282,15 +291,24 @@
                     $this->variableTypeReg = $rows[0]["TypeRegKey"];
                     if ($debug) echo "\nAus der Datenbank ausgelesen: Register Typ ist \"".$this->variableTypeReg."\". Variable Typ unverändert \"".$this->variableType."\". Jetzt unterschiedliche Initialisierungen machen.\n";    
                     }
-                $this->Type=0;      // Motion und Contact ist boolean
-                if ($this->variableTypeReg =="MOTION") $NachrichtenID=$this->do_init_motion($variable, $variablename, $value, $debug);
-                elseif ($this->variableTypeReg =="CONTACT") $NachrichtenID=$this->do_init_contact($variable, $variablename,$value,$debug);
-                elseif ($this->variableTypeReg =="BRIGHTNESS") 
+                switch (strtoupper($this->variableTypeReg))
                     {
-                    $this->Type=1;  // Brightness ist Integer
-                    $NachrichtenID=$this->do_init_brightness($variable, $variablename,$value,$debug);
+                    case "MOTION":
+                        $this->Type=0;      // Motion und Contact ist boolean
+                        $NachrichtenID=$this->do_init_motion($variable, $variablename, $value, $debug);
+                        break;
+                    case "CONTACT":
+                        $this->Type=0;      // Motion und Contact ist boolean
+                        $NachrichtenID=$this->do_init_contact($variable, $variablename,$value,$debug);
+                        break;
+                    case "BRIGHTNESS":
+                        $this->Type=1;  // Brightness ist Integer
+                        $NachrichtenID=$this->do_init_brightness($variable, $variablename,$value,$debug);
+                        break;
+                    default:
+                        echo "Fehler, kenne den Variable Typ nicht.\n";
+                        $NachrichtenID=false;
                     }
-                else echo "Fehler, kenne den Variable Typ nicht.\n";
                 }
             else $NachrichtenID=$this->do_init_statistics($debug);  
             if ($debug) echo "---------do_init abgeschlossen.\n";

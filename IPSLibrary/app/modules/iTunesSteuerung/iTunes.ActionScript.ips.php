@@ -1,19 +1,36 @@
 <?
 
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */  
 
-/*
+    /*
 
-iTunes.ActionScript
+    iTunes.ActionScript
 
-Funktionen:
+    Funktionen:
 
-lokale Mediafunktionen umsetzen. Es kann auch Autostuerung eingesetzt werden.
+    lokale Mediafunktionen umsetzen. Es kann auch Autostuerung eingesetzt werden.
 
-*/
+    */
 
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\iTunesSteuerung\iTunes.Configuration.inc.php");
+    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");
+    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\iTunesSteuerung\iTunes.Configuration.inc.php");
+    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\iTunesSteuerung\iTunes.Library.ips.php");
 
 IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -46,11 +63,14 @@ $Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
 $Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 $Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 
-/****************************************************************
- *
- *  Init
- *
- */
+    /****************************************************************
+    *
+    *  Init
+    *
+    */
+
+    $iTunes = new iTunes();
+    $config = $iTunes-> getiTunesConfig();
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -59,7 +79,7 @@ $scriptIdiTunesSteuerung   = IPS_GetScriptIDByName('iTunes.ActionScript', $Categ
 $dataIdiTunes  = IPS_GetObjectIDByIdent('iTunes', $CategoryIdData);
 $options=IPS_GetChildrenIDs($dataIdiTunes);
 
-echo "Press";
+//echo "Press";
 
 $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 
@@ -82,13 +102,6 @@ if (isset($NachrichtenScriptID))
 	}
 else $fatalerror=true;
 
-/****************************************************************
- *
- *  Konfiguration
- *
- */
-	
-	$config=iTunes_Configuration();
 	
 /****************************************************************/
 
@@ -116,7 +129,7 @@ if ($_IPS['SENDER'] == "Execute")
 	if ( isset($config["iTunes"]["Fernsehen"])==true )
 		{
 		$configTunes=$config["iTunes"]["Fernsehen"];
-		if ( isset($configTunes["EXECUTE"])==true )		/*Wenn Execute gesetzt ist kann etwas unternommen werden */
+		if ( isset($configTunes["EXECUTE"])==true )		/* Wenn Execute gesetzt ist kann etwas unternommen werden */
 			{
 			if (is_array($configTunes["EXECUTE"]) == true) 		/* neuerdings kann der Befehl auch ein Array sein. Sonst entweder leer oder ein Exec Befehl */
 				{
@@ -228,59 +241,90 @@ if ($_IPS['SENDER'] == "Execute")
 if ($_IPS['SENDER'] == "WebFront")
 	{
 	//echo "Script wurde über Webfront aufgerufen.\n";
-	$oid=$_IPS['VARIABLE'];
-	$name=IPS_GetName($oid);
-	$category=IPS_GetName(IPS_GetParent($oid));
-	$module=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
+	$oid=$_IPS['VARIABLE']; $value = $_IPS['VALUE'];
+	$name     = IPS_GetName($oid);
+	$object   = IPS_GetObject($oid);
+    $ident    = $object["ObjectIdent"];
+    $categoryID = IPS_GetParent($oid);
+	$category=IPS_GetName($categoryID);
+	$module=IPS_GetName(IPS_GetParent($categoryID));
+
 	$log_iTunes->LogMessage("Script wurde über Webfront von Variable ID :".$oid." aufgerufen.");
 	$log_iTunes->LogNachrichten("Variable ID :".$oid." ".$name."/".$category."/".$module." aufgerufen.");
-	/* Bearbeitung anhand vom Namen der Variable unterschiedlich */
-	switch ($name)			
-		{
-		case "Fernsehen":
-			if ( isset($config["iTunes"][$name])==true )		// Konfig Eintrag vorhanden
-				{
-				$configTunes=$config["iTunes"][$name];
-				if ( isset($configTunes["EXECUTE"])==true )
-					{
-					if (is_array($configTunes["EXECUTE"]) == true) 
-						{
-						if ($_IPS['VALUE']>0) $configTunes["EXECUTE"]["StartStop"]="Start";
-						else $configTunes["EXECUTE"]["StartStop"]="Stop";
-						$configCommand=json_encode($configTunes["EXECUTE"]);
-						$log_iTunes->LogNachrichten("Config Eintrag für EXECUTE als array vorhanden. Encoded : ".$configCommand.".");
-						if (isset($configTunes["EXECUTE"]["Command"])==true) $command = $configTunes["EXECUTE"]["Command"];
-						if (isset($configTunes["EXECUTE"]["Parameter"])==true) $playlist = $configTunes["EXECUTE"]["Parameter"];
-						}
-					else 
-						{
-						$configCommand=$configTunes["EXECUTE"];
-						$playlist="";
-						$log_iTunes->LogNachrichten("Config Eintrag für EXECUTE mit Wert ".$configCommand."vorhanden.");
-						}
-					$Server=getHostAddress();	
-					if ($Server=="")
-						{
-						if (!$debug) IPS_ExecuteEX($configCommand, $playlist, false, false, 1);	
-						}
-					else
-						{
-						$rpc = new JSONRPC($Server);
-						//$rpc->IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);  Remote Access von IPS_ExecuteEx funktioniert aus Sicherheitsgründen nicht mehr
-						$monitorID=getMonitorID($rpc,$configTunes);
-						if ($monitorID !== false)
-							{
-							$monitor=array("VLC" => $configCommand);
-							if (!$debug) $rpc->IPS_RunScriptEx($monitorID,$monitor);					
-							}
-						}
-					}
-				}
-			break;
-		default:
-			break;
-		}		
+    switch ($category)
+        {
+        case "iTunes":
+            /* Bearbeitung anhand vom Namen der Variable unterschiedlich */
+            switch ($name)			
+                {
+                case "Fernsehen":
+                    if ( isset($config["iTunes"][$name])==true )		// Konfig Eintrag vorhanden
+                        {
+                        $configTunes=$config["iTunes"][$name];
+                        if ( isset($configTunes["EXECUTE"])==true )
+                            {
+                            if (is_array($configTunes["EXECUTE"]) == true) 
+                                {
+                                if ($_IPS['VALUE']>0) $configTunes["EXECUTE"]["StartStop"]="Start";
+                                else $configTunes["EXECUTE"]["StartStop"]="Stop";
+                                $configCommand=json_encode($configTunes["EXECUTE"]);
+                                $log_iTunes->LogNachrichten("Config Eintrag für EXECUTE als array vorhanden. Encoded : ".$configCommand.".");
+                                if (isset($configTunes["EXECUTE"]["Command"])==true) $command = $configTunes["EXECUTE"]["Command"];
+                                if (isset($configTunes["EXECUTE"]["Parameter"])==true) $playlist = $configTunes["EXECUTE"]["Parameter"];
+                                }
+                            else 
+                                {
+                                $configCommand=$configTunes["EXECUTE"];
+                                $playlist="";
+                                $log_iTunes->LogNachrichten("Config Eintrag für EXECUTE mit Wert ".$configCommand."vorhanden.");
+                                }
+                            $Server=getHostAddress();	
+                            if ($Server=="")
+                                {
+                                if (!$debug) IPS_ExecuteEX($configCommand, $playlist, false, false, 1);	
+                                }
+                            else
+                                {
+                                $rpc = new JSONRPC($Server);
+                                //$rpc->IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);  Remote Access von IPS_ExecuteEx funktioniert aus Sicherheitsgründen nicht mehr
+                                $monitorID=getMonitorID($rpc,$configTunes);
+                                if ($monitorID !== false)
+                                    {
+                                    $monitor=array("VLC" => $configCommand);
+                                    if (!$debug) $rpc->IPS_RunScriptEx($monitorID,$monitor);					
+                                    }
+                                }
+                            }
+                        }
+                    break;
+                default:
+                    break;
+                }
+            break;
+        case "Oe3Player":
+            echo "Oe3Player, press $name with $ident";
+            switch ($name)			
+                {
+                case "Slider":
+                    $Oe3PlayerID = IPS_GetObjectIDByIdent ("Player", $categoryID);
+                    $height = 600+$value*10;
+                    SetValue($Oe3PlayerID,'<iframe src="https://oe3.orf.at/player" width="900" height="'.$height.'"
+                    <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
+                    Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
+                    <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
+                    </p></iframe>');
+
+                    break;
+                default:
+                    break;
+                }            
+            break;
+        default:
+            break;
+        }		
 	SetValue($_IPS['VARIABLE'], $_IPS['VALUE']);
+
+
 	$wert=true;
 	foreach ($options as $entry)
 		{

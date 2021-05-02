@@ -21,10 +21,15 @@
      *
      * Definiert ein IPSComponentSensor_Remote Object, das ein IPSComponentSensor Object für einen beliebigen Sensor implementiert.
      *
+     * kann Climate und Sensor
+     *
 	 * Events werden im Event Handler des IPSMessageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
-	 * In der IPSMessageHandler Config steht wie die Daten Variable ID udn Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
+	 * In der IPSMessageHandler Config steht wie die Daten Variable ID und Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
 	 * 	xxxx => array('OnChange','IPSComponentSensor_Remote,1,2,3','IPSModuleSensor_Remote,1,2,3',),
-	 * Nach Angabe des Components und des Moduls sind noch weitere Parameter möglich.
+     *
+	 * Nach Angabe des Components und des Moduls sind noch weitere Parameter möglich. Hier die Geräte ID (Parent), eventuelle Remote Server mit Remote OID und eine Angabe über den Variable Typ
+     *    [0] => OnChange    [1] => IPSComponentSensor_Remote,44126,,BAROPRESSURE     [2] => IPSModuleSensor_Remote
+     *
 	 * Es wird zuerst der construct mit den obigen weiteren Config Parametern und dann HandleEvent mit VariableID und Wert der Variable aufgerufen.
 	 *
 	 * allgemeines Handling, macht kein lokales Logging und keine weitere Verarbeitung
@@ -71,19 +76,20 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung eines IPSModuleSensor_IPStemp Objektes
+		 * Initialisierung eines IPSComponentSensor_Remote Objektes
 		 *
-		 * legt die Remote Server aus $var1 an, an die wenn RemoteAccess Modul installiert ist reported werden muss
+		 * legt die Remote Server aus $remoteOID an, an die wenn RemoteAccess Modul installiert ist reported werden muss
+         * tempValue gibt Zusatzinformationen über die Art des Sensors
+         *
+         * IPSMessageHandler macht zuerst new dieses Components und ruft dann den EventHandler auf
 		 *		 
-		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
-		 * @param integer $RemoteOID OID die gesetzt werden soll
-		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
+
 		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
 			//echo "IPSComponentSensor_Remote: Construct Sensor with ($instanceId,$remoteOID,$tempValue). --> (".IPS_GetName($instanceId).")\n";	
             //$this->RemoteOID    = instanceID;                // par1 manchmal auch par2		
-			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1
+			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1 (bei Motion ?)
 			$this->tempValue    = $tempValue;           // par3
 
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -91,7 +97,7 @@
 			if (isset ($this->installedmodules["RemoteAccess"]))
 				{
 				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-				$this->remServer	  = RemoteAccessServerTable();
+				$this->remServer	  = RemoteAccessServerTable();              // Liste der remoteAccess server in einer besseren Tabelle mit dem aktuellen Status zur Erreichbarkeit 
 				}
 			else
 				{								
@@ -113,6 +119,9 @@
 		 *
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
+         *
+         * Macht Sensor_Logging 
+         * und ruft function updateMirorVariableValue ($oldvalue=GetValue($this->mirrorNameID); SetValue($this->mirrorNameID,$value); return($oldvalue);) auf.
 		 *
 		 * @param integer $variable ID der auslösenden Variable
 		 * @param string $value Wert der Variable
@@ -120,16 +129,17 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
+            $debug=false;
 			//echo "HandleEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
             //$startexec=microtime(true);    
-            $log=new Sensor_Logging($variable,null,$this->tempValue);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID wird berechnet
+            $log=new Sensor_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
             $mirrorValue=$log->updateMirorVariableValue($value);
     	    //IPSLogger_Not(__file__,"IPSComponentSensor_Remote:HandleEvent mit VariableID $variable (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") mit neuem Wert $value und altem Wert $mirrorValue (".$log->getMirorNameID().") bzw. ".GetValue($variable).".");
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // gleiche Werte unterdrücken, dazu Spiegelvariable verwenden.
                 {
     			//IPSLogger_Inf(__file__, 'IPSComponentSensor_Remote HandleEvent: Sensor Remote Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			    echo "IPSComponentSensor_Remote:HandleEvent Wert != Mirror, VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."   \"".$this->tempValue."\"\n";
-    			$result=$log->Sensor_LogValue($value);      
+    			$result=$log->Sensor_LogValue($value);                  // SetValue($this->variableLogID,GetValue($this->variable));
                 $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );
                 }
 
@@ -192,19 +202,24 @@
         /* construct wird bereit mit der zu loggenden Variable ID aufgerufen, 
          * optional kann ein Variablennamen mitgegeben werden, sonst wird er nach einem einfachen Algorithmus berechnet (Instanz oder Variablenname der ID)
          * oder aus der Config von DetectMovement übernommen
+         * im Motion Component wird auch der Wert mitgegeben
+         *
+         * in der übergeordneten class stehen dann alle do_init_xxxx und berechnen den $mirrorNameID
          *
          */
 
 		function __construct($variable,$variablename=null,$variableTypeReg="unknown",$debug=false)
 			{
-            $this->startexecute=microtime(true);   
-            $this->debug=$debug;              
-            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
-            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+            if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
+            else $this->debug=$debug;
+            $this->debug=true;              // manual override
+            if ($this->debug) echo "Sensor_Logging::construct für Variable ID ($variable,$variablename,$variableTypeReg) : jetzt do_init aufrufen:\n";      // bei Motion mit \"$typedev\" aufrufen und value
+ 
+            $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
-			echo "   Construct IPSComponentSensor Remote Logging for Variable ID : ($variable,$variablename,$variableTypeReg).\n";
+            $NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
 
-            $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
+            /*$this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
             if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
             $this->variableType=IPS_GetVariable($variable)["VariableType"];
 
@@ -231,7 +246,7 @@
                 default:
                     $NachrichtenID = $this->do_init_sensor($variable, $variablename);
                     break;
-                }
+                }*/
 			parent::__construct($this->filename,$NachrichtenID);                                 // Adresse Nachrichten Kategorie wird selbst ermittelt
 			}
 
@@ -282,8 +297,9 @@
 			$oldvalue=GetValue($this->variableLogID);
 		
         	SetValue($this->variableLogID,GetValue($this->variable));
+            
 			echo "      Sensor_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValueIfFormatted($this->variable).". Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
-			if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Sensor_LogValue: Variable OID : '.$this->variable.' Name : '.$this->variablename.'  TypeReg : '.$this->variableTypeReg);
+			if (($this->CheckDebugInstance($this->variable)) || true) IPSLogger_Inf(__file__, 'CustomComponent Sensor_LogValue: Variable OID : '.$this->variable.' ('.IPS_GetName($this->variable).'/'.IPS_GetName(IPS_GetParent($this->variable)).'Name : '.$this->variablename.'  TypeReg : '.$this->variableTypeReg);
 
 			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
 			if (isset ($this->installedmodules["DetectMovement"]))

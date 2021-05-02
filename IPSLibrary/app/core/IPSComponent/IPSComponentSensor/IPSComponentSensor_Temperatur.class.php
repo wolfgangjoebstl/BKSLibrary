@@ -21,6 +21,8 @@
     *
     * Definiert ein IPSComponentSensor_Temperatur Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
     *
+    * macht bereits Temperatur und Humidity
+    *
 	 * Events werden im Event Handler des IPSMEssageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
 	 * In der IPSMessageHandler Config steht wie die Daten Variable ID und Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
 	 * 	xxxx => array('OnChange','IPSComponentSensor_Temperatur,','IPSModuleSensor_Temperatur,1,2,3',),
@@ -116,7 +118,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			//echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			echo "IPSComponentSensor_Temperatur:HandleEvent, Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			/* aussuchen ob IPSLogger_Dbg oder IPSLogger_Inf der richtige Level für die Analyse, produziert viele Daten ! */
             $startexec=microtime(true);            
             $log=new Temperature_Logging($variable,null,$this->tempValue);        // es wird kein Variablenname übergeben
@@ -246,9 +248,11 @@
             else $this->debug=$debug;
             if ($this->debug) echo "   Temperatur_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
 
-            $this->constructFirst();
+            $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
-            $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
+            $NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
+
+            /*$this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
             if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
             $this->variableType=IPS_GetVariable($variable)["VariableType"];
 
@@ -269,7 +273,7 @@
 
             if ($this->variableTypeReg == "TEMPERATURE")  $NachrichtenID = $this->do_init_temperature($variable, $variablename);
             elseif ($this->variableTypeReg == "HUMIDITY") $NachrichtenID = $this->do_init_humidity($variable, $variablename);
-            else IPSLogger_Err(__file__, 'IPSComponentSensor_Temperatur:Logging mit VariableID '.$variable.' Variablename '.$variablename.' kennt folgenden TypeReg nicht '.$this->variableTypeReg); 
+            else IPSLogger_Err(__file__, 'IPSComponentSensor_Temperatur:Logging mit VariableID '.$variable.' Variablename '.$variablename.' kennt folgenden TypeReg nicht '.$this->variableTypeReg); */
 
             if ($this->debug) echo "    ermittelt wurden  Variablename \"".$this->variablename."\" MirrorNameID ".$this->mirrorNameID." (".IPS_GetName($this->mirrorNameID).") und Log Filename \"".$this->filename."\" mit NachrichtenID  ".$NachrichtenID." (".IPS_GetName($NachrichtenID)."/".IPS_GetName(IPS_GetParent($NachrichtenID)).")\n";
 		    //IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:Construct Logging mit VariableID '.$variable.' Variablename "'.$this->variablename.'" MirrorNameID "'.$this->mirrorNameID.' "und TypeReg "'.$this->variableTypeReg.'"');			
@@ -336,8 +340,9 @@
 		function Temperature_LogValue()
 			{
 			// result formatieren für Ausgabe in den LogNachrichten
+            $result = "Error, variableTypeReg ".$this->variableTypeReg." unknown.";
 			$variabletyp=IPS_GetVariable($this->variable);
-            if ($this->variableTypeReg =="TEMPERATURE")
+            if ( ($this->variableTypeReg =="TEMPERATURE") || ($this->variableTypeReg =="TEMPERATUR") )
                 {
                 if ($variabletyp["VariableProfile"]!="")
                     {
