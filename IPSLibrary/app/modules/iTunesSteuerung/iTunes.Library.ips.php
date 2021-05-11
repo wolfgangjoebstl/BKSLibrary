@@ -131,6 +131,7 @@
 
         private function checkConfigTabs($configInput,$debug=false)
             {
+            $config = array();
             foreach ($configInput as $name => $entry)
                 {
                 configfileParser($entry, $config[$name], ["Name","name","NAME"],"NAME",$name);
@@ -139,6 +140,7 @@
                 $config[$name]["SIDE"]=strtoupper($config[$name]["SIDE"]);
                 configfileParser($entry, $config[$name], ["Type","type","TYPE"],"TYPE","SWITCH");
                 $config[$name]["TYPE"]=strtoupper($config[$name]["TYPE"]);
+                configfileParser($entry, $config[$name], ["Link","link","LINK"],"LINK",null);                
                 }
 
             return ($config);
@@ -156,7 +158,33 @@
             return ($this->systemDir);
             }
 
-        
+        public function update_Page($categoryId_Oe3Player, $debug=false)
+            {
+            $html="";
+            if (isset($this->installedModules["Startpage"]))  
+                {
+                IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+                IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+                IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
+
+                $startpage = new StartpageHandler();
+                $configurationSP = $startpage->getStartpageConfiguration(); print_r($configurationSP["SpecialRegs"]);
+                $html .= $startpage->writeStartpageStyle();
+                $html .= "<div><table>";        
+                //$html .= $startpage->StartPageWrite(1,true);
+                //$html .= $startpage->showTempGroupWidget(true);       // show Station widget temp group
+                //$html .= $startpage->showSpecialRegsWidget(false,true);       // show Station widget temp group, false take internal config, true Debug
+                //$html .= $startpage->showTemperatureTable("",false,true);         // erster Parameter ist colspan als config für table
+                $html .= $startpage->showWeatherTemperatureWidget(true);
+                $html .= '</table></div>';                
+                if ($debug) echo "iTunes Oe3 Page update";
+                //echo $html;
+                }
+
+            $widgetID              = IPS_GetObjectIDByName("Widget",$categoryId_Oe3Player);
+            SetValue($widgetID,$html);
+            }        
+
         }
 
 

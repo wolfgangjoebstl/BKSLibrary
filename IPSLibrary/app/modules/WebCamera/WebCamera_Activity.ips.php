@@ -25,6 +25,8 @@
  *
  */
 
+// max. Scriptlaufzeit definieren
+ini_set('max_execution_time', 500);
 
 $startexec=microtime(true);
 

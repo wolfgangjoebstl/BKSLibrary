@@ -253,6 +253,12 @@
 		echo "Profil $pname erstellt;\n";
 		}
 
+/*******************************
+ *
+ * Initialisierung der Timer
+ *
+ ********************************/
+
 	/* 
 	 * Add Scripts, they have auto install
 	 * am Ende der SwitchScreen Variable auch Startpage_Schreiben als CustomAction zuweisen

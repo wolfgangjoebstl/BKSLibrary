@@ -18,6 +18,8 @@
 
 /*
 
+ItunesSteuerung_Installation            Mai 2021   v19
+
 Itunes Ansteuerung und Ueberwachung, macht ein kleines Lautsprechersymbol im Webfront, oben in der Schnellauswahl
 Übernimmt auch das Install des Netplayers, da dieser mittlerweile etwas buggy geworden ist.
 
@@ -58,7 +60,7 @@ Installation (erneut/Update)
 	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPS ModulManager Version   : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Stromheizung');
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('iTunesSteuerung');
 	echo "\nModul iTunesSteuerung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 
 	$installedModules = $moduleManager->GetInstalledModules();
@@ -68,6 +70,9 @@ Installation (erneut/Update)
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
 	echo $inst_modules."\n";
+
+    if (isset($installedModules["Startpage"]))  echo "Modul Startpage available.\n";
+
 
     $iTunes = new iTunes();
     $config = $iTunes-> getiTunesConfig();
@@ -287,6 +292,15 @@ Path=Visualization.Mobile.iTunes
 	 *
 	 ***********************************************************************/
 
+	/* 
+	 * Add Scripts, they have auto install
+	 * 
+	 */
+	
+	$scriptIdPageWrite   = IPS_GetScriptIDByName('iTunes.ActionScript', $CategoryIdApp);
+	IPS_SetScriptTimer($scriptIdPageWrite, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem alle 8 Minuten updaten */
+
+	IPS_RunScript($scriptIdPageWrite);              // falls Installationen enthalten sind, diese mitmachen
 
 	/*******************************
 	 *
@@ -345,6 +359,7 @@ Path=Visualization.Mobile.iTunes
                 foreach ($config["Oe3Player"] as $name => $entry)
                     {	   
                     $tabname="Oe3Player";
+                    echo "$tabname $name\n";
                     switch ($entry["TYPE"])
                         {
                         case "OE3":
@@ -356,7 +371,18 @@ Path=Visualization.Mobile.iTunes
                     <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
                     </p></iframe>');
                             break;
+                        case "Widget":
+                        case "WIDGET":
+                            echo "Create Widget\n";
+                            /*CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)*/
+                            $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 3, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */   
+                            break;   
+                        case "STROMHEIZUNG":
+                            if (isset($entry["LINK"])) $Oe3PlayerID =  $entry["LINK"];
+                            else echo "Errror !!!!\n";
+                            break;                                                  
                         default:
+                            echo "Do not know Type ".$entry["TYPE"]."\n";
                             $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 1, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */
                             break;    
                         }
@@ -380,8 +406,22 @@ Path=Visualization.Mobile.iTunes
                         $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["USER"]=false;        
                         $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["MOBILE"]=false;        
                         }                    
-                    $webfront_links[$tabname]["Configuration"][$Oe3PlayerID]["SPLIT"]=60;            
                     $order+=10;
+                    }
+                if (isset($config["Configuration"]["Oe3Player"]["SPLIT"])) 
+                    {
+                    echo "Configuration Data for Oe3Player available:\n";
+                    $webfront_links[$tabname]["Configuration"]["SPLIT"]=$config["Configuration"]["Oe3Player"]["SPLIT"];            
+                    if (isset($config["Configuration"]["Oe3Player"]["HSPLIT"])) 
+                        {
+                        $webfront_links[$tabname]["Configuration"]["HSPLIT"]=$config["Configuration"]["Oe3Player"]["HSPLIT"];            
+                        }
+                    }
+                else 
+                    {
+                    echo "Configuration Data for Oe3Player NOT available, use Default Value 60.\n";  
+                    print_R($config);                      
+                    $webfront_links[$tabname]["Configuration"]["SPLIT"]=60;            
                     }
 
                 /*
@@ -743,10 +783,10 @@ Path=Visualization.Mobile.iTunes
 	    			 {
 		    		foreach ($webfront_link as $OID => $link)
 			    		{
-				    	echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
 					    if ($Group=="Auswertung")
 				 		    {
-    				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryId_WebFrontTab."\n";
+				    	    echo "  Auswertung: bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+                            echo "  erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryId_WebFrontTab."\n";
 	    					CreateLinkByDestination($link["NAME"], $OID,    $categoryId_WebFrontTab,  20);
 		    		 		}
 			    		}
@@ -1021,12 +1061,22 @@ Path=Visualization.Mobile.iTunes
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontSubTab, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontSubTab, 20);
 		echo "createSplitPane, Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+        $hsplit=false;                                      // rechts noch ein zusätzlicher Split
         if (isset($webfront_group["Configuration"]))
             {
             echo "  Anforderungen an die Configuration entdeckt:\n";
-            print_r($webfront_group); 
+            $configuration = $webfront_group["Configuration"];
+            print_r($configuration); 
+            unset($webfront_group["Configuration"]);
+            if (isset($configuration["SPLIT"])) $split=$configuration["SPLIT"];
+            if (isset($configuration["HSPLIT"])) 
+                {
+                $hsplit=$configuration["HSPLIT"];
+                $categoryIdRightUp = CreateCategory('RightUp', $categoryIdRight, 20);
+                $categoryIdRightDown = CreateCategory('RightDown', $categoryIdRight, 30);
+                }
             }
-			echo "**** Splitpane $tabItem erzeugen in $WFC10_TabPaneItem:\n";
+    	echo "**** Splitpane $tabItem erzeugen in $WFC10_TabPaneItem:\n";
 			/* @param integer $WFCId ID des WebFront Konfigurators
 			 * @param string $ItemId Element Name im Konfigurator Objekt Baum
 			 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
@@ -1043,7 +1093,14 @@ Path=Visualization.Mobile.iTunes
 			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,    0,     $Name,     "", 1 /*Vertical*/, $split /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
 			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);            
+            if ($hsplit) 
+                {
+                // führt zu einem Split auf der linken Seite, ist aber auch okay
+                CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem.'_RightSplit',$tabItem,    0,     $Name."_Split",     "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+                CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_RightUp',   $tabItem.'_RightSplit',   10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+                CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_RightDown',  $tabItem.'_RightSplit',   20, '', '', $categoryIdRightDown  /*BaseId*/, 'false' /*BarBottomVisible*/);            
 
+                }
 			foreach ($webfront_group as $Group => $webfront_link)
 				{
 				//print_r($webfront_link );
@@ -1053,17 +1110,18 @@ Path=Visualization.Mobile.iTunes
 			 		 * Auswertung kommt nach links und Nachrichten nach rechts
 			 		 */	
 					//echo $OID."  "; print_r($link);				
-					echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
 					if ($Group=="Auswertung")
 				 		{
+                        echo "  Auswertung: bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";                             
                         if ( (($scope=="Administrator") && $link["ADMINISTRATOR"]) || (($scope=="User") && $link["USER"]) || (($scope=="Mobile") && $link["MOBILE"]) )
                             {
 				 		    echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
 						    CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
                             }
 				 		}
-				 	if ($Group=="Nachrichten")
+				 	elseif ($Group=="Nachrichten")
 				 		{
+                        echo "  Nachrichten: bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";                             
                         if ( (($scope=="Administrator") && $link["ADMINISTRATOR"]) || (($scope=="User") && $link["USER"]) || (($scope=="Mobile") && $link["MOBILE"]) )
                             {
     				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";

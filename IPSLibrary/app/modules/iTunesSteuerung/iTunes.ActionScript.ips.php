@@ -39,29 +39,36 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 /****************************************************************/
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager))
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('iTunesSteuerung',$repository);
-	}
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    if (!isset($moduleManager))
+        {
+        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+        $moduleManager = new IPSModuleManager('iTunesSteuerung',$repository);
+        }
+    $installedModules = $moduleManager->GetInstalledModules();
+    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
+    /****************************************************************
+    *
+    *  get Webfront Config
+    *
+    */
 
-$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+    $RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
-$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+    $WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
+    $WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 
-$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+    $WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
+    $WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
 
-$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+    $Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
+    $Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+
+    $Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
+    $Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 
     /****************************************************************
     *
@@ -70,18 +77,17 @@ $Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
     */
 
     $iTunes = new iTunes();
-    $config = $iTunes-> getiTunesConfig();
+    $config = $iTunes->getiTunesConfig();
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $scriptIdiTunesSteuerung    = IPS_GetScriptIDByName('iTunes.ActionScript', $CategoryIdApp);
+    $dataIdiTunes               = IPS_GetObjectIDByIdent('iTunes', $CategoryIdData);
+    $categoryId_Oe3Player       = IPS_GetObjectIDByName("Oe3Player", $CategoryIdData); 
 
-$scriptIdiTunesSteuerung   = IPS_GetScriptIDByName('iTunes.ActionScript', $CategoryIdApp);
-$dataIdiTunes  = IPS_GetObjectIDByIdent('iTunes', $CategoryIdData);
-$options=IPS_GetChildrenIDs($dataIdiTunes);
+    $options=IPS_GetChildrenIDs($dataIdiTunes);
 
-//echo "Press";
+    //echo "Press";
 
-$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+    $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 
 $object_data= new ipsobject($CategoryIdData);
 $object_app= new ipsobject($CategoryIdApp);
@@ -102,8 +108,22 @@ if (isset($NachrichtenScriptID))
 	}
 else $fatalerror=true;
 
-	
+$tim1ID = @IPS_GetEventIDByName("ScriptTimer", $_IPS['SELF']);
+
 /****************************************************************/
+
+if ($_IPS['SENDER']=="TimerEvent") 
+	{
+	switch ($_IPS['EVENT'])
+	   {
+	   case $tim1ID:        /* einmal am Tag */
+  		    IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." ScriptTimer for iTunes Oe3 Page Update");
+            $iTunes->update_Page($categoryId_Oe3Player);
+	      break;
+		default:
+		   break;
+		}
+	}
 
 if ($_IPS['SENDER'] == "Execute")
 	{
@@ -236,11 +256,14 @@ if ($_IPS['SENDER'] == "Execute")
 
 	//$log_iTunes->LogMessage("Script wurde direkt aufgerufen");
 	//$log_iTunes->LogNachrichten("Script wurde direkt aufgerufen");
+    echo "Bearbeitung iTunes Oe3Player:\n";
+
 	}
 
 if ($_IPS['SENDER'] == "WebFront")
 	{
 	//echo "Script wurde über Webfront aufgerufen.\n";
+    //echo die Tastendrucke abarbeiten
 	$oid=$_IPS['VARIABLE']; $value = $_IPS['VALUE'];
 	$name     = IPS_GetName($oid);
 	$object   = IPS_GetObject($oid);
@@ -332,7 +355,12 @@ if ($_IPS['SENDER'] == "WebFront")
 		if ( ( IPS_GetName($entry)==IPS_GetName($_IPS['VARIABLE']) ) && ($_IPS['VALUE']) )SetValue($entry,$wert);
 		else SetValue($entry,!$wert);
 		}
-	}
+
+    //echo "die Itunes Page updaten\n";
+    $iTunes->update_Page($categoryId_Oe3Player,false);          //true with debug
+
+
+	}       // ende update Webfront
 	
 	/***************************************************************************************************/
 	
@@ -385,6 +413,7 @@ if ($_IPS['SENDER'] == "WebFront")
 				}
  		return($monitorID);
 		}
-		
+
+
 		
 ?>

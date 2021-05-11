@@ -251,6 +251,9 @@ class WebCamera
 
     /***************************
      *  Download alle StillPics
+     *  wird von der TimerRoutine WebCamera_Activity aufgerufen
+     *
+     *
      *
      *******************/
 
@@ -355,7 +358,7 @@ class WebCamera
                 curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER,true);
                 curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($curl_handle, CURLOPT_FAILONERROR, true);
-                $fileContent = curl_exec($curl_handle);
+                $fileContent = curl_exec($curl_handle);                                 // hier lauft die Routine manchmal ins Tiemout
                 curl_close($curl_handle);
 
                 if ($fileContent===false) 

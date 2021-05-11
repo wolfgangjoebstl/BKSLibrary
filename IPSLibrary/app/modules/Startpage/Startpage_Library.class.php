@@ -172,6 +172,10 @@
             configfileParser($configInput, $configWidget, ["Widgets"],"Widgets","[]");                  // wenn Subverarbeitung ansteht dann leeres Array
             configfileParser($configInput, $config, ["Monitor"],"Monitor",null); 
 
+            /* Default Configs wenn kein Widget */
+            configfileParser($configInput, $config, ["SpecialRegs"],"SpecialRegs",null);                 // Default, wenn es nur eines gibt
+            configfileParser($configInput, $config, ["Temperature"],"Temperature",null);                 // Default, wenn es nur eines gibt
+
             /* Sub Directories */
             configfileParser($configInput["Directories"], $config["Directories"], ["Pictures"],"Pictures",null);                // null es wird als Default zumindest ein Indexknoten angelegt
             if (strpos($config["Directories"]["Pictures"],"C:/Scripts/")===0) 
@@ -534,6 +538,11 @@
                             case "EMPTY":
                                 $wert.='<td><table border="0" bgcolor="#f1f1f1">';
                                 $wert .= "<td>intentionally left empty</td>";         // erster Parameter ist colspan als config für table
+                                $wert .= '</table></td>';
+                                break;
+                            case "RAINMETER":
+                                $wert.='<td><table border="0" bgcolor="#f1f1f1">';
+                                $wert .= $this->showRainmeterWidget($entry,$debug);
                                 $wert .= '</table></td>';
                                 break;
                             default:
@@ -1681,6 +1690,81 @@
             return ($wert);                                
             }
 
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Tabelle für Heating, Illustration der Heizungsfunktion
+         *
+         *
+         **************************************/
+
+		function showRainmeterWidget($configInput=false,$debug=false)
+            {
+            $wert="";
+            if ($configInput===false) $rainConf = $this->getConfigRainmeterWidget(false,$debug);
+            else $rainConf=$this->getConfigRainmeterWidget($configInput,$debug);                               // Config wird im getConfig behandelt, aber dann nicht zurückgegeben
+            if ($debug) echo "showHRainmeterWidget ".json_encode($rainConf)." \n";
+
+            $wert .= '<table>';
+            $wert .= '<tr>'; 
+            $wert .= '<td><table>';
+
+            $oid=$rainConf["OID"];
+            $archiveID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            $variableChanged=IPS_GetVariable($oid)["VariableChanged"];
+            $timeGone=time()-$variableChanged;
+            $startOfToday=mktime(0,0,0,date("m"), date("d"), date("Y"));
+            if ($timeGone<(time()-$startOfToday))                   $addInfo=date("H:i",$variableChanged);
+            elseif ($timeGone<(time()-($startOfToday-7*24*60*60)))  $addInfo=date("D H:i",$variableChanged);
+            elseif ($timeGone<(time()-($startOfToday-60*24*60*60))) $addInfo=date("d.m H:i",$variableChanged); 
+            else                                                    $addInfo=date("d.m.Y H:i",$variableChanged);
+            $wert .= '<tr>';
+            $wert .= '<td>'.GetValueIfFormatted($oid).'</td>';
+            $wert .= '<td>'.$addInfo.'</td>';
+            $wert .= '</tr>';
+                                    if ($debug) 
+                                        {
+                                        echo "      ".date("d.m.Y H:i:s",$startOfToday)."\n";
+                                        //echo "      Variable Changed $addInfo, got from Property:".$tableEntry["Property"]."   ".json_encode(IPS_GetVariable($oid))."\n";
+                                        $endtime=time();
+                                        $starttime=$endtime-$timeGone-(10*60*60);           // 10 Tage nach dem letzten Regen
+                                        $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);          
+                                        // AC_GetAggregatedValues (integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit)    
+                                        $werteAgg  = @AC_GetAggregatedValues($archiveID,$oid,0,$starttime,$endtime,0);                   
+                                        if ($werteLog===false) ;        // $oid bleibt unverändert
+                                        else
+                                            {
+                                            $count=0; $sum=0; $init=true;
+                                            foreach ($werteLog as $eintrag)
+                                                {
+                                                if ($init) { $start=$eintrag["Value"]; $init=false; }
+                                                echo "             ".date("d.m.Y H:i",$eintrag["TimeStamp"])."    ".$eintrag["Value"]."\n";
+                                                $count++;
+                                                }
+                                            //print_r($werteAgg);
+
+                                            foreach ($werteAgg as $eintrag)
+                                                {
+                                                if ($eintrag["Avg"] != $eintrag["Min"]) echo "             ".date("d.m.Y H:i",$eintrag["TimeStamp"])."    ".$eintrag["Avg"]."\n";
+                                                }                                            
+                                            //$value = (float)$sum/$count;
+                                            //if ($debug) echo "     Integrate Values from last ".$config["Display"]["BottomLine"]["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")."\n";
+                                            //$oid=$value;            // formatEntry erkennt oid (wenn integer) und oid als value
+                                            }
+                                        }
+
+            /*foreach ($heatingConf["Values"] as $room=>$values)
+                {
+                $wert .= '<tr>';
+                $wert .= '<td>'.$room.'</td>';
+                foreach ($values as $value) $wert .= '<td>'.GetValueIfFormatted($value).'</td>';
+                $wert .= '</tr>';
+                }*/ 
+            $wert .= '<td>'.json_encode($rainConf).'</td><td>'.'</td></tr>';
+            $wert .= '</table></td>';   
+            $wert .= '</tr></table>'; 
+            return ($wert);                                
+            }
+
         /* read configuration for showHeatingWidget, eliminate unknown indizes */
 
         function getConfigHeatingWidget($groupsInput=false,$debug=false)
@@ -1733,6 +1817,65 @@
                     //print_r($fullpicture);
                     }
                 }
+            return($config);
+            }
+
+        /* read configuration for showRainmeterWidget, eliminate unknown indizes */
+
+        function getConfigRainmeterWidget($groupsInput=false,$debug=false)
+            { 
+            if ($groupsInput===false)
+                {
+                if (isset($this->configuration["Rainmeter"]) ) $rainConf=$this->configuration["Rainmeter"];
+                else $rainConf=array();
+                }
+            else $rainConf = $groupsInput;                
+
+            if ($debug) echo "getConfigRainmeterWidget Configuration analysieren: ".json_encode($rainConf)."\n";
+            configfileParser($rainConf, $config, ["Config","Configuration","config","CONFIGURATION"],"Config",null);         //wenn config fehlt nur Values
+            $rainConf=$config["Config"]; $config=array();
+            configfileParser($rainConf, $config, ["OID","Oid","oid"],"OID",false);                 //configfile als tableEntry vereinheitlichen, überprüfen, Wert für OID muss vorhanden sein und das Objekt erreichbar
+            /*
+            configfileParser($heatingConf, $config, ["Config","Configuration","config","CONFIGURATION"],"Config",["Values" => array()]);         //wenn config fehlt nur Values
+            $heatingConf=$config["Config"]; $config=array();
+            configfileParser($heatingConf, $config, ["Values","VALUES"],"Values",array());
+            configfileParser($heatingConf, $config, ["Auto","AUTO"],"Auto",null);
+            if ($config["Auto"] != null) 
+                {
+                if (isset($this->installedModules["DetectMovement"])) 
+                    {
+                    if ($debug) echo "DetectMovement installiert, automatische Erkennung verwenden\n";    
+                    $DetectTemperatureHandler  = new DetectTemperatureHandler();	
+                    $DetectHeatSetHandler      = new DetectHeatSetHandler();	
+                    $DetectHeatControlHandler  = new DetectHeatControlHandler();	
+                    $configurationSet = $DetectHeatSetHandler->Get_EventConfigurationAuto();
+                    $configurationTemp = $DetectTemperatureHandler->Get_EventConfigurationAuto();
+                    $configurationLevel = $DetectHeatControlHandler->Get_EventConfigurationAuto();
+                    $fullpicture=array();
+                    foreach ($configurationLevel as $oid => $entry) 
+                        {
+                        $fullpicture[IPS_GetParent($oid)]["Level"]=$oid;
+                        //echo "   $oid  ".str_pad(IPS_getName($oid)."/".IPS_getName(IPS_GetParent($oid)),60)." ".GetValue($oid)."   \n"; 
+                        }
+                    foreach ($configurationTemp as $oid => $entry) 
+                        {
+                        if (isset($fullpicture[IPS_GetParent($oid)])) $fullpicture[IPS_GetParent($oid)]["Temperature"]=$oid;
+                        }
+                    foreach ($configurationSet as $oid => $entry) 
+                        {
+                        if (isset($fullpicture[IPS_GetParent($oid)])) $fullpicture[IPS_GetParent($oid)]["Set_Temperature"]=$oid;
+                        }
+                    foreach ($fullpicture as $index => $values)
+                        {
+                        if (sizeof($values)>2)      // drei Werte
+                            {
+                            $config["Values"][IPS_GetName($index)]=[$values["Temperature"],$values["Set_Temperature"],$values["Level"],];
+                            }
+                        }
+                    //print_r($fullpicture);
+                    }
+                }*/
+            //echo "Config ausgewertet:\n"; print_R($config);
             return($config);
             }
 
@@ -1896,7 +2039,7 @@
             if ($configInput===false) $specialRegsConf = $this->getConfigSpecialRegsWidget(false,$debug);
             else $specialRegsConf=$this->getConfigSpecialRegsWidget($configInput["Config"],$debug);
 
-            //if ($debug) { echo "Special Regs Aufruf mit:\n"; print_R($specialRegsConf); }
+            if ($debug) { echo "Special Regs Aufruf mit:\n"; print_R($specialRegsConf); }
             if ($this->scriptHighchartsID)      // ohne Script gehts nicht */
                 {
                 foreach ($specialRegsConf as $indexChart => $config)
@@ -2024,7 +2167,10 @@
             }
 
 
-        /* read configuration for showTempGroupWidget, eliminate unknown indizes */
+        /* read configuration for showTempGroupWidget, eliminate unknown indizes 
+         * übernimmt die configuration aus dem einzelnen Widget, es gibt aber auch die Möglichkeit ohne Widget Default Configs anzugeben
+         *
+         */
 
         function getConfigSpecialRegsWidget($groupsInput=false,$debug=false)
             { 
@@ -2040,7 +2186,7 @@
             foreach ($specialRegsConf as $index => $regsConf)
                 {
                 configfileParser($specialRegsConf[$index], $specialRegs[$index], ["OID","Oid","oid"],"OID",null);           // input ist $specialRegsConf, bereinigt dann in $specialRegs
-                if ($specialRegs[$index]["OID"] != null) 
+                if ( ($specialRegs[$index]["OID"] != null) )
                     {
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Dauer","Duration","duration","DURATION"],"Duration",259200);         //3 Tage ist Default
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Name","NAME","name"]     ,"Name",$index);        
@@ -2052,6 +2198,11 @@
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Size","SIZE"]     ,"Size","[]");        
                     if ((is_array($specialRegs[$index]["OID"]))==false) $specialRegs[$index]["OID"]=[$specialRegs[$index]["OID"]];          // als array umspeichern
                     if ((is_array($specialRegs[$index]["Name"]))==false) $specialRegs[$index]["Name"]=[$specialRegs[$index]["Name"]];       // als array umpseichern
+                    }
+                else 
+                    {
+                    echo "getConfigSpecialRegsWidget, Index $index: OID nicht richtig angegeben. OID Eintrag fehlt.\n";
+                    var_dump($specialRegs[$index]);
                     }
                 }
             if ($debug) print_r($specialRegs);
@@ -2075,7 +2226,7 @@
             if ($config===false) $tempTableConf = $this->getTempTableConf(false,$debug);
             else $tempTableConf=$this->getTempTableConf($config["Config"],$debug);
 
-            //if ($debug) echo "showTemperatureTable aufgerufen Config: ".json_encode($tempTableConf)."\n";
+            if ($debug) echo "showTemperatureTable aufgerufen Config: ".json_encode($tempTableConf)."\n";
 
             $wert="";
             $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
@@ -2314,7 +2465,7 @@
 	        $wert.='.middle { transition: .5s ease; opacity: 0; position: absolute; top: 90%; left: 30%; transform: translate(-50%, -50%); -ms-transform: translate(-50%, -50%) }';
 	        $wert.='.container:hover .image { opacity: 0.8; }';             // define classes
 	        $wert.='.container:hover .middle { opacity: 1; }';
-	        $wert.='.text { background-color: #4CAF50; color: white; font-size: 16px; padding: 16px 32px; }';
+	        $wert.='.StartPageText { background-color: #4CAF50; color: white; font-size: 16px; padding: 16px 32px; }';          // was former .text only, this is used in standard formatting !!!
 	        $wert.='</style>';
 	        return($wert);
 	        }

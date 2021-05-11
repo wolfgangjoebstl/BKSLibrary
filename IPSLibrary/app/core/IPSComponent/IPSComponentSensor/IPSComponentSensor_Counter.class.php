@@ -24,6 +24,10 @@
 	 * Counter ist zum Beispiel ein Counter eines regensensors. Energieregister sind zwar auch Counter, sollten aber besser ueber das Modul AMIS 
 	 * abgewickelt werden.
 	 *
+     * Unterschiedliche Gerätetypen (Instanzen) können Sensorwerte (Register) liefern. Darstellung der zu Grunde liegenden information kann unterschieldich sein.
+     * Es ist eine Vereinheitlichung notwendig. Auch muss der Tausch auf einen anderen gerätetypen oder eine Namensändeung möglich sein ohne das Endergebnis und dessen
+     * Kontinuität in der Erfassung zu verändern.
+     *
 	 * Events werden im Event Handler des IPSMEssageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
 	 * In der IPSMessageHandler Config steht wie die Daten Variable ID und Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
 	 * 	xxxx => array('OnChange','IPSComponentSensor_Temperatur,','IPSModuleSensor_Temperatur,1,2,3',),
@@ -39,6 +43,18 @@
 	 *
 	 * construct erstellt im IPSLibrary.Data.Core.IPSComponent eine Kategorie für die Spiegelregister und eine Kategorie für die Nachrichten
 	 * zusaetzlich auch das Verzeichnis im Log Verzeichnis wenn erforderlich
+     *
+     * Speicherorte für Logging:
+     *
+     * Der Sensorwert selbst wird Archiviert. Name Register, Name Instanz und Art der Information bleiben erhalten.
+     * bearbeitete Register werden unter /Program/IPSLibrary/data/core/IPSComponent gespeichert
+     * je nach Typ der Information Bewegung,Climate,Counter,Feuchtigkeit,HeatControl,HeatSet,Helligkeit,Kontakt,Sensor,Switch,Temperator
+     * wird eine Kategorie mit _Auswertung und _Nachrichten angelegt.
+     * Zusätzlich gibt es Statistik_Nachrichten LoggingConf und Mirror
+     *
+     * Der wert wird unter Mirror gespeichert, das ist der Messwert mit dem Profil und Typ aus dem Sensor, einzig der Name wird bereits standardisiert 
+     * Gleicher Name hilft den Sensortausch zu vereinfachen und macht unabhängig von Räumen udn anderen Konverntionen, allerdings hat eine Änderung auf ein anderes Gerät
+     * den Verlust der hier gespeicherten Daten zur Folge, sofern sich Variablentyp und Profil ändern.
 	 *
 	 * es erfolgt ein Eintrag im eigenen Nachrichtenspeicher für Counter
 	 *
@@ -52,6 +68,11 @@
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+
+	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+
+    IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+
 
 	class IPSComponentSensor_Counter extends IPSComponentSensor {
 
@@ -72,7 +93,7 @@
 
 		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-			//echo "IPSComponentSensor_Counter: Construct Counter Sensor with ($instanceId,$remoteOID,$tempValue).\n";		
+			echo "IPSComponentSensor_Counter: Construct Counter Sensor with ($instanceId,$remoteOID,$tempValue).\n";		
             //$this->RemoteOID    = instanceID;                // par1 manchmal auch par2		
 			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1
 			$this->tempValue    = $tempValue;           // par3                
@@ -113,11 +134,11 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			//echo "Counter Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+			echo "IPSComponentSensor_Counter:HandleEvent, Counter Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			//IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
 			$debug=true;
-			$log=new Counter_Logging($variable,null,$debug);
+			$log=new Counter_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben
 			$result=$log->Counter_LogValue($value, $debug);
             $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID,$debug);   
 
@@ -188,14 +209,38 @@
 		protected $CounterAuswertungID;			// Kategorie für Register
 		protected $CounterNachrichtenID;			// Kategorie für Nachrichten
         
-		function __construct($variable,$variablename=Null,$debug=false)
+		function __construct($variable,$variablename=Null,$variableTypeReg="unknown",$debug=false)
 			{
-            $dosOps= new dosOps();
-            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+            if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
+            else $this->debug=$debug;
+            if ($this->debug) echo "   Counter_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
 
-			//echo "Construct IPSComponentSensor Counter Logging for Variable ID : ".$variable."\n";
+            $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
+            
+            /* Initialisisert wird hier - nach constructFirst noch
+             * CategoryIdData,mirrorCatID
+             * variable,variableProfil,variableType  iD der variable und ausgelesenes profil (entweder standard oder custom), Werte sind Sensor und Gerätespezifisch
+             * mirrorType,mirrorProfil  werden von der Variable übernommen
+             *
+             * Ermittelt wird
+             * variableTypeReg
+             *
+             * und von do_init_counter
+             *  DetectHandler       wenn installiert
+             *  variablename        abgeleitet aus dem Variablennamen oder aus der Config
+             *  mirrorNameID
+             *  variable, variableLogID
+             *  NachrichtenID, AuswertungID, filename
+             *
+             *
+             */
+            $NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);            // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
+
+            $dosOps= new dosOps();
+            //$this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+			echo "Construct IPSComponentSensor Counter Logging for Variable ID : ".$variable." with Config ".json_encode($this->configuration)."\n";
 			
-			/****************** Variablennamen herausfinden und/oder berechnen */
+			/****************** Variablennamen herausfinden und/oder berechnen 
 			$this->variable=$variable;
 			if ($variablename==Null)
 				{
@@ -214,57 +259,57 @@
 			else
 				{
 				$this->variablename=$variablename;
-				}			
+				}       */			
 			
-			/**************** Speicherort für Nachrichten und Spiegelvarianten herausfinden */
+			/**************** Speicherort für Nachrichten und Spiegelvarianten herausfinden 
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$installedmodules=$moduleManager->GetInstalledModules();
+			$installedmodules=$moduleManager->GetInstalledModules();        
 
-			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+			$moduleManager_CC = new IPSModuleManager('CustomComponent');     //   <--- change here 
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			//echo "Datenverzeichnis:".$CategoryIdData."\n";
+			//echo "Datenverzeichnis:".$CategoryIdData."\n";    */
 
-			/* Create Category to store the Counter-LogNachrichten */	
+			/* Create Category to store the Counter-LogNachrichten 
 			$name="Counter-Nachrichten";
-			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			$vid=@IPS_GetObjectIDByName($name,$this->CategoryIdData);
 			if ($vid==false)
 				{
 				$vid = IPS_CreateCategory();
-				IPS_SetParent($vid, $CategoryIdData);
+				IPS_SetParent($vid, $this->CategoryIdData);
 				IPS_SetName($vid, $name);
 				IPS_SetInfo($vid, "this category was created by script IPSComponentSensor_Counter.");
 				}
-			$this->CounterNachrichtenID=$vid;
+			$this->NachrichtenID=$vid;
 
 			$name="Counter-Auswertung";
-			$CounterAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			$CounterAuswertungID=@IPS_GetObjectIDByName($name,$this->CategoryIdData);
 			if ($CounterAuswertungID==false)
 				{
 				$CounterAuswertungID = IPS_CreateCategory();
-				IPS_SetParent($CounterAuswertungID, $CategoryIdData);
+				IPS_SetParent($CounterAuswertungID, $this->CategoryIdData);
 				IPS_SetName($CounterAuswertungID, $name);
 				IPS_SetInfo($CounterAuswertungID, "this category was created by script IPSComponentSensor_Counter.");
 				}
-			$this->CounterAuswertungID=$CounterAuswertungID;
+			$this->AuswertungID=$CounterAuswertungID;   */
 			
 			if ($variable<>null)
 				{
-				/* lokale Spiegelregister als Float aufsetzen */
-				$this->variableLogID=CreateVariable($this->variablename,2,$CounterAuswertungID, 10, '', null );
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				/* lokale Spiegelregister als Float aufsetzen 
+				$this->variableLogID=CreateVariable($this->variablename,2,$CounterAuswertungID, 10, '', null );
 				//IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
 				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
-				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
+				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      // normaler Wwert */
 
-				$this->counterOffsetLogID=CreateVariable("Offset_".$this->variablename,2,$CounterAuswertungID, 100, '', null, null );   // Float Variable anlegen
-				$this->counterLogID=CreateVariable($this->variablename."_Counter",2,$CounterAuswertungID, 10, '', null, null );   // Float Variable anlegen
+				$this->counterOffsetLogID=CreateVariable("Offset_".$this->variablename,2,$this->AuswertungID, 100, '', null, null );   // Float Variable anlegen
+				$this->counterLogID=CreateVariable($this->variablename."_Counter",2,$this->AuswertungID, 10, '', null, null );   // Float Variable anlegen
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				//IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
 				AC_SetLoggingStatus($archiveHandlerID,$this->counterLogID,true);
 				AC_SetAggregationType($archiveHandlerID,$this->counterLogID,0);      /* normaler Wwert */
 
-				$this->counter2LogID=CreateVariable($this->variablename."_Counter2",2,$CounterAuswertungID, 20, '', null, null );   // Float Variable anlegen
+				$this->counter2LogID=CreateVariable($this->variablename."_Counter2",2,$this->AuswertungID, 20, '', null, null );   // Float Variable anlegen
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				//IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
 				AC_SetLoggingStatus($archiveHandlerID,$this->counter2LogID,true);
@@ -273,15 +318,15 @@
 				IPS_ApplyChanges($archiveHandlerID);
 				}
 
-			/* Filenamen für die Log Eintraege herausfunfen und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+			/* Filenamen für die Log Eintraege herausfunfen und Verzeichnis bzw. File anlegen wenn nicht vorhanden
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["CounterLog"]))
 		   		 { $directory=$directories["LogDirectories"]["CounterLog"]; }
 			else {$directory="C:/Scripts/Counter/"; }	
 			$dosOps->mkdirtree($directory);
-			$filename=$directory.$this->variablename."_Counter.csv";
-			parent::__construct($filename,$vid);
+			$filename=$directory.$this->variablename."_Counter.csv";    */
+			parent::__construct($this->filename,$NachrichtenID);
 			}
 
         /******************************
@@ -289,34 +334,76 @@
          *  es wird nur gelogged wenn der Wert einen Unterschied aufweist, diff
          *
          *  variable            ID vom Input Wert, für Debug Aufgaben ist der Wert auch in value
-         *  counterLogID        iD vom Spiegelregister als Float, $variablename."_Counter"
          *  variableLogID       ID für den diff Wert als Float, $variablename
          *
+         *  Zusätzlich wird benötigt:
          *
-         *
+         *  counterLogID        iD vom Spiegelregister als Float, $variablename."_Counter"
+         *  counter2LogID
+         *  counterOffsetLogID
          *
          **************/
 
 		function Counter_LogValue($value, $debug)
 			{
+            // noch ein bisschen genauer anschauen, Vereinheitlichung Homematic und Netatmo Regenmesser
+
 			// result formatieren für Ausgabe in den LogNachrichten
 			$resultLog=GetValueFormatted($this->variable);
 			$variabletyp=IPS_GetVariable($this->variable);
 			$unchanged=time()-$variabletyp["VariableChanged"];
-            if ($debug)                 
+            /* rausfinden ob ein Counter oder nur increments erfasst werden, diff dafür berechnen */
+            if ($this->variableTypeReg =="RAIN_COUNTER")
                 {
-                echo "Keine Änderung seit ".round($unchanged/3600,1)." Sekunden.\n";
-    			$diff=$value-GetValue($this->counterLogID);                                         // Neue Werte vorgaukeln
+                //echo "Rain Counter ".$this->variable."  ".IPS_GetName($this->variable)." \n";
+                $instanceID=IPS_GetParent($this->variable);
+                if (IPS_GetObject($instanceID)["ObjectType"]==1) 
+                    {
+                    //echo "ist eine Instanz\n";
+                    $moduleInfo=IPS_GetInstance($instanceID)["ModuleInfo"]["ModuleName"];
+                    if ($debug)                 
+                        {
+                        echo "Rain Counter ".$this->variable."  ".IPS_GetName($this->variable)." Parent ist ein Objekt ist eine Instanz und ein Gerät mit dem Modulnamen $moduleInfo.\n";
+                        echo "Keine Änderung seit ".round($unchanged/3600,1)." Sekunden.\n";
+                        }
+                    if ($moduleInfo=="NetatmoWeatherDevice")            // es werden nur die Increments erfasst
+                        {
+                        if ($debug)             // im Debug Mode falsche Werte einschleusen           
+                            {
+                            $diff=$value;
+                            }
+                        else $diff=GetValue($this->variable);
+                        }
+                    else            // wirklich ein Counter der nach oben zählt
+                        {
+                        if ($debug)                 // im Debug Mode falsche Werte einschleusen
+                            {
+                            echo "Counter_LogValue mit $value aufgerufen. Vergleichen mit ".$this->counterLogID." ".IPS_GetName($this->counterLogID)."\n";                    
+                            $diff=$value-GetValue($this->counterLogID);                                         // Neue Werte vorgaukeln
+                            }
+    			        else $diff=GetValue($this->variable)-GetValue($this->counterLogID);
+                        }
+                    }
                 }
 			else $diff=GetValue($this->variable)-GetValue($this->counterLogID);
+
+            /* diff behandeln */
 			if ($diff != 0)
 				{
 				if ($diff>0)
 					{
-					SetValue($this->variableLogID,GetValue($this->variable)-GetValue($this->counterLogID));
-					SetValue($this->counterLogID,GetValue($this->variable));
-					//SetValue($this->counterLogID,GetValue($this->variable)+GetValue($this->counterOffsetLogID));
-					echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." Änderung auf letzten Wert ".GetValue($this->counterLogID)."\n";
+                    if ($moduleInfo=="NetatmoWeatherDevice")
+                        {
+                        SetValue($this->variableLogID,GetValue($this->variable));
+                        SetValue($this->counterLogID,GetValue($this->variable)+GetValue($this->counterLogID));
+                        }
+                    else    
+                        {
+                        SetValue($this->variableLogID,GetValue($this->variable)-GetValue($this->counterLogID));
+                        SetValue($this->counterLogID,GetValue($this->variable));
+                        //SetValue($this->counterLogID,GetValue($this->variable)+GetValue($this->counterOffsetLogID));
+                        }
+					echo ">>>>Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." Änderung auf letzten Zählwert ".GetValue($this->counterLogID)." um ".GetValue($this->variableLogID)."\n";
 					}
 				else
 					{

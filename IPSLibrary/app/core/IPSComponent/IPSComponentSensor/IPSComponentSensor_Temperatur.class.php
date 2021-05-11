@@ -120,6 +120,8 @@
 			{
 			echo "IPSComponentSensor_Temperatur:HandleEvent, Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			/* aussuchen ob IPSLogger_Dbg oder IPSLogger_Inf der richtige Level für die Analyse, produziert viele Daten ! */
+            //IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+
             $startexec=microtime(true);            
             $log=new Temperature_Logging($variable,null,$this->tempValue);        // es wird kein Variablenname übergeben
             $mirrorValue=$log->updateMirorVariableValue($value);

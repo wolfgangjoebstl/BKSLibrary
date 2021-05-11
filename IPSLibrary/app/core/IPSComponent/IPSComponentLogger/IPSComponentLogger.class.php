@@ -178,8 +178,19 @@ class ipsobject
 class Logging
 	{
 
-    /* init at construct */
+    /* init at construct 
+     * constructFirst sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
+     */
+
+    protected       $startexecute;                  /* interne Zeitmessung */
     protected       $installedmodules;
+    protected       $CategoryIdData;
+	protected       $mirrorCatID;                   // Spiegelregister in CustomComponent um eine Änderung zu erkennen
+    protected       $logConfCatID, $logConfID;                 // Welche Variable wird ausschliesslich gelogged
+    protected       $configuration;                      /* verwaltet gesamte Konfiguration, für die do_init_xxxx */
+    public static   $debugInstance=false;               // wenn nicht false werden besondere Debug Nachrichten generiert
+    protected       $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */ 
+
 	private         $prefix;							/* Zuordnung File Log Data am Anfang nach Zeitstempel */
 	private         $log_File="Default";
 	private         $nachrichteninput_Id="Default";
@@ -188,28 +199,22 @@ class Logging
     private         $zeileDM=array();                   /* Nachrichteninput Objekte OIDs, eigenes für Device Management */
     private         $storeTableID = false;              /* ermöglicht längere Speichertiefen für Nachrichten */
 
-    protected       $configuration;                      /* verwaltet gesamte Konfiguration, für die do_init_xxxx */
 
     // $variable                                        // definiert in children class
     protected       $variablename;
-    protected       $CategoryIdData;
-	protected       $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
+	protected       $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
     protected       $mirrorType, $mirrorProfile;            // mirror register übernimmt die Parameter des eigentlichen Registers
 
-    public static   $debugInstance=false;               // wenn nicht false werden besondere Debug Nachrichten generiert
 	private $script_Id="Default";
 
 
     /* wird bereits in den children classes verwendet und dort initialisiert */
 
     protected $DetectHandler;               /* DetectMovement/Humidity ... ist auch ein Teil der Aktivitäten */
-    protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */ 
-    protected $startexecute;                  /* interne Zeitmessung */
 
     //private     $variableProfile, $variableType;        // Eigenschaften der input Variable auf das Mirror Register clonen        
     protected   $AuswertungID;              /* wird bei der Gesamtauswertung benötigt */
     private     $NachrichtenID;             /* Auswertung für Custom Component, wird al sprivate Variable als ergebnis übergeben */
-    protected   $logConfCatID, $logConfID;                 // Welche Variable wird ausschliesslich gelogged
 
     /* von do_init_xxx initialisiert */
     protected $filename; 
@@ -348,7 +353,11 @@ class Logging
 			}	
 	   }
 
-    /* Vereinheitlichung des Constructs, was macht das child und was der parent */
+    /* Vereinheitlichung des Constructs, was macht das child und was der parent 
+     * sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
+     *
+     *
+     */
 
     public function constructFirst()
         {
@@ -900,6 +909,52 @@ class Logging
         return($this->NachrichtenID);               // nur als Private deklariert
         }
 
+    /* Initialisierung für Counter 
+     * das ist die allgemeine Funktion für viele Counter aller Art, muss Umrechnen in Profile
+     *
+     * vorher wird constructfirst, do_init aufgerufen. Hier wird weiters noch angelegt:
+     *  DetectHandler       wenn installiert
+     *  variablename        abgeleitet aus dem Variablennamen oder aus der Config
+     *  mirrorNameID
+     *  NachrichtenID, AuswertungID, filename
+     *
+     * erstellt die folgenden Variablen basierend auf $variableTypeReg
+     *      Mirror      CounterMirror_$variablename     $mirrorType     $mirrorProfil
+     *      Log         $variablename     $variableType     $variabelProfil
+     *
+     */
+
+    public function do_init_counter($variable, $variablename)
+        {
+        if (isset ($this->installedmodules["DetectMovement"]))
+            {
+            /* Detect Movement kann auch Sensorwerte agreggieren */
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            //$this->DetectHandler = new DetectSensorHandler();                            // zum Beispiel für die Evaluierung der Mirror Register
+            }
+
+        $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+        $name="CounterMirror_".$this->variablename;
+        echo "    Counter_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).") Type is ".$this->variableTypeReg."\n";
+        echo "    Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile." \n";
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);             /* Selbe Werte wie geloggte Variable als Default übernehmen*/
+
+        /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Counter",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Counter",$this->CategoryIdData);
+        echo "    Create Logging Register ".$this->variablename." as ".$this->variableType." with Profile ".$this->variableProfile." \n";
+        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+
+        /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+        //echo "Uebergeordnete Variable : ".$this->variablename."\n";
+        $directory = $this->configuration["LogDirectories"]["CounterLog"];
+        $dosOps= new dosOps(); 
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.$this->variablename."_Counter.csv";
+        return($this->NachrichtenID);               // nur als Private deklariert
+        }
+
     /* Initialisierung für besonderen Climate Sensor 
      * Aufgerufen von IpsComponentSensor_Remote, getroffene besondere Auswahl anstelle Sensor wenn BAROPRESSURE oder CO2
      * Es werden folgende class Register beschrieben:
@@ -998,15 +1053,33 @@ class Logging
         return($this->NachrichtenID);               // nur als Private deklariert           
         }
 
-        /* allgemeine Initialisierung. Auf die Sub Initialisierungen aufteilen.
-         * gemeinsame Teile die für alle gleich sind hier bearbeiten.
-         * 
-         * Es wird variable übergeben, wenn variable false oder nicht angegeben dann wird nur die Statistik Funktion benötigt, aber keine Variablen geloggt
-         * Es wird bereits ein typedev als iPSComponen Parameter übergeben, trotzdem Datenbank befragen
-         *
-         */
+    /* allgemeine Initialisierung. Hier auf die Sub Initialisierungen  wie zB do_init_counter aufteilen.
+     * gemeinsame Teile die für alle gleich sind hier bearbeiten. 
+     *
+     * Funktion Kann mit ID der variable oder mit false aufgerufen werden, variable=false wird für die Statistik Funktion verwendet, es wird do_init_statistic aufgerufen 
+     * Es werden folgende Paraeter übergeben
+     *      variable        ID der variable false oder nicht angegeben dann wird nur die Statistik Funktion benötigt, aber keine Variablen geloggt
+     *      variablename    wenn es besondere Vorstellungen dazu bereits gibt
+     *      value           für debug Zwecke
+     *      typedev         als iPSComponen Parameter übergeben, trotzdem Datenbank befragen
+     *
+     * für die genaue Ermittlung des gewünschten Werte für variableTypeReg wird in dieser Reihenfolge abgefragt
+     *      MySQL Datenbank
+     *      typedev Wert, der wurde als Parameter des IPSComponent übergeben -> bevorzugte Variante
+     *      irgendwie aus dem variableProfil,variableType erraten, noch nicht fertig programmiert
+     *
+     * Initialisisert wird hier - nach constructFirst noch
+     * CategoryIdData,mirrorCatID
+     * variable,variableProfil,variableType  iD der variable und ausgelesenes profil (entweder standard oder custom), Werte sind Sensor und Gerätespezifisch
+     * mirrorType,mirrorProfil  werden von der Variable übernommen
+     *
+     * Ermittelt wird
+     * variableTypeReg
+     *
+     *
+     */
 
-        protected function do_init($variable=false,$variablename=NULL,$value, $typedev, $debug=false)
+    protected function do_init($variable=false,$variablename=NULL,$value, $typedev, $debug=false)
             {
             $debugSql=false;
             $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
@@ -1022,7 +1095,11 @@ class Logging
                 }      */       
             if ($variable!==false)
                 {
-                if ($debug) echo "Sensor_Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
+                if ($debug) 
+                    {
+                    echo "-------------------------------------------------------------------------\n";
+                    echo "Sensor_Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
+                    }
                 $this->$variable=$variable;
                 $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
                 if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
@@ -1034,14 +1111,14 @@ class Logging
                     {
                     if ($typedev==Null)
                         {
-                        if ($debug) echo "\ndo_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs.\n";    
+                        if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs.\n";    
                         if (IPS_GetVariable($variable)["VariableType"]==0) $this->variableTypeReg = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache
                         else $this->variableTypeReg = "BRIGHTNESS";
                         IPSLogger_Wrn(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs geht nicht mehr.");
                         }
                     else
                         {
-                        if ($debug) echo "\ndo_init,getfromDatabase ohne Ergebnis, dann übergebenes typedev $typedev nehmen.\n";    
+                        if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, dann übergebenes typedev $typedev nehmen.\n";    
                         switch (strtoupper($typedev))
                             {
                             case "CO2":
@@ -1054,10 +1131,12 @@ class Logging
                             case "TEMPERATUR":
                             case "TEMPERATURE":
                             case "ENERGY":
+                            case "RAIN_COUNTER":
                                 $this->variableTypeReg = strtoupper($typedev);
                                 break;                                 
                             default: 
-                                echo "\ndo_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben -> Fehler.\n";    
+                                echo "*****************\n";
+                                echo "do_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben -> Fehler.\n";    
                                 IPSLogger_Err(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben.");
                                 break;
                             }    
@@ -1098,6 +1177,9 @@ class Logging
                     case "POWER":
                     case "ENERGY":    
                         $NachrichtenID = $this->do_init_sensor($variable, $variablename);
+                        break;
+                    case "RAIN_COUNTER":    
+                        $NachrichtenID = $this->do_init_counter($variable, $variablename);
                         break;
                     default:
                         $NachrichtenID = $this->do_init_sensor($variable, $variablename);                    
@@ -1190,6 +1272,8 @@ class Logging
      *
      * setVariableLogId legt die Variable und die Log Variable variableLogID an und benötigt dafür variable, variablename, AuswertungID, variableType, variableProfile
      *
+     * Ermittelt Werden
+     *    variable, variableLogID 
      */
 
     private function do_setVariableLogID($variable,$debug=false)

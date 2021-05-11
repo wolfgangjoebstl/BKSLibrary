@@ -5185,7 +5185,7 @@ class Autosteuerung
 				{
 				if ($result["DELAY"]>0)
 					{
-					if (isset($result["DELAY#CHECK"])==true)
+					if ( (isset($result["DELAY#CHECK"])) && ($result["DELAY#CHECK"]==true) )        // DELAY#CHECK ist oft gesetzt obwohl der Zustand false ist
 						{
                         echo "Aufruf timerCommand für DELAY#CHECK mit :".json_encode($result)."\n";
 						$EreignisID = $this->getEventTimerID($result["NAME"]."_EVENT_DIM");		// damit der richtige Timer deaktiviert wird				

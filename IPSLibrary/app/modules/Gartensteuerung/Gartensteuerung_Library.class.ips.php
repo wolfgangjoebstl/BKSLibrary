@@ -400,11 +400,42 @@ class Gartensteuerung
 		return ($Server);
 		}
 
-    /* Konfiguration auswerten und standardisiseren */
+    /* Konfiguration auswerten und standardisiseren 
+			"KREISE" => 5,
+			"TEMPERATUR-MITTEL" => 19,    // Wenn Aussentemperatur im Mittel ueber diesen Wert UND Niederschlag kleiner REGN48H dann Giessen 
+			"TEMPERATUR-MAX" => 28,			// wenn es in den letzten  10 Tage weniger als REGEN10T geregnet hat ODER die Maiximaltemperatur den Wert TEMPERATUR-MAX ueberschreitet doppelt so lange giessen 
+			"REGEN48H" => 3,              // Wenn Aussentemperatur im Mittel ueber TEMPERATUR-MITTEL UND Niederschlag kleiner diesen Wert dann Giessen 
+			"REGEN10T" => 20,             // wenn es in den letzten  10 Tage weniger als REGEN10T geregnet hat ODER die Maximaltemperatur den Wert TEMPERATUR-MAX ueberschreitet doppelt so lange giessen 
+			"DEBUG" => false,               // bei false weniger Debug Nachrichten generieren 
+			"PAUSE" => 5,					// Pause zwischen den Beregnungszyklen, um dem Gardena Umschalter Zeit zur Entspannung zu geben 
+			"KREIS1" => "Kreis1:West<br>Beregner bei den suedlichen und westlichen Hausecken",		//  beim Rosentunnel          
+			"KREIS2" => "Kreis2:Nord<br>zwei Beregner bei der Nachbarseite und der Spritzer beim Wald",			//  die zwei Beregner bei der Nachbarseite und der Spritzer beim Wald          
+			"KREIS3" => "Kreis3:Mitte<br>Eingang und Brunnen",			//  Brunnen und Giesschlauch          
+			"KREIS4" => "Kreis4:Sued<br>Beregner bei den Birken",			//  Sued Beregner bei Birken          
+			"KREIS5" => "Kreis5:Einfahrt<br>Beregner und Giessschlauch",
+			"KREIS6" => "Kreis6:",			// frei, da Auslastungen der anderen Kreise ok         
+			"PUMPE" 			=> ?7228,
+			//"RAINCOUNTER" 		=> ?0417,
+			//"RAINCOUNTER" 		=> "Wetterstation",  // CustomComponent Value
+   			"RAINCOUNTER" 		=> "Garten-Wetterstation:Messwerte",  // CustomComponent Value
+            "RainCounterHistory"    => [38316,12713],                                   // alte Sensoren auch in die Tabelle übernehmen
+			"AUSSENTEMP" 		=> 41941,
+			"REMOTEACCESSADR" 	=> "",
+			"ENERGYREGID"		=> 12345,    
+    
+    
+    
+    */
 
     public function setGartensteuerungConfiguration($debug=false)
         {
-        $config = getGartensteuerungConfiguration();
+        $config=array();
+        if ((function_exists("getGartensteuerungConfiguration"))===false) IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');				
+        if (function_exists("getGartensteuerungConfiguration"))	$configInput = getGartensteuerungConfiguration();      
+
+
+
+        $config = $configInput;
         $config["RAINCOUNTER"]=$this->getConfig_raincounterID($config, $debug);
         $config["RAINMETER"]  =$this->getConfig_rainMeterID($config);
         return ($config);   
