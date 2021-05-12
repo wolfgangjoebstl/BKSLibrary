@@ -1,10 +1,8 @@
 <?
 
-	/**@defgroup ipstwilight IPSTwilight
-	 * @ingroup modules_weather
-	 * @{
+	/**@defgroup Gartensteuerung
 	 *
-	 * Script zur Ansteuerung der Giessanlage in BKS
+	 * Script zur Ansteuerung der Giessanlage in BKS oder statistische Auswertungen in LBG
 	 *
 	 *
 	 * @file          Gartensteuerung_Installation.ips.php
@@ -20,7 +18,8 @@
  ********************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
+	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+    IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');    	
 		 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -164,6 +163,9 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
+    $gartensteuerung = new Gartensteuerung(0,0,true);   // default, default, debug=false
+    $GartensteuerungConfiguration =	$gartensteuerung->getConfig_Gartensteuerung();
+
 	/*
 	echo "\nRegister \"Allgemeine Definitionen\"";
 	$scriptName="Allgemeine Definitionen";
@@ -347,48 +349,62 @@
 
     echo "Timer aufsetzen :\n";
     /* Timer zum Giessstopp, zu diesem Zeitpunkt alles ausschalten - sicherheitshalber */
-	$eid2 = @IPS_GetEventIDByName("Giessstopp1", $scriptIdGartensteuerung);
-	if ($eid2==false)
-		{
-		$eid2 = IPS_CreateEvent(1);
-		IPS_SetParent($eid2, $scriptIdGartensteuerung);
-		IPS_SetName($eid2, "Giessstopp1");
-		IPS_SetEventCyclicTimeFrom($eid2,22,0,0);  /* immer um 22:00 */
-		}
-	$eid2m = @IPS_GetEventIDByName("Giessstopp2", $scriptIdGartensteuerung);
-	if ($eid2m==false)
-		{
-		$eid2m = IPS_CreateEvent(1);
-		IPS_SetParent($eid2m, $scriptIdGartensteuerung);
-		IPS_SetName($eid2m, "Giessstopp2");
-		IPS_SetEventCyclicTimeFrom($eid2m,10,0,0);  /* immer um 10:00 */
-		}
+    $eid2 = @IPS_GetEventIDByName("Giessstopp1", $scriptIdGartensteuerung);
+    if ($eid2==false)
+        {
+        $eid2 = IPS_CreateEvent(1);
+        IPS_SetParent($eid2, $scriptIdGartensteuerung);
+        IPS_SetName($eid2, "Giessstopp1");
+        IPS_SetEventCyclicTimeFrom($eid2,22,0,0);  /* immer um 22:00 */
+        }
+    $eid2m = @IPS_GetEventIDByName("Giessstopp2", $scriptIdGartensteuerung);
+    if ($eid2m==false)
+        {
+        $eid2m = IPS_CreateEvent(1);
+        IPS_SetParent($eid2m, $scriptIdGartensteuerung);
+        IPS_SetName($eid2m, "Giessstopp2");
+        IPS_SetEventCyclicTimeFrom($eid2m,10,0,0);  /* immer um 10:00 */
+        }
+    /* UpdateTimer übernimmt das Minutenupdate bei der Giesszeit und gleichzeitig auch das Umschalten zwischen den Giesskreisen */
+    $eid5 = @IPS_GetEventIDByName("UpdateTimer", $scriptIdGartensteuerung);
+    if ($eid5==false)
+        {
+        $eid5 = IPS_CreateEvent(1);
+        IPS_SetParent($eid5, $scriptIdGartensteuerung);
+        IPS_SetName($eid5, "UpdateTimer");
+        IPS_SetEventCyclic($eid5, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 1 /* Alle Minuten */);
+        }
+    
+    $eid3 = @IPS_GetEventIDByName("Timer3", $scriptIdGartensteuerung);
+    if ($eid3==false)
+        {
+        $eid3 = IPS_CreateEvent(1);
+        IPS_SetParent($eid3, $scriptIdGartensteuerung);
+        IPS_SetName($eid3, "Timer3");
+        }
 
-	$eid3 = @IPS_GetEventIDByName("Timer3", $scriptIdGartensteuerung);
-	if ($eid3==false)
-		{
-		$eid3 = IPS_CreateEvent(1);
-		IPS_SetParent($eid3, $scriptIdGartensteuerung);
-		IPS_SetName($eid3, "Timer3");
-		}
+    $eid4 = @IPS_GetEventIDByName("Timer4", $scriptIdGartensteuerung);
+    if ($eid4==false)
+        {
+        $eid4 = IPS_CreateEvent(1);
+        IPS_SetParent($eid4, $scriptIdGartensteuerung);
+        IPS_SetName($eid4, "Timer4");
+        }
 
-	$eid4 = @IPS_GetEventIDByName("Timer4", $scriptIdGartensteuerung);
-	if ($eid4==false)
-		{
-		$eid4 = IPS_CreateEvent(1);
-		IPS_SetParent($eid4, $scriptIdGartensteuerung);
-		IPS_SetName($eid4, "Timer4");
-		}
-
-	/* UpdateTimer übernimmt das Minutenupdate bei der Giesszeit und gleichzeitig auch das Umschalten zwischen den Giesskreisen */
-	$eid5 = @IPS_GetEventIDByName("UpdateTimer", $scriptIdGartensteuerung);
-	if ($eid5==false)
-		{
-		$eid5 = IPS_CreateEvent(1);
-		IPS_SetParent($eid5, $scriptIdGartensteuerung);
-		IPS_SetName($eid5, "UpdateTimer");
-		IPS_SetEventCyclic($eid5, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 1 /* Alle Minuten */);
-		}
+    if ($GartensteuerungConfiguration["Configuration"]["Irrigation"]=="ENABLED")
+        {
+        /* Giessstopp Timer einschalten */
+        IPS_SetEventActive($eid2,true);
+        IPS_SetEventActive($eid2m,true);
+        }
+    else    
+        {
+        IPS_SetEventActive($eid2,false);
+        IPS_SetEventActive($eid2m,false);
+        IPS_SetEventActive($eid3,false);
+        IPS_SetEventActive($eid4,false);
+        IPS_SetEventActive($eid5,false);
+        }
 
     /* Alte Timer loeschen, damit sie nicht doppelt vorkommen, zumindest ein Timer muss aktiv sein damit Gartensteuerung zum ersten mal aufgerufen wird */
     $deltimerID = @IPS_GetEventIDByName("Timer2", $scriptIdGartensteuerung);	
@@ -397,8 +413,6 @@
         echo "Timer Event \"Timer2\" noch vorhanden : ".$deltimerID."   -> loeschen.\n";
         IPS_DeleteEvent($deltimerID);
         }
-    IPS_SetEventActive($eid2,true);
-    IPS_SetEventActive($eid2m,true);
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -456,39 +470,46 @@
 			{
 			echo "      TabItem ID ".$tabItem." nicht mehr vorhanden.\n";
 			}	
-		echo "        erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon); /* Autosteuerung Haeuschen */
-		echo "        erzeugt Split TabItem :".$tabItem." mit Name ".$WFC10_TabName." in ".$WFC10_TabPaneItem." und darunter die Items Left und Right.\n";
-		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName,     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 
-		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryIdLeft,  10);
-		CreateLinkByDestination('GiessKreis', $GiessKreisID, $categoryIdLeft,  20);
-		CreateLinkByDestination('GiessStartzeitpunkt', $GiessKonfigID, $categoryIdLeft,  30); 	
-		CreateLinkByDestination('GiessTime', $GiessTimeID,    $categoryIdLeft,  40);
-		CreateLinkByDestination('GiessTimeRemain', $GiessTimeRemainID,    $categoryIdLeft,  40);
-		CreateLinkByDestination("GiessKreisInfo", $GiessKreisInfoID,    $categoryIdLeft,  50);
-		CreateLinkByDestination("GiessDauerInfo", $GiessDauerInfoID,    $categoryIdLeft,  50);
-				
-		CreateLinkByDestination('GiessCount', $GiessCountID,    $categoryIdLeft,  120);
-		CreateLinkByDestination('GiessCountOffset', $GiessCountOffsetID,    $categoryIdLeft,  125);
-		CreateLinkByDestination('GiessAnlagePrev', $GiessAnlagePrevID,    $categoryIdLeft,  130);
-		CreateLinkByDestination("GiessPause", $GiessPauseID ,    $categoryIdLeft,  140);
-		
-		CreateLinkByDestination('Nachrichten', $input,    $categoryIdRight,  110);
+        /* Webfront für Giessanlage anlegen */
+        if ($GartensteuerungConfiguration["Configuration"]["Irrigation"]=="ENABLED")
+            {
+            echo "        erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
+            CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon); /* Autosteuerung Haeuschen */
+            echo "        erzeugt Split TabItem :".$tabItem." mit Name ".$WFC10_TabName." in ".$WFC10_TabPaneItem." und darunter die Items Left und Right.\n";
+            CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName,     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+            CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryIdLeft,  10);
+            CreateLinkByDestination('GiessKreis', $GiessKreisID, $categoryIdLeft,  20);
+            CreateLinkByDestination('GiessStartzeitpunkt', $GiessKonfigID, $categoryIdLeft,  30); 	
+            CreateLinkByDestination('GiessTime', $GiessTimeID,    $categoryIdLeft,  40);
+            CreateLinkByDestination('GiessTimeRemain', $GiessTimeRemainID,    $categoryIdLeft,  40);
+            CreateLinkByDestination("GiessKreisInfo", $GiessKreisInfoID,    $categoryIdLeft,  50);
+            CreateLinkByDestination("GiessDauerInfo", $GiessDauerInfoID,    $categoryIdLeft,  50);
+                    
+            CreateLinkByDestination('GiessCount', $GiessCountID,    $categoryIdLeft,  120);
+            CreateLinkByDestination('GiessCountOffset', $GiessCountOffsetID,    $categoryIdLeft,  125);
+            CreateLinkByDestination('GiessAnlagePrev', $GiessAnlagePrevID,    $categoryIdLeft,  130);
+            CreateLinkByDestination("GiessPause", $GiessPauseID ,    $categoryIdLeft,  140);
+            
+            CreateLinkByDestination('Nachrichten', $input,    $categoryIdRight,  110);
+            }
 
 		/* zusaetzliches Webfront Tab für Statistik Auswertungen */
 
-		$categoryIdLeft0  = CreateCategory('Left0',  $categoryId_WebFrontAdministrator, 10);
-		$categoryIdRight0 = CreateCategory('Right0', $categoryId_WebFrontAdministrator, 20);
-		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."0",           $WFC10_TabPaneItem,    100,     "Statistik",     "Rainfall", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."0".'_Left',   $tabItem."0",   10, '', '', $categoryIdLeft0   /*BaseId*/, 'false' /*BarBottomVisible*/);
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."0".'_Right',  $tabItem."0",   20, '', '', $categoryIdRight0  /*BaseId*/, 'false' /*BarBottomVisible*/);
-		CreateLinkByDestination("Regenmengenkalender", $StatistikBox1ID ,    $categoryIdLeft0,  140);
-		CreateLinkByDestination("Regendauerkalender", $StatistikBox2ID ,    $categoryIdLeft0,  140);
-		CreateLinkByDestination("Regenereignisse", $StatistikBox3ID ,    $categoryIdRight0,  150);
-
+        if ($GartensteuerungConfiguration["Configuration"]["Statistics"]=="ENABLED")
+            {
+            $categoryIdLeft0  = CreateCategory('Left0',  $categoryId_WebFrontAdministrator, 10);
+            $categoryIdRight0 = CreateCategory('Right0', $categoryId_WebFrontAdministrator, 20);
+            CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."0",           $WFC10_TabPaneItem,    100,     "Statistik",     "Rainfall", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."0".'_Left',   $tabItem."0",   10, '', '', $categoryIdLeft0   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."0".'_Right',  $tabItem."0",   20, '', '', $categoryIdRight0  /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateLinkByDestination("Regenmengenkalender", $StatistikBox1ID ,    $categoryIdLeft0,  140);
+            CreateLinkByDestination("Regendauerkalender", $StatistikBox2ID ,    $categoryIdLeft0,  140);
+            CreateLinkByDestination("Regenereignisse", $StatistikBox3ID ,    $categoryIdRight0,  150);
+            }
 		}
 
 	ReloadAllWebFronts(); /* es wurde das Gartensteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */

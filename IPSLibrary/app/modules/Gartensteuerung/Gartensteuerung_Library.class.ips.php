@@ -104,6 +104,7 @@ class Gartensteuerung
 		
 	public function __construct($starttime=0,$starttime2=0,$debug=false)
 		{
+		$this->debug=$debug;
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		if (!isset($moduleManager)) 
 			{
@@ -114,53 +115,69 @@ class Gartensteuerung
 		$this->categoryId_Auswertung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
 		$this->categoryId_Register  	= CreateCategory('Gartensteuerung-Register', $CategoryIdData, 200);
         $this->categoryId_Statistiken	= CreateCategory('Statistiken',   $CategoryIdData, 200);
-        echo "Gartensteuerung Kategorie Data ist : ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
-        echo "Gartensteuerung Kategorie Data.Gartensteuerung-Register ist : ".$this->categoryId_Register."   (".IPS_GetName($this->categoryId_Register).")\n";
         
 		$this->GiessTimeID	            = @IPS_GetVariableIDByName("GiessTime", $this->categoryId_Auswertung); 
 		$this->GiessDauerInfoID	        = @IPS_GetVariableIDByName("GiessDauerInfo",$this->categoryId_Auswertung);
-		//echo "GiesstimeID ist ".$this->GiessTimeID."\n";
-
+		
+        /* Statistikmodul */
 	    $this->StatistikBox1ID			= @IPS_GetVariableIDByName("Regenmengenkalender"   , $this->categoryId_Statistiken); 
 	    $this->StatistikBox2ID			= @IPS_GetVariableIDByName("Regendauerkalender"   , $this->categoryId_Statistiken); 
 	    $this->StatistikBox3ID			= @IPS_GetVariableIDByName("Regenereignisse" , $this->categoryId_Statistiken);   
 
 		$this->GartensteuerungConfiguration=$this->setGartensteuerungConfiguration();
         
-        echo "-------\n";
+        if ($this->debug)
+            {
+            echo "Gartensteuerung Kategorie Data ist : ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
+            echo "Gartensteuerung Kategorie Data.Gartensteuerung-Register ist : ".$this->categoryId_Register."   (".IPS_GetName($this->categoryId_Register).")\n";
+            //echo "GiesstimeID ist ".$this->GiessTimeID."\n";
+            echo "-------\n";
+            }        
 		$object2= new ipsobject($CategoryIdData);
 		$object3= new ipsobject($object2->osearch("Nachricht"));
 		$NachrichtenInputID=$object3->osearch("Input");
 		$this->log_Giessanlage=new Logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
 
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-		$this->debug=$debug;
 		$endtime=time();
 		if ($starttime==0)  { $starttime=$endtime-60*60*24*2; }  /* die letzten zwei Tage Temperatur*/
 		if ($starttime2==0) { $starttime2=$endtime-60*60*24*10; }  /* die letzten 10 Tage Niederschlag*/
 
 		/* getConfiguration */
         $this->categoryRegisterID = $this->getCategoryRegisterID();
-		$this->getConfig_aussentempID();
-		$this->variableID = $this->getConfig_raincounterID();           // benötigt categoryRegisterID
-		$Server=$this->getConfig_RemoteAccess_Address();
+		//$this->variableTempID = $this->getConfig_aussentempID();                                // wenn keine Konfig vorhanden wird false gemeldet
+		//$this->variableID = $this->getConfig_raincounterID();           // benötigt categoryRegisterID, wenn keine Konfig vorhanden wird false gemeldet
+        $this->variableTempID   = $this->GartensteuerungConfiguration["Configuration"]["AussenTemp"];
+        $this->variableID       = $this->GartensteuerungConfiguration["Configuration"]["RainCounter"];
+		$Server=$this->getConfig_RemoteAccess_Address();                // wenn keine Konfig vorhanden wird false gemeldet
 
 		if ($this->debug)
 			{
 			echo"--------Class Construct Giessdauerberechnung:\n";
 			}
-		If ($Server=="")
+        $this->tempwerteLog = array();
+        $this->tempwerte    = array();
+        $this->werteLog     = array();
+        $this->werte        = array();
+
+		If ( ($Server=="") || ($Server==false) )
 			{
-  			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			$this->tempwerteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableTempID, $starttime, $endtime,0);		
-	   		$this->tempwerte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);	/* Tageswerte agreggiert */
-			$this->werteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
-		   	$this->werte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableID, 1, $starttime2, $endtime,0);	/* Tageswerte agreggiert */
+  			//$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];             // lokaler ArchiveHandler definiert
+            if ($this->variableTempID)
+                {
+			    $this->tempwerteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableTempID, $starttime, $endtime,0);		
+	   		    $this->tempwerte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);	/* Tageswerte agreggiert */
+                }
+            if ($this->variableID)
+                {
+			    $this->werteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
+		   	    $this->werte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableID, 1, $starttime2, $endtime,0);	/* Tageswerte agreggiert */
+                }
 			}
 		else
 			{
 			$rpc = new JSONRPC($Server);
-			$this->archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+			$this->archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];         // lokaler ArchiveHandler wird vom Remote Hander überschrieben
 			$this->tempwerteLog = $rpc->AC_GetLoggedValues($this->archiveHandlerID, $this->variableTempID, $starttime, $endtime,0);		
    			$this->tempwerte = $rpc->AC_GetAggregatedValues($this->archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);
 			$this->werteLog = $rpc->AC_GetLoggedValues($this->archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
@@ -290,11 +307,11 @@ class Gartensteuerung
 
     /* von CustomComponents die Counter Category finden */
 	
-     public function getCategoryRegisterID()
+     public function getCategoryRegisterID($find="Counter")
         {
         $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
         $CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-        return(@IPS_GetObjectIDByName("Counter-Auswertung",$CategoryIdData));
+        return(@IPS_GetObjectIDByName($find."-Auswertung",$CategoryIdData));
         }               
 
 	/******************************************************************
@@ -304,22 +321,40 @@ class Gartensteuerung
 	 *
 	 ***************************************************************************/
 
-	function getConfig_aussentempID()
+	function getConfig_aussentempID($config=false,$debug=false)
 		{
-		if ( isset($this->GartensteuerungConfiguration["AUSSENTEMP"])==true)
+        if ($debug || $this->debug) echo "getConfig_aussentempID aufgerufen.\n";
+        if ($config===false) $Configuration = $this->GartensteuerungConfiguration;
+        else $Configuration = $config;
+
+		if ( isset($Configuration["AussenTemp"])==true) $Configuration["AUSSENTEMP"]=$Configuration["AussenTemp"];
+		if ( isset($Configuration["Aussentemp"])==true) $Configuration["AUSSENTEMP"]=$Configuration["Aussentemp"];                
+		if ( (isset($Configuration["AUSSENTEMP"])==true) && (($Configuration["AUSSENTEMP"]) !== false) )
 			{
-			$this->variableTempID=$this->GartensteuerungConfiguration["AUSSENTEMP"];
+            /* wenn die Variable in der Config angegeben ist diese nehmen, sonst die eigene Funktion aufrufen */
+    		if ((integer)$Configuration["AUSSENTEMP"]==0) 
+	    		{
+                /* wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!! */
+    			echo "Alternative Erkennung des Tempoeratursensors, String als OID Wert für den AUSSENTEMP angegeben: \"".$Configuration["AUSSENTEMP"]."\". Jetzt in CustomComponents schauen ob vorhanden.\n";
+			    $TempAuswertungID=$this->getCategoryRegisterID("Temperatur");
+                $RegisterTempID=@IPS_GetObjectIDByName($Configuration["AUSSENTEMP"],$TempAuswertungID);
+	    		echo "Check : Temperatur Kategorie   ".$TempAuswertungID."  Temperatur Register  ".$RegisterTempID."\n";
+		    	if ( ($TempAuswertungID==false) || ($RegisterTempID==false) ) $fatalerror=true;
+                $variableTempID=$RegisterTempID;
+                }    
+			else $variableTempID=(integer)$this->GartensteuerungConfiguration["AUSSENTEMP"];
 			}
 		else 
 			{
-            if (function_exists("get_aussentempID")) $this->variableTempID=get_aussentempID();
+            if (function_exists("get_aussentempID")) $variableTempID=get_aussentempID();
             else 
                 {
                 echo "Fehler, keine Configuration für AUSSENTEMP und function get_aussentempID ist auch nicht vorhanden.\n";
                 print_r($this_>GartensteuerungConfiguration);
+                $variableTempID=false;
                 }
 			}
-		return($this->variableTempID); 		
+		return($variableTempID); 		
 		}
 
     /*******************
@@ -340,11 +375,14 @@ class Gartensteuerung
 
 	function getConfig_raincounterID($config=false,$debug=false)
 		{
+        if ($debug || $this->debug) echo "getConfig_raincounterID aufgerufen.\n";            
         if ($config===false) $Configuration = $this->GartensteuerungConfiguration;
         else $Configuration = $config;
 
+		if ( isset($Configuration["RainCounter"])==true) $Configuration["RAINCOUNTER"]=$Configuration["RainCounter"];
+		if ( isset($Configuration["Raincounter"])==true) $Configuration["RAINCOUNTER"]=$Configuration["Raincounter"];
         //$this->RainRegisterIncrementID=0;                         // wird nur mehr beim ersten Mal richtig berechnet, dann ist RAINCOUNTER eine OID
-		if ( isset($Configuration["RAINCOUNTER"])==true)
+		if ( ( isset($Configuration["RAINCOUNTER"])==true) && ($Configuration["RAINCOUNTER"]!==false) )
 			{
             /* wenn die Variable in der Config angegeben ist diese nehmen, sonst die eigene Funktion aufrufen */
     		if ((integer)$Configuration["RAINCOUNTER"]==0) 
@@ -370,23 +408,34 @@ class Gartensteuerung
                 {
                 echo "Fehler, keine Configuration für RAINCOUNTER und function get_raincounterID ist auch nicht vorhanden.\n";
                 print_r($Configuration);
+                $variableID=false;
                 }
 			}
-		return($variableID); 		
+        if (IPS_VariableExists($variableID)) return($variableID); 		
+        else return (false);
 		}
 
+    /* Wenn einmal der RainCounter ermittelt wurde ist diese Funktion nicht mehr notwendig.
+     * nur wenn die OID noch nicht feststeht
+     *
 	function getConfig_rainMeterID($config,$debug=false)
 		{
         $CounterAuswertungID=$this->getCategoryRegisterID();
         $meterID=@IPS_GetObjectIDByName($config["RAINCOUNTER"],$CounterAuswertungID);
 		return($meterID); 		
-		}
+		}  */
 
-	function getConfig_RemoteAccess_Address()
+	function getConfig_RemoteAccess_Address($config=false,$debug=false)
 		{
-		if ( isset($this->GartensteuerungConfiguration["REMOTEACCESSADR"])==true)
+        if ($debug || $this->debug) echo "getConfig_RemoteAccess_Address aufgerufen.\n";     
+        if ($config===false) $Configuration = $this->GartensteuerungConfiguration;
+        else $Configuration = $config;
+
+		if ( isset($Configuration["RemoteAccessAdr"])==true) $Configuration["REMOTEACCESSADR"]=$Configuration["RemoteAccessAdr"];
+		if ( isset($Configuration["Remoteaccessadr"])==true) $Configuration["REMOTEACCESSADR"]=$Configuration["Remoteaccessadr"];                  
+		if ( (isset($Configuration["REMOTEACCESSADR"])==true)  && ($Configuration["REMOTEACCESSADR"]!==false) )
 			{
-			$Server=$this->GartensteuerungConfiguration["REMOTEACCESSADR"];
+			$Server=$Configuration["REMOTEACCESSADR"];
 			}
 		else 
 			{			
@@ -395,6 +444,7 @@ class Gartensteuerung
                 {
                 echo "Fehler, keine Configuration für REMOTEACCESSADR und function get_RemoteAccess_Address ist auch nicht vorhanden.\n";
                 print_r($this->GartensteuerungConfiguration);
+                $Server=false;
                 }
 			}
 		return ($Server);
@@ -431,13 +481,55 @@ class Gartensteuerung
         {
         $config=array();
         if ((function_exists("getGartensteuerungConfiguration"))===false) IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');				
-        if (function_exists("getGartensteuerungConfiguration"))	$configInput = getGartensteuerungConfiguration();      
+        if (function_exists("getGartensteuerungConfiguration"))	$configInput = getGartensteuerungConfiguration();  
 
+        /* vernünftiges Logdirectory aufsetzen */    
+        configfileParser($configInput, $config, ["LogDirectory" ],"LogDirectory" ,"/Gartensteuerung/");  
+        $dosOps = new dosOps();
+        $systemDir     = $dosOps->getWorkDirectory(); 
+        if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
+        $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
+        configfileParser($configInput, $configConf, ["Configuration","Config","configuration","CONFIG","CONFIGURATION"],"Configuration" ,null);  
+        if (($configConf["Configuration"] != null) && (count($configConf["Configuration"])>0))          //sizeof ist zu spezialisisert
+            {
+            /* Sub Configuration abarbeiten */
+            echo "setGartensteuerungConfiguration: moderne Darstellung der Konfiguration mit Unterpunkt Configuration: \n";
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["STATISTICS","Statistics","statistics"],"Statistics" ,"ENABLED");  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["IRRIGATION","Irrigation","irrigation"],"Irrigation" ,"ENABLED");  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTER","Raincounter","RainCounter","raincounter"],"RainCounter" ,false);  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTERHISTORY","Raincounterhistory","RainCounterHistory","raincounterhistory"],"RainCounterHistory",null);
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["AUSSENTEMP","Aussentemp","AusenTemp","aussentemp"],"AussenTemp",null);
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["REMOTEACCESSADR","RemoteAccessAdr","Remoteaccessadr","remoteaccessadr"],"RemoteAccessAdr",null);
 
+            $config["Configuration"]["RainCounter"]=$this->getConfig_raincounterID($config["Configuration"], true);
+            $config["Configuration"]["AussenTemp"]=$this->getConfig_aussentempID($config["Configuration"], true);
+            $config["Configuration"]["RemoteAccessAdr"]=$this->getConfig_RemoteAccess_Address($config["Configuration"], true);   
 
-        $config = $configInput;
-        $config["RAINCOUNTER"]=$this->getConfig_raincounterID($config, $debug);
-        $config["RAINMETER"]  =$this->getConfig_rainMeterID($config);
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREISE","Kreise","kreise"],"KREISE",0);
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["TEMPERATUR-MITTEL","TemperaturMittel","Temperaturmittel"],"TEMPERATUR-MITTEL",19);
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["TEMPERATUR-MAX","TemperaturMax","Temperaturmax"],"TEMPERATUR-MAX",28);
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["REGEN48H","Regen48h"],"REGEN48H",3);
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["REGEN10T","Regen10t"],"REGEN10T",20);
+
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["PAUSE","Pause","pause"],"PAUSE",2);
+
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS1","Kreis1"],"KREIS1","Kreis1:");       // max 6 Giesskreise, aktuell hard coded
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS2","Kreis2"],"KREIS2","Kreis2:");
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS3","Kreis3"],"KREIS3","Kreis3:");
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS4","Kreis4"],"KREIS4","Kreis4:");
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS5","Kreis5"],"KREIS5","Kreis5:");
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS6","Kreis6"],"KREIS6","Kreis6:");
+
+            }
+        else 
+            {
+            $configInput["RAINCOUNTER"]=$this->getConfig_raincounterID($configInput, $debug);
+            $config = $configInput;
+            $config["Configuration"] = $configInput;
+            }
+        echo "setGartensteuerungConfiguration: Ergebnis\n";
+        print_r($config);
+        //$config["RAINMETER"]  =$this->getConfig_rainMeterID($config);
         return ($config);   
         }
 
