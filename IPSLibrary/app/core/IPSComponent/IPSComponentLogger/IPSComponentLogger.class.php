@@ -928,10 +928,10 @@ class Logging
         {
         if (isset ($this->installedmodules["DetectMovement"]))
             {
-            /* Detect Movement kann auch Sensorwerte agreggieren */
+            /* Detect Movement kann auch Counterwerte agreggieren */
             IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
             IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-            //$this->DetectHandler = new DetectSensorHandler();                            // zum Beispiel für die Evaluierung der Mirror Register
+            $this->DetectHandler = new DetectCounterHandler();                            // zum Beispiel für die Evaluierung der Mirror Register
             }
 
         $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
@@ -1238,7 +1238,7 @@ class Logging
         elseif (isset ($this->installedmodules["DetectMovement"]) ) 
             {
             echo "Unknown DetectHandler.\n";
-            IPSLogger_Err(__file__, "Logging::getVariableName, unknown DetectHandler.");
+            IPSLogger_Err(__file__, "Logging::getVariableName, unknown DetectHandler for $variable $variablename.");
             }
         else echo "DetectMovement Module not installed.\n";
 

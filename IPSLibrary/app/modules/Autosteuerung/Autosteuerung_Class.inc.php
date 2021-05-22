@@ -155,27 +155,31 @@ class AutosteuerungHandler
 			self::$scriptID=$scriptID;
 		    }
 
-        /* Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler */
+        /* Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler 
+         * behandelt das LogDirectory und HeatControl aus Autosteuerung_Setup
+         *
+         */
 
         private function set_Configuration()
             {
             $config=array();
             if ((function_exists("Autosteuerung_Setup"))===false) IPSUtils_Include ('Autosteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Autosteuerung');				
-            if (function_exists("Autosteuerung_Setup"))
-                {
-            	$configInput = Autosteuerung_Setup();
-                configfileParser($configInput, $config, ["LogDirectory" ],"LogDirectory" ,"/Autosteuerung/");  
-                configfileParser($configInput, $config, ["HeatControl" ],"HeatControl" ,null);  
-                $dosOps = new dosOps();
-               	$systemDir     = $dosOps->getWorkDirectory(); 
-                if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
-                $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
-                $configInput=$config;
-                configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["EVENT_IPSHEAT","SwitchName" ],"SwitchName" ,null);  
-                configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Module" ],"Module" ,"IPSHeat");  
-                configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Type" ],"Type" ,"Switch");  
-                configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["AutoFill","Autofill","autofill","AUTOFILL" ],"AutoFill" ,"Aus");          //Default bedeutet Heizung Aus nach einem Update, ReInstall
-                }
+            if (function_exists("Autosteuerung_Setup")) $configInput = Autosteuerung_Setup();
+            else $configInput=array();
+
+            /* vernünftiges Logdirectory aufsetzen */    
+            configfileParser($configInput, $config, ["LogDirectory" ],"LogDirectory" ,"/Autosteuerung/");  
+            $dosOps = new dosOps();
+            $systemDir     = $dosOps->getWorkDirectory(); 
+            if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
+            $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
+            configfileParser($configInput, $config, ["HeatControl" ],"HeatControl" ,null);  
+
+            $configInput=$config;
+            configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["EVENT_IPSHEAT","SwitchName" ],"SwitchName" ,null);  
+            configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Module" ],"Module" ,"IPSHeat");  
+            configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Type" ],"Type" ,"Switch");  
+            configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["AutoFill","Autofill","autofill","AUTOFILL" ],"AutoFill" ,"Aus");          //Default bedeutet Heizung Aus nach einem Update, ReInstall
             //print_r($config);
             return ($config);
             }

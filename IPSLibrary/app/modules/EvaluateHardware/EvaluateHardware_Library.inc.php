@@ -427,8 +427,10 @@ class TopologyLibraryManagement
         $i=0;
         $onlyOne=true;
         $parent=$this->topID;
+        echo "sortTopologyInstances aufgerufen: Input ist die Devicelist mit ".count($deviceList)." Geraete Eintraegen.\n";
         foreach ($deviceList as $name => $entry)
             {
+            //echo "$i   $name\n";
             if (isset($entry["Instances"]))
                 {
                 $instances=$entry["Instances"];

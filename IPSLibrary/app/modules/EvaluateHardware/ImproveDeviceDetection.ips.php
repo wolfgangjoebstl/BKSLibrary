@@ -21,7 +21,7 @@
      *
      * verbessert und überprüft die aktuelle Systemkonfiguration
      * mit dem Durchlauf des Scripts sollten Anomalien sichtbar gemacht werden.
-     *
+     * in der DetectDeviceHandler Configuration werden zusätzliche neue Register angelegt.
      *
      */
 
@@ -79,11 +79,15 @@
         IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 
     	$debug=false;
+        echo "DetectMovement Module installiert. Class TestMovement für Auswertungen verwenden:\n";
 		$testMovement = new TestMovement($debug);
+        //echo "--------\n";
         $eventListforDeletion = $testMovement->getEventListforDeletion();
         if (count($eventListforDeletion)>0) 
             {
-            echo "Es müssen Events gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
+            echo "Ergebnis TestMovement construct: Es müssen ".count($eventListforDeletion)." Events in der Config Datei \"IPSMessageHandler_GetEventConfiguration\" gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
+            echo "                                 und es müssen auch diese Events hinterlegt beim IPSMessageHandler_Event geloescht werden \"Bei Änderung Event Ungültig\".\n";
+            print_R($eventListforDeletion);
             }
         else 
             {
@@ -259,12 +263,11 @@
         $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
 
         echo "   Die Topologie Instanzen aus dem IP Symcon Inventory einlesen.\n";
-
         /* die Konfiguration herauslesen und eventuell hinsichtlich Topologie ergänzen */
         $topology       = $DetectDeviceHandler->Get_Topology();
         echo "   Die Channel EventList aus dem DetectDeviceHandler einlesen.\n";
         $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();        
-        echo "   Die Device EventList aus dem DetectDeviceListHandler einlesen.\n";
+        echo "   Die Device EventList aus dem DetectDeviceListHandler für die Geräte einlesen.\n";
         $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto(); 
 
         /* aus der devicelist von Configuration::EvaluateHardware_Include die Devices registrieren, es fehlt die device OID aus der Topologie
@@ -308,7 +311,7 @@
                         {
                         /* wenn schon angelegt die DeviceList() auf die richtige Topology setzen */
                         $InstanzID = $deviceInstances[$name];    
-                        echo str_pad($i,4)."Eine Topology Device Instanz mit dem Namen $name unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es bereits und lautet: ". $InstanzID."   \n";
+                        if ($debug) echo str_pad($i,4)."Eine Topology Device Instanz mit dem Namen $name unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es bereits und lautet: ". $InstanzID."   \n";
                         $room="";
                         $writeChannels=false;
                         $writeDevices=false;
@@ -327,16 +330,20 @@
                                     $writeChannels=true;
                                     }
                                 }
-                            echo "     Channel ".$instance["OID"]." (".IPS_GetName($instance["OID"]).") mit Configuration :    $config  \n";
+                            if ($debug) echo "     Channel ".$instance["OID"]." (".IPS_GetName($instance["OID"]).") mit Configuration :    $config  \n";
                             }
-                        echo "     Raum \"$room\" in der Config der Channel Instances gefunden.\n";
+                        if ($debug) echo "     Raum \"$room\" in der Config der Channel Instances gefunden.\n";
                         if (isset($deviceEventList[$InstanzID]))
                             {
                             //print_r($deviceEventList[$InstanzID]);
                             if ($room != $deviceEventList[$InstanzID][1]) 
                                 {
-                                echo "      !!!Fehler, die Channels und das Device sind in unterschiedlichen Räumen: \"$room\" \"".$deviceEventList[$InstanzID][1]."\" Zweiten Begriff übernehmen.\n";
-                                $room = $deviceEventList[$InstanzID][1];
+                                if (($deviceEventList[$InstanzID][1])!="")
+                                    {
+                                    echo "      !!!Fehler, die Channels und das Gerät $InstanzID (".IPS_GetName($InstanzID).") sind in unterschiedlichen Räumen: \"$room\" \"".$deviceEventList[$InstanzID][1]."\" Zweiten Begriff übernehmen.\n";
+                                    $room = $deviceEventList[$InstanzID][1];
+                                    }
+                                else echo "     !!!Fehler, Definition Raum für das Gerät $InstanzID (".IPS_GetName($InstanzID).") ist nicht vollstaendig.\n";
                                 $writeChannels=true;
                                 }
                             }
@@ -345,7 +352,7 @@
                             //echo "Vergleiche ".IPS_GetParent($InstanzID)." mit ".$roomInstances[$room]."\n";
                             if ( IPS_GetParent($InstanzID) != $roomInstances[$room])
                                 {
-                                echo "    -> Instanz Room vorhanden. Parent auf $room setzen.\n";
+                                if ($debug) echo "    -> Instanz Room vorhanden. Parent auf $room setzen.\n";
                                 //IPS_SetParent($InstanzID,$roomInstances[$room]);
                                 }
                             }
@@ -353,7 +360,7 @@
                             {
                             if ( IPS_GetParent($InstanzID) != $devicegroupInstances[$room])
                                 {
-                                echo "    -> Instanz DeviceGroup vorhanden. Parent $room setzen.\n";
+                                if ($debug) echo "    -> Instanz DeviceGroup vorhanden. Parent $room setzen.\n";
                                 //IPS_SetParent($InstanzID,$devicegroupInstances[$room]);
                                 }
                             }
@@ -368,7 +375,7 @@
                         echo "Neue geplante Konfiguration wäre : $newconfig \n";
                         IPS_SetConfiguration($InstanzID,$newconfig);
                         */
-                        echo "   TOPD_SetDeviceList($InstanzID,".json_encode($instances).")\n";
+                        if ($debug) echo "   TOPD_SetDeviceList($InstanzID,".json_encode($instances).")\n";
                         if (isset($installedModules["DetectMovement"]))  
                             {
                             //echo "     RegisterEvent DetectDeviceListHandler $InstanzID,'Topology',$room,''\n";

@@ -64,6 +64,9 @@
 	$debug=false;
     $startexec=microtime(true);     /* Laufzeitmessung */
 
+    // max. Scriptlaufzeit definierensonst stoppt vorher wegen langsamer Kamerainstallation
+    ini_set('max_execution_time', 500);
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 	IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");

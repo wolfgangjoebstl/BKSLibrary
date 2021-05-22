@@ -13,7 +13,10 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-$startexec=microtime(true);
+    $startexec=microtime(true);
+    
+    // max. Scriptlaufzeit definieren
+    ini_set('max_execution_time', 500);
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 

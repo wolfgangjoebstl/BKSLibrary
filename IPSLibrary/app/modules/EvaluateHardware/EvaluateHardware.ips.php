@@ -42,9 +42,11 @@
  * wenn DetectMovement und die TopologyMappingLibrary instaliert ist, wird eine Topologie aufgebaut.
  *
  */
+    // max. Scriptlaufzeit definieren
+    ini_set('max_execution_time', 500);
 
-$ExecuteExecute=false;          // false: Execute routine gesperrt, es wird eh immer die Timer Routine aufgerufen. Ist das selbe !
-$startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
+    $ExecuteExecute=false;          // false: Execute routine gesperrt, es wird eh immer die Timer Routine aufgerufen. Ist das selbe !
+    $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
 
 /******************************************************
  *
@@ -246,8 +248,8 @@ IPS_SetEventActive($tim1ID,true);
             */
 
             $topology            = $DetectDeviceHandler->Get_Topology();
-            $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();        
-            $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();        
+            $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
+            $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();          // alle Geräte
             //print_r($topology);
             
             echo "CreateTopologyInstances wird aufgerufen:\n";
@@ -314,7 +316,7 @@ IPS_SetEventActive($tim1ID,true);
         }
 
 /* wenn DetectMovement installiert ist zusaetzlich zwei Konfigurationstabellen evaluieren
- *
+ * am Ende muss DetectDeviceHandler Configuration befüllt sein.
  *
  */
 
@@ -323,19 +325,50 @@ if (isset($installedModules["DetectMovement"]))
     $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
     echo "\n";
+    echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
 	echo "=======================================================================\n";
-	echo "DetectMovement Summenregister suchen und evaluieren :\n";
+	echo "Detect_______ Summen und Mirrorregister suchen und registrieren :\n";
     echo "\n";
+	echo "DetectContact Kontakt Register hereinholen:\n";								
+	$DetectContactHandler = new DetectContactHandler();
+	$groups=$DetectContactHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+	$events=$DetectContactHandler->ListEvents();
+    echo "----------------Liste der DetectContact Events durchgehen:\n";
+	foreach ($events as $oid => $typ)
+		{
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$moid=$DetectContactHandler->getMirrorRegister($oid);
+		if ($moid !== false) 
+            {
+            echo "   *** register Event $moid: $typ\n";
+            $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Contact');		
+            }
+		}
+    echo "----------------Liste der DetectContact Groups durchgehen:\n";
+    print_r($groups); 
+	foreach ($groups as $group => $entry)
+		{
+		$soid=$DetectContactHandler->InitGroup($group);
+		echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
+		$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Contact');		
+		}	
+
 	echo "DetectMovement Bewegungsregister hereinholen:\n";								
 	$DetectMovementHandler = new DetectMovementHandler();
 	$groups=$DetectMovementHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
 	$events=$DetectMovementHandler->ListEvents();
+    echo "----------------Liste der DetectMovement Events durchgehen:\n";
 	foreach ($events as $oid => $typ)
 		{
 		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
 		$moid=$DetectMovementHandler->getMirrorRegister($oid);
-		if ($moid !== false) $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Movement');		
+		if ($moid !== false) 
+            {
+            echo "   *** register Event $moid: $typ\n";
+            $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Movement');		
+            }
 		}
+    echo "----------------Liste der DetectMovement Groups durchgehen:\n";        
     print_r($groups); 
 	foreach ($groups as $group => $entry)
 		{
@@ -351,19 +384,21 @@ if (isset($installedModules["DetectMovement"]))
     $eventTempConfig=$DetectTemperatureHandler->Get_EventConfigurationAuto();    	
 	$groups=$DetectTemperatureHandler->ListGroups("Temperatur");        /* Type angeben damit mehrere Gruppen aufgelöst werden können */
 	$events=$DetectTemperatureHandler->ListEvents();
+    echo "----------------Liste der DetectTemperature Events durchgehen:\n";    
 	foreach ($events as $oid => $typ)
 		{
+        echo "     ".$oid."  ";
 		$moid=$DetectTemperatureHandler->getMirrorRegister($oid);
         if ($moid !== false) 
             {
             $mirror = IPS_GetName($moid);    
             $werte = @AC_GetLoggedValues($archiveHandlerID,$moid, time()-60*24*60*60, time(),1000);
             if ($werte === false) echo "Kein Logging für Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).")\n";
-            if (isset($eventDeviceConfig[$oid])&& isset($eventTempConfig[$oid])) 
+            if ( (isset($eventDeviceConfig[$oid])) && (isset($eventTempConfig[$oid])) )
                 {
                 if (IPS_ObjectExists($oid))
                     {    
-                    echo "     ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75).
+                    echo str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75).
                             json_encode($eventDeviceConfig[$oid])."  ".json_encode($eventTempConfig[$oid])." Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).") Archive Groesse : ".count($werte)."\n";
                     /* check and get mirror register,. It is taken from config file. If config file is empty it is calculated from parent or other inputs and stored afterwards 
                         * Config function DetectDevice follows detecttemperaturehandler
@@ -372,11 +407,18 @@ if (isset($installedModules["DetectMovement"]))
                     $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature',false, true);	        // par 3 config overwrite
                     $DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	/* par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant */
                     }
-                else echo "Fehler, $oid nicht mehr vorhanden aber in config eingetragen.\n";
+                else echo "   -> ****Fehler, $oid nicht mehr vorhanden aber in config eingetragen.\n";
                 }
-            else echo "     ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." ---->   not in config.\n";
+            else 
+                {
+                echo str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." ---->   not in config.";
+                if (isset($eventDeviceConfig[$oid])===false) echo "DetectDeviceHandler->Get_EventConfigurationAuto() ist false  ";
+                if (isset($eventTempConfig[$oid])===false) echo "DetectTemperatureHandler->Get_EventConfigurationAuto() ist false  ";
+                echo "\n";
+		        $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');                     // zumindest einmal in den DeviceHandler übernehmen
+                }
             }
-        else echo "Fehler, Mirror Register für ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." nicht gefunden.\n";
+        else echo "  -> ****Fehler, Mirror Register für ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." nicht gefunden.\n";
 		}
 	print_r($groups);
     //echo "Alle Gruppen durchgehen:\n";

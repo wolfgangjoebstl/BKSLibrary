@@ -329,6 +329,7 @@ Path=Visualization.Mobile.iTunes
 	$webfront_links=array();
     foreach ($config as $type => $configuration)
         {
+        echo "Bearbeite Konfiguration Index $type:\n";            
         switch ($type)
             {
             case "Media":			// war früher in der Config iTunes
@@ -359,12 +360,13 @@ Path=Visualization.Mobile.iTunes
                 foreach ($config["Oe3Player"] as $name => $entry)
                     {	   
                     $tabname="Oe3Player";
-                    echo "$tabname $name\n";
+                    echo "   $tabname $name\n";
                     switch ($entry["TYPE"])
                         {
                         case "OE3":
                             /*CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)*/
                             $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 3, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+                            echo "      Create Oe3 Player Frame \"".$entry["NAME"]."\" ($Oe3PlayerID).\n";                                 
                             SetValue($Oe3PlayerID,'<iframe src="https://oe3.orf.at/player" width="900" height="1200"
                     <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
                     Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
@@ -373,9 +375,9 @@ Path=Visualization.Mobile.iTunes
                             break;
                         case "Widget":
                         case "WIDGET":
-                            echo "Create Widget\n";
                             /*CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)*/
-                            $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 3, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */   
+                            $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 3, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */  
+                            echo "      Create Widget \"".$entry["NAME"]."\" ($Oe3PlayerID).\n";                             
                             break;   
                         case "STROMHEIZUNG":
                             if (isset($entry["LINK"])) $Oe3PlayerID =  $entry["LINK"];
@@ -407,7 +409,8 @@ Path=Visualization.Mobile.iTunes
                         $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["MOBILE"]=false;        
                         }                    
                     $order+=10;
-                    }
+                    }           // ende foreach
+
                 if (isset($config["Configuration"]["Oe3Player"]["SPLIT"])) 
                     {
                     echo "Configuration Data for Oe3Player available:\n";
@@ -545,6 +548,9 @@ Path=Visualization.Mobile.iTunes
 		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["MOBILE"]=true;
         */
         }
+
+	echo "\n";
+	echo "===================================================\n";        
 	echo "Webfront Visualisierungskonfiguration ausgeben:\n"; print_r($webfront_links);
 	
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -630,19 +636,20 @@ Path=Visualization.Mobile.iTunes
 				//print_r($webfront_group);
                 if (array_key_exists("Auswertung",$webfront_group) ) 
                     {
-  			    	echo "**Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";
 					if (array_key_exists("Nachrichten",$webfront_group) )
 						{
+  			    	    echo "**Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." (Index Auswertung und Nachrichten in $Name vorhanden)\n";                            
                         // Kurzfassung, zusammengefasst als function
                         if (isset($webfront_group["Configuration"]))
                             {
                             echo "createSplitPane, Configuration available\n";
                             print_r($webfront_group["Configuration"]);
                             }
-                    	createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator");
+                    	createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator");         // nimmt sich Split Wert aus der $webfront_group Konfiguration
 						}
 					else
 						{	
+  			    	    echo "**Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." (Index Auswertung in $Name vorhanden)\n";                            
 						foreach ($webfront_group as $Group => $webfront_link)           // group ist Auswertung
 							{
                             //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");            // eigenes TabPane für den Netplayer
@@ -1060,7 +1067,7 @@ Path=Visualization.Mobile.iTunes
 
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontSubTab, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontSubTab, 20);
-		echo "createSplitPane, Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+		echo "****createSplitPane, Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
         $hsplit=false;                                      // rechts noch ein zusätzlicher Split
         if (isset($webfront_group["Configuration"]))
             {

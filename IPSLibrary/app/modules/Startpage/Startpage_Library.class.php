@@ -709,7 +709,8 @@
 
             /* Get Topology Liste aus EvaluateHardware_Configuration */
             $DetectDeviceHandler = new DetectDeviceHandler();
-            $topology=$DetectDeviceHandler->Get_Topology();
+            $topology           = $DetectDeviceHandler->Get_Topology();
+            $eventConfiguration = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
 
             /* die Topologie mit den Geräten anreichen:
              *    wir starten mit Name, Parent, Type, OID, Children  
@@ -721,7 +722,7 @@
              * Damit diese Tabelle funktioniert muss der DetDeviceHandler fleissig register definieren
              */
 
-            $topologyPlusLinks=$this->mergeTopologyObjects($topology,IPSDetectDeviceHandler_GetEventConfiguration(),$debug);
+            $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$eventConfiguration,$debug);
 
             if ($debug) 
                 {
@@ -804,13 +805,14 @@
             return ($wert);
             }
 
-        /*
+        /* DEPRECIATED, see DeviceManagementLib
+         *
          * Verbindung der Topologie mit der Object und instamnzen Konfiguration
          * es können jetzt auch mehrstufige hierarchische Gewerke aufgebaut werden
          * zB Weather besteht aus Temperatur und Feuchtigkeit
          */
 
-        function mergeTopologyObjects($topology, $objectsConfig, $debug=false)
+        function mergeTopologyObjectsSP($topology, $objectsConfig, $debug=false)
             {
             if ($debug) echo "mergeTopologyObjects mit informationen aus IPSDetectDeviceHandler_GetEventConfiguration() aufgerufen:\n";
             $text="";                
@@ -1692,35 +1694,42 @@
 
         /********************
          *
-         * Zelle Tabelleneintrag für die Tabelle für Heating, Illustration der Heizungsfunktion
+         * Zelle Tabelleneintrag für die Tabelle für Darstellung der regenmange
          *
          *
          **************************************/
 
 		function showRainmeterWidget($configInput=false,$debug=false)
             {
+            //$debug=true;
+            $startexec=microtime(true); 
             $wert="";
-            if ($configInput===false) $rainConf = $this->getConfigRainmeterWidget(false,$debug);
-            else $rainConf=$this->getConfigRainmeterWidget($configInput,$debug);                               // Config wird im getConfig behandelt, aber dann nicht zurückgegeben
-            if ($debug) echo "showHRainmeterWidget ".json_encode($rainConf)." \n";
+            if ($configInput===false) $rainConfiguration = $this->getConfigRainmeterWidget(false,$debug);
+            else $rainConfiguration=$this->getConfigRainmeterWidget($configInput,$debug);                               // Config wird im getConfig behandelt, aber dann nicht zurückgegeben
+            if ($debug) echo "showHRainmeterWidget ".json_encode($rainConfiguration)." \n";
 
             $wert .= '<table>';
             $wert .= '<tr>'; 
             $wert .= '<td><table>';
 
-            $oid=$rainConf["OID"];
-            $archiveID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-            $variableChanged=IPS_GetVariable($oid)["VariableChanged"];
-            $timeGone=time()-$variableChanged;
-            $startOfToday=mktime(0,0,0,date("m"), date("d"), date("Y"));
-            if ($timeGone<(time()-$startOfToday))                   $addInfo=date("H:i",$variableChanged);
-            elseif ($timeGone<(time()-($startOfToday-7*24*60*60)))  $addInfo=date("D H:i",$variableChanged);
-            elseif ($timeGone<(time()-($startOfToday-60*24*60*60))) $addInfo=date("d.m H:i",$variableChanged); 
-            else                                                    $addInfo=date("d.m.Y H:i",$variableChanged);
-            $wert .= '<tr>';
-            $wert .= '<td>'.GetValueIfFormatted($oid).'</td>';
-            $wert .= '<td>'.$addInfo.'</td>';
-            $wert .= '</tr>';
+            foreach ($rainConfiguration as $index => $rainConf)
+                {
+                switch (strtoupper($rainConf["Type"]))
+                    {
+                    case "RAINREG":
+                        $oid=$rainConf["OID"];
+                        $archiveID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                        $variableChanged=IPS_GetVariable($oid)["VariableChanged"];
+                        $timeGone=time()-$variableChanged;
+                        $startOfToday=mktime(0,0,0,date("m"), date("d"), date("Y"));
+                        if ($timeGone<(time()-$startOfToday))                   $addInfo=date("H:i",$variableChanged);
+                        elseif ($timeGone<(time()-($startOfToday-7*24*60*60)))  $addInfo=date("D H:i",$variableChanged);
+                        elseif ($timeGone<(time()-($startOfToday-60*24*60*60))) $addInfo=date("d.m H:i",$variableChanged); 
+                        else                                                    $addInfo=date("d.m.Y H:i",$variableChanged);
+                        $wert .= '<tr>';
+                        $wert .= '<td>'.GetValueIfFormatted($oid).'</td>';
+                        $wert .= '<td>'.$addInfo.'</td>';
+                        $wert .= '</tr>';
                                     if ($debug) 
                                         {
                                         echo "      ".date("d.m.Y H:i:s",$startOfToday)."\n";
@@ -1752,16 +1761,42 @@
                                             }
                                         }
 
-            /*foreach ($heatingConf["Values"] as $room=>$values)
-                {
-                $wert .= '<tr>';
-                $wert .= '<td>'.$room.'</td>';
-                foreach ($values as $value) $wert .= '<td>'.GetValueIfFormatted($value).'</td>';
-                $wert .= '</tr>';
-                }*/ 
-            $wert .= '<td>'.json_encode($rainConf).'</td><td>'.'</td></tr>';
-            $wert .= '</table></td>';   
-            $wert .= '</tr></table>'; 
+                        /*foreach ($heatingConf["Values"] as $room=>$values)
+                            {
+                            $wert .= '<tr>';
+                            $wert .= '<td>'.$room.'</td>';
+                            foreach ($values as $value) $wert .= '<td>'.GetValueIfFormatted($value).'</td>';
+                            $wert .= '</tr>';
+                            }*/ 
+                        $wert .= '<td>'.json_encode($rainConf).'</td><td>'.'</td></tr>';
+                        $wert .= '</table></td>';   
+                        $wert .= '</tr>';
+                        break;
+                    case "RAINEVENT":
+                        if (isset($this->installedModules["Gartensteuerung"])) 
+                            {
+                            if ($debug) echo "Modul Gartensteuerung verfügbar. Routinen aus der Library verwenden.\n";
+                            IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');                
+                            $gartensteuerung = new Gartensteuerung();   // default, default, debug=false
+                            /* listRainEvents liefert die regenereignisse als Array , writeRainEventsHtml schreibt diese als table */
+                            $wert .= '<tr><td>'.$rainConf["Name"].'</td></tr>'; 
+                            $wert .= '<tr><td>';                
+                            if (strtoupper($rainConf["OID"])=="DEFAULT") $wert .= $gartensteuerung->writeRainEventsHtml($gartensteuerung->listRainEvents($rainConf["Count"]));          // ist in einen table eingebettet
+                            else                                         $wert .= $gartensteuerung->writeRainEventsHtml($gartensteuerung->listRainEvents($rainConf["Count"],$rainConf["OID"]));          // ist in einen table eingebettet
+                            $wert .= '</td>';   
+                            $wert .= '</tr>';
+                            }
+                        else echo "Modul Gartensteuerung NICHT verfügbar. Routinen aus der Library können nicht verwendet werden.\n";
+                        break;
+                    default:
+                        echo "Do not know !\n";
+                        break;
+                    }
+                }
+
+            $wert .= '</table>'; 
+            if ($debug) echo "showRainmeterWidget Laufzeit ".(time()-$startexec)." Sekunden.\n";
+
             return ($wert);                                
             }
 
@@ -1835,47 +1870,18 @@
             configfileParser($rainConf, $config, ["Config","Configuration","config","CONFIGURATION"],"Config",null);         //wenn config fehlt nur Values
             $rainConf=$config["Config"]; $config=array();
             configfileParser($rainConf, $config, ["OID","Oid","oid"],"OID",false);                 //configfile als tableEntry vereinheitlichen, überprüfen, Wert für OID muss vorhanden sein und das Objekt erreichbar
-            /*
-            configfileParser($heatingConf, $config, ["Config","Configuration","config","CONFIGURATION"],"Config",["Values" => array()]);         //wenn config fehlt nur Values
-            $heatingConf=$config["Config"]; $config=array();
-            configfileParser($heatingConf, $config, ["Values","VALUES"],"Values",array());
-            configfileParser($heatingConf, $config, ["Auto","AUTO"],"Auto",null);
-            if ($config["Auto"] != null) 
+            if ($config["OID"]!==false) $rainconf["Regen"]=$rainConf;
+            $config=array();
+            foreach ($rainConf as $index => $regsConf)
                 {
-                if (isset($this->installedModules["DetectMovement"])) 
-                    {
-                    if ($debug) echo "DetectMovement installiert, automatische Erkennung verwenden\n";    
-                    $DetectTemperatureHandler  = new DetectTemperatureHandler();	
-                    $DetectHeatSetHandler      = new DetectHeatSetHandler();	
-                    $DetectHeatControlHandler  = new DetectHeatControlHandler();	
-                    $configurationSet = $DetectHeatSetHandler->Get_EventConfigurationAuto();
-                    $configurationTemp = $DetectTemperatureHandler->Get_EventConfigurationAuto();
-                    $configurationLevel = $DetectHeatControlHandler->Get_EventConfigurationAuto();
-                    $fullpicture=array();
-                    foreach ($configurationLevel as $oid => $entry) 
-                        {
-                        $fullpicture[IPS_GetParent($oid)]["Level"]=$oid;
-                        //echo "   $oid  ".str_pad(IPS_getName($oid)."/".IPS_getName(IPS_GetParent($oid)),60)." ".GetValue($oid)."   \n"; 
-                        }
-                    foreach ($configurationTemp as $oid => $entry) 
-                        {
-                        if (isset($fullpicture[IPS_GetParent($oid)])) $fullpicture[IPS_GetParent($oid)]["Temperature"]=$oid;
-                        }
-                    foreach ($configurationSet as $oid => $entry) 
-                        {
-                        if (isset($fullpicture[IPS_GetParent($oid)])) $fullpicture[IPS_GetParent($oid)]["Set_Temperature"]=$oid;
-                        }
-                    foreach ($fullpicture as $index => $values)
-                        {
-                        if (sizeof($values)>2)      // drei Werte
-                            {
-                            $config["Values"][IPS_GetName($index)]=[$values["Temperature"],$values["Set_Temperature"],$values["Level"],];
-                            }
-                        }
-                    //print_r($fullpicture);
-                    }
-                }*/
-            //echo "Config ausgewertet:\n"; print_R($config);
+                configfileParser($rainConf[$index], $config[$index], ["OID","Oid","oid"],"OID","default");           // input ist $specialRegsConf, bereinigt dann in $specialRegs
+                configfileParser($rainConf[$index], $config[$index], ["Name","NAME","name"]     ,"Name",$index);        
+                configfileParser($rainConf[$index], $config[$index], ["Unit","UNIT","unit"]     ,"Unit","mm");        
+                configfileParser($rainConf[$index], $config[$index], ["Icon","ICON","icon"]     ,"Icon","Rainfall");        
+                configfileParser($rainConf[$index], $config[$index], ["Type","TYPE","type"]     ,"Type","Rainevent"); 
+                configfileParser($rainConf[$index], $config[$index], ["Count","COUNT","count"]  ,"Count",3); 
+                }
+            if ($debug) { echo "RainmeterWidget Config ausgewertet:\n"; print_R($config); }
             return($config);
             }
 

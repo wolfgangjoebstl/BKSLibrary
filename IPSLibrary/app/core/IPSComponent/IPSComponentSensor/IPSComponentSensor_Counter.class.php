@@ -396,11 +396,13 @@
                         {
                         SetValue($this->variableLogID,GetValue($this->variable));
                         SetValue($this->counterLogID,GetValue($this->variable)+GetValue($this->counterLogID));
+                        $resultLog .= " (".GetValueIfFormatted($this->counterLogID).")";
                         }
                     else    
                         {
                         SetValue($this->variableLogID,GetValue($this->variable)-GetValue($this->counterLogID));
                         SetValue($this->counterLogID,GetValue($this->variable));
+                        $resultLog .= " (".GetValueIfFormatted($this->variableLogID).")";
                         //SetValue($this->counterLogID,GetValue($this->variable)+GetValue($this->counterOffsetLogID));
                         }
 					echo ">>>>Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." Änderung auf letzten Zählwert ".GetValue($this->counterLogID)." um ".GetValue($this->variableLogID)."\n";
@@ -409,8 +411,9 @@
 					{
 					SetValue($this->counterOffsetLogID,GetValue($this->counterOffsetLogID)-$diff);
 					}						
-                $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-                $installedmodules=$moduleManager->GetInstalledModules();
+                
+                /*$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+                $installedmodules=$moduleManager->GetInstalledModules();*/
 
 				parent::LogMessage($resultLog);
 				parent::LogNachrichten($this->variablename." mit Wert ".$resultLog,$debug);

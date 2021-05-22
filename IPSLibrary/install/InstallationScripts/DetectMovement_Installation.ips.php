@@ -63,8 +63,14 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
+    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
 	$startexec=microtime(true);
     $installModules=false;
+    $debug = true;    
 
 	/****************************************************************************************************************/
 	/*                                                                                                              */
@@ -105,6 +111,8 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+    $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+
 	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
@@ -112,17 +120,36 @@
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
         IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
         IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+        IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
         echo "========================================================================\n";    
         echo "Statistik der Register nach Typen aus der devicelist erheben:\n";
         $hardwareTypeDetect = new Hardware();
         $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
         $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
-        $hardwareTypeDetect->writeRegisterStatistics($statistic);        
+        $hardwareTypeDetect->writeRegisterStatistics($statistic);   
+
+        /* für die Anzeige im Webfront wird EvaluateHardware verwendet */  
+        $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);   
+        if ($WFC10_Enabled = $moduleManagerEH->GetConfigValueDef('Enabled', 'WFC10',false))
+            {
+            $WFC10_Path           = $moduleManagerEH->GetConfigValue('Path', 'WFC10');
+            echo "========================================================================\n";                
+            echo "Webfront von EvaluateHardware in $WFC10_Path verwenden.\n";
+            $categoryId_AdminWebFront=CreateCategoryPath($WFC10_Path);
+
+            } 
         } 
     else 
         { 
         echo "Modul EvaluateHardware ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+
+        /* eine eigene Anzeige im Webfront machen */
+        if ($WFC10_Enabled = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false))
+            {
+            $WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');        
+            $categoryId_AdminWebFront=CreateCategoryPath($WFC10_Path);
+            }
         }
 	if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; }
 	if (isset ($installedModules["RemoteAccess"]))
@@ -137,6 +164,161 @@
 	if (isset ($installedModules["IPSCam"])) { 				echo "Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
 	if (isset ($installedModules["OperationCenter"])) { 	echo "Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
 
+
+	/****************************************************************************************************************/
+	/*                                                                                                              */
+	/*                                      Draw Webfront Topologie                                                                 */
+	/*                                                                                                              */
+	/****************************************************************************************************************/
+
+    /* nutzt die Library aus DetectMovement */
+
+    /* ein Raum hat zumindest folgende Eigenschaften:
+    *
+    * Temperature			aktuelle Temperatur
+    * Humidity				aktuelle Luftfeuchtigkeit
+    * Movement				Bewegung erkannt oder nicht
+    * HeatControl			Sollwert der Heizung/Kühlung
+    *
+    * Contacts				Summe der Kontakte in diesem Raum (Fenster, Tueren ...)
+    *
+    * Liste der Automatisierungsgeräte in diesem Raum
+    *
+    * eine Wohnung hat dieselben Objekte wie ein Raum, aber mehr Summenobjekte, zusaetzlich
+    *
+    *	Namen der Personen die sich aktuell in der Wohnung aufhalten
+    *
+    * ein Ort hat 
+    *
+    *	Temperature
+    *	Humidity
+    *
+    * ein Grundstück ist wie ein Ort und hat zusaetzlich
+    *	Movement			wenn Aussensesoren angebracht sind (zB im Garten)
+    *
+    *
+    * zu Temperatur: es werden die STATUS Register der Automatisiserungsgeräte verwendet und zusaetzliche Summenregister evaluiert
+    *
+    * 
+    * Device Handler ist in DetectMovementLib angelegt
+    *
+    * mit _construct wird bereits die Topologie im Webfront angelegt.
+    *
+    *
+    * EvaluateHardware bearbeitet die Kategorie Topologie in der Root. Hier werden Topology Geräte einsortiert
+    *
+    *
+    * hier zusammenfassen und als includefile wieder ausgeben
+    *
+    */
+
+	echo "Topology ausgeben:\n";
+	$DetectDeviceHandler = new DetectDeviceHandler();
+	$DetectDeviceListHandler = new DetectDeviceListHandler();
+    $ipsOps=new ipsOps();
+
+	if ($debug) 
+        {
+        /* ein paar extra Auswertungen */
+        $DetectDeviceHandler->create_TopologyConfigurationFile(true);
+        $result=$DetectDeviceHandler->ListGroups("Topology");
+        print_r($result);
+    	$DetectDeviceHandler->evalTopology("World");
+        echo "Definiere und erzeuge Kategorien für die Topologie:\n";
+        $DetectDeviceHandler->create_Topology(true);            // true für Debug
+        }
+
+	if (isset ($installedModules["Startpage"])) 
+        { 				
+        echo "Modul Startpage ist installiert.\n"; 
+        IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+        IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+        IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');        
+        $startpage = new StartpageHandler();                        // true with debug
+        }
+    else 
+        { 
+        echo "Modul Startpage ist NICHT installiert.\n"; 
+        }
+
+	/*************************************************************************************/
+
+    $topology=$DetectDeviceHandler->Get_Topology();
+    $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+    $configurationEvent = $DetectDeviceListHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+
+    /* die Topologie mit den Geräten anreichen:
+        *    wir starten mit Name, Parent, Type, OID, Children  
+        * Es gibt Links zu Chíldren, INSTANCE und OBJECT 
+        *    Children, listet die untergeordneten Eintraege
+        *    OBJECT sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
+        *    INSTANCE ist der vollständigkeit halber für die Geräte
+        *
+        * Damit diese Tabelle funktioniert muss der DetDeviceHandler fleissig register definieren
+        */
+    
+    echo "=====================================================================================\n";
+    echo "mergeTopologyObjects aufgerufen:\n";
+    $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,false);        // true for Debug
+    //echo "=====================================================================================\n";
+    //$topologyPlusLinks=$DetectDeviceListHandler->mergeTopologyObjects($topologyPlusLinks,$configurationEvent,$debug);
+
+    if ($debug) 
+        {
+        echo "=====================================================================================\n";
+        echo "looking at Webfront Kategory $categoryId_AdminWebFront ".$ipsOps->path($categoryId_AdminWebFront)."\n";
+        $worldID=IPS_GetObjectIDByName("World",$categoryId_AdminWebFront);
+        if ($worldID===false) echo "Failure, Dont know why but we miss category World in $categoryId_AdminWebFront.\n";
+        //print_r($topologyPlusLinks);
+
+        /* testweise hier die Auswertung machen 
+        $html = $startpage->showTopology();
+        echo $html;     */
+
+        }
+
+    /* aus dem topologyPlusLinks Array die echten Links erzeugen */
+    foreach ($topologyPlusLinks as $place => $entry)
+        {
+        echo "$place (".$entry["Type"].") : ";
+        $object=false; $instance=false;
+        if (isset($entry["OBJECT"])) 
+            {
+            echo "  OBJECT (".(count($entry["OBJECT"])).")";
+            $object=true;            							//CreateLinkByDestination($name, $index, $oid, 10);
+            }
+        elseif (isset($entry["INSTANCE"])) 
+            {
+            echo "  INSTANCE (".(count($entry["INSTANCE"])).")";
+            $instance=true;
+            }
+        echo "\n";
+        if ($object) 
+            {
+            foreach ($entry["OBJECT"] as $type => $subentry)
+                {
+                echo "      $type  :\n";
+                foreach ($subentry as $oid => $name)
+                    {
+                    $objects = @IPS_GetVariable($oid);
+                    if ($objects===false)
+                        {
+                        echo "        $oid   -> ***** Failure, dont know VariableID.\n";
+                        }
+                    else
+                        {
+                        echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                        if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
+                        echo "\n";
+                        }                    
+                    }
+                }
+            }
+        echo "\n";
+        //print_R($entry);
+        }
+
+
 	/****************************************************************************************************************/
 	/*                                                                                                              */
 	/*                                      Install                                                                 */
@@ -150,6 +332,8 @@
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	
+    echo "=====================================================================================\n";
+    echo "Install\n";    
     $componentHandling=new ComponentHandling();
     $commentField="zuletzt Konfiguriert von DetectMovement EvaluateMotion um ".date("h:i am d.m.Y ").".";
     $DetectMovementHandler = new DetectMovementHandler();

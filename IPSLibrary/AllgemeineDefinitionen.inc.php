@@ -5152,6 +5152,7 @@ class ComponentHandling
 	    $detectmovement=false; 
         $profile=""; 
         $indexNameExt="";
+        $update="OnChange";
         
         switch (strtoupper($keyName["KEY"]))
             {
@@ -5256,6 +5257,7 @@ class ComponentHandling
                 $index="Klima";         /* Struktur am Remote Server, muss schon vorher angelegt sein */
                 $indexNameExt="_Rain";								/* gemeinsam mit den CO2 Werten abspeichern */                
                 $profile="Rainfall";        /* profile am Remote Server, ähnlich wie für Mirror Register, umgestellt auf gemeinsames Custom Profile */
+                $update="OnUpdate";
                 break;                              
             default:	
                 $variabletyp=0; 		/* Boolean */	
@@ -5272,7 +5274,8 @@ class ComponentHandling
         $keyName["INDEX"]=$index;
         $keyName["PROFILE"]=$profile;					 
         $keyName["DETECTMOVEMENT"]=$detectmovement;
-        $keyName["INDEXNAMEEXT"]=$indexNameExt;	 
+        $keyName["INDEXNAMEEXT"]=$indexNameExt;	
+        $keyName["UPDATE"]=$update; 
         if (isset($keyName["COID"])) 
             {
             if ($debug) echo "addonkeyname based on ".(strtoupper($keyName["KEY"])).", wichtig für ".$keyName["Name"]." ist COID: ".$keyName["COID"]." \n";
@@ -5542,6 +5545,7 @@ class ComponentHandling
                     /* beim registrieren als Event den richtigen Componen/Module Name dazugeben, MySQL kennt das */
                     if ( (isset($entry["COMPONENT"])) && ($InitComponent == "") ) $InitComponent=$entry["COMPONENT"];
                     if ( (isset($entry["MODULE"])) && ($InitModule == "") ) $InitModule=$entry["MODULE"];
+                    if (isset($entry["UPDATE"])) $update=$entry["UPDATE"]; else $update="OnChange";
 
 			    	if (isset ($this->installedModules["RemoteAccess"]))
 				    	{
@@ -5564,13 +5568,13 @@ class ComponentHandling
 							}	
 						/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
                         if ($InitComponent=="") echo "  >>>>Error, Component Missing in RegisterEvent($oid,\"OnChange\",$InitComponent,".$entry["OID"].",$parameter,".$entry["KEY"].",$InitModule,$commentField)   -> ".json_encode($entry)."\n";
-    		            $this->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter.','.$entry["KEY"],$InitModule,$commentField);
+    		            $this->RegisterEvent($oid,$update,$InitComponent.','.$entry["OID"].','.$parameter.','.$entry["KEY"],$InitModule,$commentField);
 						}
 					else
 						{
 						/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
 						echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-						$this->RegisterEvent($oid,"OnChange",$InitComponent.",".$entry["OID"].",".$entry["KEY"],$InitModule,$commentField);
+						$this->RegisterEvent($oid,$update,$InitComponent.",".$entry["OID"].",".$entry["KEY"],$InitModule,$commentField);
 						}			
 					}           /* ende donotregister */
 				} /* Ende foreach */

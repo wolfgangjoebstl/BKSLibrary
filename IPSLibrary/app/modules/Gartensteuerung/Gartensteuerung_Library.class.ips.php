@@ -128,6 +128,7 @@ class Gartensteuerung
         
         if ($this->debug)
             {
+            echo "Gartensteuerung: construct aufgerufen. Debug Mode.\n";
             echo "Gartensteuerung Kategorie Data ist : ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
             echo "Gartensteuerung Kategorie Data.Gartensteuerung-Register ist : ".$this->categoryId_Register."   (".IPS_GetName($this->categoryId_Register).")\n";
             //echo "GiesstimeID ist ".$this->GiessTimeID."\n";
@@ -149,7 +150,8 @@ class Gartensteuerung
 		//$this->variableID = $this->getConfig_raincounterID();           // benötigt categoryRegisterID, wenn keine Konfig vorhanden wird false gemeldet
         $this->variableTempID   = $this->GartensteuerungConfiguration["Configuration"]["AussenTemp"];
         $this->variableID       = $this->GartensteuerungConfiguration["Configuration"]["RainCounter"];
-		$Server=$this->getConfig_RemoteAccess_Address();                // wenn keine Konfig vorhanden wird false gemeldet
+		//$Server=$this->getConfig_RemoteAccess_Address();                // wenn keine Konfig vorhanden wird false gemeldet
+        $Server                 = $this->GartensteuerungConfiguration["Configuration"]["RemoteAccessAdr"];
 
 		if ($this->debug)
 			{
@@ -188,105 +190,19 @@ class Gartensteuerung
 				}
 			}
 
-		/* Letzen Regen ermitteln, alle Einträge der letzten 10 Tage durchgehen */
-		$this->letzterRegen=0;
+		/* Letzen Regen ermitteln, alle Einträge der letzten 10 Tage durchgehen n getRainevents*/
+        $this->regenStatistik = $this->getRainevents($this->werteLog);              // fertige Routine, alle übergebenen Werte bearbeiten. Zweiter Parameter begrenzt Anzahl der gefundenen Events 
+
 		$this->regenStand2h=0;
 		$this->regenStand48h=0;
-		$regenStand=0;			/* der erste Regenwerte, also aktueller Stand */
-		$regenStandAnfang=0;  /* für den Fall dass gar keine Werte gelogget wurden */
-		$regenAnfangZeit=0;
-		$regenStandEnde=0;
-		$regenEndeZeit=0;
-		$regenMenge=0; $regenMengeAcc=0;
-		$regenDauer=0; $regenDauerAcc=0;
-		$vorwert=0; $vorzeit=0;
-		$this->regenStatistik=array();
-		$regenMaxStd=0;
+
+        $regenStand=0;			// der erste Regenwerte, also aktueller Stand 
+		$vorwert=0; 
 		foreach ($this->werteLog as $wert)
 			{
 			if ($vorwert==0) 
 		   		{ 
-				if ($this->debug) {	echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
 				$regenStand=$wert["Value"];
-				}
-			else 
-				{
-				/* die erste Zeile erst mit dem zweiten Eintrag auffuellen ... */
-				$regenMenge=round(($vorwert-$wert["Value"]),1);
-				$regenDauer=round(($vorzeit-$wert["TimeStamp"])/60,0);
-				if ($this->debug) { echo " ".$regenMenge."mm/".$regenDauer."min  "; }
-				if (($regenMenge/$regenDauer*60)>$regenMaxStd) {$regenMaxStd=$regenMenge/$regenDauer*60;}
-				if ( ($regenMenge<0.4) and ($regenDauer>60) ) 
-					{
-					/* gilt nicht als Regen, ist uns zu wenig, mehr ein nieseln */
-					if ($regenEndeZeit != 0)
-						{ 
-						/* gilt auch als Regenanfang wenn ein Regenende erkannt wurde*/
-						$regenAnfangZeit=$vorzeit;
-						if ($this->debug) 
-							{ 
-							echo $regenMengeAcc."mm ".$regenDauerAcc."min ";						
-							echo "  Regenanfang : ".date("d.m H:i",$regenAnfangZeit)."   ".round($vorwert,1)."  ".round($regenMaxStd,1)."mm/Std ";	
-							}
-						$this->regenStatistik[$regenAnfangZeit]["Beginn"]=$regenAnfangZeit;
-						$this->regenStatistik[$regenAnfangZeit]["Ende"]  =$regenEndeZeit;
-						$this->regenStatistik[$regenAnfangZeit]["Regen"] =$regenMengeAcc;
-						$this->regenStatistik[$regenAnfangZeit]["Max"]   =$regenMaxStd;					
-						$regenEndeZeit=0; $regenStandEnde=0; $regenMaxStd=0;
-						}
-					else
-						{
-						if ($this->debug) { echo "* "; }
-						}	
-					$regenMenge=0; $regenDauerAcc=0; $regenMengeAcc=0;
-					} 
-				else
-					{
-					if ($regenDauer<60)
-						{  
-						/* es regnet */
-						$regenMengeAcc+=$regenMenge;
-						$regenDauerAcc+=$regenDauer;				
-						if ($this->debug) { echo $regenMengeAcc."mm ".$regenDauerAcc."min "; }
-						if ($regenEndeZeit==0)
-							{
-							$regenStandEnde=$vorwert;
-							$regenEndeZeit=$vorzeit;
-							if ($this->debug) { echo "  Regenende : ".date("d.m H:i",$regenEndeZeit)."   ".round($regenStandEnde,1)."  ";	}
-							}
-						}
-					else
-						{
-						/* es hat gerade begonnen zu regnen, gleich richtig mit Wert > 0.3mm */
-						if ($regenEndeZeit != 0)
-							{ 
-							/* gilt auch als Regenanfang wenn ein Regenende erkannt wurde*/
-							$regenMengeAcc+=$regenMenge;							
-							$regenAnfangZeit=$vorzeit;
-							if ($this->debug) 
-								{ 
-								echo $regenMengeAcc."mm ".$regenDauerAcc."min ";						
-								echo "  Regenanfang : ".date("d.m H:i",$regenAnfangZeit)."   ".round($vorwert,1)."  ".round($regenMaxStd,1)."mm/Std ";	
-								}
-							$regenStatistik[$regenAnfangZeit]["Beginn"]=$regenAnfangZeit;
-							$regenStatistik[$regenAnfangZeit]["Ende"]  =$regenEndeZeit;
-							$regenStatistik[$regenAnfangZeit]["Regen"] =$regenMengeAcc;
-							$regenStatistik[$regenAnfangZeit]["Max"]   =$regenMaxStd;					
-							$regenEndeZeit=0; $regenStandEnde=0; $regenMaxStd=0;
-							}
-						else
-							{
-							if ($this->debug) { echo "* "; }
-							}	
-						} 								
-					If ( ($this->letzterRegen==0) && (round($wert["Value"]) > 0) )
-						{
-						$this->letzterRegen=$wert["TimeStamp"];
-						$regenStandEnde=$wert["Value"];
-						if ($this->debug) { echo "Letzter Regen !"; }
-			  			}				
-					}	
-				if ($this->debug) { echo "\n   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
 				}
 			/* Regenstand innerhalb der letzten 2 Stunden ermitteln */
 			if (((time()-$wert["TimeStamp"])/60/60)<2)
@@ -298,8 +214,6 @@ class Gartensteuerung
 				{
 				$this->regenStand48h=$regenStand-$wert["Value"];
 				}
-			$vorwert=$wert["Value"];	
-			$vorzeit=$wert["TimeStamp"];
 			}  // Regenwerte der Reihe nach durchgehen
 			
 		if ($this->debug) { echo "\n\n"; }
@@ -323,7 +237,11 @@ class Gartensteuerung
 
 	function getConfig_aussentempID($config=false,$debug=false)
 		{
-        if ($debug || $this->debug) echo "getConfig_aussentempID aufgerufen.\n";
+        if ($debug || $this->debug) 
+            {
+            echo "getConfig_aussentempID aufgerufen.\n";
+            $debug = $debug || $this->debug;
+            }
         if ($config===false) $Configuration = $this->GartensteuerungConfiguration;
         else $Configuration = $config;
 
@@ -335,14 +253,14 @@ class Gartensteuerung
     		if ((integer)$Configuration["AUSSENTEMP"]==0) 
 	    		{
                 /* wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!! */
-    			echo "Alternative Erkennung des Tempoeratursensors, String als OID Wert für den AUSSENTEMP angegeben: \"".$Configuration["AUSSENTEMP"]."\". Jetzt in CustomComponents schauen ob vorhanden.\n";
+    			if ($debug) echo "Alternative Erkennung des Tempoeratursensors, String als OID Wert für den AUSSENTEMP angegeben: \"".$Configuration["AUSSENTEMP"]."\". Jetzt in CustomComponents schauen ob vorhanden.\n";
 			    $TempAuswertungID=$this->getCategoryRegisterID("Temperatur");
                 $RegisterTempID=@IPS_GetObjectIDByName($Configuration["AUSSENTEMP"],$TempAuswertungID);
-	    		echo "Check : Temperatur Kategorie   ".$TempAuswertungID."  Temperatur Register  ".$RegisterTempID."\n";
+	    		if ($debug) echo "Check : Temperatur Kategorie   ".$TempAuswertungID."  Temperatur Register  ".$RegisterTempID."\n";
 		    	if ( ($TempAuswertungID==false) || ($RegisterTempID==false) ) $fatalerror=true;
                 $variableTempID=$RegisterTempID;
                 }    
-			else $variableTempID=(integer)$this->GartensteuerungConfiguration["AUSSENTEMP"];
+			else $variableTempID=(integer)$Configuration["AUSSENTEMP"];
 			}
 		else 
 			{
@@ -388,14 +306,14 @@ class Gartensteuerung
     		if ((integer)$Configuration["RAINCOUNTER"]==0) 
 	    		{
                 /* wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!! */
-    			echo "Alternative Erkennung des Regensensors, String als OID Wert für den RAINCOUNTER angegeben: \"".$Configuration["RAINCOUNTER"]."\". Jetzt in CustomComponents schauen ob vorhanden.\n";
+    			if ($debug) echo "Alternative Erkennung des Regensensors, String als OID Wert für den RAINCOUNTER angegeben: \"".$Configuration["RAINCOUNTER"]."\". Jetzt in CustomComponents schauen ob vorhanden.\n";
 			    $CounterAuswertungID=$this->getCategoryRegisterID();
                 $this->RainRegisterIncrementID=@IPS_GetObjectIDByName($Configuration["RAINCOUNTER"],$CounterAuswertungID);
-	    		echo "Check : Counter Kategorie   ".$CounterAuswertungID."  Incremental Counter Register  ".$this->RainRegisterIncrementID."\n";
+	    		if ($debug) echo "Check : Counter Kategorie   ".$CounterAuswertungID."  Incremental Counter Register  ".$this->RainRegisterIncrementID."\n";
 		    	if ( ($CounterAuswertungID==false) || ($this->RainRegisterIncrementID==false) ) $fatalerror=true;
            		
                 $RegisterCounterID=@IPS_GetObjectIDByName($Configuration["RAINCOUNTER"]."_Counter",$CounterAuswertungID);
-	        	echo "Check : Counter Kategorie   ".$CounterAuswertungID."  Counter Register  ".$RegisterCounterID."\n";
+	        	if ($debug) echo "Check : Counter Kategorie   ".$CounterAuswertungID."  Counter Register  ".$RegisterCounterID."\n";
     			if ( ($CounterAuswertungID==false) || ($RegisterCounterID==false) ) $fatalerror=true;
                 $variableID=$RegisterCounterID;
                 }    
@@ -442,7 +360,7 @@ class Gartensteuerung
             if (function_exists("get_RemoteAccess_Address")) $this->variableID=get_RemoteAccess_Address();
             else 
                 {
-                echo "Fehler, keine Configuration für REMOTEACCESSADR und function get_RemoteAccess_Address ist auch nicht vorhanden.\n";
+                echo "Fehler, getConfig_RemoteAccess_Address: keine Configuration für REMOTEACCESSADR und function get_RemoteAccess_Address ist auch nicht vorhanden.\n";
                 print_r($this->GartensteuerungConfiguration);
                 $Server=false;
                 }
@@ -493,7 +411,7 @@ class Gartensteuerung
         if (($configConf["Configuration"] != null) && (count($configConf["Configuration"])>0))          //sizeof ist zu spezialisisert
             {
             /* Sub Configuration abarbeiten */
-            echo "setGartensteuerungConfiguration: moderne Darstellung der Konfiguration mit Unterpunkt Configuration: \n";
+            if ($debug) echo "setGartensteuerungConfiguration: moderne Darstellung der Konfiguration mit Unterpunkt Configuration: \n";
             configfileParser($configConf["Configuration"], $config["Configuration"], ["STATISTICS","Statistics","statistics"],"Statistics" ,"ENABLED");  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["IRRIGATION","Irrigation","irrigation"],"Irrigation" ,"ENABLED");  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTER","Raincounter","RainCounter","raincounter"],"RainCounter" ,false);  
@@ -501,9 +419,9 @@ class Gartensteuerung
             configfileParser($configConf["Configuration"], $config["Configuration"], ["AUSSENTEMP","Aussentemp","AusenTemp","aussentemp"],"AussenTemp",null);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["REMOTEACCESSADR","RemoteAccessAdr","Remoteaccessadr","remoteaccessadr"],"RemoteAccessAdr",null);
 
-            $config["Configuration"]["RainCounter"]=$this->getConfig_raincounterID($config["Configuration"], true);
-            $config["Configuration"]["AussenTemp"]=$this->getConfig_aussentempID($config["Configuration"], true);
-            $config["Configuration"]["RemoteAccessAdr"]=$this->getConfig_RemoteAccess_Address($config["Configuration"], true);   
+            $config["Configuration"]["RainCounter"]=$this->getConfig_raincounterID($config["Configuration"], $debug);
+            $config["Configuration"]["AussenTemp"]=$this->getConfig_aussentempID($config["Configuration"], $debug);
+            $config["Configuration"]["RemoteAccessAdr"]=$this->getConfig_RemoteAccess_Address($config["Configuration"], $debug);   
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["KREISE","Kreise","kreise"],"KREISE",0);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["TEMPERATUR-MITTEL","TemperaturMittel","Temperaturmittel"],"TEMPERATUR-MITTEL",19);
@@ -525,10 +443,17 @@ class Gartensteuerung
             {
             $configInput["RAINCOUNTER"]=$this->getConfig_raincounterID($configInput, $debug);
             $config = $configInput;
+            $configInput["RainCounter"] = $configInput["RAINCOUNTER"];
+            $configInput["AussenTemp"] = $configInput["AUSSENTEMP"];
+            $configInput["RemoteAccessAdr"] = $configInput["REMOTEACCESSADR"];
             $config["Configuration"] = $configInput;
+            echo "*************Ändere Konfiguration Gartensteuerung. Muss Sub Kategorie Configuration enthalten.\n";
             }
-        echo "setGartensteuerungConfiguration: Ergebnis\n";
-        print_r($config);
+        if ($debug) 
+            {
+            echo "setGartensteuerungConfiguration: Ergebnis\n";
+            print_r($config);
+            }
         //$config["RAINMETER"]  =$this->getConfig_rainMeterID($config);
         return ($config);   
         }
@@ -751,13 +676,17 @@ class Gartensteuerung
 	 *
 	 */
 
-	public function listRainEvents($days=10)
+	public function listRainEvents($events=10,$variableID=false,$debug=false)
 		{
+        if ($variableID==false) $variableID = $this->variableID;                // nur für die lokalen Variablen
+        if ($this->debug) $debug=$this->debug;
+        $days=100;                                          // Anzahl der Events in den letzten 100 Tagen suchen
 		$endtime=time();
 		$starttime2=$endtime-60*60*24*$days;   /* die letzten x (default 10) Tage Niederschlag*/
 
-		$Server=$this->getConfig_RemoteAccess_Address();
-		if ($this->debug)
+		//$Server=$this->getConfig_RemoteAccess_Address();
+        $Server                 = $this->GartensteuerungConfiguration["Configuration"]["RemoteAccessAdr"];
+		if ($debug)
 			{
 			echo "\n";
 			echo"--------Function List RainEvents:\n";
@@ -765,7 +694,7 @@ class Gartensteuerung
 		If ($Server=="")
 			{
 			$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			$werteLog = AC_GetLoggedValues($archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
+			$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
 			}
 		else
 			{
@@ -777,7 +706,54 @@ class Gartensteuerung
 				echo "   Daten vom Server : ".$Server."\n";
 				}
 			}
+        $regenStatistik = $this->getRainevents($werteLog,$events);
+		return ($regenStatistik);
+		}
+
+	public function listRainDays($days=10,$variableID=false,$debug=false)
+		{
+        if ($variableID==false) $variableID = $this->variableID;                // nur für die lokalen Variablen
+        if ($this->debug) $debug=$this->debug;
+		$endtime=time();
+		$starttime2=$endtime-60*60*24*$days;   /* die letzten x (default 10) Tage Niederschlag*/
+
+		//$Server=$this->getConfig_RemoteAccess_Address();
+        $Server                 = $this->GartensteuerungConfiguration["Configuration"]["RemoteAccessAdr"];
+		if ($debug)
+			{
+			echo "\n";
+			echo"--------Function List RainEvents:\n";
+			}
+		If ($Server=="")
+			{
+			$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+			$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
+			}
+		else
+			{
+			$rpc = new JSONRPC($Server);
+			$this->archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+			$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
+			if ($this->debug)
+				{
+				echo "   Daten vom Server : ".$Server."\n";
+				}
+			}
+        $regenStatistik = $this->getRainevents($werteLog);
+		return ($regenStatistik);
+		}
+
+    /* Routinen nur mehr an einem Ort. liefert Regenstatistik und ändert einen class parameter: letzterRegen
+     * benötigt ein inkrementelles Regenregister, Counter mit steigenden Werten
+     *
+     * Rain2h oder 48h extra berechnen.
+     *
+     */
+
+    private function getRainevents($werteLog,$events=0)
+        {
 		/* Letzen Regen ermitteln, alle Einträge der letzten x (default 10) Tage Niederschlag durchgehen */
+        $this->letzterRegen=0;
 		$regenStand=0;			/* der erste Regenwerte, also aktueller Stand */
 		$regenStandAnfang=0;  /* für den Fall dass gar keine Werte gelogget wurden */
 		$regenAnfangZeit=0;
@@ -788,6 +764,7 @@ class Gartensteuerung
 		$vorwert=0; $vorzeit=0;
 		$regenStatistik=array();
 		$regenMaxStd=0;
+        $eventCount=1;
 		foreach ($werteLog as $wert)	/* Regenwerte Eintrag für Eintrag durchgehen */
 			{
 			if ($vorwert==0) 
@@ -803,7 +780,7 @@ class Gartensteuerung
 				if ($this->debug) 
 					{
 					if ( $regenDauer>(60*24*2) ) echo " ".$regenMenge."mm/>2Tage  "; 
-					else echo " ".$regenMenge."mm/".$regenDauer."min  "; 
+					else echo str_pad(" ".$regenMenge."mm/".$regenDauer."min  ",20); 
 					}
 				if (($regenMenge/$regenDauer*60)>$regenMaxStd) {$regenMaxStd=$regenMenge/$regenDauer*60;} // maximalen Niederschlag pro Stunde ermitteln
 				if ( ($regenMenge<0.4) and ($regenDauer>60) ) 
@@ -816,7 +793,7 @@ class Gartensteuerung
 						$regenAnfangZeit=$vorzeit;
 						if ($this->debug) 
 							{ 
-							echo $regenMengeAcc."mm ".$regenDauerAcc."min ";						
+							echo str_pad($regenMengeAcc."mm ".$regenDauerAcc."min ",20);						
 							echo "  Regenanfang : ".date("d.m H:i",$regenAnfangZeit)."   ".round($vorwert,1)."  ".round($regenMaxStd,1)."mm/Std ";	
 							}
 						$regenStatistik[$regenAnfangZeit]["Beginn"]=$regenAnfangZeit;
@@ -824,6 +801,8 @@ class Gartensteuerung
 						$regenStatistik[$regenAnfangZeit]["Regen"] =$regenMengeAcc;
 						$regenStatistik[$regenAnfangZeit]["Max"]   =$regenMaxStd;					
 						$regenEndeZeit=0; $regenStandEnde=0; $regenMaxStd=0;
+                        if ($eventCount==$events) break;
+                        $eventCount++;
 						}
 					else
 						{
@@ -838,7 +817,7 @@ class Gartensteuerung
 						/* es regnet */
 						$regenMengeAcc+=$regenMenge;
 						$regenDauerAcc+=$regenDauer;				
-						if ($this->debug) { echo $regenMengeAcc."mm ".$regenDauerAcc."min "; }
+						if ($this->debug) { echo str_pad($regenMengeAcc."mm ".$regenDauerAcc."min ",20); }
 						if ($regenEndeZeit==0)
 							{
 							$regenStandEnde=$vorwert;
@@ -856,7 +835,7 @@ class Gartensteuerung
 							$regenAnfangZeit=$vorzeit;
 							if ($this->debug) 
 								{ 
-								echo $regenMengeAcc."mm ".$regenDauerAcc."min ";						
+								echo str_pad($regenMengeAcc."mm ".$regenDauerAcc."min ",20);						
 								echo "  Regenanfang : ".date("d.m H:i",$regenAnfangZeit)."   ".round($vorwert,1)."  ".round($regenMaxStd,1)."mm/Std ";	
 								}
 							$regenStatistik[$regenAnfangZeit]["Beginn"]=$regenAnfangZeit;
@@ -864,20 +843,29 @@ class Gartensteuerung
 							$regenStatistik[$regenAnfangZeit]["Regen"] =$regenMengeAcc;
 							$regenStatistik[$regenAnfangZeit]["Max"]   =$regenMaxStd;					
 							$regenEndeZeit=0; $regenStandEnde=0; $regenMaxStd=0;
+                            if ($eventCount==$events) break;
+                            $eventCount++;
 							}
 						else
 							{
 							if ($this->debug) { echo "* "; }
 							}	
 						} 								
-					}	
+					}
+                If ( ($this->letzterRegen==0) && (round($wert["Value"]) > 0) )
+                    {
+                    $this->letzterRegen=$wert["TimeStamp"];
+                    $regenStandEnde=$wert["Value"];
+                    if ($this->debug) { echo "Letzter Regen !"; }
+                    }				
+
 				if ($this->debug) { echo "\n   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
 				}
 			$vorwert=$wert["Value"];	
 			$vorzeit=$wert["TimeStamp"];
 			}
-		return ($regenStatistik);
-		}
+		return ($regenStatistik);            
+        }
 
 	/*******************
      *
@@ -1150,8 +1138,8 @@ class Gartensteuerung
 	public function getRainStatistics($input=array(),$debug=false)
 		{
         $regenereignis=array();            
-        $regenMenge = $this->getRainEventsFromIncrements($regenereignis,$input,$debug);         // regenereignis ist ein pointer
-        echo "getRainStatistics, Regenmenge im gesamten Zeitraum ist $regenMenge mm.\n";
+        $regenMenge = $this->getRainEventsFromIncrements($regenereignis,$input,$debug);         // regenereignis ist ein pointer, input die Liste der Variablen die in die Statistik eingehen sollen
+        echo "getRainStatistics, Regenmenge im gesamten Zeitraum ist $regenMenge mm. Variablen ausgewertet: ".json_encode($input)."\n";
         if (false)
             {
             if ($this->RainRegisterIncrementID>0)
