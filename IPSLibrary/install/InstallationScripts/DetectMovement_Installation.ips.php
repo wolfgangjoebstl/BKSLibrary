@@ -68,6 +68,9 @@
 
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
+    // max. Scriptlaufzeit definierensonst stoppt vorher wegen langsamer Kamerainstallation
+    ini_set('max_execution_time', 500);
+    
 	$startexec=microtime(true);
     $installModules=false;
     $debug = true;    
@@ -123,7 +126,7 @@
         IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
         echo "========================================================================\n";    
-        echo "Statistik der Register nach Typen aus der devicelist erheben:\n";
+        echo "EvaluateHardware: Statistik der Register nach Typen aus der devicelist erheben:\n";
         $hardwareTypeDetect = new Hardware();
         $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
         $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
@@ -225,7 +228,6 @@
         print_r($result);
     	$DetectDeviceHandler->evalTopology("World");
         echo "Definiere und erzeuge Kategorien für die Topologie:\n";
-        $DetectDeviceHandler->create_Topology(true);            // true für Debug
         }
 
 	if (isset ($installedModules["Startpage"])) 
@@ -242,10 +244,13 @@
         }
 
 	/*************************************************************************************/
-
+    
+    $DetectDeviceHandler->create_Topology(true, true);            // true für init, true für Debug
     $topology=$DetectDeviceHandler->Get_Topology();
     $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
     $configurationEvent = $DetectDeviceListHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+
+    print_r($topology);
 
     /* die Topologie mit den Geräten anreichen:
         *    wir starten mit Name, Parent, Type, OID, Children  
@@ -275,9 +280,11 @@
         $html = $startpage->showTopology();
         echo $html;     */
 
+        print_R($topologyPlusLinks);
         }
 
-    /* aus dem topologyPlusLinks Array die echten Links erzeugen */
+    $DetectDeviceHandler->updateLinks($topologyPlusLinks);
+    /* aus dem topologyPlusLinks Array die echten Links erzeugen, $DetectDeviceHandler->updateLinks($topologyPlusLinks) 
     foreach ($topologyPlusLinks as $place => $entry)
         {
         echo "$place (".$entry["Type"].") : ";
@@ -310,13 +317,15 @@
                         echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
                         if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
                         echo "\n";
+                        CreateLinkByDestination($name, $oid, $entry["OID"], 10);	                
                         }                    
                     }
                 }
             }
+        if ($instance);             // vorerst der Übersichtlichkeit wegen keine Instanzen als Link hinzufügen
         echo "\n";
         //print_R($entry);
-        }
+        }       // ende foreach         */
 
 
 	/****************************************************************************************************************/

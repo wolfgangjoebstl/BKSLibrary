@@ -2957,7 +2957,7 @@
 			
 	    function bottomTableLines($debug=false)
 	        {
-	        $wert="";
+	        $wert=""; $typeOfObject="STANDARD";
 	        if ( (isset($this->configuration["Display"]["BottomLine"])) && (sizeof($this->configuration["Display"]["BottomLine"])>0) )
 	            {
                 $wert.='<table><tr>';
@@ -2982,6 +2982,7 @@
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Icon","ICON"],"Icon","IPS");
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Integrate","INTEGRATE","integrate"],"Integrate",false);
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Property","PROPERTY","property"],"Property",null);            // default kein Eintrag wenn kein Eintrag
+                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Type","TYPE","type"],"Type",null);            // default kein Eintrag wenn kein Eintrag
                             if ($debug) 
                                 {
                                 $i=1;
@@ -3026,25 +3027,59 @@
                                             }
                                         }
                                     }
-                                if ($config["Display"]["BottomLine"]["Integrate"]>59) 
+                                if (isset($config["Display"]["BottomLine"]["Type"]))
+                                    {
+                                    $typeOfObject=strtoupper($config["Display"]["BottomLine"]["Type"]);
+                                    if ($debug) echo "****Type available : $typeOfObject\n";                                    
+                                    } 
+                                if ($config["Display"]["BottomLine"]["Integrate"]>59)       // nur Werte ab einer Minute integrieren
                                     {
     		                        $endtime=time();
 	    	                        $starttime=$endtime-$config["Display"]["BottomLine"]["Integrate"];   // die Werte entsprechend dem angegebenen Zeitraum laden
                                     $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
-                                    if ($werteLog===false) ;        // $oid bleibt unverändert
+                                    if ( ($werteLog===false) || (sizeof($werteLog)==0) ) ;        // $oid bleibt unverändert
                                     else
                                         {
-                                        $count=0; $sum=0;
-                                        foreach ($werteLog as $eintrag)
+                                        switch ($typeOfObject)
                                             {
-                                            $sum += $eintrag["Value"];
-                                            $count++;
+                                            case "STANDARD":
+                                                $count=0; $sum=0; $max=0; $min=0;
+                                                foreach ($werteLog as $eintrag)
+                                                    {
+                                                    //If ($debug) echo str_pad($count,6).str_pad($eintrag["Value"],15," ",STR_PAD_LEFT)."   ".date("H:i:s",$eintrag["TimeStamp"])."   \n";
+                                                    $sum += $eintrag["Value"];
+                                                    if ( ($min==0) || ($min>$eintrag["Value"]) ) $min=$eintrag["Value"];
+                                                    if             ($max<$eintrag["Value"])   $max=$eintrag["Value"];
+                                                    $count++;
+                                                    }
+                                                $value = (float)$sum/$count;
+                                                if ($debug) echo "     Integrate $count Values from last ".$config["Display"]["BottomLine"]["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")." Min ".number_format($min,0,",",".")." Max ".number_format($max,0,",",".")."\n";
+                                                $oid=$value;            // formatEntry erkennt oid (wenn integer) und oid als value                                                
+                                                break;
+                                            case "RAINCOUNTER":
+                                                if ($debug)
+                                                    {
+                                                    //print_r($werteLog); 
+                                                    $count=0;
+                                                    foreach ($werteLog as $eintrag)
+                                                        {
+                                                        echo str_pad($count,6).str_pad($eintrag["Value"],15," ",STR_PAD_LEFT)."   ".date("d.m.Y H:i",$eintrag["TimeStamp"])."   \n";                                                    
+                                                        $count++;
+                                                        }
+                                                    echo "------------\n";
+                                                    }
+                                                $first = reset($werteLog);
+                                                $last  = end($werteLog);
+                                                // print_R($first);  print_R($last);
+                                                if ($debug) echo "   First : ".$first["Value"]."    ".date("d.m.Y H:i",$first["TimeStamp"])."   Last:  ".$last["Value"]."    ".date("d.m.Y H:i",$last["TimeStamp"])."\n";
+                                                $oid = $first["Value"]-$last["Value"];
+                                                break;
                                             }
-                                        $value = (float)$sum/$count;
-                                        if ($debug) echo "     Integrate Values from last ".$config["Display"]["BottomLine"]["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")."\n";
-                                        $oid=$value;            // formatEntry erkennt oid (wenn integer) und oid als value
                                         }
                                     }
+                                
+                                /* zur Darstellung des Wertes */
+
                                 if (isset($tableEntry["Profile"]))                          // es gibt ein IP Symcon Profil
                                     {
                                     $profileConfig=IPS_GetVariableProfile ($tableEntry["Profile"]);
@@ -3065,7 +3100,7 @@
                                         //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
                                         //$result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
                                         }
-                                    if ($debug) 
+                                    if (($debug) && false)
                                         {
                                         print_R($profileConfig);
                                         echo "Letzte Farbe Association ist #$color\n";

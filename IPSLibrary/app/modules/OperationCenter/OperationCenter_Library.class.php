@@ -283,7 +283,8 @@ class OperationCenter
             configfileParser($configInput, $config, ["INTERNET" ],"INTERNET" ,"[]");  
 
             /* Router, nur die aktiven, kopieren */
-            configfileParser($configInput, $configRouter, ["ROUTER" ],"ROUTER" ,"[]");  
+            configfileParser($configInput, $configRouter, ["ROUTER" ],"ROUTER" ,"[]");
+            if (count($configRouter['ROUTER'])==0) { echo "config Router empty.\n"; $config["ROUTER"]=[]; }
             foreach ($configRouter['ROUTER'] as $name => $router)
                 {
                 if (!( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") ))           // wenn Status und nicht als active gekennzeichnet, Konfig ist raus und wird nicht übernommen
@@ -6998,6 +6999,20 @@ class DeviceManagement
         return (true);
         }
 
+    /* da die Überprüfung private ist hier dei Ausgabe puvblic machen */
+
+    public function writeCheckStatus($result)
+        {
+        $resulttext="";
+            foreach ($result as $Key) 
+                {
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "\n";                
+                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                }
+        return ($resulttext);
+        }
+
 	/********************************************************************
 	 *
 	 * erfasst alle Homematic Geräte anhand der Seriennummer und erstellt eine gemeinsame liste 
@@ -7767,8 +7782,18 @@ class DeviceManagement
      * ACTIVE_PROFILE oder WINDOW_OPEN_REPORTING    Wandthermostat, (IP) Funk Wandthermostat, TYPE_THERMOSTAT
      * TEMPERATURE und HUMIDITY                     Temperatursensor, (IP) Funk Temperatursensor, TYPE_METER_TEMPERATURE
      * PRESS_SHORT                                  Taster x-fach, (IP) Funk Tast x-fach, TYPE_BUTTON
-     * STATE
+     * STATE                                        kann ein Schalter oder ein Kontakt sein
+     * LEVEL                                        Dimmer oder Rolladensteuerung
+     * MOTION                                       Bewegungserkennung
+     * RSSI                                         Statusregster
+     * CURRENT                                      Energiemessgerät
+     * CURRENT_ILLUMINATION                         Helligkeitssensor
+     * RAIN_COUNTER                                 Wetterstation
      *
+     * zur Auswertung werden die Namen der Childrens sortiert und gleiche Namen entfernt
+     *
+     * nach der Auswertung wird $resultType[0] mit dem DeviceType beschrieben.
+     * 
      * erkannte Device Typen (unabhängig ob Homematic, Evaluierung von oben nach unten
      *  TYPE_ACTUATOR               => VALVE_STATE
      *  TYPE_THERMOSTAT             => ACTIVE_PROFILE || WINDOW_OPEN_REPORTING
@@ -7797,6 +7822,7 @@ class DeviceManagement
 
     private function HomematicDeviceType($register, $outputVersion=false, $debug=false)
         {
+        /* register in registernew umkopieren, dabei alle Einträge sortieren und gleiche, doppelte Einträge entfernen */
 		sort($register);
         $registerNew=array();
     	$oldvalue="";        
@@ -8000,7 +8026,8 @@ class DeviceManagement
             if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
             else $result[1] = "IP Funk Energiemessgeraet";
             $resultType[0] = "TYPE_METER_POWER";             
-            $resultReg[0]["ENERGY"]="ENERGY_COUNTER";          
+            if (array_search("ENERGY_COUNTER",$registerNew)) $resultReg[0]["ENERGY"]="ENERGY_COUNTER";                   // diese Register werden zur Verfügung gestellt und regelmaessig ausgewertet
+            if (array_search("POWER",$registerNew)) $resultReg[0]["POWER"]="POWER";  
             }          
         /*-------Helligkeitssensor------------------------------*/
         elseif ( array_search("CURRENT_ILLUMINATION",$registerNew) !== false)     /* Helligkeitssensor */
@@ -8052,6 +8079,11 @@ class DeviceManagement
                 print_r($registerNew);
                 }
             }
+        /* result[0] und result[1] wurden bereits geschrieben, hier result[2], result[3] und result[4] ergänzen 
+         * result[2] ist der resultType also TYPE_METER_POWER
+         * result[3] ist für die deviceList, "Type" ist resultType, "Register" ist resultReg
+         * 
+         */
 
         if ($found) 
             {
@@ -8125,6 +8157,8 @@ class DeviceManagement
      *   4
      *
      *  0/false ist Default
+     *
+     * HomematicDeviceType siehe oben
      *
      ***********************************************/
 

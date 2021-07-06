@@ -296,7 +296,12 @@
 	    	$unchanged=time()-$variabletyp["VariableChanged"];
 			$oldvalue=GetValue($this->variableLogID);
 		
-        	SetValue($this->variableLogID,GetValue($this->variable));
+            if ( ($this->variableTypeReg == "POWER") && ($this->variableProfile=="~Power") && ($this->mirrorProfile=="~Watt.3680") )
+                {
+                echo "   ****Variablenanpassung eventuell entsprechend ".$this->variableTypeReg.": ",$this->variableProfile." versus ".$this->mirrorProfile."\n";
+                SetValue($this->variableLogID,GetValue($this->variable)/1000);
+                }
+        	else SetValue($this->variableLogID,GetValue($this->variable));
             
 			echo "      Sensor_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValueIfFormatted($this->variable).". Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
 			if (($this->CheckDebugInstance($this->variable)) || true) IPSLogger_Inf(__file__, 'CustomComponent Sensor_LogValue: Variable OID : '.$this->variable.' ('.IPS_GetName($this->variable).'/'.IPS_GetName(IPS_GetParent($this->variable)).'Name : '.$this->variablename.'  TypeReg : '.$this->variableTypeReg);

@@ -234,7 +234,7 @@ class Hardware
      *
      */
 
-    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)                 // class Hardware
         {
         if ($debug) echo "          getDeviceChannels:Allgemein aufgerufen für ".$entry["OID"]." mit $name $type. Keine Funktion hinterlegt.\n";
         //print_r($deviceList[$name]["Instances"]);
@@ -733,7 +733,7 @@ class HardwareNetatmoWeather extends Hardware
      *
      */
 
-    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)     // HardwareNetatmoWeather
         {
         //$debug=true;        // overwrite for local debug
         if ($debug) echo "          getDeviceChannels: NetatmoWeather aufgerufen für \"".$entry["OID"]."\" mit $name $type.\n";
@@ -1225,11 +1225,13 @@ class HardwareHomematic extends Hardware
      * nur wenn OperationCenter installiert ist werden Channels angelegt. Der geräte Port der den Key der Instanz definiert wird auch für den Channel verwendet.
      *
      * mit $DeviceManager->getHomematicDeviceType wird der Typedev bestimmt (Type, Name, RegisterAll, Register ... )
-     * Typedev ist der fertige Channel Eintrag, es wird RegisterAll und Name besonders hervorgehoben
+     * Typedev ist der fertige Channel Eintrag, es wird RegisterAll und Name besonders hervorgehoben und doppelt abgespeichert
+     *
+     * getHomematicDeviceType und HomematicDeviceType finden sich in OperationCenter_Library
      *
      */
 
-    public function getDeviceChannels(&$deviceList,$name, $type, $entry, $debug=false)
+    public function getDeviceChannels(&$deviceList,$name, $type, $entry, $debug=false)              // class HardwareHomematic
         {
         /* Jeder Entry ist ein Device, oder ? */
 

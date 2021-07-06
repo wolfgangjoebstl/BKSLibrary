@@ -88,6 +88,7 @@ $allofftimer2ID = @IPS_GetEventIDByName("Giessstopp2", $GartensteuerungScriptID)
 $timerDawnID = @IPS_GetEventIDByName("Timer3", $GartensteuerungScriptID);
 $calcgiesstimeID = @IPS_GetEventIDByName("Timer4", $GartensteuerungScriptID);
 $UpdateTimerID = @IPS_GetEventIDByName("UpdateTimer", $GartensteuerungScriptID);
+$SlowUpdateTimerID = @IPS_GetEventIDByName("UpdateTimerHourly", $GartensteuerungScriptID);
 
 if ( ($allofftimer1ID==false) || ($allofftimer2ID==false) ) $fatalerror=true;
 
@@ -157,6 +158,7 @@ echo "Naechstes mal Giessen erfolgt ".($GiessStartzeitpunkt ? "Abends":"Morgens"
 	echo "  Dawn Timer ID   : ".$timerDawnID."\n";
 	echo "  Calc Timer ID   : ".$calcgiesstimeID."\n";
 	echo "  Update Timer ID : ".$UpdateTimerID."\n";
+	echo "  Hourly Timer ID : ".$SlowUpdateTimerID."\n";
 	echo "\n";
 	echo "Gartensteuerungs Konfiguration:\n";
 	print_r($GartensteuerungConfiguration);

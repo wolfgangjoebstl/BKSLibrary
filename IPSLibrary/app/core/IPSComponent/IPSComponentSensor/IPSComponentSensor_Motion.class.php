@@ -393,9 +393,8 @@
 		 * 
 		 * Den Wert einer Variable dem Motion Logging zuführen
 		 *
-		 * IPSComponents_Sensor wird vom Messagehandler aufgerufen
-		 * Die VariableID wird im construct Aufruf übergeben, der neue Wert 
-		 * sollte bereits in der Variable gespeichert sein
+		 * IPSComponentSensor_Motion wird vom Messagehandler aufgerufen
+		 * Die VariableID wird im construct Aufruf übergeben, der neue Wert sollte bereits in der Variable gespeichert sein
 		 *
 		 * ACHTUNG der testweise Wertübertrag führt zu Verwirrung weil ein Ueberschreiben des Wertes gleich wieder einen Trigger ausloest
 		 *
@@ -403,6 +402,7 @@
 	   
 		function Motion_LogValue($value,$debug=false)
 			{
+            if ($debug) echo "Motion_logValue aufgerufen. Typ $this->variableTypeReg \n";
 			$result=GetValue($this->variable);
             switch ($this->variableTypeReg)
                 {            
@@ -422,6 +422,15 @@
 			parent::LogMessage($resultLog);
 			parent::LogNachrichten($this->variablename." mit Status ".$resultLog,$debug);
 			}
+
+        /* eigentliches Logging durchführen, speziell für Motion 
+         * in variableLogID wird der übergebene Wert result geschrieben, ausser bei Test der selbe Wert
+         * in resultlog wird der formattierte Wert von variable geschrieben, klar result weisst keine Formattierung auf
+         *
+         * Bei Motion gibt es noch zusätzliche Auswertungen
+         *      DelayMotion     eine 1 wird verlängert
+         *         
+         */
 
         private function doLogMotion($result)
             {
@@ -462,9 +471,9 @@
             //print_r($this);
             if (isset ($this->installedmodules["DetectMovement"]))
                 {
-                /* etwas kompliziert, wenn DetectMovement nicht installiert is sind beide Variablen auf dem selben Wert.
-                * wenn installiert, wird Delay abgewickelt, aber es muss noch wer den Wert in CustomComponents setzen
-                */
+                /* etwas kompliziert, wenn DetectMovement nicht installiert ist sind beide Variablen auf dem selben Wert.
+                 * wenn installiert, wird Delay abgewickelt, aber es muss noch wer den Wert in CustomComponents setzen
+                 */
                 SetValue($this->variableLogID,$result);
                 
                 /* DetectMovement class verwenden */
@@ -562,7 +571,11 @@
             return ($resultLog);
             }
 
-        /* eigentliches Logging durchführen, speziell für Helligkeit */
+        /* eigentliches Logging durchführen, speziell für Helligkeit 
+         * in variableLogID wird der übergebene Wert result geschrieben, ausser bei Test der selbe Wert
+         * variableLogID wird in do_init_brightness mit do_setVariableLogId entsprechend variableType,variableProfile definiert.
+         * in resultlog wird der formattierte Wert von variable geschrieben, klar result weisst keine Formattierung auf
+         */
 
         private function doLogBrightness($result)
             {

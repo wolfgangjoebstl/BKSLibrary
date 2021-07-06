@@ -168,141 +168,142 @@ IPS_SetEventActive($tim1ID,true);
  *
  *************************************************************/
 
-	{
-
-	echo "\n";
-	echo "==================================================\n";
-	echo "Vom Timer gestartet, include File erstellen.\n";
-	
-	$summary=array();		/* eine Zusammenfassung nach Typen erstellen */
-	
-	/************************************
-	 *
-	 *  Wenn vorhanden Hardware Sockets auflisten, dann kommen die Geräte dran
-     *  damit kann die Konfiguration des entsprechenden Gateways wieder hergestellt werden
-	 *
-	 ******************************************/
-
-    echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
-    $discovery = $modulhandling->getDiscovery();
-    $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Module hinzufügen
-    echo "\n";
-
-     
-
-    echo "Erstellen der SocketList (I/O Instanzen) in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
-    $socket=array();
-    $socket = $topologyLibrary->get_SocketList($discovery);
-    echo "Erstellen der GatewayList (Configurator Instanzen) in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
-    $gateway=array();
-    $gateway = $topologyLibrary->get_GatewayList($discovery);
-    echo "Erstellen der HardwareList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
-    $hardware = $topologyLibrary->get_HardwareList($discovery);
-        //print_r($hardware);
-        echo "   Anordnung nach Gerätetypen, Zusammenfassung:\n";
-        foreach ($hardware as $type => $entries) echo str_pad("     $type : ",28).count($entries)."\n";
-    echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
-    $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
-    echo "\n";
-
-    $includefileDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
-    $includefileDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
-    $includefileDevices     .= " *  \n";
-    $includefileDevices     .= " * Please do not edit, file will be overwritten on a regular base.     \n";
-    $includefileDevices     .= " *  \n";
-    $includefileDevices     .= " */    \n\n";
-    $includefileDevices .= "function socketInstanzen() { return ";
-    $ipsOps->serializeArrayAsPhp($socket, $includefileDevices);        // gateway array in das include File schreiben
-    $includefileDevices .= ';}'."\n\n"; 
-
-    $includefileDevices .= "function gatewayInstanzen() { return ";
-    $ipsOps->serializeArrayAsPhp($gateway, $includefileDevices);        // gateway array in das include File schreiben
-    $includefileDevices .= ';}'."\n\n"; 
-
-    echo "\n";
-    $result=$modulhandling->getModules('TopologyMappingLibrary');
-    if (empty($result)) echo "Modul/Bibliothek TopologyMappingLibrary noch nicht installiert.  \n";
-    else 
+    if (true)           // keine else mehr, immer ausführen, das heisst jeden Tag oder bei jedem AUfruf ein neues Inventory erstellen
         {
-        if (isset($installedModules["DetectMovement"]))         // wenn von EvaluateHardware aufgerufen wird brauchen ich nicht zu überprüfen ob das Modul installiert ist, ich nehme gleich die internen arrays 
+
+        echo "\n";
+        echo "==================================================\n";
+        echo "Vom Timer gestartet, include File erstellen.\n";
+        
+        $summary=array();		/* eine Zusammenfassung nach Typen erstellen */
+        
+        /************************************
+        *
+        *  Wenn vorhanden Hardware Sockets auflisten, dann kommen die Geräte dran
+        *  damit kann die Konfiguration des entsprechenden Gateways wieder hergestellt werden
+        *
+        ******************************************/
+
+        echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
+        $discovery = $modulhandling->getDiscovery();
+        $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Module hinzufügen
+        echo "\n";
+
+        
+
+        echo "Erstellen der SocketList (I/O Instanzen) in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+        $socket=array();
+        $socket = $topologyLibrary->get_SocketList($discovery);
+        echo "Erstellen der GatewayList (Configurator Instanzen) in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+        $gateway=array();
+        $gateway = $topologyLibrary->get_GatewayList($discovery);
+        echo "Erstellen der HardwareList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+        $hardware = $topologyLibrary->get_HardwareList($discovery);
+            //print_r($hardware);
+            echo "   Anordnung nach Gerätetypen, Zusammenfassung:\n";
+            foreach ($hardware as $type => $entries) echo str_pad("     $type : ",28).count($entries)."\n";
+        echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+        $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
+        echo "\n";
+
+        $includefileDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
+        $includefileDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
+        $includefileDevices     .= " *  \n";
+        $includefileDevices     .= " * Please do not edit, file will be overwritten on a regular base.     \n";
+        $includefileDevices     .= " *  \n";
+        $includefileDevices     .= " */    \n\n";
+        $includefileDevices .= "function socketInstanzen() { return ";
+        $ipsOps->serializeArrayAsPhp($socket, $includefileDevices);        // gateway array in das include File schreiben
+        $includefileDevices .= ';}'."\n\n"; 
+
+        $includefileDevices .= "function gatewayInstanzen() { return ";
+        $ipsOps->serializeArrayAsPhp($gateway, $includefileDevices);        // gateway array in das include File schreiben
+        $includefileDevices .= ';}'."\n\n"; 
+
+        echo "\n";
+        $result=$modulhandling->getModules('TopologyMappingLibrary');
+        if (empty($result)) echo "Modul/Bibliothek TopologyMappingLibrary noch nicht installiert.  \n";
+        else 
             {
-            //echo "TopologyMapping beginnt jetzt:\n";
-            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            if (isset($installedModules["DetectMovement"]))         // wenn von EvaluateHardware aufgerufen wird brauchen ich nicht zu überprüfen ob das Modul installiert ist, ich nehme gleich die internen arrays 
+                {
+                //echo "TopologyMapping beginnt jetzt:\n";
+                IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+                IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
-            $topID=@IPS_GetObjectIDByName("Topology", 0 );
-            if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da
+                $topID=@IPS_GetObjectIDByName("Topology", 0 );
+                if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da
 
-            $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
-            $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
+                $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
+                $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
 
-            /* wird nicht benötigt, nur zur Orientierung
-            //$modulhandling->printInstances('TopologyDevice');
-            $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
-            //$modulhandling->printInstances('TopologyRoom');        
-            $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-            //$modulhandling->printInstances('TopologyPlace');        
-            $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-            //$modulhandling->printInstances('TopologyDeviceGroup');        
-            $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-            */
+                /* wird nicht benötigt, nur zur Orientierung
+                //$modulhandling->printInstances('TopologyDevice');
+                $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
+                //$modulhandling->printInstances('TopologyRoom');        
+                $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+                //$modulhandling->printInstances('TopologyPlace');        
+                $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+                //$modulhandling->printInstances('TopologyDeviceGroup');        
+                $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+                */
 
-            $topology            = $DetectDeviceHandler->Get_Topology();
-            $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
-            $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();          // alle Geräte
-            //print_r($topology);
-            
-            echo "CreateTopologyInstances wird aufgerufen:\n";
-            $topologyLibrary->createTopologyInstances($topology);           // Topologie TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup in Kategorie Topologie erstellen
-            echo "----------------------------------------\n";
-            echo "SortTopologyInstances wird aufgerufen um die einzelnen Geräte in die topologie einzusortieren:\n";
-            $topologyLibrary->sortTopologyInstances($deviceList,$channelEventList,$deviceEventList);
-            echo "----------------------------------------\n";
-            }           // end isset DetectMovement
-        }               // end TopologyMappingLibrary
+                $topology            = $DetectDeviceHandler->Get_Topology();
+                $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
+                $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();          // alle Geräte
+                //print_r($topology);
+                
+                echo "CreateTopologyInstances wird aufgerufen:\n";
+                $topologyLibrary->createTopologyInstances($topology);           // Topologie TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup in Kategorie Topologie erstellen
+                echo "----------------------------------------\n";
+                echo "SortTopologyInstances wird aufgerufen um die einzelnen Geräte in die topologie einzusortieren:\n";
+                $topologyLibrary->sortTopologyInstances($deviceList,$channelEventList,$deviceEventList);
+                echo "----------------------------------------\n";
+                }           // end isset DetectMovement
+            }               // end TopologyMappingLibrary
 
-    $includefileDevices .= 'function deviceList() { return ';
-    $ipsOps->serializeArrayAsPhp($deviceList, $includefileDevices, 0, 0, false);          // true mit Debug
-    $includefileDevices .= ';}'."\n\n";        
-	
-    $includefileDevices .= "\n".'?>';
-	$filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php';
-	if (!file_put_contents($filename, $includefileDevices)) {
-        throw new Exception('Create File '.$filename.' failed!');
-    		} 
-            
-	/************************************
-	 *
-	 *  Homematic Sender und vorher HomematicSockets, FHT, FS20EX, FS20 einlesen
-     *  diese Routine wird in Zukunft nur mehr dazu verwendet eine vollständige Neuinstallation zu unterstützen
-	 *
-	 ******************************************/
+        $includefileDevices .= 'function deviceList() { return ';
+        $ipsOps->serializeArrayAsPhp($deviceList, $includefileDevices, 0, 0, false);          // true mit Debug
+        $includefileDevices .= ';}'."\n\n";        
+        
+        $includefileDevices .= "\n".'?>';
+        $filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php';
+        if (!file_put_contents($filename, $includefileDevices)) {
+            throw new Exception('Create File '.$filename.' failed!');
+                } 
+                
+        /************************************
+        *
+        *  Homematic Sender und vorher HomematicSockets, FHT, FS20EX, FS20 einlesen
+        *  diese Routine wird in Zukunft nur mehr dazu verwendet eine vollständige Neuinstallation zu unterstützen
+        *
+        ******************************************/
 
-	//$includefile='<?'."\n".'$fileList = array('."\n";
-	$includefile            = '<?'."\n";             // für die php IP Symcon Runtime
-    $includefile            .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").". */\n\n";
-    $summary = array();
-    $includefile            .= '/* These are the Homematic Sockets: */'."\n\n";
-    $evaluateHardware->getHomeMaticSockets($includefile);            //Wenn vorhanden die Homematic Sockets auflisten
-    $includefile            .= "\n".'/* These are the FHT Devices: */'."\n\n";
-    $evaluateHardware->getFHTDevices($includefile,$summary);
-    $includefile            .= "\n".'/* These are the FS20EX Devices: */'."\n\n";
-    $evaluateHardware->getFS20EXDevices($includefile,$summary);
-    $includefile            .= "\n".'/* These are the FS20 Devices: */'."\n\n";
-    $evaluateHardware->getFS20Devices($includefile,$summary);
-    $includefile            .= "\n".'/* These are the Homematic Devices: */'."\n\n";
-    $homematicList = $evaluateHardware-> getHomematicInstances($includefile,$summary);
+        //$includefile='<?'."\n".'$fileList = array('."\n";
+        $includefile            = '<?'."\n";             // für die php IP Symcon Runtime
+        $includefile            .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").". */\n\n";
+        $summary = array();
+        $includefile            .= '/* These are the Homematic Sockets: */'."\n\n";
+        $evaluateHardware->getHomeMaticSockets($includefile);            //Wenn vorhanden die Homematic Sockets auflisten
+        $includefile            .= "\n".'/* These are the FHT Devices: */'."\n\n";
+        $evaluateHardware->getFHTDevices($includefile,$summary);
+        $includefile            .= "\n".'/* These are the FS20EX Devices: */'."\n\n";
+        $evaluateHardware->getFS20EXDevices($includefile,$summary);
+        $includefile            .= "\n".'/* These are the FS20 Devices: */'."\n\n";
+        $evaluateHardware->getFS20Devices($includefile,$summary);
+        $includefile            .= "\n".'/* These are the Homematic Devices: */'."\n\n";
+        $homematicList = $evaluateHardware-> getHomematicInstances($includefile,$summary);
 
-    $evaluateHardware-> getHomematicDevices($includefile);
+        $evaluateHardware-> getHomematicDevices($includefile);
 
-	$includefile.="\n".'?>';	
-	$filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
-	if (!file_put_contents($filename, $includefile)) {
-        throw new Exception('Create File '.$filename.' failed!');
-    		}
-	//include $filename;
-	//print_r($fileList);
-	} // ende else if execute
+        $includefile.="\n".'?>';	
+        $filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
+        if (!file_put_contents($filename, $includefile)) {
+            throw new Exception('Create File '.$filename.' failed!');
+                }
+        //include $filename;
+        //print_r($fileList);
+        } // ende else if execute
 
 	echo "\n";
 	echo "=======================================================================\n";
@@ -315,178 +316,188 @@ IPS_SetEventActive($tim1ID,true);
         foreach ($devices as $device) echo "     ".$device."\n";
         }
 
-/* wenn DetectMovement installiert ist zusaetzlich zwei Konfigurationstabellen evaluieren
- * am Ende muss DetectDeviceHandler Configuration befüllt sein.
- *
- */
+    /* wenn DetectMovement installiert ist zusaetzlich zwei Konfigurationstabellen evaluieren
+    * am Ende muss DetectDeviceHandler Configuration befüllt sein.
+    *
+    * Summen und Mirrorregister suchen und registrieren
+    *
+    * !!!! Mirrorregister sind noch nicht vereinheitlicht, wir benötigen die Auswertungsregister
+    *
+    *  $DetectContactHandler           Events und Groups
+    *  $DetectMovementHandler          Events und Groups
+    *  $DetectTemperatureHandler       etwas andere bearbeitung
+    *  $DetectHumidityHandler
+    *  $DetectHeatControlHandler
+    *
+    */
 
-if (isset($installedModules["DetectMovement"]))
-    {
-    $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+    if (isset($installedModules["DetectMovement"]))
+        {
+        $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
-    echo "\n";
-    echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
-	echo "=======================================================================\n";
-	echo "Detect_______ Summen und Mirrorregister suchen und registrieren :\n";
-    echo "\n";
-	echo "DetectContact Kontakt Register hereinholen:\n";								
-	$DetectContactHandler = new DetectContactHandler();
-	$groups=$DetectContactHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
-	$events=$DetectContactHandler->ListEvents();
-    echo "----------------Liste der DetectContact Events durchgehen:\n";
-	foreach ($events as $oid => $typ)
-		{
-		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
-		$moid=$DetectContactHandler->getMirrorRegister($oid);
-		if ($moid !== false) 
+        echo "\n";
+        echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
+        echo "=======================================================================\n";
+        echo "Detect_______ Summen und Mirrorregister suchen und registrieren :\n";
+        echo "\n";
+        echo "DetectContact Kontakt Register hereinholen:\n";								
+        $DetectContactHandler = new DetectContactHandler();
+        $groups=$DetectContactHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+        $events=$DetectContactHandler->ListEvents();
+        echo "----------------Liste der DetectContact Events durchgehen:\n";
+        foreach ($events as $oid => $typ)
             {
-            echo "   *** register Event $moid: $typ\n";
-            $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Contact');		
-            }
-		}
-    echo "----------------Liste der DetectContact Groups durchgehen:\n";
-    print_r($groups); 
-	foreach ($groups as $group => $entry)
-		{
-		$soid=$DetectContactHandler->InitGroup($group);
-		echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-		$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Contact');		
-		}	
-
-	echo "DetectMovement Bewegungsregister hereinholen:\n";								
-	$DetectMovementHandler = new DetectMovementHandler();
-	$groups=$DetectMovementHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
-	$events=$DetectMovementHandler->ListEvents();
-    echo "----------------Liste der DetectMovement Events durchgehen:\n";
-	foreach ($events as $oid => $typ)
-		{
-		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
-		$moid=$DetectMovementHandler->getMirrorRegister($oid);
-		if ($moid !== false) 
-            {
-            echo "   *** register Event $moid: $typ\n";
-            $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Movement');		
-            }
-		}
-    echo "----------------Liste der DetectMovement Groups durchgehen:\n";        
-    print_r($groups); 
-	foreach ($groups as $group => $entry)
-		{
-		$soid=$DetectMovementHandler->InitGroup($group);
-		echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-		$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Movement');		
-		}	
-	
-    echo "\n";
-	echo "DetectMovement Temperaturregister aus der Configuration hereinholen, Spiegelregister auch registrieren:\n";								
-    $DetectTemperatureHandler = new DetectTemperatureHandler();
-	$eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();
-    $eventTempConfig=$DetectTemperatureHandler->Get_EventConfigurationAuto();    	
-	$groups=$DetectTemperatureHandler->ListGroups("Temperatur");        /* Type angeben damit mehrere Gruppen aufgelöst werden können */
-	$events=$DetectTemperatureHandler->ListEvents();
-    echo "----------------Liste der DetectTemperature Events durchgehen:\n";    
-	foreach ($events as $oid => $typ)
-		{
-        echo "     ".$oid."  ";
-		$moid=$DetectTemperatureHandler->getMirrorRegister($oid);
-        if ($moid !== false) 
-            {
-            $mirror = IPS_GetName($moid);    
-            $werte = @AC_GetLoggedValues($archiveHandlerID,$moid, time()-60*24*60*60, time(),1000);
-            if ($werte === false) echo "Kein Logging für Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).")\n";
-            if ( (isset($eventDeviceConfig[$oid])) && (isset($eventTempConfig[$oid])) )
+            echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+            $moid=$DetectContactHandler->getMirrorRegister($oid);
+            if ($moid !== false) 
                 {
-                if (IPS_ObjectExists($oid))
-                    {    
-                    echo str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75).
-                            json_encode($eventDeviceConfig[$oid])."  ".json_encode($eventTempConfig[$oid])." Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).") Archive Groesse : ".count($werte)."\n";
-                    /* check and get mirror register,. It is taken from config file. If config file is empty it is calculated from parent or other inputs and stored afterwards 
-                        * Config function DetectDevice follows detecttemperaturehandler
-                        */            
-                    $DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','Mirror->'.$mirror);     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig*/
-                    $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature',false, true);	        // par 3 config overwrite
-                    $DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	/* par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant */
+                echo "   *** register Event $moid: $typ\n";
+                $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Contact');		
+                }
+            }
+        echo "----------------Liste der DetectContact Groups durchgehen:\n";
+        print_r($groups); 
+        foreach ($groups as $group => $entry)
+            {
+            $soid=$DetectContactHandler->InitGroup($group);
+            echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
+            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Contact');		
+            }	
+
+        echo "DetectMovement Bewegungsregister hereinholen:\n";								
+        $DetectMovementHandler = new DetectMovementHandler();
+        $groups=$DetectMovementHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+        $events=$DetectMovementHandler->ListEvents();
+        echo "----------------Liste der DetectMovement Events durchgehen:\n";
+        foreach ($events as $oid => $typ)
+            {
+            echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+            $moid=$DetectMovementHandler->getMirrorRegister($oid);
+            if ($moid !== false) 
+                {
+                echo "   *** register Event $moid: $typ\n";
+                $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Movement');		
+                }
+            }
+        echo "----------------Liste der DetectMovement Groups durchgehen:\n";        
+        print_r($groups); 
+        foreach ($groups as $group => $entry)
+            {
+            $soid=$DetectMovementHandler->InitGroup($group);
+            echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
+            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Movement');		
+            }	
+        
+        echo "\n";
+        echo "DetectMovement Temperaturregister aus der Configuration hereinholen, Spiegelregister auch registrieren:\n";								
+        $DetectTemperatureHandler = new DetectTemperatureHandler();
+        $eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();
+        $eventTempConfig=$DetectTemperatureHandler->Get_EventConfigurationAuto();    	
+        $groups=$DetectTemperatureHandler->ListGroups("Temperatur");        /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+        $events=$DetectTemperatureHandler->ListEvents();
+        echo "----------------Liste der DetectTemperature Events durchgehen:\n";    
+        foreach ($events as $oid => $typ)
+            {
+            echo "     ".$oid."  ";
+            $moid=$DetectTemperatureHandler->getMirrorRegister($oid);
+            if ($moid !== false) 
+                {
+                $mirror = IPS_GetName($moid);    
+                $werte = @AC_GetLoggedValues($archiveHandlerID,$moid, time()-60*24*60*60, time(),1000);
+                if ($werte === false) echo "Kein Logging für Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).")\n";
+                if ( (isset($eventDeviceConfig[$oid])) && (isset($eventTempConfig[$oid])) )
+                    {
+                    if (IPS_ObjectExists($oid))
+                        {    
+                        echo str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75).
+                                json_encode($eventDeviceConfig[$oid])."  ".json_encode($eventTempConfig[$oid])." Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).") Archive Groesse : ".count($werte)."\n";
+                        /* check and get mirror register,. It is taken from config file. If config file is empty it is calculated from parent or other inputs and stored afterwards 
+                            * Config function DetectDevice follows detecttemperaturehandler
+                            */            
+                        $DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','Mirror->'.$mirror);     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig*/
+                        $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature',false, true);	        // par 3 config overwrite
+                        $DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	/* par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant */
+                        }
+                    else echo "   -> ****Fehler, $oid nicht mehr vorhanden aber in config eingetragen.\n";
                     }
-                else echo "   -> ****Fehler, $oid nicht mehr vorhanden aber in config eingetragen.\n";
+                else 
+                    {
+                    echo str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." ---->   not in config.";
+                    if (isset($eventDeviceConfig[$oid])===false) echo "DetectDeviceHandler->Get_EventConfigurationAuto() ist false  ";
+                    if (isset($eventTempConfig[$oid])===false) echo "DetectTemperatureHandler->Get_EventConfigurationAuto() ist false  ";
+                    echo "\n";
+                    $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');                     // zumindest einmal in den DeviceHandler übernehmen
+                    }
                 }
-            else 
-                {
-                echo str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." ---->   not in config.";
-                if (isset($eventDeviceConfig[$oid])===false) echo "DetectDeviceHandler->Get_EventConfigurationAuto() ist false  ";
-                if (isset($eventTempConfig[$oid])===false) echo "DetectTemperatureHandler->Get_EventConfigurationAuto() ist false  ";
-                echo "\n";
-		        $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');                     // zumindest einmal in den DeviceHandler übernehmen
-                }
+            else echo "  -> ****Fehler, Mirror Register für ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." nicht gefunden.\n";
             }
-        else echo "  -> ****Fehler, Mirror Register für ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." nicht gefunden.\n";
-		}
-	print_r($groups);
-    //echo "Alle Gruppen durchgehen:\n";
-	foreach ($groups as $group => $entry)
-		{
-		$soid=$DetectTemperatureHandler->InitGroup($group);
-		echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-		$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');		
-		}	
+        print_r($groups);
+        //echo "Alle Gruppen durchgehen:\n";
+        foreach ($groups as $group => $entry)
+            {
+            $soid=$DetectTemperatureHandler->InitGroup($group);
+            echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
+            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');		
+            }	
+
+        echo "\n";
+        echo "DetectMovement Feuchtigkeitsregister hereinholen:\n";								
+        $DetectHumidityHandler = new DetectHumidityHandler();
+        $groups=$DetectHumidityHandler->ListGroups("Humidity");
+        $events=$DetectHumidityHandler->ListEvents();
+        foreach ($events as $oid => $typ)
+            {
+            echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+            $moid=$DetectHumidityHandler->getMirrorRegister($oid);
+            if ($moid !== false) $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Humidity');		
+            }
+        print_r($groups);         
+        foreach ($groups as $group => $entry)
+            {
+            $soid=$DetectHumidityHandler->InitGroup($group);
+            echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
+            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Humidity');		
+            }	
+
+        echo "\n";
+        echo "DetectMovement Stellwertsregister hereinholen:\n";								
+        $DetectHeatControlHandler = new DetectHeatControlHandler();
+        $groups=$DetectHeatControlHandler->ListGroups("HeatControl");
+        $events=$DetectHeatControlHandler->ListEvents();
+        foreach ($events as $oid => $typ)
+            {
+            echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+            $moid=$DetectHeatControlHandler->getMirrorRegister($oid);
+            if ($moid !== false) $DetectDeviceHandler->RegisterEvent($moid,'Topology','','HeatControl');		
+            }
+        print_r($groups);    
+        foreach ($groups as $group => $entry)
+            {
+            $soid=$DetectHeatControlHandler->InitGroup($group);
+            echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
+            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','HeatControl');		
+            }	
+                                                                                                                                                                                        
+        echo "\n";
+        echo "=======================================================================\n";
+        echo "Jetzt noch einmal den ganzen DetectDevice Event table sortieren, damit Raumeintraege schneller gehen :\n";
+        $configuration=$DetectDeviceHandler->Get_EventConfigurationAuto();
+        echo "    Nachdem die Config ausgelesen wurde, die Events sortieren.\n";
+        $configurationNew=$DetectDeviceHandler->sortEventList($configuration);
+        echo "    Und wieder in der Config abspeichern.\n";
+        $DetectDeviceHandler->StoreEventConfiguration($configurationNew);
+        } /* ende if isset DetectMovement */
 
     echo "\n";
-	echo "DetectMovement Feuchtigkeitsregister hereinholen:\n";								
-	$DetectHumidityHandler = new DetectHumidityHandler();
-	$groups=$DetectHumidityHandler->ListGroups("Humidity");
-	$events=$DetectHumidityHandler->ListEvents();
-	foreach ($events as $oid => $typ)
-		{
-		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
-		$moid=$DetectHumidityHandler->getMirrorRegister($oid);
-		if ($moid !== false) $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Humidity');		
-		}
-    print_r($groups);         
-	foreach ($groups as $group => $entry)
-		{
-		$soid=$DetectHumidityHandler->InitGroup($group);
-		echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-		$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Humidity');		
-		}	
-
     echo "\n";
-	echo "DetectMovement Stellwertsregister hereinholen:\n";								
-	$DetectHeatControlHandler = new DetectHeatControlHandler();
-	$groups=$DetectHeatControlHandler->ListGroups("HeatControl");
-	$events=$DetectHeatControlHandler->ListEvents();
-	foreach ($events as $oid => $typ)
-		{
-		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
-		$moid=$DetectHeatControlHandler->getMirrorRegister($oid);
-		if ($moid !== false) $DetectDeviceHandler->RegisterEvent($moid,'Topology','','HeatControl');		
-		}
-    print_r($groups);    
-	foreach ($groups as $group => $entry)
-		{
-		$soid=$DetectHeatControlHandler->InitGroup($group);
-		echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-		$DetectDeviceHandler->RegisterEvent($soid,'Topology','','HeatControl');		
-		}	
-																																													
-    echo "\n";
-    echo "=======================================================================\n";
-	echo "Jetzt noch einmal den ganzen DetectDevice Event table sortieren, damit Raumeintraege schneller gehen :\n";
-    $configuration=$DetectDeviceHandler->Get_EventConfigurationAuto();
-    echo "    Nachdem die Config ausgelesen wurde, die Events sortieren.\n";
-    $configurationNew=$DetectDeviceHandler->sortEventList($configuration);
-    echo "    Und wieder in der Config abspeichern.\n";
-    $DetectDeviceHandler->StoreEventConfiguration($configurationNew);
-    } /* ende if isset DetectMovement */
 
-echo "\n";
-echo "\n";
-
-/******************************************************
- *
- *				Aufruf von EXECUTE oder RUNSCRIPT
- *
- * soll nur einen Ueberblick ueber die gesammelten Daten geben eigentliche Erfassung kommt dann bei timer, diesen immer ausführen
- *
- *************************************************************/
+    /******************************************************
+    *
+    *				Aufruf von EXECUTE oder RUNSCRIPT
+    *
+    * soll nur einen Ueberblick ueber die gesammelten Daten geben eigentliche Erfassung kommt dann bei timer, diesen immer ausführen
+    *
+    *************************************************************/
 
 
 if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $ExecuteExecute )

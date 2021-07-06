@@ -980,7 +980,7 @@
 	*************************************************************/
 
 	echo "===========================================\n";
-	echo "Homematic RSSI Variablen anlegen.\n";
+	echo "Homematic RSSI Variablen für stromversorgte Homematic Devices anlegen.\n";
 
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 	IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -1036,22 +1036,26 @@
             {
 			unset($seriennumernliste[$zeile["Adresse"]]);
             }
-        else echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";            
+        else 
+            {
+            //echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";
+            }            
 
 		}
-	echo "\n";
 	echo "Davon sind noch ".sizeof($seriennumernliste)." Geraete entweder Switch oder Dimmer und damit ohne Batteriebetrieb.\n";
 	$homematicConfiguration=array();
 	foreach ($seriennumernliste as $zeile)
 		{
 		//echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  \n";
+        echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";
 		$name=explode(":",$zeile["Name"])[0];
 		$homematicConfiguration[$name][]=$zeile["Adresse"];
 		$homematicConfiguration[$name][]=$zeile["Channel"];
 		$homematicConfiguration[$name][]=$zeile["Protocol"];
 		$homematicConfiguration[$name][]=$zeile["Type"];				
 		}
-
+    /*ein neues Array $homematicConfiguration nach Name (Zeichen vor dem Doppelpunkt) angelegt */
+    $i=0;
 	foreach ($homematicConfiguration as $component=>$componentData) 
 		{
 		$propertyAddress  = $componentData[0];
@@ -1060,19 +1064,21 @@
 		$propertyType     = $componentData[3];
 		$propertyName     = $component;
 		
-		$install=true;
+        /* für jedes gerät aus der Liste alle Homematic module durchsuchen */
+		$install=true; 
 		foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) 
 			{
 			$HMAddress = HM_GetAddress($HomematicModuleId);
 			if ($HMAddress=="$propertyAddress:$propertyChannel") 
 				{
+                /* ähnliche Nachricht kommt von CreateHomematicInstance */
 				//echo "Found existing HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol\n";
 				$install=false;
 				}
 			}
 		if ($install==true)		/* kein Device gefunden */
 			{
-			echo "HomaticModule '$propertyName' muss komplett neu installiert werden.\n";
+			echo "*******Fehler, HomaticModule '$propertyName' muss komplett neu installiert werden.\n";
 			$moduleManager->LogHandler()->Log("Create NEW HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol");
 			$DeviceId = CreateHomematicInstance($moduleManager,
                                             $propertyAddress,
@@ -1081,18 +1087,27 @@
                                             $CategoryIdHardware,
                                             $propertyProtocol);
 			}
+        echo str_pad($i++,7);
 		$SystemId = CreateHomematicInstance($moduleManager,
                                             $propertyAddress,
                                             0,
-                                            $propertyName.'#',
+                                            $propertyName.':RSSI',                      //kein # mehr, : ist die Trennung
                                             $CategoryIdRSSIHardware,
                                             $propertyProtocol);
+
+        if (IPS_GetName($SystemId)!=($propertyName.':RSSI')) 
+            {
+            echo "RSSI Instanz heisst jetzt $SystemId  (".IPS_GetName($SystemId)."). Name wurde geändert.\n";                
+            IPS_SetName($SystemId,$propertyName.':RSSI');
+            }
 		if ($propertyType==HM_TYPE_SMOKEDETECTOR) 
 			{
 			$variableId = IPS_GetVariableIDByName('STATE', $DeviceId);
 			CreateEvent ($propertyName, $variableId, $scriptIdSmokeDetector);
 			} 
 		}
+	echo "------------------------------------\n";
+
 		
 	/********************************************************
 	 *

@@ -1870,7 +1870,8 @@ function GetValueIfFormatted($oid)
    	$variabletyp=IPS_GetVariable($oid);
 	if ( ($variabletyp["VariableProfile"]!="")  or ($variabletyp["VariableCustomProfile"]!="") )
 		{
-	    $result=GetValueFormatted($oid);
+	    $result=@GetValueFormatted($oid);
+        if ($result===false) { echo "GetValueIfFormatted: Fehler mit Format von $oid.\n"; }
 		}
 	else
 	   	{
@@ -3220,8 +3221,8 @@ class ipsOps
         echo "ipsOps:emptyCategory aufgerufen mit $CategoryId (".IPS_GetName($CategoryId).").\n";
 		if ($CategoryId==0) 
             {
-            echo "Root Category could NOT ne deleted!!!\n";    
-			Error ("Root Category could NOT ne deleted!!!");
+            echo "Root Category could NOT be deleted!!!\n";    
+			Error ("Root Category could NOT be deleted!!!");
 		    }
 
 		$ChildrenIds = IPS_GetChildrenIDs($CategoryId);
@@ -3494,11 +3495,11 @@ class sysOps
      *
      */
 
-    public function checkProcess($processStart)
+    public function checkProcess($processStart, $debug=false)
         {
         $processes=$this->getProcessList();
         sort($processes);
-        //print_r($processes);
+        if ($debug) print_r($processes);
 
         foreach ($processes as $process)
             {
@@ -5224,11 +5225,16 @@ class ComponentHandling
                 $index="Helligkeit";
                 $profile="Helligkeit";                  // Variablen Profil
                 break;
-            case "ENERGY":                              // selber Component wie State
-                //$detectmovement="Helligkeit";
+            case "ENERGY":                             
                 $variabletyp=2; 		            // Float 
                 $index="Stromverbrauch";
                 $profile="~Electricity";                  // Variablen Profil
+                break;
+            case "POWER":                             
+                //$detectmovement="Helligkeit";
+                $variabletyp=2; 		            // Float 
+                $index="Stromverbrauch";
+                $profile="~Power";                  // Variablen Profil ist kW, irgendwo muss umgerechnet werden
                 break;
             case "CONTACT":
                 $detectmovement="Contact";
@@ -5261,7 +5267,7 @@ class ComponentHandling
                 break;                              
             default:	
                 $variabletyp=0; 		/* Boolean */	
-                echo "************Kenne ".strtoupper($keyName["KEY"])." nicht.\n";
+                echo "************AllgemeineDefinitionen::addOnKeyName, kenne ".strtoupper($keyName["KEY"])." nicht.\n";
                 break;
             }
 
@@ -5506,6 +5512,7 @@ class ComponentHandling
     							$DetectClimateHandler->RegisterEvent($oid,"Climate",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 	    						break;
 						    case "Brightness":
+                            case "Helligkeit":
     							$DetectBrightnessHandler = new DetectBrightnessHandler();						
 	    						$DetectBrightnessHandler->RegisterEvent($oid,"Brightness",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 		    					break;															
@@ -5534,6 +5541,7 @@ class ComponentHandling
 	    						$DetectContactHandler->RegisterEvent($oid,"Contact",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 		    					break;															
 			    			default:
+                                echo "Fehler, kenne detectmovement $detectmovement nicht.\n";
 				    			break;
 					    	}		
 					    }

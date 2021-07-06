@@ -304,7 +304,8 @@
                         case 'Temperatur':										
                         case 'Feuchtigkeit':
                         case 'Humidity':
-                        case 'HeatControl':										
+                        case 'HeatControl':
+                        case "Brightness":										
                             if (($type==$params[0]) && ($params[1] != ""))
                                 {
                                 $params1=explode(",",$params[1]);
@@ -580,6 +581,9 @@
 			
 			switch ($eventType)
 				{
+				case 'Brightness':
+					$triggerType = 8;
+					break;
 				case 'HeatSet':
 					$triggerType = 7;
 					break;
@@ -1634,11 +1638,23 @@
 			
 		} /* ende class */	
 
-/*****************************************************************************************************************
- *
- *
- *
- */
+    /*****************************************************************************************************************
+     *  alle Register mit einer Helligkeitsmessung vereinen
+     *  die Konfiguration wäre in DetectMovement_Configuration zu finden
+     *  in data/core/IPSComponent/ werden die Kategorien Helligkeit-Auswertung und Helligkeit-Nachrichten angelegt
+     *
+     * Nachdem es auch Mirror und Gruppen Register gibt, die wenn sich ein Wert ändert auch upgedatet werden, fasst diese Funktion zusammen.
+     * Mit der Config wird in scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php die Funktion IPSDetectTemperatureHandler_GetEventConfiguration upgedatet
+     *
+     *  Get_Configtype, Get_ConfigFileName
+     *  Get_EventConfigurationAuto
+     *  Set_EventConfigurationAuto
+     *  getMirrorRegister
+     *  CreateMirrorRegister
+     *  InitGroup 
+     *
+     * mit construct wird nur die Kategorie angelegt
+     */
 
 	class DetectBrightnessHandler extends DetectHandler
 		{
@@ -1794,11 +1810,11 @@
 			
 		} /* ende class */	
 
-/*****************************************************************************************************************
- *
- *
- *
- */
+    /*****************************************************************************************************************
+    *
+    *
+    *
+    */
 
 	class DetectContactHandler extends DetectHandler
 		{
@@ -2548,7 +2564,7 @@
 		protected $topology;            // topologie ist auch in der Children class verfügbar
         protected $ID;
 
-	public function Get_Configtype()
+	    public function Get_Configtype()
 			{
 			return self::$configtype;
 			}
@@ -2573,10 +2589,13 @@
 			}
 
         /* Functions that are common 
+         * Topology in webfront als Kategorien entsprechend topology config anlegen
+         * wenn init true vorher die World Topologie loeschen
          */
 
-        public function create_Topology($debug=false)
+        public function create_Topology($init=false,$debug=false)
             {
+            $ipsOps=new ipsOps();                
 			if (function_exists("get_Topology") === false)
 				{
                 echo "******Failure, do not find function get_Topology. Try to include EvaluateHardware_Configuration.\n";
@@ -2597,6 +2616,7 @@
                 if ($debug) echo "create_Topology: Webportal EvaluateHardware Datenstruktur installieren in: ".$WFC10_Path." \n";
                 $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
                 $this->ID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
+                if ($init) $ipsOps->emptyCategory($this->ID);
 
 				$this->topology=get_Topology();
 				$this->topology["World"]["OID"]=$this->ID;        // Startpunkt
@@ -2671,13 +2691,19 @@
                     else throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
                     }
                 }
-            $this->create_Topology();
+            $this->create_Topology();           // input parameter false no init/empty category false no debug
             }
 
         /*
-         * Verbindung der Topologie mit der Object und instamnzen Konfiguration
+         * Verbindung der Topologie mit der Object und instanzen Konfiguration
          * es können jetzt auch mehrstufige hierarchische Gewerke aufgebaut werden
          * zB Weather besteht aus Temperatur und Feuchtigkeit
+         *
+         * Übergabeparameter
+         *  topology            die tatsächliche Topologies aus der config in EvaluateHardware_configuration
+         *  objectsConfig       die Object/register Config aus dem DetectDeviceHandler, das sind nicht die Geräte sondern die Register
+         *                      es gibt dort auch Gesamt register die definiert wirden
+         *
          */
 
         function mergeTopologyObjects($topology, $objectsConfig, $debug=false)
@@ -2737,7 +2763,7 @@
                 else 
                     {
                     echo "    ***$index, ";
-                    echo IPS_GetName($index)." hat keinen Ort:\"".$entry[1]."\"\n";                    
+                    echo IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))." hat keinen Ort:\"".$entry[1]."\"\n";                    
                     }
                 }  // ende foreach
             return ($topologyPlusLinks);
@@ -2891,6 +2917,119 @@
 			{
 			}
 
+        /* update registerEvent according to deviceList
+         *
+         */
+
+        public function UpdateRegisterEvent($DetectHandler, $deviceList, $debug=false)
+            {
+            $configurationDevice    = $this->Get_EventConfigurationAuto();                
+            $events=$DetectHandler->ListEvents();         
+            foreach ($events as $oid => $typ)
+                {
+                $rooms=""; 
+                $poid=IPS_GetParent($oid);
+                $instance=IPS_GetName($poid);
+                $nameInstance = explode(":",$instance)[0];		/* Zuordnung Gruppen */
+                $typeInstance = explode(":",$instance)[1];		/* Zuordnung Gewerke, eigentlich sollte pro Objekt nur jeweils ein Gewerk definiert sein. Dieses vorrangig anordnen */        
+                echo "     $oid/$poid  ".IPS_GetName($oid).".$instance.".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."    for devicelist name \"$nameInstance\"  and type \"$typeInstance\" \n";
+                if (isset($deviceList[$nameInstance])) 
+                    {
+                    if ($debug) echo "found already in deviceList().";
+                    if (isset($deviceList[$nameInstance]["Topology"]))
+                        {
+                        $first=true;
+                        foreach ($deviceList[$nameInstance]["Topology"] as $index => $room) 
+                            {
+                            if ($first) 
+                                {
+                                $rooms = $room["ROOM"]; 
+                                $first=false; 
+                                //print_R($rooms);
+                                }
+                            else $rooms .= ",".$room["ROOM"];
+                            }
+                        if ($debug) echo " Available Rooms detected there: \"$rooms\".";
+                        }
+                    if ($debug) echo "\n";
+                    //print_r($deviceList[$nameInstance]);
+                    }
+                if ($debug) 
+                    {
+                    if (isset($configurationDevice[$oid])) echo "found already in DetectDeviceHandler\n";
+                    if (isset($configurationDevice[$poid])) echo "found already as Parent in DetectDeviceHandler\n";        
+                    if (isset($configurationEvent[$oid])) echo "found already in DetectDeviceListHandler\n";        
+                    }
+                $moid=$DetectHandler->getMirrorRegister($oid);
+                if ($moid !== false) 
+                    {
+                    if ($debug) echo "   *** register Event $moid: $typ\n";  
+                    if (isset($configurationDevice[$moid])) 
+                        {
+                        $roomsConfig=$configurationDevice[$moid][1];                    
+                        if ($debug) echo "found already in Mirror DetectDeviceHandler. Rooms are \"$roomsConfig\".\n";
+                        if ( ($roomsConfig != $rooms) && ($roomsConfig != "") ) { if ($debug) echo " *** Failure on Rooms Assignment. No Change of Config.\n"; $rooms=$roomsConfig; }
+                        }
+                    if (isset($configurationEvent[$moid])) 
+                        {
+                        if ($debug) echo "found already in Mirror DetectDeviceListHandler.\n";           // unwahrscheinlich, es werden nur Topology OIDs registriert
+                        }
+                    $this->RegisterEvent($moid,'Topology',$rooms,'Brightness');	                                    //registrieren in IPSDetectDeviceHandler_GetEventConfiguration mit dem Gewerk aber ohne Raum ?
+                    }      
+                if ($debug) echo "\n";
+                }                
+            }
+
+        /* aus mergeTopologyObjects wird in Visualization...EvaluateHardware das Webfront LocalData erstellt.
+         * hier die Links einsortieren
+         */
+
+        public function updateLinks($topologyPlusLinks)
+            {
+            foreach ($topologyPlusLinks as $place => $entry)
+                {
+                echo "$place (".$entry["Type"].") : ";
+                $object=false; $instance=false;
+                if (isset($entry["OBJECT"])) 
+                    {
+                    echo "  OBJECT (".(count($entry["OBJECT"])).")";
+                    $object=true;            							//CreateLinkByDestination($name, $index, $oid, 10);
+                    }
+                elseif (isset($entry["INSTANCE"])) 
+                    {
+                    echo "  INSTANCE (".(count($entry["INSTANCE"])).")";
+                    $instance=true;
+                    }
+                echo "\n";
+                if ($object) 
+                    {
+                    foreach ($entry["OBJECT"] as $type => $subentry)
+                        {
+                        echo "      $type  :\n";
+                        foreach ($subentry as $oid => $name)
+                            {
+                            $objects = @IPS_GetVariable($oid);
+                            if ($objects===false)
+                                {
+                                echo "        $oid   -> ***** Failure, dont know VariableID.\n";
+                                }
+                            else
+                                {
+                                echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                                if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
+                                echo "\n";
+                                CreateLinkByDestination($name, $oid, $entry["OID"], 10);	                
+                                }                    
+                            }
+                        }
+                    }
+                if ($instance);             // vorerst der Übersichtlichkeit wegen keine Instanzen als Link hinzufügen
+                echo "\n";
+                //print_R($entry);
+                }       // ende foreach
+            }
+
+
 		}  /* ende class */
 
 	/*******************************************************************************
@@ -2923,7 +3062,7 @@
 			{
 			self::$configtype = '$deviceListTopology';
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php';
-            if ($this->create_Topology()===false)           // berechnet topology und ID, false wenn get_topology nicht definiert
+            if ($this->create_Topology()===false)           // berechnet topology und ID, false wenn get_topology nicht definiert, input parameter false no init/empty category false no debug
 				{
                 $this->create_TopologyConfigurationFile(true);          //true for Debug                       
 				echo "DetectDeviceListHandler: Function get_Topology neu anlegen.\n";

@@ -228,11 +228,28 @@ class TopologyLibraryManagement
      *  basierend auf den Ergebnissen der Discovery module zuerst eine Hardwareliste und dann eine Deviceliste erstellen
      *  array deviceList erstellen, sortieren und um weitere Informationen anreichern 
      *   
-     *  erstellen funktioniert mit getDeviceCheck, getDeviceParameter, getDeviceChannels, getDeviceActuators
+     *  erstellen funktioniert modular mit getDeviceCheck, getDeviceParameter, getDeviceChannels, getDeviceActuators
      *  alle obigen functions sind Teil der class Hardware$hadwaretype, hardwaretype kommt aus der getHardwarelist
      *  diese Klassen findet man unter HardwareLibrary
+     *  Beispiel 
+     *      class HardwareHomematic extends Hardware
      *
-     * Beispiel class HardwareHomematic extends Hardware
+     * Struktur devicelist
+     *  In der Funktion devicelist wird für jeden Gerätenamen ein Array aufgemacht. 
+     *  Untergruppen sind dann INSTANCES, CHANNELS, DEVICE, ACTUATORS, TOPOLOGY
+     *  parallel zu den Untergruppen wird zumindest TYPE angelegt
+     *
+     * die Funktionen sind Teil der Hardware_Library und nach classes sortiert
+     *  Beispiel wie oben zB HardwareHomematic->getDeviceChannels
+     *      HardwareDenonAVR extends Hardware
+     *      HardwareNetatmoWeather extends Hardware
+     *      HardwareHomematic
+     *      HardwareHUE
+     *      HardwareHarmony
+     *      HardwareFHTFamily
+     *      HardwareFS20Family
+     *      HardwareFS20ExFamily
+     *      HardwareEchoControl
      *
      */
 

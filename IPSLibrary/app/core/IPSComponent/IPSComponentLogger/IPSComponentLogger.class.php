@@ -538,14 +538,18 @@ class Logging
         //$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
         //echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
         $name="MotionMirror_".$this->variablename;
-         switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
+        switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
+            case "MOTION":
+                break;
             default:
-                echo "Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";
-                //IPSLogger_Wrn(__file__, "do_init_motion, Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".");
-                $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);       /* 0 boolean */
+                IPSLogger_Wrn(__file__, "do_init_motion, do not know Type ".$this->variableTypeReg." : Type ".$this->variableType." with Profile ".$this->variableProfile.".");
+                echo "***do_init_motion, do not know Type ".$this->variableTypeReg." : Type ".$this->variableType." with Profile ".$this->variableProfile.".\n";               
                 break;
             }
+        echo "Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";
+        //IPSLogger_Wrn(__file__, "do_init_motion, Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".");
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);       /* 0 boolean */
 
         /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Bewegung",$this->CategoryIdData);
@@ -629,8 +633,8 @@ class Logging
         }
 
     /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde
-        * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
-        */
+     * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
+     */
 
     public function do_init_brightness($variable, $variablename,$value, $debug=false)
         {
@@ -649,19 +653,25 @@ class Logging
         //CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
          switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
+            case "BRIGHTNESS":          // für Brightness gibt es standardisierte Helligkeits Profile
+                //$this->variableProfile="~Window.HM";         // 3 Werte, allgemein für Alle
+                //$this->variableType=1;                      // Integer
+                break;                
             default:
-                echo "Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";
-                //IPSLogger_Wrn(__file__, "do_init_brightness, Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".");
-                $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);       
+                IPSLogger_Wrn(__file__, "do_init_brightness, do not know Type ".$this->variableTypeReg." : Type ".$this->variableType." with Profile ".$this->variableProfile.".");
+                echo "***do_init_brightness, do not know Type ".$this->variableTypeReg." : Type ".$this->variableType." with Profile ".$this->variableProfile.".\n";            
                 break;
             }
+        echo "Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";
+        //IPSLogger_Wrn(__file__, "do_init_brightness, Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".");
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);       
 
         if ($debug) echo "      Create Category to store the Move-LogNachrichten und Spiegelregister in ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData)."):\n";	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Helligkeit",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
         if ($debug) echo "         done ".$this->NachrichtenID. "(".IPS_GetName($this->NachrichtenID).") und ".$this->AuswertungID." (".IPS_GetName($this->AuswertungID).").\n";
         
-        echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen:\n";
+        echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen, es wird für create entsprechend variableType,variableProfile genutzt:\n";
         $this->do_setVariableLogID($variable,$debug);
 
         $directory = $this->configuration["LogDirectories"]["MotionLog"];
@@ -697,10 +707,11 @@ class Logging
             case "CONTACT":
                 $this->variableProfile="~Window.HM";         // 3 Werte, allgemein für Alle
                 $this->variableType=1;                      // Integer
-                echo "do_init_contact, Create Mirror Register $name as ".$this->variableType." with Profile ".$this->variableProfile.", Type is ".$this->variableTypeReg.".\n";
+                echo "do_init_contact, Create Variable Log Register $name as ".$this->variableType." with Profile ".$this->variableProfile.", Type is ".$this->variableTypeReg.".\n";
                 //IPSLogger_Wrn(__file__, "do_init_contact, Create Mirror Register $name as ".$this->variableType." with Profile ".$this->variableProfile.", Type is ".$this->variableTypeReg.".");
                 break;
             default:
+                IPSLogger_Wrn(__file__, "do_init_contact, do not know Type ".$this->variableTypeReg." : Type ".$this->variableType." with Profile ".$this->variableProfile.".");
                 echo "***do_init_contact, do not know Type ".$this->variableTypeReg." : Type ".$this->variableType." with Profile ".$this->variableProfile.".\n";
                 break;
             }
@@ -751,16 +762,17 @@ class Logging
         switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
             case "TEMPERATURE":
-                echo "do_init_temperature, Create Mirror Register $name as Float and ".$this->variableProfile."\n";
+            case "TEMPERATUR":
+                echo "do_init_temperature, Create Auswertung Register $name as Float and ".$this->variableProfile."\n";
                 if ( ($this->variableProfile <> "~Temperature") && ($this->variableProfile <> "Netatmo.Temperatur") )
                     {
-                    IPSLogger_Wrn(__file__, "do_init_temperature, Create Mirror Register $name as Float with Profile ".$this->variableProfile." instead of \"~Temperature\".");
+                    IPSLogger_Wrn(__file__, "do_init_temperature, Create Auswertung Register $name as Float with Profile ".$this->variableProfile." instead of \"~Temperature\".");
                     }
                 //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,"~Temperature");       /* 2 float Netatmo und Homematic bekommen das selbe Profil */
                 break;
             default:
                 echo "Create Mirror Register $name as Float und ".$this->variableProfile."\n";
-                IPSLogger_Wrn(__file__, "do_init_temperature, Create Mirror Register $name as Float with Profile ".$this->variableProfile.", TypeReg is ".$this->variableTypeReg.".");
+                IPSLogger_Wrn(__file__, "do_init_temperature, Create Auswertung Register $name as Float with Profile ".$this->variableProfile.", TypeReg is ".$this->variableTypeReg.".");
                 //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,$this->variableProfile);       /* 2 float für Default*/
                 break;
             }
@@ -813,7 +825,7 @@ class Logging
             {
             case "CONTACT1":
                 echo "do_init_humidity, Create Mirror Register $name as Integer und ".$this->variableProfile."\n";
-                //IPSLogger_Wrn(__file__, "do_init_humidity, Create Mirror Register $name as Integer with Profile ".$this->variableProfile." if necessary.");
+                //IPSLogger_Wrn(__file__, "do_init_humidity, Create Auswertung Register $name as Integer with Profile ".$this->variableProfile." if necessary.");
 
                 //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,1,$this->variableProfile);       /* 1 integer für Typ CO2 */
                 break;
@@ -848,6 +860,8 @@ class Logging
      * vorher wird constructfirst, do_init aufgerufen. Hier wird weiters noch angelegt:
      *  DetectHandler       wenn installiert
      *  variablename        abgeleitet aus dem Variablennamen oder aus der Config
+     *
+     *
      */
 
     public function do_init_sensor($variable, $variablename)
@@ -876,12 +890,18 @@ class Logging
         echo "    Sensor_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
         switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
-            case "POWER":           /* Power Wirkleistung und Wirkenergie von AMIS */
+            case "POWER":           /* Power Wirkleistung und Wirkenergie von AMIS, oder aus einem Homematic Register direkt */
             case "ENERGY":
                 echo "do_init_sensor, Create Mirror Register $name as Integer und ".$this->variableProfile."\n";
-                if ( ($this->variableProfile <> "~Power") && ($this->variableProfile <> "~Electricity") )
+                if ($this->variableProfile == "~Watt.3680")
+                    {
+                    /* Watt in kWatt umrechnen */
+                    $this->variableProfile = "~Power";          // hier log Register auf Standardprofil umfirmieren
+                    }
+                elseif ( ($this->variableProfile <> "~Power") && ($this->variableProfile <> "~Electricity") )
                     {                
-                    IPSLogger_Wrn(__file__, "do_init_sensor, Create Mirror Register $name as Float with Profile ".$this->variableProfile." not supported.");
+                    echo "do_init_sensor Warning, Create Auswertung Register $name as Float with Profile ".$this->variableProfile." not supported.\n";
+                    IPSLogger_Wrn(__file__, "do_init_sensor, Create Auswertung Register $name as Float with Profile ".$this->variableProfile." not supported.");
                     }
                 //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,$this->variableProfile);       /* 1 integer für Typ CO2 */
                 break;
@@ -990,27 +1010,28 @@ class Logging
             case "CO2":
                 $this->variablename = $this->variablename."CO2";
                 $name="ClimateMirror_".$this->variablename;   // manchmal gibt es unterschiedliche Typen in einem Gerät des selben Components;
-                echo "do_init_climate, Create Mirror Register $name as Integer und ".$this->variableProfile."\n";
-                if ($this->variableProfile <> "Netatmo.CO2") IPSLogger_Wrn(__file__, "do_init_climate, Create Mirror Register $name as Integer with Profile ".$this->variableProfile." instead of \"Netatmo.CO2\".necessary.");
-                if ($this->variableType <> 1) IPSLogger_Wrn(__file__, "do_init_climate, Create Mirror Register $name as Type ".$this->variableType." instead of Type 1 necessary.");
-                //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 1 integer für Typ CO2 */
+                echo "do_init_climate, Create Auswertung Register ".$this->variablename." as Integer und ".$this->variableProfile."\n";
+                if ($this->variableProfile <> "Netatmo.CO2") IPSLogger_Wrn(__file__, "do_init_climate, Create Auswertung Register ".$this->variablename." as Integer with Profile ".$this->variableProfile." instead of \"Netatmo.CO2\".necessary.");
+                if ($this->variableType <> 1) IPSLogger_Wrn(__file__, "do_init_climate, Create Auswertung Register ".$this->variablename." as Type ".$this->variableType." instead of Type 1 necessary.");
+                //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       // 1 integer für Typ CO2 
                 $this->variableProfile="CO2";   // MirorRegister ist wie die Variable, Variable in der Auswertung wird vereinheitlicht.
                 $this->variableType=1;
                 break;
             case "BAROPRESSURE":
                 $this->variablename = $this->variablename."BARO";
-                $this->variableProfile = "Pressure";
                 $name="ClimateMirror_".$this->variablename;   // manchmal gibt es unterschiedliche Typen in einem Gerät des selben Components;
-                echo "do_init_climate, Create Mirror Register $name as Integer und ".$this->variableProfile."\n";
-                if ($this->variableProfile <> "Netatmo.CO2") IPSLogger_Wrn(__file__, "do_init_climate, Create Mirror Register $name as Integer with Profile ".$this->variableProfile." instead of \"Netatmo.CO2\".necessary.");
-                if ($this->variableType <> 1) IPSLogger_Wrn(__file__, "do_init_climate, Create Mirror Register $name as Type ".$this->variableType." instead of Type 1 necessary.");
-                //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 1 integer für Typ CO2 */
+                echo "do_init_climate, Create Mirror Register ".$this->variablename." as Integer und ".$this->variableProfile."\n";
+                if ($this->variableProfile <> "Netatmo.Pressure") IPSLogger_Wrn(__file__, "do_init_climate, Create Auswertung Register ".$this->variablename." as Integer with Profile ".$this->variableProfile." instead of \"Netatmo.CO2\".necessary.");
+                if ($this->variableType <> 2) IPSLogger_Wrn(__file__, "do_init_climate, Create Auswertung Register ".$this->variablename." as Type ".$this->variableType." instead of Type 1 necessary.");
+                //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       // 1 integer für Typ CO2 
+                $this->variableProfile = "Pressure";
+                $this->variableType=2;
                 break;
             default:
                 $name="ClimateMirror_".$this->variablename;   // manchmal gibt es unterschiedliche Typen in einem Gerät des selben Components;
-                /*echo "Create Mirror Register $name as Float und ".$this->variableProfile."\n";
-                IPSLogger_Wrn(__file__, "do_init_climate, Create Mirror Register $name as Type ".$this->variableType." with Profile ".$this->variableProfile.", TypeReg is ".$this->variableTypeReg.".");
-                $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       // 2 float für Default*/
+                echo "Create Auswertung Register $name as Float und ".$this->variableProfile." unknown TypeReg is ".$this->variableTypeReg."\n";
+                IPSLogger_Wrn(__file__, "do_init_climate, Create Auswertung Register ".$this->variablename." as Type ".$this->variableType." with Profile ".$this->variableProfile.", TypeReg is ".$this->variableTypeReg.".");
+                //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       // 2 float für Default
                 break;
             }
         echo "Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";

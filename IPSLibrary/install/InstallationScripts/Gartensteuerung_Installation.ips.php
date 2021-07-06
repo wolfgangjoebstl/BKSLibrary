@@ -240,7 +240,7 @@
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * Variablen für Modul anlegen ind en Kategorien
+	 * Variablen für Modul anlegen in den Kategorien
      *      Gartensteuerung-Auswertung
      *      Gartensteuerung-Register
 	 *      Nachrichtenverlauf-Gartensteuerung
@@ -374,7 +374,17 @@
         IPS_SetName($eid5, "UpdateTimer");
         IPS_SetEventCyclic($eid5, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 1 /* Alle Minuten */);
         }
-    
+
+    /* UpdateTimerSlow übernimmt das Update der Regenstatistik */
+    $eid6 = @IPS_GetEventIDByName("UpdateTimerHourly", $scriptIdGartensteuerung);
+    if ($eid6==false)
+        {
+        $eid6 = IPS_CreateEvent(1);
+        IPS_SetParent($eid6, $scriptIdGartensteuerung);
+        IPS_SetName($eid6, "UpdateTimerHourly");
+        IPS_SetEventCyclic($eid6, 0 /* Kein Datumstyp, tägliche Ausführung */, 0 /* kein Datumsintervall */, 0 /* keien Datumstage */, 0 /* kein Datumstageintervall */, 3 /* Stündlich */ , 1 /* Alle Stunden */);
+        }
+
     $eid3 = @IPS_GetEventIDByName("Timer3", $scriptIdGartensteuerung);
     if ($eid3==false)
         {
@@ -394,8 +404,9 @@
     if ($GartensteuerungConfiguration["Configuration"]["Irrigation"]=="ENABLED")
         {
         /* Giessstopp Timer einschalten */
-        IPS_SetEventActive($eid2,true);
-        IPS_SetEventActive($eid2m,true);
+        IPS_SetEventActive($eid2,true);             // Giesstopp 1
+        IPS_SetEventActive($eid2m,true);            // Giesstopp 2
+        IPS_SetEventActive($eid6,false);            // SlowUpdate nicht notwendig,wenn Giessteuerung akiviert
         }
     else    
         {
@@ -404,6 +415,7 @@
         IPS_SetEventActive($eid3,false);
         IPS_SetEventActive($eid4,false);
         IPS_SetEventActive($eid5,false);
+        IPS_SetEventActive($eid6,true);        
         }
 
     /* Alte Timer loeschen, damit sie nicht doppelt vorkommen, zumindest ein Timer muss aktiv sein damit Gartensteuerung zum ersten mal aufgerufen wird */
