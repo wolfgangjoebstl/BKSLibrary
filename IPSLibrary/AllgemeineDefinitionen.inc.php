@@ -2707,34 +2707,63 @@ function exectime($startexec,$mode=false)
         }        
 	}
 
-/******************************************************************/
+/*****************************************************************
+ *
+ * hilfreiche Funktion wird in Stromheizung verwendet
+ * findet einen Variablennamen an verschiedenen Orten
+ *
+ */
 
-function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPrograms) 
+function getVariableId($name, $switchCategoryId, $groupCategoryId=false, $categoryIdPrograms=false) 
     {
-    $childrenIds = IPS_GetChildrenIDs($switchCategoryId);
-    foreach ($childrenIds as $childId) 
+    if (is_array($switchCategoryId))
         {
-        if (IPS_GetName($childId)==$name) 
+        foreach ($switchCategoryId as $categoryId)
             {
-            return $childId;
+            $childrenIds = IPS_GetChildrenIDs($categoryId);
+            foreach ($childrenIds as $childId) 
+                {
+                if (IPS_GetName($childId)==$name) 
+                    {
+                    return $childId;
+                    }
+                }
             }
         }
-    $childrenIds = IPS_GetChildrenIDs($groupCategoryId);
-    foreach ($childrenIds as $childId) 
+    elseif ($switchCategoryId !== false)
         {
-        if (IPS_GetName($childId)==$name) 
+        $childrenIds = IPS_GetChildrenIDs($switchCategoryId);
+        foreach ($childrenIds as $childId) 
             {
-            return $childId;
+            if (IPS_GetName($childId)==$name) 
+                {
+                return $childId;
+                }
             }
         }
-    $childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
-    foreach ($childrenIds as $childId) {
-        if (IPS_GetName($childId)==$name) 
+    elseif ($groupCategoryId !== false)
+        {
+        $childrenIds = IPS_GetChildrenIDs($groupCategoryId);
+        foreach ($childrenIds as $childId) 
             {
-            return $childId;
+            if (IPS_GetName($childId)==$name) 
+                {
+                return $childId;
+                }
             }
         }
-    trigger_error("getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'");
+    elseif ($categoryIdPrograms !== false)
+        {
+        $childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
+        foreach ($childrenIds as $childId) 
+            {
+            if (IPS_GetName($childId)==$name) 
+                {
+                return $childId;
+                }
+            }
+        }
+    else trigger_error("getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'");
     }
 
 /**************************************************************************************************************************
@@ -3863,6 +3892,35 @@ class dosOps
                 break;
             }
         }
+
+    /*
+     * überprüfen ob das File den php Koventionen entspricht
+     */
+
+
+    function fileIntegrity($fullDir,$fileName)
+        {
+        $dir = $this->readdirToArray($fullDir);
+            //echo $fullDir."\n";
+            //print_r($dir);
+        $key = array_search ($fileName,$dir);
+        //echo "Filename EvaluateHardware_Configuration.inc.php gefunden auf Pos $key \n";
+        $fileNameFull = $fullDir.$fileName;
+        $fileContent = file_get_contents($fileNameFull, true);
+        //echo $fileContent;
+
+        $search1='<?';
+        $search2='?>';
+        $pos1 = strpos($fileContent, $search1);
+        $pos2 = strpos($fileContent, $search2);
+
+        /* echo "\n=================================\n";
+        echo "Gefunden wurde $pos1 und $pos2.\n";   */
+
+        if (($pos1 === false) || ($pos2 === false)) return (false);
+        else return (true);
+        }
+
 
     /* fileAvailable
      *
@@ -5765,11 +5823,12 @@ class ComponentHandling
  * Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen. 
  * Darstellung von Variablen nur in Kategorien kann einfacher gelöst werden. Da reicht der Link.
  *
- *  get_WfcStatus
+ *  get_WfcStatus           echo der installierten Webfront Koniguratoren, IDs werden in construct angelegt
  *  write_wfc
  *  search_wfc
- *  read_wfc
- *  setupWebfront
+ *  read_wfc                Webfron Konfig auslesen, die max Tiefe für die Sublevels angeben
+ *  installWebfront         die beiden Webfronts anlegen und das Standard Webfront loeschen, WebfrontConfigID als return
+ *  setupWebfront           Aufruf zur Erzeugung des Webfronts, im Array sind die IDs die verlinkt werden sollen bereits gespeichert
  *  setupWebfrontEntry
  *  createSplitPane
  *  deletePane
@@ -5781,9 +5840,61 @@ class WfcHandling
     
     private $WFC10_ConfigId, $WebfrontConfigID;
 
+    private $installedModules;                                              // Modul abhängige Routinen, Bereiche
+    private $categoryIdSwitches, $categoryIdGroups, $categoryIdPrograms;            // wenn Stromheizung installiert
+    private $customComponentCategories;                                             // wenn CustomComponents installiert
+
 	public function __construct($debug=false)
 		{
         $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $this->installedModules = $moduleManager->GetInstalledModules();
+        /*$inst_modules="\nInstallierte Module:\n";
+        foreach ($installedModules as $name=>$modules) $inst_modules.="  ".str_pad($name,20)." ".$modules."\n";
+        echo $inst_modules."\n";*/
+    	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+
+        if (isset ($this->installedModules["Stromheizung"])) 
+            { 
+            echo "Modul Stromheizung ist installiert.\n";
+            IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
+            IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
+            IPSUtils_Include ('StromheizungLib.class.php', 'IPSLibrary::app::modules::Stromheizung');
+            IPSUtils_Include ('Stromheizung_Configuration.inc.php', 'IPSLibrary::config::modules::Stromheizung');
+    		$moduleManagerSH      = new IPSModuleManager('Stromheizung',$repository);
+        	$CategoryIdDataSH     = $moduleManagerSH->GetModuleCategoryID('data');
+
+	        $this->categoryIdSwitches = IPS_GetObjectIDByName('Switches', $CategoryIdDataSH);
+	        $this->categoryIdGroups   = IPS_GetObjectIDByName('Groups',   $CategoryIdDataSH);
+	        $this->categoryIdPrograms = IPS_GetObjectIDByName('Programs', $CategoryIdDataSH);
+            } 
+        else 
+            { 
+            echo "Modul Stromheizung ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+            }
+        if (isset ($this->installedModules["CustomComponent"])) 
+            { 
+            echo "Modul CustomComponent ist installiert.\n";
+            $moduleManagerCC      = new IPSModuleManager('CustomComponent',$repository);
+            $CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
+
+            $this->customComponentCategories=array();
+            $Category=IPS_GetChildrenIDs($CategoryIdDataCC);
+            foreach ($Category as $CategoryId)
+                {
+                //echo "  Category    ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
+                $Params = explode("-",IPS_GetName($CategoryId)); 
+                if ( (sizeof($Params)>1) && ($Params[1]=="Auswertung") )
+                    {
+                    $this->customComponentCategories[$Params[0]]=$CategoryId;
+                    }
+                }
+            //print_r($this->customComponentCategories);
+            } 
+        else 
+            { 
+            echo "Modul CustomComponent ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+            }
+
         $this->WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
 	    //echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n\n";
     	$WebfrontConfigID=array();
@@ -5797,6 +5908,44 @@ class WfcHandling
 	    //echo "\n";        
         }
 
+    public function createLinkinWebfront($link,$name,$categoryId,$order)
+        {
+        $register=explode('::',$link);
+        if ( (count($register)>1) && (isset($this->customComponentCategories[$register[0]])) )
+            {
+            echo "Zerlege Link wenn :: enthalten in $link.\n";
+            print_r($register);
+            $groupCat=$this->customComponentCategories[$register[0]];
+            $variableID=@IPS_GetObjectIDByName($register[1],$groupCat);
+            if ($variableID) 
+                {
+                echo "Link für ein Register, kein Schalter, gefunden $variableID in $groupCat ".(IPS_GetName($groupCat))."\n";
+                CreateLinkByDestination($name, $variableID, $categoryId, $order);
+                }
+            else
+                {
+                echo "Link zum Register nicht gefunden, noch einmal nachschauen:\n";
+                $registers=IPS_GetChildrenIDs($groupCat);
+                echo "looking on Group $groupCat for ".$register[1].":\n";
+                foreach ($registers as $register)
+                    {
+                    echo "  Register ID : ".$register." Name : ".IPS_GetName($register)."\n";
+                    }
+                }
+            }
+        else
+            {
+            $variableID = getVariableId($link,[$this->categoryIdSwitches,$this->categoryIdGroups,$this->categoryIdPrograms]);
+            if ($variableID) 
+                {
+                CreateLinkByDestination($name, $variableID, $categoryId, $order);
+                }
+            else echo "****Fehler, Variable $link kein Switch, Group oder Program.\n";
+            }
+        }
+
+    /* echo der installierten Webfront Koniguratoren, IDs werden in construct angelegt */
+
     public function get_WfcStatus()
         {
 	    echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n";
@@ -5807,6 +5956,8 @@ class WfcHandling
             }
         echo "\n";
         }
+
+    /* rekurisive Funktion, eine WFC Struktur mit einem ident ausgeben */
 
     private function write_wfc($input,$indent,$level)
 	    {
@@ -5823,7 +5974,9 @@ class WfcHandling
 	    	}	
     	}
 
-/************************************************************************************/
+    /************************************************************************************/
+
+    /* rekurisive Funktion, in einer WFC Struktur einen Namen suchen */
 
     private function search_wfc($input,$search,$tree)
 	    {
@@ -5855,7 +6008,7 @@ class WfcHandling
 	    return($result);						
 	    }
 
-/************************************************************************************/
+    /************************************************************************************/
 
     public function read_wfc($level=10,$debug=false)
 	    {
@@ -6009,7 +6162,7 @@ class WfcHandling
         {
 
         if ($debug) echo "installWebfront, Webfront GUID herausfinden:\n";
-        $wfcTree=$this->read_wfc(10,$debug);
+        //$wfcTree=$this->read_wfc(10,$debug);
         //print_r($wfcTree);	
         if ($debug) echo "--------------\n";
         $WebfrontConfigID=array();
@@ -6120,6 +6273,11 @@ class WfcHandling
     /******
      *
      * Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte teil des WebfrontConfigID übergeben 
+     * ruft setupWebfrontEntry mit der richtigen Webfront ConfigID und dem Namen des Webfronts (Administrator/User)
+     *
+     * Parametrierung ist in $webfront_links
+     * Keys in Auswertung und    strukturiert
+     *
      *
      */
 
@@ -6136,7 +6294,10 @@ class WfcHandling
 			}
 		}
 
-    /* anders probieren, nicht den scope übergeben */
+    /* anders probieren, nicht den scope übergeben 
+     *
+     *
+     */
 
     public function setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator, $WFC10_ConfigId, $scope)
         {

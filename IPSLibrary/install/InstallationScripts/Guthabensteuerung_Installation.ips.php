@@ -150,66 +150,72 @@
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 	
-    if ($DoInstall)
+    if ($DoInstall)         // siehe weiter oben, lokaler Switch
         {
+        /* in Zukunft die Simkartendaten in Archive und Guthaben speichern bzw aus dem Data dorthin verschieben
         $categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 10);
         $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 900);																							 
+        */
+        $categoryId_Guthaben        = $CategoryIdData;
         $phoneID=array();           // wird für die Links im Webfront verwendet, nur die aktiven SIM Karten bekommen einen Link
         $i=0;
+        echo "Folgende Telefonnummer haben aktiven Status und werden bearbeitet:\n";
         foreach ($GuthabenConfig as $TelNummer)
-            {   /* nur für die noch aktiven Nummern die Scripts anlegen und auch im Webfront darstellen */	
-            if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
+            {   /* nur für die noch aktiven Nummern die Scripts anlegen und auch im Webfront darstellen */
+            switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                 {
-
-                }
-            else
-                {
-                $handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_".$TelNummer["Nummer"].".iim","w");
-                fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
-                fwrite($handle2,'TAB T=1'."\n");
-                fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
-                fwrite($handle2,'SET !EXTRACT NULL'."\n");
-                fwrite($handle2,'SET !VAR0 '.$TelNummer["NUMMER"]."\n");
-                fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
-                if ( strtoupper($TelNummer["Typ"]) == "DREI" )
-                    {
-                    //fwrite($handle2,'URL GOTO=https://www.drei.at/'."\n");
-                    fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");			
-                    //fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");		// alte version vor Sep 2018
-                    fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Kundenzone'."\n");
-                    fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$TelNummer["Nummer"]."\n");
-                    fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-                    fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$TelNummer["Password"]."\n");
-                    fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
-                    fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
-                    fwrite($handle2,'\'Ausloggen'."\n");
-                    fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMainPage.do'."\n");
-                    fwrite($handle2,'TAG POS=2 TYPE=A ATTR=TXT:Kundenzone'."\n");			
-                    fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:logout'."\n");
-                    }
-                else		// UPC oder anderer Anbieter
-                    {
-                    fwrite($handle2,'URL GOTO=https://service.upc.at/myupc/portal/mobile'."\n");
-                    //fwrite($handle2,'URL GOTO=https://service.upc.at/login/?TAM_OP=login&USERNAME=unauthenticated&ERROR_CODE=0x00000000&URL=%2Fmyupc%2Fportal%2Fmobile&REFERER=&OLDSESSION='."\n");
-                    fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ACTION:/pkmslogin.form ATTR=ID:username CONTENT=wolfgangjoebstl@yahoo.com'."\n");
-                    fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-                    fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ACTION:/pkmslogin.form ATTR=ID:password CONTENT=##cloudG06##'."\n");
-                    fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:lbl_login_signin'."\n");
-                    fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
-                    fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:MYUPC_child.logout_dsLoggedInAs'."\n");
-                    fwrite($handle2,'TAG POS=1 TYPE=STRONG ATTR=TXT:Abmelden'."\n");						
-                    }	
-                fwrite($handle2,'TAB CLOSE'."\n");
-                fwrite($handle2,'TAB CLOSE'."\n");
-                fclose($handle2);	
-                }	
-            if 	( (strtoupper( $TelNummer["Status"])) == "ACTIVE")
+                case "SELENIUM":
+                    /* verkuerzte Installation pro Telefonnummer aus der GuthabenConfig ohne iMacro iim files etc */
+                    break;
+                default:
+                    $handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_".$TelNummer["Nummer"].".iim","w");
+                    fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
+                    fwrite($handle2,'TAB T=1'."\n");
+                    fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
+                    fwrite($handle2,'SET !EXTRACT NULL'."\n");
+                    fwrite($handle2,'SET !VAR0 '.$TelNummer["NUMMER"]."\n");
+                    fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
+                    if ( strtoupper($TelNummer["Typ"]) == "DREI" )
+                        {
+                        //fwrite($handle2,'URL GOTO=https://www.drei.at/'."\n");
+                        fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");			
+                        //fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");		// alte version vor Sep 2018
+                        fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Kundenzone'."\n");
+                        fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$TelNummer["Nummer"]."\n");
+                        fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+                        fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$TelNummer["Password"]."\n");
+                        fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
+                        fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+                        fwrite($handle2,'\'Ausloggen'."\n");
+                        fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMainPage.do'."\n");
+                        fwrite($handle2,'TAG POS=2 TYPE=A ATTR=TXT:Kundenzone'."\n");			
+                        fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:logout'."\n");
+                        }
+                    else		// UPC oder anderer Anbieter
+                        {
+                        fwrite($handle2,'URL GOTO=https://service.upc.at/myupc/portal/mobile'."\n");
+                        //fwrite($handle2,'URL GOTO=https://service.upc.at/login/?TAM_OP=login&USERNAME=unauthenticated&ERROR_CODE=0x00000000&URL=%2Fmyupc%2Fportal%2Fmobile&REFERER=&OLDSESSION='."\n");
+                        fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ACTION:/pkmslogin.form ATTR=ID:username CONTENT=wolfgangjoebstl@yahoo.com'."\n");
+                        fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+                        fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ACTION:/pkmslogin.form ATTR=ID:password CONTENT=##cloudG06##'."\n");
+                        fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:lbl_login_signin'."\n");
+                        fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+                        fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:MYUPC_child.logout_dsLoggedInAs'."\n");
+                        fwrite($handle2,'TAG POS=1 TYPE=STRONG ATTR=TXT:Abmelden'."\n");						
+                        }	
+                    fwrite($handle2,'TAB CLOSE'."\n");
+                    fwrite($handle2,'TAB CLOSE'."\n");
+                    fclose($handle2);
+                    break;
+                }	// ende switch
+            if 	( (strtoupper( $TelNummer["Status"])) == "ACTIVE")          // egal ob Selenium oder Imacro
                 {
                 $phone1ID = CreateVariableByName($categoryId_Guthaben, "Phone_".$TelNummer["Nummer"], 3);
                 $phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Summary", 3);
                 $phoneID[$i]["Nummer"]=$TelNummer["Nummer"];
                 $phoneID[$i]["Short"]=substr($TelNummer["Nummer"],(strlen($TelNummer["Nummer"])-3),10);
                 $phoneID[$i]["Summ"]=$phone_Summ_ID;
+                echo "   $i : ".$TelNummer["Nummer"]."   $phone_Summ_ID   abgespeichert in $phone1ID      \n";	                    
                 $phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_User", 3);
                 $phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Status", 3);
                 $phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Date", 3);
@@ -245,6 +251,7 @@
             $i++;
             }
         $maxcount=$i;
+        echo "Insgesamt $maxcount Einträge.\n";
         
         $phone_CL_Change_ID = CreateVariableByName($CategoryIdData, "Phone_CL_Change", 2);
         IPS_SetVariableCustomProfile($phone_CL_Change_ID,'Euro');
@@ -271,7 +278,8 @@
             for ($i=0;$i<$maxcount;$i++)
                 {
                 IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
-                }	
+                }
+            $i++;       // sonst wird letzter Wert überschrieben	
             IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
             IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
             echo "Profil ".$pname." erstellt;\n";
@@ -285,7 +293,7 @@
                 }
             IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
             IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau	
-            echo "Profil ".$pname." überarbeitet;\n";		
+            echo "Profil ".$pname." überarbeitet. ;\n";		
             }
 
 

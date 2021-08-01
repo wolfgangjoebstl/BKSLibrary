@@ -449,6 +449,8 @@
         * bestimmte Textfelder/Marker finden und denn Wert dahinter auslesen und einer Variablen zuordnen
         * Inputvariablen: lookfor   Nummer/username die gesucht wird, Verzeichnis/Filename für das Input Dokument, type kann array/file sein
         *
+        * bei type=="array" werden die Daten aus dem array mit dem Namen Verzeichnis herausgesucht, es gilt pro Eintrag eine Zeile 
+        *
         * return ist ein Ergebnis String als lesbarer text
         * Phone_$nummer_Summary         Speicherort für selben Ergebnis String
         * Phone_$nummer
@@ -473,7 +475,13 @@
         * $tarif1  	Name des Tarifs
         * $lastbill 	letzte Rechnungsperiode
         * $result5 	Guthaben oder Bertrag aktuelle Rechnung
-        * $result7 	Gültigkeit des aktuellen Guthabens
+        * $result7 	Gültigkeit des aktuellen Guthabens, bei Prepaid zb bis zu 6 Monate ab der letzten Aufladung
+        *
+        * Wie erfolgt die Suche in den einzelnen Zeilen, nach welchen kriterien:
+        *
+        *
+        *
+        *
         *
         ************************************************************************************************************/
 
@@ -518,7 +526,7 @@
             else $handle=$verzeichnis;      //dann ist Verzeichnis ein Zeilen Array
 
             $result1="";$result2="";$result3="";$result4="";$result5="";$result6="";
-            $result4g="";$result4v="";$result4f="";  $result4unlimited = false; $result7=""; $result8="";
+            $result4g="";$result4v="";$result4f="";  $result4unlimited = false; $result7=""; $result7i=""; $result8="";
             $entgelte=false;
             unset($tarif); $tarif1="";
             $postpaid=false;
@@ -580,20 +588,21 @@
                         {
                         $pos=strpos($buffer,"Aktualisierung");
                         $Ende=strpos($buffer,"\n");
+                        if ($Ende===false) $Ende = strlen($buffer);
                         //echo "***Aktualisierung gefunden : ".$pos."  ".$Ende."\n";
                         if (strpos($buffer,"Abrechnung")!==false)
                             {
                             $Ende=strpos($buffer,"Abrechnung");
                             $postpaid=true;
                             }
-                        if ($pos!=false)
+                        if ($pos!=false)        // Aktualisiserung gefunden, pos bekannt
                             {
                             $result3=trim(substr($buffer,$pos+16,$Ende-$pos-16));
+                            //echo "Datum suchen ab ".($pos+16)." für ".($Ende-$pos-16)." Zeichen. Ende ist $Ende.\n";
                             if ($ergebnisse) echo "*********Letzte Aktualisierung : ".$result3."\n";
                             }
-                        if (isset($tarif)==false)
+                        elseif (isset($tarif)==false) /* nur beim ersten mal machen, hier könnte auch der Tarif stehen, aber nicht wenn vorher schon das Datum eingelesen wurde */
                             {
-                            /* nur beim ersten mal machen */
                             if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break;	// hier koennte auch das Datum der letzten Aufladung stehen, danach gleich bearbeiten
                             if ($ausgeben) echo $buffer;
                             if ( !(preg_match('/Aufladung/i',$buffer)) )
@@ -611,6 +620,20 @@
                                 if ($ergebnisse) echo "********* Tarif : ".$tarif1."\n";
                                 }
                             }
+                        }
+                    if ( (preg_match('/Guthaben/i',$buffer)) && ($result5 !== "") )     // zweites Mal Guthaben ist der Tarif
+                        {
+                        if ($tarif1 == "")
+                            {
+                            //echo "***Guthaben ein zweites Mal gefunden.\n";
+                            if  (($buffer2 = $this->getfromFileorArray($handle, $type, $line)) === false) break;
+                            if ($ausgeben) echo $buffer2;
+                            if  (($buffer3 = $this->getfromFileorArray($handle, $type, $line)) === false) break;
+                            if ($ausgeben) echo $buffer3;
+                            $tarif1=$buffer2." ".$buffer3;
+                            if ($ergebnisse) echo "********* Tarif : ".$tarif1."\n";
+                            }
+                        elseif ($ergebnisse) echo "********* bereits gefunden Tarif : \"".$tarif1."\"\n";
                         }
                     /********* dann der Name des Tarifs
                     *
@@ -640,11 +663,21 @@
                     if(preg_match('/Aufladung/i',$buffer))
                         {
                         $pos=strpos($buffer,"Aufladung:");
+                        if ($pos===false) $pos=strpos($buffer,"Aufladung");
                         $Ende=strpos($buffer,"\n");
-                        //echo "***Aufladung gefunden : ".$pos."  ".$Ende."\n";
-                        if ($pos!=false)
+                        if ($Ende===false) $Ende = strlen($buffer); 
+                        $length=($Ende-$pos-11);                       
+                        //echo "***Aufladung gefunden : hier ".$pos." Ende ist hier ".$Ende."  Substring ab ".($pos+11)." mit Länge $length\n";
+                        if ( ($pos!==false) && ($length>6) )      // pos kann auch 0 sein
                             {
-                            $result8=trim(substr($buffer,$pos+11,$Ende-$pos-11));
+                            $result8=trim(substr($buffer,$pos+11,$length));
+                            }
+                        if ( ($pos!==false) && ($length<=6) )               // naechste Zeile ausprobieren
+                            {
+                            //echo "neue Zeile laden";
+                            if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break;
+                            if ($ausgeben) echo $buffer;
+                            $result8=trim($buffer);     // str_replace of cr or lf
                             }
                         if ($ergebnisse) echo "********* letzte Aufladung am : ".$result8." \n";
                         }
@@ -708,35 +741,49 @@
                         }
 
                     /************************ Gültigkeit des Guthabens */
-                    if ( (preg_match('/bis:/i',$buffer)) && ($result7=="") )  // nur das erste Mal 
+                    if (preg_match('/bis:/i',$buffer))
                         {
-                        $pos=strpos($buffer,"bis:");
-                        $result7=trim(substr($buffer,$pos+4,200));
-                        $pos1=strpos($result7,".")+1;
-                        $pos2=strpos(substr($result7,$pos1),".")+1;
-                        if ($ergebnisse) echo "*** erstes bis : ".$result7."   ".$pos."  ".$pos1."  ".$pos2."\n";
-                        if ( ($pos1) && ($pos2) )
+                        if ($result7=="")   // nur das erste Mal 
                             {
-                            $result7=substr($result7,0,$pos1+$pos2+4);
-                            if ($ergebnisse) echo "*********Gültig bis : ".$result7."\n<br>";
+                            $pos=strpos($buffer,"bis:");
+                            $result7=trim(substr($buffer,$pos+4,200));
+                            $pos1=strpos($result7,".")+1;
+                            $pos2=strpos(substr($result7,$pos1),".")+1;
+                            if ($ergebnisse) echo "*** erstes bis: ".$result7."   ".$pos."  ".$pos1."  ".$pos2."\n";
+                            if ( ($pos1) && ($pos2) )
+                                {
+                                $result7=substr($result7,0,$pos1+$pos2+4);
+                                if ($ergebnisse) echo "*********Gültig bis : ".$result7."\n<br>";
+                                }
                             }
+                        elseif ($ergebnisse) echo "***bis: erkannt. Bereits in $result7. \n<br>";
+
                         }
                         
-                    /************************ Erkennung Postpaidvertrag */	
+                    /************************ Erkennung Postpaidvertrag 
+                     * mittlerweile wird der Abrechnungszeitraum nur mehr Prepaidkarten ausgegeben. Die Postpaid haben ein Abrechnung:
+                     */	
+                    if (preg_match('/Abrechnung:/i',$buffer))
+                        {
+                        if ($ergebnisse) echo "***Postpaid Abrechnung\n<br>";
+                        $postpaid=true;
+                        }
+
                     if (preg_match('/Abrechnungszeitraum:/i',$buffer))
                         {
                         $pos=strpos($buffer,"-");
-                        if ($pos)
-                            { // wenn ein bis Zeichen ist das ein hinweis auf postpaid System
-                            $result7=trim(substr($buffer,$pos+1,200));
-                            $postpaid=true;
-                            if ($ergebnisse) 
+                        if ($pos && ($postpaid==false))
+                            { // wenn ein bis Zeichen ist und postpaid noch nicht vorher erkannt wurde, ist das ein hinweis auf postpaid System
+                            $result7i=trim(substr($buffer,$pos+1,200));
+                            if ($ergebnisse) echo "*********Abrechnungszeitraum bis : ".$result7i."\n<br>";
+                            if (false)          // Postpaiderkennung nun anders gelöst
                                 {
-                                echo "*********Gültig bis : ".$result7."\n<br>";
-                                echo "*********Postpaidvertrag (1).\n";
+                                $postpaid=true;
+                                if ($ergebnisse) echo "*********Postpaidvertrag (1).\n";
                                 }
                             }
                         }
+
                     $posPostpaid=strpos($buffer,"Verbleibende Tage:");
                     if ($posPostpaid !== false)
                         {  // bei UPC gibt es kein Ende der Abrechnungsperiode, aber verbleibende Tage, auch gut 
@@ -752,6 +799,7 @@
                                 }
                             }
                         }
+
                     $posPostpaid=strpos($buffer,"Rechnung");
                     if ($posPostpaid !== false)
                         {  // anscheind etwas gefunden, Rechnung wird bei UPC verwendet */	
@@ -783,8 +831,10 @@
                     * entweder wird haben: oder Guthaben gefunden, Bearbeitung eigentlich ähnlich
                     *
                     *******************/
+                    //if (preg_match('/Guthaben/i',$buffer)) echo "***Guthaben gefunden\n";
                     if (preg_match('/haben:/i',$buffer))
                         {
+                        //echo "***Guthaben: gefunden\n";
                         $pos=strpos($buffer,"haben:");
                         $Ende=strpos($buffer,",");       /* Eurozeichen laesst sich nicht finden */
                         if ($pos!=false)

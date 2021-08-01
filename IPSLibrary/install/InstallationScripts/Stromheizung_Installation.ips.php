@@ -58,6 +58,8 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Stromheizung');
 	echo "\nModul Stromheizung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 
+    $startexec=microtime(true);
+
 /*******************************
  *
  * INIT
@@ -84,8 +86,6 @@
 	IPSUtils_Include ("IPSComponentHeatControl_FS20.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentHeatControl");
 	
 	IPSUtils_Include ('StromheizungLib.class.php', 'IPSLibrary::app::modules::Stromheizung');
-	IPSUtils_Include ('Stromheizung_Configuration.inc.php', 'IPSLibrary::config::modules::Stromheizung');
-	
 	IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
 	IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
 	IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");	
@@ -118,7 +118,12 @@
  *
  ********************************/
 
-	echo "\n";
+	
+    $wfcHandling =  new WfcHandling();
+    $wfcHandling->get_WfcStatus();
+    $WebfrontConfigID = $wfcHandling->installWebfront();
+
+    /*echo "\n";
 	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
 	echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
 	
@@ -129,12 +134,8 @@
 		$result=IPS_GetInstance($instanz);
 		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
 		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
-		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		/* alle Instanzen dargestellt */
-		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
-		//print_r($result);
 		}
-	echo "\n";
+	echo "\n"; */
 	
 /*******************************
  *
@@ -274,7 +275,23 @@ Path=Visualization.Mobile.Stromheizung
 	$categoryIdSwitches = CreateCategory('Switches', $CategoryIdData, 10);
 	$categoryIdGroups   = CreateCategory('Groups',   $CategoryIdData, 20);
 	$categoryIdPrograms = CreateCategory('Programs', $CategoryIdData, 30);	
-	
+
+    $moduleManagerCC      = new IPSModuleManager('CustomComponent',$repository);
+	$CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
+
+    $customComponentCategories=array();
+	$Category=IPS_GetChildrenIDs($CategoryIdDataCC);
+	foreach ($Category as $CategoryId)
+		{
+		echo "  Category    ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
+		$Params = explode("-",IPS_GetName($CategoryId)); 
+        if ( (sizeof($Params)>1) && ($Params[1]=="Auswertung") )
+            {
+            $customComponentCategories[$Params[0]]=$CategoryId;
+            }
+		}
+	//print_r($customComponentCategories);
+
 	// Add Scripts
 	$scriptIdActionScript  = IPS_GetScriptIDByName('IPSHeat_ActionScript', $CategoryIdApp);
 	
@@ -613,7 +630,14 @@ Path=Visualization.Mobile.Stromheizung
 	 * Webfront Installation der Stromheizung
 	 *
 	 * komplettes Webfront wie bei IPSLight aufbauen 
-	 * 
+     * Basis Konfiguration wird aus der ini Datei übernommen
+	 *  $WFC10_Enabled       Webfront aufbauen
+     *  $WFC10_Path          das ist die Kategorie wo die Links reinkommen, beginnt bei Visualization.Webfront oder Visualization.Mobile
+     *                       in der ini steht zumindesten Administrator.Stromheizung
+     *  $WFC10_Regenerate    Kategorie $WFC10_Path komplett löschen
+     *  $WFC10_ConfigId      so kann man das WFC ansprechen Administrator/User etc.
+     *  $WFC10_TabPaneItem   interner Name für das Webfront, nur in der WFC vorhanden
+     *  $WFC10_TabPaneParent aso. Parameters to setup a TabPane
 	 *
 	 *****************************************************************************************/
 
@@ -636,6 +660,20 @@ Path=Visualization.Mobile.Stromheizung
 			}
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);   // Tab Pane mit HeatTPA machen
 
+        /* $webFrontConfig is an array with setup of tabpane
+         * Index is the Category in the Webfront category $WFC10_Path
+         * darunter sind die WFC Befehle mit den Parametern, sehr sehr einfach 
+         *    0  WFC Befehl
+         *    1  Name
+         *    2  Parent
+         *    3..9 die Parameter
+         * Achtung, nach einem WFCSPLITPANEL muessen auf jeden Fall die WFCCATEGORY Befehle kommen, eine für den OriginalNamen und eine für den neue Split Namen
+         * Nur die WFCLINKS und WFCGROUPS verlinken auf die Datenobjekte und werden in den Categories gespeichert
+         *    2 Kategorie
+         *    3 Datenobjekte als Komma getrennte Links
+         *    4 Datenobjekte als Komma getrennte Namen, wenn kein 4 dann sind Links gleich die Namen
+         * die Variablen werden mit getVariableId in Switch, groups oder programs gesucht
+         */
 		$order = 10;
 		foreach($webFrontConfig as $tabName=>$tabData) {
 			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFront, $order);
@@ -664,13 +702,17 @@ Path=Visualization.Mobile.Stromheizung
 						}
 						foreach ($links as $idx=>$link) {
 							$order = $order + 1;
-							// CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
-							CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+                            $wfcHandling->createLinkinWebfront($link,$names[$idx],$categoryId,$order);                            
+							/* CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
+                            $register=explode('::',$link);
+                            if (count($register)>0) echo "Link für ein Register, kein Schalter \n";
+                            $variableID = getVariableId($link,[$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms]);
+							if ($variableID) CreateLinkByDestination($names[$idx], $variableID, $categoryId, $order);   */
 						}
 						break;
 					default:
 						trigger_error('Unknown WFCItem='.$WFCItem[0]);
-			   	}
+			   	    }
 				}
 			}
 		}
@@ -817,7 +859,8 @@ Path=Visualization.Mobile.Stromheizung
 
 	echo "\n";
 	echo "=====================================================\n";
-	echo "Stromheizung Installation erfolgreich ebgeschlossen !\n";
+    echo "\nDurchlaufzeit : ".(microtime(true)-$startexec)." Sekunden\n";    
+	echo "Stromheizung Installation erfolgreich abgeschlossen !\n";
 	echo "\n";
 
 ?>

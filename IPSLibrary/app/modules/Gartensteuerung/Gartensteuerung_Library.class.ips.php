@@ -45,6 +45,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 class Gartensteuerung
 	{
+	var         $installedmodules;                                  // welche Module sind installiert und können verwendet werden
 	
 	private 	$archiveHandlerID;
 	private		$debug;
@@ -65,6 +66,9 @@ class Gartensteuerung
     private     $categoryRegisterID;                                // die Category für die Regenregister, Counter of CustomComponents
     public      $DauerKalendermonate, $RegenKalendermonate;         // Ausertung Regendauer (wenn inkrementell da) und Regenmenge der letzten 10 Jahre
 
+	var $heatManager;                                               // Einbindung des Stromheizung Modul, mit den Schaltgruppen
+	var $CategoryId_Stromheizung;
+	var $switchCategoryHeatId, $groupCategoryHeatId , $prgCategoryHeatId;
 
 	/******************
 	 *
@@ -111,6 +115,21 @@ class Gartensteuerung
 			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 			$moduleManager = new IPSModuleManager('Gartensteuerung',$repository);
 			}
+		$this->installedModules 				= $moduleManager->GetInstalledModules();
+
+
+		if ( isset($this->installedModules["Stromheizung"] ) )
+			{
+			include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");						
+			$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
+			$this->heatManager = new IPSHeat_Manager();
+			
+			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
+			$this->switchCategoryHeatId  = IPS_GetObjectIDByIdent('Switches', $baseId);
+			$this->groupCategoryHeatId   = IPS_GetObjectIDByIdent('Groups', $baseId);
+			$this->programCategoryHeatId = IPS_GetObjectIDByIdent('Programs', $baseId);			
+			}	
+
 		$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 		$this->categoryId_Auswertung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
 		$this->categoryId_Register  	= CreateCategory('Gartensteuerung-Register', $CategoryIdData, 200);
@@ -279,6 +298,9 @@ class Gartensteuerung
      * 
      * übernimmt oder liest die Konfiguration
      * Angabe des Register für den RainCounters - Regenmessstandes als OID oder Name. Nach der Bearbeitung den Namen auf OID umstellen
+     *
+     * Index kann RAINCOUNTER, Raincounter, RainCounter oder raincounter sein
+     *
      * Speicherort in dem der Namen gesucht wird ist data von CustomComponents
      * wenn gar keine Angabe, die alte Funktion suchen
      *
@@ -293,14 +315,22 @@ class Gartensteuerung
 
 	function getConfig_raincounterID($config=false,$debug=false)
 		{
-        if ($debug || $this->debug) echo "getConfig_raincounterID aufgerufen.\n";            
-        if ($config===false) $Configuration = $this->GartensteuerungConfiguration;
+        if ($debug || $this->debug) $debug=true;   
+        if ($debug) echo "getConfig_raincounterID aufgerufen.\n";            
+        if ($config===false) 
+            {
+            if ($debug) echo "Read Configuration direkt from GartensteuerungConfiguration.\n";
+            $Configuration = $this->GartensteuerungConfiguration;
+            if (isset($Configuration["Configuration"])) $Configuration = $Configuration["Configuration"];
+            }
         else $Configuration = $config;
 
 		if ( isset($Configuration["RainCounter"])==true) $Configuration["RAINCOUNTER"]=$Configuration["RainCounter"];
 		if ( isset($Configuration["Raincounter"])==true) $Configuration["RAINCOUNTER"]=$Configuration["Raincounter"];
+		if ( isset($Configuration["raincounter"])==true) $Configuration["RAINCOUNTER"]=$Configuration["raincounter"];
+
         //$this->RainRegisterIncrementID=0;                         // wird nur mehr beim ersten Mal richtig berechnet, dann ist RAINCOUNTER eine OID
-		if ( ( isset($Configuration["RAINCOUNTER"])==true) && ($Configuration["RAINCOUNTER"]!==false) )
+		if ( ( (isset($Configuration["RAINCOUNTER"]))==true) && ($Configuration["RAINCOUNTER"]!==false) )
 			{
             /* wenn die Variable in der Config angegeben ist diese nehmen, sonst die eigene Funktion aufrufen */
     		if ((integer)$Configuration["RAINCOUNTER"]==0) 
@@ -324,7 +354,7 @@ class Gartensteuerung
             if (function_exists("get_raincounterID")) $variableID=get_raincounterID();
             else 
                 {
-                echo "Fehler, keine Configuration für RAINCOUNTER und function get_raincounterID ist auch nicht vorhanden.\n";
+                echo "***Fehler getConfig_raincounterID, keine Configuration für RAINCOUNTER oder Wert false und function get_raincounterID ist auch nicht vorhanden.\n";
                 print_r($Configuration);
                 $variableID=false;
                 }
@@ -342,6 +372,200 @@ class Gartensteuerung
         $meterID=@IPS_GetObjectIDByName($config["RAINCOUNTER"],$CounterAuswertungID);
 		return($meterID); 		
 		}  */
+
+
+    /*******************
+     * 
+     * übernimmt oder liest die Konfiguration
+     *
+     */
+
+	function getConfig_waterPumpID($config=false,$debug=false)
+		{
+        if ($debug || $this->debug) 
+            {
+            $debug=true;
+            echo "getConfig_waterPumpID aufgerufen.\n";            
+            }
+        if ($config===false) 
+            {
+            echo "Read Configuration direkt from GartensteuerungConfiguration.\n";
+            $Configuration = $this->GartensteuerungConfiguration;
+            if (isset($Configuration["Configuration"])) $Configuration = $Configuration["Configuration"];
+            }
+        else $Configuration = $config;
+        
+		if ( isset($Configuration["WaterPump"])==true) $Configuration["WATERPUMP"]=$Configuration["WaterPump"];
+		if ( isset($Configuration["Waterpump"])==true) $Configuration["WATERPUMP"]=$Configuration["Waterpump"];
+		if ( isset($Configuration["waterpump"])==true) $Configuration["WATERPUMP"]=$Configuration["waterpump"];
+
+		if ( ( (isset($Configuration["WATERPUMP"]))==true) && ($Configuration["WATERPUMP"]!==false) )
+			{
+            if ($debug) echo "   Wert übergeben ist : ".$Configuration["WATERPUMP"]."\n";                
+            /* wenn die Variable in der Config angegeben ist diese nehmen, sonst die eigene Funktion aufrufen */
+    		if ((integer)$Configuration["WATERPUMP"]==0) 
+	    		{
+                if (isset($this->installedModules["Stromheizung"] ))
+                    {
+                    /* wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!! */
+    			    if ($debug) echo "   Alternative Erkennung der Wasserpumpe, String als OID Wert für den WATERPUMP angegeben: \"".$Configuration["WATERPUMP"]."\". Jetzt in Stromheizjng/IPLights schauen ob vorhanden.\n";
+                    $result=array();
+                    $lightName=$Configuration["WATERPUMP"];
+                    $switchId = @$this->heatManager->GetSwitchIdByName($lightName);
+                    $groupId = @$this->heatManager->GetGroupIdByName($lightName);
+                    $programId = @$this->heatManager->GetProgramIdByName($lightName);
+                    //echo "IPSHeat Switch ".$switchId." Group ".$groupId." Program ".$programId."\n";
+                    if ($switchId)
+                        {
+                        $result["ID"]=$switchId;
+                        $result["TYP"]="Switch";
+                        $result["NAME"]=$lightName;
+                        $result["MODULE"]="IPSHeat";
+                        }
+                    elseif ($groupId)
+                        {	
+                        $result["ID"]=$groupId;
+                        $result["TYP"]="Group";
+                        $result["NAME"]=$lightName;
+                        $result["MODULE"]="IPSHeat";
+                        }
+                    elseif ($programId)
+                        {	
+                        $result["ID"]=$programId;
+                        $result["TYP"]="Program";
+                        $result["NAME"]=$lightName;
+                        $result["MODULE"]="IPSHeat";
+                        }
+                    else $variableID=false;
+                    }
+                else $variableID=false;
+                }    
+			else $variableID=(integer)$Configuration["WATERPUMP"];
+			}
+		else 
+			{	
+            if (function_exists("set_gartenpumpe")) return("set_gartenpumpe");
+            else 
+                {
+                echo "*** Fehler getConfig_waterPumpID, keine Configuration für WATERPUMP und function set_gartenpumpe ist auch nicht vorhanden.\n";
+                print_r($Configuration);
+                $variableID=false;
+                }
+			}
+        if (isset($result["ID"])) return ($result);
+        if ( ($variableID !==false) && (IPS_VariableExists($variableID)) ) return($variableID); 		
+        else return (false);
+		}
+
+    /*******************
+     * 
+     * übernimmt oder liest die Konfiguration
+     * Angabe des Register für die Ventilsteuerung
+     *
+     */
+
+	function getConfig_valveControlIDs($config=false,$debug=false)
+		{
+        $failure=true;
+        $confResult=Array();
+        if ($debug || $this->debug) echo "getConfig_valveControlIDs aufgerufen.\n";            
+        if ($config===false) 
+            {
+            echo "Read Configuration direkt from GartensteuerungConfiguration.\n";
+            $Configuration = $this->GartensteuerungConfiguration;
+            if (isset($Configuration["Configuration"])) $Configuration = $Configuration["Configuration"];
+            }
+        else $Configuration = $config;
+        
+		if ( isset($Configuration["VALVECONTROL"])==true) $Configuration["ValveControl"]=$Configuration["VALVECONTROL"];
+		if ( isset($Configuration["Valvecontrol"])==true) $Configuration["ValveControl"]=$Configuration["Valvecontrol"];
+		if ( isset($Configuration["valvecontrol"])==true) $Configuration["ValveControl"]=$Configuration["valvecontrol"];
+
+        //print_R($Configuration);
+		if ( ( (isset($Configuration["ValveControl"]))==true) && ($Configuration["ValveControl"]!==false) && (is_array($Configuration["ValveControl"])) )
+			{
+            foreach ($Configuration["ValveControl"] as $index => $valve)
+                {
+                if ($debug) echo "     $index  : $valve    ";
+                /* wenn der Name aus der Stromheizung in der Config angegeben ist diese nehmen, sonst die OID mit Homematic Funktion aufrufen 
+                 * die Giesskreisinfo anhand dem Index suchen, mitabspeichern
+                 * den Typ der Variable rausfinden,allgemeine Routine, eigentlich 
+                 */
+                if ((integer)$valve==0) 
+                    {
+                    if ($debug) echo "String";
+                    if (isset($this->installedModules["Stromheizung"] ))
+                        {
+                        /* wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!! */
+                        if ($debug) echo "   Alternative Erkennung der Wasserpumpe, String als OID Wert für den WATERPUMP angegeben: \"".$Configuration["WATERPUMP"]."\". Jetzt in Stromheizjng/IPLights schauen ob vorhanden.\n";
+                        $result=array();
+                        $lightName=$valve;
+                        $switchId = @$this->heatManager->GetSwitchIdByName($lightName);
+                        $groupId = @$this->heatManager->GetGroupIdByName($lightName);
+                        $programId = @$this->heatManager->GetProgramIdByName($lightName);
+                        //echo "IPSHeat Switch ".$switchId." Group ".$groupId." Program ".$programId."\n";
+                        if ($switchId)
+                            {
+                            $confResult[$index]["ID"]=$switchId;
+                            $confResult[$index]["TYP"]="Switch";
+                            $confResult[$index]["NAME"]=$lightName;
+                            $confResult[$index]["MODULE"]="IPSHeat";
+                            }
+                        elseif ($groupId)
+                            {	
+                            $confResult[$index]["ID"]=$groupId;
+                            $confResult[$index]["TYP"]="Group";
+                            $confResult[$index]["NAME"]=$lightName;
+                            $confResult[$index]["MODULE"]="IPSHeat";
+                            }
+                        elseif ($programId)
+                            {	
+                            $confResult[$index]["ID"]=$programId;
+                            $confResult[$index]["TYP"]="Program";
+                            $confResult[$index]["NAME"]=$lightName;
+                            $confResult[$index]["MODULE"]="IPSHeat";
+                            }
+                        else $variableID=false;
+                        }
+                    else $variableID=false;
+                    }  
+                else
+                    {
+                    if ($debug) echo "Integer,";    
+                    //$available = @IPS_VariableExists($valve);                 // die Variable für einen Wert
+                    $available = @IPS_ObjectExists($valve);                     // die Switching Instanz
+                    if ($available) 
+                        {
+                        if ($debug) echo IPS_GetName($valve);
+                        $confResult[$index]=$valve;
+                        }
+                    else 
+                        {
+                        if ($debug) echo "Variable NICHT vorhanden";		
+                        $failure=false;
+                        }
+                    }
+                if (isset($Configuration[$index])) if ($debug) echo ",".$Configuration[$index];
+                else 
+                    {
+                    if ($debug) echo ",Index $index nicht in Konfiguration angelegt";
+                    }
+                if ($debug) echo "\n";
+                }
+			}
+		else 
+			{	
+
+			}
+        return ($confResult);
+		}
+
+    /*******************
+     * 
+     * übernimmt oder liest die Konfiguration
+     * Angabe des Register für die RemoteAccessAdr
+     *
+     */
 
 	function getConfig_RemoteAccess_Address($config=false,$debug=false)
 		{
@@ -414,16 +638,32 @@ class Gartensteuerung
             if ($debug) echo "setGartensteuerungConfiguration: moderne Darstellung der Konfiguration mit Unterpunkt Configuration: \n";
             configfileParser($configConf["Configuration"], $config["Configuration"], ["STATISTICS","Statistics","statistics"],"Statistics" ,"ENABLED");  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["IRRIGATION","Irrigation","irrigation"],"Irrigation" ,"ENABLED");  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["MODE","Mode","mode"],"Mode" ,"Switch");          //Default, mit automatischen Regenkreisumschalter  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["WATERPUMP","WaterPump","Waterpump","waterpump"],"WaterPump" ,false);  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["VALVECONTROL","ValveControl","Valvecontrol","valvecontrol"],"ValveControl" ,false);  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["CHECKPOWER","CheckPower","Checkpower","checkpower"],"CheckPower" ,null);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTER","Raincounter","RainCounter","raincounter"],"RainCounter" ,false);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTERHISTORY","Raincounterhistory","RainCounterHistory","raincounterhistory"],"RainCounterHistory",null);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["AUSSENTEMP","Aussentemp","AusenTemp","aussentemp"],"AussenTemp",null);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["REMOTEACCESSADR","RemoteAccessAdr","Remoteaccessadr","remoteaccessadr"],"RemoteAccessAdr",null);
 
+            /* courtesy for old functions */
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["DEBUG","Debug","debug"],"DEBUG",false);
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["PUMPE","Pumpe","pumpe"],"PUMPE",null);           // nur wenn vorhanden übernehmen, sonst Waterpump
+
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREISE","Kreise","kreise"],"KREISE",0);
+            for ($i=1;$i<=$config["Configuration"]["KREISE"];$i++)
+                {
+                configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS".$i,"Kreis".$i,"kreis".$i],"KREIS".$i,"unknown description");
+                if ($debug) echo"   $i:".$config["Configuration"]["KREIS".$i]."\n";
+                }
+
             $config["Configuration"]["RainCounter"]=$this->getConfig_raincounterID($config["Configuration"], $debug);
             $config["Configuration"]["AussenTemp"]=$this->getConfig_aussentempID($config["Configuration"], $debug);
             $config["Configuration"]["RemoteAccessAdr"]=$this->getConfig_RemoteAccess_Address($config["Configuration"], $debug);   
+            $config["Configuration"]["WaterPump"]=$this->getConfig_waterPumpID($config["Configuration"], $debug);
+            $config["Configuration"]["ValveControl"]=$this->getConfig_valveControlIDs($config["Configuration"], $debug);
 
-            configfileParser($configConf["Configuration"], $config["Configuration"], ["KREISE","Kreise","kreise"],"KREISE",0);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["TEMPERATUR-MITTEL","TemperaturMittel","Temperaturmittel"],"TEMPERATUR-MITTEL",19);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["TEMPERATUR-MAX","TemperaturMax","Temperaturmax"],"TEMPERATUR-MAX",28);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["REGEN48H","Regen48h"],"REGEN48H",3);
@@ -463,6 +703,114 @@ class Gartensteuerung
     public function getConfig_Gartensteuerung()
         {
         return ($this->GartensteuerungConfiguration);   
+        }
+
+    /******************
+     * einheitliche Ansteuerung der Wasserpumpe
+     * Wenn PUMPE definiert ist, immer die function set_gartenpumpe aufrufen, muss in Gartensteuerung_Configzuration definiert sein
+     *
+     *********************************/
+
+    public function control_waterPump($state)
+        {
+        $failure=true;
+        $config=$this->getConfig_Gartensteuerung()["Configuration"];
+        if (function_exists("set_gartenpumpe"))
+            {
+            if (isset($config["PUMPE"])==true) $failure=set_gartenpumpe($state,$config["PUMPE"]);
+            else $failure=set_gartenpumpe($state);
+            }
+        elseif (isset($config["Waterpump"])==true)
+            {
+            /* hier nur mehr Stromheizung Schalter bedienen */
+            if (isset($config["Waterpump"]["ID"]))
+                {
+                switch ($config["Waterpump"]["TYP"])
+                    {
+                    case "GROUP":
+                        IPSHeat_SetGroupByName($config["Waterpump"]["NAME"],$state);
+                        break;
+                    case "SWITCH":
+                    default:
+                        IPSHeat_SetSwitchByName($config["Waterpump"]["NAME"],$state);
+                        break;
+                    }
+                }
+            }
+        return ($failure);
+        }
+
+    /******************
+     * wenn es Ventile gibt, diese hier ansteuern
+     *
+     *********************************/
+
+    public function control_waterValves($GiessCount)             // ($state,$oid)
+        {
+        $failure=true;
+        $config=$this->getConfig_Gartensteuerung()["Configuration"];        
+        $Count=floor($GiessCount/2);                        // 0 oder 1 ist das erste Ventil
+        $oid = $config["ValveControl"]["KREIS".(string)($Count+1)];        
+        if ($GiessCount==(($GartensteuerungConfiguration["Configuration"]["KREISE"]*2)+1))
+            {
+            $message = "Ventil ".IPS_GetName($oid)." ($oid) auf aus";
+            if (is_array($oid))
+                {
+                switch ($oid["TYP"])
+                    {
+                    case "GROUP":
+                        IPSHeat_SetGroupByName($oid["NAME"],$state);
+                        break;
+                    case "SWITCH":
+                    default:
+                        IPSHeat_SetSwitchByName($oid["NAME"],$state);
+                        break;
+                    }
+                }
+            elseif (function_exists("set_ventile")) set_ventil(false,$oid);
+            }
+        else
+            {
+            $message = "Ventil ".IPS_GetName($oid)." ($oid) auf ein";
+            if (is_array($oid))
+                {
+                switch ($oid["TYP"])
+                    {
+                    case "GROUP":
+                        IPSHeat_SetGroupByName($oid["NAME"],$state);
+                        break;
+                    case "SWITCH":
+                    default:
+                        IPSHeat_SetSwitchByName($oid["NAME"],$state);
+                        break;
+                    }
+                }
+            elseif (function_exists("set_ventile")) set_ventil(true,$oid);                
+            $this->log_Giessanlage->LogMessage($message);
+            $this->log_Giessanlage->LogNachrichten($message);
+            if ($Count>0)
+                {
+                $poid = $config["Configuration"]["ValveControl"]["KREIS".(string)($Count)];
+                $message="Ventil ".IPS_GetName($poid)." ($poid) aus.\n";
+                if (is_array($poid))
+                    {
+                    switch ($oid["TYP"])
+                        {
+                        case "GROUP":
+                            IPSHeat_SetGroupByName($oid["NAME"],$state);
+                            break;
+                        case "SWITCH":
+                        default:
+                            IPSHeat_SetSwitchByName($oid["NAME"],$state);
+                            break;
+                        }
+                    }
+                elseif (function_exists("set_ventile")) set_ventil(false,$poid);
+                }
+            }
+        $this->log_Giessanlage->LogMessage($message);
+        $this->log_Giessanlage->LogNachrichten($message);                
+        return ($failure);
         }
 
 	/******************************************************************

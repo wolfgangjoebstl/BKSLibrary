@@ -409,6 +409,7 @@ class RemoteAccess
                     "Feuchtigkeit"=>"Humidity",
                     "SysInfo"=>"SysInfo",
                     "Klima"=>"Klima",
+                    "Stromverbrauch"=>"Stromverbrauch",                                                 // neu für direkte Stronverbrauchs register                    
                     "Andere"=>"Other",
                     );
                 foreach ($profiles as $profile) 
@@ -445,6 +446,9 @@ class RemoteAccess
 				
 				$this->listofOIDs["Helligkeit"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Helligkeit");
 				$this->includefile.="\n         ".'"Helligkeit" => "'.$this->listofOIDs["Helligkeit"][$Name].'", ';
+
+				$this->listofOIDs["Stromverbrauch"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Stromverbrauch");                               // auch neu
+				$this->includefile.="\n         ".'"Stromverbrauch" => "'.$this->listofOIDs["Stromverbrauch"][$Name].'", ';                
 
 				$this->listofOIDs["Other"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
 				$this->includefile.="\n         ".'"Andere" => "'.$this->listofOIDs["Other"][$Name].'", ';

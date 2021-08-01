@@ -1,6 +1,34 @@
 <?
 
+ 	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */ 
 
+/* Selenium Handler
+ * Selenium läuft normalerweise am Server und nicht in der vM Ware.
+ * wird über die IP ADresse mit einer Portnummer 4444 kontaktiert.
+ *
+ * für die Automatisiserung der Abfragen gibt es verschieden Klasssen
+ *      SeleniumHandler     managed die Handles des Selnium Drivers, offene Tabs
+ *      SeleniumDrei
+ *      SeleniumOperations
+ *
+ * SeleniumDrei sorgt für die individuellen States udn SeleniumOperations für die Statemachine
+ *
+ */
 
 //namespace Facebook\WebDriver;
 
@@ -12,6 +40,25 @@ use Facebook\WebDriver\WebDriverBy;
 
 //require_once 'vendor/autoload.php';
 require_once(IPS_GetKernelDir().'scripts\vendor\autoload.php');
+
+/* wenn der Selenium Handler gestartet wird können die Tabs schon offen sein
+ * dann diese wiederverwenden, sonst neu aufmachen
+ *
+ * construct
+ * syncHandles
+ * isTab
+ * updateHandles
+ * initHost
+ * getHost
+ * updateUrl
+ * getUrl
+ * check Url
+ * maximize
+ * pressButtonIf
+ *
+ *
+ *
+ */
 
 class SeleniumHandler
     {
@@ -46,6 +93,8 @@ class SeleniumHandler
        //echo "syncHandles return ".json_encode($result)."\n";
         return($result);
         }
+
+    /* feststellen ob ein key bereits als Tab verwendet wird */
 
     function isTab($tab)
         {
@@ -109,12 +158,24 @@ class SeleniumHandler
                 }
             catch (Exception $e) 
                 { 
-                if ($debug) echo "  -->selenium Webdriver mit Session $session nicht gestartet. Noch einmal ohne Session probieren.\n";
+                $failure = $e->getMessage();
+                $failureShort = substr($failure,0,60);
+                if ($failureShort=="Curl error thrown fo") echo "Es sieht so aus als wäre Selenium nicht gestartet.\n";
+                elseif ($failureShort=="session not created: This version of ChromeDriver only suppo") echo "Neuesten ChromeDriver laden.\n";
+                else 
+                    {
+                    echo "Fehler erkannt :\"$failureShort\"\n";
+                    if ($debug) echo "  -->selenium Webdriver mit Session $session nicht gestartet. Noch einmal ohne Session probieren. Fehlermeldung ".$e->getMessage()."\n";
+                    }
                 $this->handle=array();      // Handle array loeschen
                 try { 
                     $webDriver = RemoteWebDriver::create($hostIP, $capabilities); 
                     }
-                catch (Exception $e) { if ($debug) echo "  -->selenium Webdriver nicht gestartet. Fehlermeldung ".$e->getMessage()." Bitte starten.\n"; return (false); }
+                catch (Exception $e) 
+                    { 
+                    echo "  -->selenium Webdriver nicht gestartet. Fehlermeldung ".$e->getMessage()." Bitte starten.\n"; 
+                    return (false); 
+                    }
                 }
             static::$webDriver = $webDriver; 
             }
@@ -125,7 +186,19 @@ class SeleniumHandler
                 $webDriver = RemoteWebDriver::create($hostIP, $capabilities); 
                 static::$webDriver = $webDriver; 
                 }
-            catch (Exception $e) { if ($debug) echo "  -->selenium Webdriver nicht gestartet. Fehlermeldung ".$e->getMessage()." Bitte starten.\n"; return (false); }
+            catch (Exception $e) 
+                { 
+                $failure = $e->getMessage();
+                $failureShort = substr($failure,0,60);
+                if ($failureShort=="Curl error thrown fo") echo "Es sieht so aus als wäre Selenium nicht gestartet.\n";
+                elseif ($failureShort=="session not created: This version of ChromeDriver only suppo") echo "Neuesten ChromeDriver laden.\n";
+                else 
+                    {
+                    echo "Fehler erkannt :\"$failureShort\"\n";
+                    if ($debug) echo "  -->selenium Webdriver nicht gestartet. Fehlermeldung ".$e->getMessage()." Bitte starten.\n"; 
+                    }
+                return (false); 
+                }
             }
         if ($sessionID) 
             {
@@ -287,6 +360,14 @@ class SeleniumHandler
         return (false);
         }
 
+    /* textfeld laden , referenziert wird über xpath
+     * if am Ende des Funktionsnamen bedeutet, es wird zuerst geschaut ob das Element vorhanden ist
+     * wenn nicht führt das zu einem retun mit false
+     * wenn schon wird das Element abgefragt
+     *
+     * nicht mehr verwendet, da von getHtmlIf ebenfalls abgedeckt
+     *
+     */
     function getTextIf($xpath,$debug=false)
         {
         if ($debug) echo "getTextIf($xpath):\n";            
@@ -298,13 +379,19 @@ class SeleniumHandler
             $element = static::$webDriver->findElement(WebDriverBy::xpath($xpath));        // relative path
             if ($element) 
                 {
-                $page = $element->GetText();
+                $page = $element->GetText();        // Schreibweise ???
                 return ($page);
                 }
             }
         return (false);
         }
 
+    /* html code laden , referenziert wird über xpath
+     * if am Ende des Funktionsnamen bedeutet, es wird zuerst geschaut ob das Element vorhanden ist
+     * wenn nicht führt das zu einem retun mit false
+     * wenn schon wird das Elemnt abgefragt, zuerst wird das innerhtml versucht und wenn nicht dann die Textfelder
+     *
+     */
     function getHtmlIf($xpath,$debug=false)
         {
         if ($debug) echo "getHtmlIf($xpath):\n";            
@@ -316,7 +403,11 @@ class SeleniumHandler
             $element = static::$webDriver->findElement(WebDriverBy::xpath($xpath));        // relative path
             if ($element) 
                 {
+                if ($debug) echo "   -->found, look for innerHtml.\n";
                 $page = $element->getAttribute('innerHTML');
+                if (strlen($page)>10) return ($page);
+                if ($debug) echo "   -->found, then check text.\n";
+                $page = $element->getText();
                 return ($page);
                 }
             }
@@ -334,9 +425,29 @@ class SeleniumHandler
 
     }
 
-/* reading and Writing results to IP Symcon Registers */
-
-
+/* reading and Writing results to IP Symcon Registers 
+ *
+ * individuelle Funktionen um die www.drei.at Homepage vernünftig abzufragen
+ * Wir benötigen zumindestens
+ *  Startseite
+ *  Rückfallsseite wenn der Prozess beiom vorigen Durchlauf hängengeblieben ist
+ *  Seite nach dem Login von dem verschiedene Abfragen ausgelöst werden können
+ *  Seite oder Befehl zum Logout
+ *
+ *
+ * es gibt folgende Funktionen
+ *  construct
+ *  setConfiguration
+ *  runAutomatic
+ *  pressLogoutButtonIf
+ *  pressPrivacyButtonIf
+ *  goToLoginLink
+ *  goToLogoutLink
+ *  goToLoginWithLogoutLink
+ *  goToKostenLink
+ *  enterLoginIf
+ *
+ */
 
 class SeleniumDrei extends SeleniumHandler
     {
@@ -351,20 +462,52 @@ class SeleniumDrei extends SeleniumHandler
         $this->debug=$debug;
         }
 
+    /* Typische Konfiguration, die übergeben wird:
+        "DREI"       =>  array (
+        "URL"       => "www.drei.at",
+        "CLASS"     => "SeleniumDrei",
+        "CONFIG"    => array(
+                    "WebResultDirectory"    => $config["WebResultDirectory"],
+                                ),                            
+                        ),                                            
+     */
+
     public function setConfiguration($configuration)
         {
         $this->configuration = $configuration;
         }
 
+
+    /* runAutomatic
+     * function is part of a state machine. State Machine is in upper section, state machine operates on responses
+     * SeleniumOperations calls this function
+     *
+     * die Startseite wird automatisch über die Url aufgerufen, wenn es noch keine Session gibt, wenn eine Session offen ist, wird dort weitergemacht
+     * (1) Aufruf Startseite www.drei.at
+     * (2) Logout wenn erforderlich
+     * (2) Privacy Button wegclicken
+     *
+     */
+
     public function runAutomatic($step=0)
         {
-        if ($this->debug) echo "runAutomatic SeleniumDrei Step $step.\n";
+        if ($this->debug) echo "runAutomatic SeleniumDrei Step $step:";
         switch ($step)
             {
             case 0:     // beim ersten Mal ist öffnen, das kann länger dauern, zum Init von Timern verwenden
+                $this->duetime=microtime(true)+2;       // dieses delay wird erst im nächsten Schritt geprüft
+                if ($this->debug) echo "wait always 2 seconds for first Window, until ".date("i:s",$this->duetime);
                 break;
-                $this->duetime=microtime(true)+2;               
             case 1:
+                if ($this->debug) echo "continue to wait 2 seconds for first Window";            
+                if (microtime(true)<$this->duetime) 
+                    {
+                    if ($this->debug) echo "\n";
+                    return("retry");                
+                    }            
+                break;
+            case 2:
+                if ($this->debug) echo "wait up to 2 seconds for Privacy Button";
                 $result=$this->pressPrivacyButtonIf();          // den Privacy Button clicken, wenn er noch da ist, spätestens nach 2 Sekunden aufgeben
                 if ( ($result === false) && (microtime(true)<$this->duetime) )
                     {
@@ -373,15 +516,31 @@ class SeleniumDrei extends SeleniumHandler
                     }
                 $this->duetime=microtime(true)+4;                                    // vielelicht sind manche Server viel langsamer
                 break;
-            case 2:
-                $result=$this->goToLoginLink();
+            case 3:
+                if ($this->debug) echo "go to Logout Link";
+                $result=$this->goToLogoutLink();
                 if ( ($result === false) && (microtime(true)<$this->duetime) )
                     {
                     if ($this->debug) echo "   --> failed\n";
                     return("retry");                
                     }
                 break;
-            case 3:
+            case 4:
+                if ($this->debug) echo "press Logout Button";            
+                $this->pressLogoutButtonIf();
+                if ($this->debug) echo "\n";
+                break;
+            case 5:
+                if ($this->debug) echo "go to Login Link";
+                $result=$this->goToLoginLink();
+                //$result=$this->goToLoginWithLogoutLink();                
+                if ( ($result === false) && (microtime(true)<$this->duetime) )
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    }
+                break;
+            case 6:
                 if ($this->debug) echo "Login in Url \"".$this->getUrl()."\"\n";
                 $result = $this->enterLoginIf($this->configuration["Username"],$this->configuration["Password"]);
                 if ($result === false) 
@@ -391,8 +550,9 @@ class SeleniumDrei extends SeleniumHandler
                     }
                 $this->duetime=microtime(true)+2;           // zumindest 2 Sekunden einräumen
                 break;
-            case 4:
+            case 7:
                 /* //*[@id="site-wrapper"]/header/ul[2]/li[6]/ul/li[3]/a */
+                if ($this->debug) echo "go to Kosten Link, warte ca. 2 Sekunden";
                 $result=$this->goToKostenLink();
                 if ( ($result === false) && (microtime(true)<$this->duetime) )
                     {
@@ -401,7 +561,8 @@ class SeleniumDrei extends SeleniumHandler
                     } 
                 else if ($this->debug) echo "  Zeit bis Duetime ".($this->duetime-microtime(true))."\n";
                 break;
-            case 5:
+            case 8:
+                if ($this->debug) echo "fetch Guthaben Data from Host";            
                 $result=$this->fetchGuthabenDatafromHost();
                 if ($result===false) return ("retry");
                 if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
@@ -410,15 +571,18 @@ class SeleniumDrei extends SeleniumHandler
                 //$guthabenHandler->parsetxtfile($nummer,$config["WebResultDirectory"],$filename);
                 return(["Ergebnis" => $result]);
                 break;
-            case 6:
+            case 9:
+                if ($this->debug) echo "go to Login Link";            
                 $this->goToLoginLink();                 // zurück zum Login Link für personal Information
                 break;
-            case 7:
+            case 10:
+                if ($this->debug) echo "press Logout Button";            
                 $this->pressLogoutButtonIf();
                 break;
             default:
                 return (false);                
             }
+        if ($this->debug) echo "\n";            
         }
 
     function pressLogoutButtonIf()
@@ -446,7 +610,7 @@ class SeleniumDrei extends SeleniumHandler
         return($this->pressButtonIf($xpath));
         }
 
-    /* press link butto, Personenzeichen
+    /* press link button, Personenzeichen
      *  //*[@id="site-wrapper"]/header/ul[2]/li[9]/ul/li[1]/a
      * Manchmal ist der link nicht displayed (?), direkt auf den Link gehen
      *  das ist ein Link hier hin: https://www.drei.at/de/login/?retUrl=https://www.drei.at/selfcare/restricted/prepareMyProfile.do
@@ -456,6 +620,29 @@ class SeleniumDrei extends SeleniumHandler
         {
         $xpath='//*[@id="site-wrapper"]/header/ul[2]/li[9]/ul/li[1]/a';
         $url='https://www.drei.at/de/login/?retUrl=https://www.drei.at/selfcare/restricted/prepareMyProfile.do';
+        $status=$this->pressButtonIf($xpath);             
+        if ($status===false) return($this->updateUrl($url));
+        return ($status);
+        } 
+
+    /* Logout erzwingen
+     */
+    function goToLogoutLink()
+        {
+        $url='https://www.drei.at/selfcare/restricted/prepareMyProfile.do';
+        return($this->updateUrl($url));
+        }
+
+    /* press link butto, Personenzeichen
+     *  //*[@id="site-wrapper"]/header/ul[2]/li[9]/ul/li[1]/a
+     * Manchmal ist der link nicht displayed (?), direkt auf den Link gehen
+     *  das ist ein Link hier hin: https://www.drei.at/de/login/?retUrl=https://www.drei.at/selfcare/restricted/prepareMyProfile.do
+     *
+     */
+    function goToLoginWithLogoutLink()
+        {
+        $xpath = '//*[@id="ssoLoginForm"]/div/a';
+        $url='https://www.drei.at/de/logout/?retUrl=https%3A%2F%2Fwww.drei.at%2Fde%2Flogin%2F%3FretUrl%3Dhttps%3A%2F%2Fwww.drei.at%2Fselfcare%2Frestricted%2FprepareMyProfile.do';
         $status=$this->pressButtonIf($xpath);             
         if ($status===false) return($this->updateUrl($url));
         return ($status);
@@ -475,6 +662,8 @@ class SeleniumDrei extends SeleniumHandler
 
 
     /* login entry username und password
+     * ensure that logout was done before
+     * "https://www.drei.at/de/logout/?retUrl=https%3A%2F%2Fwww.drei.at%2Fde%2Flogin%2F%3FretUrl%3Dhttps%3A%2F%2Fwww.drei.at%2Fselfcare%2Frestricted%2FprepareMyProfile.do
      */
     function enterLoginIf($username,$password)
         {
@@ -493,14 +682,15 @@ class SeleniumDrei extends SeleniumHandler
         return($result);
         }
 
-    /* das Guthaben kann auf zwei verschiedenen Orten stehen. beide probieren
+    /* das Guthaben und die anderen Informationen können auf zwei verschiedenen Orten stehen - alle probieren
+     * Datenabfrage mit getHtmlIf($xpath, es kommen entweder html oder wenn nicht vorhanden textpassagen zurück
      */
-
     function fetchGuthabenDatafromHost()
         {   
         if ($this->active===false) return;
 
-        /* guthaben auslesen , immer warten bis sich die Seite aufgebaut hat, da arbeiten langsame Scripts im Hintergrund
+        /* guthaben auslesen , immer vorher warten bis sich die Seite aufgebaut hat, da arbeiten langsame Scripts im Hintergrund
+        * //*[@id="site-wrapper"]/main/div[5]/div[5]/div[1]/div
         * //*[@id="link_coco_box"]/div/div[1]/div[1]/h1 
         * //*[@id="link_coco_box"]/div/div[2] 
         * //*[@id="link_coco_box"]/div/div[2] 
@@ -508,17 +698,49 @@ class SeleniumDrei extends SeleniumHandler
         *//*[@id="site-wrapper"]/main
         *
         *//*[@id="site-wrapper"]/main/div[3]/div[2]
+        *
+        * //*[@id="current-cost"]
+        *
         */
-        $xpath='//*[@id="link_coco_box"]';     
-        //$ergebnis = $this->getTextIf($xpath);
-        $ergebnis = $this->getHtmlIf($xpath);    
-        //if ($ergebnis === false) return (false);          // nicht gleich aufgeben, erst anderen Link probieren
-        if ((strlen($ergebnis))>10) return($ergebnis);
-        
-        $xpath='//*[@id="site-wrapper"]/main';     
-        //$ergebnis = $this->getTextIf($xpath);
-        $ergebnis = $this->getHtmlIf($xpath);    
-        
+
+        $tryXpath = array(
+                0 => '//*[@id="site-wrapper"]/main/div[5]',
+                1 => '//*[@id="site-wrapper"]/main/div[5]/div[3]',
+                );
+
+        foreach ($tryXpath as $index => $xpath)
+            {
+            if ($this->debug) echo "Try xpath $index :\n";
+            $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+            if ((strlen($ergebnis))>10) return($ergebnis);
+            else echo $ergebnis;
+            }
+
+        if (false)
+            {        
+            if ($this->debug) echo "Try site-wrapper/main/div[5]/div[3]\n";
+            $xpath='//*[@id="site-wrapper"]/main/div[5]/div[3]';
+            $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+            if ((strlen($ergebnis))>10) return($ergebnis);
+            else echo $ergebnis;
+
+            if ($this->debug) echo "Try current-cost\n";
+            $xpath = '//*[@id="current-cost"]';
+            $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+            if ((strlen($ergebnis))>10) return($ergebnis);
+            else echo $ergebnis;
+
+            if ($this->debug) echo "Try coco_box\n";
+            $xpath='//*[@id="link_coco_box"]';     
+            //$ergebnis = $this->getTextIf($xpath);
+            $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+            //if ($ergebnis === false) return (false);          // nicht gleich aufgeben, erst anderen Link probieren
+            if ((strlen($ergebnis))>10) return($ergebnis);
+            
+            if ($this->debug) echo "Try site-wrapper/main\n";
+            $xpath='//*[@id="site-wrapper"]/main';     
+            $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+            }        
         return($ergebnis);
 
         }
@@ -526,7 +748,7 @@ class SeleniumDrei extends SeleniumHandler
 
 
 /* Selenium Webdriver automatisisert bedienen
- *
+ * Aufruf mit automatedQuery
  *
  */
 
@@ -566,6 +788,13 @@ class SeleniumOperations
             }
         }
 
+    /* speichern von Ergebnissen bei der Auslesung von Webinhalten
+     * Ort ist data.Guthabensteuerung.Selenium.RESULT (CategoryIdData)
+     * unter index ist bereits eine Unterkategorie vorhanden, siehe Index von der Abfrage Konfiguration EASY, ORF etc.
+     * dort wird eine neue Stringvariable mit dem Namen result erstellt
+     * dort hin wird das Ergebnis in result gespeichert
+     */
+
     function writeResult($index,$result,$name="Result")
         {
         $categoryID = @IPS_GetObjectIDByName($index, $this->CategoryIdData);
@@ -583,6 +812,16 @@ class SeleniumOperations
         $result["LastChanged"]=IPS_GetVariable($variableID)["VariableChanged"];
         return ($result);
         }
+
+    /* alle Homepages gleichzeitig abfragen 
+     * Index von Configtabs gibt die einzelnen Seiten/Tabs vor
+     * mit Url wird der Tab benannt und wieder erkannt, wenn keine Class definiert ist, bleibts auch beim Seitenaufruf
+     * sonst wird im Step 0 die class initialisiert
+     * es gibt einen gesamten Step counter step und einen individuellen steps für die einzelnen Webserver, steps wird im step 0 initaialisisert
+     * in jedem Step wird zwischen allen konfigurierten Fenster umgeschalten und entsprechend dem individuellen Stepcounter weitergemacht
+     * im array handler sind die Fenster gespeichert, in runSelenium die einzelnen Klassen, in steps der individuelle Schritt
+     * wenn als Antwort retry zurückkommt wird im selben Schritt geblieben, sonst um eins weitergezählt
+     */
 
     function automatedQuery($webDriverName,$configTabs,$debug=false)
         {
@@ -612,7 +851,7 @@ class SeleniumOperations
             }
 
         /* WebDriver starten */
-        $result = $seleniumHandler->initHost($webDriverUrl,$configSelenium["Browser"],$sessionID);          // ersult sind der Return wert von syncHandles
+        $result = $seleniumHandler->initHost($webDriverUrl,$configSelenium["Browser"],$sessionID,$debug);          // ersult sind der Return wert von syncHandles
         if ($result !== false)  
             {
             if ($debug)
@@ -633,7 +872,8 @@ class SeleniumOperations
                 $done=0; $failed=0;
                 foreach ($configTabs as $index => $entry)
                     {
-                    if ($debug) echo "======================================".(microtime(true)-$startexec)." Sekunden\n";
+                    $date = new DateTime("NOW");            // aktuelle Uhrzeit
+                    if ($debug) echo "======================================Start with Index $index, ".$date->format("H:i:s.v")." Laufzeit bis jetzt: ".round(microtime(true)-$startexec,2)." Sekunden\n";
 
                     if (isset($entry["URL"]))
                         {
@@ -651,7 +891,7 @@ class SeleniumOperations
                             // benannte Class öffnen und eine benannte Routine ausführen
                             if ($step == 0) 
                                 {
-                                $runSelenium[$index] = new $entry["CLASS"]();
+                                $runSelenium[$index] = new $entry["CLASS"]($debug);
                                 $config=array();
                                 if (isset($entry["CONFIG"])) 
                                     {
@@ -661,12 +901,13 @@ class SeleniumOperations
                                 }
 
                             $result = $runSelenium[$index]->runAutomatic($steps[$index]);
+                            echo "Aufruf ".$steps[$index]." erfolgt. Rückmeldung ist ".json_encode($result)."\n";
                             if (is_Array($result))
-                                {       // komplexe Rückmeldung
+                                {       // komplexe Rückmeldung, Ergebnis speichern in den Variablen Username und Nummer
                                 if (isset($result["Ergebnis"]))
                                     {
                                     $this->writeResult($index,$result["Ergebnis"],$entry["CONFIG"]["Username"]);            // das Ergebnis ist in der variable mit dem Usernamen, nicht Result !
-                                    if ($index=="DREI") $this->writeResult($index,$entry["CONFIG"]["Username"],"Nummer");     // Nummer zusaetzlich abspeichern
+                                    if ($index=="DREI") $this->writeResult($index,$entry["CONFIG"]["Username"],"Nummer");     // letzte Nummer die bearbeitet wurde zusaetzlich abspeichern
                                     $steps[$index]++;  
                                     }
                                 }
@@ -691,7 +932,7 @@ class SeleniumOperations
                 print_R($seleniumHandler->title);
                 }
             }
-        else echo "Kann Webdriver nicht finden.\n";
+        else echo "Kann Webdriver $webDriverUrl nicht finden.\n";
         }
 
     function storeString($string)

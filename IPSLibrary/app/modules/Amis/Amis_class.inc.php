@@ -677,7 +677,7 @@
          *
          */            
 			
-		function getRegistersfromOID($oid,$MConfig=array())
+		function getRegistersfromOID($oid,$MConfig=array(),$debug=false)
 			{
 			$result=false;
 			if (sizeof($MConfig)==0) 
@@ -685,19 +685,22 @@
 				//echo "Array ist leer. Default Config nehmen.\n";
 				$MConfig=$this->MeterConfig;
 				}
+            if ($debug) echo "getRegistersfromOID($oid,[".json_encode($MConfig) ."]) aufgerufen.\n";              
             if (is_string($oid))
                 {
                 //echo "String angegeben.\n"; 
-                $MConfig=$this->MeterConfig;
+                //$MConfig=$this->MeterConfig;
                 //print_r($MConfig);
                 foreach ($MConfig as $entry)
                     {
+                    if ($debug) echo "           ".$entry["NAME"].",";                        
                     if ($entry["NAME"]==$oid)
                         {
                         $realOID=$entry["OID"];
                         //echo "   ".$entry["NAME"]." gefunden. OID aus Config übernehmen $realOID ".IPS_GetName($realOID)."\n";
                         $result=$this->getRegistersfromOID($realOID);
                         }
+                    if ($debug) echo "\n";                        
                     }
                 }
             else
@@ -843,9 +846,11 @@
 		/************************************************************************************************************************
  		 *
 		 * Script MomentanwerteAbfragen wird minuetlich aufgerufen. Diese Routine kommt alle 15 Minuten dran.
- 		 * Nur die SUMMEN Energiewerte bearbeiten, ignoriert andere Typen
+ 		 * Nur die SUMMEN Energiewerte (meter["TYPE"]=="SUMME") bearbeiten, ignoriert andere Meter Typen
  		 *
- 		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+ 		 * es wird ein String mit dem Namen $meter["NAME"] als Kategorie angelegt und darunter die Variablen Wirkenergie und Wirkleistung als Float gespeichert
+         * es wird nur berechnet wenn $meter["Calculate"] die Werte die für die Berechnung als Namen mit Komma getrennt angelegt sind
+         *
 		 *
 		 *****************************************************************************************************************************/
 		 
@@ -867,13 +872,14 @@
 
 				if ( isset($meter["Calculate"]) == true )
 					{
-					$calculate = explode(",",$meter["Calculate"]);
+					$calculate = explode(",",$meter["Calculate"]);                  
 					if ($debug) echo "  die folgenden Register werden zusammengezählt: ".$meter["Calculate"]."\n";
 					//print_r($calculate);
                     $e=0;
 					foreach ($calculate as $oid)
 						{
                         $e++;       // Zeilenindex
+                        if ($debug) echo "      $e bearbeite $oid:\n";                          
 						$result=$this->getRegistersfromOID($oid);           // das sind die Quellregister (von Homematic, Register, AMSI Zähler etc.), vor der Verarbeitung
                         /* nicht die Source sondern die Target Register zusammenzählen 
                         print_r($result);

@@ -63,47 +63,59 @@ IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHa
 
 IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager))
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
-	}
-$installedModules = $moduleManager->GetInstalledModules();
-
-if (isset($installedModules["DetectMovement"]))
-    {
-    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-    $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
-    $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
-    }
-
-    echo "\n";
-    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
-    echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
-    echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
-    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
-    echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
-    echo "\n";
-
-/* DeviceManger muss immer installiert werden, wird in Timer als auch RunScript und Execute verwendet */
-
-if (isset($installedModules["OperationCenter"])) 
-    {
-    IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
-    echo "OperationCenter ist installiert.\n";
-    $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library
-    //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
-    $homematicErrors = $DeviceManager->HomematicFehlermeldungen();
-    echo "$homematicErrors\n";
-    //echo "  Homematic Serialnummern erfassen:\n";
-    $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
-    }
-
-//print_r($installedModules); 
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    if (!isset($moduleManager))
+        {
+        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+        $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+        }
+    $installedModules = $moduleManager->GetInstalledModules();
 
     $ipsOps = new ipsOps();
+    $dosOps = new dosOps(); 
+
+    $fullDir = IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
+    $result = $dosOps->fileIntegrity($fullDir,'EvaluateHardware_Configuration.inc.php');
+    if ($result === false) 
+        {
+        echo "File integrity of EvaluateHardware_Configuration.inc.php is NOT approved.\n";
+        }
+    else 
+        {
+        echo "File integrity of EvaluateHardware_Configuration.inc.php is approved.\n";
+        IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+        }
+
+    if (isset($installedModules["DetectMovement"]))
+        {
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
+        $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
+        }
+
+        echo "\n";
+        echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+        echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+        echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
+        echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+        echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
+        echo "\n";
+
+    /* DeviceManger muss immer installiert werden, wird in Timer als auch RunScript und Execute verwendet */
+
+    if (isset($installedModules["OperationCenter"])) 
+        {
+        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+        echo "OperationCenter ist installiert.\n";
+        $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library
+        //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
+        $homematicErrors = $DeviceManager->HomematicFehlermeldungen();
+        echo "$homematicErrors\n";
+        //echo "  Homematic Serialnummern erfassen:\n";
+        $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
+        }
+
 	$modulhandling = new ModuleHandling();	                	            // in AllgemeineDefinitionen, alles rund um Bibliotheken, Module und Librariestrue bedeutet mit Debug
     $topologyLibrary = new TopologyLibraryManagement();                     // in EvaluateHardware Library, neue Form des Topology Managements
     $evaluateHardware = new EvaluateHardware();
@@ -338,7 +350,7 @@ IPS_SetEventActive($tim1ID,true);
         echo "\n";
         echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
         echo "=======================================================================\n";
-        echo "Detect_______ Summen und Mirrorregister suchen und registrieren :\n";
+        echo "DetectMovement installiert, Summen und Mirrorregister für Kontakt, Bewegung etc. suchen und registrieren :\n";
         echo "\n";
         echo "DetectContact Kontakt Register hereinholen:\n";								
         $DetectContactHandler = new DetectContactHandler();
@@ -351,17 +363,18 @@ IPS_SetEventActive($tim1ID,true);
             $moid=$DetectContactHandler->getMirrorRegister($oid);
             if ($moid !== false) 
                 {
-                echo "   *** register Event $moid: $typ\n";
-                $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Contact');		
+                $result=$DetectDeviceHandler->RegisterEvent($moid,'Topology','','Contact');		
+                if ($result) echo "   *** register Event $moid: $typ\n";
                 }
             }
         echo "----------------Liste der DetectContact Groups durchgehen:\n";
-        print_r($groups); 
+        //print_r($groups); 
         foreach ($groups as $group => $entry)
             {
             $soid=$DetectContactHandler->InitGroup($group);
             echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Contact');		
+            $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Contact');		
+            if ($result) echo "   *** register Event $soid\n";
             }	
 
         echo "DetectMovement Bewegungsregister hereinholen:\n";								
@@ -375,17 +388,18 @@ IPS_SetEventActive($tim1ID,true);
             $moid=$DetectMovementHandler->getMirrorRegister($oid);
             if ($moid !== false) 
                 {
-                echo "   *** register Event $moid: $typ\n";
                 $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Movement');		
+                if ($result) echo "   *** register Event $moid: $typ\n";
                 }
             }
         echo "----------------Liste der DetectMovement Groups durchgehen:\n";        
-        print_r($groups); 
+        //print_r($groups); 
         foreach ($groups as $group => $entry)
             {
             $soid=$DetectMovementHandler->InitGroup($group);
             echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Movement');		
+            $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Movement');		
+            if ($result) echo "   *** register Event $soid\n";
             }	
         
         echo "\n";
@@ -415,8 +429,10 @@ IPS_SetEventActive($tim1ID,true);
                             * Config function DetectDevice follows detecttemperaturehandler
                             */            
                         $DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','Mirror->'.$mirror);     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig*/
-                        $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature',false, true);	        // par 3 config overwrite
-                        $DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	/* par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant */
+                        $result=$DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature',false, true);	        // par 3 config overwrite
+                        if ($result) echo "   *** register Event $moid\n";
+                        $result=$DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	/* par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant */
+                        if ($result) echo "   *** register Event $oid\n";
                         }
                     else echo "   -> ****Fehler, $oid nicht mehr vorhanden aber in config eingetragen.\n";
                     }
@@ -426,18 +442,20 @@ IPS_SetEventActive($tim1ID,true);
                     if (isset($eventDeviceConfig[$oid])===false) echo "DetectDeviceHandler->Get_EventConfigurationAuto() ist false  ";
                     if (isset($eventTempConfig[$oid])===false) echo "DetectTemperatureHandler->Get_EventConfigurationAuto() ist false  ";
                     echo "\n";
-                    $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');                     // zumindest einmal in den DeviceHandler übernehmen
+                    $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');                     // zumindest einmal in den DeviceHandler übernehmen
+                    if ($result) echo "   *** register Event $soid\n";
                     }
                 }
             else echo "  -> ****Fehler, Mirror Register für ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." nicht gefunden.\n";
             }
-        print_r($groups);
-        //echo "Alle Gruppen durchgehen:\n";
+        //print_r($groups);
+        echo "----------------Liste der DetectTemperature Gruppen durchgehen:\n";
         foreach ($groups as $group => $entry)
             {
             $soid=$DetectTemperatureHandler->InitGroup($group);
             echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');		
+            $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');		
+            if ($result) echo "   *** register Event $soid\n";
             }	
 
         echo "\n";
@@ -449,14 +467,20 @@ IPS_SetEventActive($tim1ID,true);
             {
             echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
             $moid=$DetectHumidityHandler->getMirrorRegister($oid);
-            if ($moid !== false) $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Humidity');		
+            if ($moid !== false) 
+                {
+                $result=$DetectDeviceHandler->RegisterEvent($moid,'Topology','','Humidity');
+                if ($result) echo "   *** register Event $moid: $typ\n";
+                }		
             }
-        print_r($groups);         
+        echo "----------------Liste der DetectTHumidity Gruppen durchgehen:\n";
+        //print_r($groups);         
         foreach ($groups as $group => $entry)
             {
             $soid=$DetectHumidityHandler->InitGroup($group);
             echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','Humidity');		
+            $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Humidity');		
+            if ($result) echo "   *** register Event $soid\n";
             }	
 
         echo "\n";
@@ -468,14 +492,20 @@ IPS_SetEventActive($tim1ID,true);
             {
             echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
             $moid=$DetectHeatControlHandler->getMirrorRegister($oid);
-            if ($moid !== false) $DetectDeviceHandler->RegisterEvent($moid,'Topology','','HeatControl');		
+            if ($moid !== false)
+                {
+                $result=$DetectDeviceHandler->RegisterEvent($moid,'Topology','','HeatControl');	
+                if ($result) echo "   *** register Event $moid: $typ\n";
+                }	
             }
-        print_r($groups);    
+        echo "----------------Liste der DetectHeatControl Gruppen durchgehen:\n";
+        //print_r($groups);    
         foreach ($groups as $group => $entry)
             {
             $soid=$DetectHeatControlHandler->InitGroup($group);
             echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
-            $DetectDeviceHandler->RegisterEvent($soid,'Topology','','HeatControl');		
+            $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','HeatControl');		
+            if ($result) echo "   *** register Event $soid\n";
             }	
                                                                                                                                                                                         
         echo "\n";

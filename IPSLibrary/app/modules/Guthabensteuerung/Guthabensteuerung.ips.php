@@ -1,5 +1,23 @@
 <?
 
+ 	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */ 
+
+
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
 IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
@@ -27,8 +45,11 @@ IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config:
     $ParseGuthabenID		= IPS_GetScriptIDByName('ParseDreiGuthaben',$CategoryIdApp);
     $GuthabensteuerungID	= IPS_GetScriptIDByName('Guthabensteuerung',$CategoryIdApp);
 
+    /*
    	$categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 10);
     $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 900);
+    */
+    $categoryId_Guthaben        = $CategoryIdData;
 
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
@@ -56,6 +77,7 @@ IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config:
                                                     ),              
                                             ),
                         );
+            $webDriverName=false;
             break;
         case "NONE":
             $DoInstall=false;
@@ -98,7 +120,7 @@ IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config:
  *
  *				TIMER
  *
- * zwei TimerEvents. Eines einmal am Tag und das andere alle 
+ * zwei TimerEvents. Eines einmal am Tag und das andere alle 150 Sekunden
  *
  *************************************************************/
 
@@ -136,7 +158,10 @@ if ($_IPS['SENDER']=="TimerEvent")
                         else 	$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
                         SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	
                         break;
-                 case "SELENIUM":
+                     case "SELENIUM":
+                        $config["DREI"]["CONFIG"]["Username"]=$phoneID[$ScriptCounter]["Nummer"];          // von 0 bis maxcount-1 durchgehen
+                        $config["DREI"]["CONFIG"]["Password"]=$phoneID[$ScriptCounter]["Password"];
+                        $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug         
                         break;
                     default:
                         break;
@@ -159,6 +184,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                         else $note="File ".$fileName." does not exists.";
                         break;
                     case "SELENIUM":
+                        // muss ich noch etwas machen        
                         break;
                     default:
                         break;                        
@@ -255,8 +281,7 @@ if ($_IPS['SENDER']=="WebFront")
                             IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$value]["Nummer"].".iim", false, false, -1);
                             break;
                         case "SELENIUM":
-                            $webDriverName=false;
-                            SetValue($statusReadID,"Selenium Read started on ".date("d.m.Y H:i:s"));
+                            SetValue($statusReadID,"Selenium Read started on ".date("d.m.Y H:i:s").". Nummer ist ".$phoneID[$value]["Nummer"]." ($value).\n");
                             //echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
                             $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
                             $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"];
@@ -281,12 +306,21 @@ if ($_IPS['SENDER']=="WebFront")
 
 if ( ($_IPS['SENDER']=="Execute") )         // && false
 	{
+    echo "====================Execute Section in Script called:\n";
 	echo "Category Data ID            : ".$CategoryIdData."\n";
 	echo "Category App ID             : ".$CategoryIdApp."\n";
+
+    $tim1ID = IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
+    $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
+
+	echo "Timerprogrammierung: \n";
+	echo "  Timer 1 ID : ".$tim1ID."   ".(IPS_GetEvent($tim1ID)["EventActive"]?"Ein":"Aus")."\n";
+    echo "  Timer 2 ID : ".$tim2ID."   ".(IPS_GetEvent($tim2ID)["EventActive"]?"Ein":"Aus")."\n";
 
 	$ScriptCounter=GetValue($ScriptCounterID);
     echo "Script Counter (aktuell)    : ".$ScriptCounter."\n";
     echo "Webfront MacroID            : ".$startImacroID."\n";
+    echo "Operating Mode              : ".(strtoupper($GuthabenAllgConfig["OperatingMode"]))."\n";
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {  
         case "SELENIUM":
@@ -334,7 +368,6 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
 
             //$value=2;       // 0,1  ... (count-1)
             //$webDriverName="BKS-Server";
-            $webDriverName=false;
             //$debug=true;
             $debug=false;
             echo "============================================================================\n";
