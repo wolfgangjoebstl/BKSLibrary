@@ -1510,7 +1510,7 @@ class Autosteuerung
 	var $dataCategoryIdDenon, $configCategoryIdDenon;
 	
 	/***********************
-	 *
+	 * construct of Autosteuerung
 	 * es wird innerhalb von data.modules.Autosteuerung die Kategorie Ansteuerung erstellt und dort pro 
 	 * im Config File angelegter Applikation ein Eintrag erstellt. Derzeit unterstützt:
 	 *
@@ -1652,7 +1652,8 @@ class Autosteuerung
 		}
 
 
-    /* Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler */
+    /* of Autosteuerung
+     * Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler */
 
     private function set_Configuration($debug=false)
         {
@@ -1667,7 +1668,8 @@ class Autosteuerung
         return ($this->configuration);
         }
 
-	/* welche AutosteuerungsFunktionen sind aktiviert:
+	/* of Autosteuerung
+     * welche AutosteuerungsFunktionen sind aktiviert:
      * unter data.modules.Autosteuerung.Ansteuerung alle bekannten Variablen auswerten und den Status zurückmelden
      * Bekannt sind derzeit
      *  GutenMorgenWecker, Anwesenheitserkennung, Alarmanlage, Stromheizung, Alexa
@@ -1729,7 +1731,7 @@ class Autosteuerung
 		}	
 
 	/**************************************************
-	 *
+	 * of Autosteuerung
 	 * Befehle für die Zeitperiodenerkennung
 	 *
 	 * dark/light abhängig vom Daylight
@@ -1994,7 +1996,7 @@ class Autosteuerung
 		}	
 
     /****************************************************
-     *
+     * of Autosteuerung
      * Konfiguration der Anwesenheitsliste als text ausgeben
      *
      ********************************************************************/
@@ -2059,7 +2061,7 @@ class Autosteuerung
 
     /**********************************************
      *
-     * getScenes
+     * getScenes of Autosteuerung
      *
      * Liest die AWS/TIMER Konfiguration aus, filtert auf die AWS Events, oder Eingabe
      *
@@ -2149,7 +2151,7 @@ class Autosteuerung
         }
 
 	/***************************************
-	 *
+	 * of Autosteuerung
 	 * Vorwert (Float) erfassen und in der Category Stromheizung speichern, 
      * eingesetzt bei Heizung um zB zu erkennen Temperatur gestiegen, gesunken, etc.
 	 * wird bei jeder Änderung zB von Ventilator2 aufgerufen und der Wert wird in OLDSTATUS gespeichert
@@ -2217,7 +2219,7 @@ class Autosteuerung
 		}
 
 	/***************************************
-	 *
+	 * of Autosteuerung
 	 * Spezialfunktion für Ansteuerung des Dimmers, bei Angabe von Change herausfinden ob wir ADD oder SUB machen sollen
      * der alte Wert wird abgefragt und herausgefunden wie lange die Änderung zurücklag
      * 
@@ -2281,7 +2283,7 @@ class Autosteuerung
 		}
 
 	/***************************************
-	 *
+	 * of Autosteuerung
 	 * Vorwert erfassen und speichern wenn Änderung groesser $dif ist
 	 *
 	 * in der entsprechenden Kategorie data.modules.Autosteuerung.Ansteuerung.Stromheizung einen Eintrag mit
@@ -2316,7 +2318,7 @@ class Autosteuerung
 		}
 
 	/***************************************
-	 *
+	 * of Autosteuerung
 	 * Vorwert (Boolean) des Triggers erfassen und in der Category data::modules::Autosteuerung::Status speichern, 
      * eingesetzt bei Status und StatusParallel um zB zu erkennen wie sich der Status des Triggers geändert hat on->off, off->on, just bounce, or only update on->on etc.
 	 * wird bei jeder Änderung aufgerufen
@@ -2357,7 +2359,7 @@ class Autosteuerung
 		}
 
 	/***************************************
-	 *
+	 * of Autosteuerung
 	 * Ermittlung zeitlicher Abstand zur letzen Änderung, wenn groesser $bounce ist wird true rückgemeldet
      *
      * Änderungen nur abspeichern wenn zeitlich lang genug vom letztem Speicherdatum entfernt sind, Wert ist eigentlich völlig egal, es wird das Speicherdatum der Variable genommen
@@ -2430,7 +2432,7 @@ class Autosteuerung
 		}
 
 	/**
-	 *
+	 * of Autosteuerung
 	 * Command trimmen, damit es in einer Zeile ausgegeben werden kann, Befehl wird oft formatiert für bessere Lesbarkeit
 	 *
 	 * @return string[] Event Konfiguration
@@ -2473,7 +2475,7 @@ class Autosteuerung
 
 
 	/***************************************
-	 *
+	 * of Autosteuerung
 	 * hier wird der Befehl in die Einzelbefehle zerlegt, und Kurzbefehle in die Langform gebracht
 	 * unterschiedliche Bearbeitung für Ventilator, Anwesenheit und alle anderen
 	 *
@@ -2896,7 +2898,7 @@ class Autosteuerung
 		return($parges);
 		}
 
-	/*
+	/* of Autosteuerung
 	 * Wenn der Name der IPSLight Variablen keine IPS Light Variable aber vielleicht ein vordefinierter Wert ist, die OID der bekannten Variable zurückmelden
 	 */
 		
@@ -2917,7 +2919,7 @@ class Autosteuerung
         return ($oid);
         }
 
-	/*
+	/* of Autosteuerung
 	 * ersten teil des Arrays als Befehl erkenn, auf Grossbuchtaben wandeln, und das ganze array nochmals darunter speichern
 	 * Erweitert das übergebene Array.
 	 * bei size 1 nix machen, bei size 2, 4 oder groesser nur den ersten parameter mit trim/strtoupper bearbeiten
@@ -2949,7 +2951,7 @@ class Autosteuerung
 		return($result);
 		}
 
-	/* 
+	/* of Autosteuerung
 	 * Wert nicht bekannt, true, false und toggle wurden bereits ausselektiert, entweder ein farbezeichnung oder eine Zahl, 
 	 * abhängig ob Level oder Color angegeben wurde handelt es sich wahrscheinlich um eine hex beziehungsweise dez Zahl 
 	 *
@@ -2986,7 +2988,7 @@ class Autosteuerung
 		}
 
 	/**********************************
-     * findSimilar
+     * findSimilar of Autosteuerung
      *
      *
      ***************************************/
@@ -3067,7 +3069,7 @@ class Autosteuerung
         }
 
 	/**********************************
-     * getIdByName
+     * getIdByName of Autosteuerung
      *
      * überprüft IPSHeat, IPSLight auf den Namen und gibt ID, TYP und MODULE zurück 
      *
@@ -3143,7 +3145,8 @@ class Autosteuerung
 
 		}
 
-    /* Schnelle Funktion um auf Basis des Ergebnis Typs einen Schalter oder eine Gruppe zu schalten
+    /* of Autosteuerung
+     * Schnelle Funktion um auf Basis des Ergebnis Typs einen Schalter oder eine Gruppe zu schalten
      */
 
     function switchByTypeModule($ergebnisTyp, $state, $debug=false)
@@ -3185,7 +3188,7 @@ class Autosteuerung
 
 
 	/*********************************************************************************************************
-	 *
+	 * of Autosteuerung
 	 * Auch das Evaluieren kann gemeinsam erfolgen, es gibt nur kleine Unterschiede zwischen den Befehlen 
      * Vorher wurde ParseCommand aufgerufen, der versucht einen String mit Abkürzerne etc. in eine allgemein verständliche Form zu bringen
 	 *
@@ -3745,7 +3748,7 @@ class Autosteuerung
 		}	
 
     /***********************************
-     *
+     * of Autosteuerung
      * IF Befehl wird mehrfach evaluiert, einmal bei IF und einmal bei IFNOT, in einer Routine soweit möglich zusammenfassen zu versuchen
      * wenn true rückgemeldet wird, ist der Befehl bearbeitet worden, sonst muss er noch weiter bearbeitet werden. 
      * es werden sowohl befehl,result und state als Zeiger übergeben und abgeändert. 
@@ -3891,7 +3894,8 @@ class Autosteuerung
         return ($found);     // andere evaluierung des IF Befehls findet auch statt
 		}
 
-    /* Zusatz Evaluierungen von Conditions, Rückgabe über die ersten drei Variablen.
+    /* of Autosteuerung
+     * Zusatz Evaluierungen von Conditions, Rückgabe über die ersten drei Variablen.
      * state auch updaten, wird für die IFAND etc Befehle verwendet
      */
 
@@ -4017,7 +4021,7 @@ class Autosteuerung
 		}
 
     /******************
-     * 
+     * of Autosteuerung
      * mit dem Befehl Status oder Anwesenheit kann mit + noch ein Zusatzparameter mitgegeben werden. Diese als Control auswerten.
      *
      **************************************/
@@ -4082,7 +4086,7 @@ class Autosteuerung
 
 
 	/***************************************
-	 *
+	 * of Autosteuerung
 	 *  HeatControl, Stromheizung erfordert Regelfunktionen, die können entweder auf Switch oder Level gehen. 
 	 *
 	 *  Derzeit Switch implementiert
@@ -4269,11 +4273,13 @@ class Autosteuerung
 		}
 
 	/***************************************
-	 *
-	 * hier wird der Befehl umgesetzt. Abhängig von "MODULE" werden die Funktionen unterschiedlich umgesetzt
+	 * ExecuteCommand of Autosteuerung
+	 * 
+     * hier wird der Befehl umgesetzt. Abhängig von "MODULE" werden die Funktionen unterschiedlich umgesetzt
      * Folgende Module sind aktuell implementiert
      *  IPSLight, IPSHeat
      *  SamsungTV
+     *  Selenium
      *  für die anderen Namen wird nachgeschaut ob das Modul installiert ist
      *      HarmonyHub
      *      SamsungTizen
@@ -4582,82 +4588,11 @@ class Autosteuerung
 					{
 					}
 				break;
+            case "Selenium":            // neuer Bereich um Webserver anzusprechen
+                $this->moduleSelenium($result);
+                break;
 			case "SamsungTV":
-				/* Fernseher der alten Generation behandlen, hier gibt es kein Modul, mach ich direkt hier */
-				$DENONconfig=$this->DENONsteuerung->Configuration($result["NAME"]);
-				if ($DENONconfig !== false)
-					{
-					//print_r($DENONconfig);
-					$instanzID=$this->availableModuleDevice("Client Socket",$result["DEVICE"]);
-					if ($instanzID !== false)
-						{
-						echo "Geraet ".$result["DEVICE"]." mit ID ".$instanzID." bekannt. Befehl : ".$result["COMMAND"]."\n";
-						if (isset($DENONconfig["IPADRESSE"])==true)
-							{
-							$ping = Sys_Ping($DENONconfig["IPADRESSE"], 1000);
-							if ($ping ==false)
-								{
-							    echo "<FONT SIZE='+3' COLOR=red><br>FERNSEHER REAGIERT NICHT</FONT>\n";
-								$this->log->LogMessage("ExecuteCommand; Samsung TV reagiert nicht auf sys_ping.");		
-							    }
-							else
-								{
-								$samsungstatus = IPS_GetInstance($instanzID);
-								if ($samsungstatus['InstanceStatus']>102)
-									{
-								    CSCK_SetOpen($instanzID, true);
-								    IPS_ApplyChanges($instanzID);
-								    $samsungstatus = IPS_GetInstance($instanzID);
-								    if ($samsungstatus['InstanceStatus']>102)
-										{
-								        echo "<FONT SIZE='+3' COLOR=red><br>FERNSEHER REAGIERT NICHT</FONT>";
-										$this->log->LogMessage("ExecuteCommand; Samsung TV reagiert nicht auf Open Socket.");		
-        								}
-									else
-										{
-										if ($simulate==false)
-											{
-											$src = "10.0.0.145"; 			/* ip des IP Symcon, dummy Wert zur Wiedererkennung */
-											$mac = "e4-e0-c5-25-66-27"; /* mac des IP Symcons, dummy Wert zur Wiedererkennung */	
-											$remote = "Perl Samsung Remote";	/* Name der Fernbedienung, erscheint am Fernseher und muss quittiert werden */	
-											$app="iphone..iapp.samsung";		/* tut so als wäre IPS ein iPhone */
-											$tv = "UE55C6700"; 			// iphone.UE55C6700.iapp.samsung										
-											$key=$result["COMMAND"];
-																												
-											CSCK_SetOpen($instanzID, true);
-											$msg = chr(0x64).chr(0x00).chr(strlen(base64_encode($src))).chr(0x00).base64_encode($src).chr(strlen(base64_encode($mac))).chr(0x00).base64_encode($mac).chr(strlen(base64_encode($remote))).chr(0x00).base64_encode($remote);
-											$pkt = chr(0x00).chr(strlen($app)).chr(0x00).$app.chr(strlen($msg)).chr(0x00).$msg;
-											CSCK_SendText($instanzID,$pkt);
-											$this->log->LogMessage("ExecuteCommand; Send Data to Samsung TV ".$instanzID.": ".$app." ".$src." ".$mac."  ".$remote.".");		
-
-											$msg = chr(0x00).chr(0x00).chr(0x00).chr(strlen(base64_encode($key))).chr(0x00).base64_encode($key);
-											$pkt = chr(0x00).chr(strlen($tv)).chr(0x00).$tv.chr(strlen($msg)).chr(0x00).$msg;
-											CSCK_SendText($instanzID,$pkt);
-											$this->log->LogMessage("ExecuteCommand; Send Data to Samsung TV ".$instanzID.": ".$tv." ".$key.".");		
-	
-											CSCK_SetOpen($instanzID, false);
-											}										
-										}	
-									}								
-								//print_r($samsungstatus);
-								}		
-							}	
-						}
-					else												
-						{
-						echo "Geraet ".$result["DEVICE"]." nicht bekannt.\n"; 
-						}																					
-					}
-				else 
-					{
-					echo "Geraet ".$result["NAME"]." in DENONsteuerung Config nicht eingetragen.\n";
-					$DENONconfig=$this->DENONsteuerung->Configuration();
-					if ($DENONconfig !== false)
-						{
-						print_r($DENONconfig);
-						}
-					}
-					
+                $this->moduleSamsungTV($result); 
 				break;
             case "EchoRemote": 
                 $this->moduleEchoRemote($result);             	
@@ -4824,10 +4759,135 @@ class Autosteuerung
 		return ($result);							
 		}
 
+    /* neue Selenium Ansteuerung, als Teil von ExecuteCommand
+     * result["NAME"]
+     * result["DEVICE"]
+     * result["COMMAND"]
+     *
+     * module:SamsungTizen,device:Wohnzimmer SamsungTizen,name:none,command:KEY_POWERON
+     * module:HarmonyHub,device:Logitech Wohnzimmer Harmony,name:Samsung TV,command:PowerOn
+     * module:Selenium,name:Iiyama,device:Wohnzimmer,comman:PowerOn
+     */
+    private function moduleSelenium(&$result)
+        {
+        if ( isset($this->installedModules["Guthabensteuerung"] ) )
+            {
+            echo "moduleSelenium aufgerufen mit ".$result["DEVICE"]." ".$result["NAME"]." ".$result["COMMAND"].":\n";
+            IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+            IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+            IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+            $guthabenHandler = new GuthabenHandler(true,true,true);         // Steuerung für parsetxtfile
+            $seleniumHandler = new SeleniumHandler();           // Selenium Test Handler, false deaktiviere Ansteuerung von webdriver für Testzwecke vollstaendig
+            $configSelenium = $guthabenHandler->getGuthabenConfiguration()["Selenium"];
+            print_R($configSelenium);
+            $seleniumOperations = new SeleniumOperations(); 
+
+            switch (strtoupper($result["DEVICE"]))
+                {
+                case "IIYAMA":
+                    $configTabs=array(
+                        "Hosts" => array(
+                                "IIYAMA"   =>  array (
+                                    "URL" => "10.0.1.42",
+                                    "CLASS"     => "SeleniumIiyama", 
+                                    "CONFIG"    => array(                   // ohne Config wird zum Beispiel auch nicht die URL verfügbar sein
+                                                "Power" => "On"             // oder Standby
+                                                    ),                   
+                                                ),
+                                        ),
+                                );
+                    if (Strtoupper($result["COMMAND"])=="POWEROFF")  $configTabs["Hosts"]["IIYAMA"]["CONFIG"]["Power"] = "Off";     // anderen Wert überschreiben, Default is On
+                    $seleniumOperations->automatedQuery(false,$configTabs["Hosts"],true);          // true debug, $webDriverName false for default
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+
+    /* alte SamsungTV Ansteuerung, als Teil von ExecuteCommand
+     */
+    private function moduleSamsungTV(&$result)
+        {
+				/* Fernseher der alten Generation behandlen, hier gibt es kein Modul, mach ich direkt hier */
+				$DENONconfig=$this->DENONsteuerung->Configuration($result["NAME"]);
+				if ($DENONconfig !== false)
+					{
+					//print_r($DENONconfig);
+					$instanzID=$this->availableModuleDevice("Client Socket",$result["DEVICE"]);
+					if ($instanzID !== false)
+						{
+						echo "Geraet ".$result["DEVICE"]." mit ID ".$instanzID." bekannt. Befehl : ".$result["COMMAND"]."\n";
+						if (isset($DENONconfig["IPADRESSE"])==true)
+							{
+							$ping = Sys_Ping($DENONconfig["IPADRESSE"], 1000);
+							if ($ping ==false)
+								{
+							    echo "<FONT SIZE='+3' COLOR=red><br>FERNSEHER REAGIERT NICHT</FONT>\n";
+								$this->log->LogMessage("ExecuteCommand; Samsung TV reagiert nicht auf sys_ping.");		
+							    }
+							else
+								{
+								$samsungstatus = IPS_GetInstance($instanzID);
+								if ($samsungstatus['InstanceStatus']>102)
+									{
+								    CSCK_SetOpen($instanzID, true);
+								    IPS_ApplyChanges($instanzID);
+								    $samsungstatus = IPS_GetInstance($instanzID);
+								    if ($samsungstatus['InstanceStatus']>102)
+										{
+								        echo "<FONT SIZE='+3' COLOR=red><br>FERNSEHER REAGIERT NICHT</FONT>";
+										$this->log->LogMessage("ExecuteCommand; Samsung TV reagiert nicht auf Open Socket.");		
+        								}
+									else
+										{
+										if ($simulate==false)
+											{
+											$src = "10.0.0.145"; 			/* ip des IP Symcon, dummy Wert zur Wiedererkennung */
+											$mac = "e4-e0-c5-25-66-27"; /* mac des IP Symcons, dummy Wert zur Wiedererkennung */	
+											$remote = "Perl Samsung Remote";	/* Name der Fernbedienung, erscheint am Fernseher und muss quittiert werden */	
+											$app="iphone..iapp.samsung";		/* tut so als wäre IPS ein iPhone */
+											$tv = "UE55C6700"; 			// iphone.UE55C6700.iapp.samsung										
+											$key=$result["COMMAND"];
+																												
+											CSCK_SetOpen($instanzID, true);
+											$msg = chr(0x64).chr(0x00).chr(strlen(base64_encode($src))).chr(0x00).base64_encode($src).chr(strlen(base64_encode($mac))).chr(0x00).base64_encode($mac).chr(strlen(base64_encode($remote))).chr(0x00).base64_encode($remote);
+											$pkt = chr(0x00).chr(strlen($app)).chr(0x00).$app.chr(strlen($msg)).chr(0x00).$msg;
+											CSCK_SendText($instanzID,$pkt);
+											$this->log->LogMessage("ExecuteCommand; Send Data to Samsung TV ".$instanzID.": ".$app." ".$src." ".$mac."  ".$remote.".");		
+
+											$msg = chr(0x00).chr(0x00).chr(0x00).chr(strlen(base64_encode($key))).chr(0x00).base64_encode($key);
+											$pkt = chr(0x00).chr(strlen($tv)).chr(0x00).$tv.chr(strlen($msg)).chr(0x00).$msg;
+											CSCK_SendText($instanzID,$pkt);
+											$this->log->LogMessage("ExecuteCommand; Send Data to Samsung TV ".$instanzID.": ".$tv." ".$key.".");		
+	
+											CSCK_SetOpen($instanzID, false);
+											}										
+										}	
+									}								
+								//print_r($samsungstatus);
+								}		
+							}	
+						}
+					else												
+						{
+						echo "Geraet ".$result["DEVICE"]." nicht bekannt.\n"; 
+						}																					
+					}
+				else 
+					{
+					echo "Geraet ".$result["NAME"]." in DENONsteuerung Config nicht eingetragen.\n";
+					$DENONconfig=$this->DENONsteuerung->Configuration();
+					if ($DENONconfig !== false)
+						{
+						print_r($DENONconfig);
+						}
+					}            
+        }
+
     /* beim Abarbeiten der Befehle wird manchmal auf ein Module verwiesen, hier abarbeiten
      * es wird die Variable $result als Link übergeben. Änderungen werden direkt drinnen gemacht.
      */
-
     private function moduleEchoRemote(&$result)
         {
         IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt

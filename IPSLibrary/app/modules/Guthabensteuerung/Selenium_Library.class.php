@@ -24,6 +24,7 @@
  * für die Automatisiserung der Abfragen gibt es verschieden Klasssen
  *      SeleniumHandler     managed die Handles des Selnium Drivers, offene Tabs
  *      SeleniumDrei
+ *      SeleniumIiyama
  *      SeleniumOperations
  *
  * SeleniumDrei sorgt für die individuellen States udn SeleniumOperations für die Statemachine
@@ -394,8 +395,9 @@ class SeleniumHandler
      */
     function getHtmlIf($xpath,$debug=false)
         {
-        if ($debug) echo "getHtmlIf($xpath):\n";            
-        if (count(static::$webDriver->findElements(WebDriverBy::xpath($xpath))) === 0) {
+        if ($debug) echo "getHtmlIf($xpath):\n";  
+        $count=count(static::$webDriver->findElements(WebDriverBy::xpath($xpath)));
+        if ( $count === 0) {                  
             if ($debug) echo "   -->Text Field not found.\n";
             }
         else
@@ -403,11 +405,12 @@ class SeleniumHandler
             $element = static::$webDriver->findElement(WebDriverBy::xpath($xpath));        // relative path
             if ($element) 
                 {
-                if ($debug) echo "   -->found, look for innerHtml.\n";
+                if ($debug) echo "   -->found [$count], look for innerHtml.\n";
                 $page = $element->getAttribute('innerHTML');
                 if (strlen($page)>10) return ($page);
-                if ($debug) echo "   -->found, then check text.\n";
+                if ($debug) echo "   -->result too short \"$page\", then try text.\n";
                 $page = $element->getText();
+                if ( (strlen($page)<=10) && ($debug) ) echo "   -->result still too short \"$page\".\n";                
                 return ($page);
                 }
             }
@@ -747,6 +750,155 @@ class SeleniumDrei extends SeleniumHandler
     }           // ende class
 
 
+/* Selenium Anpassungen für den Iiyama Monitor
+ * Ansteuerung geht möglicherweise auch über curl
+ * erst einmal so lassen
+ */
+class SeleniumIiyama extends SeleniumHandler
+    {
+    private $configuration;                 //array mit Datensaetzen
+    private $duetime,$retries;              //für retry timer
+    protected $debug;
+
+    function __construct($debug=false)
+        {
+        $this->duetime=microtime(true);
+        $this->retries=0;
+        $this->debug=$debug;
+        }
+
+    public function setConfiguration($configuration)
+        {
+        echo "set_configuration\n";
+        $this->configuration = $configuration;
+        }
+
+    public function runAutomatic($step=0)
+        {
+        echo "runAutomatic SeleniumIiyama Step $step.\n";
+        switch ($step)
+            {
+            case 0:
+                if ($this->debug) echo "go to Information Link";
+                $result = $this->gotoInformationLink();
+                break;               
+            case 1:  
+                if ($this->debug) echo "fetch Information from Host";              
+                $result=$this->fetchInformationfromHost(); 
+                if ($result===false) return ("retry");
+                if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
+                return(["Ergebnis" => $result]);                         
+                break;
+            case 2:  
+                if ($this->debug) echo "go to Control Link";              
+                $result=$this->goToControlLink();
+                break;
+            case 3:
+                print_r($this->configuration);
+                if (isset($this->configuration["Power"])) $power=$this->configuration["Power"];
+                else $power = "On";
+                if ($power=="On")
+                    {
+                    $result=$this->pressButtonPowerOn();
+                    }
+                else
+                    {
+                    $result=$this->pressButtonPowerOff();
+                    }
+                if ($result===false) return ("retry");                    
+                break;
+            case 4:
+                if ($this->debug) echo "go to Information Link";
+                $result = $this->gotoInformationLink();
+                break;                 
+            case 5:  
+                if ($this->debug) echo "fetch Information from Host";              
+                $result=$this->fetchInformationfromHost(); 
+                if ($result===false) return ("retry");
+                if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
+                return(["Ergebnis" => $result]);                         
+                break;                
+            default:
+                return (false);                
+            }        
+        }
+
+    /* Status lesen
+     */
+    private function goToInformationLink()
+        {
+        echo "goto Information Link:\n";
+        //print_r($this->configuration); echo "--\n";
+        $url = $this->checkUrl($this->configuration["URL"]);
+        $url .= '/home.htm';
+        return($this->updateUrl($url));
+        }
+
+    /* Power On/off
+     */
+    private function goToControlLink()
+        {
+        echo "goto Control Link:\n";
+        //print_r($this->configuration); echo "--\n";
+        $url = $this->checkUrl($this->configuration["URL"]);
+        //$url .= '/tgi/control.tgi';
+        $url .= '/control.htm';
+        return($this->updateUrl($url));
+        }
+
+    //*[@id="table5"]/tbody/tr[2]/td[2]/font/input[2]
+
+    private function fetchInformationfromHost()
+        {
+        if ($this->active===false) return;          // Variable Selenium Handler
+
+        /* 
+         * /html
+         * /html/body/table/tbody/tr[2]/td/table 
+         * /html
+         * /html/frameset/frame[2]
+         * body > table > tbody > tr:nth-child(2) > td > table
+         */
+        $tryXpath = array(
+                0 => '/html',
+                );
+
+        foreach ($tryXpath as $index => $xpath)
+            {
+            if ($this->debug) echo "Try xpath $index :\n";
+            $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+            if ((strlen($ergebnis))>10) return($ergebnis);
+            else echo $ergebnis;
+            }
+        return($ergebnis);            
+        }
+
+    private function pressButtonPowerOn()
+        {
+        /* //*[@id="table5"]/tbody/tr[2]/td[2]/font/input[2]
+         *   //*[@id="table5"]/tbody/tr[2]/td[2]/font/input[1]
+         *   /html/body/form/table/tbody/tr[2]/td/table/tbody/tr/td[1]/table/tbody/tr[2]/td[2]/font/input[1]
+         */
+        if ($this->debug) echo "pressButtonPowerOn";                   
+        $xpath=' //*[@id="table5"]/tbody/tr[2]/td[2]/font/input[2]';
+        return($this->pressButtonIf($xpath,$this->debug));
+
+
+        }
+
+    private function pressButtonPowerOff()
+        {
+            /* //*[@id="table5"]/tbody/tr[2]/td[2]/font/input[1]  
+             */
+        if ($this->debug) echo "pressButtonPowerOff";               
+        $xpath=' //*[@id="table5"]/tbody/tr[2]/td[2]/font/input[1]';
+        return($this->pressButtonIf($xpath,$this->debug));
+
+
+        }
+
+    }           // ende class
+
 /* Selenium Webdriver automatisisert bedienen
  * Aufruf mit automatedQuery
  *
@@ -873,8 +1025,11 @@ class SeleniumOperations
                 foreach ($configTabs as $index => $entry)
                     {
                     $date = new DateTime("NOW");            // aktuelle Uhrzeit
-                    if ($debug) echo "======================================Start with Index $index, ".$date->format("H:i:s.v")." Laufzeit bis jetzt: ".round(microtime(true)-$startexec,2)." Sekunden\n";
-
+                    if ($debug) 
+                        {
+                        if ($step==0) echo "======================================Start with Index $index, ".$date->format("H:i:s.v")." Laufzeit bis jetzt: ".round(microtime(true)-$startexec,2)." Sekunden\n";
+                        else         echo "================================Continue [$step] with Index $index, ".$date->format("H:i:s.v")." Laufzeit bis jetzt: ".round(microtime(true)-$startexec,2)." Sekunden\n";
+                        }
                     if (isset($entry["URL"]))
                         {
                         $url=$entry["URL"];
@@ -896,6 +1051,7 @@ class SeleniumOperations
                                 if (isset($entry["CONFIG"])) 
                                     {
                                     $config=$entry["CONFIG"];
+                                    if (isset($entry["URL"])) $config["URL"]=$entry["URL"];                                    
                                     $runSelenium[$index]->setConfiguration($config);
                                     }
                                 }
@@ -906,9 +1062,21 @@ class SeleniumOperations
                                 {       // komplexe Rückmeldung, Ergebnis speichern in den Variablen Username und Nummer
                                 if (isset($result["Ergebnis"]))
                                     {
-                                    $this->writeResult($index,$result["Ergebnis"],$entry["CONFIG"]["Username"]);            // das Ergebnis ist in der variable mit dem Usernamen, nicht Result !
-                                    if ($index=="DREI") $this->writeResult($index,$entry["CONFIG"]["Username"],"Nummer");     // letzte Nummer die bearbeitet wurde zusaetzlich abspeichern
+                                    switch (strtoupper($index))
+                                        {
+                                        case "DREI":
+                                            $this->writeResult($index,$result["Ergebnis"],$entry["CONFIG"]["Username"]);            // das Ergebnis ist in der variable mit dem Usernamen, nicht Result !
+                                            $this->writeResult($index,$entry["CONFIG"]["Username"],"Nummer");     // letzte Nummer die bearbeitet wurde zusaetzlich abspeichern
+                                            break;
+                                        default:
+                                            $this->writeResult($index,$result["Ergebnis"]);             //Default Name is Result                                        
+                                            break;
+                                        }
                                     $steps[$index]++;  
+                                    }
+                                elseif (isset($result["goto"]))     // goto zum steps überspringen
+                                    {
+                                    $steps[$index] = $result["goto"];
                                     }
                                 }
                             elseif ($result === false)  $failed++;
