@@ -25,6 +25,9 @@
 /*********************************************************************************************/
 /*********************************************************************************************
  *
+ *
+ * letzte Version 29.04.2021
+ *
  * diese Klassen werden hier behandelt:
  *
  * OperationCenter
@@ -1536,7 +1539,13 @@ class OperationCenter
 		$PrintSI="";
 		$PrintLines="";		
 		
-		exec('systeminfo',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
+        /* exec Funktion von der Art wie IP Symcom gestartet wird abhängig, nur möglich wenn als System gestartet wurde */
+		// exec('systeminfo',$catch);   // ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden 
+        $resultSystemInfo=IPS_EXECUTE("systeminfo","", true, true);
+        //echo $resultSystemInfo;
+        $catch=explode("\x0A",$resultSystemInfo);             //zeilenweise als array speichern
+        print_R($catch);
+
 		foreach($catch as $line)
 			{
 			if (strlen($line)>2)
@@ -1661,6 +1670,9 @@ class OperationCenter
 			case "17763": $Codename="Fall 2018 Update (Redstone 5)"; break;			        // long term maintenance release
 			case "18362": $Codename="May 2019 Update (19H1)"; break;
 			case "18363": $Codename="November 2019 Update (19H2)"; break;
+			case "19041": $Codename="May 2020 Update (20H1)"; break;            
+			case "19042": $Codename="October 2020 Update (20H2)"; break;            
+			case "19043": $Codename="May 2021 Update (21H1)"; break;            
 			default: $Codename=$Version[2];break;
 			}			
 		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
