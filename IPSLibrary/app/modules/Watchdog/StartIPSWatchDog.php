@@ -17,8 +17,19 @@
 	 */    
 
 	/** 
+	 * Script wird aus verschiedenen Gründen aufgerufen
+     *     beim Startup des Systems, es werden verschiedene Programme mit einer Statemaschine gestartet
+     *     durch den Timer der angeführten Statemaschine
+     *     mittels Runscript
+     *     oder Execute Script
+     *
+     * Der Aufruf erfolgt alle 60 Sekunden, die Scriptlaufzeit darf diese Zeiten nicht überschreiten
+     *
+     * Einmal gestartete Prozesse werden nicht überprüft ob sie noch laufen. Wichtig für Selenium.
 	 *
-	 *
+     *
+     * bevor Symcon einen eigenen Watchdog unterhält wurde ein externer Watchdog bedient. Dazu musste in regelmaessigen Abständen ein File beschrieben werden.
+     *
 	 *
 	 * @file          StartIPSWatchDog.ips.php
 	 * @author        Wolfgang Joebstl
@@ -34,6 +45,11 @@
 
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
+    // max. Scriptlaufzeit definieren
+    ini_set('max_execution_time', 100);
+    $startexec=microtime(true);    
+    echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$moduleManager = new IPSModuleManager('Watchdog',$repository);
@@ -53,6 +69,8 @@
     $sysOps = new sysOps();
 
     $systemDir     = $dosOps->getWorkDirectory();       // systemdir festlegen, typisch auf Windows C:/Scripts/
+
+    /* Logging konfigurieren und festlegen */
 
 	echo "\nStartIPSWatchdog: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
@@ -95,79 +113,19 @@
 	$tim2ID = @IPS_GetEventIDByName("KeepAlive", $scriptIdAliveWD);
 	$tim3ID = @IPS_GetEventIDByName("StartWD", $scriptIdStartWD);
 	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
-	$ScriptCounterID=CreateVariableByName($CategoryIdData,"AutostartScriptCounter",1);
+
+  	$tim6ID = @IPS_GetEventIDByName("MaintenanceWD", $scriptIdStartWD);         // einmal am Tag 4:12
+
+	$ScriptCounterID = IPS_GetObjectIDByName("AutostartScriptCounter", $CategoryIdData);
+    $ProcessStartID  = IPS_GetObjectIDByName("ProcessStart", $CategoryIdData); 
+    echo "Watchdog Data Variables : $ScriptCounterID und $ProcessStartID.\n";
 
 	$verzeichnis=$config["WatchDogDirectory"];
 	$unterverzeichnis="";
 	
-	/********************************************************************
-	 *
-	 * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
-	 *
-	 **********************************************************************/
-
-	echo "\n";
-	$processStart=array("selenium.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On", "Firefox.exe" => "On");
-	$processStart=$sysOps->checkProcess($processStart);
-	echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
-	print_r($processStart);
-
-	if (strtoupper($config["Software"]["Selenium"]["Autostart"])=="YES" )
-	    {
-		if ( ($dosOps->fileAvailable($config["Software"]["Selenium"]["Execute"],$config["Software"]["Selenium"]["Directory"])) == false )
-		    {
-	   	    echo "Keine Installation von Java Selenium vorhanden.\n";
-		    $processStart["selenium.exe"]="Off";
-			}
-		}
-	else
-	   {
-	   $processStart["selenium.exe"]="Off";
-	   }
-
-	if (strtoupper($config["Software"]["VMware"]["Autostart"])=="YES" )
-	    {
-		if ( ($dosOps->fileAvailable("vmplayer.exe",$config["Software"]["VMware"]["Directory"])) == false )
-		    {
-		    echo "Keine Installation von VMware vorhanden.\n";
-		    $processStart["vmplayer.exe"]="Off";
-			}
-		if ( ($dosOps->fileAvailable("*.vmx",$config["Software"]["VMware"]["DirFiles"])) == false )
-		    {
-	   	    echo "Keine Images für VMPlayer vorhanden.\n";
-		    $processStart["vmplayer.exe"]="Off";
-			}
-		}
-	else
-	   {
-	   $processStart["vmplayer.exe"]="Off";
-	   }
-
-	if (strtoupper($config["Software"]["iTunes"]["Autostart"])=="YES" )
-	   {
-		if ( ($dosOps->fileAvailable("iTunes.exe",$config["Software"]["iTunes"]["Directory"])) == false )
-		    {
-		    echo "Keine Installation von iTunes vorhanden.\n";
-		    $processStart["iTunes.exe"]="Off";
-			}
-		}
-	else
-	   {
-	   $processStart["iTunes.exe"]="Off";
-	   }
-
-	if (strtoupper($config["Software"]["Firefox"]["Autostart"])=="YES" )
-	   {
-		if ( ($dosOps->fileAvailable("firefox.exe",$config["Software"]["Firefox"]["Directory"])) == false )
-		    {
-		    echo "Keine Installation von Firefox vorhanden.\n";
-		    $processStart["Firefox.exe"]="Off";
-			}
-		}
-	else
-	   {
-	   $processStart["Firefox.exe"]="Off";
-	   }
+    $processStart = json_decode(GetValue($ProcessStartID),true);            // true für Ausgabe als Array
+    echo "Status aus register über Programme die gestartet (wenn On) werden muessen:\n";
+    print_r($processStart);
 
 	/********************************************************************
 	 *
@@ -178,7 +136,31 @@
 	if ($_IPS['SENDER']=="RunScript")
 		{
 		echo "Von einem anderen Script aus gestartet, Autostart Prozess beginnen.\n";
-		IPSLogger_Dbg(__file__, "Autostart: Script extern aufgerufen *****************  ");
+		IPSLogger_Dbg(__file__, "Autostart: Script extern aufgerufen *****************  ".json_encode($_IPS));
+
+            //$command=["Selenium"=>"On"];
+		    //$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');           // App Kategorie
+		    //$StartIpsWatchdogScriptId   = @IPS_GetScriptIDByName('StartIpsWatchdog', $CategoryIdApp);
+            //$request["REQUEST"]=json_encode($command);
+            //IPS_RunScriptEx($StartIpsWatchdogScriptId, $request);
+  		    //IPSLogger_Inf(__file__,"Extern VoiceControl Request (RunScript) mit Variable ".$_IPS['VARIABLE']." und Wert ".($_IPS['VALUE']?"Ein":"Aus"));	                
+			//$nachrichten->LogNachrichten("Extern Alexa ".$_IPS['SENDER']." empfängt : ".$_IPS['VARIABLE']."  ".$_IPS['REQUEST']."  ".($_IPS['VALUE']?"Ein":"Aus")." .");
+
+        /********************************************************************
+        *
+        * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
+        * die laufenden Files mit einer User Session definieren um auch die Java basierte Selenium Applikation zu erfassen
+        * andernfalls könnte $watchDog->checkAutostartProgram auch ohne einer Prozessliste aufgerufen werden
+        *
+        **********************************************************************/
+
+        echo "\n";
+        $processes    = $watchDog->getActiveProcesses();
+        $processStart = $watchDog->checkAutostartProgram($processes);
+        echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
+        print_r($processStart);
+        SetValue($ProcessStartID,json_encode($processStart));
+        echo "Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 
 		$status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		if ($status==false)
@@ -198,36 +180,94 @@
 
 	if ($_IPS['SENDER']=="Execute")
 		{
+        echo "===============================================================\n";
 		echo "Von der Console aus gestartet, Autostart Prozess beginnen.\n";
-		print_r($processStart);
-		$status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
-		if ($status==false)
-			{
-			echo "Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration.\n";
-			$log_OperationCenter->LogMessage(    'Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
-			$log_OperationCenter->LogNachrichten('Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
-			}
+        /********************************************************************
+        *
+        * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
+        * die laufenden Files mit einer User Session definieren um auch die Java basierte Selenium Applikation zu erfassen
+        * andernfalls könnte $watchDog->checkAutostartProgram auch ohne einer Prozessliste aufgerufen werden
+        *
+        **********************************************************************/
 
-		IPS_SetEventActive($tim3ID,true);
-		SetValue($ScriptCounterID,1);
-		IPSLogger_Dbg(__file__, "Autostart: Script direkt aufgerufen ***********************************************");
-		
-		$log_Watchdog->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
-		$log_Watchdog->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
-		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
-		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
-		if (isset ($installedModules["OperationCenter"]))
-			{
-			$subnet='10.255.255.255';
-			$OperationCenter=new OperationCenter($subnet);
-			$OperationCenter->SystemInfo();
-			}
+        echo "\n";
+        $processes    = $watchDog->getActiveProcesses();
+        $processStart = $watchDog->checkAutostartProgram($processes);
+        echo "Ermittlung aktiver Prozese abgeschlossen. Die folgenden Programme muessen gestartet (wenn On) werden:\n";
+        print_r($processStart);
+        SetValue($ProcessStartID,json_encode($processStart));
+        echo "Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+
+        /* mehrere Optionen, entweder den ganzen IP Symcon Server hochfahren oder einzelne Prozesse durchstarten 
+         * seit es keinen externen Watchdog mehr gibt hat das Hochstarten nicht mehr soviel Bedeutung
+         */
+
+        if (true)
+            {
+            if ($processStart["selenium"] == "On")
+                {
+                echo "selenium.exe wird neu gestartet.\n";
+                IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
+                writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
+                IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
+                $processStart["selenium"] == "Off";
+                SetValue($ProcessStartID,json_encode($processStart));
+                }
+            else
+                {
+                echo "Selenium.exe muss nicht neu gestartet werden.\n";
+                }
+            }
+            
+        if (false)
+            {
+            $status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+            if ($status==false)
+                {
+                echo "Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration.\n";
+                $log_OperationCenter->LogMessage(    'Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+                $log_OperationCenter->LogNachrichten('Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+                }
+
+            
+            IPS_SetEventActive($tim3ID,true);
+            SetValue($ScriptCounterID,1);
+            IPSLogger_Dbg(__file__, "Autostart: Script direkt aufgerufen ***********************************************");
+
+            $log_Watchdog->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+            $log_Watchdog->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+            $log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+            $log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+            if (isset ($installedModules["OperationCenter"]))
+                {
+                $subnet='10.255.255.255';
+                $OperationCenter=new OperationCenter($subnet);
+                echo "SystemInfo aus dem OperationCenter updaten.\n";
+                $OperationCenter->SystemInfo();
+                }
+            }
 		}
 
 	if ($_IPS['SENDER']=="Startup")
 		{
 		echo "IPS Server fährt hoch, im Startup gestartet, Autostart Prozess beginnen.\n";
 		IPSLogger_Dbg(__file__, "Autostart: Script durch IPS Startup prozess aufgerufen *****************  ");
+
+        /********************************************************************
+        *
+        * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
+        * die laufenden Files mit einer User Session definieren um auch die Java basierte Selenium Applikation zu erfassen
+        * andernfalls könnte $watchDog->checkAutostartProgram auch ohne einer Prozessliste aufgerufen werden
+        *
+        **********************************************************************/
+
+        echo "\n";
+        $processes    = $watchDog->getActiveProcesses();
+        $processStart = $watchDog->checkAutostartProgram($processes);
+        echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
+        print_r($processStart);
+        SetValue($ProcessStartID,json_encode($processStart));
+        echo "Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 
 		$status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		if ($status==false)
@@ -249,6 +289,37 @@
 		{
 		switch ($_IPS['EVENT'])
 			{
+            case $tim6ID:
+				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." einmal am Tag durchführen.");
+                /********************************************************************
+                *
+                * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
+                * die laufenden Files mit einer User Session definieren um auch die Java basierte Selenium Applikation zu erfassen
+                * andernfalls könnte $watchDog->checkAutostartProgram auch ohne einer Prozessliste aufgerufen werden
+                *
+                **********************************************************************/
+
+                echo "\n";
+                $processes    = $watchDog->getActiveProcesses();
+                $processStart = $watchDog->checkAutostartProgram($processes);
+                echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
+                print_r($processStart);
+                SetValue($ProcessStartID,json_encode($processStart));
+                echo "Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+                if ($processStart["selenium"] == "On")
+                    {
+                    echo "selenium.exe wird neu gestartet.\n";
+                    IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
+                    writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
+                    IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
+                    $processStart["selenium"] == "Off";
+                    SetValue($ProcessStartID,json_encode($processStart));
+                    }
+                else
+                    {
+                    echo "Selenium.exe muss daher nicht erneut gestartet werden.\n";
+                    }
+                break;
 			case $tim3ID:
 				$counter=GetValue($ScriptCounterID);
 				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Autostart durchführen. ScriptcountID: $counter. Process ".json_encode($processStart));
@@ -265,7 +336,7 @@
 							{
 							$subnet='10.255.255.255';
 							$OperationCenter=new OperationCenter($subnet);
-							$OperationCenter->SystemInfo();
+							//$OperationCenter->SystemInfo();
         					IPSLogger_Dbg(__file__, "Autostart: OperationCenter::SystemInfo aufgerufen.");                            
 							}
 						SetValue($ScriptCounterID,$counter+1);
@@ -274,7 +345,7 @@
 						/* ftp Server wird nun automatisch mit der IS Umgebung von Win 10 gestartet, keine Fremd-Software mehr erforderlich */
 						//IPS_ExecuteEx("c:/Users/wolfg_000/Downloads/Programme/47 ftp server/ftpserver31lite/ftpserver.exe","", true, false,1);
 						//writeLogEvent("Autostart (ftpserverlite)");
-						if ($processStart["Firefox.exe"] == "On")
+						if ($processStart["Firefox"] == "On")
 							{
                             if (is_array($config["Software"]["Firefox"]["Url"]))
                                 {
@@ -290,7 +361,7 @@
 						break;
 					case 4:
 						//if (GetValueBoolean(50871))
-						if ($processStart["iTunes.exe"] == "On")
+						if ($processStart["iTunes"] == "On")
 						    {
 							echo "SOAP Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
 					   	    /* Soap ausschalten */
@@ -303,7 +374,7 @@
 			      	break;
 					case 3:
 						//if (GetValueBoolean(46719))
-						if ($processStart["iTunes.exe"] == "On")
+						if ($processStart["iTunes"] == "On")
 					   	    {
 							echo "Itunes Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
 				   		    /* iTunes ausschalten */
@@ -315,7 +386,7 @@
 						SetValue($ScriptCounterID,$counter+1);
 			      	break;
 				   case 2:
-						if ($processStart["vmplayer.exe"] == "On")
+						if ($processStart["vmplayer"] == "On")
 						   {
 							writeLogEvent("Autostart (VMPlayer) ".'\"'.$config["Software"]["VMware"]["Directory"].'vmplayer.exe\" \"'.$config["Software"]["VMware"]["DirFiles"].$config["Software"]["VMware"]["FileName"].'\"');
 							IPSLogger_Dbg(__file__, "Autostart: VMWare Player wird gestartet");
@@ -328,7 +399,7 @@
 						SetValue($ScriptCounterID,$counter+1);
 						break;
 					case 1:
-						if ($processStart["selenium.exe"] == "On")
+						if ($processStart["selenium"] == "On")
 							{
 							echo "selenium.exe wird neu gestartet.\n";
 							IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
@@ -365,15 +436,15 @@
 
 	/* bei diesen Programmen gab es manchmal Probleme das die User Session nicht gefunden werden kann. Daher kommen
 	 * sie nun am Schluss und ein Fehler stoppt nicht den Timer3 Aufruf, Setzen des Aktivierungs Bits
-	 */
+	 
 
-	IPS_ExecuteEx($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);  /* warten dass fertig, sonst wird alter Wert ausgelesen */
+	IPS_ExecuteEx($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);  // warten dass fertig, sonst wird alter Wert ausgelesen 
 	$handle3=fopen($verzeichnis.$unterverzeichnis."username.txt","r");
 	echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);
 	fclose($handle3);
 
 	$result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","/APPS", true, true);
-	echo $result;
+	echo $result;       */
 
 
 

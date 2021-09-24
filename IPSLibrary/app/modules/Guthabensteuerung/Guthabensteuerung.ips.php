@@ -17,16 +17,31 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */ 
 
+    /* Guthabensteuerung
+     *
+     * soll das verbleibende Guthaben von SIM Karten herausfinden
+     * unterschiedliche STrategien, Aufruf mit
+     *      iMacro
+     *      Selenium
+     *
+     */
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
-IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
-/******************************************************
 
-                INIT
+    Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+    IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
-*************************************************************/
+    // max. Scriptlaufzeit definieren
+    ini_set('max_execution_time', 100);
+    $startexec=microtime(true);    
+    echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";
+
+    /******************************************************
+
+                    INIT
+
+    *************************************************************/
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     If (!isset($moduleManager)) {
@@ -306,7 +321,7 @@ if ($_IPS['SENDER']=="WebFront")
 
 if ( ($_IPS['SENDER']=="Execute") )         // && false
 	{
-    echo "====================Execute Section in Script called:\n";
+    echo "====================Execute Section in Script Guthabensteuerung called:\n";
 	echo "Category Data ID            : ".$CategoryIdData."\n";
 	echo "Category App ID             : ".$CategoryIdApp."\n";
 
@@ -374,7 +389,7 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
             echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
             $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
             $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"];   
-            $seleniumOperations = new SeleniumOperations();            
+            $seleniumOperations = new SeleniumOperations();                             // macht nichts, erst mit automated query gehts los
             $seleniumOperations->automatedQuery($webDriverName,$config,$debug);          // true debug         
             echo "============================================================================\n";
             SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1); 

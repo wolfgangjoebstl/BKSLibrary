@@ -20,43 +20,16 @@
 	 /***********************************************
 	  *
 	  * verschiedene Routinen und Definitionen die von allen Modulen benötigt werden können
-	  *
+	  * viele davon bereits zusammengefasst in classes oder groups
+      *
+      * ein paar altmodische Definitionen
+      * Power functions (group)
+      * send_status
+      *
       * praktische Funktionen für alle Programme und Funktionen
       * 
       * nf      	    number_format abhängig von Unit oder default
 	  * send_status  Ausgabe des aktuellen Status aktuell oder historisch
-	  * GetInstanceIDFromHMID
-	  * writeLogEvent
-	  * writeLogEventClass
-      *
-	  * GetValueIfFormattedEx
-	  * GetValueIfFormatted
-	  *
-      * CreateVariableByName
-      * CreateVariableByName2
-      * CreateVariable2
-      * CreateVariableByNameFull
-      * Get_IdentByName2
-      * UpdateObjectData2
-      *
-      * summestartende
-      * summestartende2
-      *
-      * RPC_CreateVariableByName
-      * RPC_CreateCategoryByName
-      * RPC_CreateVariableField
-      * RemoteAccessServerTable
-      * RemoteAccess_GetConfigurationNew
-      *
-      * ReadTemperaturWerte
-      * ReadThermostatWerte
-      * ReadAktuatorWerte
-      *
-      * exectime
-      * getVariableId
-      *
-      *
-      * AD_ErrorHandler
       *
 	  * erstellt auch einige für alle brauchbaren Klassen:
       * -------------------------------------------------
@@ -83,99 +56,103 @@
       *
 	  ****************************************************************/
 
+
 IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    
- 
-/* ObjectID Adresse vom send email server */
+/*******************************************
+ * altmodische Definitionen 
+ *************************************/
+    
+    /* ObjectID Adresse vom send email server */
 
-$sendResponse = 30887; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
+    $sendResponse = 30887; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
 
-/* Heizung */
+    /* Heizung */
 
-define("ADR_Heizung_AZ",38731);
-define("ADR_Heizung_WZ",34901);
-define("ADR_Zusatzheizung_WZ",40443);
-define("ADR_Heizung_KZ",30616);
-define("ADR_Zusatzheizung_KZ",36154);
+    define("ADR_Heizung_AZ",38731);
+    define("ADR_Heizung_WZ",34901);
+    define("ADR_Zusatzheizung_WZ",40443);
+    define("ADR_Heizung_KZ",30616);
+    define("ADR_Zusatzheizung_KZ",36154);
 
-define("ADR_Router_Stromversorgung",41865);
-define("ADR_WebCam_Stromversorgung",13735);
-define("ADR_GBESwitch_Stromversorgung",23695);
-
-
-/* IP Adressen */
-
-
-define("ADR_Gateway","10.0.1.200");
-define("ADR_Homematic","10.0.1.3");
-
-define("ADR_Webcam_innen","10.0.1.2");
-define("ADR_Webcam_innen_Port","2001");
-
-define("ADR_Webcam_lbg","hupo35.ddns-instar.de");
-
-define("ADR_Webcam_Keller","10.0.1.122");
-define("ADR_Webcam_Keller_Port","2002");
-
-define("ADR_Webcam_Garten","10.0.1.123");
-define("ADR_Webcam_Garten_Port","2003");
+    define("ADR_Router_Stromversorgung",41865);
+    define("ADR_WebCam_Stromversorgung",13735);
+    define("ADR_GBESwitch_Stromversorgung",23695);
 
 
-/* Wohnungszustand */
-
-define("STAT_WohnungszustandInaktiv",0);
-define("STAT_WohnungszustandFerien",1);
-define("STAT_WohnungszustandUnterwegs",2);
-define("STAT_WohnungszustandStandby",3);
-define("STAT_WohnungszustandAktiv",4);
-define("STAT_WohnungszustandTop",5);
-
-/* erkannter Zustand */
-define("STAT_KommtnachHause",18);
-define("STAT_Bewegung9",15);
-define("STAT_Bewegung8",14);
-define("STAT_Bewegung7",13);
-define("STAT_Bewegung6",12);
-define("STAT_Bewegung5",11);
-define("STAT_Bewegung4",10);
-define("STAT_Bewegung3", 9);
-define("STAT_Bewegung2", 8);
-define("STAT_Bewegung",  7);
-define("STAT_WenigBewegung",6);
-define("STAT_KeineBewegung",5);
-define("STAT_Unklar",4);
-define("STAT_Undefiniert",3);
-define("STAT_vonzuHauseweg",2);
-define("STAT_nichtzuHause",1);
-define("STAT_Abwesend",0);
+    /* IP Adressen */
 
 
+    define("ADR_Gateway","10.0.1.200");
+    define("ADR_Homematic","10.0.1.3");
 
-/**************************************************************************************************************************************/
+    define("ADR_Webcam_innen","10.0.1.2");
+    define("ADR_Webcam_innen_Port","2001");
+
+    define("ADR_Webcam_lbg","hupo35.ddns-instar.de");
+
+    define("ADR_Webcam_Keller","10.0.1.122");
+    define("ADR_Webcam_Keller_Port","2002");
+
+    define("ADR_Webcam_Garten","10.0.1.123");
+    define("ADR_Webcam_Garten_Port","2003");
 
 
-/* Webcam hat zwei Ports, derzeit verwenden wir den WLAN Port, da er immer auf lbgtest (direkt am Thomson) funktioniert
-	10.0.0.27 (es kann auch immer nur ein Dienst auf eine IP Adresse umgeroutet werden, daher immer WLAN verwenden
-	ausser zur Konfiguration */
-	
-//define("ADR_WebCamLBG","10.0.0.27");
+    /* Wohnungszustand */
 
-/* Cam Positionen : 1-4 : 'Sofa', 'Gang', 'Sessel', 'Terasse'  */
+    define("STAT_WohnungszustandInaktiv",0);
+    define("STAT_WohnungszustandFerien",1);
+    define("STAT_WohnungszustandUnterwegs",2);
+    define("STAT_WohnungszustandStandby",3);
+    define("STAT_WohnungszustandAktiv",4);
+    define("STAT_WohnungszustandTop",5);
 
-define("ADR_WebCamLBG","hupo35.ddns-instar.de");
-define("ADR_WebCamBKS","sina73.ddns-instar.com");
-define("ADR_GanzLinks","10.0.0.1");
-define("ADR_DenonWZ","10.0.0.115");
-define("ADR_DenonAZ","10.0.0.26");
+    /* erkannter Zustand */
+    define("STAT_KommtnachHause",18);
+    define("STAT_Bewegung9",15);
+    define("STAT_Bewegung8",14);
+    define("STAT_Bewegung7",13);
+    define("STAT_Bewegung6",12);
+    define("STAT_Bewegung5",11);
+    define("STAT_Bewegung4",10);
+    define("STAT_Bewegung3", 9);
+    define("STAT_Bewegung2", 8);
+    define("STAT_Bewegung",  7);
+    define("STAT_WenigBewegung",6);
+    define("STAT_KeineBewegung",5);
+    define("STAT_Unklar",4);
+    define("STAT_Undefiniert",3);
+    define("STAT_vonzuHauseweg",2);
+    define("STAT_nichtzuHause",1);
+    define("STAT_Abwesend",0);
 
-/* IP Adresse iTunes SOAP Modul  */
 
-define("ADR_SOAPModul","10.0.0.20:8085");
-define("ADR_SoapServer","10.0.0.20:8085");
 
-//define("ADR_Programs","C:/Program Files/");
-define("ADR_Programs",'C:/Program Files (x86)/');
+    /**************************************************************************************************************************************/
+
+
+    /* Webcam hat zwei Ports, derzeit verwenden wir den WLAN Port, da er immer auf lbgtest (direkt am Thomson) funktioniert
+        10.0.0.27 (es kann auch immer nur ein Dienst auf eine IP Adresse umgeroutet werden, daher immer WLAN verwenden
+        ausser zur Konfiguration */
+        
+    //define("ADR_WebCamLBG","10.0.0.27");
+
+    /* Cam Positionen : 1-4 : 'Sofa', 'Gang', 'Sessel', 'Terasse'  */
+
+    define("ADR_WebCamLBG","hupo35.ddns-instar.de");
+    define("ADR_WebCamBKS","sina73.ddns-instar.com");
+    define("ADR_GanzLinks","10.0.0.1");
+    define("ADR_DenonWZ","10.0.0.115");
+    define("ADR_DenonAZ","10.0.0.26");
+
+    /* IP Adresse iTunes SOAP Modul  */
+
+    define("ADR_SOAPModul","10.0.0.20:8085");
+    define("ADR_SoapServer","10.0.0.20:8085");
+
+    //define("ADR_Programs","C:/Program Files/");
+    define("ADR_Programs",'C:/Program Files (x86)/');
 
 
 /*************************************************************************************************************************************
@@ -191,6 +168,7 @@ define("ADR_Programs",'C:/Program Files (x86)/');
  * rpc_SetVariableProfileDigits
  * rpc_SetVariableProfileText
  * rpc_SetVariableProfileValues
+ * synchronizeProfiles
  * compareProfiles
  * createProfiles
  *
@@ -1707,1020 +1685,1063 @@ function send_status($aktuell, $startexec=0, $debug=false)
 		  	echo ">>OperationCenter historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 		   
-		/******************************************************************************************/
+        /******************************************************************************************/
 
-	   if ($sommerzeit)
-	      {
-			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$ergebnisSteuerung.$IPStatus.$energieverbrauch.$ergebnis_tabelle.
-					  $ergebnistab_energie.$ergebnis_tagesenergie.$ergebnisOperationCenter.$alleComponentsWerte.$alleMotionWerte.$alleHeizungsWerte.$inst_modules;
-			}
-		else
-		   {
-			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$alleHeizungsWerte.
-			$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$ergebnisOperationCenter.$IPStatus.$alleComponentsWerte.$alleMotionWerte.$inst_modules;
-			}
-		}
-  	echo ">>ENDE. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
-   return $ergebnis;
-}
-
-
+        if ($sommerzeit)
+            {
+                $ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+                    $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$ergebnisSteuerung.$IPStatus.$energieverbrauch.$ergebnis_tabelle.
+                        $ergebnistab_energie.$ergebnis_tagesenergie.$ergebnisOperationCenter.$alleComponentsWerte.$alleMotionWerte.$alleHeizungsWerte.$inst_modules;
+                }
+            else
+            {
+                $ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$alleHeizungsWerte.
+                $ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+                    $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$ergebnisOperationCenter.$IPStatus.$alleComponentsWerte.$alleMotionWerte.$inst_modules;
+                }
+            }
+        echo ">>ENDE. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+        return $ergebnis;
+        }
 
 
-/********************************************************************************************************************/
 
-/* durchsucht alle Homematic Instanzen
- * nach Adresse:Port
- * wenn adresse:port uebereinstimmt die Instanz ID zurückgeben, sonst 0
- */
- 
-function GetInstanceIDFromHMID($sid)
-	{
-    $ids = IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
-    foreach($ids as $id)
-    	{
-        $a = explode(":", HM_GetAddress($id));
-        $b = explode(":", $sid);
-        if($a[0] == $b[0])
-        	{
-            return $id;
-        	}
-    	}
-    return 0;
-	}
-
-
-/******************************************************************/
-
-function writeLogEvent($event)
-	{
-	/* call with writelogEvent("Beschreibung")  writes to Log_Event.csv File */
-	if (!file_exists("C:\Scripts\Log_Events.csv"))
-		{
-      	$handle=fopen("C:\Scripts\Log_Events.csv", "a");
-	   	fwrite($handle, date("d.m.y H:i:s").";Eventbeschreibung\r\n");
-      	fclose($handle);
-		}
-
-	$handle=fopen("C:\Scripts\Log_Events.csv","a");
-	fwrite($handle, date("d.m.y H:i:s").";".$event."\r\n");
-	/* unterschiedliche Event Speicherorte */
-
-	fclose($handle);
-	}
 
    
 
 
 /**************************************************************************************************************************************
-
-	Verschieden brauchbare Funktionen
-
-**************************************************************************************************************************************/
+ *
+ *	Verschieden brauchbare Funktionen
+ *
+ *      GetInstanceIDFromHMID
+ *      writeLogEvent
+ *      writeLogEventClass
+ *
+ *      GetValueIfFormattedEx
+ *      GetValueIfFormatted
+ *
+ *      CreateVariableByName
+ *      CreateCategoryByName
+ *      Depriciated: 
+ *          CreateVariableByName2
+ *          CreateVariable2
+ *          CreateVariableByNameFull
+ *      Get_IdentByName2
+ * UpdateObjectData2
+ *
+ * summestartende
+ * summestartende2
+ *
+ * RPC_CreateVariableByName
+ * RPC_CreateCategoryByName
+ * RPC_CreateVariableField
+ * RemoteAccessServerTable
+ * RemoteAccess_GetConfigurationNew
+ *
+ * ReadTemperaturWerte
+ * ReadThermostatWerte
+ * ReadAktuatorWerte
+ *
+ * exectime
+ * getVariableId
+ *
+ *
+ * AD_ErrorHandler
+ *
+ **************************************************************************************************************************************/
 	
-	
+
+    /* durchsucht alle Homematic Instanzen
+    * nach Adresse:Port
+    * wenn adresse:port uebereinstimmt die Instanz ID zurückgeben, sonst 0
+    */
+    
+    function GetInstanceIDFromHMID($sid)
+        {
+        $ids = IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
+        foreach($ids as $id)
+            {
+            $a = explode(":", HM_GetAddress($id));
+            $b = explode(":", $sid);
+            if($a[0] == $b[0])
+                {
+                return $id;
+                }
+            }
+        return 0;
+        }
 
 
-/******************************************************************/
+    /******************************************************************/
 
-function writeLogEventClass($event,$class)
-    {
+    function writeLogEvent($event)
+        {
+        /* call with writelogEvent("Beschreibung")  writes to Log_Event.csv File */
+        if (!file_exists("C:\Scripts\Log_Events.csv"))
+            {
+            $handle=fopen("C:\Scripts\Log_Events.csv", "a");
+            fwrite($handle, date("d.m.y H:i:s").";Eventbeschreibung\r\n");
+            fclose($handle);
+            }
 
-    /* call with writelogEvent("Beschreibung")  writes to Log_Event.csv File
+        $handle=fopen("C:\Scripts\Log_Events.csv","a");
+        fwrite($handle, date("d.m.y H:i:s").";".$event."\r\n");
+        /* unterschiedliche Event Speicherorte */
 
+        fclose($handle);
+        }
+
+    /******************************************************************/
+
+    function writeLogEventClass($event,$class)
+        {
+
+        /* call with writelogEvent("Beschreibung")  writes to Log_Event.csv File
+
+        */
+
+        if (!file_exists("C:\Scripts\Log_Events.csv"))
+            {
+            $handle=fopen("C:\Scripts\Log_Events.csv", "a");
+            fwrite($handle, date("d.m.y H:i:s").";Eventbeschreibung\r\n");
+            fclose($handle);
+            }
+
+        $handle=fopen("C:\Scripts\Log_Events.csv","a");
+        $ausgabewert=date("d.m.y H:i:s").";".$event;
+        fwrite($handle, $class.$ausgabewert."\r\n");
+
+        /* unterschiedliche Event Speicherorte */
+        
+        if (IPS_GetName(0)=="LBG70")
+            {
+            SetValue(24829,$ausgabewert);
+            }
+        else
+            {
+            SetValue(44647,$ausgabewert);
+            }
+        fclose($handle);
+        }
+
+
+    /*****************************************************************
+    *
+    *
+    ************************************************************************/
+
+    function GetValueIfFormattedEx($oid,$value, $html=false)
+        {
+        $variabletyp=IPS_GetVariable($oid);
+        if ( ($variabletyp["VariableProfile"]!="")  or ($variabletyp["VariableCustomProfile"]!="") )
+            {
+            if ($variabletyp["VariableProfile"]!="")        $profile = $variabletyp["VariableProfile"];
+            if ($variabletyp["VariableCustomProfile"]!="")  $profile = $variabletyp["VariableCustomProfile"];
+            $profileConfig = IPS_GetVariableProfile($profile);
+            $result=GetValueFormattedEx($oid,$value);
+            if ($html && (isset($profileConfig["Associations"])) ) 
+                {
+                foreach ($profileConfig["Associations"] as $index => $association)
+                    {
+                    if ($association["Value"]==$value) 
+                        {
+                        //print_R($association);
+                        $color = "000000".dechex($association["Color"]);
+                        $color = substr($color,-6);
+                        if (hexdec($color) > 1000000) $color="1F2F1F";
+                        echo "Farbe Association ist #$color\n";
+                        //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
+                        $result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
+                        }
+
+                    }
+                
+                }
+            }
+        else
+            {
+            $result=$value;
+            }
+        return ($result);  
+
+        }
+
+    /*****************************************************************
+    *
+    * vereint getValue und GetValueFormatted
+    * Nachdem getValueFormatted immer einen Fehler ausgibt wenn die Variable keine Formattierung unterstützt wird halt vorher abgefragt
+    *
+    ************************************************************************/
+
+    function GetValueIfFormatted($oid)
+        {
+        $variabletyp=IPS_GetVariable($oid);
+        if ( ($variabletyp["VariableProfile"]!="")  or ($variabletyp["VariableCustomProfile"]!="") )
+            {
+            $result=@GetValueFormatted($oid);
+            if ($result===false) { echo "GetValueIfFormatted: Fehler mit Format von $oid.\n"; }
+            }
+        else
+            {
+            $result=GetValue($oid);
+            }
+        return ($result);    
+        }
+
+    /*****************************************************************
+    *
+    * CreateVariableByName, CreateCategoryByName 
+    * Variable oder Kategorie wird nur angelegt wenn sie noch nicht vorhanden ist
+    *
     */
 
-	if (!file_exists("C:\Scripts\Log_Events.csv"))
-		{
-        $handle=fopen("C:\Scripts\Log_Events.csv", "a");
-	    fwrite($handle, date("d.m.y H:i:s").";Eventbeschreibung\r\n");
-        fclose($handle);
-	    }
-
-	$handle=fopen("C:\Scripts\Log_Events.csv","a");
-	$ausgabewert=date("d.m.y H:i:s").";".$event;
-	fwrite($handle, $class.$ausgabewert."\r\n");
-
-	/* unterschiedliche Event Speicherorte */
-	
-	if (IPS_GetName(0)=="LBG70")
-		{
-		SetValue(24829,$ausgabewert);
-		}
-	else
-	    {
-		SetValue(44647,$ausgabewert);
-		}
-	fclose($handle);
-    }
-
-
-/*****************************************************************
- *
- *
- ************************************************************************/
-
-function GetValueIfFormattedEx($oid,$value, $html=false)
-    {
-   	$variabletyp=IPS_GetVariable($oid);
-	if ( ($variabletyp["VariableProfile"]!="")  or ($variabletyp["VariableCustomProfile"]!="") )
-		{
-        if ($variabletyp["VariableProfile"]!="")        $profile = $variabletyp["VariableProfile"];
-        if ($variabletyp["VariableCustomProfile"]!="")  $profile = $variabletyp["VariableCustomProfile"];
-        $profileConfig = IPS_GetVariableProfile($profile);
-	    $result=GetValueFormattedEx($oid,$value);
-        if ($html && (isset($profileConfig["Associations"])) ) 
+    function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        {
+        //echo "Position steht auf $position.\n";
+        //echo "CreateVariableByName: $id $name $type $profile $ident $position $action\n";
+        /* type steht für 0 Boolean 1 Integer 2 Float 3 String */
+        
+        $VariableId = @IPS_GetVariableIDByName($name, $parentID);
+        if ($VariableId === false)
             {
-            foreach ($profileConfig["Associations"] as $index => $association)
+            echo "Create Variable Name $name Type $type in $parentID:\n";
+            $VariableId = @IPS_CreateVariable($type);
+            if ($VariableId === false ) throw new Exception("Cannot CreateVariable with Type $type");
+            IPS_SetParent($VariableId, $parentID);
+            IPS_SetName($VariableId, $name);
+            if ( ($profile) && ($profile !== "") ) { IPS_SetVariableCustomProfile($VariableId, $profile); }
+            if ( ($ident) && ($ident !=="") ) {IPS_SetIdent ($VariableId , $ident );}
+            if ( $action && ($action!=0) ) { IPS_SetVariableCustomAction($VariableId,$action); }        
+            if ($default !== false) SetValue($VariableId, $default);
+            IPS_SetInfo($VariableId, "this variable was created by script #".$_IPS['SELF']." ");
+            }
+        else 
+            {
+            $VariableData = IPS_GetVariable($VariableId);
+            $objectInfo   = IPS_GetObject($VariableId); 
+            if ($VariableData['VariableType'] <> $type)
                 {
-                if ($association["Value"]==$value) 
+                IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." <> \"$type\". Delete and create new.");
+                IPS_DeleteVariable($VariableId); 
+                $VariableId=CreateVariableByName($parentID, $name, $type, $profile, $ident, $position, $action);  
+                $VariableData = IPS_GetVariable ($VariableId);            
+                }
+            if ($profile && ($VariableData['VariableCustomProfile'] <> $profile) )
+                {
+                //Debug ("Set VariableProfile='$Profile' for Variable='$name' ");
+                echo "Set VariableProfile='$profile' for Variable='$name' \n";
+                $result=@IPS_SetVariableCustomProfile($VariableId, $profile);
+                if ($result==false) 
                     {
-                    //print_R($association);
-                    $color = "000000".dechex($association["Color"]);
-                    $color = substr($color,-6);
-                    if (hexdec($color) > 1000000) $color="1F2F1F";
-                    echo "Farbe Association ist #$color\n";
-                    //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
-                    $result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
+                    echo "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.\n";
+                    IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.");
+                    }
+                }	
+            if ($action && ($VariableData['VariableCustomAction'] <> $action) )
+                {
+                //Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+                echo "Set VariableCustomAction='$action' for Variable='$name' \n";
+                IPS_SetVariableCustomAction($VariableId, $action);
+                }
+            if ($ident && ($objectInfo['ObjectIdent'] <> $ident) )
+                {
+                //Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+                echo "Set VariableIdent='$ident' for Variable='$name' \n";
+                IPS_SetIdent($VariableId, $ident);
+                }
+    
+            }
+        IPS_SetPosition($VariableId, $position);
+        return $VariableId;
+        }
+
+    function CreateCategoryByName($parentID, $name, $position=0)
+        {
+        $vid = @IPS_GetCategoryIDByName($name, $parentID);
+        if($vid === false)
+            {
+            $vid = IPS_CreateCategory();
+            IPS_SetParent($vid, $parentID);
+            IPS_SetName($vid, $name);
+            IPS_SetInfo($vid, "this category was created by script #".$_IPS['SELF']." ");
+            }
+        IPS_SetPosition($vid, $position);
+        return $vid;
+        }
+
+    /*****************************************************************
+    function CreateVariableByName2($name, $type, $profile, $action, $visible)
+        {
+        $id=IPS_GetParent($_IPS['SELF']);
+        $vid = @IPS_GetVariableIDByName($name, $id);
+        if($vid === false)
+            {
+            $vid = IPS_CreateVariable($type);
+            IPS_SetParent($vid, $id);
+            IPS_SetName($vid, $name);
+            IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
+            if($profile!='')
+                {
+                IPS_SetVariableCustomProfile($vid,$profile);
+                }
+            if($action!=0)
+                {
+                IPS_SetVariableCustomAction($vid,$action);
+                }
+            IPS_SetHidden($vid,!$visible);
+            }
+        return $vid;
+        }       */
+
+    /************************************
+    *
+    * Original wird im Library Modul Manager verwendet 
+    * Aufruf mit CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon );
+    *
+    *
+    *
+    *********************************************************
+
+    function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault=null, $Icon='')
+        {
+            $VariableId = @IPS_GetObjectIDByIdent(Get_IdentByName2($Name), $ParentId);
+            //echo "CreateVariable2: erzeuge Variable mit Name ".$Name." unter der Parent ID ".$ParentId." (".IPS_GetName($ParentId).") mit aktuellem Wert ".$ValueDefault." und Profil $Profile.\n";
+            if ($VariableId === false) $VariableId = @IPS_GetVariableIDByName($Name, $ParentId);
+            if ($VariableId === false)
+                {
+                //echo "    erzeuge neu !\n";
+                $VariableId = IPS_CreateVariable($Type);
+                IPS_SetParent($VariableId, $ParentId);
+                IPS_SetName($VariableId, $Name);
+                IPS_SetIdent($VariableId, Get_IdentByName2($Name));
+                IPS_SetPosition($VariableId, $Position);
+                IPS_SetVariableCustomProfile($VariableId, $Profile);
+                IPS_SetVariableCustomAction($VariableId, $Action);
+                IPS_SetIcon($VariableId, $Icon);
+                if ($ValueDefault===null)
+                    {
+                    switch($Type)
+                        {
+                        case 0: SetValue($VariableId, false); break; //Boolean
+                        case 1: SetValue($VariableId, 0); break; //Integer
+                        case 2: SetValue($VariableId, 0.0); break; //Float
+                        case 3: SetValue($VariableId, ""); break; //String
+                        default:
+                        }
+                    }
+                else
+                    {
+                    SetValue($VariableId, $ValueDefault);
                     }
 
+                //Debug ('Created VariableId '.$Name.'='.$VariableId."");
                 }
-            
-            }
-		}
-	else
-	   	{
-		$result=$value;
-		}
-    return ($result);  
-
-    }
-
-/*****************************************************************
- *
- * vereint getValue und GetValueFormatted
- * Nachdem getValueFormatted immer einen Fehler ausgibt wenn die Variable keine Formattierung unterstützt wird halt vorher abgefragt
- *
- ************************************************************************/
-
-function GetValueIfFormatted($oid)
-    {
-   	$variabletyp=IPS_GetVariable($oid);
-	if ( ($variabletyp["VariableProfile"]!="")  or ($variabletyp["VariableCustomProfile"]!="") )
-		{
-	    $result=@GetValueFormatted($oid);
-        if ($result===false) { echo "GetValueIfFormatted: Fehler mit Format von $oid.\n"; }
-		}
-	else
-	   	{
-		$result=GetValue($oid);
-		}
-    return ($result);    
-    }
-
-/*****************************************************************
- *
- * CreateVariableByName, CreateCategoryByName 
- * Variable oder Kategorie wird nur angelegt wenn sie noch nicht vorhanden ist
- *
- */
-
-function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-    {
-    //echo "Position steht auf $position.\n";
-    //echo "CreateVariableByName: $id $name $type $profile $ident $position $action\n";
-	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
-	
-    $VariableId = @IPS_GetVariableIDByName($name, $parentID);
-    if ($VariableId === false)
-        {
-        echo "Create Variable Name $name Type $type in $parentID:\n";
-        $VariableId = @IPS_CreateVariable($type);
-        if ($VariableId === false ) throw new Exception("Cannot CreateVariable with Type $type");
-        IPS_SetParent($VariableId, $parentID);
-        IPS_SetName($VariableId, $name);
-        if ( ($profile) && ($profile !== "") ) { IPS_SetVariableCustomProfile($VariableId, $profile); }
-  	    if ( ($ident) && ($ident !=="") ) {IPS_SetIdent ($VariableId , $ident );}
-        if ( $action && ($action!=0) ) { IPS_SetVariableCustomAction($VariableId,$action); }        
-        if ($default !== false) SetValue($VariableId, $default);
-        IPS_SetInfo($VariableId, "this variable was created by script #".$_IPS['SELF']." ");
-        }
-    else 
-        {
-        $VariableData = IPS_GetVariable($VariableId);
-        $objectInfo   = IPS_GetObject($VariableId); 
-        if ($VariableData['VariableType'] <> $type)
-            {
-            IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." <> \"$type\". Delete and create new.");
-            IPS_DeleteVariable($VariableId); 
-            $VariableId=CreateVariableByName($parentID, $name, $type, $profile, $ident, $position, $action);  
-            $VariableData = IPS_GetVariable ($VariableId);            
-            }
-		if ($profile && ($VariableData['VariableCustomProfile'] <> $profile) )
-			{
-			//Debug ("Set VariableProfile='$Profile' for Variable='$name' ");
-			echo "Set VariableProfile='$profile' for Variable='$name' \n";
-			$result=@IPS_SetVariableCustomProfile($VariableId, $profile);
-            if ($result==false) 
+            $VariableData = IPS_GetVariable ($VariableId);
+            if ($VariableData['VariableCustomProfile'] <> $Profile)
                 {
-                echo "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.\n";
-                IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.");
+                //Debug ("Set VariableProfile='$Profile' for Variable='$Name' ");
+                //echo "Set VariableProfile='$Profile' for Variable='$Name' \n";
+                IPS_SetVariableCustomProfile($VariableId, $Profile);
                 }
-			}	
-		if ($action && ($VariableData['VariableCustomAction'] <> $action) )
-			{
-			//Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
-			echo "Set VariableCustomAction='$action' for Variable='$name' \n";
-			IPS_SetVariableCustomAction($VariableId, $action);
-			}
-		if ($ident && ($objectInfo['ObjectIdent'] <> $ident) )
-			{
-			//Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
-			echo "Set VariableIdent='$ident' for Variable='$name' \n";
-			IPS_SetIdent($VariableId, $ident);
-			}
-   
-        }
-	IPS_SetPosition($VariableId, $position);
-    return $VariableId;
-    }
+            else 
+                {
+                //echo "Aktuelles Profil ist :".$VariableData['VariableCustomProfile']."\n";
+                }	
+            if ($VariableData['VariableCustomAction'] <> $Action)
+                {
+                //Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+                //echo "Set VariableCustomAction='$Action' for Variable='$Name' \n";
+                IPS_SetVariableCustomAction($VariableId, $Action);
+                }
+            UpdateObjectData2($VariableId, $Position, $Icon);
+            return $VariableId;
+        }   */
 
-function CreateCategoryByName($parentID, $name, $position=0)
-    {
-    $vid = @IPS_GetCategoryIDByName($name, $parentID);
-    if($vid === false)
-        {
-        $vid = IPS_CreateCategory();
-        IPS_SetParent($vid, $parentID);
-        IPS_SetName($vid, $name);
-        IPS_SetInfo($vid, "this category was created by script #".$_IPS['SELF']." ");
-        }
-	IPS_SetPosition($vid, $position);
-    return $vid;
-    }
+    /*****************************************************************
 
-/*****************************************************************
-function CreateVariableByName2($name, $type, $profile, $action, $visible)
+    function CreateVariableByNameFull($id, $name, $type, $profile = "")
     {
-    $id=IPS_GetParent($_IPS['SELF']);
-    $vid = @IPS_GetVariableIDByName($name, $id);
-    if($vid === false)
+        $vid = @IPS_GetVariableIDByName($name, $id);
+        if($vid === false)
         {
-        $vid = IPS_CreateVariable($type);
-        IPS_SetParent($vid, $id);
-        IPS_SetName($vid, $name);
-        IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
-        if($profile!='')
+            $vid = IPS_CreateVariable($type);
+            IPS_SetParent($vid, $id);
+            IPS_SetName($vid, $name);
+            IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
+            if($profile !== "") 
             {
-            IPS_SetVariableCustomProfile($vid,$profile);
+                IPS_SetVariableCustomProfile($vid, $profile);
             }
-        if($action!=0)
-            {
-            IPS_SetVariableCustomAction($vid,$action);
-            }
-        IPS_SetHidden($vid,!$visible);
         }
-    return $vid;
-    }       */
+        return $vid;
+    }           */
 
-/************************************
- *
- * Original wird im Library Modul Manager verwendet 
- * Aufruf mit CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon );
- *
- *
- *
- *********************************************************
+    /******************************************************************/
 
-function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault=null, $Icon='')
-	{
-		$VariableId = @IPS_GetObjectIDByIdent(Get_IdentByName2($Name), $ParentId);
-		//echo "CreateVariable2: erzeuge Variable mit Name ".$Name." unter der Parent ID ".$ParentId." (".IPS_GetName($ParentId).") mit aktuellem Wert ".$ValueDefault." und Profil $Profile.\n";
-		if ($VariableId === false) $VariableId = @IPS_GetVariableIDByName($Name, $ParentId);
-		if ($VariableId === false)
-			{
-			//echo "    erzeuge neu !\n";
- 			$VariableId = IPS_CreateVariable($Type);
-			IPS_SetParent($VariableId, $ParentId);
-			IPS_SetName($VariableId, $Name);
-			IPS_SetIdent($VariableId, Get_IdentByName2($Name));
-			IPS_SetPosition($VariableId, $Position);
-  			IPS_SetVariableCustomProfile($VariableId, $Profile);
- 			IPS_SetVariableCustomAction($VariableId, $Action);
-			IPS_SetIcon($VariableId, $Icon);
-			if ($ValueDefault===null)
-				{
-				switch($Type)
-					{
-					case 0: SetValue($VariableId, false); break; //Boolean
-					case 1: SetValue($VariableId, 0); break; //Integer
-					case 2: SetValue($VariableId, 0.0); break; //Float
-					case 3: SetValue($VariableId, ""); break; //String
-					default:
-					}
-				}
-			else
-				{
-				SetValue($VariableId, $ValueDefault);
-				}
+    /* Additional function to create an identifier out of a variable name, space is the new parameter to decide either to remove 
+    * special characters or replace them either by a space or an underscore
+    *
+    */
 
-			//Debug ('Created VariableId '.$Name.'='.$VariableId."");
-			}
-		$VariableData = IPS_GetVariable ($VariableId);
-		if ($VariableData['VariableCustomProfile'] <> $Profile)
-			{
-			//Debug ("Set VariableProfile='$Profile' for Variable='$Name' ");
-			//echo "Set VariableProfile='$Profile' for Variable='$Name' \n";
-			IPS_SetVariableCustomProfile($VariableId, $Profile);
-			}
-		else 
-			{
-			//echo "Aktuelles Profil ist :".$VariableData['VariableCustomProfile']."\n";
-			}	
-		if ($VariableData['VariableCustomAction'] <> $Action)
-			{
-			//Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
-			//echo "Set VariableCustomAction='$Action' for Variable='$Name' \n";
-			IPS_SetVariableCustomAction($VariableId, $Action);
-			}
-		UpdateObjectData2($VariableId, $Position, $Icon);
-		return $VariableId;
-	}   */
-
-/*****************************************************************
-
-function CreateVariableByNameFull($id, $name, $type, $profile = "")
-{
-    $vid = @IPS_GetVariableIDByName($name, $id);
-    if($vid === false)
+    function Get_IdentByName2($name, $space="")
     {
-        $vid = IPS_CreateVariable($type);
-        IPS_SetParent($vid, $id);
-        IPS_SetName($vid, $name);
-        IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
-        if($profile !== "") 
-        {
-            IPS_SetVariableCustomProfile($vid, $profile);
-        }
+            $ident = str_replace(' ', $space, $name);
+            $ident = str_replace(array('ö','ä','ü','Ö','Ä','Ü'), array('oe', 'ae','ue','Oe', 'Ae','Ue' ), $ident);
+            $ident = str_replace(array('"','\'','%','&','(',')','=','#','<','>','|','\\'), $space, $ident);
+            $ident = str_replace(array(',','.',':',';','!','?'), $space, $ident);
+            $ident = str_replace(array('+','-','/','*'), $space, $ident);
+            $ident = str_replace(array('ß'), 'ss', $ident);
+            return $ident;
     }
-    return $vid;
-}           */
 
-/******************************************************************/
+    /******************************************************************/
 
-/* Additional function to create an identifier out of a variable name, space is the new parameter to decide either to remove 
- * special characters or replace them either by a space or an underscore
- *
-  */
+    function UpdateObjectData2($ObjectId, $Position, $Icon="")
+    {
+            $ObjectData = IPS_GetObject ($ObjectId);
+            $ObjectPath = IPS_GetLocation($ObjectId);
+            if ($ObjectData['ObjectPosition'] <> $Position and $Position!==false) {
+                //Debug ("Set ObjectPosition='$Position' for Object='$ObjectPath' ");
+                IPS_SetPosition($ObjectId, $Position);
+            }
+            if ($ObjectData['ObjectIcon'] <> $Icon and $Icon!==false) {
+                //Debug ("Set ObjectIcon='$Icon' for Object='$ObjectPath' ");
+                IPS_SetIcon($ObjectId, $Icon);
+            }
 
-function Get_IdentByName2($name, $space="")
-{
-		$ident = str_replace(' ', $space, $name);
-		$ident = str_replace(array('ö','ä','ü','Ö','Ä','Ü'), array('oe', 'ae','ue','Oe', 'Ae','Ue' ), $ident);
-		$ident = str_replace(array('"','\'','%','&','(',')','=','#','<','>','|','\\'), $space, $ident);
-		$ident = str_replace(array(',','.',':',';','!','?'), $space, $ident);
-		$ident = str_replace(array('+','-','/','*'), $space, $ident);
-		$ident = str_replace(array('ß'), 'ss', $ident);
-		return $ident;
-}
+    }
 
-/******************************************************************/
+    /**********************************************************************************************/
 
-function UpdateObjectData2($ObjectId, $Position, $Icon="")
-{
-		$ObjectData = IPS_GetObject ($ObjectId);
-		$ObjectPath = IPS_GetLocation($ObjectId);
-		if ($ObjectData['ObjectPosition'] <> $Position and $Position!==false) {
-			//Debug ("Set ObjectPosition='$Position' for Object='$ObjectPath' ");
-			IPS_SetPosition($ObjectId, $Position);
-		}
-		if ($ObjectData['ObjectIcon'] <> $Icon and $Icon!==false) {
-			//Debug ("Set ObjectIcon='$Icon' for Object='$ObjectPath' ");
-			IPS_SetIcon($ObjectId, $Icon);
-		}
+    /******************************************************
+    *
+    * Summestartende,
+    *
+    * Gemeinschaftsfunktion, fuer die manuelle Aggregation von historisierten Daten
+    *
+    * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, false ohne Hochrechnung
+    *
+    *
+    * Routine scheiter bei Ende Sommerzeit, hier wird als Strtzeit -30 Tage eine Stunde zu wenig berechnet 
+    *
+    ******************************************************************************************/
 
-}
-
-/**********************************************************************************************/
-
-/******************************************************
- *
- * Summestartende,
- *
- * Gemeinschaftsfunktion, fuer die manuelle Aggregation von historisierten Daten
- *
- * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, false ohne Hochrechnung
- *
- *
- * Routine scheiter bei Ende Sommerzeit, hier wird als Strtzeit -30 Tage eine Stunde zu wenig berechnet 
- *
- ******************************************************************************************/
-
-function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
-	{
-	if ($display)
-		{
-		echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).") \n";
-		echo "Werte von ".date("D d.m.Y H:i:s",$starttime)." bis ".date("D d.m.Y H:i:s",$endtime)."\n";
-		}
-	$zaehler=0;
-	$ergebnis=0;
-	$increment=(integer)$increment_var;
-		
-	do {
-		/* es könnten mehr als 10.000 Werte sein
-			Abfrage generisch lassen
-		*/
-		
-		// Eintraege für GetAggregated integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit
-		$aggWerte = AC_GetAggregatedValues ( $archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
-		$aggAnzahl=count($aggWerte);
-		//print_r($aggWerte);
-		foreach ($aggWerte as $entry)
-			{
-			if (((time()-$entry["MinTime"])/60/60/24)>1) 
-				{
-				/* keine halben Tage ausgeben */
-				$aktwert=(float)$entry["Avg"];
-				if ($display) echo "     ".date("D d.m.Y H:i:s",$entry["TimeStamp"])."      ".$aktwert."\n";
-				switch ($increment)
-					{
-					case 0:
-					case 2:
-						echo "*************Fehler.\n";
-						break;
-					case 1:        /* Statuswert, daher kompletten Bereich zusammenzählen */
-						$ergebnis+=$aktwert;
-						break;
-					default:
-					}
-				}
-			else
-				{
-				$aggAnzahl--;
-				}	
-			}
-		if (($aggAnzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
-		
-		$zaehler+=1;
-			
-		} while (count($aggWerte)==10000);		
-	if ($display) echo "   Variable: ".IPS_GetName($variableID)." mit ".$aggAnzahl." Tageswerten und ".$ergebnis." als Ergebnis.\n";
-	return $ergebnis;
-	}
-
-/* alte Funktion, als Referenz */
-
-function summestartende2($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
-	{
-	$zaehler=0;
-	$initial=true;
-	$ergebnis=0;
-	$vorigertag="";
-	$disp_vorigertag="";
-	$neuwert=0;
-
-	$increment=(integer)$increment_var;
-	//echo "Increment :".$increment."\n";
-	$gepldauer=($endtime-$starttime)/24/60/60;
-	do {
-		/* es könnten mehr als 10.000 Werte sein
-			Abfrage generisch lassen
-		*/
-		$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
-		/* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
-			Nicht mer als 10.000 Werte ...
-		*/
-		//print_r($werte);
-		$anzahl=count($werte);
-		//echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
-
-		if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
-
-		if ($initial)
-			{
-			/* allererster Durchlauf */
-			$ersterwert=$werte['0']['Value'];
-			$ersterzeit=$werte['0']['TimeStamp'];
-			}
-
-		if ($anzahl<10000)
-			{
-			/* letzter Durchlauf */
-			$letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
-			$letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
-			//echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
-			//     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
-			}
-
-		$initial=true;
-
-		foreach($werte as $wert)
-			{
-			if ($initial)
-				{
-				//print_r($wert);
-				$initial=false;
-				//echo "   Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
-				}
-
-			$zeit=$wert['TimeStamp'];
-			$tag=date("d.m.Y", $zeit);
-			$aktwert=(float)$wert['Value'];
-
-			if ($tag!=$vorigertag)
-				{ /* neuer Tag */
-				$altwert=$neuwert;
-				$neuwert=$aktwert;
-				switch ($increment)
-					{
-					case 1:
-						$ergebnis=$aktwert;
-						break;
-					case 2:
-						if ($altwert<$neuwert)
-							{
-							$ergebnis+=($neuwert-$altwert);
-							}
-						else
-							{
-							//$ergebnis+=($altwert-$neuwert);
-							//$ergebnis=$aktwert;
-							}
-						break;
-					case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
-						$ergebnis+=$aktwert;
-						break;
-					default:
-					}
-				$vorigertag=$tag;
-				}
-			else
-				{
-				/* neu eingeführt, Bei Statuswert muessen alle Werte agreggiert werden */
-				switch ($increment)
-					{
-					case 1:
-					case 2:
-						break;
-					case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
-						$ergebnis+=$aktwert;
-						break;
-				default:
-					}
-				}
-
-			if ($display==true)
-				{
-				/* jeden Eintrag ausgeben */
-				//print_r($wert);
-				if ($gepldauer>100)
-					{
-					if ($tag!=$disp_vorigertag)
-						{
-						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-						$disp_vorigertag=$tag;
-						}
-					}
-				else
-					{
-					echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-					}
-				}
-			$zaehler+=1;
-			}
-		$endtime=$zeit;
-		} while (count($werte)==10000);
-
-	$dauer=($ersterzeit-$letzterzeit)/24/60/60;
-	echo "   Bearbeitete Werte:".$zaehler." für ".number_format($dauer, 2, ",", "")." Tage davon erwartet: ".$gepldauer." \n";
-	switch ($increment)
-	   {
-	   case 0:
-  	   case 2:
-			if ($estimate==true)
-				{
-				echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
-				$ergebnis=($ergebnis)*$gepldauer/$dauer;
-		     	echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
-				}
-	      break;
-	   case 1:
-			if ($estimate==true)
-				{
-				$ergebnis=($ersterwert-$letzterwert);
-				echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
-				$ergebnis=($ergebnis)*$gepldauer/$dauer;
-	   	  	echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
-				}
-			else
-			   {
-				$ergebnis=($ersterwert-$letzterwert);
-				}
-	      break;
-	   default:
-	   }
-	return $ergebnis;
-	}
-
-/******************************************************************/
-
-function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
-	{
-
-	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
-
-	$result="";
-	$size=sizeof($struktur);
-	if ($size==0)
-		{
-		$children=$rpc->IPS_GetChildrenIDs($id);
-		foreach ($children as $oid)
+    function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
+        {
+        if ($display)
             {
-            $struktur[$oid]=$rpc->IPS_GetName($oid);
-            }		
-		//echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
-		//echo "Struktur :\n";
-		//print_r($struktur);
-		}
-	foreach ($struktur as $oid => $oname)
-	    {
-	    if ($name==$oname) {$result=$name;$vid=$oid;}
-		//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
-	    }
-	if ($result=="")
-	    {
-	    echo "Variable ".$name." auf Server neu erzeugen.\n";
-        $vid = $rpc->IPS_CreateVariable($type);
+            echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).") \n";
+            echo "Werte von ".date("D d.m.Y H:i:s",$starttime)." bis ".date("D d.m.Y H:i:s",$endtime)."\n";
+            }
+        $zaehler=0;
+        $ergebnis=0;
+        $increment=(integer)$increment_var;
+            
+        do {
+            /* es könnten mehr als 10.000 Werte sein
+                Abfrage generisch lassen
+            */
+            
+            // Eintraege für GetAggregated integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit
+            $aggWerte = AC_GetAggregatedValues ( $archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
+            $aggAnzahl=count($aggWerte);
+            //print_r($aggWerte);
+            foreach ($aggWerte as $entry)
+                {
+                if (((time()-$entry["MinTime"])/60/60/24)>1) 
+                    {
+                    /* keine halben Tage ausgeben */
+                    $aktwert=(float)$entry["Avg"];
+                    if ($display) echo "     ".date("D d.m.Y H:i:s",$entry["TimeStamp"])."      ".$aktwert."\n";
+                    switch ($increment)
+                        {
+                        case 0:
+                        case 2:
+                            echo "*************Fehler.\n";
+                            break;
+                        case 1:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+                            $ergebnis+=$aktwert;
+                            break;
+                        default:
+                        }
+                    }
+                else
+                    {
+                    $aggAnzahl--;
+                    }	
+                }
+            if (($aggAnzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
+            
+            $zaehler+=1;
+                
+            } while (count($aggWerte)==10000);		
+        if ($display) echo "   Variable: ".IPS_GetName($variableID)." mit ".$aggAnzahl." Tageswerten und ".$ergebnis." als Ergebnis.\n";
+        return $ergebnis;
+        }
+
+    /* alte Funktion, als Referenz */
+
+    function summestartende2($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
+        {
+        $zaehler=0;
+        $initial=true;
+        $ergebnis=0;
+        $vorigertag="";
+        $disp_vorigertag="";
+        $neuwert=0;
+
+        $increment=(integer)$increment_var;
+        //echo "Increment :".$increment."\n";
+        $gepldauer=($endtime-$starttime)/24/60/60;
+        do {
+            /* es könnten mehr als 10.000 Werte sein
+                Abfrage generisch lassen
+            */
+            $werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
+            /* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
+                Nicht mer als 10.000 Werte ...
+            */
+            //print_r($werte);
+            $anzahl=count($werte);
+            //echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+
+            if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
+
+            if ($initial)
+                {
+                /* allererster Durchlauf */
+                $ersterwert=$werte['0']['Value'];
+                $ersterzeit=$werte['0']['TimeStamp'];
+                }
+
+            if ($anzahl<10000)
+                {
+                /* letzter Durchlauf */
+                $letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
+                $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
+                //echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
+                //     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
+                }
+
+            $initial=true;
+
+            foreach($werte as $wert)
+                {
+                if ($initial)
+                    {
+                    //print_r($wert);
+                    $initial=false;
+                    //echo "   Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
+                    }
+
+                $zeit=$wert['TimeStamp'];
+                $tag=date("d.m.Y", $zeit);
+                $aktwert=(float)$wert['Value'];
+
+                if ($tag!=$vorigertag)
+                    { /* neuer Tag */
+                    $altwert=$neuwert;
+                    $neuwert=$aktwert;
+                    switch ($increment)
+                        {
+                        case 1:
+                            $ergebnis=$aktwert;
+                            break;
+                        case 2:
+                            if ($altwert<$neuwert)
+                                {
+                                $ergebnis+=($neuwert-$altwert);
+                                }
+                            else
+                                {
+                                //$ergebnis+=($altwert-$neuwert);
+                                //$ergebnis=$aktwert;
+                                }
+                            break;
+                        case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+                            $ergebnis+=$aktwert;
+                            break;
+                        default:
+                        }
+                    $vorigertag=$tag;
+                    }
+                else
+                    {
+                    /* neu eingeführt, Bei Statuswert muessen alle Werte agreggiert werden */
+                    switch ($increment)
+                        {
+                        case 1:
+                        case 2:
+                            break;
+                        case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+                            $ergebnis+=$aktwert;
+                            break;
+                    default:
+                        }
+                    }
+
+                if ($display==true)
+                    {
+                    /* jeden Eintrag ausgeben */
+                    //print_r($wert);
+                    if ($gepldauer>100)
+                        {
+                        if ($tag!=$disp_vorigertag)
+                            {
+                            echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                            $disp_vorigertag=$tag;
+                            }
+                        }
+                    else
+                        {
+                        echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                        }
+                    }
+                $zaehler+=1;
+                }
+            $endtime=$zeit;
+            } while (count($werte)==10000);
+
+        $dauer=($ersterzeit-$letzterzeit)/24/60/60;
+        echo "   Bearbeitete Werte:".$zaehler." für ".number_format($dauer, 2, ",", "")." Tage davon erwartet: ".$gepldauer." \n";
+        switch ($increment)
+        {
+        case 0:
+        case 2:
+                if ($estimate==true)
+                    {
+                    echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
+                    $ergebnis=($ergebnis)*$gepldauer/$dauer;
+                    echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
+                    }
+            break;
+        case 1:
+                if ($estimate==true)
+                    {
+                    $ergebnis=($ersterwert-$letzterwert);
+                    echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
+                    $ergebnis=($ergebnis)*$gepldauer/$dauer;
+                echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
+                    }
+                else
+                {
+                    $ergebnis=($ersterwert-$letzterwert);
+                    }
+            break;
+        default:
+        }
+        return $ergebnis;
+        }
+
+    /******************************************************************/
+
+    function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
+        {
+
+        /* type steht für 0 Boolean 1 Integer 2 Float 3 String */
+
+        $result="";
+        $size=sizeof($struktur);
+        if ($size==0)
+            {
+            $children=$rpc->IPS_GetChildrenIDs($id);
+            foreach ($children as $oid)
+                {
+                $struktur[$oid]=$rpc->IPS_GetName($oid);
+                }		
+            //echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
+            //echo "Struktur :\n";
+            //print_r($struktur);
+            }
+        foreach ($struktur as $oid => $oname)
+            {
+            if ($name==$oname) {$result=$name;$vid=$oid;}
+            //echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
+            }
+        if ($result=="")
+            {
+            echo "Variable ".$name." auf Server neu erzeugen.\n";
+            $vid = $rpc->IPS_CreateVariable($type);
+            $rpc->IPS_SetParent($vid, $id);
+            $rpc->IPS_SetName($vid, $name);
+            $rpc->IPS_SetInfo($vid, "this variable was created by script. ");
+            }
+        //echo "Fertig mit ".$vid."\n";
+        return $vid;
+        }
+
+    /******************************************************************/
+
+    function RPC_CreateCategoryByName($rpc, $id, $name)
+        {
+
+        /* erzeugt eine Category am Remote Server */
+
+        $result="";
+        $struktur=$rpc->IPS_GetChildrenIDs($id);
+        foreach ($struktur as $category)
+        {
+        $oname=$rpc->IPS_GetName($category);
+        //echo str_pad($oname,20)." ".$category."\n";
+        if ($name==$oname) {$result=$name;$vid=$category;}
+        }
+        if ($result=="")
+        {
+        $vid = $rpc->IPS_CreateCategory();
         $rpc->IPS_SetParent($vid, $id);
         $rpc->IPS_SetName($vid, $name);
-        $rpc->IPS_SetInfo($vid, "this variable was created by script. ");
+        $rpc->IPS_SetInfo($vid, "this category was created by script. ");
         }
-    //echo "Fertig mit ".$vid."\n";
-    return $vid;
-	}
-
-/******************************************************************/
-
-function RPC_CreateCategoryByName($rpc, $id, $name)
-	{
-
-	/* erzeugt eine Category am Remote Server */
-
-	$result="";
-	$struktur=$rpc->IPS_GetChildrenIDs($id);
-	foreach ($struktur as $category)
-	   {
-	   $oname=$rpc->IPS_GetName($category);
-	   //echo str_pad($oname,20)." ".$category."\n";
-	   if ($name==$oname) {$result=$name;$vid=$category;}
-	   }
-	if ($result=="")
-	   {
-      $vid = $rpc->IPS_CreateCategory();
-      $rpc->IPS_SetParent($vid, $id);
-      $rpc->IPS_SetName($vid, $name);
-      $rpc->IPS_SetInfo($vid, "this category was created by script. ");
-      }
-    return $vid;
-	}
-
-/******************************************************************/
-
-function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
-	{
-
-	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
-	$remServer=ROID_List();
-	if ($startexec==0) {$startexec=microtime(true);}
-	foreach ($Homematic as $Key)
-		{
-		/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
-		if (isset($Key["COID"][$keyword])==true)
-			{
-			$oid=(integer)$Key["COID"][$keyword]["OID"];
-			$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
-				}
-			else
-				{
-				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
-				}
-			$parameter="";
-			foreach ($remServer as $Name => $Server)
-				{
-				$rpc = new JSONRPC($Server["Adresse"]);
-				if ($keyword=="TEMPERATURE")
-					{
-					$result=RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 2);
-					}
-				else
-					{
-					$result=RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 1);
-					}
-				$rpc->IPS_SetVariableCustomProfile($result,$profile);
-				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-				$parameter.=$Name.":".$result.";";
-				}
-			$messageHandler = new IPSMessageHandler();
-			$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-			$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			if ($keyword=="TEMPERATURE")
-				{
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
-				}
-			else
-				{
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
-				}
-			}
-		}
-	}
-
-/*****************************************************************
- *
- * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein
- * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
- *
- *****************************************************************************/
-
-function RemoteAccessServerTable()
-	{
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$result=$moduleManager->GetInstalledModules();
-			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");	
-			if (isset ($result["OperationCenter"]))
-				{
-				$moduleManager_DM = new IPSModuleManager('OperationCenter');     /*   <--- change here */
-				$CategoryIdData   = $moduleManager_DM->GetModuleCategoryID('data');
-				$Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
-				$RemoteServer=array();
-	        	//$remServer=RemoteAccess_GetConfiguration();
-				//foreach ($remServer as $Name => $UrlAddress)
-				$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
-				foreach ($remServer as $Name => $Server)
-					{
-					$UrlAddress=$Server["ADRESSE"];
-                    if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
-                        {                    
-    					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
-	    					{				
-		    				$IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
-			    			$RemoteServer[$Name]["Url"]=$UrlAddress;
-				    		$RemoteServer[$Name]["Name"]=$Name;
-					    	if (GetValue($IPS_UpTimeID)==0)
-						    	{
-							    $RemoteServer[$Name]["Status"]=false;
-							    }
-    						else
-	    						{
-		    					$RemoteServer[$Name]["Status"]=true;
-			    				}
-                            }    
-						}
-                    if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
-					}
-				}
-			else
-				{
-				$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
-				foreach ($remServer as $Name => $Server)
-					{
-					$UrlAddress=$Server["ADRESSE"];
-                    if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
-                        {                    
-    					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
-	    					{				
-		    				$RemoteServer[$Name]["Url"]=$UrlAddress;
-			    			$RemoteServer[$Name]["Name"]=$Name;
-				    		$RemoteServer[$Name]["Status"]=true;
-					    	}
-                        }
-                    if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
-					}	
-			   }
-
-	return($RemoteServer);
-	}
-
-/*****************************************************************
- *
- * wandelt die Liste der remoteAccess_GetServerConfig  in das alte Format der tabelle RemoteAccess_GetConfiguration um
- * Neuer Name , damit alte Funktionen keine Fehlermeldung liefern 
- *
- *****************************************************************************/
- 
-function RemoteAccess_GetConfigurationNew()
-	{
-	$RemoteServer=array();
-	$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
-	foreach ($remServer as $Name => $Server)
-		{
-		$UrlAddress=$Server["ADRESSE"];
-		if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
-			{				
-			$RemoteServer[$Name]=$UrlAddress;
-			}
-		}	
-	return($RemoteServer);
-	}
-	
-/******************************************************************/
-
-function ReadTemperaturWerte()
-	{
-	
-	if (isset($installedModules["EvaluateHardware"])==true) 
-		{
-		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
-		}
-	//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	
-	$alleTempWerte="";
-	$Homematic = HomematicList();
-	foreach ($Homematic as $Key)
-		{
-		/* alle Homematic Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["TEMPERATURE"])==true)
-	  		{
-	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-			$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
-
-	$FHT = FHTList();
-	foreach ($FHT as $Key)
-		{
-		/* alle FHT Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["TemeratureVar"])==true)
-		   {
-	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-			$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
-	return ($alleTempWerte);
-	}
-
-function ReadThermostatWerte()
-	{
-	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-
-	if (isset($installedModules["EvaluateHardware"])==true) 
-		{
-		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
-		}
-	//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	
-	$alleWerte="";
-
-	$Homematic = HomematicList();
-	$FS20= FS20List();
-	$FHT = FHTList();
-
-	$pad=50;
-	$alleWerte.="\n\nAktuelle Heizungswerte direkt aus den HW-Registern:\n\n";
-	$varname="SET_TEMPERATURE";
-	foreach ($Homematic as $Key)
-		{
-		/* Alle Homematic Stellwerte ausgeben */
-		if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
-			{
-			/* alle Stellwerte der Thermostate */
-			//print_r($Key);
-
-			$oid=(integer)$Key["COID"][$varname]["OID"];
-			$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			else
-				{
-				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			}
-		}
-
-	$varname="SET_POINT_TEMPERATURE";
-	foreach ($Homematic as $Key)
-		{
-		/* Alle Homematic Stellwerte ausgeben */
-		if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
-			{
-			/* alle Stellwerte der Thermostate */
-			//print_r($Key);
-			$oid=(integer)$Key["COID"][$varname]["OID"];
-			$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			else
-				{
-				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			}
-		}
-
-	foreach ($FHT as $Key)
-		{
-		/* alle FHT Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["TargetTempVar"])==true)
-		   {
-	      	$oid=(integer)$Key["COID"]["TargetTempVar"]["OID"];
-			$alleWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
-
-	return ($alleWerte);
-	}
-
-function ReadAktuatorWerte()
-	{
-	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-	if (isset($installedModules["EvaluateHardware"])==true) 
-		{
-		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
-		}
-	//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	$componentHandling=new ComponentHandling();
-
-	$alleWerte="";
-	$alleWerte.="\n\nAktuelle Heizungs-Aktuatorenwerte direkt aus den HW-Registern:\n\n";
-    
-    if (function_exists('HomematicList')) $alleWerte.=$componentHandling->getComponent(HomematicList(),"TYPE_ACTUATOR","String");
-    if (function_exists('FHTList')) $alleWerte.=$componentHandling->getComponent(FHTList(),"TYPE_ACTUATOR","String");
-
-	return ($alleWerte);
-	}
-
-
-/******************************************************************/
-
-function startexec($mode="ms")
-	{
-    $time=hrtime(true);
-    switch ($mode)
-        {
-        case "ms":
-            $time=$time/1000000;
-            break;
-        case "us":
-            $time=$time/1000;
-            break;
-        case "s":
-            $time=$time/1000000000;
-            break;
-        default:
-            break;
+        return $vid;
         }
-	return ($time);
-	}
 
-function exectime($startexec,$mode=false)
-	{
-    $time=hrtime(true);
-    switch ($mode)
+    /******************************************************************/
+
+    function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
         {
-        case "ms":
-            return (round($time/1000000-$startexec,0));
-            break;
-        case "us":
-            return (round($time/1000-$startexec,0));
-            break;
-        case "s":
-            return (round($time/1000000000-$startexec,3));
-            break;
-        default:
-        	return (number_format((microtime(true)-$startexec),2));
-            break;
-        }        
-	}
 
-/*****************************************************************
- *
- * hilfreiche Funktion wird in Stromheizung verwendet
- * findet einen Variablennamen an verschiedenen Orten
- *
- */
-
-function getVariableId($name, $switchCategoryId, $groupCategoryId=false, $categoryIdPrograms=false) 
-    {
-    if (is_array($switchCategoryId))
-        {
-        foreach ($switchCategoryId as $categoryId)
+        IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
+        $remServer=ROID_List();
+        if ($startexec==0) {$startexec=microtime(true);}
+        foreach ($Homematic as $Key)
             {
-            $childrenIds = IPS_GetChildrenIDs($categoryId);
+            /* alle Feuchtigkeits oder Temperaturwerte ausgeben */
+            if (isset($Key["COID"][$keyword])==true)
+                {
+                $oid=(integer)$Key["COID"][$keyword]["OID"];
+                $variabletyp=IPS_GetVariable($oid);
+                if ($variabletyp["VariableProfile"]!="")
+                    {
+                    echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+                    }
+                else
+                    {
+                    echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+                    }
+                $parameter="";
+                foreach ($remServer as $Name => $Server)
+                    {
+                    $rpc = new JSONRPC($Server["Adresse"]);
+                    if ($keyword=="TEMPERATURE")
+                        {
+                        $result=RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 2);
+                        }
+                    else
+                        {
+                        $result=RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 1);
+                        }
+                    $rpc->IPS_SetVariableCustomProfile($result,$profile);
+                    $rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+                    $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+                    $rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+                    $parameter.=$Name.":".$result.";";
+                    }
+                $messageHandler = new IPSMessageHandler();
+                $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+                $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                if ($keyword=="TEMPERATURE")
+                    {
+                    $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
+                    }
+                else
+                    {
+                    $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
+                    }
+                }
+            }
+        }
+
+    /*****************************************************************
+    *
+    * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein
+    * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
+    *
+    *****************************************************************************/
+
+    function RemoteAccessServerTable()
+        {
+                $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+                $result=$moduleManager->GetInstalledModules();
+                IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");	
+                if (isset ($result["OperationCenter"]))
+                    {
+                    $moduleManager_DM = new IPSModuleManager('OperationCenter');     /*   <--- change here */
+                    $CategoryIdData   = $moduleManager_DM->GetModuleCategoryID('data');
+                    $Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
+                    $RemoteServer=array();
+                    //$remServer=RemoteAccess_GetConfiguration();
+                    //foreach ($remServer as $Name => $UrlAddress)
+                    $remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+                    foreach ($remServer as $Name => $Server)
+                        {
+                        $UrlAddress=$Server["ADRESSE"];
+                        if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
+                            {                    
+                            if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
+                                {				
+                                $IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
+                                $RemoteServer[$Name]["Url"]=$UrlAddress;
+                                $RemoteServer[$Name]["Name"]=$Name;
+                                if (GetValue($IPS_UpTimeID)==0)
+                                    {
+                                    $RemoteServer[$Name]["Status"]=false;
+                                    }
+                                else
+                                    {
+                                    $RemoteServer[$Name]["Status"]=true;
+                                    }
+                                }    
+                            }
+                        if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
+                        }
+                    }
+                else
+                    {
+                    $remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+                    foreach ($remServer as $Name => $Server)
+                        {
+                        $UrlAddress=$Server["ADRESSE"];
+                        if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
+                            {                    
+                            if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
+                                {				
+                                $RemoteServer[$Name]["Url"]=$UrlAddress;
+                                $RemoteServer[$Name]["Name"]=$Name;
+                                $RemoteServer[$Name]["Status"]=true;
+                                }
+                            }
+                        if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
+                        }	
+                }
+
+        return($RemoteServer);
+        }
+
+    /*****************************************************************
+    *
+    * wandelt die Liste der remoteAccess_GetServerConfig  in das alte Format der tabelle RemoteAccess_GetConfiguration um
+    * Neuer Name , damit alte Funktionen keine Fehlermeldung liefern 
+    *
+    *****************************************************************************/
+    
+    function RemoteAccess_GetConfigurationNew()
+        {
+        $RemoteServer=array();
+        $remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+        foreach ($remServer as $Name => $Server)
+            {
+            $UrlAddress=$Server["ADRESSE"];
+            if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
+                {				
+                $RemoteServer[$Name]=$UrlAddress;
+                }
+            }	
+        return($RemoteServer);
+        }
+        
+    /******************************************************************/
+
+    function ReadTemperaturWerte()
+        {
+        
+        if (isset($installedModules["EvaluateHardware"])==true) 
+            {
+            IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+            }
+        //elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+        
+        $alleTempWerte="";
+        $Homematic = HomematicList();
+        foreach ($Homematic as $Key)
+            {
+            /* alle Homematic Temperaturwerte ausgeben */
+            if (isset($Key["COID"]["TEMPERATURE"])==true)
+                {
+                $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+                $alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                }
+            }
+
+        $FHT = FHTList();
+        foreach ($FHT as $Key)
+            {
+            /* alle FHT Temperaturwerte ausgeben */
+            if (isset($Key["COID"]["TemeratureVar"])==true)
+            {
+                $oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+                $alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                }
+            }
+        return ($alleTempWerte);
+        }
+
+    function ReadThermostatWerte()
+        {
+        $repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+
+        if (isset($installedModules["EvaluateHardware"])==true) 
+            {
+            IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+            }
+        //elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+        
+        $alleWerte="";
+
+        $Homematic = HomematicList();
+        $FS20= FS20List();
+        $FHT = FHTList();
+
+        $pad=50;
+        $alleWerte.="\n\nAktuelle Heizungswerte direkt aus den HW-Registern:\n\n";
+        $varname="SET_TEMPERATURE";
+        foreach ($Homematic as $Key)
+            {
+            /* Alle Homematic Stellwerte ausgeben */
+            if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
+                {
+                /* alle Stellwerte der Thermostate */
+                //print_r($Key);
+
+                $oid=(integer)$Key["COID"][$varname]["OID"];
+                $variabletyp=IPS_GetVariable($oid);
+                if ($variabletyp["VariableProfile"]!="")
+                    {
+                    $alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                    }
+                else
+                    {
+                    $alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                    }
+                }
+            }
+
+        $varname="SET_POINT_TEMPERATURE";
+        foreach ($Homematic as $Key)
+            {
+            /* Alle Homematic Stellwerte ausgeben */
+            if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
+                {
+                /* alle Stellwerte der Thermostate */
+                //print_r($Key);
+                $oid=(integer)$Key["COID"][$varname]["OID"];
+                $variabletyp=IPS_GetVariable($oid);
+                if ($variabletyp["VariableProfile"]!="")
+                    {
+                    $alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                    }
+                else
+                    {
+                    $alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                    }
+                }
+            }
+
+        foreach ($FHT as $Key)
+            {
+            /* alle FHT Temperaturwerte ausgeben */
+            if (isset($Key["COID"]["TargetTempVar"])==true)
+            {
+                $oid=(integer)$Key["COID"]["TargetTempVar"]["OID"];
+                $alleWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                }
+            }
+
+        return ($alleWerte);
+        }
+
+    function ReadAktuatorWerte()
+        {
+        $repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+        if (isset($installedModules["EvaluateHardware"])==true) 
+            {
+            IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+            }
+        //elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+        $componentHandling=new ComponentHandling();
+
+        $alleWerte="";
+        $alleWerte.="\n\nAktuelle Heizungs-Aktuatorenwerte direkt aus den HW-Registern:\n\n";
+        
+        if (function_exists('HomematicList')) $alleWerte.=$componentHandling->getComponent(HomematicList(),"TYPE_ACTUATOR","String");
+        if (function_exists('FHTList')) $alleWerte.=$componentHandling->getComponent(FHTList(),"TYPE_ACTUATOR","String");
+
+        return ($alleWerte);
+        }
+
+
+    /******************************************************************/
+
+    function startexec($mode="ms")
+        {
+        $time=hrtime(true);
+        switch ($mode)
+            {
+            case "ms":
+                $time=$time/1000000;
+                break;
+            case "us":
+                $time=$time/1000;
+                break;
+            case "s":
+                $time=$time/1000000000;
+                break;
+            default:
+                break;
+            }
+        return ($time);
+        }
+
+    function exectime($startexec,$mode=false)
+        {
+        $time=hrtime(true);
+        switch ($mode)
+            {
+            case "ms":
+                return (round($time/1000000-$startexec,0));
+                break;
+            case "us":
+                return (round($time/1000-$startexec,0));
+                break;
+            case "s":
+                return (round($time/1000000000-$startexec,3));
+                break;
+            default:
+                return (number_format((microtime(true)-$startexec),2));
+                break;
+            }        
+        }
+
+    /*****************************************************************
+    *
+    * hilfreiche Funktion wird in Stromheizung verwendet
+    * findet einen Variablennamen an verschiedenen Orten
+    *
+    */
+
+    function getVariableId($name, $switchCategoryId, $groupCategoryId=false, $categoryIdPrograms=false) 
+        {
+        if (is_array($switchCategoryId))
+            {
+            foreach ($switchCategoryId as $categoryId)
+                {
+                $childrenIds = IPS_GetChildrenIDs($categoryId);
+                foreach ($childrenIds as $childId) 
+                    {
+                    if (IPS_GetName($childId)==$name) 
+                        {
+                        return $childId;
+                        }
+                    }
+                }
+            }
+        elseif ($switchCategoryId !== false)
+            {
+            $childrenIds = IPS_GetChildrenIDs($switchCategoryId);
             foreach ($childrenIds as $childId) 
                 {
                 if (IPS_GetName($childId)==$name) 
@@ -2729,42 +2750,30 @@ function getVariableId($name, $switchCategoryId, $groupCategoryId=false, $catego
                     }
                 }
             }
-        }
-    elseif ($switchCategoryId !== false)
-        {
-        $childrenIds = IPS_GetChildrenIDs($switchCategoryId);
-        foreach ($childrenIds as $childId) 
+        elseif ($groupCategoryId !== false)
             {
-            if (IPS_GetName($childId)==$name) 
+            $childrenIds = IPS_GetChildrenIDs($groupCategoryId);
+            foreach ($childrenIds as $childId) 
                 {
-                return $childId;
+                if (IPS_GetName($childId)==$name) 
+                    {
+                    return $childId;
+                    }
                 }
             }
-        }
-    elseif ($groupCategoryId !== false)
-        {
-        $childrenIds = IPS_GetChildrenIDs($groupCategoryId);
-        foreach ($childrenIds as $childId) 
+        elseif ($categoryIdPrograms !== false)
             {
-            if (IPS_GetName($childId)==$name) 
+            $childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
+            foreach ($childrenIds as $childId) 
                 {
-                return $childId;
+                if (IPS_GetName($childId)==$name) 
+                    {
+                    return $childId;
+                    }
                 }
             }
+        else trigger_error("getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'");
         }
-    elseif ($categoryIdPrograms !== false)
-        {
-        $childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
-        foreach ($childrenIds as $childId) 
-            {
-            if (IPS_GetName($childId)==$name) 
-                {
-                return $childId;
-                }
-            }
-        }
-    else trigger_error("getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'");
-    }
 
 /**************************************************************************************************************************
  *
@@ -3319,6 +3328,7 @@ class ipsOps
  *
  *  Funktionen rund um das Disk Operating System
  *
+ *  ExecuteUserCommand, verwendet entweder IPSEXECUTE oder IPSEXECUTEEX, abhängig wie IPS gestartet wurde, als System user oder als Administrtor
  *  checkProcess, verwendt folgende private functions
  *      getProcessList
  *      getTaskList
@@ -3356,15 +3366,39 @@ class sysOps
 
     /*****************************************************************
      * von checkProcess verwendet
-     * die aktuell gestarteten Dienste werden erfasst
+     * die aktuell gestarteten Dienste werden mit wmic process list erfasst
      *
      */
 
-    private function getProcessList()
+    private function getProcessList($filename=false,$debug=false)
         {
-        $processList=array();
-        echo "Die aktuell gestarteten Dienste werden erfasst.\n";
-        $result=IPS_EXECUTE("c:/windows/system32/wbem/wmic.exe","process list", true, true);
+        //$debug=true;
+        $processList=array();        
+        $result="";
+        if ($filename)  
+            {
+            if (file_exists($filename))
+                {
+                $handle4=fopen($filename,"r");
+                $i=0;
+                echo "getProcessList, die aktuell gestarteten Programme werden aus der Datei $filename erfasst.\n";
+                while (($line=fgets($handle4)) !== false) 
+                    {
+                    $line=mb_convert_encoding($line,"UTF-8","UTF-16");
+                    if ($debug) echo str_pad($i,2)." | ".strlen($line)." | $line";
+                    $result .= $line;
+                    if ($i++>10000) break;
+                    }
+                fclose($handle4);
+                echo "    -> $i Zeilen eingelsen.\n";
+                }
+            else echo "getProcessList, die aktuell gestarteten Programme können NICHT aus der Datei $filename erfasst werden.\n";
+            }
+        else    
+            {
+            echo "getProcessList, die aktuell gestarteten Dienste werden erfasst.\n";
+            $result=IPS_EXECUTE("c:/windows/system32/wbem/wmic.exe","process list", true, true);
+            }
 
         $trans = array("\x0D\x0A\x0D\x0A" => "\x0D");
         $result = strtr($result,$trans);
@@ -3377,25 +3411,25 @@ class sysOps
         foreach ($ergebnis as &$resultvalue)
             {
             if ($firstLine==true)
-            {
-            $posCommandline=strpos($resultvalue,'CommandLine');
-            $posCSName=strpos($resultvalue,'CSName');
-            $posDescription=strpos($resultvalue,'Description');
-            $posExecutablePath=strpos($resultvalue,'ExecutablePath');
-            $posExecutionState=strpos($resultvalue,'ExecutionState');
-            $posHandle=strpos($resultvalue,'Handle');
-            $posHandleCount=strpos($resultvalue,'HandleCount');
-            $posInstallDate=strpos($resultvalue,'InstallDate');
-            //echo 'CommandLine    : '.$posCommandline."\n";
-            //echo 'CSName         : '.$posCSName."\n";
-            //echo 'Description    : '.$posDescription."\n";
-            //echo 'ExecutablePath : '.$posExecutablePath."\n";
-            //echo 'ExecutionState : '.$posExecutionState."\n";
-            //echo 'Handle         : '.$posHandle."\n";
-            //echo 'HandleCount    : '.$posHandleCount."\n";
-            //echo 'InstallDate    : '.$posInstallDate."\n";
-            $firstLine=false;
-            }
+                {
+                $posCommandline=strpos($resultvalue,'CommandLine');
+                $posCSName=strpos($resultvalue,'CSName');
+                $posDescription=strpos($resultvalue,'Description');
+                $posExecutablePath=strpos($resultvalue,'ExecutablePath');
+                $posExecutionState=strpos($resultvalue,'ExecutionState');
+                $posHandle=strpos($resultvalue,'Handle');
+                $posHandleCount=strpos($resultvalue,'HandleCount');
+                $posInstallDate=strpos($resultvalue,'InstallDate');
+                //echo 'CommandLine    : '.$posCommandline."\n";
+                //echo 'CSName         : '.$posCSName."\n";
+                //echo 'Description    : '.$posDescription."\n";
+                //echo 'ExecutablePath : '.$posExecutablePath."\n";
+                //echo 'ExecutionState : '.$posExecutionState."\n";
+                //echo 'Handle         : '.$posHandle."\n";
+                //echo 'HandleCount    : '.$posHandleCount."\n";
+                //echo 'InstallDate    : '.$posInstallDate."\n";
+                $firstLine=false;
+                }
             $value=$resultvalue;
             //echo $value;
             $resultvalue=array();
@@ -3410,27 +3444,32 @@ class sysOps
             }
         unset($resultvalue);
         //print_r($ergebnis);
-        
+        //echo "Insgesamt stehen ".sizeof($ergebnis)." Zeilen zur Bearbeitung an.\n";        
         $LineProcesses="";
         foreach ($ergebnis as $valueline)
             {
             //echo $valueline['Commandline'];
-        if ((substr($valueline['Commandline'],0,3)=="C:\\") or (substr($valueline['Commandline'],0,3)=='"C:')or (substr($valueline['Commandline'],0,3)=='C:/') or (substr($valueline['Commandline'],0,3)=='C:\\')  or (substr($valueline['Commandline'],0,3)=='"C:'))
-            {
-            //echo "****\n";
-            $process=$valueline['ExecutablePath'];
-            $pos=strrpos($process,'\\');
-            $process=substr($process,$pos+1,100);
-            if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe")or ($process=="SMSvcHost.exe")  or ($process=="WmiPrvSE.exe")  )
+            if ((substr($valueline['Commandline'],0,3)=="C:\\") or (substr($valueline['Commandline'],0,3)=='"C:')or (substr($valueline['Commandline'],0,3)=='C:/') or (substr($valueline['Commandline'],0,3)=='C:\\')  or (substr($valueline['Commandline'],0,3)=='"C:'))
                 {
-                }
-            else
-                {
-                //echo $process."  Pos : ".$pos."  \n";
+                //echo "****\n";
+                $process=$valueline['ExecutablePath'];
+                $pos=strrpos($process,'\\');
+                $process=substr($process,$pos+1,100);
+                if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe")or ($process=="SMSvcHost.exe")  or ($process=="WmiPrvSE.exe")  )
+                    {
+                    $processList[]=$process;                        
+                    }
+                else
+                    {
+                    //echo $process."  Pos : ".$pos."  \n";
                     //$processes.=$valueline['ExecutablePath']."\n";
                     $LineProcesses.=$process.",";
                     $processList[]=$process;
                     }
+                }
+            else 
+                {
+                //echo "\n";
                 }
             }
 
@@ -3440,14 +3479,36 @@ class sysOps
     /*****************************************************************
      * von checkProcess verwendet
      * die aktuell gestarteten Programme werden erfasst
-     *
+     * entweder Abfrage selbst, oder aus einem Filenamen
      */
 
-    private function getTaskList()
+    private function getTaskList($filename=false,$debug=false)
         {
+        //$debug=true;
         $taskList=array();
-        echo "Die aktuell gestarteten Programme werden erfasst.\n";
-        $result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","", true, true);
+        $result="";
+        if ($filename)  
+            {
+            if (file_exists($filename))
+                {
+                $handle4=fopen($filename,"r");
+                $i=0;
+                echo "getTaskList, die aktuell gestarteten Programme werden aus der Datei $filename erfasst.\n";
+                while (($line=fgets($handle4)) !== false) 
+                    {
+                    if ($debug) echo "$i | ".strlen($line)." | $line\n";
+                    $result .= $line;
+                    if ($i++>10000) break;
+                    }
+                fclose($handle4);
+                }
+            else echo "getTaskList, die aktuell gestarteten Programme können NICHT aus der Datei $filename erfasst werden.\n";
+            }
+        else    
+            {
+            echo "getTaskList, die aktuell gestarteten Programme werden erfasst.\n";
+            $result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","", true, true);
+            }
         //echo $result;
 
         //$trans = array("\x0D\x0A" => "\x0D");
@@ -3474,12 +3535,12 @@ class sysOps
                     $posPID=strpos($resultvalue,'PID')-5;
                     $posSitzung=strpos($resultvalue,'Sitzungsname');
                     $posSitzNr=strpos($resultvalue,'Sitz.-Nr.')-2;
-                $posSpeicher=strpos($resultvalue,'Speichernutzung');
+                    $posSpeicher=strpos($resultvalue,'Speichernutzung');
 
                     //echo 'Abbildname    : '.$posAbbild."\n";
                     //echo 'PID           : '.$posPID."\n";
                     //echo 'Sitzung       : '.$posSitzung."\n";
-                //echo 'SitzungsNr    : '.$posSitzNr."\n";
+                    //echo 'SitzungsNr    : '.$posSitzNr."\n";
                     //echo 'Speicher      : '.$posSpeicher."\n";
                     }
                 }
@@ -3496,66 +3557,163 @@ class sysOps
             $firstLine+=1;
             }
         unset($resultvalue);
-        //print_r($ergebnis);
+        // if ($debug) print_r($ergebnis);
 
         foreach ($ergebnis as $valueline)
             {
             if (isset($valueline['Abbildname'])==true)
                 {
                 $process=$valueline['Abbildname'];
-            //echo "**** ".$process."\n";
-            if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe") or ($process=="SMSvcHost.exe") or ($process=="WmiPrvSE.exe")  )
-                {
+                //echo "**** ".$process."\n";
+                if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe") or ($process=="SMSvcHost.exe") or ($process=="WmiPrvSE.exe")  )
+                    {
+                    $taskList[]=$process;                        // oder rausnehmen
                     }
                 else
-                {
+                    {
                     $taskList[]=$process;
                     }
                 }
             }
         return ($taskList);
         }
-    
+
+    /*****************************************************************
+     * von checkProcess verwendet
+     * die aktuell gestarteten Java Programme werden erfasst
+     *
+     */
+
+    private function getJavaList($filename=false,$debug=false)
+        {
+        $javas=array();
+        if ($filename)  
+            {
+            if (file_exists($filename))
+                {            
+                $handle4=fopen($filename,"r");
+                echo "Java Processe die aktiv sind : \n";
+                $javas=array();
+                while (($result=fgets($handle4)) !== false) 
+                    {
+                    echo $result;
+                    $java=explode(" ",$result);
+                    $javas[$java[0]]=trim($java[1]);
+                    }
+                fclose($handle4);
+                }
+            }
+        //print_R($javas);
+        return ($javas);
+        }
+
+    /***********************************************************************************
+     *
+     * eine Liste der aktuell aktiven Prozesse auslesen
+     * auch Java jdk berücksichtigen
+     *
+     */
+
+
+    public function getProcessListFull($filename=array())
+        {
+        print_R($filename);
+        $tasklist=array(); $process=array(); $javas=array();
+        if (isset($filename["Tasklist"])) 
+            {
+            if ($filename["Tasklist"] !== false) $tasklist = $this->getTaskList($filename["Tasklist"]);
+            }
+        else $tasklist = $this->getTaskList($filename["Tasklist"]);
+        echo "Tasklist ".sizeof($tasklist)." Zeilen gefunden.\n";
+        if (isset($filename["Processlist"])) 
+            {
+            if ($filename["Processlist"] !== false) $process = $this->getProcessList($filename["Processlist"]);        
+            }
+        else $process = $this->getProcessList();
+        echo "Processlist ".sizeof($process)." Zeilen gefunden.\n";
+        if ( (isset($filename["Javalist"])) && ($filename["Javalist"] !== false) ) $javas = $this->getJavaList($filename["Javalist"]);
+
+        $processes = array_merge($tasklist,$process,$javas);            
+        sort($processes,SORT_NATURAL | SORT_FLAG_CASE);
+       
+        $processesFound=array();
+        $prevProcess="";
+        foreach ($processes as $process)
+            {
+            if ($prevProcess != $process)
+                {
+                $prevProcess = $process;
+                $processesFound[]=$process;
+                }
+            }
+        return($processesFound);
+        }
+
     /***********************************************************************************
      *
      * eine Liste der aktuell aktiven Prozesse auslesen
      * die Prgramme die in processStart übergeben wurden, überprüfen ob sie enthalten sind
-     *
+     * wenn eine Prozessliste übergeben wird werden diese verwendet
      *
      */
 
-    public function checkProcess($processStart, $debug=false)
+    public function checkProcess($processStart, $processesFound=array(), $debug=false)
         {
-        $processes=$this->getProcessList();
-        sort($processes);
-        if ($debug) print_r($processes);
-
-        foreach ($processes as $process)
+        $init=true;
+        if (sizeof($processesFound)>0)
             {
-            foreach ($processStart as $key => &$start)
+            echo "checkprocess für ".sizeof($processesFound)." Prozesse aufgerufen:\n";                
+            foreach ($processesFound as $process)
                 {
-                if ( ($process==$key) || (strtoupper($process)==strtoupper($key)) )
+                foreach ($processStart as $key => &$start)
+                    {
+                    $length=strlen($key);
+                    $processEach=substr($process,0,$length);
+                    //if ($init) echo "$processEach versus $key\n";                        
+                    if ( ($processEach==$key) || (strtoupper($processEach)==strtoupper($key)) )
+                        {
+                        $start="Off";
+                        echo "   $process, start=off.\n"; 
+                        }
+                    }
+                $init=false;                    
+                unset($start);
+                }
+            }
+        else
+            {
+            $processes=$this->getProcessList();
+            sort($processes);
+            if ($debug) print_r($processes);
+
+            foreach ($processes as $process)
+                {
+                foreach ($processStart as $key => &$start)
+                    {
+                    if ( ($process==$key) || (strtoupper($process)==strtoupper($key)) )
+                        {
+                        $start="Off";
+                        }
+                    }
+                unset($start);
+                }
+            //print_r($processStart);
+
+            $processes=$this->getTaskList();
+            sort($processes);
+            if ($debug) print_r($processes);        
+            foreach ($processes as $process)
+                {
+                foreach ($processStart as $key => &$start)
+                    {
+                if ($process==$key)
                     {
                     $start="Off";
                     }
+                    }
+                unset($start);
                 }
-            unset($start);
-            }
-        //print_r($processStart);
-
-        $processes=$this->getTaskList();
-        sort($processes);
-        foreach ($processes as $process)
-            {
-            foreach ($processStart as $key => &$start)
-                {
-            if ($process==$key)
-                {
-                $start="Off";
-                }
-                }
-            unset($start);
-            }
+            }                
         return($processStart);
         }
 
@@ -3791,6 +3949,7 @@ class sysOps
  *
  * verschiedene Routinen im Zusammenhang mit File Operationen
  *
+ * getWorkDirectory
  * fileAvailable        eine Datei in einem Verzeichnis suchen, auch mit Wildcards
  * mkdirtree
  * readdirToArray       ein Verzeichnis samt Unterverzeichnisse einlesen und als Array zurückgeben
@@ -3830,15 +3989,15 @@ class dosOps
             $ls=$this->readdirToArray($verzeichnis);
             if ($ls===false) echo "********Fehler Verzeichnis $verzeichnis nicht vorhanden.\n";
             }
-/*        $verzeichnis="C:/scripts/";
-        $ls=$this->readdirToArray($verzeichnis);
-        if ($ls===false) 
-            {
-            echo "    UNIX System. Anderes privates Verzeichnis.\n";
-            $verzeichnis="/var/script/symcon/";
+        /*  $verzeichnis="C:/scripts/";
             $ls=$this->readdirToArray($verzeichnis);
-            if ($ls===false) echo "   Fehler, Docker Container Pfad nicht richtig konfiguriert.\n";
-            }       */
+            if ($ls===false) 
+                {
+                echo "    UNIX System. Anderes privates Verzeichnis.\n";
+                $verzeichnis="/var/script/symcon/";
+                $ls=$this->readdirToArray($verzeichnis);
+                if ($ls===false) echo "   Fehler, Docker Container Pfad nicht richtig konfiguriert.\n";
+                }       */
         return($verzeichnis);
         }
 
@@ -4283,6 +4442,18 @@ class dosOps
             }
         }
 
+   /* eine Datei löschen 
+    */
+
+    function deleteFile($fileName)
+        {
+        $result=false;
+        if (file_exists($fileName)) $result=unlink($fileName); 
+        return($result);
+        }
+ 
+
+
     }       // ende class
 
 
@@ -4327,6 +4498,176 @@ class fileOps
             $this->fileName = false;
             $this->newFileName = $fileName;
             }
+        }
+
+    /* ein Fixed Delimiter File einlesen und die erste Zeile als array übergeben. 
+     * Fixed Delimiter bedeuted dass die Spalten in der jeweiligen Zeile die selbe Länge haben 
+     * Es ist auch eine File Format Conversion eingebaut
+     */
+
+    function readFileFixedFirstline($convert="UTF-8",$debug=false)
+        {
+        $delimiter=array();
+        $i=0;
+        if ($this->fileName !== false) 
+            {
+            if (($handle = fopen($this->fileName, "r")) !== false)
+                {
+                if ($debug) echo "readFileFixedFirstline, bearbeite Datei ".$this->fileName." mit Format $convert:\n";
+                while (($result=fgets($handle)) !== false) 
+                    {
+                    if ($convert != "UTF-8") $result=mb_convert_encoding($result,"UTF-8",$convert);
+                    if ($i==0) 
+                        {
+                        $oldstart=false; $oldstring="";
+                        $tabs=explode(" ",$result);
+                        $countTabs=sizeof($tabs);               // sizeof trifft noc jede Menge Eintraeg mit einem blank                        
+                        if ($countTabs>1)
+                            {
+                            echo $result;                       
+                            $delimiter=array();
+                            foreach ($tabs as $index => $string)
+                                {
+                                if (($string == " ") || ($string == "")) 
+                                    {
+                                    //unset($tabs[$index]);
+                                    }
+                                else    
+                                    {
+                                    $string = trim($string);
+                                    //if ($debug) echo str_pad($index,2)." | \"$string\" \n";
+                                    if ($oldstart !== false) 
+                                        {
+                                        $delimiter[$oldstring]["Index"]=$oldstart;
+                                        $begin=$oldend;
+                                        $end=strpos($result,$string);
+                                        if ($end<$begin) $end=strpos($result," ".$string)+1;            // mit einem Blank erweitern
+                                        $delimiter[$oldstring]["Begin"]=$begin;
+                                        $delimiter[$oldstring]["End"]=$end;
+                                        $delimiter[$oldstring]["Length"]=$end-$begin;
+                                        if ($debug) echo str_pad($index,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";
+                                        $oldstart=$index;
+                                        $oldstring=$string;
+                                        $oldend=$end;
+                                        }
+                                    else 
+                                        {
+                                        $oldstart=$index;
+                                        $oldstring=$string;
+                                        $oldend=strpos($result,$oldstring);
+                                        } 
+                                    }       
+                                } 
+                            $delimiter[$oldstring]["Index"]=$oldstart;
+                            $begin=$oldend;
+                            $end=strlen($result);
+                            if ($end<$begin) $end=strpos($result," ".$string)+1;            // mit einem Blank erweitern
+                            $delimiter[$oldstring]["Begin"]=$begin;
+                            $delimiter[$oldstring]["End"]=$end;
+                            $delimiter[$oldstring]["Length"]=$end-$begin;
+                            if ($debug) echo str_pad($oldstart,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";                                
+                            //print_r($delimiter);
+                            echo "Zeile mit gefundene Spalten: ".sizeof($delimiter)."   \n";                             
+                            if (sizeof($delimiter)>1) $i++;
+                            }
+                        }
+                    else break;
+                    }
+                fclose($handle);
+                }
+            }
+        return($delimiter);
+        }
+
+    /* ein file mit fixed Delimiter einlesen 
+    *
+    *
+    */
+
+    function readFileFixed($convert = "UTF-8",$delimiter=array(),$maxline=10,$debug=false)
+        {
+        $resultArray=array();
+        $i=0;
+        if ($this->fileName !== false) 
+            {
+            if (($handle = fopen($this->fileName, "r")) !== false)
+                {
+                if ($debug) echo "readFileFixed, bearbeite Datei ".$this->fileName." mit Format $convert:\n";
+                while (($result=fgets($handle)) !== false) 
+                    {
+                    if ($convert != "UTF-8") $result=mb_convert_encoding($result,"UTF-8",$convert);
+                    if ($debug) echo $result;
+                    if ($i==0) 
+                        {
+                        $oldstart=false; $oldstring="";
+                        $tabs=explode(" ",$result);
+                        $countTabs=sizeof($tabs);               // count geht nach dem Index
+                        if ($countTabs>1)
+                            {
+                            if (sizeof($delimiter)<1)
+                                {
+                                //echo "Gefundene Spalten: ".$countTabs."   \n"; print_R($tabs);
+                                $delimiter=array();
+                                foreach ($tabs as $index => $string)
+                                    {
+                                    if (($string == " ") || ($string == "")) 
+                                        {
+                                        //unset($tabs[$index]);
+                                        }
+                                    else    
+                                        {
+                                        $string = trim($string);                                        
+                                        //if ($debug) echo str_pad($index,2)." | \"$string\" \n";
+                                        if ($oldstart !== false) 
+                                            {
+                                            $delimiter[$oldstring]["Index"]=$oldstart;
+                                            $begin=$oldend;
+                                            $end=strpos($result,$string);
+                                            if ($end<$begin) $end=strpos($result," ".$string)+1;            // mit einem Blank erweitern
+                                            $delimiter[$oldstring]["Begin"]=$begin;
+                                            $delimiter[$oldstring]["End"]=$end;
+                                            $delimiter[$oldstring]["Length"]=$end-$begin;
+                                            if ($debug) echo str_pad($index,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";                                            
+                                            $oldstart=$index;
+                                            $oldstring=$string;
+                                            $oldend=$end;
+                                            }
+                                        else 
+                                            {
+                                            $oldstart=$index;
+                                            $oldstring=$string;
+                                            $oldend=strpos($result,$oldstring);
+                                            } 
+                                        }       
+                                    } 
+                                $delimiter[$oldstring]["Index"]=$oldstart;
+                                $begin=$oldend;
+                                $end=strlen($result);
+                                if ($end<$begin) $end=strpos($result," ".$string)+1;            // mit einem Blank erweitern
+                                $delimiter[$oldstring]["Begin"]=$begin;
+                                $delimiter[$oldstring]["End"]=$end;
+                                $delimiter[$oldstring]["Length"]=$end-$begin;
+                                if ($debug) echo str_pad($oldstart,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";                                      
+                                }
+                            //print_r($delimiter);
+                            echo "Zeile mit insgesamt ".sizeof($delimiter)." gefundene Spalten. \n";                             
+                            if (sizeof($delimiter)>1) $i++;
+                            }
+                        }
+                    else 
+                        {
+                        /* der obere Teil ist gleich wie bei FirstLine, jetzt wird aber wirklich eingelesen */
+                        foreach($delimiter as $key => $entry)
+                            {
+                            $resultArray[$i][$key]=trim(substr($result,$entry["Begin"],$entry["Length"]));
+                            }
+                        if ($i++>$maxline) break;
+                        }
+                    }
+                fclose($handle);
+                }
+            }
+        return($resultArray);
         }
 
     /* ein csv File einlesen und die erste Zeile als array übergeben. 
@@ -4625,8 +4966,8 @@ class fileOps
  *
  * timerOps
  *
- * 
- *
+ * Timer Routinen von OperationCenter übernommen
+ * ohne fixe Zuordnung der scriptIDs
  * 
  *
  ******************************************************/
@@ -4638,6 +4979,53 @@ class timerOps
         {
 
         }
+
+	/* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen */
+
+	function CreateTimerHour($name,$stunde,$minute,$scriptID)
+		{
+		/* EventHandler Config regelmaessig bearbeiten */
+			
+		$timID=@IPS_GetEventIDByName($name, $scriptID);
+		if ($timID==false)
+			{
+			$timID = IPS_CreateEvent(1);
+			IPS_SetParent($timID, $scriptID);
+			IPS_SetName($timID, $name);
+			IPS_SetEventCyclic($timID,0,0,0,0,0,0);
+			IPS_SetEventCyclicTimeFrom($timID,$stunde,$minute,0);  /* immer um ss:xx */
+			IPS_SetEventActive($timID,true);
+			echo "   Timer Event ".$name." neu angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
+			}
+		else
+			{
+			echo "   Timer Event ".$name." bereits angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
+			IPS_SetEventActive($timID,true);
+			}
+		return($timID);
+		}
+
+	function CreateTimerSync($name,$sekunden,$scriptID)
+		{
+		$timID = @IPS_GetEventIDByName($name, $scriptID);
+		if ($timID==false)
+			{
+			$timID = IPS_CreateEvent(1);
+			IPS_SetParent($timID, $scriptID);
+			IPS_SetName($timID, $name);
+			IPS_SetEventCyclic($timID,0,1,0,0,1,$sekunden);      /* alle x sec */
+			//IPS_SetEventActive($tim2ID,true);
+			IPS_SetEventCyclicTimeFrom($timID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
+			echo "   Timer Event ".$name." neu angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
+			}
+		else
+			{
+			echo "   Timer Event ".$name." bereits angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
+			IPS_SetEventCyclicTimeFrom($timID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
+			//IPS_SetEventActive($tim2ID,true);
+			}
+		return($timID);
+		}	
 
     function setTimerPerMinute($name, $scriptIdActivity, $minutes)
         {
@@ -5907,6 +6295,12 @@ class WfcHandling
     		}
 	    //echo "\n";        
         }
+
+    public function get_WebfrontConfigID()
+        {
+        return($this->WebfrontConfigID);
+        }
+
 
     public function createLinkinWebfront($link,$name,$categoryId,$order)
         {

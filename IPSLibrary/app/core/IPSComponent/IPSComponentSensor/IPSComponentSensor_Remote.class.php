@@ -120,6 +120,11 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
          *
+         *			Luftdruck   => array('OnChange','IPSComponentSensor_Remote,44126,,BAROPRESSURE','IPSModuleSensor_Remote,',),
+		 *          Wirkenergie => array('OnChange','IPSComponentSensor_Remote,27977,,ENERGY','IPSModuleSensor_Remote',),
+         *
+         * in der Config IPSMessageHandler_GetEventConfiguration stehen bereits die Verweise auf einen besonderen Datentyp wie oben zB BAROPRESSURE oder ENERGY
+         *
          * Macht Sensor_Logging 
          * und ruft function updateMirorVariableValue ($oldvalue=GetValue($this->mirrorNameID); SetValue($this->mirrorNameID,$value); return($oldvalue);) auf.
 		 *
@@ -178,6 +183,9 @@
 	 * legt dazu zwei Kategorien im eigenen data Verzeichnis ab
 	 *
 	 * xxx_Auswertung und xxxx_Nachrichten
+     *
+     * bei Construct wird schon der Variabletyp mitgegeben, kann leer sein, unknown oder ein Typ
+     *			Luftdruck   => array('OnChange','IPSComponentSensor_Remote,44126,,BAROPRESSURE','IPSModuleSensor_Remote,',),
 	 *
 	 **************************/
 
@@ -205,6 +213,9 @@
          * im Motion Component wird auch der Wert mitgegeben
          *
          * in der übergeordneten class stehen dann alle do_init_xxxx und berechnen den $mirrorNameID
+         *
+         * ruft do_init in der Logging class mit optionalem Variablenamen und VariableTyp auf, Wert wird keiner übergeben
+         * danach ist $this->variableTypeReg definiert, wenn uns nichts dazu einfällt wird es "DATA"
          *
          */
 

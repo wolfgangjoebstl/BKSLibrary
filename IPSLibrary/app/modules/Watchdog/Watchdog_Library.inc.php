@@ -22,7 +22,13 @@
 /*********************************************************************************************/
 /*                                                                                           */
 /*                              Functions, Klassendefinitionen                               */
-/*                                                                                           */
+/*                                                                                           
+ * Zusammenfassung nutzvoller Funktionen in einer Klasse
+ *      set/getConfiguration
+ *      getActiveProcesses
+ *      checkAutostartProgram
+ *
+ */
 /*********************************************************************************************/
 /*********************************************************************************************
  *
@@ -67,11 +73,16 @@ class watchDogAutoStart
     {
 
     protected $configuration;
+    protected $sysOps,$dosOps;
 
     function __construct()
         {
         $this->configuration=$this->setConfiguration();    
+        $this->sysOps = new sysOps();    
+        $this->dosOps = new dosOps();    
         }
+
+    /* überprüfen der Konfiguration */
 
     function setConfiguration()
         {
@@ -84,11 +95,11 @@ class watchDogAutoStart
         configfileParser($configInput, $config, ["RemoteShutDown","REMOTESHUTDOWN","remoteshutdown"],"RemoteShutDown",null);                // null Index wird trotzdem übernommen
 
         configfileParser($configInput, $config, ["WatchDogDirectory","WATCHDOGDIRECTORY","watchdogdirectory"],"WatchDogDirectory","/process/");                // null Index wird trotzdem übernommen
-        $dosOps = new dosOps();
-        $systemDir     = $dosOps->getWorkDirectory(); 
+        $this->dosOps = new dosOps();
+        $systemDir     = $this->dosOps->getWorkDirectory(); 
         if (strpos($config["WatchDogDirectory"],"C:/Scripts/")===0) $config["WatchDogDirectory"]=substr($config["WatchDogDirectory"],10);      // Workaround für C:/Scripts"
-        $config["WatchDogDirectory"] = $dosOps->correctDirName($systemDir.$config["WatchDogDirectory"]);
-        $dosOps->mkdirtree($config["WatchDogDirectory"]);
+        $config["WatchDogDirectory"] = $this->dosOps->correctDirName($systemDir.$config["WatchDogDirectory"]);
+        $this->dosOps->mkdirtree($config["WatchDogDirectory"]);
 
         /* check Selenium */
         configfileParser($configSoftware["Software"], $configSelenium, ["Selenium","SELENIUM","selenium"],"Selenium",null);    
@@ -97,8 +108,8 @@ class watchDogAutoStart
         configfileParser($configSelenium["Selenium"], $config["Software"]["Selenium"], ["Autostart","AUTOSTART","autostart"],"Autostart","no");    
         configfileParser($configSelenium["Selenium"], $config["Software"]["Selenium"], ["Execute"],"Execute","selenium-server-standalone-3.141.59.jar");    
         if (strpos($config["Software"]["Selenium"]["Directory"],"C:/Scripts/")===0) $config["Software"]["Selenium"]["Directory"]=substr($config["Software"]["Selenium"]["Directory"],10);      // Workaround für C:/Scripts"
-        $config["Software"]["Selenium"]["Directory"] = $dosOps->correctDirName($systemDir.$config["Software"]["Selenium"]["Directory"]);
-        $dosOps->mkdirtree($config["Software"]["Selenium"]["Directory"]);
+        $config["Software"]["Selenium"]["Directory"] = $this->dosOps->correctDirName($systemDir.$config["Software"]["Selenium"]["Directory"]);
+        $this->dosOps->mkdirtree($config["Software"]["Selenium"]["Directory"]);
 
         /* check Firefox */
         configfileParser($configSoftware["Software"], $configFirefox, ["Firefox","FIREFOX","firefox"],"Firefox",null);    
@@ -130,7 +141,134 @@ class watchDogAutoStart
         return($this->configuration);
         }
 
+    /* getActiveProcesses
+     * die ganze Routine um rauszufinden welche Prozesse gerade laufen
+     *
+     */
 
+    function getActiveProcesses($debug=false)
+        {
+        $verzeichnis=$this->configuration["WatchDogDirectory"];
+        $unterverzeichnis="";
+        $dosOps = new dosOps();        
+        $sysOps = new sysOps();
+
+        // hier folgt eine ausführliche Auswertung der Prozesse, besonders der Java Applikationen wie Selenium
+        // ohne Selenium kann man diese Auswerung einfach weglassen
+
+        $dosOps->deleteFile($verzeichnis.$unterverzeichnis."username.txt");      // nur einen Eintrag pro Datei
+        $dosOps->deleteFile($verzeichnis.$unterverzeichnis."jps.txt");      // nur einen Eintrag pro Datei
+        $dosOps->deleteFile($verzeichnis.$unterverzeichnis."tasklist.txt");      // nur einen Eintrag pro Datei
+        $dosOps->deleteFile($verzeichnis.$unterverzeichnis."processlist.txt");      // nur einen Eintrag pro Datei
+
+        echo "Aufruf script $verzeichnis$unterverzeichnis"."read_username.bat.\n";
+        $handle1=fopen($verzeichnis.$unterverzeichnis."read_username.bat","r");
+        /*while (($result=fgets($handle1)) !== false) 
+            {
+            echo   "   $result";
+            }
+        fclose($handle1);
+        echo "-----------\n";   */
+        // ExecuteUserCommand($command,$path,$show=false,$wait=false,$session=-1)
+        //$sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);
+        IPS_ExecuteEx($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);  /* warten dass fertig, sonst wird alter Wert ausgelesen, aufpassen kann länger dauern */
+
+        $handle3=fopen($verzeichnis.$unterverzeichnis."username.txt","r");
+        echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);
+        fclose($handle3);
+
+        echo "Aufruf getProcessListFull:\n";
+        $file=array();
+        $file["Tasklist"] = $verzeichnis.$unterverzeichnis."tasklist.txt";
+        $file["Processlist"] = $verzeichnis.$unterverzeichnis."processlist.txt";
+        $file["Javalist"] = $verzeichnis.$unterverzeichnis."jps.txt";                           // wichtig für Selenium, darf nur einmal gestartet werden, sonst gibt es einen anderen unbekannten Port
+
+        $processes = $sysOps->getProcessListFull($file);
+
+        if ($debug) 
+            {
+            echo "Print Process and Programlist including Java processes:\n";
+            print_r($processes);
+            echo "-------------------------------------\n";
+            }
+
+        return($processes);
+        }
+
+    /* check ob die Prozesse laufen und ob sie entsprechend Konfiguration neu gestartet werden müssen 
+     * Es werden nur die folgenden Programme unterstützt:
+     *      Selenium
+     *      VMWare
+     *      iTunes
+     *      Firefox
+     */
+
+    function checkAutostartProgram($processesFound=array(),$debug=false)
+        {
+    	 /* feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden */
+        $processStart=array("selenium" => "On","vmplayer" => "On", "iTunes" => "On", "Firefox" => "On");
+        $processStart=$this->sysOps->checkProcess($processStart,$processesFound,$debug);        // true wenn Debug
+
+        /* Extra Checks für Zusatzprogramme */
+
+        if (strtoupper($this->configuration["Software"]["Selenium"]["Autostart"])=="YES" )
+            {
+            if ( ($this->dosOps->fileAvailable($this->configuration["Software"]["Selenium"]["Execute"],$this->configuration["Software"]["Selenium"]["Directory"])) == false )
+                {
+                echo "Keine Installation von Java Selenium vorhanden.\n";
+                $processStart["selenium"]="Off";
+                }
+            }
+        else
+            {
+            $processStart["selenium"]="Off";
+            }
+
+        if (strtoupper($this->configuration["Software"]["VMware"]["Autostart"])=="YES" )
+            {
+            if ( ($this->dosOps->fileAvailable("vmplayer.exe",$this->configuration["Software"]["VMware"]["Directory"])) == false )
+                {
+                echo "Keine Installation von VMware vorhanden.\n";
+                $processStart["vmplayer"]="Off";
+                }
+            if ( ($this->dosOps->fileAvailable("*.vmx",$this->configuration["Software"]["VMware"]["DirFiles"])) == false )
+                {
+                echo "Keine Images für VMPlayer vorhanden.\n";
+                $processStart["vmplayer"]="Off";
+                }
+            }
+        else
+            {
+            $processStart["vmplayer"]="Off";
+            }
+
+        if (strtoupper($this->configuration["Software"]["iTunes"]["Autostart"])=="YES" )
+            {
+            if ( ($this->dosOps->fileAvailable("iTunes.exe",$this->configuration["Software"]["iTunes"]["Directory"])) == false )
+                {
+                echo "Keine Installation von iTunes vorhanden.\n";
+                $processStart["iTunes"]="Off";
+                }
+            }
+        else
+            {
+            $processStart["iTunes"]="Off";
+            }
+
+        if (strtoupper($this->configuration["Software"]["Firefox"]["Autostart"])=="YES" )
+            {
+            if ( ($this->dosOps->fileAvailable("firefox.exe",$this->configuration["Software"]["Firefox"]["Directory"])) == false )
+                {
+                echo "Keine Installation von Firefox vorhanden.\n";
+                $processStart["Firefox"]="Off";
+                }
+            }
+        else
+            {
+            $processStart["Firefox"]="Off";
+            }
+        return ($processStart);            
+        }
 
     }
 

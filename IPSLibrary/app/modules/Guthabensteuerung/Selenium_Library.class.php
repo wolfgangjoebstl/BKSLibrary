@@ -27,7 +27,7 @@
  *      SeleniumIiyama
  *      SeleniumOperations
  *
- * SeleniumDrei sorgt für die individuellen States udn SeleniumOperations für die Statemachine
+ * SeleniumDrei sorgt für die individuellen States und SeleniumOperations für die Statemachine
  *
  */
 
@@ -56,7 +56,10 @@ require_once(IPS_GetKernelDir().'scripts\vendor\autoload.php');
  * check Url
  * maximize
  * pressButtonIf
- *
+ * sendKeysToFormIf
+ * getTextIf
+ * getHtmlIf
+ * quitHost
  *
  *
  */
@@ -899,8 +902,12 @@ class SeleniumIiyama extends SeleniumHandler
 
     }           // ende class
 
-/* Selenium Webdriver automatisisert bedienen
+/* Selenium Webdriver automatisiert bedienen
  * Aufruf mit automatedQuery
+ *
+ * andere Routinen für Selenium operations
+ *
+ *
  *
  */
 

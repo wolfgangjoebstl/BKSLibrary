@@ -887,12 +887,12 @@ class Logging
         $name="SensorMirror_".$this->variablename;
         //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float */
         //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,$this->variableProfile);       /* 2 float */
-        echo "    Sensor_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
+        echo "Sensor_Logging:do_init_sensor construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
         switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
             case "POWER":           /* Power Wirkleistung und Wirkenergie von AMIS, oder aus einem Homematic Register direkt */
             case "ENERGY":
-                echo "do_init_sensor, Create Mirror Register $name as Integer und ".$this->variableProfile."\n";
+                echo "   do_init_sensor, Create Mirror Register $name as Integer und ".$this->variableProfile."\n";
                 if ($this->variableProfile == "~Watt.3680")
                     {
                     /* Watt in kWatt umrechnen */
@@ -900,18 +900,19 @@ class Logging
                     }
                 elseif ( ($this->variableProfile <> "~Power") && ($this->variableProfile <> "~Electricity") )
                     {                
-                    echo "do_init_sensor Warning, Create Auswertung Register $name as Float with Profile ".$this->variableProfile." not supported.\n";
+                    echo "   do_init_sensor Warning, Create Auswertung Register $name as Float with Profile ".$this->variableProfile." not supported.\n";
                     IPSLogger_Wrn(__file__, "do_init_sensor, Create Auswertung Register $name as Float with Profile ".$this->variableProfile." not supported.");
                     }
                 //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,$this->variableProfile);       /* 1 integer für Typ CO2 */
                 break;
+            case "DATA":
             default:
                 /*echo "Create Mirror Register $name as ".$this->variableType." und ".$this->variableProfile."\n";
                 IPSLogger_Wrn(__file__, "do_init_sensor, Create Mirror Register $name as ".$this->variableType." with Profile ".$this->variableProfile.", TypeReg is ".$this->variableTypeReg.".");
                 $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       // 2 float für Default*/
                 break;
             }        
-        echo "Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";
+        echo "   Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";
         //IPSLogger_Wrn(__file__, "do_init_sensor, Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".");
         $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);             /* Selbe Werte wie geloggte Variable als Default übernehmen*/
 
@@ -1082,7 +1083,7 @@ class Logging
      *      variable        ID der variable false oder nicht angegeben dann wird nur die Statistik Funktion benötigt, aber keine Variablen geloggt
      *      variablename    wenn es besondere Vorstellungen dazu bereits gibt
      *      value           für debug Zwecke
-     *      typedev         als iPSComponen Parameter übergeben, trotzdem Datenbank befragen
+     *      typedev         als iPSComponent Parameter übergeben, trotzdem Datenbank befragen
      *
      * für die genaue Ermittlung des gewünschten Werte für variableTypeReg wird in dieser Reihenfolge abgefragt
      *      MySQL Datenbank
@@ -1119,7 +1120,8 @@ class Logging
                 if ($debug) 
                     {
                     echo "-------------------------------------------------------------------------\n";
-                    echo "Sensor_Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
+                    if ($typedev==Null) echo "Sensor_Logging::do_init für Variable $variable ohne Type aufgerufen.\n";
+                    else echo "Sensor_Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
                     }
                 $this->$variable=$variable;
                 $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
@@ -1132,10 +1134,12 @@ class Logging
                     {
                     if ($typedev==Null)
                         {
-                        if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs.\n";    
-                        if (IPS_GetVariable($variable)["VariableType"]==0) $this->variableTypeReg = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache
-                        else $this->variableTypeReg = "BRIGHTNESS";
-                        IPSLogger_Wrn(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs geht nicht mehr.");
+                        $vartype=IPS_GetVariable($variable)["VariableType"];
+                        if ($vartype==0) $this->variableTypeReg = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache, Boolean = MOTION
+                        elseif ($vartype==0) $this->variableTypeReg = "BRIGHTNESS";     // Integer ist Brightness
+                        else $this->variableTypeReg = "DATA";                           // Rest ist Data
+                        IPSLogger_Wrn(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs geht nicht mehr. Annahme:".$this->variableTypeReg);
+                        if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs : $vartype => ".$this->variableTypeReg."\n";    
                         }
                     else
                         {
@@ -1156,9 +1160,11 @@ class Logging
                                 $this->variableTypeReg = strtoupper($typedev);
                                 break;                                 
                             default: 
+                                $this->variableTypeReg = "DATA";
                                 echo "*****************\n";
                                 echo "do_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben -> Fehler.\n";    
-                                IPSLogger_Err(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben.");
+                                IPSLogger_Err(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben. Annahme:".$this->variableTypeReg);
+
                                 break;
                             }    
                         }
@@ -1196,6 +1202,7 @@ class Logging
                         $NachrichtenID = $this->do_init_humidity($variable, $variablename);
                         break;
                     case "POWER":
+                    case "DATA":            // neuer Default Typ
                     case "ENERGY":    
                         $NachrichtenID = $this->do_init_sensor($variable, $variablename);
                         break;

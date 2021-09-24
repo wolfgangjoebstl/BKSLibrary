@@ -3,7 +3,9 @@
 	/**@defgroup Watchdog
 	 *
 	 * Script um automatisch beim Hoch- und Runterfahren irgendetwas ein und auszuschalten
-	 *
+	 * Hier wird die Installation des Webfronts, der Variablen und der Timer übernommen.
+     * Wird immer nach einer Neuinstallation aufgerufen
+     *
 	 *
 	 * @file          Watchdog_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -35,7 +37,7 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Watchdog');
-	echo "\nWatchdog Version :        ".$ergebnis;
+	echo "\nWatchdog Version :        ".$ergebnis."\n";
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -90,7 +92,7 @@
     echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid." und Name : ".IPS_GetName($oid)."\n";
 
 	$config = IPS_GetConfiguration($oid);
-	echo "Konfiguration vorher: \n";
+	echo "Konfiguration EventControl für Startup/Shutdown IPS vorher: \n";
 	echo $config;
     echo "\n";
 
@@ -114,6 +116,10 @@
 	echo "Shutdown hat die ScriptID          ".$scriptIdShutdownWD." \n";
 	echo "Alive WatchDog hat die ScriptID    ".$scriptIdAliveWD." \n";
 	
+    /* verschiedene Hilfsklassen aktivieren */
+    $dosOps = new dosOps();
+    $timerOps = new timerOps();
+
 	IPS_SetConfiguration($oid, '{"ShutdownScript":'.$scriptIdStopWD.',"StartupScript":'.$scriptIdStartWD.'}');
 	IPS_ApplyChanges($oid);
 
@@ -125,8 +131,11 @@
 	*/
 
 	$config = IPS_GetConfiguration($oid);
-	echo "Konfiguration nachhher: \n";
+	echo "Konfiguration nachher: \n";
 	echo $config;
+
+    $ScriptCounterID = CreateVariableByName($CategoryIdData,"AutostartScriptCounter",1);
+    $ProcessStartID  = CreateVariableByName($CategoryIdData,"ProcessStart",3);                         // welche Prozesse müssen noch gestartet werden, json encoded
 
 	/******************************************************
 	 *
@@ -134,7 +143,7 @@
 	 *
 	 *************************************************************/
 	
-	echo "\nTimer programmieren :\n";
+	echo "\nTimer mit unterschiedlicher Startzeit programmieren :\n";
 
 	$tim2ID = @IPS_GetEventIDByName("KeepAlive", $scriptIdAliveWD);
 	if ($tim2ID==false)
@@ -163,7 +172,7 @@
 		IPS_SetName($tim3ID, "StartWD");
 		IPS_SetEventCyclic($tim3ID,0,1,0,0,1,60);      /* alle 60 sec */
   		//IPS_SetEventActive($tim3ID,true);
-		IPS_SetEventCyclicTimeFrom($tim3ID,0,3,0);  /* damit die Timer hintereinander ausgeführt werden */
+		IPS_SetEventCyclicTimeFrom($tim3ID,0,3,0);  /* damit die Timer hintereinander ausgeführt werden, hier Minute 3 */
 		IPS_SetEventCyclicTimeTo($tim3ID, 0, 0, 0);		
 		echo "   Timer Event StartWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		}
@@ -182,7 +191,7 @@
 		IPS_SetName($tim4ID, "StopWD");
 		IPS_SetEventCyclic($tim4ID,0,1,0,0,1,60);      /* alle 60 sec */
   		//IPS_SetEventActive($tim4ID,true);
-		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);  /* damit die Timer hintereinander ausgeführt werden */
+		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);  /* damit die Timer hintereinander ausgeführt werden, hier Minute 4 */
 		IPS_SetEventCyclicTimeTo($tim4ID, 0, 0, 0);
 		echo "   Timer Event StopWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		}
@@ -201,7 +210,7 @@
 		IPS_SetName($tim5ID, "ShutdownWD");
 		IPS_SetEventCyclic($tim5ID,0,1,0,0,1,60);      /* alle 60 sec */
   		//IPS_SetEventActive($tim5ID,true);
-		IPS_SetEventCyclicTimeFrom($tim5ID,0,5,0);  /* damit die Timer hintereinander ausgeführt werden */
+		IPS_SetEventCyclicTimeFrom($tim5ID,0,5,0);  /* damit die Timer hintereinander ausgeführt werden, hier Minute 5 */
 		IPS_SetEventCyclicTimeTo($tim5ID, 0, 0, 0);
 		echo "   Timer Event ShutdownWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		}
@@ -211,6 +220,8 @@
 		IPS_SetEventCyclicTimeFrom($tim5ID,0,5,0);  /* damit die Timer hintereinander ausgeführt werden */
 		IPS_SetEventCyclicTimeTo($tim5ID, 0, 0, 0);		
   		}
+
+    $timerOps->CreateTimerHour("MaintenanceWD",4,12,$scriptIdStartWD);
 
 	/******************************************************
 	 *
@@ -226,11 +237,16 @@
 	$verzeichnis=$configWD["WatchDogDirectory"];
 	$unterverzeichnis="";
 
+    echo "Write check username and active processes including java to script ".$verzeichnis.$unterverzeichnis."read_username.bat\n";
 	$handle2=fopen($verzeichnis.$unterverzeichnis."read_username.bat","w");
 	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
+    fwrite($handle2,'jps >>jps.txt'."\r\n");
+    fwrite($handle2,'wmic process list > processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
+    fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
 	//fwrite($handle2,"pause\r\n");
 	fclose($handle2);
 
+    echo "Write Shutdown procedure to script ".$verzeichnis.$unterverzeichnis."self_shutdown.bat\n";
 	$handle2=fopen($verzeichnis.$unterverzeichnis."self_shutdown.bat","w");
 	fwrite($handle2,'net stop IPSServer'."\r\n");
 	fwrite($handle2,'shutdown /s /t 150 /c "Es erfolgt ein Shutdown in 2 Minuten'."\r\n");
@@ -238,6 +254,7 @@
 	fwrite($handle2,'shutdown /a'."\r\n");
 	fclose($handle2);
 
+    echo "Write Self Restart procedure to script ".$verzeichnis.$unterverzeichnis."self_restart.bat\n";
 	$handle2=fopen($verzeichnis.$unterverzeichnis."self_restart.bat","w");
 	fwrite($handle2,'net stop IPSServer'."\r\n");
 	fwrite($handle2,'shutdown /r /t 150 /c "Es erfolgt ein Restart in 2 Minuten'."\r\n");
@@ -321,7 +338,10 @@
   		fwrite($handle2,'"'.$configWD["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWD["Software"]["VMware"]["DirFiles"].$configWD["Software"]["VMware"]["FileName"].'"'."\r\n");
 		fclose($handle2);
 		}
-        
+
+    echo "\n-----------------------------\nWatchdog Installation beendet.\n"
+
+
     /* Depreciated, kein IPSWatchdog mehr notwendig
 	if (isset($configWD["Software"]["Watchdog"]["Directory"])==true )
 	   {
