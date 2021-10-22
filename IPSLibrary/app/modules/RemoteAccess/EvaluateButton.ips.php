@@ -17,8 +17,8 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 *************************************************************/
 
 // max. Scriptlaufzeit definieren
-//ini_set('max_execution_time', 5000);
-set_time_limit(120);
+ini_set('max_execution_time', 120);
+//set_time_limit(120);                          // in IPSymcon 6 nicht mehr erlaubt
 $startexec=microtime(true);
 
 $donotregister=false; $i=0; $maxi=40;
@@ -124,7 +124,7 @@ echo "\n";
 	echo "******* Alle Homematic Taster ausgeben.     Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 	foreach ($Homematic as $Key)
 		{
-		set_time_limit(1200);		
+		//set_time_limit(1200);		
 		if ( (isset($Key["COID"]["INSTALL_TEST"])==true) and (isset($Key["COID"]["PRESS_SHORT"])==true) )
 			{
 			/* alle Kontakte */

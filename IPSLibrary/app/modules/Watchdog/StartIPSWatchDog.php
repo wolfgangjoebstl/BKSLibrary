@@ -209,7 +209,8 @@
                 echo "selenium.exe wird neu gestartet.\n";
                 IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
                 writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
-                IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
+                $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);                
+                //IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
                 $processStart["selenium"] == "Off";
                 SetValue($ProcessStartID,json_encode($processStart));
                 }

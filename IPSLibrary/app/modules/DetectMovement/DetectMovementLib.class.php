@@ -681,17 +681,19 @@
             $comment = "Letzter Befel war RegisterEvent mit VariableID ".$variableId." ".date("d.m.Y H:i:s");
             // Search Configuration
             $found = false;
+            $update=false;                      // nur wenn update true ist das File neu schreiben
             if ($variableId !== false)
                 {
                 if (array_key_exists($variableId, $configurationAuto))
                     {
-                    if ($debug) echo "   Eintrag in Konfiguration besteht fuer VariableID:".$variableId."\n";
+                    //if ($debug) echo "   Eintrag in Konfiguration besteht fuer VariableID:".$variableId."\n";
                     //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
                     $moduleParamsNew = explode(',', $moduleParams);
                     //print_r($moduleParamsNew);
                     $moduleClassNew  = $moduleParamsNew[0];
 
                     $params = $configurationAuto[$variableId];          /* die bisherige Konfiguration zB yayay => array('Topology','Arbeitszimmer','',)   */
+                    if ($debug) echo "   Eintrag in Konfiguration besteht fuer VariableID:".$variableId." : ".json_encode($params)." sind ".count($params)." Einträge.\n";
                     //print_r($params);
                     for ($i=0; $i<count($params); $i=$i+3)              /* immer Dreiergruppen, es könnten auch mehr als eine sein !!! */
                         {
@@ -709,7 +711,13 @@
                             $configurationAuto[$variableId][$i+2] = $moduleParams;
                             } */
                         $found = true;
-                        $configurationAuto[$variableId][$i]   = $eventType;
+                        if ($configurationAuto[$variableId][$i]   != $eventType ) 
+                            {
+                            $update=true;
+                            echo "   Event Type $eventType hat sich verändert.\n";
+                            $configurationAuto[$variableId][$i]   = $eventType;
+                            }
+                        //else if ($debug) echo "   Event Type $eventType hat sich nicht verändert.\n";
                         /* überschreiben oder doch nicht genauer machen. Neuer Wert ParameterBlock 1 ist componentParams, neuer Wert ParameterBlock 2 ist moduleParams
                         * Es werden nur nicht leere neue Parameter überschrieben. 
                         * Bei moduleParams wird auch in subarrays unterschieden - 
@@ -720,6 +728,7 @@
                             $moduleParamsCfgNewCount=count($moduleParamsNew);                       // wieviele subParameter hat der neue ParameterBlock 2
                             if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )          // haben sich die subParameter alt zu neu geändert, dann schreiben
                                 {
+                                echo "Update Module Params: $moduleParams. Anzahl hat sich geändert. ".count($moduleParamsCfg)." != $moduleParamsCfgNewCount\n";
                                 //print_r($moduleParamsCfg); print_r($moduleParamsNew);
                                 $moduleParamsArray=array();
                                 $result="";
@@ -729,9 +738,18 @@
                                     }
                                 foreach ($moduleParamsArray as $entry) $result .= $entry.",";
                                 //print_R($moduleParamsArray); echo "ModuleParams Wert wird gesetzt $entry.\n";
+                                $update=true;
                                 $configurationAuto[$variableId][$i+2] = substr($result,0,strlen($result));      // letztes Komma wieder wegnehmen
                                 } 
-                            else $configurationAuto[$variableId][$i+2] = $moduleParams; 
+                            else
+                                {
+                                if ($configurationAuto[$variableId][$i+2] != $moduleParams)
+                                    {
+                                    $update=true;
+                                    echo "Update Module Params: $moduleParams. Anzahl hat sich nicht geändert ($moduleParamsCfgNewCount) aber der Inhalt: ".$configurationAuto[$variableId][$i+2]." != $moduleParams\n";
+                                    $configurationAuto[$variableId][$i+2] = $moduleParams;
+                                    } 
+                                }
                             }
                         //echo "RegisterEvent $variableId : ".json_encode($configurationAuto[$variableId])."\n";
                         }
@@ -746,13 +764,14 @@
                     $configurationAuto[$variableId][] = $moduleParams;
                     }
 
-                $this->StoreEventConfiguration($configurationAuto,$comment);             // zweiter Parameter wäre jetzt ein Kommentar
+                if ($update) $this->StoreEventConfiguration($configurationAuto,$comment);             // zweiter Parameter wäre jetzt ein Kommentar
                 $this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
                 $debug=true;
                 $this->CreateMirrorRegister($variableId,$debug);
                 }
             else echo "Fehler DetectMovement RegisterEvent, variableId ist false.\n";
-        }
+            return ($update);
+            }
 
         /**
         * Print_EventConfigurationAuto Ausgabe der registrierten Events oder einer definierten Liste (Auswahl) als echo print
@@ -1811,7 +1830,24 @@
 		} /* ende class */	
 
     /*****************************************************************************************************************
-    *
+     *
+     *  alle Register mit einem Kontakthier vereinen
+     *  die Konfiguration wäre in DetectMovement_Configuration zu finden
+     *  in data/core/IPSComponent/ werden die Kategorien Kontakt-Auswertung und Kontakt-Nachrichten angelegt
+     *
+     * Nachdem es auch Mirror und Gruppen Register gibt, die wenn sich ein Wert ändert auch upgedatet werden, fasst diese Funktion zusammen.
+     * Mit der Config wird in scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php die Funktion IPSDetectTemperatureHandler_GetEventConfiguration upgedatet
+     *
+     *  __construct
+     *  Get_Configtype, Get_ConfigFileName
+     *  Get_EventConfigurationAuto
+     *  Set_EventConfigurationAuto
+     *  getMirrorRegister
+     *  CreateMirrorRegister
+     *  InitGroup 
+     *
+     * mit construct wird nur die Kategorie angelegt
+
     *
     *
     */
@@ -1903,6 +1939,7 @@
 		public function getMirrorRegister($variableId, $debug = false)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
+            if ($debug) echo "getMirrorRegister($variableId  Name Variable ist $variablename.\n";
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
             if ($mirrorID === false) echo "Fehler, getMirrorRegister for Contact $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             //else echo "getMirrorRegister for Temperature $variablename\n";
@@ -2830,7 +2867,7 @@
      *
      * in einem eigenen Bereich von EvaluateHardware werden die Register angelegt
      *
-	 * DetectDeviceHandler extends DetectHandler with
+	 * DetectDeviceHandler extends DetectHandlerTopolog with
 	 *	    __construct
 	 *	    Get_Configtyp, Get_ConfigFileName, Get_Topology		gemeinsame (self) Konfigurations Variablen
 	 * 	    Get_EventConfigurationAuto, Set_EventConfigurationAuto
@@ -2988,7 +3025,8 @@
             {
             foreach ($topologyPlusLinks as $place => $entry)
                 {
-                echo "$place (".$entry["Type"].") : ";
+                if (isset($entry["Type"])) echo "$place (".$entry["Type"].") : ";
+                else echo "$place : ";
                 $object=false; $instance=false;
                 if (isset($entry["OBJECT"])) 
                     {

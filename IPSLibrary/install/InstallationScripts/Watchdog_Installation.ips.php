@@ -239,10 +239,11 @@
 
     echo "Write check username and active processes including java to script ".$verzeichnis.$unterverzeichnis."read_username.bat\n";
 	$handle2=fopen($verzeichnis.$unterverzeichnis."read_username.bat","w");
+    fwrite($handle2,'cd '.$verzeichnis.$unterverzeichnis."\r\n");
 	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
-    fwrite($handle2,'jps >>jps.txt'."\r\n");
-    fwrite($handle2,'wmic process list > processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
+    fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
     fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
+    fwrite($handle2,'jps >>jps.txt'."\r\n");  
 	//fwrite($handle2,"pause\r\n");
 	fclose($handle2);
 

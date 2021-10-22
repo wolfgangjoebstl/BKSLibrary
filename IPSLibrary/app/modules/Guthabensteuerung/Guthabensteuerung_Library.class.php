@@ -1,12 +1,49 @@
 <?
 
-
+	/*
+     * This file is part of the IPSLibrary.
+     *
+     * The IPSLibrary is free software: you can redistribute it and/or modify
+     * it under the terms of the GNU General Public License as published
+     * by the Free Software Foundation, either version 3 of the License, or
+     * (at your option) any later version.
+     *
+     * The IPSLibrary is distributed in the hope that it will be useful,
+     * but WITHOUT ANY WARRANTY; without even the implied warranty of
+     * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     * GNU General Public License for more details.
+     *
+     * You should have received a copy of the GNU General Public License
+     * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+     */
+	 
     /*
      * Klasse GuthabenHandler
      *
      * sammelt alle Routinen für die Verwaltung von prepaid Guthaben
      * es ist noch nicht gelungen die Webseiten ohne iMacro auszulesen, deshalb wird mit einer alten Mozilla Firefox Version (47)
      * und iMacro (ebenfalls alt) weiterhin der Inhalt der Seiten gespeichert und nachträglich analysiert
+     *
+     *  __construct         drei Parameter zur Steuerung
+     *  getCategoryIdData
+     *  getCategoryIdSelenium
+     *  getConfiguration
+     *  setConfiguration
+     *  updateConfiguration
+     *  getContractsConfiguration
+     *  getPhoneNumberConfiguration
+     *  getGuthabenConfiguration
+     *  printAllContractsConfiguration
+     *  getSeleniumSessionID
+     *  setSeleniumHandler
+     *  getSeleniumWebDrivers
+     *  getSeleniumWebDriverConfig
+     *  extendPhoneNumberConfiguration
+     *  createVariableGuthaben
+     *  createVariableGuthabenNummer
+     *  getVariableGuthabenNummer
+     *  parsetxtfile
+     *  getfromFileorArray
      *
      *
      */
@@ -139,6 +176,16 @@
             $configuration["EXECUTE"]["SPEICHERN"]=$speichern;                
 	        return ($configuration);
 	        }
+
+        /* nur die Ausgabeoptionen updaten */
+
+        public function updateConfiguration($ausgeben,$ergebnisse,$speichern)
+	        {
+            $this->configuration["EXECUTE"]["AUSGEBEN"]=$ausgeben;
+            $this->configuration["EXECUTE"]["ERGEBNISSE"]=$ergebnisse;
+            $this->configuration["EXECUTE"]["SPEICHERN"]=$speichern; 
+            return($this->configuration);
+            }
 
         /* nur die SIM Karten Informationen ausgeben, zusaetztlich
          * nach einer bestimmten telefonnummer suchen und nur diese ausgeben
@@ -488,7 +535,12 @@
         function parsetxtfile($lookfor="",$verzeichnis=false,$filename=false,$type="file")
             {
             if ($lookfor == "") return (false);
-            if ( ($type == "file") && ($verzeichnis === false) ) $verzeichnis=$this->getGuthabenConfiguration()["iMacro"]["DownloadDirectory"];
+            if ( ($type == "file") && ($verzeichnis === false) ) 
+                {
+                $config=$this->getGuthabenConfiguration();
+                if (isset($config["iMacro"]["DownloadDirectory"])) $verzeichnis=$config["iMacro"]["DownloadDirectory"];
+                else return (false);
+                }
             $config=$this->getContractsConfiguration($lookfor);
             //print_r($config);
             $nummer=$config["Nummer"];
@@ -517,6 +569,7 @@
             $ausgeben   = $this->configuration["EXECUTE"]["AUSGEBEN"];
             $ergebnisse = $this->configuration["EXECUTE"]["ERGEBNISSE"];
             $speichern  = $this->configuration["EXECUTE"]["SPEICHERN"];
+            echo "parsetxtfile : Ausgeben $ausgeben Ergebnisse $ergebnisse Speichern $speichern \n";
 
             if ($type=="file") 
                 {
@@ -552,7 +605,7 @@
                     /********** zuerst den User ermitteln, steht hinter Willkommen 
                     *
                     */
-                    if ($ausgeben) echo $buffer;			// zeilenweise ausgeben
+                    if ($ausgeben) echo str_pad($line,3)."|".$buffer."\n";			// zeilenweise ausgeben
                     if(preg_match('/Willkommen/i',$buffer))
                         {
                         $pos=strpos($buffer,"kommen");
@@ -621,17 +674,21 @@
                                 }
                             }
                         }
+
+                    /* Trigger Guthaben */
+
                     if ( (preg_match('/Guthaben/i',$buffer)) && ($result5 !== "") )     // zweites Mal Guthaben ist der Tarif
                         {
                         if ($tarif1 == "")
                             {
-                            //echo "***Guthaben ein zweites Mal gefunden.\n";
+                            echo "***\"Guthaben\" gefunden.\n";
                             if  (($buffer2 = $this->getfromFileorArray($handle, $type, $line)) === false) break;
-                            if ($ausgeben) echo $buffer2;
+                            if ($ausgeben) echo "   |".$buffer2."\n";
                             if  (($buffer3 = $this->getfromFileorArray($handle, $type, $line)) === false) break;
-                            if ($ausgeben) echo $buffer3;
+                            if ($ausgeben) echo "   |".$buffer3."\n";
                             $tarif1=$buffer2." ".$buffer3;
                             if ($ergebnisse) echo "********* Tarif : ".$tarif1."\n";
+                            $buffer=""; //keine weitere Analyse mit $buffer == Guthaben
                             }
                         elseif ($ergebnisse) echo "********* bereits gefunden Tarif : \"".$tarif1."\"\n";
                         }
@@ -660,26 +717,29 @@
                     /********* dann das Datum der letzten Aufladung
                     *
                     *********************/
-                    if(preg_match('/Aufladung/i',$buffer))
+                    if (preg_match('/Aufladung/i',$buffer))
                         {
-                        $pos=strpos($buffer,"Aufladung:");
-                        if ($pos===false) $pos=strpos($buffer,"Aufladung");
-                        $Ende=strpos($buffer,"\n");
-                        if ($Ende===false) $Ende = strlen($buffer); 
-                        $length=($Ende-$pos-11);                       
-                        //echo "***Aufladung gefunden : hier ".$pos." Ende ist hier ".$Ende."  Substring ab ".($pos+11)." mit Länge $length\n";
-                        if ( ($pos!==false) && ($length>6) )      // pos kann auch 0 sein
+                        if ($result8=="")               // nur  wenn nicht schon einmal gefunden
                             {
-                            $result8=trim(substr($buffer,$pos+11,$length));
+                            $pos=strpos($buffer,"Aufladung:");
+                            if ($pos===false) $pos=strpos($buffer,"Aufladung");
+                            $Ende=strpos($buffer,"\n");
+                            if ($Ende===false) $Ende = strlen($buffer); 
+                            $length=($Ende-$pos-11);                       
+                            //echo "***Aufladung gefunden : hier ".$pos." Ende ist hier ".$Ende."  Substring ab ".($pos+11)." mit Länge $length\n";
+                            if ( ($pos!==false) && ($length>6) )      // pos kann auch 0 sein
+                                {
+                                $result8=trim(substr($buffer,$pos+11,$length));
+                                }
+                            if ( ($pos!==false) && ($length<=6) )               // naechste Zeile ausprobieren
+                                {
+                                //echo "neue Zeile laden";
+                                if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break;
+                                if ($ausgeben) echo $buffer;
+                                $result8=trim($buffer);     // str_replace of cr or lf
+                                }
+                            if ($ergebnisse) echo "********* letzte Aufladung am : ".$result8." \n";
                             }
-                        if ( ($pos!==false) && ($length<=6) )               // naechste Zeile ausprobieren
-                            {
-                            //echo "neue Zeile laden";
-                            if  (($buffer = $this->getfromFileorArray($handle, $type, $line)) === false) break;
-                            if ($ausgeben) echo $buffer;
-                            $result8=trim($buffer);     // str_replace of cr or lf
-                            }
-                        if ($ergebnisse) echo "********* letzte Aufladung am : ".$result8." \n";
                         }
 
                     /************ Ermittlung verfügbares Datenguthaben
@@ -692,23 +752,6 @@
                     *
                     *****************/
                     //if (preg_match('/MB/i',$buffer))
-                    if ( (preg_match('/MB/i',$buffer)) and ($result4g=="") and !preg_match('/MBit/i',$buffer) and !preg_match('/MB,/i',$buffer) 
-                            and !preg_match('/MMS/i',$buffer) and !preg_match('/Taktung/i',$buffer) )         /* verfügbares Datenvolumen, was gibt es grundsaetzlich, erstes MB, aber nicht MBit */
-                        {
-                        $pos=strpos($buffer,"MB");
-                        if ($pos)
-                            {
-                            $i=$pos-2;
-                            while ( (is_numeric($buffer[$i]) or ($buffer[$i]==".")) && ($i != 0)) $i--;
-                            //echo "***".$i."  ".$pos."\n";
-                            $result4g=trim(substr($buffer,$i,$pos-$i+2));
-                            if (preg_match('/Datenmenge/i',$result4g))
-                                {
-                                $result4g=substr($result4g,10,40);
-                                }
-                            if ($ergebnisse) echo "*********Datenmenge Ticket: ".$result4g."\n<br>";
-                            }
-                        }
 
                     if ( ( (preg_match('/MB verbr/i',$buffer)) or (preg_match('/MB gesamt verbr/i',$buffer)) or (preg_match('/MB verbraucht Inland/i',$buffer)) ) && 
                             !( (preg_match('/MB verbraucht EU/i',$buffer)) ) )
@@ -725,17 +768,36 @@
                         }
 
                     /************************** Ermittlung verfügbares Datenguthaben */
-                    if (preg_match('/MB frei/i',$buffer))                       /* verbrauchtes Datenvolumen, das heisst was habe ich noch */
+                    elseif (preg_match('/MB frei/i',$buffer))                       /* verbrauchtes Datenvolumen, das heisst was habe ich noch */
                         {
                         $result4f=trim(substr($buffer,$startdatenguthaben,200));
                         if ($ergebnisse) echo "*********frei : ".$result4f."\n<br>";
+                        }
+
+                    /* die spezielleren Abfragen vorher machen */                        
+                    elseif ( (preg_match('/MB/i',$buffer)) and ($result4g=="") and !preg_match('/MBit/i',$buffer) and !preg_match('/MB,/i',$buffer) 
+                            and !preg_match('/MMS/i',$buffer) and !preg_match('/Taktung/i',$buffer) )         /* verfügbares Datenvolumen, was gibt es grundsaetzlich, erstes MB, aber nicht MBit */
+                        {
+                        $pos=strpos($buffer,"MB");
+                        if ($pos)
+                            {
+                            $i=$pos-2;
+                            while ( (is_numeric($buffer[$i]) or ($buffer[$i]==".")) && ($i != 0)) $i--;
+                            //echo "***".$i."  ".$pos."\n";
+                            $result4g=trim(substr($buffer,$i,$pos-$i+2));
+                            if (preg_match('/Datenmenge/i',$result4g))
+                                {
+                                $result4g=substr($result4g,10,40);
+                                }
+                            if ($ergebnisse) echo "*********Datenmenge Ticket: ".$result4g."\n<br>";
+                            }
                         }
                         
                     if (preg_match('/unlimitiert/i',$buffer))
                         {
                         $result4g="99999 MB";
                         $result4f="99999 MB frei";
-                        $result4v=" 0 MB verbraucht";
+                        if ($result4v=="") $result4v=" 0 MB verbraucht";
                         $result4unlimited=true;
                         if ($ergebnisse) echo "*********frei : ".$result4f."\n<br>";
                         }
@@ -834,7 +896,7 @@
                     //if (preg_match('/Guthaben/i',$buffer)) echo "***Guthaben gefunden\n";
                     if (preg_match('/haben:/i',$buffer))
                         {
-                        //echo "***Guthaben: gefunden\n";
+                        echo "***\"Guthaben:\" gefunden\n";
                         $pos=strpos($buffer,"haben:");
                         $Ende=strpos($buffer,",");       /* Eurozeichen laesst sich nicht finden */
                         if ($pos!=false)
@@ -854,6 +916,7 @@
                         }
                     if ( (preg_match('/Guthaben/i',$buffer)) && !(preg_match('/Guthaben laden/i',$buffer)) )
                         {
+                        echo "***\"Guthaben\" gefunden\n";                            
                         //echo $buffer;
                         $pos=strpos($buffer,"haben:");
                         $Ende=strpos($buffer,",");       /* Eurozeichen laesst sich nicht finden */
@@ -935,9 +998,12 @@
                         
                     }  while ($nobreak); /* ende while buffer schleife */
                     
+                /* Ende Auslesung file, register/array, ein paar kosmetische Operationen */
 
                 if ($result1=="") $result1=$config["Tarif"];	// wenn der Username nicht gefunden wurde einen Ersatzwert nehmen
                 else $result1.=$tarif1;							// wenn Username gefunden wurde gleich auch mit dem ermittelten Tarif zusammanhaengen
+
+                if ($result7=="") $result7=$result7i;           // Abrechnungszeitraum mit - erkannt      
                 
                 //$ergebnis="User:".$result1." Nummer:".$result2." Status:".$result4." Wert vom:".$result3." Guthaben:".$result5."\n";
                 if ($ausgeben) echo "\n-----------------------------\n";
@@ -1008,6 +1074,7 @@
                 *
                 */
 
+                //echo "------->Analyse \"$result4g\" und \"$result4f\"\n";
                 if ($result4g!="")
                     {
                     if ($result4f!="")		
@@ -1020,12 +1087,14 @@
                         }
                     else
                         {
+                        //echo "------->Analyse \"$result4g\" und \"$result4v\"\n";
                         $Ende=strpos($result4g,"MB");
                         $ticketvolumen=(float)trim(substr($result4g,0,($Ende-1)));
                         $Ende=strpos($result4v,"MB");
                         $verbrauchtesvolumen=(float)trim(substr($result4v,0,($Ende-1)));
                         $restvolumen=$ticketvolumen-$verbrauchtesvolumen;
-                        $result6=" von ".$result4g." sind ".$restvolumen." MB frei";
+                        if ($restvolumen<0) $result6=" verbraucht sind ".$result4v." ";
+                        else $result6=" von ".$result4g." sind ".$restvolumen." MB frei";
                         }
                     if ($ergebnisse) echo "Restvolumen ist : ".$restvolumen." MB \n";
                     $bisherVolumen=GetValue($phone_Volume_ID);
@@ -1042,7 +1111,15 @@
                     }
                 else
                     {
-                    $result6=" verbraucht sind ".$result4f;
+                    if ($result4f!="")		
+                        {    // noch freies Datenvolumen (Restvolumen) wurde angegeben                        
+                        $result6=" verfügbar sind ".$result4f;
+                        }
+                    elseif ($result4v!="")		
+                        {    // noch freies Datenvolumen (Restvolumen) wurde angegeben                        
+                        $result6=" verbraucht sind ".$result4v;
+                        }
+                    else $result6="";
                     }	
                 if ($speichern) 
                     {
@@ -1056,17 +1133,19 @@
                 * unterscheiden zwischen postpaid und prepaid: postpaid hat fixe Abrechnungsperiode, prepaid wenn aktiv eine Gültigkeitsdauer bis
                 *
                 *************************************/
+
                 //echo $result1.":".$result6."bis:".$result7.".\n";
-                if ($postpaid==true)
+                if ($postpaid==true) /* postpaid tarif, extra anmerken */
                     {
+                    if ($result5 != "") $result5=" Rechnung:".$result5." Euro";
                     if ($result6=="")
                         {
-                        $ergebnis=$nummer." ".str_pad("(".$result1.")",30)."  Rechnung:".$result5." Euro";
+                        $ergebnis=$nummer." ".str_pad("(".$result1.")",30)." Postpaid ".$result5;
                         }
                     else
                         {
-                        if ($result4unlimited) $ergebnis=$nummer." ".str_pad("(".$result1.")",30)." Unlimitiert, Verbraucht : ".$result4v." Rechnung:".$result5." Euro";
-                        else $ergebnis=$nummer." ".str_pad("(".$result1.")",30)." ".$result6." bis ".$result7." Rechnung:".$result5." Euro";
+                        if ($result4unlimited) $ergebnis=$nummer." ".str_pad("(".$result1.")",30)." Postpaid Unlimitiert, Verbraucht : ".$result4v.$result5;
+                        else $ergebnis=$nummer." ".str_pad("(".$result1.")",30)." Postpaid ".$result6." bis ".$result7.$result5;
                         }
                     }
                 else   /* prepaid tarif */
@@ -1074,7 +1153,21 @@
                     //echo "Prepaid : ".$nummer."  ".$result7."\n";
                     if ($result6=="")
                         {
-                        $ergebnis=$nummer." ".str_pad("(".$result1.")",30)."  Guthaben:".$result5." Euro";
+                        if ($result7=="")  // Nutzungszeit abgelaufen
+                            {                            
+                            $ergebnis=$nummer." ".str_pad("(".$result1.")",30)."  Guthaben:".$result5." Euro";
+                            }
+                        else
+                            {
+                            if ($result8=="")
+                                {
+                                $ergebnis=$nummer." ".str_pad("(".$result1.")",30)." gültig bis ".$result7." Guthaben:".$result5." Euro";                                
+                                }
+                            else 
+                                {                                
+                                $ergebnis=$nummer." ".str_pad("(".$result1.")",30)." Letzte Aufladung ".$result8.", gültig bis ".$result7." Guthaben:".$result5." Euro";                                
+                                }
+                            }
                         }
                     else
                         {
@@ -1111,6 +1204,11 @@
             SetValue($phone_Summ_ID,$ergebnis);
             return $ergebnis;
             }
+
+        /* der selbe Text parser soll für Dateien und Register funktionieren 
+         * wenn type file ist dann wird einfach die nächste Zeile aus dem File eingelesen
+         * sonst geht man davon aus dass $handle ein Array ist und line der Index dafür
+         */
 
         function getfromFileorArray($handle, $type, &$line)
             {

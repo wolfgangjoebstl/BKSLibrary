@@ -1091,7 +1091,7 @@ class SNMP_OperationCenter
 
 	public function findSNMPModul($findlibrary="Babenschneider Symcon Modules",$findname="IPSSNMP",$IPAdresse="default",$localDebug=false)
 		{
-		$localDebug=true;
+		$localDebug=false;
 		if (($this->debug) && $localDebug) 
             {
             echo "Übersicht der verwendeten Bibliotheken, suche \"$findlibrary\", markiere mit **:\n";

@@ -19,7 +19,7 @@
 
 	// max. Scriptlaufzeit definieren
 	ini_set('max_execution_time', 2000);    /* sollte man am Ende wieder zurückstellen, gilt global */
-	set_time_limit(120);
+	//set_time_limit(120);
 	$startexec=microtime(true);
 
 	/***************** INSTALLATION **************/

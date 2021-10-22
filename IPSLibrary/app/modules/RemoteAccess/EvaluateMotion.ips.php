@@ -37,7 +37,8 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
   *************************************************************/
 
 // max. Scriptlaufzeit definieren
-set_time_limit(120);
+ini_set('max_execution_time', 120);
+//set_time_limit(120);
 $startexec=microtime(true);
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -163,7 +164,7 @@ echo "\n";
         *
         */
 
-        set_time_limit(120);
+        //set_time_limit(120);
         $TypeFS20=RemoteAccess_TypeFS20();
 
         foreach ($FS20 as $Key)
@@ -227,7 +228,7 @@ echo "\n";
     *  IPCams
     *
     */
-	set_time_limit(120);
+	//set_time_limit(120);
 
     echo "\n";
     echo "---------------------------------------------------------------\n";

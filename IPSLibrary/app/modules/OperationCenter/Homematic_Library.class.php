@@ -98,7 +98,7 @@ class Homematic_OperationCenter
 				if ($variableId!==false) 
 					{
 					usleep(100000);
-					set_time_limit(HM_TIMEOUT_REFRESH);
+					//set_time_limit(HM_TIMEOUT_REFRESH);
 					$error1=$error1 && @HM_RequestStatus($instanceId, 'RSSI_DEVICE');
 					}
 				else $error2=false;	
@@ -106,7 +106,7 @@ class Homematic_OperationCenter
 				if ($variableId!==false) 
 					{
 					usleep(100000);
-					set_time_limit(HM_TIMEOUT_REFRESH);
+					//set_time_limit(HM_TIMEOUT_REFRESH);
 					$error1=$error1 && @HM_RequestStatus($instanceId, 'RSSI_DEVICE');
 					}
 				else $error2=false;					
@@ -230,7 +230,7 @@ class Homematic_OperationCenter
 			foreach ($instanceIdList as $instanceId) {
 				$variableId = @IPS_GetVariableIDByName('STATE', $instanceId);
 				if ($variableId!==false) {
-					set_time_limit(HM_TIMEOUT_REFRESH);
+					//set_time_limit(HM_TIMEOUT_REFRESH);
 					HM_RequestStatus($instanceId, 'STATE');
 				}
 				//$variableId = @IPS_GetVariableIDByName('LEVEL', $instanceId);

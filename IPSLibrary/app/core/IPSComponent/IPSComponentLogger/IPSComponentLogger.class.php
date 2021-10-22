@@ -1214,7 +1214,7 @@ class Logging
                         if ($this->variableTypeReg != "") 
                             {
                             echo "Fehler, do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,$typedev,...)\n";
-                            IPSLogger_Err(__file__, "Logging::do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen.");
+                            IPSLogger_Err(__file__, "Logging::do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,$typedev,...)");
                             //$NachrichtenID=false;
                             }
                         break;

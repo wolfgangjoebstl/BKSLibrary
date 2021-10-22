@@ -127,7 +127,15 @@
         }
 
     $phoneID=$guthabenHandler->getPhoneNumberConfiguration();
-    $guthabenHandler->extendPhoneNumberConfiguration($phoneID,$seleniumOperations->getCategory("DREI"));            // phoneID is return parameter    
+    switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+        {
+        case "IMACRO":
+            break;
+        case "SELENIUM":        
+            $guthabenHandler->extendPhoneNumberConfiguration($phoneID,$seleniumOperations->getCategory("DREI"));            // phoneID is return parameter, erweitert um  [LastUpdated] und [OID]   
+            break;
+        }
+
     $maxcount=count($phoneID);
 
 
@@ -176,7 +184,9 @@ if ($_IPS['SENDER']=="TimerEvent")
                      case "SELENIUM":
                         $config["DREI"]["CONFIG"]["Username"]=$phoneID[$ScriptCounter]["Nummer"];          // von 0 bis maxcount-1 durchgehen
                         $config["DREI"]["CONFIG"]["Password"]=$phoneID[$ScriptCounter]["Password"];
-                        $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug         
+                        $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug      
+                        $note="Abfrage war um ".date("d.m.Y H:i:s")." für ".$phoneID[($ScriptCounter)]["Nummer"];
+                        SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	                           
                         break;
                     default:
                         break;

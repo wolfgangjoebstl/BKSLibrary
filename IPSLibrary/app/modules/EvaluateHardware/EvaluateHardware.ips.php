@@ -112,6 +112,80 @@ IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config:
         //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
         $homematicErrors = $DeviceManager->HomematicFehlermeldungen();
         echo "$homematicErrors\n";
+
+        $arrHM_Errors = $DeviceManager->HomematicFehlermeldungen(true);         // true Ausgabe als MariaDB freundliches Array
+        echo "Aktuelle Homematic Fehlermeldungen, insgesamt ".sizeof($arrHM_Errors).":\n";
+        print_r($arrHM_Errors);
+
+        /* für eine OID die DeviceID herausfinden. es gibt wie bei AuditTrail einen Eintrag, mit EventId, Datum/Zeitstempel, NameOfIndex, IndexId, Event Description, EventShort 
+         *
+         */
+        IPSUtils_Include ('EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // deviceList
+
+        $storedHM_Errors=array(); $storedError_Log=array();
+        if (function_exists("get_DeviceErrorStatus")) $storedHM_Errors = get_DeviceErrorStatus();
+        if (function_exists("get_DeviceErrorLog")) $storedError_Log = get_DeviceErrorLog();
+
+        $newHM_Errors = array();
+        $today = time();
+
+        echo "Unterschied zu den gespeicherten Homematic Fehlermeldungen, insgesamt ".sizeof($storedHM_Errors).":\n";
+        //print_R($storedHM_Errors);        
+        foreach ($arrHM_Errors as $oid=>$entry)
+            {
+            if (isset($storedHM_Errors[$oid]))          // war vorher auch schon da
+                {
+                if ($storedHM_Errors[$oid]["ErrorMessage"]==$arrHM_Errors[$oid]["ErrorMessage"]) unset($storedHM_Errors[$oid]);
+                } 
+            else
+                {
+                $newHM_Errors[$oid] = $arrHM_Errors[$oid];      // kommt neu hinzu
+                }
+            }
+
+        $i=0; $storedError_Log=array();
+        echo "Diese Meldungen sind weggefallen, insgesamt ".sizeof($storedHM_Errors).":\n";
+        print_R($storedHM_Errors);
+        foreach ($storedHM_Errors as $oid=>$entry)
+            {
+            $storedError_Log[date ("YmdHis",($today+$i))]["OID"]=$oid;
+            $storedError_Log[date ("YmdHis",$today+$i)]["Message"]=$entry["ErrorMessage"];
+            $storedError_Log[date ("YmdHis",$today+$i)]["State"]="DELETE";
+            $i++;
+            }
+        echo "Diese Meldungen sind neu dazugekommen, insgesamt ".sizeof($newHM_Errors).":\n";
+        print_R($newHM_Errors);
+        foreach ($newHM_Errors as $oid=>$entry)
+            {
+            $storedError_Log[date ("YmdHis",$today+$i)]["OID"]=$oid;
+            $storedError_Log[date ("YmdHis",$today+$i)]["Message"]=$entry["ErrorMessage"];
+            $storedError_Log[date ("YmdHis",$today+$i)]["State"]="ADD";
+            $i++;
+            }  
+        print_R($storedError_Log);      
+
+        $statusDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
+        $statusDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
+        $statusDevices     .= " *  \n";
+        $statusDevices     .= " * Please do not edit, file will be overwritten on a regular base.     \n";
+        $statusDevices     .= " *  \n";
+        $statusDevices     .= " */    \n\n";
+        $statusDevices .= "function get_DeviceErrorStatus() { return ";
+        $ipsOps->serializeArrayAsPhp($arrHM_Errors, $statusDevices);        // gateway array in das include File schreiben
+        $statusDevices .= ';}'."\n\n";        
+        $statusDevices .= "function get_DeviceErrorLog() { return ";
+        $ipsOps->serializeArrayAsPhp($storedError_Log, $statusDevices);        // gateway array in das include File schreiben
+        $statusDevices .= ';}'."\n\n";        
+        $statusDevices .= "\n".'?>';
+        $filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_DeviceErrorLog.inc.php';
+        //if (false)      // kein Update der Datei
+            {
+            if (!file_put_contents($filename, $statusDevices)) 
+                {
+                throw new Exception('Create File '.$filename.' failed!');
+                } 
+            }
+
         //echo "  Homematic Serialnummern erfassen:\n";
         $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
         }

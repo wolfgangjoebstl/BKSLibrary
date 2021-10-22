@@ -38,12 +38,13 @@
     ********************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-    //$startexec=microtime(true);             /* Laufzeitmessung */
-    $startexec=startexec("s");              /* Laufzeitmessung, benötigt AllgemeineDefinitionen */
+	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
-
-	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
-
+    // max. Scriptlaufzeit definieren
+    ini_set('max_execution_time', 30);
+    $startexec=microtime(true);    
+    echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 30 Sek \n";
+	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
@@ -74,12 +75,14 @@
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
     $dosOps = new dosOps();
+    $ipsOps = new ipsOps();    
+	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
 
     /*******************************
-    *
-    * Basic-Init
-    *
-    ********************************/
+     *
+     * Basic-Init
+     *
+     ********************************/
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -90,10 +93,10 @@
     SetValue($loggingConf,false);         // false no logg, true logg all, OID value log OID
 
     /*******************************
-    *
-    * Install von anderen Modulen zuerst
-    *
-    ********************************/
+     *
+     * Install von anderen Modulen zuerst
+     *
+     ********************************/
 
 	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
 	if (isset ($installedModules["EvaluateHardware"])) 
@@ -203,9 +206,17 @@
     *
     ********************************/
 			
-	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
+    echo "\nKonfiguration für das neue Webfront des CustomComponent auslesen :\n";        
+    $configWFront=$ipsOps->configWebfront($moduleManager,false);     // wenn true mit debug Funktion
+    print_R($configWFront);
 
+    /* extra abfragen, kann auch aus dem Array abgeleitet werden, redundante register, kann man später entfernen  */
+	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+    $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
+
 	if ($WFC10_Enabled==true)
 		{
 		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
@@ -235,7 +246,7 @@
 
 	echo "\n";
 
-	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+
 	if ($WFC10User_Enabled==true)
 		{
 		$WFC10User_ConfigId       = $WebfrontConfigID["User"];		
@@ -263,7 +274,7 @@
 		echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
 		}
       
-	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+
 	if ($Mobile_Enabled==true)
 	   	{
 		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
@@ -271,7 +282,7 @@
 		echo "  Path          : ".$Mobile_Path."\n";
 		}
 		
-	$Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
+
 	if ($Retro_Enabled==true)
 	   	{
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
@@ -279,6 +290,80 @@
 		echo "  Path          : ".$Retro_Path."\n";		
 		}
 	
+    /**************************************************
+     *
+     * Netatmo wird hier überwacht, Status HTML von jedem Netatmo Gateway hier einbringen
+     * wird im System Tab angezegt. Es gibt dafür ein eigenes SubTab. Hardcoded, verwendet kein .ini
+     *
+     */
+
+    echo "Status Evaluierung, check ob Netatmos Modules vorhanden sind:\n";
+    $guid = "{1023DB4A-D491-A0D5-17CD-380D3578D0FA}";  // Netatmo Gerät 
+    $instances = $modulhandling->getInstances($guid);
+    if (sizeof($instances)>0)                                   // es gibt Netatmo Geräte
+        {
+        /* zuerst aus dem ModulManager die Konfig von IPSModuleManagerGUI abrufen */
+        $configWF=array();
+        $moduleManagerGUI = new IPSModuleManager('IPSModuleManagerGUI',$repository);
+        $configWFrontGUI=$ipsOps->configWebfront($moduleManagerGUI,false);     // wenn true mit debug Funktion
+        $tabPaneParent="roottp";                        // Default Wert
+        if (isset($configWFrontGUI["Administrator"]))
+            {
+            $tabPaneParent=$configWFrontGUI["Administrator"]["TabPaneItem"];
+            echo "  Netatmo Module Überblick im Administrator Webfront $tabPaneParent abspeichern.\n";
+            //print_r($configWFrontGUI["Administrator"]);   
+
+            /* es gibt kein Module mit Netatmo ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
+            $configWF["Enabled"]=true;
+            $configWF["Path"]="Visualization.WebFront.Administrator.Netatmo";
+            $configWF["ConfigId"]=$WebfrontConfigID["Administrator"];              
+            $configWF["TabPaneParent"]=$tabPaneParent;
+            $configWF["TabPaneItem"]="Netatmo"; 
+            $configWF["TabPaneOrder"]=1000;                                          
+            }
+
+        /* Netatmo Stationen auswerten */
+
+        $station=array();
+        foreach ($instances as $id => $instance)
+            {
+            $objectType=IPS_GetObject($instance)["ObjectType"];
+            if ($objectType==1)
+                {
+                $config=IPS_GetConfiguration($instance);
+                $configArray=json_decode($config,true);
+                if ($configArray["module_type"]=="Station") $station[$configArray["station_id"]]=$instance;
+                }
+            }        
+        echo "   Diese Stationen haben wir gefunden:\n";
+        $webfront_links=array(); $stationKey="Netatmo";
+        foreach ($station as $stationId => $oidStation)
+            {
+            $stationName = IPS_GetName($oidStation);                
+            echo "      $stationName\n";
+            $webfront_links[$stationKey]["Auswertung"][$oidStation]["NAME"]=$stationName;
+            $webfront_links[$stationKey]["Auswertung"][$oidStation]["ORDER"]=10;
+            $childs=IPS_GetChildrenIDs($oidStation);
+            //print_R($childs);
+            foreach ($childs as $child)
+                {
+                $childName=IPS_GetName($child);
+                if ($childName=="Status der Station und der Module")
+                    {
+                    $webfront_links[$stationKey]["Auswertung"][$oidStation]["GROUP"][$child]["NAME"]=$childName;
+                    $webfront_links[$stationKey]["Auswertung"][$oidStation]["GROUP"][$child]["ORDER"]=10;
+                    }
+                //echo "      $childName\n";
+                }
+            }
+        print_r($webfront_links);
+        echo "Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+
+        echo "\n\n===================================================================================================\n";
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
+
+        }
+
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * Variablen Profile für lokale Darstellung anlegen, sind die selben wie bei Remote Access
@@ -333,6 +418,7 @@
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * WebFront Variablen für Darstellung evaluieren
+     * webfront_links für HouseTP(A/U) erstellen
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 		
@@ -382,12 +468,55 @@
             }
         }
 
+
+    /* ----------------------------------------------------------------------------------------------------------------------------
+        * WebFront Installation von Administrator und User wenn im ini gewünscht
+        *    Installation erfolgt im roottp.HouseTPA.AccessTPA.
+        *
+        * ---------------------------------------------------------------------------------------------------------------------------- */
+
+    if (isset($configWFront["Administrator"]))
+        {
+		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+		echo "====================================================================================\n";
+		echo "Webportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in Kategorie ". $categoryId_AdminWebFront." (".IPS_GetName($categoryId_AdminWebFront).")\n";
+        
+		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+
+		//DeleteWFCItems($WFC10_ConfigId, "root");
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
+
+		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneParent.",Parent:rootp,Order:".$WFC10_TabPaneOrder."Name:,Icon:HouseRemote\n";        
+ 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:".$WFC10_TabPaneParent.",Order:20,Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n";        
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneParent, "roottp",             $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem  , $WFC10_TabPaneParent,  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+
+        $configWF = $configWFront["Administrator"];
+        //print_R($configWF);
+        //$wfcHandling->deletePane($configWF["ConfigId"], "roottpBewegung");
+        echo "\n\n===================================================================================================\n";
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
+        }
+
+     if (isset($configWFront["User"]))
+        {
+        $configWF = $configWFront["User"];
+        echo "\n\n===================================================================================================\n";
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
+        } 
+
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * WebFront Administrator Installation
+	 * WebFront Administrator Installation von HouseTP(A/U)
+     * auf Basis von webfront_links
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
+if (false)
+    {
 	if ($WFC10_Enabled)
 		{
 		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
@@ -404,10 +533,10 @@
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
 
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:HouseTPA,Parent:".$WFC10_TabPaneParent.",Order:".$WFC10_TabPaneOrder."Name:,Icon:HouseRemote\n";        
- 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:HouseTPA,Order:20,Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n";        
-		CreateWFCItemTabPane   ($WFC10_ConfigId, "HouseTPA", $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, "HouseTPA",  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneParent.",Parent:rootp,Order:".$WFC10_TabPaneOrder."Name:,Icon:HouseRemote\n";        
+ 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:".$WFC10_TabPaneParent.",Order:20,Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n";        
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneParent, "roottp",             $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem  , $WFC10_TabPaneParent,  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
 
 		/*************************************/
 		
@@ -496,11 +625,15 @@
 		
 		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
 		echo "\nWebportal LocalAccess TabPane installieren in: ".$WFC10User_Path." \n";
-		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible 
 		echo "Webfront TabPane mit Parameter : ".$WFC10User_ConfigId." ".$WFC10User_TabPaneItem." ".$WFC10User_TabPaneParent." ".$WFC10User_TabPaneOrder." ".$WFC10User_TabPaneIcon."\n";
-		CreateWFCItemTabPane   ($WFC10User_ConfigId, "HouseTPU", $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, "", "HouseRemote");     /* macht das Haeuschen in die oberste Leiste */
-		CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, "HouseTPU",  20, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);      /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
-
+		CreateWFCItemTabPane   ($WFC10User_ConfigId, "HouseTPU", $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, "", "HouseRemote");
+		CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, "HouseTPU",  20, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);       */
+		
+        echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneParent.",Parent:rootp,Order:".$WFC10_TabPaneOrder."Name:,Icon:HouseRemote\n";        
+ 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:".$WFC10_TabPaneParent.",Order:20,Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n";        
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneParent,"roottp", $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
 		/*************************************/
 
 		$categoryId_WebFrontUser         = CreateCategoryPath($WFC10User_Path);
@@ -550,7 +683,8 @@
 	   DeleteWFCItems($WFC10User_ConfigId, "HouseTPU");
 	   EmptyCategory($categoryId_WebFrontUser);
 	   }
-
+    }
+    
 	if ($Mobile_Enabled)
 		{
 		echo "\nWebportal Mobile installieren: \n";

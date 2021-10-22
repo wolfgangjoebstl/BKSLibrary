@@ -170,8 +170,8 @@ class watchDogAutoStart
         fclose($handle1);
         echo "-----------\n";   */
         // ExecuteUserCommand($command,$path,$show=false,$wait=false,$session=-1)
-        //$sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);
-        IPS_ExecuteEx($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);  /* warten dass fertig, sonst wird alter Wert ausgelesen, aufpassen kann länger dauern */
+        $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);
+        //IPS_ExecuteEx($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);  /* warten dass fertig, sonst wird alter Wert ausgelesen, aufpassen kann länger dauern */
 
         $handle3=fopen($verzeichnis.$unterverzeichnis."username.txt","r");
         echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);

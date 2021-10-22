@@ -89,6 +89,10 @@
 	$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
     $scriptIdAction            = IPS_GetScriptIDByName('Sprachsteuerung_Actionscript', $CategoryIdApp);
 
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Init
+	// ----------------------------------------------------------------------------------------------------------------------------
+
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
 	$modulhandling = new ModuleHandling();    
@@ -100,17 +104,13 @@
 		IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');		
 		$subnet="10.255.255.255";
 		$OperationCenter=new OperationCenter($subnet);		
-		//echo "Modul OperationCenter ist installiert.\n";
+		echo "Modul OperationCenter ist installiert, Systeminfo auslesen:\n";
 		$results=$OperationCenter->SystemInfo();
 		$result=trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," ")));
 		$Version=explode(".",$result)[2];
 		echo "Win10 Betriebssystemversion : ".$Version."\n\n";
 		}
 	
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// Init
-	// ----------------------------------------------------------------------------------------------------------------------------
-
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -123,6 +123,8 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 
     /* mögliche Actions hier aufsetzen */
+
+    echo "Profile für Action Buttons herstellen (neu anlegen statt ändern):\n";
     $pname="TestOptionen";
 	if (IPS_VariableProfileExists($pname) == true)
         {
@@ -137,7 +139,7 @@
 		IPS_SetVariableProfileAssociation($pname, 1, "Sprechen", "", 0xf13c1e); //P-Name, Value, Association, Icon, Color
 		IPS_SetVariableProfileAssociation($pname, 2, "Radio", "", 0x3cf11e); //P-Name, Value, Association, Icon, Color
 		IPS_SetVariableProfileAssociation($pname, 3, "Pause", "", 0x3c1ef1); //P-Name, Value, Association, Icon, Color
-		echo "Profil ".$pname." erstellt;\n";
+		echo "   Profil ".$pname." erstellt;\n";
 		}
     //$profile=IPS_GetVariableProfile ($pname);
     //echo "Alle Profileinträge für $pname danach anzeigen:\n";
@@ -151,8 +153,10 @@
 		IPSUtils_Include ("Hardware_Library.inc.php","IPSLibrary::app::modules::EvaluateHardware");
         IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
         $hardware = new Hardware();
+        echo "Modul EvaluateHardware ist installiert.\n";
+        echo "   Aus allen registrierten Geräten Lautsprecher und Echos rausfiltern.\n";
         $deviceListFiltered = $hardware->getDeviceListFiltered(deviceList(),["Type" => "EchoControl", "TYPEDEV" => "TYPE_LOUDSPEAKER"],true);
-        echo "Ausgabe aller Geräte mit Type EchoControl und TYPEDEV TYPE_LOUDSPEAKER:\n";
+        echo "   Ausgabe aller Geräte mit Type EchoControl und TYPEDEV TYPE_LOUDSPEAKER:\n";
         foreach ($deviceListFiltered as $name => $device) 
             {
             echo "   ".str_pad($name,35)."    ".$device["Instances"][0]["OID"]."\n";
@@ -161,7 +165,11 @@
         }
 
 
-    /* Liste mit allen gefunden Echo Lautsprechern erstellen */
+    /**************************************************************
+     *
+     * Liste mit allen gefunden Echo Lautsprechern erstellen 
+     *
+     ********************************************************************************/
 
     $pname="Echo-Speaker";
 	if (IPS_VariableProfileExists($pname) == true)
@@ -291,7 +299,7 @@
 		{
 		$usedModules.="   ".$key." = ".$guid."\n";
 		}
-	//echo $usedModules;	
+	echo $usedModules;	
 
 
 	echo "\n\nAlle SmartHome Module:\n";
@@ -299,6 +307,7 @@
 
 	echo "Alle Mediaplayermodule:\n";
 	$MediaPlayerModule=IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
+    print_R($MediaPlayerModule);
     $soundcard=array();
 	foreach ($MediaPlayerModule as $oid)
 		{
@@ -306,6 +315,7 @@
 		}	
 	echo "\nAlle Text-to-Speech Module:\n";
 	$textToSpeechModule=IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}");
+    print_R($textToSpeechModule);
 	foreach ($textToSpeechModule as $oid)
 		{
         $speechDevices[]=analyseMediaConfig($soundcard,$oid,"TTSAudioOutput");
@@ -320,6 +330,7 @@
 		echo $config;
 		echo "\n\n";
 		}
+    echo "------------------------------------\n\n";
 
 	if ( (isset($installedModules["Sprachsteuerung"]) )  && ($installedModules["Sprachsteuerung"] <>  "") ) 
         {
@@ -573,19 +584,21 @@
 				); 
 					
 	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation von Administrtor und User wenn im ini gewünscht
+	// WebFront Installation von Administrator und User wenn im ini gewünscht
 	// ----------------------------------------------------------------------------------------------------------------------------
 
     if (isset($configWFront["Administrator"]))
         {
+        echo "\n\n===================================================================================================\n";            
         $configWF = $configWFront["Administrator"];
-        installWebfrontSprach($configWF,$webfront_links,"Administrator");
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
         }
 
     if (isset($configWFront["User"]))
         {
+        echo "\n\n===================================================================================================\n";            
         $configWF = $configWFront["User"];
-        installWebfrontSprach($configWF,$webfront_links,"User");
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
         }
 
 
@@ -610,6 +623,7 @@
 	// Funktionen
 	// ----------------------------------------------------------------------------------------------------------------------------
 
+/*
     function installWebfrontSprach($configWF,$webfront_links, $scope)
         {
 	    $wfcHandling = new WfcHandling();            
@@ -629,8 +643,8 @@
 
                 }
             }
-
         }
+*/
 
     /*******
      *

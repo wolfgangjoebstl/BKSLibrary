@@ -6470,6 +6470,11 @@ class DeviceManagement
 	 * @public
 	 *
 	 * Initialisierung des DeviceManagement Class Objektes
+     *
+     * wichtige Variablen die erfast werden
+     *      $this->HMIs
+     *      $this->HomematicAddressesList
+     *
 	 *
 	 */
 	public function __construct($debug=false)
@@ -6528,7 +6533,7 @@ class DeviceManagement
 		$this->HMIs=$modulhandling->getInstances('HM Inventory Report Creator');	
 
         if ($debug) echo "getHomematicAddressList aufrufen:\n";
-        $this->HomematicAddressesList=$this->getHomematicAddressList(false,$debug,true);         // benötigt die HMIs, kommt in einen eigenen Timer, true wenn kein echo für eine Zusammenfassung erforderlich ist
+        $this->HomematicAddressesList=$this->getHomematicAddressList(false,$debug,true);         // false für no Create Report, nimmt die HMIs aus der class, kommt in einen eigenen Timer, true wenn kein echo für eine Zusammenfassung erforderlich ist
         if ($debug) echo "DeviceManagement Modul vollständig initialisiert.\n";
 		}
 		
@@ -7249,7 +7254,11 @@ class DeviceManagement
 		return($addresses);
 		}
 
-    public function updateHomematicAddressList($HMI=false, $debug=false, $supress=false)
+    /* öffentliche Funktion um updateHmiReport aufzurufen
+     *
+     */
+
+    public function updateHomematicAddressList($HMI=false, $debug=false, $supress=false, $callCreateReport=false)
         {
         //$debug=true; 
         if ($debug) echo "updateHomematicAddressList aufgerufen. herausfinden ob HMI_CreateReport erfolgreich war.\n";  
@@ -7261,17 +7270,26 @@ class DeviceManagement
                 {
                 foreach ($this->HMIs as $HMI)
                     {
-                    $result = $result && $this->updateHmiReport($HMI,$debug,$supress);
+                    $result = $result && $this->updateHmiReport($HMI,$debug,$supress, $callCreateReport);
                     }           // foreach
                 }           //if
             }
-        else return($this->updateHmiReport($HMI,$debug,$supress));
+        else return($this->updateHmiReport($HMI,$debug,$supress, $callCreateReport));
         return ($result);
         } 
 
-    private function updateHmiReport($HMI,$debug=false, $supress=false)
+    /* updateHmiReport
+     * private, von updateHomematicAddressList und getHomematicAddressList für jeden Homematic Report aufgerufen
+     *
+     * das Ergebnisfile ist Children(0). Wenn es leer ist oder kein Array gebildet werden kann wird der Create report aufgerufen.
+     * wenn das Ergebnisfile älter als 48 Stunden auch
+     *
+     */
+
+    private function updateHmiReport($HMI,$debug=false, $supress=false, $callCreateReport=false)
         {
-        $result=false; $callCreateReport=false; 
+        $result=false; 
+         
 				$configHMI=IPS_GetConfiguration($HMI);
 				if ($debug)             // no information available in configuration wether creation of report as variable is activated
 					{
@@ -7323,9 +7341,14 @@ class DeviceManagement
                         //print_r($childrens);
                         //echo GetValue($childrens[0]);
                         $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
+                        //print_R($HomeMaticEntries);
+                        echo "updateHmiReport, ".IPS_GetName($HMI)." ($HMI) HomeMaticEntries erzeugt : ".sizeof($HomeMaticEntries)."\n";
                         if ( ( ( (is_array($HomeMaticEntries)) && (sizeof($HomeMaticEntries)>0) ) === false) || $callCreateReport)
                             {
-                            if ($debug) echo "     HMI_CreateReport($HMI) aufrufen:";   
+                            //if ($debug) 
+                                {
+                                echo "     HMI_CreateReport($HMI) aufrufen:";   
+                                }
                             HMI_CreateReport($HMI);  
                             if ($debug) echo "  --> done\n";                  
                             }                    

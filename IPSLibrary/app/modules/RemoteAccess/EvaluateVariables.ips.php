@@ -27,6 +27,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
 
 // Scriptlaufzeit erfassen, kann sehr viel länger sein da remote Server kontaktiert werden müssen
 $startexec=microtime(true);
+ini_set('max_execution_time', 120);
 
 echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n<br>";
 $status=RemoteAccessServerTable();
@@ -77,7 +78,7 @@ if (isset ($installedModules["Guthabensteuerung"]))
 	
 	foreach ($Guthabensteuerung as $Key)
 		{
-		set_time_limit(120);
+		//set_time_limit(120);
 		$oid=(integer)$Key["OID"];
 		$variabletyp=IPS_GetVariable($oid);
 		//print_r($variabletyp);
@@ -110,7 +111,7 @@ if (isset ($installedModules["Guthabensteuerung"]))
 		}
 	}
 
-set_time_limit(180);
+//set_time_limit(180);
 
 if (isset ($installedModules["OperationCenter"]))
 	{

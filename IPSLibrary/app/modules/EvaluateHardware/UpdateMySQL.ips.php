@@ -22,6 +22,22 @@
  * synchronisiert die MariaDB Datenbank mit der Konfiguration von IPSymcon
  * verkürzt die Evaluierung indem auch redundante Konfigurationen abgelegt sind
  *
+ * folgende Tabellen sind in der MariaDB angelegt:
+ *      topologies
+ *      deviceList
+ *      instances           Index (instanceID PRIMARY,Name UNIQUE,OID UNIQUE)
+ *      channels
+ *      actuators
+ *      registers
+ *      valuesOnRegs
+ *      serverGateways
+ *      componentModules
+ *      auditTrail
+ *      eventLog
+ *
+ *
+ *
+ *
  *      sync database Configuration
  *
  *
@@ -130,7 +146,25 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         echo "Sync Values of table topologies with MariaDB Database:\n";           // config with tables
         $sql_topologies->syncTableValues(get_Topology());                                        // Topology Table, der mit den Räumen udn Gruppen
 
+        echo "\n";
+        echo "Tabelle deviceList mit touch zusammenräumen:\n";    
+
+        $touch=$sql_deviceList->touchTableOnDevice($deviceList,true);              // true mit Debug
+        echo "---------------------------------------------------------------------------------\n";
+        echo "  die Werte die in devicelsit sind bekommen ein touch, Werte ohne aktuellem touch ausgeben.\n";    
+        $sql = "SELECT * FROM deviceList WHERE touch != $touch;";
+        $result1=$sqlHandle->query($sql);
+        $tableHTML = $result1->fetchSelect("html","darkblue");
+        $result1->result->close();                      // erst am Ende den vielen Speicher freigeben, sonst ist mysqli_result bereits weg !
+        echo $tableHTML;
+
+        echo "  und danach auch gleich alle diese Werte löschen.\n";    
+        $sqlCommand = "DELETE FROM deviceList WHERE touch != $touch;";
+        echo " >SQL Command : $sqlCommand\n";    
+        $result2=$sqlHandle->command($sqlCommand);                                     
+
         /* die Tabelle deviceList um die ServerGatewayID erweitern */
+        echo "\n";
         echo "Tabelle deviceList um die ServerGatewayID für ".IPS_GetName(0)." erweitern:\n";    
         $sql = "SELECT * FROM serverGateways WHERE Name = '".IPS_GetName(0)."';";
         $result1=$sqlHandle->query($sql);
@@ -146,8 +180,10 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
                 $deviceList[$name]["serverGatewayID"] = $serverGatewayID;  
                 }
             }
-        $sql_deviceList->syncTableValues($deviceList,true);                                      // deviceList Table, true ist Debug
+        echo "syncTableValues für das deviceList Array mit der MariaDB Database:\n";
+        $sql_deviceList->syncTableValues($deviceList,false);                                      // deviceList Table, true ist Debug
 
+        echo "\n";
         echo "syncTableProductType Spalte ProductType erweitern\n";
         $sql_deviceList->syncTableProductType(homematicList());                             // Homematic Table
 
@@ -217,7 +253,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         echo "\nErmittlung der Werte für Tabelle valuesOnRegs:\n";
         foreach ($fetchRegisters as $singleRow)
             {
-            $result=getCOIDforRegisterID($singleRow,false,false);         // singleRow wird von der function erweitert, register=false, debug=true
+            $result=getCOIDforRegisterID($singleRow,false,true);         // singleRow wird von der function erweitert, register=false, debug=true
             //print_r($result);
             if ($result !== false) $singleRows=$singleRows + $result;
             }
