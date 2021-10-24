@@ -2696,6 +2696,10 @@ function send_status($aktuell, $startexec=0, $debug=false)
         return ($time);
         }
 
+    /* gibt wenn default die Zeit in Sekunden an basierend auf der Unix Zeit
+     * wenn ein Parameter verwendet wird wird anstelle von microtime hrtime verwendet, Zeit vom Systemstart in Nanosekunden
+     */
+
     function exectime($startexec,$mode=false)
         {
         $time=hrtime(true);
@@ -6211,17 +6215,20 @@ class ComponentHandling
  * Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen. 
  * Darstellung von Variablen nur in Kategorien kann einfacher gelöst werden. Da reicht der Link.
  *
- *  __construct
+ *  __construct             $WebfrontConfigID anlegen it den IDs der vorhandenen Webfronts
  *  get_WebfrontConfigID
- *  createLinkinWebfront
+ *  createLinkinWebfront       fuer Stromheizung
  *  get_WfcStatus           echo der installierten Webfront Koniguratoren, IDs werden in construct angelegt
- *  write_wfc
+ *  print_wfc               public für Ausgabe Ergebnis read_wfc
+ *  write_wfc               rekursive private für Ausgabe Ergebnis read_wfc
  *  search_wfc
  *  read_wfc                Webfron Konfig auslesen, die max Tiefe für die Sublevels angeben
  *  installWebfront         die beiden Webfronts anlegen und das Standard Webfront loeschen, WebfrontConfigID als return
+ *  easySetupWebfront       Aufbau des Webfronts, Standardroutine
  *  setupWebfront           Aufruf zur Erzeugung des Webfronts, im Array sind die IDs die verlinkt werden sollen bereits gespeichert
  *  setupWebfrontEntry
  *  createSplitPane
+ *  createLinks
  *  deletePane
  *
  ******************************************************************/
@@ -6255,7 +6262,7 @@ class WfcHandling
 
         if (isset ($this->installedModules["Stromheizung"])) 
             { 
-            echo "Modul Stromheizung ist installiert.\n";
+            if ($debug) echo "Modul Stromheizung ist installiert.\n";
             IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
             IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
             IPSUtils_Include ('StromheizungLib.class.php', 'IPSLibrary::app::modules::Stromheizung');
@@ -6269,11 +6276,11 @@ class WfcHandling
             } 
         else 
             { 
-            echo "Modul Stromheizung ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+            echo "Achtung, Modul Stromheizung ist NICHT installiert. Routinen werden uebersprungen.\n"; 
             }
         if (isset ($this->installedModules["CustomComponent"])) 
             { 
-            echo "Modul CustomComponent ist installiert.\n";
+            if ($debug) echo "Modul CustomComponent ist installiert.\n";
             $moduleManagerCC      = new IPSModuleManager('CustomComponent',$repository);
             $CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
 
@@ -6292,7 +6299,7 @@ class WfcHandling
             } 
         else 
             { 
-            echo "Modul CustomComponent ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+            echo "Achtung, Modul CustomComponent ist NICHT installiert. Routinen werden uebersprungen.\n"; 
             }
 
         $this->WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
@@ -6309,6 +6316,11 @@ class WfcHandling
         }
 
     /* Abfrage als Tabelle alle Webfronts mit dem Namen als ID
+     * zB Array
+     * (
+     *  [Administrator] => 36728
+     *   [User] => 41606
+     * )
      */
 
     public function get_WebfrontConfigID()
@@ -6356,7 +6368,7 @@ class WfcHandling
             }
         }
 
-    /* echo der installierten Webfront Koniguratoren, IDs werden in construct angelegt */
+    /* echo der installierten Webfront Konfiguratoren, IDs werden in construct angelegt */
 
     public function get_WfcStatus()
         {
@@ -6367,6 +6379,15 @@ class WfcHandling
             echo "     Webfront Konfigurator Name : ".str_pad($name,20)." ID : ".$entry."\n";
             }
         echo "\n";
+        }
+
+    /************************************************************************************/
+
+    /* eine WFC Struktur mit einem ident ausgeben */
+
+    public function print_wfc($input)
+        {
+        $this->write_wfc($input,"",10);    
         }
 
     /* rekurisive Funktion, eine WFC Struktur mit einem ident ausgeben */
@@ -6386,9 +6407,7 @@ class WfcHandling
 	    	}	
     	}
 
-    /************************************************************************************/
-
-    /* rekurisive Funktion, in einer WFC Struktur einen Namen suchen */
+    /* rekursive Funktion, in einer WFC Struktur einen Namen suchen */
 
     private function search_wfc($input,$search,$tree)
 	    {
@@ -6420,7 +6439,14 @@ class WfcHandling
 	    return($result);						
 	    }
 
-    /************************************************************************************/
+    /*****************************************
+     * Die Konfiguration eines Webfronts auslesen, sehr hilfreich
+     * Gibt ein Array zurück
+     *
+     *
+     *
+     *
+     **************************************/
 
     public function read_wfc($level=10,$debug=false)
 	    {
@@ -6576,7 +6602,7 @@ class WfcHandling
         if ($debug) echo "installWebfront, Webfront GUID herausfinden:\n";
         //$wfcTree=$this->read_wfc(10,$debug);
         //print_r($wfcTree);	
-        if ($debug) echo "--------------\n";
+        if ($debug) echo "-----------------------------\n";
         $WebfrontConfigID=array();
         $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
         foreach ($alleInstanzen as $instanz)
@@ -6585,15 +6611,15 @@ class WfcHandling
             $WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
             echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
             $config=json_decode(IPS_GetConfiguration($instanz));
+            if ($debug) 
+                {
+                print_r($config);
+                $configItems = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
+                print_r($configItems);
+                }
             echo "  Remote Access Webfront Password set : (".$config->Password.")\n";
             echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
-            echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";		
-            if (false)
-                {
-                $config=json_decode(IPS_GetConfiguration($instanz));
-                $configItems = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
-                print_r($configItems);	
-                }	
+            if (isset($config->RetroID)) echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";			
             }
         //print_r($WebfrontConfigID);
         
@@ -6609,7 +6635,6 @@ class WfcHandling
             echo " Konfig: ".$config."\n";
             IPS_SetConfiguration($AdministratorID,'{"MobileID":-1}');
             IPS_ApplyChanges($AdministratorID);	
-            IPS_ApplyChanges($AdministratorID);
             $WebfrontConfigID["Administrator"]=$AdministratorID;
             echo "Webfront Configurator Administrator aktiviert : ".$AdministratorID." \n";
             }
@@ -6753,6 +6778,10 @@ class WfcHandling
             }
         }
 
+    /******
+     *
+     * Aufbau einer Webfront Seite, Aufruf von easysetupwebfront
+     */
 
     public function setupWebfront($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope)
         {
@@ -6925,6 +6954,25 @@ class WfcHandling
                 }  // ende foreach  
 
         }
+
+    /** Anlegen eines TabPanes im WebFront Konfigurator, Nutzung von IPSInstaller
+	 *
+	 * Der Befehl legt im WebFront Konfigurator ein TabPane mit dem Element Namen $ItemId an
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+	 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
+	 * @param integer $Position Positionswert im Objekt Baum
+	 * @param string $Title Title
+	 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+	 *
+	 */
+	public function CreateWFCItemRootTabPane ($WFCId, $ItemId, $ParentId, $Position, $Title, $Icon) 
+        {
+		PrepareWFCItemData ($ItemId, $ParentId, $Title);
+		$Configuration = "{\"subTitle\":\"$Title\",\"name\":\"$ItemId\",\"subIcon\":\"$Icon\"}";
+		CreateWFCItem ($WFCId, $ItemId, $ParentId, $Position, $Title, $Icon, 'TabPane', $Configuration);
+	    }
 
     public function deletePane($WFC10_ConfigId, $tabItem)
         {

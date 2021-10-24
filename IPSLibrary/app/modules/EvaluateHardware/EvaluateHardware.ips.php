@@ -120,8 +120,14 @@ IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config:
         /* für eine OID die DeviceID herausfinden. es gibt wie bei AuditTrail einen Eintrag, mit EventId, Datum/Zeitstempel, NameOfIndex, IndexId, Event Description, EventShort 
          *
          */
-        IPSUtils_Include ('EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // deviceList
 
+        $verzeichnis=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
+        $filename='EvaluateHardware_DeviceErrorLog.inc.php';                 
+        if ($dosOps->fileAvailable($filename,$verzeichnis))
+            {
+            IPSUtils_Include ('EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // deviceList
+            }
+        else "File $filename wird neu angelegt.\n";            
         $storedHM_Errors=array(); $storedError_Log=array();
         if (function_exists("get_DeviceErrorStatus")) $storedHM_Errors = get_DeviceErrorStatus();
         if (function_exists("get_DeviceErrorLog")) $storedError_Log = get_DeviceErrorLog();
@@ -177,12 +183,11 @@ IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config:
         $ipsOps->serializeArrayAsPhp($storedError_Log, $statusDevices);        // gateway array in das include File schreiben
         $statusDevices .= ';}'."\n\n";        
         $statusDevices .= "\n".'?>';
-        $filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_DeviceErrorLog.inc.php';
         //if (false)      // kein Update der Datei
             {
-            if (!file_put_contents($filename, $statusDevices)) 
+            if (!file_put_contents($verzeichnis.$filename, $statusDevices)) 
                 {
-                throw new Exception('Create File '.$filename.' failed!');
+                throw new Exception('Create File '.$verzeichnis.$filename.' failed!');
                 } 
             }
 

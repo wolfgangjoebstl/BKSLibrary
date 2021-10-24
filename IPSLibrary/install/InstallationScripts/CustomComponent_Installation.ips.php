@@ -183,7 +183,7 @@
         $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
         echo "Evaluate Hardware hat die ScriptID                  ".$scriptIdEvaluateHardware." \n";
         IPS_RunScriptWait($scriptIdEvaluateHardware);
-        echo "Script Evaluate Hardware wurde gestartet und bereits abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+        echo "Script Evaluate Hardware wurde gestartet und bereits abgearbeitet. Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";
         }
 
     /*******************************
@@ -198,6 +198,11 @@
     /* check if Administrator and User Webfronts already available */
     
     $wfcHandling =  new WfcHandling();
+    /* Workaround wenn im Webfront die Root fehlt */
+    $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
+    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["Administrator"],"roottp","",0,"IP-Symcon","IPS");  
+    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["User"],"roottp","",0,"IP-Symcon","IPS");  
+    /* Standard Config überprüfen */    
     $WebfrontConfigID = $wfcHandling->installWebfront();
 
     /*******************************
@@ -361,8 +366,8 @@
 
         echo "\n\n===================================================================================================\n";
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
-
         }
+    else echo "   Keine Netatmos Modules vorhanden.\n";
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -489,16 +494,20 @@
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
 
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneParent.",Parent:rootp,Order:".$WFC10_TabPaneOrder."Name:,Icon:HouseRemote\n";        
- 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:".$WFC10_TabPaneParent.",Order:20,Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n";        
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneParent, "roottp",             $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem  , $WFC10_TabPaneParent,  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneParent.",Parent:roottp,Order:".$WFC10_TabPaneOrder."Name:,Icon:HouseRemote\n";        
+ 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:".$WFC10_TabPaneParent.",Order:20,Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n"; 
+        if ($WFC10_TabPaneParent !=  "roottp")      
+            {               
+            CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneParent, "roottp",             $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
+            CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem  , $WFC10_TabPaneParent,  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
 
-        $configWF = $configWFront["Administrator"];
-        //print_R($configWF);
-        //$wfcHandling->deletePane($configWF["ConfigId"], "roottpBewegung");
-        echo "\n\n===================================================================================================\n";
-        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
+            $configWF = $configWFront["Administrator"];
+            //print_R($configWF);
+            //$wfcHandling->deletePane($configWF["ConfigId"], "roottpBewegung");
+            echo "\n\n===================================================================================================\n";
+            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
+            }
+        else echo "***Fehler, $WFC10_TabPaneParent darf nicht roottp sein.\n";
         }
 
      if (isset($configWFront["User"]))
@@ -704,7 +713,7 @@ if (false)
 					echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
 					if ($Group=="Auswertung")
 				 		{
-				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
+				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryId_WebFrontTab."\n";
 						CreateLinkByDestination($link["NAME"], $OID,    $categoryId_WebFrontTab,  20);
 				 		}
 					}
@@ -726,7 +735,7 @@ if (false)
 	   /* Retro not enabled, alles loeschen */
 	   }
 
-    echo "\nNach Webfront Installation, aktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
+    echo "\nNach Webfront Installation, aktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";    
 
 
 	/****************************************************************************************************************
@@ -962,7 +971,7 @@ if ($noinstall==false)
     $componentHandling=new ComponentHandling();
 
 	echo "\n";
-    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Switch Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -991,7 +1000,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
-    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Temperatur Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -1022,7 +1031,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
-    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Humidity Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -1038,7 +1047,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
-    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Actuator Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -1064,7 +1073,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
-    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";    // kein zweiter Parameter "s" sonst hrtime in nanoseconds instead of unix timestamp as float
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Set Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -1100,8 +1109,8 @@ if ($noinstall==false)
 	 ****************************************************************************************************************/
 
     
-echo "CustomCompenent Installation abgeschlossen. Optionen : ".($noinstall?"Kiene Installation der Components":"Installatione der Componenets")."  \n";
-echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";
+echo "CustomCompenent Installation abgeschlossen. Optionen : ".($noinstall?"Keine Installation der Components":"Installation der Components")."  \n";
+echo "\nAktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";         // kein zweiter Parameter sonst hrtime in nanoseconds instead of unix timestamp as float
 
 
 ?>

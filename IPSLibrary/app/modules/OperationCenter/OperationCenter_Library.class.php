@@ -8620,7 +8620,7 @@ class DeviceManagement
 	    {
         if ($debug) 
             {
-            echo "HomematicFehlermeldungen für die Ausgabe der aktuellen Fehlermeldungen der Homematic Funkkommunikation aufgerufen. Ausgabeart :";
+            echo "HomematicFehlermeldungen für die Ausgabe der aktuellen Fehlermeldungen der Homematic Funkkommunikation aufgerufen. Ausgabeart : ";
             if ($mode) echo "Array\n";
             else "Text\n";
             }
@@ -8639,7 +8639,7 @@ class DeviceManagement
 		    {
 		    //die("Keine HomeMatic Socket Instanz gefunden!");
 		    $alleHM_Errors.="  ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
-            return (false);     // nicht so wichtig nehmen, es müssen nicht unbedingt Homematic Geräte installiert sein            
+            //return (false);     // nicht so wichtig nehmen, es müssen nicht unbedingt Homematic Geräte installiert sein   , leeres Array als Rückgabewert ausreichend         
 		    }
 		else
 		    {

@@ -1,7 +1,7 @@
 <?
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
@@ -14,6 +14,12 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
     $installedModules 	= $moduleManager->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+
+	if ( isset($installedModules["DetectMovement"]) === true )
+		{
+        echo "Module DetectMovement ist installiert.\n";
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        }
 
 	$categoryId_Ansteuerung       = @IPS_GetObjectIDByIdent("Ansteuerung", $CategoryIdData);            // Unterfunktionen wie Stromheizung, Anwesenheitsberechnung sind hier
     $MonitorModeID                = @IPS_GetObjectIDByName("MonitorMode", $categoryId_Ansteuerung);
@@ -114,48 +120,51 @@ if ($_IPS['SENDER']=="WebFront")
 		{
 		case $SchalterSortAS_ID:
 			/* Tabelle updaten wenn die Taste gedrueckt wird */
-			$detectMovement = new TestMovement($debug);
-			$autosteuerung_config=Autosteuerung_GetEventConfiguration();
-			$eventlist=$detectMovement->getAutoEventListTable($autosteuerung_config,$debug);		// no Debug
-			switch ($_IPS['VALUE'])
-				{
-				case 0:
-					$html=$detectMovement->writeEventlistTable($eventlist);				
-					break;
-				case 1:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("OID",$eventlist));
-					break;
-				case 2:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Name",$eventlist));
-					break;
-				case 3:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Pfad",$eventlist));
-					break;
-				case 4:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("NameEvent",$eventlist));
-					break;
-				case 5:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Instanz",$eventlist));
-					break;
-				case 6:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Typ",$eventlist));
-					break;
-				case 7:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Config",$eventlist));
-					break;
-				case 8:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Homematic",$eventlist));
-					break;
-				case 9:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("DetectMovement",$eventlist));
-					break;
-				case 10:
-					$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Autosteuerung",$eventlist));
-					break;
-				default;
-					break;	
-				}
-			SetValue($TableEventsAS_ID,$html);				
+            if ( isset($installedModules["DetectMovement"]) === true )
+                {            
+                $detectMovement = new TestMovement($debug);
+                $autosteuerung_config=Autosteuerung_GetEventConfiguration();
+                $eventlist=$detectMovement->getAutoEventListTable($autosteuerung_config,$debug);		// no Debug
+                switch ($_IPS['VALUE'])
+                    {
+                    case 0:
+                        $html=$detectMovement->writeEventlistTable($eventlist);				
+                        break;
+                    case 1:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("OID",$eventlist));
+                        break;
+                    case 2:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Name",$eventlist));
+                        break;
+                    case 3:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Pfad",$eventlist));
+                        break;
+                    case 4:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("NameEvent",$eventlist));
+                        break;
+                    case 5:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Instanz",$eventlist));
+                        break;
+                    case 6:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Typ",$eventlist));
+                        break;
+                    case 7:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Config",$eventlist));
+                        break;
+                    case 8:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Homematic",$eventlist));
+                        break;
+                    case 9:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("DetectMovement",$eventlist));
+                        break;
+                    case 10:
+                        $html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Autosteuerung",$eventlist));
+                        break;
+                    default;
+                        break;	
+                    }
+                SetValue($TableEventsAS_ID,$html);
+                }                				
 			break;
 		case $SchalterSortAlexa_ID:
 			$Alexa = new AutosteuerungAlexaHandler();
@@ -210,7 +219,7 @@ if ($_IPS['SENDER']=="Execute")
 	echo "\n";
 	$debug=true;
 	echo "========================================Monitor\n";
-    $ergebnis=$operate->setLogicMonitor($debug);
+    $ergebnis=$operate->MonitorStatus($debug);
 
 
 	echo "========================================Alexa\n";
@@ -229,17 +238,18 @@ if ($_IPS['SENDER']=="Execute")
 	
 	$table = $Alexa->writeAlexaConfig($alexaConfiguration,"",true);	// html Ausgabe
 	echo $table;
-
-	echo "\n";
-	echo "========================================DetectMovement\n";
-	$detectMovement = new TestMovement($debug);
-	$autosteuerung_config=Autosteuerung_GetEventConfiguration();
-	$eventlist=$detectMovement->getAutoEventListTable($autosteuerung_config);
-	echo "Ergebnis der Analyse der Autosteuerungs Events wird in der Tabelle gespeichert.\n";
-	//print_r($eventlist);
-	$html=$detectMovement->writeEventlistTable($eventlist);
-	SetValue($TableEventsAS_ID,$html);
-
+	if ( isset($installedModules["DetectMovement"]) === true )
+		{
+        echo "\n";
+        echo "========================================DetectMovement\n";
+        $detectMovement = new TestMovement($debug);
+        $autosteuerung_config=Autosteuerung_GetEventConfiguration();
+        $eventlist=$detectMovement->getAutoEventListTable($autosteuerung_config);
+        echo "Ergebnis der Analyse der Autosteuerungs Events wird in der Tabelle gespeichert.\n";
+        //print_r($eventlist);
+        $html=$detectMovement->writeEventlistTable($eventlist);
+        SetValue($TableEventsAS_ID,$html);
+        }
 
 
 	

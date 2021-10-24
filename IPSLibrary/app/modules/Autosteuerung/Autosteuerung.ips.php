@@ -47,14 +47,17 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
 
 	if ( isset($installedModules["IPSLight"]) === true )
 		{
+        echo "Module IPSLight ist installiert.\n";            
         include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
         }
 	if ( isset($installedModules["Stromheizung"]) === true )
 		{
+        echo "Module Stromheizung ist installiert.\n"; 
 		include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 		}
     if (isset($installedModules["EvaluateHardware"]))
         {
+        echo "Module EvaluateHardware ist installiert.\n";             
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
         }
 

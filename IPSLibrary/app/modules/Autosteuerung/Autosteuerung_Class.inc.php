@@ -6626,54 +6626,54 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 
 
 
-/*********************************************************************************************/
+    /*********************************************************************************************/
 
-/*  setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60)                                
+    /*  setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60)                                
 
-function setEventTimer($name,$delay,$command)
-	{
-	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
-	IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
-	$now = time();
-	$EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
-	if ($EreignisID === false)
-		{ //Event nicht gefunden > neu anlegen
-		$EreignisID = IPS_CreateEvent(1);
-		IPS_SetName($EreignisID,$name."_EVENT");
-		IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-		}
-	IPS_SetEventActive($EreignisID,true);
-	IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
-	IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
-	IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
-	IPS_SetEventScript($EreignisID,$command);
-	}
+    function setEventTimer($name,$delay,$command)
+        {
+        echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
+        IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
+        $now = time();
+        $EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
+        if ($EreignisID === false)
+            { //Event nicht gefunden > neu anlegen
+            $EreignisID = IPS_CreateEvent(1);
+            IPS_SetName($EreignisID,$name."_EVENT");
+            IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+            }
+        IPS_SetEventActive($EreignisID,true);
+        IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
+        IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
+        IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
+        IPS_SetEventScript($EreignisID,$command);
+        }
 
 
-function getEventTimerStatus($name)
-	{
-	$EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
-    echo "Timer ID : ".$EreignisID."\n";
+    function getEventTimerStatus($name)
+        {
+        $EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
+        echo "Timer ID : ".$EreignisID."\n";
 
-    }
+        }
 
-function setDimTimer($name,$delay,$command)
-	{
-	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT_DIM"." und 10x alle ".$delay." Sekunden aufgerufen\n";
-	IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
-  	$now = time();
-   $EreignisID = @IPS_GetEventIDByName($name."_EVENT_DIM", IPS_GetParent($_IPS['SELF']));
-   if ($EreignisID === false)
-		{ //Event nicht gefunden > neu anlegen
-      $EreignisID = IPS_CreateEvent(1);
-      IPS_SetName($EreignisID,$name."_EVENT_DIM");
-      IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-     	}
-   IPS_SetEventActive($EreignisID,true);
-   IPS_SetEventCyclic($EreignisID, 0, 0, 0, 0, 1, $delay);
-   IPS_SetEventScript($EreignisID,$command);
-	}
-*/
+    function setDimTimer($name,$delay,$command)
+        {
+        echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT_DIM"." und 10x alle ".$delay." Sekunden aufgerufen\n";
+        IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
+        $now = time();
+    $EreignisID = @IPS_GetEventIDByName($name."_EVENT_DIM", IPS_GetParent($_IPS['SELF']));
+    if ($EreignisID === false)
+            { //Event nicht gefunden > neu anlegen
+        $EreignisID = IPS_CreateEvent(1);
+        IPS_SetName($EreignisID,$name."_EVENT_DIM");
+        IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+            }
+    IPS_SetEventActive($EreignisID,true);
+    IPS_SetEventCyclic($EreignisID, 0, 0, 0, 0, 1, $delay);
+    IPS_SetEventScript($EreignisID,$command);
+        }
+    */
 
 
 /********************************************************************************************
