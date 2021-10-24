@@ -72,7 +72,7 @@
 		$config=json_decode(IPS_GetConfiguration($instanz));
 		echo "  Remote Access Webfront Password set : (".$config->Password.")\n";
 		echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
-		echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";		
+		if (isset($config->RetroID)) echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";		
 		if (false)
 			{
 			$config=json_decode(IPS_GetConfiguration($instanz));
