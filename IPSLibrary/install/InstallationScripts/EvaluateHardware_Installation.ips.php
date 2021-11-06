@@ -18,8 +18,9 @@
     // max. Scriptlaufzeit definieren
     ini_set('max_execution_time', 500);
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    
 	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {

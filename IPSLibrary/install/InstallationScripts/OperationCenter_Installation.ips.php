@@ -67,7 +67,8 @@
     // max. Scriptlaufzeit definierensonst stoppt vorher wegen langsamer Kamerainstallation
     ini_set('max_execution_time', 500);
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 	IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -907,7 +908,8 @@
 
 	if (isset ($installedModules["LedAnsteuerung"]))
 		{
-		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+		//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+        IPSUtils_Include ("LedAnsteuerung_Configuration.inc.php","IPSLibrary::config::modules::LedAnsteuerung");
 		$device_config=LedAnsteuerung_Config();
 		foreach ($device_config as $name => $config)
 			{
@@ -919,7 +921,8 @@
 
 	if (isset ($installedModules["DENONsteuerung"]))
 		{
-		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+		//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+        IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");
 		$device_config=Denon_Configuration();
 		foreach ($device_config as $name => $config)
 			{

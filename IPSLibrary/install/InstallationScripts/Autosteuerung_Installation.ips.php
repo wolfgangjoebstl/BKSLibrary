@@ -19,13 +19,14 @@
 
     $startexec=microtime(true);     /* Laufzeitmessung */
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
+    
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
     IPSUtils_Include ('Autosteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Autosteuerung');
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
-
+    IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autosteuerung"); 
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -538,11 +539,12 @@
 				 * Neue Funktion befüllt die Tabelle automatisch. Es gibt eine eigene Klasse für diese Funktion: AutosteuerungStromheizung
 				 * der Heizungsregler funktioniert in der Klasse AutosteuerungRegler
 				 */
-                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Wochenplan'));
-				echo "    AutosteuerungRegler initialisieren.\n";
 				$kalender=new AutosteuerungStromheizung();
 				echo "    Wochenkalender neu aufsetzen.\n";
+                $categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);                
 				$kalender->SetupKalender(0,"~Switch");	/* Kalender neu aufsetzen, alle Werte werden geloescht, immer bei Neuinstallation */
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Wochenplan'));
+				echo "    AutosteuerungRegler initialisieren.\n";
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 				$categoryId_Wochenplan = IPS_getCategoryIdByName('Wochenplan-Stromheizung',   $CategoryIdData);
 				$inputWoche=IPS_GetVariableIDByName("Wochenplan",$categoryId_Wochenplan);				

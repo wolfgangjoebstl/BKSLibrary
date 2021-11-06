@@ -1610,7 +1610,8 @@ class Autosteuerung
 				
 		if ( isset($this->installedModules["Stromheizung"] ) )
 			{
-			include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");						
+			//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");	
+            IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::IPSHeat");					
 			/* speziell für Stromheizung */
 			$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
 			if ($this->CategoryId_Stromheizung === false)
@@ -1632,7 +1633,8 @@ class Autosteuerung
 								
 		if ( isset($this->installedModules["IPSLight"] ) )
 			{	
-			include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");						
+			//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+            IPSUtils_Include ("IPSLight.inc.php","IPSLibrary::app::modules::IPSLight");            						
 			$this->lightManager = new IPSLight_Manager();
 	
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
@@ -1644,7 +1646,8 @@ class Autosteuerung
 								
 		if ( isset($this->installedModules["DENONsteuerung"] ) )
 			{
-			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENONsteuerung.Library.inc.php");						
+			//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENONsteuerung.Library.inc.php");						
+            IPSUtils_Include ("DENONsteuerung.Library.inc.php","IPSLibrary::app::modules::DENONsteuerung");
 			$this->DENONsteuerung = new DENONsteuerung();	
 			$this->dataCategoryIdDenon = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung');
 			//$this->configCategoryIdDenon = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung');
@@ -5639,7 +5642,7 @@ abstract class AutosteuerungFunktionen
         return ($this->configuration);
         }
 
-	function Init()
+	function Init()     //class AutosteuerungFunktionen
 		{
 		IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');		
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -5656,7 +5659,7 @@ abstract class AutosteuerungFunktionen
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);		
 		}	
 		
-	function InitLogMessage($debug=false)
+	function InitLogMessage($debug=false)           //class AutosteuerungFunktionen
 		{
 		if ($debug) echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
         $logging = new Logging();	
@@ -6071,7 +6074,7 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
  * Stromheizung in der Autosteuerung
  *
  * Routinen zur Stromheizungssteuerung aufgebaut auf die Standard Autosteuerungsklasse die kleine Nachrichtenspeicher aufbaut
- * zusaetzlich wird auch in Files gelogged. Hier werden beim AUfruf die Logging und Nachrichtenspeicher Default genutzt.
+ * zusaetzlich wird auch in Files gelogged. Hier werden beim Aufruf die Logging und Nachrichtenspeicher Default genutzt.
  * Default bedeutet ohne
  *
  * es werden statt Nachrichten ein Kalendar dargestellt
@@ -6083,10 +6086,13 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
  *  getStatus
  *  getCategoryIdTab
  *  WriteLink, CreateLink, UpdateLinks
- *
- *
- *
- *
+ *  getWochenplanID, getZeile1ID, getAutoFillID, writeWochenplan
+ *  InitMesagePuffer
+ *  ShiftforNextDay
+ *  setAutoFill
+ *  getStatusfromProfile
+ *  EvaluateAutoStatus
+ *  feiertag
  *  SetupKalender
  *
  **************************************************************************************************************/
@@ -6110,21 +6116,22 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
 		//echo "Logfile Construct\n";
+        $debug=false;
         $this->configuration = $this->set_Configuration();
 		
 		/******************************* Init *********/
 		$this->log_File=$logfile;
 		$this->nachrichteninput_Id=$nachrichteninput_Id;			
-		$this->Init();          /* Autosteuerung_HeatControl Script ID wird festgelegt in $this->scriptIdHeatControl */
+		$this->Init();          //class AutosteuerungFunktionen, Autosteuerung_HeatControl Script ID wird festgelegt in $this->scriptIdHeatControl, Category Path entspechend config.ini angelegt 
 
 		/******************************* File Logging *********/
-		$this->InitLogMessage();
+		$this->InitLogMessage($debug);              // tut nix wenn $logfile="No-Output"
 		
 		/******************************* Nachrichten Logging *********/
 		$this->zeile=array();		
 		//$type=1;$profile="AusEin"; 		/* Umstellen auf Boolean und Standard Profil für bessere Darstellung Mobile Frontend*/
 		$type=0;$profile="~Switch";
-		$this->InitLogNachrichten($type,$profile);          	/*  ruft das Geraete spezifische InitMesagePuffer() auf */
+		$this->InitLogNachrichten($type,$profile);          	/*  nur durchreichen, ruft das Geraete spezifische InitMesagePuffer() in dieser class auf */
 
         $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
         if (!isset($moduleManager)) 
@@ -6229,6 +6236,7 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 	 *
 	 * wird mit construct automatisch aufgerufen. Ist in InitLogNachrichten($type,$profile) enthalten
 	 * wenn construct mit Defaultwerten aufgerufen wird kommt die Kategorie Wochenplan-Stromheizung zur Anwendung
+     * in construct ist es $type=0;$profile="~Switch";
 	 *
 	 ***********************************************/
 	 
@@ -6253,7 +6261,7 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		$vid=$this->getWochenplanID();	
 		if ($vid==false) 
 			{
-			echo "Fatal Error !!!!\n";
+			echo "Fatal Error, Object Wochenplan not found in Category Wochenplan-Stromheizung (".$this->nachrichteninput_Id."/".$CategoryIdData.") !!!!\n";                  // was ist passiert ? 
 			$fatalerror=true;
 			}
 		else 

@@ -37,7 +37,8 @@
     *   Version 2.50.1, 09.06.2012<br/>
     */
 	 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');

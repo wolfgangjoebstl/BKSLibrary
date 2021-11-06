@@ -8,7 +8,8 @@
  *
  */
 
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -212,6 +213,11 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 		//include $filename;
 		//print_r($fileList);
 
+	/*********************************************************************************
+	 *
+ 	 *   Homematic Events einmal am Tag auslesen
+ 	 *
+ 	 *********************************************************************************/
 
 		$texte = Array(
 		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
@@ -266,7 +272,7 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 		echo "**********************************************************************";
 		echo $includefile;	
 		echo "\n**********************************************************************";
-		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
+		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
 		$result=file_get_contents($filename);
 		echo $result;
 		}

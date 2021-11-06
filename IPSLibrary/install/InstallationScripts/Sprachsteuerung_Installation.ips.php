@@ -48,8 +48,10 @@
 
     $testAusgabe=false;
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Sprachsteuerung\Sprachsteuerung_Configuration.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Sprachsteuerung\Sprachsteuerung_Configuration.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ('Sprachsteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Sprachsteuerung');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 

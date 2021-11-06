@@ -11,8 +11,8 @@
 
 	IPSUtils_Include ('IPSComponent.class.php', 'IPSLibrary::app::core::IPSComponent');
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -76,7 +76,8 @@
 			//$this->log_Denon->LogMessage("Script wurde über IPSLight aufgerufen.");
 			//$this->log_Denon->LogNachrichten("Script wurde über IPSLight aufgerufen.");
 
-			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+			//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+            IPSUtils_Include ('DENONsteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::DENONsteuerung');
 			$configuration=Denon_Configuration();
 
 			foreach ($configuration as $config)

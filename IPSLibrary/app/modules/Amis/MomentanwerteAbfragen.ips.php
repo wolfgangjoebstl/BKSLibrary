@@ -65,7 +65,8 @@
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
@@ -83,7 +84,6 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
     $amis=new Amis();
     $MeterConfig = $amis->getMeterConfig();
-    //print_r($MeterConfig);
 
     /* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
     $MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -175,6 +175,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 	
 if ($_IPS['SENDER']=="Execute")
 	{
+    echo "Execute aufgerufen:\n";        
+    echo "Amis::MomentwerteAbfragen Ausgabe der Konfiguration:\n";    
+    print_r($MeterConfig);
+
 	echo "********************************************CONFIG**************************************************************\n\n";
 
 	echo  "Genereller Meter Read eingeschaltet : ".GetvalueIfFormatted($MeterReadID)."\n";

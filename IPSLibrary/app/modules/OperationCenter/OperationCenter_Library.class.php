@@ -1029,7 +1029,8 @@ class OperationCenter
 		 *************************************************************************************/
 		if ( (isset ($this->installedModules["LedAnsteuerung"])) && $hourPassed )
 			{
-			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+			//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+            IPSUtils_Include ("LedAnsteuerung_Configuration.inc.php","IPSLibrary::config::modules::LedAnsteuerung");
 			$device_config=LedAnsteuerung_Config();
 			$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
 			$SysPingResult += $this->device_ping($device_config, $device, $identifier, $hourPassed, $debug);                  // debug setzt weiter oben auch hourspassed
@@ -1041,7 +1042,8 @@ class OperationCenter
 		 *************************************************************************************/
 		if ( (isset ($this->installedModules["DENONsteuerung"])) && $hourPassed )
 			{
-			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+			//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+            IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");            
 			$device_config=Denon_Configuration();
 			$deviceConfig=array();
 			foreach ($device_config as $name => $config)
@@ -1791,7 +1793,8 @@ class OperationCenter
                             elseif (isset ($installedModules["IPSLight"]))
                                 {
                                 //IPSLogger_Inf(__file__, "IPSLight.");    
-    							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+    							//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+                                IPSUtils_Include ("IPSLight.inc.php","IPSLibrary::app::modules::IPSLight");
                        			$lightManager = new IPSLight_Manager();
 			                    $switchId = @$lightManager->GetSwitchIdByName($lightName);
                                 if ($switchId)
@@ -1806,7 +1809,8 @@ class OperationCenter
                             else $doIpsHeat=true;               // kein IPSLight mehr installiert                                
                             if ($doIpsHeat)
                                 {
-    							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+    							//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+                                IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::IPSHeat");
                                 IPSLogger_Inf(__file__, "Reboot Switch IPSHeat $SwitchName.");    
                                 IPSHeat_SetSwitchByName($SwitchName,false);
                                 sleep(2);

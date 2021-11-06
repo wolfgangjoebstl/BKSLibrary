@@ -28,8 +28,9 @@
 	 *  Version 2.50.44, 07.12.2014<br/>
 	 **/
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    
 	// max. Scriptlaufzeit definieren
 	ini_set('max_execution_time', 500);
 	$startexec=microtime(true);

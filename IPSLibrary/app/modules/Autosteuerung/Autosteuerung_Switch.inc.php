@@ -15,19 +15,22 @@ if (!isset($moduleManager))
 $installedModules = $moduleManager->GetInstalledModules();
 if ( isset($installedModules["Sprachsteuerung"]) === true )
 	{
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
+    IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
 	}
 
 if ( isset($installedModules["IPSLight"]) === true )
 	{
-    include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+    //include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+    IPSUtils_Include ("IPSLight.inc.php","IPSLibrary::app::modules::IPSLight");
 	$lightManager = new IPSLight_Manager();
     $baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
 	}    
 
 if ( isset($installedModules["Stromheizung"]) === true )
 	{
-    include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");        
+    //include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+    IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::IPSHeat");        
     $heatManager = new IPSHeat_Manager();
     $baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
     }

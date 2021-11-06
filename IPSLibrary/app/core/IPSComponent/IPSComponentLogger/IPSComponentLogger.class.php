@@ -10,7 +10,8 @@
     *   Version 2.50.1, 09.06.2012<br/>
     */
 
-    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 
 /**********************************************************
@@ -1138,7 +1139,7 @@ class Logging
                         if ($vartype==0) $this->variableTypeReg = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache, Boolean = MOTION
                         elseif ($vartype==0) $this->variableTypeReg = "BRIGHTNESS";     // Integer ist Brightness
                         else $this->variableTypeReg = "DATA";                           // Rest ist Data
-                        IPSLogger_Wrn(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs geht nicht mehr. Annahme:".$this->variableTypeReg);
+                        IPSLogger_Inf(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs geht nicht mehr. Annahme:".$this->variableTypeReg);
                         if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs : $vartype => ".$this->variableTypeReg."\n";    
                         }
                     else
@@ -1214,7 +1215,7 @@ class Logging
                         if ($this->variableTypeReg != "") 
                             {
                             echo "Fehler, do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,$typedev,...)\n";
-                            IPSLogger_Err(__file__, "Logging::do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,$typedev,...)");
+                            IPSLogger_Wrn(__file__, "Logging::do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,$typedev,...)");
                             //$NachrichtenID=false;
                             }
                         break;

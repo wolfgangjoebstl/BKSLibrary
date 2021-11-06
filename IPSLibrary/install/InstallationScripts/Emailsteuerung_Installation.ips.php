@@ -11,8 +11,10 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Emailsteuerung\Emailsteuerung_Configuration.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Emailsteuerung\Emailsteuerung_Configuration.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("Emailsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Emailsteuerung");
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {

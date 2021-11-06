@@ -14,7 +14,8 @@
 	 *  Version 4.0 13.6.2016
 */
 
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 /******************************************************
 

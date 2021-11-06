@@ -54,7 +54,9 @@ $cutter=true;
 
 	/******************** Defaultprogrammteil ********************/
 	 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+
 	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');	
 	IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 	
@@ -504,10 +506,12 @@ $cutter=true;
 			{
 			/* zuerst einmal klären wie die Daten denn reinkommen, seriell USB oder über Bluetooth, Zerlegung selbst oder ueber Cutter */
 			$scriptIdAMIS   = IPS_GetScriptIDByName('AmisCutter', $CategoryIdApp);
-			echo "\nScript ID für Register Variable :".$scriptIdAMIS."\n";
+            echo "Meter Type AMIS:\n";
+			echo "   Script ID für Register Variable :".$scriptIdAMIS."\n";
 
 			if ($meter["PORT"] == "Bluetooth")
 				{
+                echo "  Port is Bluetooth.\n";
 				$PortConfig=array($meter["COMPORT"],"115200","8","1","None");
 				$result=$Amis->configurePort($identifier." Bluetooth COM",$PortConfig);
 				if ( $result == false) 
@@ -525,12 +529,13 @@ $cutter=true;
 				}
 			if ($meter["PORT"] == "Serial")
 				{
+                echo "  Port is Serial.\n";
 				$PortConfig=array($meter["COMPORT"],"300","7","1","Even");
 				$result=$Amis->configurePort($identifier." Serial Port",$PortConfig);
 				if ( $result == false) 
 					{ 
 					$result = $Amis->configurePort($identifier." Serial Port",$PortConfig);     // noch einmal probieren
-					echo " Noch einmal probiert.\n";
+					echo " Serial Port Configure fehlerhaft. Noch einmal probiert. Ergebnis $result.\n";
 					}	
 				$SerialComPortID = IPS_GetInstanceIDByName($identifier." Serial Port", 0);
 				if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }

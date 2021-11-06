@@ -22,11 +22,14 @@ funktioniert nur mit elektrischen Heizkoerpern
 
 ***********************************************************/
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+//Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
+
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
+IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autosteuerung");
 
 /******************************************************
  *
@@ -48,12 +51,14 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
 	if ( isset($installedModules["IPSLight"]) === true )
 		{
         echo "Module IPSLight ist installiert.\n";            
-        include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+        //include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+        IPSUtils_Include ("IPSLight.inc.php","IPSLibrary::app::modules::IPSLight");
         }
 	if ( isset($installedModules["Stromheizung"]) === true )
 		{
         echo "Module Stromheizung ist installiert.\n"; 
-		include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+		//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+        IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::IPSHeat");
 		}
     if (isset($installedModules["EvaluateHardware"]))
         {
@@ -174,7 +179,8 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
         {   /* zweimal tts_play deklariert */
         if ( isset($installedModules["Sprachsteuerung"]) === true )
             {
-            Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
+            //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
+            IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
             }            
         }        
 

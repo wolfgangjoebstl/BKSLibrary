@@ -29,6 +29,7 @@
  *      checkAutostartProgram
  *
  */
+
 /*********************************************************************************************/
 /*********************************************************************************************
  *
@@ -118,6 +119,13 @@ class watchDogAutoStart
         configfileParser($configFirefox["Firefox"], $config["Software"]["Firefox"], ["Autostart","AUTOSTART","autostart"],"Autostart","no");    
         configfileParser($configFirefox["Firefox"], $config["Software"]["Firefox"], ["Url"],"Url","http://localhost:3777/");    
 
+       /* check Chrome */
+        configfileParser($configSoftware["Software"], $configChrome, ["Chrome","CHROME","chrome"],"Chrome",null);           // C:\Program Files (x86)\Google\Chrome\Application
+        //print_r($configFirefox);
+        configfileParser($configChrome["Chrome"], $config["Software"]["Chrome"], ["Directory","DIRECTORY","directory"],"Directory","C:/Program Files (x86)/Google/Chrome/Application/");    
+        configfileParser($configChrome["Chrome"], $config["Software"]["Chrome"], ["Autostart","AUTOSTART","autostart"],"Autostart","no");    
+        configfileParser($configChrome["Chrome"], $config["Software"]["Chrome"], ["Url"],"Url","http://localhost:3777/");    
+
         /* check iTunes */
         configfileParser($configSoftware["Software"], $configTunes, ["iTunes","ITUNES","itunes","Itunes"],"iTunes",null);    
         configfileParser($configTunes["iTunes"], $config["Software"]["iTunes"], ["Directory","DIRECTORY","directory"],"Directory","C:/Program Files/iTunes/");    
@@ -206,7 +214,7 @@ class watchDogAutoStart
     function checkAutostartProgram($processesFound=array(),$debug=false)
         {
     	 /* feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden */
-        $processStart=array("selenium" => "On","vmplayer" => "On", "iTunes" => "On", "Firefox" => "On");
+        $processStart=array("selenium" => "On","vmplayer" => "On", "iTunes" => "On", "Firefox" => "On", "Chrome" => "On");
         $processStart=$this->sysOps->checkProcess($processStart,$processesFound,$debug);        // true wenn Debug
 
         /* Extra Checks für Zusatzprogramme */
@@ -216,6 +224,7 @@ class watchDogAutoStart
             if ( ($this->dosOps->fileAvailable($this->configuration["Software"]["Selenium"]["Execute"],$this->configuration["Software"]["Selenium"]["Directory"])) == false )
                 {
                 echo "Keine Installation von Java Selenium vorhanden.\n";
+                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von Java Selenium vorhanden");
                 $processStart["selenium"]="Off";
                 }
             }
@@ -229,11 +238,13 @@ class watchDogAutoStart
             if ( ($this->dosOps->fileAvailable("vmplayer.exe",$this->configuration["Software"]["VMware"]["Directory"])) == false )
                 {
                 echo "Keine Installation von VMware vorhanden.\n";
+                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von VMWare vorhanden");
                 $processStart["vmplayer"]="Off";
                 }
             if ( ($this->dosOps->fileAvailable("*.vmx",$this->configuration["Software"]["VMware"]["DirFiles"])) == false )
                 {
-                echo "Keine Images für VMPlayer vorhanden.\n";
+                echo "Keine Images für VMPlayer in ".$this->configuration["Software"]["VMware"]["DirFiles"]." vorhanden.\n";
+                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von Java Selenium vorhanden");
                 $processStart["vmplayer"]="Off";
                 }
             }
@@ -246,7 +257,7 @@ class watchDogAutoStart
             {
             if ( ($this->dosOps->fileAvailable("iTunes.exe",$this->configuration["Software"]["iTunes"]["Directory"])) == false )
                 {
-                echo "Keine Installation von iTunes vorhanden.\n";
+                echo "Keine Installation von iTunes in ".$this->configuration["Software"]["iTunes"]["Directory"]."vorhanden.\n";
                 $processStart["iTunes"]="Off";
                 }
             }
@@ -259,7 +270,7 @@ class watchDogAutoStart
             {
             if ( ($this->dosOps->fileAvailable("firefox.exe",$this->configuration["Software"]["Firefox"]["Directory"])) == false )
                 {
-                echo "Keine Installation von Firefox vorhanden.\n";
+                echo "Keine Installation von Firefox in ".$this->configuration["Software"]["Firefox"]["Directory"]." vorhanden.\n";
                 $processStart["Firefox"]="Off";
                 }
             }
@@ -267,6 +278,20 @@ class watchDogAutoStart
             {
             $processStart["Firefox"]="Off";
             }
+
+        if (strtoupper($this->configuration["Software"]["Chrome"]["Autostart"])=="YES" )
+            {
+            if ( ($this->dosOps->fileAvailable("chrome.exe",$this->configuration["Software"]["Chrome"]["Directory"])) == false )
+                {
+                echo "Keine Installation von Chrome in ".$this->configuration["Software"]["Chrome"]["Directory"]." vorhanden.\n";
+                $processStart["Chrome"]="Off";
+                }
+            }
+        else
+            {
+            $processStart["Chrome"]="Off";
+            }
+
         return ($processStart);            
         }
 

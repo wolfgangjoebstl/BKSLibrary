@@ -38,10 +38,13 @@
 	 *
 	 */
 	 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Watchdog\Watchdog_Library.inc.php");    
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Watchdog\Watchdog_Library.inc.php");    
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
+    IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
 
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -76,7 +79,9 @@
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging($systemDir."Log_Watchdog.csv",$input);
-	
+
+    /* Audioausgabe festlegen und konfigurieren */
+
 	if (isset ($installedModules["OperationCenter"]))
 		{
 		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -99,6 +104,7 @@
 			function tts_play() {};
 			}		
 		}	
+
 	/********************************************************************
 	 *
 	 * Init
@@ -182,6 +188,10 @@
 		{
         echo "===============================================================\n";
 		echo "Von der Console aus gestartet, Autostart Prozess beginnen.\n";
+        echo "\n";
+        echo "Konfiguration ausgeben:\n";
+        print_r($config);
+                
         /********************************************************************
         *
         * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
@@ -323,13 +333,13 @@
                 break;
 			case $tim3ID:
 				$counter=GetValue($ScriptCounterID);
-				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Autostart durchführen. ScriptcountID: $counter. Process ".json_encode($processStart));
+				IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." Autostart durchführen. ScriptcountID: $counter. Process ".json_encode($processStart));
 				switch ($counter)
 					{
 					case 7:
 						SetValue($ScriptCounterID,0);
 						IPS_SetEventActive($tim3ID,false);
-						IPSLogger_Dbg(__file__, "Autostart: Prozess abgeschlossen");
+						IPSLogger_Inf(__file__, "Autostart: Prozess abgeschlossen");
 						writeLogEvent("Autostart (Ende)");
 						break;
 					case 6:
@@ -338,7 +348,7 @@
 							$subnet='10.255.255.255';
 							$OperationCenter=new OperationCenter($subnet);
 							//$OperationCenter->SystemInfo();
-        					IPSLogger_Dbg(__file__, "Autostart: OperationCenter::SystemInfo aufgerufen.");                            
+        					IPSLogger_Inf(__file__, "Autostart: OperationCenter::SystemInfo aufgerufen.");                            
 							}
 						SetValue($ScriptCounterID,$counter+1);
 						break;
@@ -354,10 +364,22 @@
                                 foreach ($config["Software"]["Firefox"]["Url"] as $address) $logtext .= $address." ";
                                 }
                             else $logtext="Autostart (Firefox) ".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"];
-        					IPSLogger_Dbg(__file__, "Autostart: $logtext.");                            
+        					IPSLogger_Inf(__file__, "Autostart: $logtext.");                            
 							writeLogEvent($logtext);
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_firefox.bat","", true, false,-1);
 							}
+						if ($processStart["Chrome"] == "On")
+							{
+                            if (is_array($config["Software"]["Chrome"]["Url"]))
+                                {
+                                $logtext="Autostart (Chrome) ".$config["Software"]["Chrome"]["Directory"]."chrome.exe ";    
+                                foreach ($config["Software"]["Chrome"]["Url"] as $address) $logtext .= $address." ";
+                                }
+                            else $logtext="Autostart (Chrome) ".$config["Software"]["Chrome"]["Directory"]."chrome.exe ".$config["Software"]["Chrome"]["Url"];
+        					IPSLogger_Inf(__file__, "Autostart: $logtext.");                            
+							writeLogEvent($logtext);
+							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_chrome.bat","", true, false,-1);
+							}                            
 						SetValue($ScriptCounterID,$counter+1);
 						break;
 					case 4:
@@ -368,7 +390,7 @@
 					   	    /* Soap ausschalten */
 							//IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_soap.bat","",true,false,-1);  // kill wird schon von startsoap mitgemacht
-        					IPSLogger_Dbg(__file__, "Autostart: (SOAP)).");                            
+        					IPSLogger_Inf(__file__, "Autostart: (SOAP)).");                            
 							writeLogEvent("Autostart (SOAP)");
 							}
 						SetValue($ScriptCounterID,$counter+1);
@@ -381,7 +403,7 @@
 				   		    /* iTunes ausschalten */
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_iTunes.bat","",true,false,-1);  // C:\Program Files\iTunes
-                            IPSLogger_Dbg(__file__, "Autostart: (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
+                            IPSLogger_Inf(__file__, "Autostart: (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
 							writeLogEvent("Autostart (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
 							}
 						SetValue($ScriptCounterID,$counter+1);
@@ -390,7 +412,7 @@
 						if ($processStart["vmplayer"] == "On")
 						   {
 							writeLogEvent("Autostart (VMPlayer) ".'\"'.$config["Software"]["VMware"]["Directory"].'vmplayer.exe\" \"'.$config["Software"]["VMware"]["DirFiles"].$config["Software"]["VMware"]["FileName"].'\"');
-							IPSLogger_Dbg(__file__, "Autostart: VMWare Player wird gestartet");
+							IPSLogger_Inf(__file__, "Autostart: VMWare Player wird gestartet");
 							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_VMWare.bat","",true,false,-1);
 							}
 						else
@@ -403,7 +425,7 @@
 						if ($processStart["selenium"] == "On")
 							{
 							echo "selenium.exe wird neu gestartet.\n";
-							IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
+							IPSLogger_Inf(__file__, "Autostart: Selenium wird gestartet");
 							writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
 							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
 							}
@@ -430,7 +452,7 @@
 				break;
 
 			default:
-				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
+				IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
 			   break;
 			}
 		}

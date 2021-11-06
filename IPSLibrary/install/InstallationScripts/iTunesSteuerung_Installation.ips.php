@@ -42,9 +42,13 @@ Installation (erneut/Update)
  *
  ********************************/
 
-    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\iTunesSteuerung\iTunes.Configuration.inc.php");
-    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\iTunesSteuerung\iTunes.Library.ips.php");
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\iTunesSteuerung\iTunes.Configuration.inc.php");
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\iTunesSteuerung\iTunes.Library.ips.php");
+
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("iTunes.Configuration.inc.php","IPSLibrary::config::modules::iTunesSteuerung");
+    IPSUtils_Include ("iTunes.Library.inc.php","IPSLibrary::app::modules::iTunesSteuerung");
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     if (!isset($moduleManager))

@@ -78,7 +78,8 @@
 
     require IPS_GetKernelDir()."modules\\HMInventory\\libs\\phpxmlrpc-4.3.0\\lib\\xmlrpc.inc" ;
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
     class CommunicationService
         {

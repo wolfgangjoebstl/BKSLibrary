@@ -1,17 +1,17 @@
 <?
 
 /*
-	 * @defgroup Gartensteuerung
-	 * @{
-	 *
-	 * Script zur Ansteuerung der Giessanlage in BKS
-	 *
-	 *
-	 * @file          Gartensteuerung.ips.php
-	 * @author        Wolfgang Joebstl
-	 * @version
-	 *  Version 2.50.52, 07.08.2014<br/>
-*/
+ * @defgroup Gartensteuerung
+ * @{
+ *
+ * Script zur Ansteuerung der Giessanlage in BKS
+ *
+ *
+ * @file          Gartensteuerung.ips.php
+ *  @author        Wolfgang Joebstl
+ * @version
+ *  Version 2.50.52, 07.08.2014<br/>
+ */
 
 
 /************************************************************
@@ -575,10 +575,12 @@ if($_IPS['SENDER'] == "TimerEvent")
             /* und den Zeitpunkt für die Evaluierung für den nächsten Giesszeitpunkt bestimmen */
 			SetValue($GiessCountID,0);
 			IPS_SetEventActive($UpdateTimerID,false);
-			if (isset($GartensteuerungConfiguration["Configuration"]["PUMPE"])==true) $failure=set_gartenpumpe(false,$GartensteuerungConfiguration["Configuration"]["PUMPE"]);
-			else $failure=set_gartenpumpe(false);
-			//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
-
+            if (strtoupper($GartensteuerungConfiguration["Configuration"]["Irrigation"])!="DISABLED")
+                {
+                if (isset($GartensteuerungConfiguration["Configuration"]["PUMPE"])==true) $failure=set_gartenpumpe(false,$GartensteuerungConfiguration["Configuration"]["PUMPE"]);
+                else $failure=set_gartenpumpe(false);
+                //$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
+                }
 			/* Beginnzeit Timer für morgen ausrechnen, abhängig von Konfig entweder morgens oder abends */
             $startminuten=$gartensteuerung->fromdusktilldawn($GiessStartzeitpunkt);
 			$calcminuten=$startminuten-5;

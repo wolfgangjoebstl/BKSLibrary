@@ -1,4 +1,20 @@
 <?
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */    
 
 	/**@defgroup Watchdog
 	 *
@@ -13,10 +29,13 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	// Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Watchdog\Watchdog_Library.inc.php");
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Watchdog\Watchdog_Library.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ('Watchdog_Configuration.inc.php', 'IPSLibrary::config::modules::Watchdog');
+    IPSUtils_Include ('Watchdog_Library.inc.php', 'IPSLibrary::app::modules::Watchdog');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -294,7 +313,25 @@
 		else fwrite($handle2,'"'.$configWD["Software"]["Firefox"]["Directory"].'firefox.exe" "'.$configWD["Software"]["Firefox"]["Url"].'"'."\r\n");
 		fclose($handle2);
 		}
-		
+
+	if (strtoupper($configWD["Software"]["Chrome"]["Autostart"])=="YES" )
+	    {
+	    echo "Schreibe Batchfile zum automatischen Start von Chrome.\n";
+        $handle2=fopen($verzeichnis.$unterverzeichnis."start_chrome.bat","w");        
+        fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
+        if (is_array($configWD["Software"]["Chrome"]["Url"]))
+            {
+            echo "   mehrere Urls sollen gestartet werden.\n";
+            $command='"'.$configWD["Software"]["Chrome"]["Directory"].'chrome.exe" ';
+            foreach ($configWD["Software"]["Chrome"]["Url"] as $url) $command.=' "'.$url.'" ';
+            $command.="\r\n";
+            fwrite($handle2,$command);
+            echo "   Befehl ist jetzt : $command\n";
+            }
+		else fwrite($handle2,'"'.$configWD["Software"]["Chrome"]["Directory"].'chrome.exe" "'.$configWD["Software"]["Chrome"]["Url"].'"'."\r\n");
+		fclose($handle2);
+		}
+
 	if (strtoupper($configWD["Software"]["iTunes"]["Autostart"])=="YES" )
 	   {
   	   echo "Schreibe Batchfile zum automatischen Kill von Java und Soap zur Steuerung von iTunes.\n";
