@@ -105,6 +105,7 @@
         echo "Modul EvaluateHardware ist installiert.\n"; 
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
         IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
+        $hardwareTypeDetect = new Hardware();
         $dir = IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
         $file = "EvaluateHardware_Devicelist.inc.php";
         if ($dosOps->fileAvailable($file,$dir))
@@ -112,7 +113,6 @@
             echo "========================================================================\n";    
             echo "Statistik der Register nach Typen:\n";
             IPSUtils_Include ($file,"IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
-            $hardwareTypeDetect = new Hardware();
             if (function_exists("deviceList")) $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
             else $deviceList = array();
             }

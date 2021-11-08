@@ -30,7 +30,7 @@ if ( isset($installedModules["IPSLight"]) === true )
 if ( isset($installedModules["Stromheizung"]) === true )
 	{
     //include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
-    IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::IPSHeat");        
+    IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung");        
     $heatManager = new IPSHeat_Manager();
     $baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
     }

@@ -54,8 +54,8 @@
  *
  *************************************************************/
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
+//Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
@@ -75,6 +75,7 @@ IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config:
     $dosOps = new dosOps(); 
 
     $fullDir = IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
+    $fullDir = $dosOps->correctDirName($fullDir,false);          //true für Debug
     $result = $dosOps->fileIntegrity($fullDir,'EvaluateHardware_Configuration.inc.php');
     if ($result === false) 
         {
@@ -122,6 +123,7 @@ IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config:
          */
 
         $verzeichnis=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
+        $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
         $filename='EvaluateHardware_DeviceErrorLog.inc.php';                 
         if ($dosOps->fileAvailable($filename,$verzeichnis))
             {
@@ -358,7 +360,9 @@ IPS_SetEventActive($tim1ID,true);
         $includefileDevices .= ';}'."\n\n";        
         
         $includefileDevices .= "\n".'?>';
-        $filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php';
+        $verzeichnis=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware';
+        $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
+        $filename=$verzeichnis.'EvaluateHardware_Devicelist.inc.php';
         if (!file_put_contents($filename, $includefileDevices)) {
             throw new Exception('Create File '.$filename.' failed!');
                 } 
@@ -388,7 +392,9 @@ IPS_SetEventActive($tim1ID,true);
         $evaluateHardware-> getHomematicDevices($includefile);
 
         $includefile.="\n".'?>';	
-        $filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
+        $verzeichnis=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware';
+        $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
+        $filename=$verzeichnis.'EvaluateHardware_Include.inc.php';        
         if (!file_put_contents($filename, $includefile)) {
             throw new Exception('Create File '.$filename.' failed!');
                 }

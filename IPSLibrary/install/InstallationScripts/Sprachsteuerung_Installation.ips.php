@@ -261,6 +261,7 @@
 	/* Verzeichnis für die wav Files von der Sprachausgabe erstellen */
 
 	$FilePath = IPS_GetKernelDir()."media/wav/";
+    $FilePath = $dosOps->correctDirName($FilePath,false);          //true für Debug    
 	if (!file_exists($FilePath)) 
 		{
 		echo "Verzeichnis wav in media erstellen.\n"; 

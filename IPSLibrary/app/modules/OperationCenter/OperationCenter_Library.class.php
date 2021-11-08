@@ -1659,24 +1659,29 @@ class OperationCenter
 		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		$Version=explode(".",getValue($SystemVersionID));
 		//print_r($Version);
-		switch ($Version[2])
-			{
-			/* siehe wikipedia Eintrag : https://en.wikipedia.org/wiki/Windows_10_version_history für die Uebersetzung der PC Versionen */
-			/* 18 Monate Support. d.h. max 3 Versionen kann man hinten sein */
-			case "10240": $Codename="RTM (Threshold 1)"; break;
-			case "10586": $Codename="November Update (Threshold 2)"; break;
-			case "14393": $Codename="Anniversary Update (Redstone 1)"; break;
-			case "15063": $Codename="Creators Update (Redstone 2)"; break;
-			case "16299": $Codename="Fall Creators Update (Redstone 3)"; break;
-			case "17134": $Codename="Spring Creators Update (Redstone 4)"; break;
-			case "17763": $Codename="Fall 2018 Update (Redstone 5)"; break;			        // long term maintenance release
-			case "18362": $Codename="May 2019 Update (19H1)"; break;
-			case "18363": $Codename="November 2019 Update (19H2)"; break;
-			case "19041": $Codename="May 2020 Update (20H1)"; break;            
-			case "19042": $Codename="October 2020 Update (20H2)"; break;            
-			case "19043": $Codename="May 2021 Update (21H1)"; break;            
-			default: $Codename=$Version[2];break;
-			}			
+        if (isset($Version[2]))         // Windows System
+            {
+            switch ($Version[2])
+                {
+                /* siehe wikipedia Eintrag : https://en.wikipedia.org/wiki/Windows_10_version_history für die Uebersetzung der PC Versionen */
+                /* 18 Monate Support. d.h. max 3 Versionen kann man hinten sein */
+                case "10240": $Codename="RTM (Threshold 1)"; break;
+                case "10586": $Codename="November Update (Threshold 2)"; break;
+                case "14393": $Codename="Anniversary Update (Redstone 1)"; break;
+                case "15063": $Codename="Creators Update (Redstone 2)"; break;
+                case "16299": $Codename="Fall Creators Update (Redstone 3)"; break;
+                case "17134": $Codename="Spring Creators Update (Redstone 4)"; break;
+                case "17763": $Codename="Fall 2018 Update (Redstone 5)"; break;			        // long term maintenance release
+                case "18362": $Codename="May 2019 Update (19H1)"; break;
+                case "18363": $Codename="November 2019 Update (19H2)"; break;
+                case "19041": $Codename="May 2020 Update (20H1)"; break;            
+                case "19042": $Codename="October 2020 Update (20H2)"; break;            
+                case "19043": $Codename="May 2021 Update (21H1)"; break;            
+                default: $Codename=$Version[2];break;
+                }			
+            }
+        else $Codename="";			
+
 		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		$ExternalIP			= CreateVariableByName($this->categoryId_SysInfo, "ExternalIP", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		$UptimeID			= CreateVariableByName($this->categoryId_SysInfo, "IPS_UpTime", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
@@ -1810,7 +1815,7 @@ class OperationCenter
                             if ($doIpsHeat)
                                 {
     							//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
-                                IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::IPSHeat");
+                                IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung");
                                 IPSLogger_Inf(__file__, "Reboot Switch IPSHeat $SwitchName.");    
                                 IPSHeat_SetSwitchByName($SwitchName,false);
                                 sleep(2);

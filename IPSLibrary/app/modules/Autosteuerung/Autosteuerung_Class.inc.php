@@ -1611,7 +1611,7 @@ class Autosteuerung
 		if ( isset($this->installedModules["Stromheizung"] ) )
 			{
 			//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");	
-            IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::IPSHeat");					
+            IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung");					
 			/* speziell für Stromheizung */
 			$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
 			if ($this->CategoryId_Stromheizung === false)

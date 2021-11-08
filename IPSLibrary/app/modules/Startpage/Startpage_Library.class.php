@@ -79,6 +79,8 @@
         private $installedModules;                      // welche Module sind installiert
 
 		public $CategoryIdData, $CategoryIdApp;			// die passenden Verzeichnisse
+
+        private $dosOps;                                // ein paar Routinen ohne jedesmal new zu machen
 		
 		private $OWDs;				// alle Openweather Instanzen
 
@@ -108,10 +110,11 @@
 
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
-			
-			$this->picturedir = IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
-            $this->imagedir   = IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\images\\";                   // Astronomy Path to Moon Pic: user/Startpage/user/images/mond/mond357.gif
-            $this->icondir    = IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\icons\\";
+			$this->dosOps = new dosOps();
+
+			$this->picturedir = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\");
+            $this->imagedir   = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\images\\");                   // Astronomy Path to Moon Pic: user/Startpage/user/images/mond/mond357.gif
+            $this->icondir    = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\icons\\");
 
 			$this->contentID=CreateVariable("htmlChartTable",3, $this->CategoryIdData,0,"~HTMLBox",null,null,"Graph");
 
@@ -1619,10 +1622,11 @@
             $file=$this->readPicturedir();
             $maxcount=count($file);
             if ($showfile===false) $showfile=rand(1,$maxcount-1);
-            $filename = 'user/Startpage/user/pictures/SmallPics/'.$file[$showfile];
-            $filegroesse=number_format((filesize(IPS_GetKernelDir()."webfront/".$filename)/1024/1024),2);
-            $info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
-            if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
+            $filename = $file[$showfile];
+            $verzeichnis = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront/user/Startpage/user/pictures/SmallPics/");
+            $filegroesse=number_format((filesize($verzeichnis.$filename)/1024/1024),2);
+            $info=getimagesize($verzeichnis.$filename);
+            if (file_exists($verzeichnis.$filename)) 
                 {
                 if ($debug) echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
                 }
@@ -3195,8 +3199,9 @@
 				{
 				$html .= GetValue($this->findeVariableName("Zusammenfassung",$OWD))."\n\n";
 				}
-			$html    .= "\n".'</body>'."\n".'</html>';             // Abschluss für das Include als iFrame					
-			$filename=IPS_GetKernelDir().'webfront\user\Startpage\Startpage_Openweather.php';
+			$html    .= "\n".'</body>'."\n".'</html>';             // Abschluss für das Include als iFrame
+            $verzeichnis = $this->dosOps->correctDirName(IPS_GetKernelDir().'webfront\user\Startpage');					
+			$filename=$verzeichnis.'Startpage_Openweather.php';
 			if (!file_put_contents($filename, $html)) {
 		        throw new Exception('Create File '.$filename.' failed!');
 		    		}			

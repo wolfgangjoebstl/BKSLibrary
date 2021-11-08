@@ -58,7 +58,7 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
 		{
         echo "Module Stromheizung ist installiert.\n"; 
 		//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
-        IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::IPSHeat");
+        IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung");
 		}
     if (isset($installedModules["EvaluateHardware"]))
         {
