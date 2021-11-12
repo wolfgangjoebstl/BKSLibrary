@@ -1676,7 +1676,8 @@ class OperationCenter
                 case "18363": $Codename="November 2019 Update (19H2)"; break;
                 case "19041": $Codename="May 2020 Update (20H1)"; break;            
                 case "19042": $Codename="October 2020 Update (20H2)"; break;            
-                case "19043": $Codename="May 2021 Update (21H1)"; break;            
+                case "19043": $Codename="May 2021 Update (21H1)"; break;
+                case "22000": $Codename="Win11"; break;
                 default: $Codename=$Version[2];break;
                 }			
             }

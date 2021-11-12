@@ -48,7 +48,7 @@ Installation (erneut/Update)
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ("iTunes.Configuration.inc.php","IPSLibrary::config::modules::iTunesSteuerung");
-    IPSUtils_Include ("iTunes.Library.inc.php","IPSLibrary::app::modules::iTunesSteuerung");
+    IPSUtils_Include ("iTunes.Library.ips.php","IPSLibrary::app::modules::iTunesSteuerung");
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     if (!isset($moduleManager))

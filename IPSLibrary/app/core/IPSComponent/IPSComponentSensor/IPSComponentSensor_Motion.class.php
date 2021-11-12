@@ -908,11 +908,13 @@
                 {
                 if ($gesamt)
                     {
+                    echo "writeEvents mit GesamtID \"".$this->GesamtID."\"\n"; 
                     $value=GetValue($this->GesamtID);
                     $diftimemax=60;
                     }
                 else
                     {
+                    echo "writeEvents mit EreignisID \"".$this->EreignisID."\"\n";
                     $value=GetValue($this->EreignisID);
                     $diftimemax=15;
                     }

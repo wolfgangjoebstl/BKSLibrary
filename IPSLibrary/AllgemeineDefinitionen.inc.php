@@ -170,7 +170,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
  * rpc_SetVariableProfileValues
  * synchronizeProfiles
  * compareProfiles
- * createProfiles
+ * createProfilesByName
  *
  *************************************************************************/
 
@@ -321,7 +321,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             }
         }
 
-    /* die cvollautomatiosche Function zum synchronisiern von Profilen, lokal oder remote */
+    /* die vollautomatiosche Function zum synchronisiern von Profilen, lokal oder remote */
 
     function synchronizeProfiles($server,$profilname,$debug=false)
         {
@@ -330,7 +330,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
                 {
                 if ($debug) echo "Profile existiert nicht oder neu anlegen/update,\n";
-                createProfiles("local",$pname);
+                createProfilesByName("local",$pname);
                 }
             elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
             elseif (IPS_VariableProfileExists($masterName) == false)
@@ -481,7 +481,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
      *
      */
 
-	function createProfiles($server,$pname)
+	function createProfilesByName($server,$pname)
         {
         if (strtoupper($server) != "LOCAL") 
             {
@@ -4399,13 +4399,23 @@ class dosOps
 		if ($debug) 
             {
             echo "correctDirName Auswertungen: Len:$len pos1:$pos1 pos2:$pos2 pos3:$pos3 pos4:$pos4\n";			// am Schluss muss ein Backslash oder Slash sein !
-            if ($pos1 && $pos2) echo "   mixed usage of / und \\  \n";
+            if ($pos1 && $pos2) 
+                {
+                echo "   mixed usage of / und \\ , ";
+                if ($pos3===0) echo "DOS System.\n";
+                if ($pos4===0) echo "LINUX System.\n";                
+                echo "            Positions of \\ $pos3 and of / $pos4.\n";
+                }            
             }
 		if ( ($pos1) && ($pos1<($len-1)) )   $verzeichnis .= "\\";          // Backslash kommt im String ausser auf Pos 0 vor, wenn nicht am Ende mit Backslash am Ende erweitern
 		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		        // Slash kommt im String ausser auf Pos 0 vor, wenn nicht am Ende mit Slash am Ende erweitern
 
         if ($pos3) $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // wenn ein Doppelzeichen ausser am Anfang ist dieses vereinfachen
         if ($pos4) $verzeichnis = str_replace("//","/",$verzeichnis);
+
+        if ($pos3==0) $verzeichnis = str_replace("/","\\",$verzeichnis);
+        if ($pos4==0) $verzeichnis = str_replace("\\","/",$verzeichnis);
+                
 		return ($verzeichnis);
 		}
 
@@ -5744,13 +5754,13 @@ class ComponentHandling
             }
         }
 
-/***********************************************************************************
- *
- * getKeyword
- *
- * aus dem Ergebnis von getComponent nur den Index herausholen, soll für alle Eintraege gleich sein 
- *
- ****************************************************************************************/    
+    /***********************************************************************************
+    *
+    * getKeyword
+    *
+    * aus dem Ergebnis von getComponent nur den Index herausholen, soll für alle Eintraege gleich sein 
+    *
+    ****************************************************************************************/    
 
 	function getKeyword($result)
 		{
@@ -5767,22 +5777,22 @@ class ComponentHandling
 		return ($keyword);
 		}
 
-/***********************************************************************************
- *
- * DEPRECIATED
- *
- * verwendet von CustomComponents, RemoteAccess und EvaluateHeatControl zum schnellen Anlegen der Variablen
- * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
- *
- * Elements		Objekte aus EvaluateHardware, alle Homematic, alle FS20 etc.
- * keyword		Name des Children Objektes das enthalten sein muss, wenn array auch mehrer Keywords, erstes Keyword ist das indexierte
- * InitComponent	erster Parameter bei der Registrierung
- * InitModule		zweiter Parameter bei der Registrierung
- * parameter	wenn array parameter[oid] gesetzt ist, ist RemoteAccess vorhanden und aufgesetzt
- *
- * Ergebnis: ein zusaetzliches Event wurde beim Messagehandler registriert
- *
- ****************************************************************************************/
+    /***********************************************************************************
+    *
+    * DEPRECIATED
+    *
+    * verwendet von CustomComponents, RemoteAccess und EvaluateHeatControl zum schnellen Anlegen der Variablen
+    * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
+    *
+    * Elements		Objekte aus EvaluateHardware, alle Homematic, alle FS20 etc.
+    * keyword		Name des Children Objektes das enthalten sein muss, wenn array auch mehrer Keywords, erstes Keyword ist das indexierte
+    * InitComponent	erster Parameter bei der Registrierung
+    * InitModule		zweiter Parameter bei der Registrierung
+    * parameter	wenn array parameter[oid] gesetzt ist, ist RemoteAccess vorhanden und aufgesetzt
+    *
+    * Ergebnis: ein zusaetzliches Event wurde beim Messagehandler registriert
+    *
+    ****************************************************************************************/
 	
 	function installComponent($Elements,$keywords,$InitComponent, $InitModule, $parameter=array())
 		{
@@ -5846,37 +5856,37 @@ class ComponentHandling
 			} /* Ende foreach */		
 		}	
 
-/***********************************************************************************
- *
- * installComponentFull, anlegen von CustomComponents Events
- *
- * verwendet zum schnellen und einheitlichen Anlegen der Variablen und Events für CustomComponents, RemoteAccess und EvaluateHeatControl 
- * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
- *
- * kann insgesamt drei Eingabemöglichkeiten
- *     - Hardwareliste, Format Homematic etc.
- *     - Geräteliste, Format deviceList
- *     - Datenbank, Eingabewerte werden direkt aus der MariaDB übernommen  
- *
- * Elements		Objekte aus EvaluateHardware, alle Homematic, alle FS20 etc.
- * keyword		Name des Children Objektes das enthalten sein muss, wenn array auch mehrer Keywords, erstes Keyword ist das indexierte
- * InitComponent	erster Parameter bei der Registrierung
- * InitModule		zweiter Parameter bei der Registrierung
- * 
- * Ergebnis: ein zusaetzliches Event wurde beim Messagehandler registriert
- *
- * funktioniert für Humidity, Temperature, Heat Control Actuator und Heat Control Set
- * wenn RemoteAccess Modul installiert ist werden die Variablen auch auf den Remote Vis Servern angelegt
- * die Erkennung ob es sich um das richtige Gerät handelt erfolgt über Keywords, die auch ein Array sein können:
- * 		Die Untervariablen(Children/COID einer Instanz werden verglichen ob einer der Variablen wie das keyword heisst
- * 		bei einem Array gilt die Und Verknüpfung - also Variablen für alle Keywords muessen vorhanden sein.
- * 		das Keyword kann auch ein Device Type sein, Evaluate Hardware speichert unter Device einen Device TYP ab
- *			TYPE_BUTTON, TYPE_CONTACT, TYPE_METER_POWER, TYPE_METER_TEMPERATURE, TYPE_MOTION
- *			TYPE_SWITCH, TYPE_DIMMER, 
- *			TYPE_ACTUATOR	setzt $keyword auf VALVE_STATE 
- *			TYPE_THERMOSTAT	setzt $keyword auf SET_TEMPERATURE, SET_POINT_TEMPERATURE, TargetTempVar wenn die COID Objekte auch vorhanden sind.
- *
- ****************************************************************************************/
+    /***********************************************************************************
+    *
+    * installComponentFull, anlegen von CustomComponents Events
+    *
+    * verwendet zum schnellen und einheitlichen Anlegen der Variablen und Events für CustomComponents, RemoteAccess und EvaluateHeatControl 
+    * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
+    *
+    * kann insgesamt drei Eingabemöglichkeiten
+    *     - Hardwareliste, Format Homematic etc.
+    *     - Geräteliste, Format deviceList
+    *     - Datenbank, Eingabewerte werden direkt aus der MariaDB übernommen  
+    *
+    * Elements		Objekte aus EvaluateHardware, alle Homematic, alle FS20 etc.
+    * keyword		Name des Children Objektes das enthalten sein muss, wenn array auch mehrer Keywords, erstes Keyword ist das indexierte
+    * InitComponent	erster Parameter bei der Registrierung
+    * InitModule		zweiter Parameter bei der Registrierung
+    * 
+    * Ergebnis: ein zusaetzliches Event wurde beim Messagehandler registriert
+    *
+    * funktioniert für Humidity, Temperature, Heat Control Actuator und Heat Control Set
+    * wenn RemoteAccess Modul installiert ist werden die Variablen auch auf den Remote Vis Servern angelegt
+    * die Erkennung ob es sich um das richtige Gerät handelt erfolgt über Keywords, die auch ein Array sein können:
+    * 		Die Untervariablen(Children/COID einer Instanz werden verglichen ob einer der Variablen wie das keyword heisst
+    * 		bei einem Array gilt die Und Verknüpfung - also Variablen für alle Keywords muessen vorhanden sein.
+    * 		das Keyword kann auch ein Device Type sein, Evaluate Hardware speichert unter Device einen Device TYP ab
+    *			TYPE_BUTTON, TYPE_CONTACT, TYPE_METER_POWER, TYPE_METER_TEMPERATURE, TYPE_MOTION
+    *			TYPE_SWITCH, TYPE_DIMMER, 
+    *			TYPE_ACTUATOR	setzt $keyword auf VALVE_STATE 
+    *			TYPE_THERMOSTAT	setzt $keyword auf SET_TEMPERATURE, SET_POINT_TEMPERATURE, TargetTempVar wenn die COID Objekte auch vorhanden sind.
+    *
+    ****************************************************************************************/
 		
 	function installComponentFull($Elements,$keywords,$InitComponent="", $InitModule="", $commentField="",$debug=false)
 		{
@@ -6046,11 +6056,11 @@ class ComponentHandling
 
     } // endof class ComponentHandling
 
-/***********************************************************************************
- *
- *  quick server ping to reduce error messages in log
- *
- **************************************************************************************/
+    /***********************************************************************************
+    *
+    *  quick server ping to reduce error messages in log
+    *
+    **************************************************************************************/
 
     function quickServerPing($UrlAddress)
         {    		
@@ -6117,15 +6127,15 @@ class ComponentHandling
         else return ($rpc);
         }
 
-/***********************************************************************************
- *
- *  selectProtocol, selectProtocolDevice
- *
- * Beide Routinen gehen die HomematicList durch
- * typischer Befehl: foreach ( (selectProtocolDevice("","TYPE_THERMOSTAT",HomematicList())) as $entry) echo "   ".$entry["Name"]."\n";
- *
- *
- **************************************************************************************/
+    /***********************************************************************************
+    *
+    *  selectProtocol, selectProtocolDevice
+    *
+    * Beide Routinen gehen die HomematicList durch
+    * typischer Befehl: foreach ( (selectProtocolDevice("","TYPE_THERMOSTAT",HomematicList())) as $entry) echo "   ".$entry["Name"]."\n";
+    *
+    *
+    **************************************************************************************/
 
 		function selectProtocol($protocol,$devicelist)
 			{
@@ -6154,11 +6164,11 @@ class ComponentHandling
 			return ($result);
 			}
 
-/*************************************************************************************
- *
- * alle OIDs die im Array von Component angeführt sind ausgeben
- *
- ************************************************************************************************/
+    /*************************************************************************************
+    *
+    * alle OIDs die im Array von Component angeführt sind ausgeben
+    *
+    ************************************************************************************************/
 
     function getComponentValues($component,$logs=true)
         {
@@ -7620,7 +7630,8 @@ function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$V
         }
     }
 
-// Returns used memory (either in percent (without percent sign) or free and overall in bytes)
+    // Returns used memory (either in percent (without percent sign) or free and overall in bytes)
+    
     function getServerMemoryUsage($getPercentage=true)
     {
         $memoryTotal = null;

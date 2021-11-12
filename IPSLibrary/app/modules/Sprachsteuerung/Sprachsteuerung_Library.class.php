@@ -21,6 +21,7 @@
 	function tts_play($sk,$ansagetext,$ton,$modus)
  		{
 		$tts_status=true;
+        $ipsOps = new ipsOps();
 		echo "Aufgerufen als Teil der Library der Sprachsteuerung.\n";
 		//echo "tts_play, Textausgabe, Soundkarte : ".$sk.".\n";
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -46,17 +47,16 @@
 					$config=Sprachsteuerung_Configuration();
 					if ( (isset($config["RemoteAddress"])) && (isset($config["ScriptID"])) ) { $remote=true; $url=$config["RemoteAddress"]; $oid=$config["ScriptID"]; }
 					
-					$object_data= new ipsobject($CategoryIdData);
-					$object_app= new ipsobject($CategoryIdApp);
-
-					$NachrichtenID = $object_data->osearch("Nachricht");
-					$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+					//$object_data= new ipsobject($CategoryIdData); $NachrichtenID = $object_data->osearch("Nachricht");
+                    //$object_app= new ipsobject($CategoryIdApp); $NachrichtenScriptID  = $object_app->osearch("Nachricht");
+					$NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
+                    $NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdApp);
 					echo "Nachrichten gibt es auch : ".$NachrichtenID ."  (".IPS_GetName($NachrichtenID).")   ".$NachrichtenScriptID." \n";
 
 					if (isset($NachrichtenScriptID))
 						{
-						$object3= new ipsobject($NachrichtenID);
-						$NachrichtenInputID=$object3->osearch("Input");
+						//$object3= new ipsobject($NachrichtenID); $NachrichtenInputID=$object3->osearch("Input");
+                        $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
 						$log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
 						$log_Sprachsteuerung->LogNachrichten("Sprachsteuerung: Ausgabe von \"".$ansagetext."\"");
 						}

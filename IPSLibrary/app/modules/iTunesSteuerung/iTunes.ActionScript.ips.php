@@ -27,17 +27,23 @@
 
     */
 
-    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");
-    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\iTunesSteuerung\iTunes.Configuration.inc.php");
-    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\iTunesSteuerung\iTunes.Library.ips.php");
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");                                           // gibts das noch ???
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\iTunesSteuerung\iTunes.Configuration.inc.php");
+    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\iTunesSteuerung\iTunes.Library.ips.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("iTunes.Configuration.inc.php","IPSLibrary::config::modules::iTunesSteuerung");
+    IPSUtils_Include ("iTunes.Library.ips.php","IPSLibrary::app::modules::iTunesSteuerung");
 
-IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
-IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
-IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
-IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+    IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
+    IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
+    IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
-/****************************************************************/
+    $fatalerror=false;
+    $debug=false;
+
+    /****************************************************************/
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     if (!isset($moduleManager))
@@ -89,28 +95,30 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
     $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 
-$object_data= new ipsobject($CategoryIdData);
-$object_app= new ipsobject($CategoryIdApp);
+    /*
+    $object_data= new ipsobject($CategoryIdData);
+    $object_app= new ipsobject($CategoryIdApp);
 
-$NachrichtenID = $object_data->osearch("Nachricht");
-$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+    $NachrichtenID = $object_data->osearch("Nachricht");
+    $NachrichtenScriptID  = $object_app->osearch("Nachricht");
+    */
 
-$fatalerror=false;
-$debug=false;
+    $ipsOps = new ipsOps();
+    $NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
+    $NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdApp);
 
-if (isset($NachrichtenScriptID))
-	{
-	$object3= new ipsobject($NachrichtenID);
-	$NachrichtenInputID=$object3->osearch("Input");
-	//$object3->oprint();
-	/* logging in einem File und in einem String am Webfront */
-	$log_iTunes=new Logging("C:\Scripts\iTunes\Log_iTunes.csv",$NachrichtenInputID);
-	}
-else $fatalerror=true;
+    if (isset($NachrichtenScriptID))
+        {
+        //$object3= new ipsobject($NachrichtenID);  $NachrichtenInputID=$object3->osearch("Input"); $object3->oprint();
+        $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
+        /* logging in einem File und in einem String am Webfront */
+        $log_iTunes=new Logging("C:\Scripts\iTunes\Log_iTunes.csv",$NachrichtenInputID);
+        }
+    else $fatalerror=true;
 
-$tim1ID = @IPS_GetEventIDByName("ScriptTimer", $_IPS['SELF']);
+    $tim1ID = @IPS_GetEventIDByName("ScriptTimer", $_IPS['SELF']);
 
-/****************************************************************/
+    /****************************************************************/
 
 if ($_IPS['SENDER']=="TimerEvent") 
 	{

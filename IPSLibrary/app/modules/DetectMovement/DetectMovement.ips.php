@@ -3,8 +3,8 @@
  //Fügen Sie hier Ihren Skriptquellcode ein
 $startexec=microtime(true);
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
+//Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
@@ -72,8 +72,8 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 		$alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
 		echo "\n";
 		echo "Execute von Detect Movement, zusaetzliche Auswertungen.\n\n";
-
-		echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
+		$log=new Motion_Logging(false);                            // variablename und value sind null
+        echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
 		foreach ($Homematic as $Name => $Key)
 			{
 			/* Alle Homematic Bewegungsmelder ausgeben */
@@ -82,7 +82,6 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 		   		/* alle Bewegungsmelder */
 				echo "*******\nBearbeite Bewegungsmelder ".$Name."\n";
 			    $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-				$log=new Motion_Logging(false);                            // variablename und value sind null
                 $log->Set_LogValue($oid);
 				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 				}
@@ -91,7 +90,6 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 			   	/* alle Kontakte */
 				echo "*******\nBearbeite Kontakt ".$Name."\n";
 			    $oid=(integer)$Key["COID"]["STATE"]["OID"];
-				$log=new Motion_Logging(false);                  //Variable false wird nur do_init_statistic aufgerufen, true for Debug
                 $log->Set_LogValue($oid);
 				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 				}
@@ -107,7 +105,6 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 		   		/* alle Bewegungsmelder */
 				echo "*******\nBearbeite FS20 Bewegungsmelder ".$Name."\n";
 			    $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-				$log=new Motion_Logging(false);
                 $log->Set_LogValue($oid);
 				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 				}
@@ -122,7 +119,6 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 	      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
 			  	      	$variabletyp=IPS_GetVariable($oid);
 			  	      	IPS_SetName($oid,"MOTION");
-						$log=new Motion_Logging(false);
                         $log->Set_LogValue($oid);
 						$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 		   		      	}
@@ -171,6 +167,7 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 
 			$groups=$DetectMovementHandler->ListGroups('Motion');		// wenn Parameter angegeben ist gibt es auch ein Explode der mit Komma getrennten Gruppennamen
             //print_r($groups);
+            $gesamt=array();
 			foreach ($groups as $group=>$status)
 				{
 				$gesamt["Gesamtauswertung_".$group]["NAME"]="Gesamtauswertung_".$group;

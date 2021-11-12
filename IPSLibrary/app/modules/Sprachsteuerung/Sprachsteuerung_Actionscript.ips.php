@@ -34,7 +34,8 @@
 		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 		IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');		
 		}
-
+        
+    $ipsOps = new ipsOps();
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -48,25 +49,22 @@
 	$SelectedStationId    		= IPS_GetVariableIdByName("SelectedStationId",$categoryId_Auswertungen);
     $TuneInStationConfig        = IPS_GetVariableIdByName("TuneInStationConfig",$categoryId_Auswertungen);
 
-$object_data= new ipsobject($CategoryIdData);
-$object_app= new ipsobject($CategoryIdApp);
+    //$object_data= new ipsobject($CategoryIdData); $NachrichtenID = $object_data->osearch("Nachricht");
+    //$object_app= new ipsobject($CategoryIdApp); $NachrichtenScriptID  = $object_app->osearch("Nachricht");
+    $NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
+    $NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdApp);
 
-$NachrichtenID = $object_data->osearch("Nachricht");
-$NachrichtenScriptID  = $object_app->osearch("Nachricht");
-
-
-if (isset($NachrichtenScriptID))
-	{
-	$object3= new ipsobject($NachrichtenID);
-	$NachrichtenInputID=$object3->osearch("Input");
-	//$object3->oprint();
-	/* logging in einem File und in einem String am Webfront */
-	$log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
-	}
-else 
-	{
-	IPSLogger_Err(__file__,"NachrichtenScriptID nicht bekannt");
-	}
+    if (isset($NachrichtenScriptID))
+        {
+        //$object3= new ipsobject($NachrichtenID); $NachrichtenInputID=$object3->osearch("Input"); $object3->oprint();
+        $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
+        /* logging in einem File und in einem String am Webfront */
+        $log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
+        }
+    else 
+        {
+        IPSLogger_Err(__file__,"NachrichtenScriptID nicht bekannt");
+        }
 
 
 Switch ($_IPS['SENDER'])

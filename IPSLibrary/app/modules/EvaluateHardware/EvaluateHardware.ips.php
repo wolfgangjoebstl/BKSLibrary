@@ -527,8 +527,8 @@ IPS_SetEventActive($tim1ID,true);
                     if (isset($eventDeviceConfig[$oid])===false) echo "DetectDeviceHandler->Get_EventConfigurationAuto() ist false  ";
                     if (isset($eventTempConfig[$oid])===false) echo "DetectTemperatureHandler->Get_EventConfigurationAuto() ist false  ";
                     echo "\n";
-                    $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');                     // zumindest einmal in den DeviceHandler übernehmen
-                    if ($result) echo "   *** register Event $soid\n";
+                    $result=$DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature');                     // zumindest einmal in den DeviceHandler übernehmen
+                    if ($result) echo "   *** register Event $moid\n";
                     }
                 }
             else echo "  -> ****Fehler, Mirror Register für ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." nicht gefunden.\n";

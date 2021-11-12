@@ -65,7 +65,7 @@
 			{
 			IPS_SetEventActive($tim1ID,false);			
 			}
-		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 		}
 	else	
 		{

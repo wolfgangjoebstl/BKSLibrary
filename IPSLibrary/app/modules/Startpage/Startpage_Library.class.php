@@ -1623,7 +1623,8 @@
             $maxcount=count($file);
             if ($showfile===false) $showfile=rand(1,$maxcount-1);
             $filename = $file[$showfile];
-            $verzeichnis = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront/user/Startpage/user/pictures/SmallPics/");
+            $verzeichnisWeb = "/user/Startpage/user/pictures/SmallPics/";
+            $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb);
             $filegroesse=number_format((filesize($verzeichnis.$filename)/1024/1024),2);
             $info=getimagesize($verzeichnis.$filename);
             if (file_exists($verzeichnis.$filename)) 
@@ -1631,7 +1632,7 @@
                 if ($debug) echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
                 }
             //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";   
-            $wert.='<div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
+            $wert.='<div class="container"><img src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" class="image">';
             $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
             $wert.='</div>';
             return ($wert);

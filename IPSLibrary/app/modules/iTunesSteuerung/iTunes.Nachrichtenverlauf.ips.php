@@ -1,9 +1,12 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    //Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("iTunes.Configuration.inc.php","IPSLibrary::config::modules::iTunesSteuerung");
+    IPSUtils_Include ("iTunes.Library.inc.php","IPSLibrary::app::modules::iTunesSteuerung");
 
 $baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung.Nachrichtenverlauf-DENONsteuerung');
 //echo "BaseID :".$baseId."\n";

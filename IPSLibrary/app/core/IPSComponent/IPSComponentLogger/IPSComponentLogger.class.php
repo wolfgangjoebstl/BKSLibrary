@@ -155,11 +155,36 @@ class ipsobject
  * Folgende Funktionen stehen zur Verfügung:
  *
  *  __construct
+ *  constructFirst
  *  GetComponentParams
  *  GetComponent
+ *
+ *  SetDebugInstance
+ *  SetDebugInstanceRemain
+ *  GetDebugInstance
+ *  CheckDebugInstance
+ *
  *  GetEreignisID
+ *
+ *  get_IPSComponentLoggerConfig
+ *  set_IPSComponentLoggerConfig
+ *
+ *  createFullDir
+ *
  *  CreateCategoryAuswertung
  *  CreateCategoryNachrichten
+ *
+ *  do_init_motion
+ *  do_init_brightness
+ *  do_init_contact
+ *  do_init_temperature
+ *  do_init_humidity
+ *  do_init_sensor
+ *  do_init_counter
+ *  do_init_climate
+ *  do_init_statistics
+ *  do_init
+ *
  *  getVariableName
  *  setVariableLogId
  *  setVariableId
@@ -513,7 +538,7 @@ class Logging
     /***********************************************************************************
      ***********************************************************************************/
 
-    /* wird beim construct der Child Logging class aufgerufen
+    /* do_init_motion, wird beim construct der Child Logging class aufgerufen
      * wichtige Variablen die angelegt werden:
      *  variablename        Variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
      *  name                MotionMirror_variablename
@@ -618,7 +643,7 @@ class Logging
                 else $this->variableDelayLogID=$variableDelayLogID;    					
                 }
             /* CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0) */
-            $erID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereignisspeicher",3, '', null,10000,null );
+            $erID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereignisspeicher",3, '', null,10000,null );           // in init motion, wenn DetectMovement
             $this->GesamtID=$erID;
             //echo "  Gesamt Ereignisspeicher aufsetzen : ".$erID." \n";
             $erID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereigniszaehler",1, '', null,10000,null );
@@ -1064,8 +1089,31 @@ class Logging
     public function do_init_statistics($debug=false)
         {
         if ($debug) echo "      Logging::do_init_statistics, Aufruf:\n";
-        /**************** Speicherort für Nachrichten und Spiegelregister definieren */		
 
+        /* wenn die Register Gesamt_Ereignis... nicht angelegt sind kann writeEvents nicht arbeiten */
+        if (isset ($this->installedmodules["DetectMovement"]))
+            {
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            $this->DetectHandler = new DetectMovementHandler();  // für getVariableName benötigt
+            $CategoryIdData     = $this->DetectHandler->Get_CategoryData();
+            $name="Motion-Detect";
+            $mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+            if ($mdID==false)
+                {
+                echo "Create Motion-Detect Kategorie in $CategoryIdData.\n";
+                $mdID = IPS_CreateCategory();
+                IPS_SetParent($mdID, $CategoryIdData);
+                IPS_SetName($mdID, $name);
+                IPS_SetInfo($mdID, "this category was created by script. ");
+                }
+            $this->motionDetect_DataID=$mdID;
+            /* CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0) */
+            $this->GesamtID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereignisspeicher",3, '', null,10000,null );
+            $this->GesamtCountID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereigniszaehler",1, '', null,10000,null );
+            }
+
+        /**************** Speicherort für Nachrichten und Spiegelregister definieren */		
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Statistik",$this->CategoryIdData);
         //$this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
         
