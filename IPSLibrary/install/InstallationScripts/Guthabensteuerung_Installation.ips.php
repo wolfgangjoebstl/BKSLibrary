@@ -17,11 +17,12 @@
      * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
      */
 	 
-	/**@defgroup Guthabensteuerung
+	/**@defgroup Guthabensteuerung::Guthabensteuerung_Installation
 	 * @{
 	 *
 	 * Script um herauszufinden ob die Guthaben der Simkarten schon abgelaufen sind
-	 *
+	 * Installationsroutine, Eigenes Tab im SystemTP für Selenium Status
+     *
 	 *
 	 * @file          Guthabensteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -80,6 +81,10 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+    $dosOps = new dosOps();
+    $ipsOps = new ipsOps();    
+	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
+
 /********************************************************
  *
  * INIT, Variablen anlegen
@@ -99,7 +104,18 @@
      * default ist none, dann wird nichts ausser dem Nachrichtenverlauf angelegt und gemacht 
      */
 
+    $categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 20);
+    $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 1000);
+
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
 	$categoryId_Nachrichten     = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 100);
+	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$log_OperationCenter=new Logging("C:\Scripts\Log_Guthabensteuerung.csv",$input);
+
+    $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
+    $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
+
     $DoInstall=true;
 
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
@@ -115,7 +131,7 @@
             IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
             //echo "Do Init for Operating Mode Selenium.\n";
             $seleniumOperations = new SeleniumOperations();            
-            $CategoryId_Mode        = CreateCategory('Selenium',        $CategoryIdData, 20);
+            $CategoryId_Mode        = CreateCategory('Selenium',        $CategoryIdData, 90);
             $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             if (isset($GuthabenAllgConfig["Selenium"]["WebDrivers"])) 
                 {
@@ -125,15 +141,17 @@
                     {
                     $categoryId_WebDriver        = CreateCategory($category,        $CategoryId_Mode, $pos);
                     $sessionID          = CreateVariableByName($categoryId_WebDriver,"SessionId", 3);                       
-                    $handleID           = CreateVariableByName($categoryId_WebDriver,"HandleId", 3);                        
+                    $handleID           = CreateVariableByName($categoryId_WebDriver,"HandleId", 3);  
+                    $statusID           = CreateVariable("StatusWebDriver".$category, 3, $categoryId_WebDriver,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                     $pos=$pos+10;
                     }
                 }
-            else
+            if (isset($GuthabenAllgConfig["Selenium"]["WebDriver"])) 
                 {
                 //$sessionID          = CreateVariable("SessionId", 3, $categoryId_Selenium,1000,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
                 $sessionID          = CreateVariableByName($CategoryId_Mode,"SessionId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 $handleID           = CreateVariableByName($CategoryId_Mode,"HandleId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+                $statusID           = CreateVariable("StatusWebDriverDefault", 3, $CategoryId_Mode,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                 }
             $categoryDreiID = $seleniumOperations->getCategory("DREI");                
             echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";                 
@@ -153,11 +171,8 @@
 	
     if ($DoInstall)         // siehe weiter oben, lokaler Switch
         {
-        /* in Zukunft die Simkartendaten in Archive und Guthaben speichern bzw aus dem Data dorthin verschieben
-        $categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 10);
-        $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 900);																							 
-        */
-        $categoryId_Guthaben        = $CategoryIdData;
+        /* die Simkartendaten in Archive und Guthaben speichern bzw aus dem Data dorthin verschieben */
+        
         $phoneID=array();           // wird für die Links im Webfront verwendet, nur die aktiven SIM Karten bekommen einen Link
         $i=0;
         echo "Folgende Telefonnummer haben aktiven Status und werden bearbeitet:\n";
@@ -209,6 +224,9 @@
                     fclose($handle2);
                     break;
                 }	// ende switch
+
+            //$guthabenHandler->createVariableGuthaben($TelNummer["Nummer"]));       //alle aktiven Variablen anlegen und Ergebnisse sammeln
+
             if 	( (strtoupper( $TelNummer["Status"])) == "ACTIVE")          // egal ob Selenium oder Imacro
                 {
                 $phone1ID = CreateVariableByName($categoryId_Guthaben, "Phone_".$TelNummer["Nummer"], 3);
@@ -217,11 +235,12 @@
                 $phoneID[$i]["Short"]=substr($TelNummer["Nummer"],(strlen($TelNummer["Nummer"])-3),10);
                 $phoneID[$i]["Summ"]=$phone_Summ_ID;
                 echo "   $i : ".$TelNummer["Nummer"]."   $phone_Summ_ID   abgespeichert in $phone1ID      \n";	                    
-                $phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_User", 3);
-                $phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Status", 3);
-                $phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Date", 3);
+                $phone_User_ID          = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_User", 3);
+                $phone_Status_ID        = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Status", 3);
+                $phone_Date_ID          = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Date", 3);
                 $phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_unchangedDate", 3);
-                $phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Bonus", 3);
+                $phone_Bonus_ID         = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Bonus", 3);
+                $ldateID                = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_loadDate", 3);
 
                 $phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Volume", 2);
                 IPS_SetVariableCustomProfile($phone_Volume_ID,'MByte');
@@ -404,12 +423,6 @@
 	 *
 	 *************************************************************/
 
-
-	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
-
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$log_OperationCenter=new Logging("C:\Scripts\Log_Guthabensteuerung.csv",$input);
-
 	if ($_IPS['SENDER']=="Execute")
 		{
         echo "\n";
@@ -417,6 +430,113 @@
 		echo 	$log_OperationCenter->PrintNachrichten();
         echo "-----------------------------------------------\n";
 		}
+
+
+    /**************************************************
+     *
+     * Guthabensteuerung und Selnium wird hier überwacht, Anzeige erfolgt im SystemTP
+     *
+    echo "\n";
+    echo "Status Evaluierung, check ob Guthabensteuerung und Selenium vorhanden sind:\n";
+    if (isset ($installedModules["Guthabensteuerung"])) 
+        { 
+        echo "Modul Guthabensteuerung ist installiert.\n"; 
+        IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+        IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+        IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+
+        $guthabenHandler = new GuthabenHandler(true,true,true);         // Steuerung für parsetxtfile
+        $GuthabenAllgConfig     = $guthabenHandler->getGuthabenConfiguration();                              //get_GuthabenAllgemeinConfig();
+        }
+    else 
+        { 
+        echo "Modul Guthabensteuerung ist NICHT installiert.\n"; 
+        }
+     */
+
+    $wfcHandling =  new WfcHandling();
+    /* Workaround wenn im Webfront die Root fehlt */
+    $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
+
+    if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
+        {
+        /* wird auch für die nächste Abfrage benötigt 
+        * zuerst aus dem ModulManager die Konfig von IPSModuleManagerGUI abrufen */
+        $moduleManagerGUI = new IPSModuleManager('IPSModuleManagerGUI',$repository);
+        $configWFrontGUI=$ipsOps->configWebfront($moduleManagerGUI,false);     // wenn true mit debug Funktion
+        $tabPaneParent="roottp";                        // Default Wert
+
+        $configWF=array();                                      // für die Verwendung vorbereiten
+        if (isset($configWFrontGUI["Administrator"]))
+            {
+            $tabPaneParent=$configWFrontGUI["Administrator"]["TabPaneItem"];
+            echo "  Selenium Module Überblick im Administrator Webfront $tabPaneParent abspeichern.\n";
+            //print_r($configWFrontGUI["Administrator"]);   
+
+            /* es gibt kein Module mit Selenium ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
+            $configWF["Enabled"]=true;
+            $configWF["Path"]="Visualization.WebFront.Administrator.Selenium";
+            $configWF["ConfigId"]=$WebfrontConfigID["Administrator"];              
+            $configWF["TabPaneParent"]=$tabPaneParent;
+            $configWF["TabPaneItem"]="Selenium"; 
+            $configWF["TabPaneOrder"]=1010;                                          
+            }
+
+        /* Selenium Stationen auswerten */
+        $webfront_links=array();
+        $webfront_links["Selenium"]["Auswertung"]=array();
+        $webfront_links["Selenium"]["Nachrichten"] = array(
+            $NachrichtenInputID => array(
+                    "NAME"				=> "Nachrichten",
+                    "ORDER"				=> 10,
+                    "ADMINISTRATOR" 	=> true,
+                    "USER"				=> false,
+                    "MOBILE"			=> false,
+                        ),
+                    );	
+        if (isset($GuthabenAllgConfig["Selenium"]["WebDrivers"])) 
+            {
+            $order=100;
+            foreach ($GuthabenAllgConfig["Selenium"]["WebDrivers"] as $category => $entry)
+                {
+                $categoryId_WebDriver        = CreateCategory($category,        $CategoryId_Mode, $pos);                    
+                $statusID           = IPS_GetObjectIdByName("StatusWebDriver".$category,$categoryId_WebDriver);
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StatusWebDriver".$category;
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=$order;
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+                $order=$order+10;
+                }
+            }
+        if (isset($GuthabenAllgConfig["Selenium"]["WebDriver"])) 
+            {
+            $statusID           = IPS_GetObjectIdByName("StatusWebDriverDefault",$CategoryId_Mode);
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StatusWebDriverDefault";
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=90;
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+            }
+
+
+
+
+        echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";
+        $webDrivers=$guthabenHandler->getSeleniumWebDrivers();   
+        print_R($webDrivers);
+        
+        $configSelenium = $guthabenHandler->getSeleniumWebDriverConfig();
+        $webDriverUrl   = $configSelenium["WebDriver"];
+        echo "Default Web Driver Url : $webDriverUrl\n";
+        
+        /* WebDriver starten */
+        $seleniumHandler = new SeleniumHandler();           // Selenium Test Handler, false deaktiviere Ansteuerung von webdriver für Testzwecke vollstaendig
+        $result = $seleniumHandler->initHost($webDriverUrl,$configSelenium["Browser"]);          // ersult sind der Return wert von syncHandles
+        if ($result === false) echo "---------\n".$seleniumHandler->readFailure()."\n---------------------\n";
+        else echo "Selenium Webdriver ordnungsgemaess gestartet.\n";
+
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+
+        }
+
+
 
 	/******************************************************
 	 *

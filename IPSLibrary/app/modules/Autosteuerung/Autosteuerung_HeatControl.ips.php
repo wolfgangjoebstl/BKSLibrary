@@ -18,6 +18,8 @@
 	IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
     IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autosteuerung");
 
+    $debug=false;           // mit Execute wird es true
+    
     $AutoSetSwitches = Autosteuerung_SetSwitches();
     if (isset($AutoSetSwitches["Stromheizung"]))
         {  
@@ -62,7 +64,7 @@
                 $AutoSetSwitches = Autosteuerung_SetSwitches();
                 print_r($AutoSetSwitches);
                 $debug=true;
-            Case "TimerEvent":
+            case "TimerEvent":
                 $auto = new Autosteuerung();
                 $oid=$kalender->getAutoFillID();
                 if ($debug) echo "Autosteuerung Heatcontrol vomn Timer oder Execute aufgerufen:    ".IPS_GetName($oid)." ($oid)\n";

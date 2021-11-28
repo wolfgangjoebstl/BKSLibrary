@@ -1250,7 +1250,9 @@ function send_status($aktuell, $startexec=0, $debug=false)
 			{
 			IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
-			$guthabenid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+			$dataID      = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+            $guthabenid  = @IPS_GetObjectIDByName("Guthaben", $dataID);
+
 			$GuthabenConfig = get_GuthabenConfiguration();
 			//print_r($GuthabenConfig);
 			$guthaben="\nGuthabenstatus:\n";
@@ -1258,8 +1260,8 @@ function send_status($aktuell, $startexec=0, $debug=false)
 				{
 				if (strtoupper($TelNummer["STATUS"])=="ACTIVE")
 					{
-					$phone1ID = CreateVariableByName($guthabenid, "Phone_".$TelNummer["NUMMER"], 3);
-					$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
+					$phone1ID      = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"],$guthabenid);
+					$phone_Summ_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_Summary",$phone1ID);
 					$guthaben .= "\n    ".GetValue($phone_Summ_ID);
 					}
 				}
@@ -1269,13 +1271,11 @@ function send_status($aktuell, $startexec=0, $debug=false)
             foreach ($GuthabenConfig as $TelNummer)
                 {
                 //print_r($TelNummer);
-                $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
-
-                $phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
-                $dateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
-                $ldateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_loadDate", 3);
-                $udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
-                $userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
+                $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"], $guthabenid);
+                $dateID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_Date", $phone1ID);
+                $ldateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_loadDate", $phone1ID);
+                $udateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_unchangedDate", $phone1ID);
+                $userID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_User", $phone1ID);
                 if (strtoupper($TelNummer["STATUS"])=="ACTIVE") 
                     {
                     $guthaben.="    ".$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
@@ -1302,10 +1302,10 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
 		$PrintLines="";
 		foreach($catch as $line)
-   		{
+   		    {
 			if (strlen($line)>2)
-			   {
-   			$PrintLines.=$line."\n";
+			    {
+   			    $PrintLines.=$line."\n";
 				}  /* ende strlen */
 		  	}
 		$SystemInfo.=$PrintLines."\n\n";
@@ -1466,8 +1466,8 @@ function send_status($aktuell, $startexec=0, $debug=false)
 				{
 				if (strtoupper($TelNummer["STATUS"])=="ACTIVE")
 					{
-					$phone1ID = CreateVariableByName($guthabenid, "Phone_".$TelNummer["NUMMER"], 3);
-					$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
+					$phone1ID      = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"],$guthabenid);
+					$phone_Summ_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_Summary",$phone1ID);
 					$guthaben .= "\n".GetValue($phone_Summ_ID);
 					}
 				}
@@ -4092,14 +4092,14 @@ class dosOps
      *
      */    
 
-    function fileAvailable($filename,$verzeichnis)
+    function fileAvailable($filename,$verzeichnis,$debug=false)
         {
         $status=false;
         /* Wildcards beim Filenamen zulassen */
         $pos=strpos($filename,"*.");
         if ( $pos === false )
             {
-            echo "Wir suchen nach dem Filenamen \"".$filename."\"\n";
+            if ($debug) echo "Wir suchen nach dem Filenamen \"".$filename."\"\n";
             $detName=true;
             $detExt=false;
             }
@@ -6719,12 +6719,12 @@ class WfcHandling
 
     /******
      *
-     * Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte teil des WebfrontConfigID übergeben 
+     * Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte Teil des WebfrontConfigID übergeben 
      * ruft setupWebfrontEntry mit der richtigen Webfront ConfigID und dem Namen des Webfronts (Administrator/User)
-     * wird in Sprachsteuerung_Installation verwendet
+     * wird mittlerweile in Sprachsteuerung_Installation und customcomponent_installation verwendet
      *
      * Parametrierung ist in $webfront_links
-     * Keys in Auswertung und    strukturiert
+     * Keys in Auswertung und wenn gewünscht Nachrichten strukturiert
      *
 	$webfront_links=array(
 		"AmazonEcho" => array(
@@ -6749,60 +6749,73 @@ class WfcHandling
 					),	
 				);      
      *
+     * Dieser Teil der function übernimmt die fehlerabfragen und ermittelt anhand der Struktur des arrays ob 
+     * TabPaneItem oder TabPaneParent übergben wird 
+     * in der obigen Konfiguration wird TabPaneParent mit AmazonEcho übergeben
+     * wenn auch Nachrichten angelegt wird gibt es einen Splitscreen
+     *
      */
 
-    public function easySetupWebfront($configWF,$webfront_links, $scope)
+    public function easySetupWebfront($configWF,$webfront_links, $scope, $debug=false)
         {
         $this->configWF=$configWF;                                              /* mitnehmen in die anderen Routinen */
-        echo "easySetupWebfront für Scope \"$scope\" aufgerufen.\n";
+        if ($debug) echo "easySetupWebfront für Scope \"$scope\" aufgerufen.\n";
         if ( !((isset($configWF["Enabled"])) && ($this->configWF["Enabled"]==false)) )   
             {
             if ( (isset($this->configWF["Path"])) )
                 {
                 $categoryId_WebFront         = CreateCategoryPath($this->configWF["Path"]);        
-                echo "Webfront für ".IPS_GetName($categoryId_WebFront)." ($categoryId_WebFront) Kategorie im Pfad ".$this->configWF["Path"]." erstellen.\n";
-                echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
                 $status=@EmptyCategory($categoryId_WebFront);
-                if ($status) echo "   -> erfolgreich.\n";                
+                if ($debug) 
+                    {
+                    echo "Webfront für ".IPS_GetName($categoryId_WebFront)." ($categoryId_WebFront) Kategorie im Pfad ".$this->configWF["Path"]." erstellen.\n";
+                    echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
+                    if ($status) echo "   -> erfolgreich.\n";    
+                    }            
 		        IPS_SetHidden($categoryId_WebFront, true); //Objekt verstecken
                 if ($this->configWF["TabPaneParent"] != "roottp") 
                     {
                     if ( exists_WFCItem($this->configWF["ConfigId"], $this->configWF["TabPaneParent"]) )   
                         {                     
                         //print_R($webfront_links);
-                        if (sizeof($webfront_links)==1) 
+                        if (sizeof($webfront_links)==1)                 // Unterscheidung ob TabPaneParent oder TabPaneItem genommen wird
                             {
-                            echo "Installation im ".$this->configWF["TabPaneParent"].", nur ein Key ".array_key_first($webfront_links).":\n";
-                            $this->setupWebfront($webfront_links,$this->configWF["TabPaneParent"],$categoryId_WebFront, $scope);
+                            if ($debug) echo "Installation im ".$this->configWF["TabPaneParent"].", nur ein Key ".array_key_first($webfront_links).":\n";
+                            $this->setupWebfront($webfront_links,$this->configWF["TabPaneParent"],$categoryId_WebFront, $scope, $debug);
                             }
-                        else 
+                        elseif (sizeof($webfront_links)>1) 
                             {
-                            echo "Installation im ".$this->configWF["TabPaneItem"]."|".$this->configWF["TabPaneParent"].":\n";
-                            $this->setupWebfront($webfront_links,$this->configWF["TabPaneItem"],$categoryId_WebFront, $scope);
+                            if ($debug) echo "Installation im \"".$this->configWF["TabPaneItem"]."|".$this->configWF["TabPaneParent"]."\":\n";
+                            $this->setupWebfront($webfront_links,$this->configWF["TabPaneItem"],$categoryId_WebFront, $scope, $debug);
                             }
+                        else echo "easySetupWebfront: Fehler, Webfront Konfiguration für Darstellung der Daten leer.\n"; 
                         }
-                    else echo "Webfront Parent ".$this->configWF["TabPaneParent"]." nicht vorhanden.\n";                
+                    else echo "easySetupWebfront: Fehler, Webfront Parent ".$this->configWF["TabPaneParent"]." nicht vorhanden.\n";                
                     }
-                else echo "Webfront Parent roottp nicht erlaubt.\n";
+                else echo "easySetupWebfront: Fehler, Webfront Parent roottp nicht erlaubt.\n";
                 }
+            else echo "easySetupWebfront: Fehler, kein Pfad für die Kategorie in der die Daten oder diel Links gespeichert werden angegeben.\n"; 
             }
-        }
+        else echo "easySetupWebfront: Fehler, keine weitere Bearbeitung. Webfront not enabled.";
+        }                           // ende function
 
     /******
      *
-     * Aufbau einer Webfront Seite, Aufruf von easysetupwebfront
+     * Aufbau einer Webfront Seite, Aufruf erfolgt von easysetupwebfront
+     *
+     *
      */
 
-    public function setupWebfront($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope)
+    public function setupWebfront($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope, $debug=false)
         {
 		if ( isset($this->WebfrontConfigID[$scope]) )
 			{
-	        echo "setupWebfront: mit Parameter aus array in ".$WFC10_TabPaneItem." mit der Katgeorie ".$categoryId_WebFrontAdministrator." für den Webfront Configurator ".$scope."\n";
-            $this->setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$this->WebfrontConfigID[$scope], $scope);
+	        if ($debug) echo "setupWebfront: mit Parameter aus array in ".$WFC10_TabPaneItem." mit der Katgeorie ".$categoryId_WebFrontAdministrator." für den Webfront Configurator ".$scope."\n";
+            $this->setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$this->WebfrontConfigID[$scope], $scope, $debug);
             }
 		else
 			{	
-			echo "Webfront ConfiguratorID unbekannt.\n";
+			if ($debug) echo "Webfront ConfiguratorID unbekannt.\n";
 			}
 		}
 
@@ -6814,7 +6827,7 @@ class WfcHandling
      *
      */
 
-    public function setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator, $WFC10_ConfigId, $scope)
+    public function setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator, $WFC10_ConfigId, $scope, $debug=false)
         {
         $anzahlGruppen=sizeof($webfront_links);
     	if (isset($this->configWF["TabPaneOrder"])) $order=$this->configWF["TabPaneOrder"];
@@ -6824,7 +6837,7 @@ class WfcHandling
             $tabItem="Default";                
             if ($anzahlGruppen==1)      // kein SplitPane notwendig
                 {
-                echo "setupWebfrontEntry, Kategorie Auswertung vorhanden. Nur ein Pane erstellen.\n";
+                if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung vorhanden. Nur ein Pane erstellen.\n";
                 CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $tabItem, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
                 $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab);
                 }
@@ -6832,13 +6845,13 @@ class WfcHandling
                 {
         	    /* Kein Name für den Pane definiert */
 	    		//echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";    
-    		    echo "setupWebfrontEntry, Kategorie Auswertung vorhanden, Webfront ".$WFC10_ConfigId.", SplitPane erzeugt TabItem \"".$WFC10_TabPaneItem."Item\" in \"".$WFC10_TabPaneItem."\" mit Namen $tabItem.\n";
+    		    if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung vorhanden, Webfront ".$WFC10_ConfigId.", SplitPane erzeugt TabItem \"".$WFC10_TabPaneItem."Item\" in \"".$WFC10_TabPaneItem."\" mit Namen $tabItem.\n";
     	        $this->createSplitPane($WFC10_ConfigId,$webfront_links,$tabItem,$WFC10_TabPaneItem."Item",$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope);
         	    }
             }
         else
             {
-            echo "setupWebfrontEntry, Kategorie Auswertung noch nicht als Key vorhanden. $anzahlGruppen Untergruppen bilden.\n";
+            if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung noch nicht als Key vorhanden. $anzahlGruppen Untergruppen bilden.\n";
             //if (sizeof($webfront_links)==1) 
             foreach ($webfront_links as $Name => $webfront_group)
                 {
@@ -6847,10 +6860,10 @@ class WfcHandling
                     * Der Name für die Felder wird selbst erfunden.
                     */
 
-                echo "\n**** setupWebfrontEntry, erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
+                if ($debug) echo "\n**** setupWebfrontEntry, erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
                 $categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, $order);
                 EmptyCategory($categoryId_WebFrontTab);   
-                echo "Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
+                if ($debug) echo "Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
 
                 $tabItem = $WFC10_TabPaneItem.$Name;				/* Netten eindeutigen Namen berechnen */
                 $this->deletePane($WFC10_ConfigId, $tabItem);              /* Spuren von vormals beseitigen */
@@ -6859,15 +6872,15 @@ class WfcHandling
                     {
                     if ($anzahlSubGruppen==1)      // kein SplitPane notwendig
                         {
-                        echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden. Nur ein Pane erstellen.\n";
+                        if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden. Nur ein Pane erstellen.\n";
 			            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
                         //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, "");     // darunter kommen Untergruppen
                         $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab);
                         }
                     else
                         {                        
-                        echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden, Webfront ".$WFC10_ConfigId." SplitPane erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." mit Namen $Name\n";
-                        $this->createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator");
+                        if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden, Webfront ".$WFC10_ConfigId." SplitPane erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." mit Namen $Name\n";
+                        $this->createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator",$debug);
                         }
                     }
                 else
@@ -6875,19 +6888,19 @@ class WfcHandling
                     foreach ($webfront_group as $SubName => $webfront_subgroup)
                         {                    
                         /* noch eine Zwischenebene an Tabs einführen */
-                        echo "\n  **** iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
+                        if ($debug) echo "\n  **** iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
                         $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
                         EmptyCategory($categoryId_WebFrontSubTab);   
-                        echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
+                        if ($debug) echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
 
                         $tabSubItem = $WFC10_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
                         $this->deletePane($WFC10_ConfigId, $tabSubItem);              /* Spuren von vormals beseitigen */
 
-                        echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
+                        if ($debug) echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
                         CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
 
-                        echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
-                        $this->createSplitPane($WFC10_ConfigId,$webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator");    
+                        if ($debug) echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
+                        $this->createSplitPane($WFC10_ConfigId,$webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator",$debug);    
                         }
                     }    
                 $order += 10;	
@@ -6899,17 +6912,17 @@ class WfcHandling
 
     /* Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem*/
 
-    private function createSplitPane($WFC10_ConfigId, $webfront_group, $Name, $tabItem, $WFC10_TabPaneItem,$categoryId_WebFrontSubTab,$scope="Administrator")
+    private function createSplitPane($WFC10_ConfigId, $webfront_group, $Name, $tabItem, $WFC10_TabPaneItem,$categoryId_WebFrontSubTab,$scope="Administrator", $debug=false)
         {
-        echo "  createSplitPane mit Name ".$Name." Als Pane ".$tabItem." in ".$WFC10_TabPaneItem." im Konfigurator ".$WFC10_ConfigId." verwendet Kategorie ".$categoryId_WebFrontSubTab."\n";
+        if ($debug) echo "  createSplitPane mit Name ".$Name." Als Pane ".$tabItem." in ".$WFC10_TabPaneItem." im Konfigurator ".$WFC10_ConfigId." verwendet Kategorie ".$categoryId_WebFrontSubTab."\n";
     	if (isset($this->configWF["TabPaneOrder"])) $order=$this->configWF["TabPaneOrder"];
         else $order=10; 
 
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontSubTab, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontSubTab, 20);
-		echo "  Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n"; 
+		if ($debug) echo "  Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n"; 
 
-        echo "   **** Splitpane $tabItem erzeugen in $WFC10_TabPaneItem:\n";
+        if ($debug) echo "   **** Splitpane $tabItem erzeugen in $WFC10_TabPaneItem:\n";
         /* @param integer $WFCId ID des WebFront Konfigurators
             * @param string $ItemId Element Name im Konfigurator Objekt Baum
             * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
@@ -6927,12 +6940,12 @@ class WfcHandling
         CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
         CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);            
 
-        print_r($webfront_group); 
+        //print_r($webfront_group); 
         $this->createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight);   
             
         }
 
-    private function createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false)
+    private function createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
         {
         if ($categoryIdRight==false) $categoryIdRight=$categoryIdLeft;
 			foreach ($webfront_group as $Group => $webfront_link)
@@ -6943,7 +6956,7 @@ class WfcHandling
 			 		 * Auswertung kommt nach links und Nachrichten nach rechts
 			 		 */	
                     
-					echo "  createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+					if ($debug) echo "  createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
                     // Optional auch einzelne Berechtigungen pro Objekt
                     if ( (($scope=="Administrator") && (((isset($link["ADMINISTRATOR"])) && ($scope=="Administrator") &&  $link["ADMINISTRATOR"]) || ((isset($link["ADMINISTRATOR"])===false)) )) ||
                                 (($scope=="User") && (((isset($link["USER"])) &&  $link["USER"]) || ((isset($link["USER"])===false)) )) || 
@@ -6951,12 +6964,12 @@ class WfcHandling
                         {                    
                         if ($Group=="Auswertung")
 				 		    {
-				 		    echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
+				 		    if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
 						    CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
                             }
                         else
                             {
-    				 		echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
+    				 		if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
 	    					CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  $link["ORDER"]);
                             }
 						}

@@ -211,7 +211,7 @@
 						{
 						case IPSHEAT_TYPE_SWITCH:
 							if ($debug) echo "IPS_HeatManager SetValue Type Switch SetValue; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
-							$this->SetSwitch($variableId, $value);
+							$this->SetSwitch($variableId, $value, true, true, $debug);
 							break;
 						case IPSHEAT_TYPE_DIMMER:
 							if ($debug) echo "IPS_HeatManager SetValue Type Dimmer SetDimmer; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
@@ -253,9 +253,9 @@
 		 * @param int $switchId ID der Variable
 		 * @param bool $value Neuer Wert der Variable
 		 */
-		public function SetSwitch($switchId, $value, $syncGroups=true, $syncPrograms=true) 
+		public function SetSwitch($switchId, $value, $syncGroups=true, $syncPrograms=true, $debug=false) 
 			{
-			//echo "Aufruf SetSwitch mit ".$switchId." ".$value." \n";
+			//if ($debug) echo "Aufruf SetSwitch mit ".$switchId." setzen auf ".$value." : Wert vorher ist ".GetValue($switchId)."\n";
 			if (GetValue($switchId)==$value) {
 				return;
 			}
@@ -263,6 +263,7 @@
 			$configLights = IPSHeat_GetHeatConfiguration();
 			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
 			$component       = IPSComponent::CreateObjectByParams($componentParams);
+            if ($debug) echo "Aufruf SetSwitch mit ".$switchId." ".$value." Component Params $componentParams\n";
 
 			SetValue($switchId, $value);
 			IPSLogger_Inf(__file__, 'Turn Heat/Light SetSwitch '.$configName.' '.($value?'On':'Off'));

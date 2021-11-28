@@ -53,8 +53,9 @@
 
 		private $configuration = array();				// die angepasste, standardisierte Konfiguration
 		private $CategoryIdData, $CategoryIdApp, $CategoryIdSelenium;			// die passenden Kategorien
-
-		/**
+        private $CategoryIdData_Guthaben, $CategoryIdData_GuthabenArchive;			// noch ein paar passenden Kategorien, für die Speicherung der Daten
+		
+        /**
 		 * @public
 		 *
 		 * Initialisierung des IPSMessageHandlers
@@ -77,6 +78,8 @@
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
             $this->CategoryIdSelenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            $this->CategoryIdData_Guthaben        = @IPS_GetObjectIDByName("Guthaben", $this->CategoryIdData);
+            $this->CategoryIdData_GuthabenArchive = @IPS_GetObjectIDByName("GuthabenArchive", $this->CategoryIdData);
     		}
 			
         /* Kategorie für Daten ist gekapselt, hier  ausgeben */
@@ -262,14 +265,14 @@
         public function getSeleniumSessionID($webDriverName=false)
             {
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
-            $categoryId_Selenium    = $this->getCategoryIdSelenium();
+            //$categoryId_Selenium    = $this->getCategoryIdSelenium();
             if ( ($webDriverName) && ($webDriverName != "default") )
                 {
-                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $categoryId_Selenium);
+                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $this->CategoryIdSelenium);
                 if ($categoryId_Named===false) return (false);                    
                 $sessionID              = @IPS_GetObjectIDByName("SessionId", $categoryId_Named); 
                 }
-            else $sessionID              = @IPS_GetObjectIDByName("SessionId", $categoryId_Selenium);             
+            else $sessionID              = @IPS_GetObjectIDByName("SessionId", $this->CategoryIdSelenium);             
             return ($sessionID);
             }
 
@@ -280,17 +283,17 @@
         public function setSeleniumHandler($handler,$webDriverName=false)
             {
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
-            $categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
-            if ($categoryId_Selenium===false) return (false);  
+            //$categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            if ($this->CategoryIdSelenium===false) return (false);  
             if ( ($webDriverName) && ($webDriverName != "default") )
                 {
-                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $categoryId_Selenium);
+                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $this->CategoryIdSelenium);
                 if ($categoryId_Named===false) return (false);    
                 $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Named);                                   
                 }
             else
                 {
-                $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Selenium); 
+                $handlerID            = @IPS_GetObjectIDByName("HandleId", $this->CategoryIdSelenium); 
                 }
             if ($handlerID)
                 {
@@ -303,17 +306,17 @@
         public function getSeleniumHandler($webDriverName=false, $debug=false)
             {
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
-            $categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
-            if ($categoryId_Selenium===false) return (false);  
+            //$categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            if ($this->CategoryIdSelenium===false) return (false);  
             if ( ($webDriverName) && ($webDriverName != "default") )
                 {
-                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $categoryId_Selenium);
+                $categoryId_Named = @IPS_GetObjectIDByName($webDriverName, $this->CategoryIdSelenium);
                 if ($categoryId_Named===false) return (false);  
                 $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Named);   
                 }
             else
                 {                      
-                $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Selenium); 
+                $handlerID            = @IPS_GetObjectIDByName("HandleId", $this->CategoryIdSelenium); 
                 }
             if ($debug) echo "getSeleniumHandler Werte gespeichert in $handlerID.\n";
             if ($handlerID)
@@ -347,8 +350,8 @@
             {
             $result = array();
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
-            $categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
-            if ($categoryId_Selenium===false) return (false);
+            //$categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            if ($this->CategoryIdSelenium===false) return (false);
             if ( ($name) && ($name != "default") && (isset($this->configuration["CONFIG"]["Selenium"]["WebDrivers"][$name])))
                 {
                 $result = $this->configuration["CONFIG"]["Selenium"]["WebDrivers"][$name];
@@ -417,14 +420,16 @@
             return($result);              
             }    
 
+        /* Die Daten für eine SIM Karte anlgen und auslesen als result array */
+
         private function createVariableGuthabenNummer($lookfor="")
             {
             if ($lookfor=="") return (false);
             $config=$this->getContractsConfiguration($lookfor);
             $nummer=$config["NUMMER"];
             $result=array();
-            echo "createVariableGuthaben für Nummer $nummer \n";
-            $phone1ID = CreateVariableByName($this->CategoryIdData, "Phone_".$nummer, 3);
+            echo "createVariableGuthaben für Nummer $nummer in Category Guthaben (".$this->CategoryIdData_Guthaben.")\n";
+            $phone1ID = CreateVariableByName($this->CategoryIdData_Guthaben, "Phone_".$nummer, 3);
             $phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Summary", 3);
             $phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_User", 3);
             $phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Status", 3);
@@ -460,8 +465,8 @@
             $config=$this->getContractsConfiguration($lookfor);
             $nummer=$config["NUMMER"];
             $result=array();
-            echo "getVariableGuthaben für Nummer $nummer \n";
-            $phone1ID = IPS_GetObjectIDByName("Phone_".$nummer,$this->CategoryIdData);
+            echo "getVariableGuthaben für Nummer $nummer in Category Guthaben (".$this->CategoryIdData_Guthaben.")\n";
+            $phone1ID = IPS_GetObjectIDByName("Phone_".$nummer,$this->CategoryIdData_Guthaben);
 
             $phone_Summ_ID = IPS_GetObjectIDByName("Phone_".$nummer."_Summary", $phone1ID);
             $phone_User_ID = IPS_GetObjectIDByName("Phone_".$nummer."_User", $phone1ID);
@@ -532,8 +537,9 @@
         *
         ************************************************************************************************************/
 
-        function parsetxtfile($lookfor="",$verzeichnis=false,$filename=false,$type="file")
+        function parsetxtfile($lookfor="",$verzeichnis=false,$filename=false,$type="file",$debug=false)
             {
+            echo "Parsetxtfile wurde in der Betriebsart $type aufgerufen:\n";
             if ($lookfor == "") return (false);
             if ( ($type == "file") && ($verzeichnis === false) ) 
                 {
@@ -548,8 +554,8 @@
             if ( ($type == "file") && ($filename === false) ) $filename = "/report_dreiat_".$nummer.".txt";
 
             // Ergebnisvariablen, IDs anlegen
-
-            $phone1ID               = IPS_GetObjectIDByName("Phone_".$nummer,           $this->CategoryIdData);
+            echo "Ergebnisvariablen, IDs anlegen in Category Guthaben (".$this->CategoryIdData_Guthaben.")\n";
+            $phone1ID               = IPS_GetObjectIDByName("Phone_".$nummer,           $this->CategoryIdData_Guthaben);
             $phone_Summ_ID          = IPS_GetObjectIDByName("Phone_".$nummer."_Summary",$phone1ID);
             $phone_User_ID          = IPS_GetObjectIDByName("Phone_".$nummer."_User",   $phone1ID);
             $phone_Date_ID          = IPS_GetObjectIDByName("Phone_".$nummer."_Date",   $phone1ID);

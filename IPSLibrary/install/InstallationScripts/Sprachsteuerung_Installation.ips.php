@@ -25,7 +25,7 @@
      *  remote über einen IP Symcon Mediaplayer eines anderen Servers 
      *  über eine Alexa Instanz
      *
-     * legt in System ein eigenes Tab an um Infos zu geben was gerade gesprochen wird. Wenn Silent Mode ein ist erfolgt keine Ausgabe.
+     * legt in SystemTP ein eigenes Tab an um Infos zu geben was gerade gesprochen wird. Wenn Silent Mode ein ist erfolgt keine Ausgabe.
      * mit den Alexas kann auch ein Radiosender von TuneIn abgespielt werden, Modul EchoControl ist erforderlich
      *
      * verwendet tts_play, function ist im OperationCenter und in der Sparachsteuerung Library definiert.

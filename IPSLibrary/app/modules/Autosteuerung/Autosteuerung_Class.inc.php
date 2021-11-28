@@ -4336,7 +4336,12 @@ class Autosteuerung
                  *     wenn die Konfiguration auf Aus oder Ein steht wird der Input aus der Autosteuerung ignoriert
                  *     wenn wir auf Auto stehen und es gibt eine Condition Config, dann leider auch
                  *     sonst natürlich
+                 *
+                 * wenn ich Monitor:status schreibe, komme ich hier heraus
+                 * wenn ich name:Arbeitszimmer,status:on schreibe ist es eine normele IPSHeat Funktion
+                 *
                  */
+                 
    				//IPSLogger_Not(__file__, 'Autosteuerung::ExecuteCommand, Internal Module vorhanden. Hier evaluieren.');
             	$AutoSetSwitches = Autosteuerung_SetSwitches();
                 if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
@@ -4347,7 +4352,7 @@ class Autosteuerung
                         $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $monitorId);
                         $StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$monitorId);                            
                         $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
-                        echo "modul Internal abarbeiten, Werte in ".$this->CategoryId_Ansteuerung." Name : ".$AutoSetSwitches["MonitorMode"]["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
+                        echo "Autosteuerung::ExecuteCommand: Modul \"Internal\" abarbeiten, Werte in ".$this->CategoryId_Ansteuerung." Name : ".$AutoSetSwitches["MonitorMode"]["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
                         $monConfigFomat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
                         if (function_exists("Autosteuerung_MonitorMode")) 
                             {

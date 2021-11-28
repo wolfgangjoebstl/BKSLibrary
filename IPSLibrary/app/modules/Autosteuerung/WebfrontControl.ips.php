@@ -19,7 +19,7 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
 
 	if ( isset($installedModules["DetectMovement"]) === true )
 		{
-        echo "Module DetectMovement ist installiert.\n";
+        //echo "Module DetectMovement ist installiert.\n";
         IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
         }
 

@@ -30,6 +30,7 @@
 
     $noinstall=true;                        /* true, keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen */
     $evaluateHardware=false;                /* false, keine EvaluateHardware aufgerufen für die Aktualisierung */
+    $excessiveLog=false;                    /* true für mehr Logging */ 
 
     /*******************************
     *
@@ -110,8 +111,11 @@
         $file = "EvaluateHardware_Devicelist.inc.php";
         if ($dosOps->fileAvailable($file,$dir))
             {
-            echo "========================================================================\n";    
-            echo "Statistik der Register nach Typen:\n";
+            if ($excessiveLog) 
+                {
+                echo "========================================================================\n";    
+                echo "Statistik der Register nach Typen:\n";
+                }
             IPSUtils_Include ($file,"IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
             if (function_exists("deviceList")) $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
             else $deviceList = array();
@@ -122,7 +126,7 @@
             $deviceList = array();    
             }
         $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
-        $hardwareTypeDetect->writeRegisterStatistics($statistic);        
+        if ($excessiveLog) $hardwareTypeDetect->writeRegisterStatistics($statistic);        
         //print_r($statistic);        
         } 
     else 
@@ -194,7 +198,7 @@
     ********************************/
 
 	echo "\n";
-	echo "Custom Component Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
+	if ($excessiveLog) echo "Custom Component Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
 
     /* check if Administrator and User Webfronts already available */
     
@@ -212,9 +216,12 @@
     *
     ********************************/
 			
-    echo "\nKonfiguration für das neue Webfront des CustomComponent auslesen :\n";        
     $configWFront=$ipsOps->configWebfront($moduleManager,false);     // wenn true mit debug Funktion
-    print_R($configWFront);
+    if ($excessiveLog) 
+        {
+        echo "\nKonfiguration für das neue Webfront des CustomComponent auslesen :\n";        
+        print_R($configWFront);
+        }
 
     /* extra abfragen, kann auch aus dem Array abgeleitet werden, redundante register, kann man später entfernen  */
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
@@ -236,21 +243,24 @@
 		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
 		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
 		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
-		echo "WF10 Administrator\n";
-		echo "  Path          : ".$WFC10_Path."\n";
-		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";
-		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10_TabItem."\n";
-		echo "  TabName       : ".$WFC10_TabName."\n";
-		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10_TabOrder."\n";
+        if ($excessiveLog) 
+            {
+            echo "WF10 Administrator\n";
+            echo "  Path          : ".$WFC10_Path."\n";
+            echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";
+            echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
+            echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
+            echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
+            echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
+            echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
+            echo "  TabItem       : ".$WFC10_TabItem."\n";
+            echo "  TabName       : ".$WFC10_TabName."\n";
+            echo "  TabIcon       : ".$WFC10_TabIcon."\n";
+            echo "  TabOrder      : ".$WFC10_TabOrder."\n";
+        	echo "\n";
+            }
 		}
 
-	echo "\n";
 
 
 	if ($WFC10User_Enabled==true)
@@ -266,34 +276,43 @@
 		$WFC10User_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10User');
 		$WFC10User_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10User');
 		$WFC10User_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10User');
-		echo "WF10 User \n";
-		echo "  Path          : ".$WFC10User_Path."\n";
-		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
-		echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10User_TabItem."\n";
-		echo "  TabName       : ".$WFC10User_TabName."\n";
-		echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
+        if ($excessiveLog) 
+            {
+            echo "WF10 User \n";
+            echo "  Path          : ".$WFC10User_Path."\n";
+            echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
+            echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
+            echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
+            echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
+            echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
+            echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
+            echo "  TabItem       : ".$WFC10User_TabItem."\n";
+            echo "  TabName       : ".$WFC10User_TabName."\n";
+            echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
+            echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
+            }
 		}
       
 
 	if ($Mobile_Enabled==true)
 	   	{
 		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-		echo "Mobile \n";
-		echo "  Path          : ".$Mobile_Path."\n";
+        if ($excessiveLog) 
+            {
+            echo "Mobile \n";
+		    echo "  Path          : ".$Mobile_Path."\n";
+            }
 		}
 		
 
 	if ($Retro_Enabled==true)
 	   	{
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
-		echo "  Path          : ".$Retro_Path."\n";		
+        if ($excessiveLog) 
+            {
+            echo "Retro \n";
+            echo "  Path          : ".$Retro_Path."\n";		
+            }
 		}
 	
     /**************************************************
@@ -303,16 +322,19 @@
      *
      */
 
+    /* wird auch für die nächste Abfrage benötigt 
+     * zuerst aus dem ModulManager die Konfig von IPSModuleManagerGUI abrufen */
+    $moduleManagerGUI = new IPSModuleManager('IPSModuleManagerGUI',$repository);
+    $configWFrontGUI=$ipsOps->configWebfront($moduleManagerGUI,false);     // wenn true mit debug Funktion
+    $tabPaneParent="roottp";                        // Default Wert
+
+    echo "\n";
     echo "Status Evaluierung, check ob Netatmos Modules vorhanden sind:\n";
     $guid = "{1023DB4A-D491-A0D5-17CD-380D3578D0FA}";  // Netatmo Gerät 
     $instances = $modulhandling->getInstances($guid);
     if (sizeof($instances)>0)                                   // es gibt Netatmo Geräte
         {
-        /* zuerst aus dem ModulManager die Konfig von IPSModuleManagerGUI abrufen */
         $configWF=array();
-        $moduleManagerGUI = new IPSModuleManager('IPSModuleManagerGUI',$repository);
-        $configWFrontGUI=$ipsOps->configWebfront($moduleManagerGUI,false);     // wenn true mit debug Funktion
-        $tabPaneParent="roottp";                        // Default Wert
         if (isset($configWFrontGUI["Administrator"]))
             {
             $tabPaneParent=$configWFrontGUI["Administrator"]["TabPaneItem"];
@@ -341,12 +363,12 @@
                 if ($configArray["module_type"]=="Station") $station[$configArray["station_id"]]=$instance;
                 }
             }        
-        echo "   Diese Stationen haben wir gefunden:\n";
+        if ($excessiveLog) echo "   Diese Stationen haben wir gefunden:\n";
         $webfront_links=array(); $stationKey="Netatmo";
         foreach ($station as $stationId => $oidStation)
             {
             $stationName = IPS_GetName($oidStation);                
-            echo "      $stationName\n";
+            if ($excessiveLog) echo "      $stationName\n";
             $webfront_links[$stationKey]["Auswertung"][$oidStation]["NAME"]=$stationName;
             $webfront_links[$stationKey]["Auswertung"][$oidStation]["ORDER"]=10;
             $childs=IPS_GetChildrenIDs($oidStation);
@@ -362,13 +384,13 @@
                 //echo "      $childName\n";
                 }
             }
-        print_r($webfront_links);
-        echo "Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
-
-        echo "\n\n===================================================================================================\n";
+        if ($excessiveLog) print_r($webfront_links);
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
         }
-    else echo "   Keine Netatmos Modules vorhanden.\n";
+    else if ($excessiveLog) echo "   Keine Netatmos Modules vorhanden.\n";
+
+    echo "Abgelaufene Zeit nach Bearbeitung des Webfronts für Netatmo: ".exectime($startexec)." Sek \n";
+    echo "\n\n===================================================================================================\n";
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -382,6 +404,7 @@
 	echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("Temperatur"=>"new","TemperaturSet"=>"new","Humidity"=>"new","Switch"=>"new","Button"=>"new","Contact"=>"new","Motion"=>"new","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"new");
     synchronizeProfiles("local",$profilname);
+
 
     if (false)
         {
@@ -458,22 +481,28 @@
     /* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.	
 	 *
 	 */
-	
-    echo "Array webfront_Links als Input für die Webfront Erstellung: \n"; 
+    if ($excessiveLog) echo "Array webfront_Links als Input für die Webfront Erstellung: \n";
+    $countEntries=0; 
     //print_r($webfront_links);
     foreach ($webfront_links as $group => $webfront_link)
         {
-        echo "Gruppe $group:\n";
+        if ($excessiveLog) echo "Gruppe $group:\n";
         foreach ($webfront_link as $area => $entries)
             {
-            echo "     Area $area:\n";
+            if ($excessiveLog) echo "     Area $area:\n";
             if ($area != "Nachrichten")
                 {
-                foreach ($entries as $name => $entry) echo "       ".$entry["NAME"]." ".$entry["ORDER"]."\n";
+                foreach ($entries as $name => $entry) 
+                    {
+                    if ($excessiveLog) echo "       ".$entry["NAME"]." ".$entry["ORDER"]."\n";
+                    $countEntries++;
+                    }
                 }
             }
         }
 
+    echo "\n\n===================================================================================================\n";
+    echo "Abgelaufene Zeit vor Bearbeitung des Webfronts für Administrator: ".exectime($startexec)." Sek \n";
 
     /* ----------------------------------------------------------------------------------------------------------------------------
         * WebFront Installation von Administrator und User wenn im ini gewünscht
@@ -486,7 +515,8 @@
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
 		echo "Webportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in Kategorie ". $categoryId_AdminWebFront." (".IPS_GetName($categoryId_AdminWebFront).")\n";
-        
+        echo "Es sind insgesamt $countEntries Einträge zu bearbeiten\n";
+
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
@@ -510,6 +540,8 @@
             }
         else echo "***Fehler, $WFC10_TabPaneParent darf nicht roottp sein.\n";
         }
+
+
 
      if (isset($configWFront["User"]))
         {
@@ -1109,7 +1141,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 
-    
+
 echo "CustomCompenent Installation abgeschlossen. Optionen : ".($noinstall?"Keine Installation der Components":"Installation der Components")."  \n";
 echo "\nAktuell vergangene Zeit : ".exectime($startexec)." Sekunden\n";         // kein zweiter Parameter sonst hrtime in nanoseconds instead of unix timestamp as float
 

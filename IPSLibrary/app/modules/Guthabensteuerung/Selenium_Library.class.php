@@ -75,11 +75,12 @@ class SeleniumHandler
 
     public      $handle;                /* Id of each Tab */
     private     $tab;
+    private     $failure;
 
     function __construct($active=true)
         {
         $this->active=$active;   
-
+        $this->failure="";
         }
 
     /* handle ist gespeichert mit Index als webIndex und der Wert dem kurzen Namen, dem iodentifier, Tab
@@ -112,6 +113,13 @@ class SeleniumHandler
         return(false);
         }
 
+
+    /* einen abgespeicherten Fehler vollständig auslesen */
+
+    function readFailure()
+        {
+        return($this->failure);
+        }
 
     /* schreibt $handle */
 
@@ -162,8 +170,8 @@ class SeleniumHandler
                 }
             catch (Exception $e) 
                 { 
-                $failure = $e->getMessage();
-                $failureShort = substr($failure,0,60);
+                $this->failure = $e->getMessage();
+                $failureShort = substr($this->failure,0,60);
                 if ($failureShort=="Curl error thrown fo") echo "Es sieht so aus als wäre Selenium nicht gestartet.\n";
                 elseif ($failureShort=="session not created: This version of ChromeDriver only suppo") echo "Neuesten ChromeDriver laden.\n";
                 else 
@@ -192,8 +200,8 @@ class SeleniumHandler
                 }
             catch (Exception $e) 
                 { 
-                $failure = $e->getMessage();
-                $failureShort = substr($failure,0,60);
+                $this->failure = $e->getMessage();
+                $failureShort = substr($this->failure,0,60);
                 if ($failureShort=="Curl error thrown fo") echo "Es sieht so aus als wäre Selenium nicht gestartet.\n";
                 elseif ($failureShort=="session not created: This version of ChromeDriver only suppo") echo "Neuesten ChromeDriver laden.\n";
                 else 
@@ -436,7 +444,7 @@ class SeleniumHandler
  * individuelle Funktionen um die www.drei.at Homepage vernünftig abzufragen
  * Wir benötigen zumindestens
  *  Startseite
- *  Rückfallsseite wenn der Prozess beiom vorigen Durchlauf hängengeblieben ist
+ *  Rückfallsseite wenn der Prozess beim vorigen Durchlauf hängengeblieben ist
  *  Seite nach dem Login von dem verschiedene Abfragen ausgelöst werden können
  *  Seite oder Befehl zum Logout
  *
@@ -484,7 +492,7 @@ class SeleniumDrei extends SeleniumHandler
         }
 
 
-    /* runAutomatic
+    /* seleniumDrei::runAutomatic
      * function is part of a state machine. State Machine is in upper section, state machine operates on responses
      * SeleniumOperations calls this function
      *
@@ -707,11 +715,15 @@ class SeleniumDrei extends SeleniumHandler
         *
         * //*[@id="current-cost"]
         *
+        * /html/body/div[3]/main/div[4]
+        * //*[@id="site-wrapper"]/main/div[4]
+        *
         */
 
         $tryXpath = array(
-                0 => '//*[@id="site-wrapper"]/main/div[5]',
-                1 => '//*[@id="site-wrapper"]/main/div[5]/div[3]',
+                0 => '//*[@id="site-wrapper"]/main/div[4]',
+                1 => '//*[@id="site-wrapper"]/main/div[5]',
+                2 => '//*[@id="site-wrapper"]/main/div[5]/div[3]',
                 );
 
         foreach ($tryXpath as $index => $xpath)
@@ -775,6 +787,12 @@ class SeleniumIiyama extends SeleniumHandler
         echo "set_configuration\n";
         $this->configuration = $configuration;
         }
+
+    /* SeleniumIiyama::runAutomatic
+     *
+     * Montor Ein/Aus Schalten
+     *
+     */
 
     public function runAutomatic($step=0)
         {
@@ -957,16 +975,48 @@ class SeleniumOperations
     function writeResult($index,$result,$name="Result")
         {
         $categoryID = @IPS_GetObjectIDByName($index, $this->CategoryIdData);
+        if ($categoryID===false) return(false);
         $variableID = CreateVariableByName($categoryID, $name, 3);
         SetValue($variableID,$result);
 
         }
 
-    function readResult($index,$name="Result")
+    function readResult($index=false,$name="Result")
         {
         $result=array();
+        if ($index==false) 
+            {
+            $childrens=IPS_getChildrenIDs($this->CategoryIdData);
+            foreach ($childrens as $children)
+                {
+                $objectType=IPS_getObject($children)["ObjectType"];
+                $Name=IPS_GetName($children);
+                if ($objectType==0)     // nur die Kategorien anzeigen 
+                    {
+                    $countData=sizeof(IPS_getChildrenIDs($children));
+                    echo "   $children   ".str_pad($Name,40)."  Registeranzahl : $countData   \n";
+                    }
+                }
+            return($this->CategoryIdData);
+            }
         $categoryID = @IPS_GetObjectIDByName($index, $this->CategoryIdData);
-        $variableID = CreateVariableByName($categoryID, $name, 3);
+        $more=explode("&",$name);
+        print_r($more);
+        if (sizeof($more)>1)
+            {
+            $variableNameID = @IPS_GetObjectIDByName($more[1], $categoryID);
+            if ($variableNameID===false) return(false);
+            $variableName = GetValue($variableNameID);
+            echo "readResult   $name = $variableName\n";
+            $variableID = @IPS_GetObjectIDByName($variableName, $categoryID);
+            if ($variableID===false) return(false);
+            }
+        else
+            {
+            //$variableID = CreateVariableByName($categoryID, $name, 3);
+            $variableID = @IPS_GetObjectIDByName($name, $categoryID);
+            if ($variableID===false) return(false);
+            }
         $result["Value"]=GetValue($variableID);
         $result["LastChanged"]=IPS_GetVariable($variableID)["VariableChanged"];
         return ($result);
@@ -1042,7 +1092,7 @@ class SeleniumOperations
                         $url=$entry["URL"];
                         if ($step == 0) 
                             {
-                            if ($debug) echo "Öffne Seite $url :\n";
+                            if ($debug) echo "automatedQuery: Öffne Seite $url :\n";
                             $steps[$index]=0;
                             $debugAll=true;
                             }

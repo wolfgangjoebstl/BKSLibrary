@@ -1,5 +1,6 @@
 <?
 
+
  	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -24,18 +25,27 @@
      *      iMacro
      *      Selenium
      *
+     * Dieses Script macht alle drei Anwendungsmöglichkeiten
+     *
+     *      Timer
+     *      Webfront
+     *      Execute
      */
 
 
 
-    Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    //Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+
     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
     IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
     // max. Scriptlaufzeit definieren
     ini_set('max_execution_time', 100);
     $startexec=microtime(true);    
-    echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";
+    //echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";         //keine Ausgabe da auch vom Webfront aufgerufen 
 
     /******************************************************
 
@@ -51,6 +61,13 @@
     $installedModules = $moduleManager->GetInstalledModules();
     $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
     $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+    $ipsOps = new ipsOps();    
+
+    $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
+    $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
+    /* logging in einem File und in einem String am Webfront */
+    $log_Guthabensteuerung=new Logging("C:\Scripts\Guthabensteuerung\Log_Guthaben.csv",$NachrichtenInputID);
 
     $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
 	$GuthabenConfig         = $guthabenHandler->getContractsConfiguration();            // get_GuthabenConfiguration();
@@ -175,18 +192,22 @@ if ($_IPS['SENDER']=="TimerEvent")
                             if (is_file($fileName))
                                 {
                                 $filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
-                                $note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                                $note="iMacro letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
                                 }
                             }
-                        else 	$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
+                        else 	$note="iMacro letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
+                        $log_Guthabensteuerung->LogNachrichten($note);
                         SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	
                         break;
                      case "SELENIUM":
                         $config["DREI"]["CONFIG"]["Username"]=$phoneID[$ScriptCounter]["Nummer"];          // von 0 bis maxcount-1 durchgehen
                         $config["DREI"]["CONFIG"]["Password"]=$phoneID[$ScriptCounter]["Password"];
                         $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug      
-                        $note="Abfrage war um ".date("d.m.Y H:i:s")." für ".$phoneID[($ScriptCounter)]["Nummer"];
+                        $note="Selenium Abfrage war um ".date("d.m.Y H:i:s")." für ".$phoneID[($ScriptCounter)]["Nummer"]."($ScriptCounter/$maxcount)";
+                        $log_Guthabensteuerung->LogNachrichten($note);
                         SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	                           
+
+
                         break;
                     default:
                         break;
@@ -394,13 +415,37 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
             //$value=2;       // 0,1  ... (count-1)
             //$webDriverName="BKS-Server";
             //$debug=true;
-            $debug=false;
+            $debug=true;
             echo "============================================================================\n";
             echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
             $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
             $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"];   
             $seleniumOperations = new SeleniumOperations();                             // macht nichts, erst mit automated query gehts los
-            $seleniumOperations->automatedQuery($webDriverName,$config,$debug);          // true debug         
+            $seleniumOperations->automatedQuery($webDriverName,$config,$debug);          // true debug      
+
+            $ergebnis1="";
+            echo "Parsetxtfile:\n";        
+            echo "--------------------------------------------------\n   ".$phoneID[$value]["Nummer"]."    : ";
+            if (isset($phoneID[$value]["OID"])) 
+                {
+                echo "register (".$phoneID[$value]["OID"].") available";
+                if (isset($phoneID[$value]["LastUpdated"])) 
+                    {
+                    echo ", last update was ".date("d.m.Y H:i:s",$phoneID[$value]["LastUpdated"]);                    
+                    echo "\n";
+                    $result=GetValue($phoneID[$value]["OID"]);
+                    echo "$result\n";
+                    $lines = explode("\n",$result);
+                    $ergebnis1=$guthabenHandler->parsetxtfile($phoneID[$value]["Nummer"],$lines,false,"array");                    
+                    }
+                else echo "\n";
+                }
+            else echo "\n"; 
+            //print_r($phoneID[$value]);
+            echo $ergebnis1."\n";
+            //SetValue($phone1ID,$ergebnis1);
+
+
             echo "============================================================================\n";
             SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1); 
             break;  

@@ -1,9 +1,25 @@
 <?
+ 	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */ 
 
-	/**@defgroup Autosteuerung
+	/**@defgroup Autosteuerung::Autosteuerung_Installation
 	 *
 	 * Script um automatisch irgendetwas ein und auszuschalten
-	 *
+	 * Installationsroutine, Vorbereitung der Webfronts und Unitialisierung der wichtigsten Variablen abhängig von den freigeschalteteten Funktionen
 	 *
 	 * @file          Autosteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -56,6 +72,8 @@
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+    $ipsOps = new ipsOps();
 
 	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
@@ -525,7 +543,31 @@
 				$TemperaturZuletztID = CreateVariable("TemperaturZuletzt", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
 				break;
 			case "ANWESENHEITSSIMULATION":
-                $AnwesenheitssimulationID = CreateVariableByName($categoryId_Autosteuerung,"Anwesenheitssimulation",1,"AusEinAuto",null,0,$scriptIdWebfrontControl);    
+                $AnwesenheitssimulationID = CreateVariableByName($categoryId_Autosteuerung,"Anwesenheitssimulation",1,"AusEinAuto",null,0,$scriptIdWebfrontControl); 
+                $childs=IPS_GetChildrenIDs($AnwesenheitssimulationID);
+                //print_r($childs);
+                foreach ($childs as $child) IPS_SetHidden($child,true);                 // Alles verstecken                   
+                $scenes=Autosteuerung_GetScenes(); 
+                foreach($scenes as $scene)
+                    {
+                    if (isset($scene["TYPE"]))
+                        {
+                        if ( (isset($scene["STATUS"])) && (strtoupper($scene["STATUS"])=="DISABLED") )
+                            {
+                            /* Schalter ist deaktiviert, nichts tun */    
+                            }
+                        else
+                            {                        
+                            $statusID  = CreateVariable($scene["NAME"]."_Status",  1, $AnwesenheitssimulationID, 0, "AusEin",null,null,""  );
+                            $counterID = CreateVariable($scene["NAME"]."_Counter", 1, $AnwesenheitssimulationID, 0, "",null,null,""  );
+                            IPS_SetHidden($statusID,false);                 // nur die konfigurierten anzeigen
+                            IPS_SetHidden($counterID,false);
+                            AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+                            AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+                            IPS_ApplyChanges($archiveHandlerID);
+                            }
+                        }
+                    }
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Schaltbefehle'));
 				$simulation=new AutosteuerungAnwesenheitssimulation();
                 echo " --> AutosteuerungAnwesenheitssimulation erfolgreich aufgerufen.\n";
@@ -596,10 +638,13 @@
 						CreateLinkByDestination(IPS_GetName($SubCategoryId), $SubCategoryId,    $AutosteuerungID,  10);
 						}					
                     if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
-                        {                
+                        {        
+                        /* Gartensteuerung, NachrichtenInputID finden, suche Nachricht und danach Input
     					$object2= new ipsobject($CategoryIdDataGS);
 	    				$object3= new ipsobject($object2->osearch("Nachricht"));
-		    			$NachrichtenInputID=$object3->osearch("Input");
+		    			$NachrichtenInputID=$object3->osearch("Input"); */
+                        $NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdDataGS);
+                        $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);                        
 		    			$webfront_links[$AutosteuerungID]["OID_R"]=$NachrichtenInputID;
                         }
 					echo "****Modul Gartensteuerung konfiguriert und erkannt.\n";
