@@ -131,7 +131,9 @@
 	 ******************************************************************/
 
     $tim1ID = IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
-    if ($tim1ID==false) echo "Fehler timer nicht definiert.\n";
+    if ($tim1ID==false) echo "Fehler Timer Aufruftimer nicht definiert.\n";
+    $tim3ID = @IPS_GetEventIDByName("EveningCallTimer", $GuthabensteuerungID);
+    if ($tim3ID==false) echo "Fehler Timer EveningCallTimer nicht definiert.\n";
 
     $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
     if ($tim2ID==false)
@@ -161,6 +163,9 @@
  *				TIMER
  *
  * zwei TimerEvents. Eines einmal am Tag und das andere alle 150 Sekunden
+ * tim1 ist der Aufruftimer um 2 Uhr morgens. Der macht nix anderes als den Ausführtimer tim2 zu starten
+ *
+ * tim2 ist ausgelegt alle 150 Sekunden aufgerufen zu werden bis die Aufgabe erledigt ist
  *
  *************************************************************/
 
@@ -230,7 +235,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                         else $note="File ".$fileName." does not exists.";
                         break;
                     case "SELENIUM":
-                        // muss ich noch etwas machen        
+                        //$seleniumOperations->automatedQuery($webDriverName,$config);          // true debug       
                         break;
                     default:
                         break;                        
@@ -241,6 +246,15 @@ if ($_IPS['SENDER']=="TimerEvent")
 				IPS_SetEventActive($tim2ID,false);
 				}
 			break;
+		case $tim3ID:               // immer am späten Abend um 22:xx, auch wenn er Evening heisst
+            switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                {
+                case "SELENIUM":
+                    $configTabs = $guthabenHandler->getSeleniumHostsConfig();
+                    $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
+                    break;
+                }
+            break;
 		default:
 			break;
 		}
@@ -419,7 +433,12 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
             echo "============================================================================\n";
             echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
             $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
-            $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"];   
+            $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"]; 
+
+            /* die Abendabfrage dazumergen */  
+            $configTabs = $guthabenHandler->getSeleniumHostsConfig();
+            $config = array_merge($config,$configTabs["Hosts"]);          // true debug
+
             $seleniumOperations = new SeleniumOperations();                             // macht nichts, erst mit automated query gehts los
             $seleniumOperations->automatedQuery($webDriverName,$config,$debug);          // true debug      
 

@@ -25,8 +25,8 @@
      * und iMacro (ebenfalls alt) weiterhin der Inhalt der Seiten gespeichert und nachträglich analysiert
      *
      *  __construct         drei Parameter zur Steuerung
-     *  getCategoryIdData
-     *  getCategoryIdSelenium
+     *  getCategoryIdData                   GuthabenSteuerung data Kategorie übergeben
+     *  getCategoryIdSelenium               Selenium GuthabenSteuerung data Kategorie übergeben
      *  getConfiguration
      *  setConfiguration
      *  updateConfiguration
@@ -37,7 +37,7 @@
      *  getSeleniumSessionID
      *  setSeleniumHandler
      *  getSeleniumWebDrivers
-     *  getSeleniumWebDriverConfig
+     *  getSeleniumWebDriverConfig          Selenium spezifische Konfigurtion ausgeben
      *  extendPhoneNumberConfiguration
      *  createVariableGuthaben
      *  createVariableGuthabenNummer
@@ -89,12 +89,14 @@
 	        return ($this->CategoryIdData);
 	        }
 
+        /* Kategorie für Selenium Daten ist gekapselt, hier  ausgeben */
+
 		public function getCategoryIdSelenium()
 	        {
 	        return ($this->CategoryIdSelenium);
 	        }
             
-        /* Konfiguration ist gekapselt, hier die gesamte Konfiguration ausgeben */
+        /* Konfiguration ist gekapselt, hier die gesamte Konfiguration ausgeben, wird von setConfiguration ermittelt, Teil von construct */
 
 		public function getConfiguration()
 	        {
@@ -149,12 +151,17 @@
                     }
                 if ( (strtoupper($config["OperatingMode"]))=="SELENIUM")
                     {
-                    //echo "Operating Mode is Selenium WebDriver.\n";
-                    configfileParser($configInput, $config, ["Selenium","SELENIUM","selenium" ],"Selenium" , null);  
-                    configfileParser($configInput["Selenium"], $config["Selenium"], ["WEBDRIVERS","WebDrivers","webdrivers" ],"WebDrivers" , null);  
+                    //if ($ausgeben) echo "Operating Mode is Selenium WebDriver.\n";
+                    configfileParser($configInput, $configSelenium, ["Selenium","SELENIUM","selenium" ],"Selenium" , null);     //kompletten Inhalt von Selenium nach configSelenium kippen  
+                    //print_r($configSelenium["Selenium"]);
+                    
+                    configfileParser($configSelenium["Selenium"], $config["Selenium"], ["WEBDRIVERS","WebDrivers","webdrivers" ],"WebDrivers" , null);  
 
-                    configfileParser($configInput["Selenium"], $config["Selenium"], ["BROWSER","Browser","browser" ],"Browser" , "Chrome");  
-                    configfileParser($configInput["Selenium"], $config["Selenium"], ["WEBDRIVER","WebDriver","Webdriver","webdriver" ],"WebDriver" , 'http://10.0.0.34:4444/wd/hub');
+                    configfileParser($configSelenium["Selenium"], $config["Selenium"], ["BROWSER","Browser","browser" ],"Browser" , "Chrome");  
+                    configfileParser($configSelenium["Selenium"], $config["Selenium"], ["WEBDRIVER","WebDriver","Webdriver","webdriver" ],"WebDriver" , 'http://10.0.0.34:4444/wd/hub');
+
+                    configfileParser($configSelenium["Selenium"], $config["Selenium"], ["HOSTS","Hosts","Host","hosts" ],"Hosts" , null);
+                    //print_r($config);
                     }
                 elseif  ( (strtoupper($config["OperatingMode"]))=="IMACRO")
                     {
@@ -361,6 +368,17 @@
                 $result["WebDriver"] = $this->configuration["CONFIG"]["Selenium"]["WebDriver"];
                 $result["Browser"]   = $this->configuration["CONFIG"]["Selenium"]["Browser"];
                 }
+            return ($result);
+            }
+
+        /* aus der Config die Configuration für sie Auslesung der Hosts raussuchen */
+
+        public function getSeleniumHostsConfig()
+            {
+            $result = array();
+            if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
+            if ($this->CategoryIdSelenium===false) return (false);
+            $result["Hosts"] = $this->configuration["CONFIG"]["Selenium"]["Hosts"];
             return ($result);
             }
 

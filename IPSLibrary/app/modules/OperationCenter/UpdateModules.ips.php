@@ -130,7 +130,7 @@ ini_set('max_execution_time', 800);
             }
         }
 
-$BackupCenter->updateSummaryofBackupFile(); 
+//$BackupCenter->updateSummaryofBackupFile(); 
 
 
 ?>

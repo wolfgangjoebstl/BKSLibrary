@@ -54,7 +54,7 @@
                 break;
             Case "Execute":
                 echo "------------------------------------\n";
-                echo "Execute, called from Cosole:\n";
+                echo "Execute, called from Console:\n";
                 echo "------------------------------------\n";
                 echo "Check Correct Place for log Files:\n";
                 $logging = new Logging();	
@@ -67,7 +67,7 @@
             case "TimerEvent":
                 $auto = new Autosteuerung();
                 $oid=$kalender->getAutoFillID();
-                if ($debug) echo "Autosteuerung Heatcontrol vomn Timer oder Execute aufgerufen:    ".IPS_GetName($oid)." ($oid)\n";
+                if ($debug) echo "Autosteuerung Heatcontrol vom Timer oder Execute aufgerufen:    ".IPS_GetName($oid)." ($oid)\n";
                 if ($oid)
                     {
                     $configuration = $kalender->get_Configuration();
@@ -84,7 +84,7 @@
                         {
                         $kalender->ShiftforNextDay($value);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
                         $kalender->UpdateLinks($kalender->getWochenplanID());                   /* Update Links für Administrator Webfront */
-                        $kalender->UpdateLinks($kalender->getCategoryIdTab());		                            /* Upodate Links for Mobility Webfront */
+                        $kalender->UpdateLinks($kalender->getCategoryIdTab());		                            /* Update Links for Mobility Webfront */
 
                         if ($configuration["HeatControl"]["SwitchName"] != Null)
                             {

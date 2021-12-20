@@ -4099,24 +4099,24 @@ class dosOps
         $pos=strpos($filename,"*.");
         if ( $pos === false )
             {
-            if ($debug) echo "Wir suchen nach dem Filenamen \"".$filename."\"\n";
+            if ($debug) echo "fileAvailable: wir suchen nach dem Filenamen \"".$filename."\"\n";
             $detName=true;
             $detExt=false;
             }
         else
             {
             $filename=substr($filename,$pos+1,20);
-            echo "Wir suchen nach der Extension \"*".$filename."\"\n";
+            if ($debug) echo "fileAvailable: wir suchen nach der Extension \"*".$filename."\"\n";
             $detExt=true;
             }
         if ( is_dir ( $verzeichnis ))
             {
-            // öffnen des Verzeichnisses
+            if ($debug) echo "   Öffnen des Verzeichnisses $verzeichnis:\n";
             if ( $handle = opendir($verzeichnis) )
                 {
                 while (($file = readdir($handle)) !== false)
                     {
-                    $dateityp=filetype( $verzeichnis.$file );
+                    $dateityp = @filetype( $verzeichnis.$file );            // seit Win11 gibt es neue Fileformate die noch nicht unterstützt werden
                     if ($dateityp == "file")
                         {
                         if ($detExt == false)
@@ -4141,6 +4141,7 @@ class dosOps
                                 }
                             }
                         }
+                    elseif ($dateityp===false) echo "fileAvailable:Fehler, check \"$verzeichnis$file\".\n";
                     } /* Ende while */
                 closedir($handle);
                 } /* end if dir */

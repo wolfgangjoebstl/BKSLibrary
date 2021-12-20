@@ -4720,10 +4720,15 @@ class Autosteuerung
 							$wert=GetValueFormatted($result["SOURCEID"]);
 							break;	
 						case "CHANGE":
-							$wert="geändert";
+							//$wert="geändert";
+                            $wert="geendert";
 							if ( isset($result["OLDSTATUS"]) )
 								{
-								if ($result["STATUS"]>$result["OLDSTATUS"]) $wert="erhöht";
+								if ($result["STATUS"]>$result["OLDSTATUS"]) 
+                                    {
+                                    //$wert="erhöht";
+                                    $wert="gestiegen";
+                                    }
 								if ($result["STATUS"]<$result["OLDSTATUS"]) $wert="gesenkt";
 								}
 							break;

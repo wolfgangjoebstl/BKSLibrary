@@ -18,7 +18,8 @@
 	 
 	/**@defgroup Stromheizung
 	 *
-	 * Script um elektrische Heizung nachzusteuern
+	 * Script um elektrische Heizung nachzusteuern, Fork von IPSLight
+     * macht das selbe also Schalten, kann aber auch Temperaturen, also Werte verändern
 	 *
 	 *
 	 * @file          Stromheizung_Installation.ips.php
@@ -33,7 +34,7 @@
 	 *  Zuerst wird für jedes Gerät, Gruppe, Programm die benötigten Spiegelregister erstellt.
 	 *  das heisst für einen Dimmer auch ein Objekt für den Level oder bei einem Thermostat auch ein Objekt für die Temperatur und den Mode  
 	 *
-	 *
+	 * Installiert je nach Konfiguration ein Webfront für den Administrator, User und Mobilanwender
 	 *
 	 *
 	 *
@@ -280,11 +281,13 @@ Path=Visualization.Mobile.Stromheizung
     $moduleManagerCC      = new IPSModuleManager('CustomComponent',$repository);
 	$CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
 
+    echo "\n";
+    echo "Alle Kategorien von CustomComponent anzeigen:\n";         // Auswertungen werden in ein Register Array gespeichert aber es passiert vorerst nichts
     $customComponentCategories=array();
 	$Category=IPS_GetChildrenIDs($CategoryIdDataCC);
 	foreach ($Category as $CategoryId)
 		{
-		echo "  Category    ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
+		echo "  ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
 		$Params = explode("-",IPS_GetName($CategoryId)); 
         if ( (sizeof($Params)>1) && ($Params[1]=="Auswertung") )
             {
@@ -296,6 +299,7 @@ Path=Visualization.Mobile.Stromheizung
 	// Add Scripts
 	$scriptIdActionScript  = IPS_GetScriptIDByName('IPSHeat_ActionScript', $CategoryIdApp);
 	
+    echo "\n";
 	echo "Action Script hat OID: ".$scriptIdActionScript."\n";
 	
 	/* ===================================================================================================
@@ -788,6 +792,48 @@ Path=Visualization.Mobile.Stromheizung
 		
 	if ($Mobile_Enabled ) 
 		{
+        $MobilePathSegments=explode(".",$Mobile_Path);
+        print_R($MobilePathSegments);
+        $parent=0;
+        $MobilePathOIDs=array(); 
+        $oldVisID=false;       
+        foreach ($MobilePathSegments as $index => $MobilePathSegment)
+            {
+            $visID = @IPS_GetObjectIDByName ($MobilePathSegment, $parent);
+            if ($visID===false)
+                {
+                echo "\nFehler, $MobilePathSegment ist in $parent nicht vorhanden ($Mobile_Path)\n";
+                $oldVisID = @IPS_GetObjectIDByName ("Stromheizung", $parent);
+                if ($oldVisID !== false)
+                    {
+                    echo "  Aber Stromheizung ($oldVisID) ist in $parent vorhanden.\n";
+                    }
+                $visID=$parent;
+                break;                
+                }
+            echo "$visID.";
+            $parent=$visID;
+            }
+        echo "\n";
+        $lastOne=sizeof($MobilePathSegments)-1;
+        echo "Insgesamt ".($lastOne+1)." Segmente im Pfad: ".$MobilePathSegments[$lastOne]."\n";
+        if ($MobilePathSegments[$lastOne] != "Stromheizung")
+            {
+            if ($oldVisID===false)
+                {
+                $beforeLastOne=sizeof($MobilePathOIDs)-2;
+                $oldVisID = @IPS_GetObjectIDByName ("Stromheizung", $MobilePathOIDs[$beforeLastOne]);
+                }
+            if ($oldVisID !== false)
+                {
+                echo "Stromheizung ($oldVisID) ist in $parent vorhanden, wird gelöscht. Neuer Pfad ist $Mobile_Path.\n";
+			    EmptyCategory($oldVisID);
+                IPS_DeleteCategory($oldVisID);
+                }
+            else echo "Stromheizung ($oldVisID) ist in $parent nicht mehr vorhanden. Neuer Pfad ist $Mobile_Path.\n";
+            }
+        else echo "Aufbau im Standard Pfad.\n";
+        
 		$mobileId  = CreateCategoryPath($Mobile_Path, $mobile_PathOrder, $mobile_PathIcon);
 		if ($mobile_Regenerate) {
 			EmptyCategory($mobileId);

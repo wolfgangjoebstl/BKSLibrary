@@ -1257,7 +1257,7 @@ class OperationCenter
                 {
                 $PrintHtml.='<tr><td>'.$entry["VarName"].'</td><td>'.($entry["Status"]?"Ja":"Nein")."</td><td>".nf($entry["Delay"],"s")."</td></tr>";    
                 }
-            $PrintHtml.='<tr><td align="right" colspan="3"><font size="-1">last update on '.date("m.d.Y H:i:s").'</font></td></tr>';    
+            $PrintHtml.='<tr><td align="right" colspan="3"><font size="-1">last update on '.date("d.m.Y H:i:s").'</font></td></tr>';    
             $PrintHtml.='</table>';    
             SetValue($SysPingTableID,$PrintHtml);
             }
@@ -1447,7 +1447,7 @@ class OperationCenter
                 {
                 $PrintHtml.='<tr><td>'.$name.'</td><td>'.$entry["ONTIME"].'</td><td>'.$entry["OFFTIME"].'</td><td>'.$entry["AVAILABILITY"].'%</td></tr>';
                 }
-            $PrintHtml.='<tr><td align="right" colspan="4"><font size="-1">last update on '.date("m.d.Y H:i:s").'</font></td></tr>';    
+            $PrintHtml.='<tr><td align="right" colspan="4"><font size="-1">last update on '.date("d.m.Y H:i:s").'</font></td></tr>';    
             $PrintHtml.='</table>';
     		return($PrintHtml);
             }
@@ -1677,7 +1677,9 @@ class OperationCenter
                 case "19041": $Codename="May 2020 Update (20H1)"; break;            
                 case "19042": $Codename="October 2020 Update (20H2)"; break;            
                 case "19043": $Codename="May 2021 Update (21H1)"; break;
-                case "22000": $Codename="Win11"; break;
+                case "19044": $Codename="December 2021 Update (21H2)"; break;
+
+                case "22000": $Codename="Win11 (21H2)"; break;
                 default: $Codename=$Version[2];break;
                 }			
             }
@@ -9354,16 +9356,19 @@ function dirToArray2($dir)
 		if ($scriptIdSprachsteuerung==false) $sprachsteuerung=false;
 		if ( ($sprachsteuerung==true) && ($remote==false) )
 			{
-			if ($debug) echo "Sprache lokal ausgeben.\n";			
-			$id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
-			$id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
-			$id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
-			$id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
-			$id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
-			$id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
-			$id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-			if ($debug) echo "\nAlle IDs -> Musik:".$id_sk1_musik." Status:".$id_sk1_musik_status." Vol:".$id_sk1_musik_vol." Ton:".$id_sk1_ton." TonStatus:".$id_sk1_ton_status." tts:".$id_sk1_tts."\n";
+            if ($sk<10)             // die müssen nur angelegt werden wenn sie abgefragt werden, nicht für Ausgabe auf Echo
+                {
+    			if ($debug) echo "Sprache lokal ausgeben.\n";	
+                $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+                $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+                $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
 
+                $id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
+                $id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
+                $id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+                $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+                if ($debug) echo "\nAlle IDs -> Musik:".$id_sk1_musik." Status:".$id_sk1_musik_status." Vol:".$id_sk1_musik_vol." Ton:".$id_sk1_ton." TonStatus:".$id_sk1_ton_status." tts:".$id_sk1_tts."\n";
+                }
 			$wav = array
 				(
 				"hinweis"  => IPS_GetKernelDir()."media/wav/hinweis.wav",

@@ -13,6 +13,7 @@
     ini_set('max_execution_time', 800);
     $startexec=microtime(true);
     echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 800 Sek \n";
+    $debug=false;
 
     $dosOps = new dosOps();
     $verzeichnis = "/ProgramData/Symcon/scripts/IPSLibrary/config/";
@@ -24,7 +25,7 @@
         $available=$dosOps->fileAvailable($filename,$verzeichnis);
         if ($available) 
             {
-            echo "KnownRepositories.ini ist verfügbar. Inhalt ist:\n";
+            if ($debug) echo "KnownRepositories.ini ist verfügbar. Inhalt ist:\n";
             $handle1=fopen($verzeichnis.$filename,"r");
             $file="";
             while (($result=fgets($handle1)) !== false) 
@@ -33,11 +34,14 @@
                 //echo  "   $result";
                 }
             fclose($handle1);
-            echo "$file\n----------\n";
+            if ($debug) echo "$file\n----------\n";
             $repo = strpos($file,"wolfgang");
-            echo "Repo is on $repo.\n";
+            //echo "Repo is on $repo.\n";
+            if ($repo===false) echo "********Fehler KnownRepositories.ini hat keine Refrenz auf https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/.\n";
+            else echo "OK, KnownRepositories.ini hat eine Refrenz auf https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/.\n";
             }
-        print_R($ls);
+        else echo "********Fehler KnownRepositories.ini ist NICHT verfügbar.\n";
+        //print_R($ls);
         }
 
 	// Repository

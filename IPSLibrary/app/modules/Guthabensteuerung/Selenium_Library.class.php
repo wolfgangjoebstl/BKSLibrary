@@ -22,9 +22,12 @@
  * wird über die IP ADresse mit einer Portnummer 4444 kontaktiert.
  *
  * für die Automatisiserung der Abfragen gibt es verschieden Klasssen
- *      SeleniumHandler     managed die Handles des Selnium Drivers, offene Tabs
+ *      SeleniumHandler     managed die Handles des Selenium Drivers, offene Tabs
+ *
  *      SeleniumDrei
  *      SeleniumIiyama
+ *      SeleniumEasycharts
+ *
  *      SeleniumOperations
  *
  * SeleniumDrei sorgt für die individuellen States und SeleniumOperations für die Statemachine
@@ -920,12 +923,251 @@ class SeleniumIiyama extends SeleniumHandler
 
     }           // ende class
 
+/* Bei Easycharts einlogen und die aktuellen Portfolio Kurse auslesen
+ *
+ */
+class SeleniumEasycharts extends SeleniumHandler
+    {
+    private $configuration;     //array mit Datensaetzen
+    private $duetime,$retries;              //für retry timer
+    protected $debug;
+
+    /* Initialisierung der Register die für die Ablaufsteuerung zuständig sind
+     */
+    function __construct($debug=false)
+        {
+        $this->duetime=microtime(true);
+        $this->retries=0;
+        $this->debug=$debug;
+        }
+
+
+    public function setConfiguration($configuration)
+        {
+        $this->configuration = $configuration;
+        }
+
+   /* extract table, function to get fixed elements of a table line per line     
+     * input ist array mit Eintraegen pro Spalte (umgewandelt aus dem resultat mit zeienumbrüchen)
+     * hier sind die Formatierungsanweiseungen: 
+     *      start   die ersten zwei Zeilen überspringen
+     *      columns es gibt 11 Spalten
+     *
+     */
+
+    function parseResult($lines, $debug=false)
+        {
+        $start=2;                               // die ersten beiden Zeilen überspringen
+        $columns=11;                            // alle 11 Zeilen ist gleich Spalten gibt es einen Zeilenumbruch
+
+        $count=0;                               // Zeilenzähler
+        $join=0;                                // damit können zeilen wieder verbunden werden
+                            
+        $data=array();                          // Eintraege pro Zeile und Analyse der max Spaltenenlänge, Returnwert
+        $zeile=0; $spalte=0;
+        foreach ($lines as $index => $line)
+            {
+            if ($count >= $start)
+                {
+                $length=strlen($line);
+                $column = ($count-$start)%$columns;         // die Start Zielen werden nicht mitgezählt
+                if ($column==0) 
+                    {
+                    if ($debug) echo "\n";                  // 0 ist der erste Eintrag, letzten Eintrag mit neuer Zeile abschliessen
+                    $zeile++;
+                    $spalte=0;
+                    }
+                else $spalte++;
+                if ($column==2) 
+                    {
+                    if ($lines[$index+1] != "EUR") 
+                        {
+                        $join=strlen($line);
+                        }
+                    else $join=0;
+                    }
+                if ($column==11)
+                    {
+                    if ($debug) echo "*";    
+                    }
+                if ($join && ($column==2) )
+                    {
+                    if ($debug) echo $line;
+                    $data["Data"][$zeile][$spalte]=$line;                
+                    }
+                else 
+                    {
+                    if ($join) 
+                        {
+                        if ($debug) echo str_pad($line,32-$join-3).str_pad($join,2)."|";
+                        $length += $join;
+                        $join=0;
+                        $count--; $spalte--;
+                        $data["Data"][$zeile][$spalte].=$line;
+                        }
+                    else 
+                        {
+                        if ( ($spalte==4) || ($spalte==8) || ($spalte==10) || ($spalte==12))                        //Split
+                            {
+                            $entries=explode(" ",$line);
+                            if (sizeof($entries)>1)
+                                {
+                                if ($debug) echo str_pad($entries[0],31)."|";
+                                $data["Data"][$zeile][$spalte]=$entries[0];
+                                $length=strlen($entries[0]);
+                                if (isset($data["Size"][$spalte]))
+                                    {
+                                    if ($length>$data["Size"][$spalte]) $data["Size"][$spalte]=$length;
+                                    }
+                                else $data["Size"][$spalte]=$length;
+                                $length=strlen($entries[1]);
+                                $line=$entries[1];
+                                $spalte++;
+                                }
+                            if ($debug) echo str_pad($line,31)."|";
+                            $data["Data"][$zeile][$spalte]=$line;                                
+                            }
+                        else
+                            {
+                            if ($debug) echo str_pad($line,31)."|";
+                            $data["Data"][$zeile][$spalte]=$line;
+                            }
+                        }
+                    }
+
+                if (isset($data["Size"][$spalte]))
+                    {
+                    if ($length>$data["Size"][$spalte]) $data["Size"][$spalte]=$length;
+                    }
+                else $data["Size"][$spalte]=$length;
+
+                }
+            $count++; 
+            }
+        return($data);
+        }
+
+    public function runAutomatic($step=0)
+        {
+        echo "runAutomatic SeleniumEasycharts Step $step.\n";
+        switch ($step)
+            {
+            case 0:
+                echo "--------\n0: check if not logged in, then log in.\n";
+                if ($this->getTextValidLoggedInIf()!==false)  return(["goto" => 2]);                // brauche ein LogIn Fenster
+                break;
+            case 1:
+                echo "--------\n1: enter log in.\n";
+                $result = $this->enterLogin($this->configuration["Username"],$this->configuration["Password"]);            
+                if ($result === false) 
+                    {
+                    echo "   --> failed\n";
+                    return("retry");                
+                    }
+                break;
+            case 2:
+                $result = $this->gotoLinkMusterdepot();
+                if ($result === false) 
+                    {
+                    echo "   --> failed\n";
+                    return("retry");                
+                    }
+                break;
+            case 3:
+                $result = $this->gotoLinkMusterdepot3();            // zum dritten Musterdepot wechseln
+                if ($result === false) 
+                    {
+                    echo "   --> failed\n";
+                    return("retry");                
+                    }
+                break;
+            case 4:
+                $result = $this->getTablewithCharts();
+                if ($result===false) return ("retry");
+                if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
+                return(["Ergebnis" => $result]);
+
+                break;    // so erfolgt ein stopp
+            default:
+                return (false);
+            }
+
+        }
+
+    /* get text , find out wheter being logged in 
+     * /html/body/div/div[2]/div[1]/div[4]/div[1]/span
+     */
+    function getTextValidLoggedInIf()
+        {
+        if ($this->debug) echo "getTextValidLoggedInIf ";
+        $xpath='/html/body/div/div[2]/div[1]/div[4]/div[1]/span';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            print $result;
+            }
+        return ($result);
+        }     
+
+    /* login entry username und password
+     * /html/body/div/div[2]/div[1]/div[5]/div[2]/form/table/tbody/tr[1]/td[2]/input            form username
+     * /html/body/div/div[2]/div[1]/div[5]/div[2]/form/table/tbody/tr[3]/td[2]/input            form password
+     * /html/body/div/div[2]/div[1]/div[5]/div[2]/table/tbody/tr/td[1]/a/span           button 
+     */
+    function enterLogin($username,$password)
+        {
+        $xpath = '/html/body/div/div[2]/div[1]/div[5]/div[2]/form/table/tbody/tr[1]/td[2]/input';        // relative path
+        $this->sendKeysToFormIf($xpath,$username);              // wjobstl
+        $xpath = '/html/body/div/div[2]/div[1]/div[5]/div[2]/form/table/tbody/tr[3]/td[2]/input';        // relative path
+        $this->sendKeysToFormIf($xpath,$password);              // cloudg06        
+        $xpath='/html/body/div/div[2]/div[1]/div[5]/div[2]/table/tbody/tr/td[1]/a/span';
+        $this->pressButtonIf($xpath);        
+        }
+
+    private function gotoLinkMusterdepot()
+        {
+        /* //*[@id="7_1_link"]
+         */
+        $xpath='//*[@id="7_1_link"]';
+        $status=$this->pressButtonIf($xpath);             
+        //if ($status===false) return($this->updateUrl($url));
+        return ($status);                    
+        }
+
+    private function gotoLinkMusterdepot3()
+        {
+        /* /html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody/tr[8]/td[1]/a
+         */
+        $xpath='/html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody/tr[8]/td[1]/a';
+        $status=$this->pressButtonIf($xpath);             
+        //if ($status===false) return($this->updateUrl($url));
+        return ($status);                    
+        }
+
+
+    private function getTablewithCharts()
+        {
+        /* /html/body/div/div[3]/div/div[2]/table/tbody/tr/td/form/table[1]/tbody/tr/td/table[1]
+         */
+        if ($this->debug) echo "Try /html/body/div/div[3]/div/div[2]/table/tbody/tr/td/form/table[1]/tbody/tr/td/table[1]\n";
+        $xpath='/html/body/div/div[3]/div/div[2]/table/tbody/tr/td/form/table[1]/tbody/tr/td/table[1]';
+        $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+        if ((strlen($ergebnis))>10) return($ergebnis);
+        else echo $ergebnis;
+        }
+    }
+
 /* Selenium Webdriver automatisiert bedienen
  * Aufruf mit automatedQuery
  *
- * andere Routinen für Selenium operations
- *
- *
+ * andere Routinen für SeleniumOperations
+ *  initResultStorage
+ *  getCategory
+ *  writeResult
+ *  readResult
+ *  automatedQuery
+ *  findTag
  *
  */
 
@@ -933,15 +1175,15 @@ class SeleniumOperations
     {
 
     private $guthabenHandler;
-    private $CategoryIdData;
+    private $CategoryId, $CategoryIdData;                   // Kategorien, Selenium und Selenium.RESULT
 
     /* Initialisiserung */
 
     public function __construct()
         {
         $this->guthabenHandler = new GuthabenHandler(true,true,true);         // Steuerung für parsetxtfile
-        $categoryId = $this->guthabenHandler->getCategoryIdSelenium();
-        $this->CategoryIdData =CreateCategoryByName($categoryId,"RESULT");
+        $this->CategoryId = $this->guthabenHandler->getCategoryIdSelenium();
+        $this->CategoryIdData =CreateCategoryByName($this->CategoryId,"RESULT");
         }
 
     function initResultStorage($configuration)
@@ -953,6 +1195,9 @@ class SeleniumOperations
             }
         }
 
+    /* getCategory
+     * ohne Parameter wird es data.modules.Guthabensteuerung.Selenium.RESULT
+     */
     function getCategory($sub=false)
         {
         if ($sub === false) return ($this->CategoryIdData);
@@ -981,11 +1226,12 @@ class SeleniumOperations
 
         }
 
-    function readResult($index=false,$name="Result")
+    function readResult($index=false,$name="Result", $debug=false)
         {
         $result=array();
         if ($index==false) 
             {
+            if ($debug) echo "SeleniumOperations::readResult ohne Zielangabe aufgerufen.\n";
             $childrens=IPS_getChildrenIDs($this->CategoryIdData);
             foreach ($childrens as $children)
                 {
@@ -999,11 +1245,18 @@ class SeleniumOperations
                 }
             return($this->CategoryIdData);
             }
+        elseif ($debug) echo "SeleniumOperations::readResult mit Zielangabe \"$index\" aufgerufen.\n";
+
         $categoryID = @IPS_GetObjectIDByName($index, $this->CategoryIdData);
+        if ($categoryID===false)
+            {
+            echo "readResult, Fehler, $index in ".$this->CategoryIdData." nicht gefunden.\n";
+            return (false);
+            }
         $more=explode("&",$name);
-        print_r($more);
         if (sizeof($more)>1)
             {
+            print_r($more);
             $variableNameID = @IPS_GetObjectIDByName($more[1], $categoryID);
             if ($variableNameID===false) return(false);
             $variableName = GetValue($variableNameID);
@@ -1015,6 +1268,7 @@ class SeleniumOperations
             {
             //$variableID = CreateVariableByName($categoryID, $name, 3);
             $variableID = @IPS_GetObjectIDByName($name, $categoryID);
+            echo "readResult, suche $name als OID:$variableID in $categoryID ($index in ".$this->CategoryIdData.").\n";
             if ($variableID===false) return(false);
             }
         $result["Value"]=GetValue($variableID);
@@ -1022,6 +1276,7 @@ class SeleniumOperations
         return ($result);
         }
 
+ 
     /* alle Homepages gleichzeitig abfragen 
      * Index von Configtabs gibt die einzelnen Seiten/Tabs vor
      * mit Url wird der Tab benannt und wieder erkannt, wenn keine Class definiert ist, bleibts auch beim Seitenaufruf
@@ -1048,7 +1303,11 @@ class SeleniumOperations
             $startexec=microtime(true);
 
             if ( ($sessionID) && ($sessionID != "") ) echo "SessionID in Datenbank verfügbar :".$sessionID." mit Wert \"".GetValue($sessionID)."\"\n";
-            echo "WebDriver ausgewählt: $webDriverName unter $webDriverUrl Browser: ".$configSelenium["Browser"]."  \n";            
+            if ( ($webDriverName==false) || ($webDriverName=="false") ) $webDriverName2="Default";
+            else $webDriverName2=$webDriverName; 
+            echo "WebDriver ausgewählt: $webDriverName2 unter $webDriverUrl Browser: ".$configSelenium["Browser"]."  \n"; 
+            $webDriverStatusId=IPS_GetObjectIDByName("StatusWebDriver".$webDriverName2,$this->CategoryId);
+            echo "Ergebnisse auch hier speichern : $webDriverStatusId \n";           
             }
 
         /* Handler abgleichen */

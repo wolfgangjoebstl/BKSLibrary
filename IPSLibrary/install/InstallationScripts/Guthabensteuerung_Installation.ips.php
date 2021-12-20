@@ -373,14 +373,26 @@
 	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $GuthabensteuerungID);
 	if ($tim1ID==false)
 		{
-		echo "Timer erstellen.\n";
+		echo "Timer Aufruftimer erstellen.\n";
 		$tim1ID = IPS_CreateEvent(1);
 		IPS_SetParent($tim1ID, $GuthabensteuerungID);
 		IPS_SetName($tim1ID, "Aufruftimer");
 		IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
-		IPS_SetEventCyclicTimeFrom($tim1ID,2,rand(1,59),0);  /* immer um 02:xx , nicht selnbe Zeit damit keien zugriffsverletzungen auf der Drei Homepage entstehen */
+		IPS_SetEventCyclicTimeFrom($tim1ID,2,rand(1,59),0);  /* immer um 02:xx , nicht selbe Zeit damit keine Zugriffsverletzungen auf der Drei Homepage entstehen */
 		}
 	IPS_SetEventActive($tim1ID,true);
+
+	$tim3ID = @IPS_GetEventIDByName("EveningCallTimer", $GuthabensteuerungID);
+	if ($tim3ID==false)
+		{
+		echo "Timer EveningCallTimer erstellen.\n";
+		$tim3ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim3ID, $GuthabensteuerungID);
+		IPS_SetName($tim3ID, "EveningCallTimer");
+		IPS_SetEventCyclic($tim3ID,2,1,0,0,0,0);
+		IPS_SetEventCyclicTimeFrom($tim3ID,22,rand(1,59),0);  /* immer um 02:xx , nicht selbe Zeit damit keine Zugriffsverletzungen auf der jeweiligen Homepage durch Zugriffe von mehreren Servern entstehen */
+		}
+	IPS_SetEventActive($tim3ID,true);
 
 	/* Create Web Pages */
 
