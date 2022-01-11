@@ -67,7 +67,6 @@
     // max. Scriptlaufzeit definierensonst stoppt vorher wegen langsamer Kamerainstallation
     ini_set('max_execution_time', 500);
 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 	IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
@@ -105,6 +104,13 @@
 		}
 	//echo $inst_modules;
 	
+	$dosOps = new dosOps();
+    $ipsOps = new ipsOps();
+
+    $systemDir     = $dosOps->getWorkDirectory(); 
+    echo "systemDir : $systemDir \n";           // systemDir : C:/Scripts/ 
+    echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
+
 	/******************************************************
 	 *
 	 *				Logging der Installation 
@@ -119,7 +125,7 @@
 	
 	if (isset ($installedModules["OperationCenter"])) 
 		{
-		$log_Install=new Logging("C:\Scripts\Install\Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
+		$log_Install=new Logging($systemDir."/Install/Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
 		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
 		}
 		
@@ -132,8 +138,7 @@
 	
 	$modulhandling = new ModuleHandling();
 
-	$dosOps = new dosOps();
-    $ipsOps = new ipsOps();
+
 	
     /*----------------------------------------------------------------------------------------------------------------------------
 	 *

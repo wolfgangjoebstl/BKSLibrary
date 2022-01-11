@@ -95,22 +95,14 @@
 
     $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 
-    /*
-    $object_data= new ipsobject($CategoryIdData);
-    $object_app= new ipsobject($CategoryIdApp);
-
-    $NachrichtenID = $object_data->osearch("Nachricht");
-    $NachrichtenScriptID  = $object_app->osearch("Nachricht");
-    */
-
     $ipsOps = new ipsOps();
     $NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdApp);
 
-    if (isset($NachrichtenScriptID))
+    if ($NachrichtenScriptID)       // nicht 0 oder false
         {
-        //$object3= new ipsobject($NachrichtenID);  $NachrichtenInputID=$object3->osearch("Input"); $object3->oprint();
         $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
+
         /* logging in einem File und in einem String am Webfront */
         $log_iTunes=new Logging("C:\Scripts\iTunes\Log_iTunes.csv",$NachrichtenInputID);
         }

@@ -1553,18 +1553,15 @@ class Autosteuerung
 		$this->CategoryId_Status			    = IPS_GetCategoryIDByName("Status", $this->CategoryIdData);
 
 		$this->scriptId_Autosteuerung  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
-
-		$object_data= new ipsobject($this->CategoryIdData);
-		$object_app= new ipsobject($this->CategoryIdApp);
-
-		$NachrichtenID = $object_data->osearch("Nachricht");
-		$NachrichtenScriptID  = $object_app->osearch("Nachricht");
-
         $this->configuration = $this->set_Configuration($debug);
-		if (isset($NachrichtenScriptID))
-			{
-			$object3= new ipsobject($NachrichtenID);
-			$NachrichtenInputID=$object3->osearch("Input");
+	
+        $ipsOps = new ipsOps();
+        $NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$this->CategoryIdData);
+        $NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$this->CategoryIdApp);
+
+        if ($NachrichtenScriptID)           // nicht 0 oder false
+            {
+            $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
 			/* logging in einem File und in einem String am Webfront */
 			$this->log=new Logging($this->configuration["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");			
 			}

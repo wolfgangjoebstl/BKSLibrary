@@ -316,7 +316,7 @@
         	else SetValue($this->variableLogID,GetValue($this->variable));
             
 			echo "      Sensor_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValueIfFormatted($this->variable).". Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
-			if (($this->CheckDebugInstance($this->variable)) || true) IPSLogger_Inf(__file__, 'CustomComponent Sensor_LogValue: Variable OID : '.$this->variable.' ('.IPS_GetName($this->variable).'/'.IPS_GetName(IPS_GetParent($this->variable)).'Name : '.$this->variablename.'  TypeReg : '.$this->variableTypeReg);
+			if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Sensor_LogValue: Variable OID : '.$this->variable.' ('.IPS_GetName($this->variable).'/'.IPS_GetName(IPS_GetParent($this->variable)).'Name : '.$this->variablename.'  TypeReg : '.$this->variableTypeReg);
 
 			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
 			if (isset ($this->installedmodules["DetectMovement"]))

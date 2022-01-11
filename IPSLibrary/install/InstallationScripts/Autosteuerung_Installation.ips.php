@@ -639,10 +639,7 @@
 						}					
                     if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                         {        
-                        /* Gartensteuerung, NachrichtenInputID finden, suche Nachricht und danach Input
-    					$object2= new ipsobject($CategoryIdDataGS);
-	    				$object3= new ipsobject($object2->osearch("Nachricht"));
-		    			$NachrichtenInputID=$object3->osearch("Input"); */
+                        // Gartensteuerung, NachrichtenInputID finden, suche Nachricht und danach Input
                         $NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdDataGS);
                         $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);                        
 		    			$webfront_links[$AutosteuerungID]["OID_R"]=$NachrichtenInputID;

@@ -14,118 +14,6 @@
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 
-/**********************************************************
- *
- * class ipsobject (DEPRICIATED)
- *
- * erster Versuch einer Klasse zum Suchen und Ausgeben von Objekten. Wird nicht mehr oft verwendet.
- *
- * nicht für neue Verwendung geeignet
- *
- *  __construct
- *  oprint
- *  oparent
- *  osearch
- *
- **************************************************************/
-
-class ipsobject
-	{
-	var $object_ID=0;
-
-	function __construct($objectid=0)
-	   {
-	   $this->object_ID=$objectid;
-		//echo "Init ".get_class($this)." : ";
-		//var_dump($this);
-		}
-
-	function oprint($item="")
-		{
-		//echo "Hallo";
-		//var_dump($this);
-		$result=IPS_GetObject($this->object_ID);
-		echo $this->object_ID." \"".$result["ObjectName"]."\" ".$result["ParentID"]."\n";
-		$childrenIds=$result["ChildrenIDs"];
-		foreach ($childrenIds as $childrenId)
-			{
-			$result=IPS_GetObject($childrenId);
-			$resultname=$result["ObjectName"];
-			if ($item != "")
-			   {
-				if (strpos($resultname,$item)===false)
-					{
-					$nachrichtok="";
-					}
-				else
-					{
-					$nachrichtok="gefunden";
-					$NachrichtenscriptID=$childrenId;
-					}
-				}
-			echo "  ".$childrenId."  \"".$resultname."\" ";
-			switch ($result["ObjectType"])
-			   {
-			   case "6": echo "Link"; break;
-			   case "5": echo "Media"; break;
-			   case "4": echo "Ereignis"; break;
-			   case "3": echo "Skript"; break;
-			   case "2": echo "Variable"; break;
-			   case "1": echo "Instanz"; break;
-			   case "0": echo "Kategorie"; break;
-			   }
-			if ($item != "")
-				{
-				echo " ".$nachrichtok." \n";
-				}
-			else
-				{
-				echo " \n";
-				}
-			}
-		}
-
-	function oparent()
-		{
-		$result=IPS_GetObject($this->object_ID);
-		return $result["ParentID"];
-		}
-
-	function osearch($item="")
-		{
-		$result=IPS_GetObject($this->object_ID);
-		//echo $this->object_ID." \"".$result["ObjectName"]."\" ".$result["ParentID"]."\n";
-		$childrenIds=$result["ChildrenIDs"];
-		foreach ($childrenIds as $childrenId)
-			{
-			$result=IPS_GetObject($childrenId);
-			$resultname=$result["ObjectName"];
-			if (strpos($resultname,$item)===false)
-				{
-				$nachrichtok="";
-				}
-			else
-				{
-				$nachrichtok="gefunden";
-				return $NachrichtenscriptID=$childrenId;
-				}
-			//echo "  ".$childrenId."  \"".$resultname."\" ";
-			/* switch ($result["ObjectType"])
-			   {
-			   case "6": echo "Link"; break;
-			   case "5": echo "Media"; break;
-			   case "4": echo "Ereignis"; break;
-			   case "3": echo "Skript"; break;
-			   case "2": echo "Variable"; break;
-			   case "1": echo "Instanz"; break;
-			   case "0": echo "Kategorie"; break;
-			   } */
-			}
-		}
-
-
-	}
-
 /******************************************************
  *
  * class logging
@@ -382,7 +270,8 @@ class Logging
     /* Vereinheitlichung des Constructs, was macht das child und was der parent 
      * sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
      *
-     *
+     * SetDebugInstance wird nur aufgerufen wenn die Logging_Variable in LoggingConfig nicht 0 ist. Setzt self::$debugInstance statisch in dieser class Logging.
+     * das heisst man kann mit einem Wert größer 0 einschalten aber nicht mehr ausschalten
      */
 
     public function constructFirst()
@@ -421,6 +310,18 @@ class Logging
         return ($this);
         }
 
+    /* Steuerung der Debugging Funktion. Ziel ist es nicht so viele Info Messages im Webfront Logging zu bekommen
+     * Es wird =self::$debugInstance zur Steuerung verwendet und mit CheckDebugInstance aus dem Logging der Variable abgefragt
+     *
+     *     
+     * SetDebugInstance wird In constructFirst nur aufgerufen wenn die Logging_Variable in LoggingConfig nicht 0 ist. Setzt self::$debugInstance statisch in dieser class Logging.
+     * das heisst man kann mit einem Wert größer 0 einschalten, aber nicht mehr ausschalten solange diese class verfügbar ist
+     * man kann den Wert aber mit dem Aufruf der class jederzeit ändern
+     *
+     * Zusäzlich kann man mit dem Aufruf von SetDebugInstanceRemain die Logging_Variable in LoggingConfig direkt anpassen
+     *
+     */
+
     public function SetDebugInstance($value) {
         self::$debugInstance=$value;
         return (true);
@@ -432,19 +333,24 @@ class Logging
         return (true);
         }
 
+    /* ruft den aktuellen Wert der class aus */
+    
     public function GetDebugInstance() {
         return(self::$debugInstance);
         }
 
-    public function CheckDebugInstance($variable) {
-        return($variable==self::$debugInstance);
+    public function CheckDebugInstance($variable) 
+        {
+        if (self::$debugInstance==true) return (true);            
+        elseif ($variable==self::$debugInstance) return (true);
+        else return(false);
         }
 
     public function GetEreignisID() {
         return ($this->EreignisID);
         }
 
-    /*  Kapselung vertschiedener Informationen */
+    /*  Kapselung verschiedener Informationen */
 
     public function get_IPSComponentLoggerConfig()
         {
@@ -1627,7 +1533,11 @@ class Logging
 		
 	}
 
-/********************** Routine nur zum Spass eingefuegt */
+/********************** Routine nur zum Spass eingefuegt, DEPRECIATED  
+ *
+ * wird nicht verwendet
+ *
+ */
 	
 	class IPSComponentLogger {
 
@@ -1684,6 +1594,118 @@ class Logging
 	}
 	
 	
+
+/**********************************************************
+ *
+ * class ipsobject (DEPRICIATED)
+ *
+ * erster Versuch einer Klasse zum Suchen und Ausgeben von Objekten. Wird nicht mehr oft verwendet.
+ *
+ * nicht für neue Verwendung geeignet
+ *
+ *  __construct
+ *  oprint
+ *  oparent
+ *  osearch
+ *
+ **************************************************************/
+
+class ipsobject
+	{
+	var $object_ID=0;
+
+	function __construct($objectid=0)
+	   {
+	   $this->object_ID=$objectid;
+		//echo "Init ".get_class($this)." : ";
+		//var_dump($this);
+		}
+
+	function oprint($item="")
+		{
+		//echo "Hallo";
+		//var_dump($this);
+		$result=IPS_GetObject($this->object_ID);
+		echo $this->object_ID." \"".$result["ObjectName"]."\" ".$result["ParentID"]."\n";
+		$childrenIds=$result["ChildrenIDs"];
+		foreach ($childrenIds as $childrenId)
+			{
+			$result=IPS_GetObject($childrenId);
+			$resultname=$result["ObjectName"];
+			if ($item != "")
+			   {
+				if (strpos($resultname,$item)===false)
+					{
+					$nachrichtok="";
+					}
+				else
+					{
+					$nachrichtok="gefunden";
+					$NachrichtenscriptID=$childrenId;
+					}
+				}
+			echo "  ".$childrenId."  \"".$resultname."\" ";
+			switch ($result["ObjectType"])
+			   {
+			   case "6": echo "Link"; break;
+			   case "5": echo "Media"; break;
+			   case "4": echo "Ereignis"; break;
+			   case "3": echo "Skript"; break;
+			   case "2": echo "Variable"; break;
+			   case "1": echo "Instanz"; break;
+			   case "0": echo "Kategorie"; break;
+			   }
+			if ($item != "")
+				{
+				echo " ".$nachrichtok." \n";
+				}
+			else
+				{
+				echo " \n";
+				}
+			}
+		}
+
+	function oparent()
+		{
+		$result=IPS_GetObject($this->object_ID);
+		return $result["ParentID"];
+		}
+
+	function osearch($item="")
+		{
+		$result=IPS_GetObject($this->object_ID);
+		//echo $this->object_ID." \"".$result["ObjectName"]."\" ".$result["ParentID"]."\n";
+		$childrenIds=$result["ChildrenIDs"];
+		foreach ($childrenIds as $childrenId)
+			{
+			$result=IPS_GetObject($childrenId);
+			$resultname=$result["ObjectName"];
+			if (strpos($resultname,$item)===false)
+				{
+				$nachrichtok="";
+				}
+			else
+				{
+				$nachrichtok="gefunden";
+				return $NachrichtenscriptID=$childrenId;
+				}
+			//echo "  ".$childrenId."  \"".$resultname."\" ";
+			/* switch ($result["ObjectType"])
+			   {
+			   case "6": echo "Link"; break;
+			   case "5": echo "Media"; break;
+			   case "4": echo "Ereignis"; break;
+			   case "3": echo "Skript"; break;
+			   case "2": echo "Variable"; break;
+			   case "1": echo "Instanz"; break;
+			   case "0": echo "Kategorie"; break;
+			   } */
+			}
+		}
+
+
+	}
 	
 	
 

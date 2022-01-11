@@ -18,21 +18,26 @@
      * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
      */
 	 
-	/**@defgroup zParseDreiGuthaben
+	/**@defgroup ParseDreiGuthaben
 	 * @{
 	 *
+     * Zwei Betriebsarten, iMacro und Selenium zur Auslesung von Webseiten:
+     *
      * iMacro legt nette Files an als Ergebnis des Downloads der aktuell angesteuerten Homepage
      * Selenium liest einzelne Datenobjekte aus, speichert diese in einer IP Symcon Variablen zur weiteren Auswertung
      * Diese Programm kann man für zeitversetzte Aufrufe aus dem Webfront ebenfalls verwenden
      *
-     * Bei Selenium wird diese Routine nicht mehr benötigt, der Aufruf der Routine erfolgt sofort
+     * Bei Selenium wird diese Routine noch eingesetzt aber nicht mehr benötigt, der Aufruf der Funktionen zur Auflösung der Ergebnisse kann sofort erfolgen
+     * wird von Guthabensteuerung Timer früh am Morgen bei der Abfrage der Drei Konten aufgerufen
+     * 
+     * Ergebnis für alle Hosts in der Konfiguration ermitteln, wenn nicht schon geschehen
+     *
      *
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
@@ -44,6 +49,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
  *				INIT
  *
  *************************************************************/
+
+    $startexec=microtime(true);    
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager))
@@ -90,18 +97,22 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
  * Logging aktivieren
  *
  *********************************************************************************************/
+    $dosOps = new dosOps();
+    $systemDir     = $dosOps->getWorkDirectory(); 
+    echo "systemDir : $systemDir \n";           // systemDir : C:/Scripts/ 
+    echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
 
     $ipsOps = new ipsOps();    
 
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
     /* logging in einem File und in einem String am Webfront */
-    $log_Guthabensteuerung=new Logging("C:\Scripts\Guthabensteuerung\Log_Guthaben.csv",$NachrichtenInputID);
+    $log_Guthabensteuerung=new Logging($systemDir."Guthabensteuerung/Log_Guthaben.csv",$NachrichtenInputID);
 
 
 /*********************************************************************************************
  * 
- * MODE Selection
+ * Auswertung basierend auf MODE Selection, vollstaendig unabhängig programmiert
  *
  *********************************************************************************************/
 
@@ -112,7 +123,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {  
         case "IMACRO":
-            echo "OperatingMode ist IMACRO:\n";
+            echo "Guthabensteuerung OperatingMode ist IMACRO:\n";
             echo "Verzeichnis für Macros     : ".$GuthabenAllgConfig["MacroDirectory"]."\n";
             echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
             /* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
@@ -213,8 +224,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                     echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
                     if (AC_GetLoggingStatus($archiveHandlerID, $phone_VolumeCumm_ID)==false)
                         {
-                    echo "Werte wird noch nicht gelogged.\n";
-                    }
+                        echo "Werte wird noch nicht gelogged.\n";
+                        }
                     else
                         {
                         $werteLogVolC = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
@@ -278,179 +289,245 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                 }
             break;
         case "SELENIUM":
-            echo "OperatingMode ist SELENIUM:\n";
+            echo "Guthabensteuerung OperatingMode ist SELENIUM:\n";
             $ergebnis="";
             $guthabenHandler->updateConfiguration(true,true,true);                     // $ausgeben,$ergebnisse,$speichern          gespeichert wird aber eh immer
-            print_R($phoneID);
+            //print_R($phoneID);
+            $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
 
-                foreach ($phoneID as $entry)
-                    {
-                    echo "--------------------------------------------------\n   ".$entry["Nummer"]."    : ";
-                    if (isset($entry["OID"])) 
-                        {
-                        echo "register (".$entry["OID"].") available";
-                        if (isset($entry["LastUpdated"])) 
-                            {
-                            echo ", last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"]);                    
-                            echo "\n";
-                            $result=GetValue($entry["OID"]);
-                            echo "$result\n";
-                            $lines = explode("\n",$result);
-                            $ergebnis1=$guthabenHandler->parsetxtfile($entry["Nummer"],$lines,false,"array",true);          // true für Debug                    
-                            }
-                        else echo "\n";
-                        }
-                    else echo "\n";
-                    }
-
-            //print_r($GuthabenConfig);
-            echo "Alle Aktiven Simkarttnen neu parsen:\n";
-            foreach ($GuthabenConfig as $TelNummer)
+            foreach ($config as $host => $entry)
                 {
-                //print_r($TelNummer);
-                /* Neue Schreibweise ist Status. STATUS kann bei iMacro noch vorkommen */
-                if ( (isset($TelNummer["STATUS"])) && (strtoupper($TelNummer["STATUS"]) == "ACTIVE" ) ) 
-                    { 
-                    echo "parsetxtfile : ".$TelNummer["NUMMER"]."\n";
-                    $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"], $guthabenid);
-                    $ergebnis1=$guthabenHandler->parsetxtfile($TelNummer["NUMMER"]);
-                    //SetValue($phone1ID,$ergebnis1);
-                    $ergebnis.=$ergebnis1."\n";
-                    }
-                elseif ( (isset($TelNummer["Status"])) && (strtoupper($TelNummer["Status"]) == "ACTIVE" ) )         // Ergebis is strtoupper
+                echo "======================================================================";
+                switch (strtoupper($host))
                     {
-                    echo "parsetxtfile : ".$TelNummer["Nummer"]."\n";
-                    $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"], $guthabenid);
-                    $ergebnis1=$guthabenHandler->parsetxtfile($TelNummer["Nummer"]);
-                    //SetValue($phone1ID,$ergebnis1);
-                    $ergebnis.=$ergebnis1."\n";
-                    }
-                else 
-                    {
-                    echo "keine Ahnung was hier vorgeht.\n";	
-                    print_r($TelNummer);
-                    }
-                }
-
-            if ($_IPS['SENDER']=="Execute")
-                {
-                echo "========================================================\n";
-                echo "Execute, Script ParseDreiGuthaben wird ausgeführt:\n";
-                echo "Operating Mode              : ".(strtoupper($GuthabenAllgConfig["OperatingMode"]))."\n";            
-                echo "  Ausgabe Ergebnis parsetxtfile :\n";
-                echo "  -------------------------------\n";
-                echo $ergebnis;
-                echo "  Ausgabe Status der aktiven SIM Karten :\n";
-                echo "  ---------------------------------------\n";
-                //if (false)
-                    {
-                $ergebnis1="";
-                print_r($GuthabenConfig);
-                foreach ($GuthabenConfig as $TelNummer)
-                    {
-                    //print_r($TelNummer);
-                    $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"], $guthabenid);
-                    $dateID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Date", $phone1ID);
-                    $ldateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_loadDate", $phone1ID);
-                    $udateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_unchangedDate", $phone1ID);
-                    $userID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_User", $phone1ID);
-                    echo "Check ".$TelNummer["Nummer"]." IDs: $guthabenid $phone1ID $dateID $ldateID $udateID $userID \n";
-                    if (strtoupper($TelNummer["Status"])=="ACTIVE") 
-                        {
-                        $ergebnis1.="    ".$TelNummer["Nummer"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
-                        }
-                    //echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
-                    }
-                echo "  Nummer                Name                                letztes File von       letzte Aenderung Guthaben    letzte Aufladung\n";
-                echo $ergebnis1;
-                                        $log_Guthabensteuerung->LogNachrichten($ergebnis1);
-
-                //print_r($GuthabenConfig);
-
-                echo "\n\nHistorie der Guthaben und verbrauchten Datenvolumen.\n";
-                //$variableID=get_raincounterID();
-                $endtime=time();
-                $starttime=$endtime-60*60*24*2;  /* die letzten zwei Tage */
-                $starttime2=$endtime-60*60*24*800;  /* die letzten 100 Tage */
-                foreach ($GuthabenConfig as $TelNummer)
-                    {
-                    $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"], $guthabenid);
-                    $dateID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Date", $phone1ID);
-                    $ldateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_loadDate", $phone1ID);
-                    $udateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_unchangedDate", $phone1ID);
-                    $userID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_User", $phone1ID);
-
-                    $phone_Volume_ID     = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Volume", $phone1ID);
-                    $phone_User_ID       = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_User", $phone1ID);
-                    $phone_VolumeCumm_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_VolumeCumm", $phone1ID);
-
-                    echo "\n".$TelNummer["Nummer"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
-                    if (AC_GetLoggingStatus($archiveHandlerID, $phone_VolumeCumm_ID)==false)
-                        {
-                        echo "Werte wird noch nicht gelogged.\n";
-                        }
-                    else
-                        {
-                        $werteLogVolC = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
-                        $werteLogVol = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
-                        //$werteAggVol = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tägliche Aggregation */
-                        $wertAlt=-1; $letzteZeile="";
-                        foreach ($werteLogVol as $wert)
+                    case "DREI":
+                        echo "DREI ============\n";
+                        foreach ($phoneID as $entry)
                             {
-                            if ($wertAlt!=$wert["Value"])
+                            echo "--------------------------------------------------\n   ".$entry["Nummer"]."    : ";
+                            if (isset($entry["OID"])) 
                                 {
-                                echo $letzteZeile;
-                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
-                                //echo $letzteZeile;
-                                $wertAlt=$wert["Value"];
+                                echo "register (".$entry["OID"].") available";
+                                if (isset($entry["LastUpdated"])) 
+                                    {
+                                    echo ", last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"]);                    
+                                    echo "\n";
+                                    $result=GetValue($entry["OID"]);
+                                    //echo "$result\n";
+                                    $lines = explode("\n",$result);
+                                    $ergebnis1=$guthabenHandler->parsetxtfile($entry["Nummer"],$lines,false,"array",true);          // true für Debug                    
+                                    }
+                                else echo "\n";
                                 }
-                            else
-                                {
-                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
-                                }
-                            //echo $letzteZeile;
+                            else echo "\n";
                             }
-                        $phone_Cost_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Cost", $phone1ID);
-                        $werteLogCost = AC_GetLoggedValues($archiveHandlerID, $phone_Cost_ID, $starttime2, $endtime,0);
-                        echo "Logged Cost Vaules:\n";
-                        $wertAlt=-1; $letzteZeile="";
-                        foreach ($werteLogCost as $wert)
-                            {
-                            if ($wertAlt!=$wert["Value"])
-                                {
-                                echo $letzteZeile;
-                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
-                                //echo $letzteZeile;
-                                $wertAlt=$wert["Value"];
-                                }
-                            else
-                                {
-                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
-                                }
-                            }
-                        $phone_Load_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Load", $phone1ID);
-                        $werteLogLoad = AC_GetLoggedValues($archiveHandlerID, $phone_Load_ID, $starttime2, $endtime,0);
-                        echo "Logged Load Vaules:\n";
-                        $wertAlt=-1; $letzteZeile="";
-                        foreach ($werteLogLoad as $wert)
-                            {
-                            if ($wertAlt!=$wert["Value"])
-                                {
-                                echo $letzteZeile;
-                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
-                                //echo $letzteZeile;
-                                $wertAlt=$wert["Value"];
-                                }
-                            else
-                                {
-                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
-                                }
-                            }
-                        }
-                    }
+                        print_R($ergebnis);
 
-                    }       // ende if false
-                }
+                        if ($_IPS['SENDER']=="Execute")
+                            {
+                            //print_r($GuthabenConfig);
+                            echo "Alle Aktiven Simkarten neu parsen, Input sind die Dateien:\n";
+                            foreach ($GuthabenConfig as $TelNummer)
+                                {
+                                //print_r($TelNummer);
+                                /* Neue Schreibweise ist Status. STATUS kann bei iMacro noch vorkommen */
+                                if ( (isset($TelNummer["STATUS"])) && (strtoupper($TelNummer["STATUS"]) == "ACTIVE" ) ) 
+                                    { 
+                                    echo "parsetxtfile : ".$TelNummer["NUMMER"]."\n";
+                                    $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"], $guthabenid);
+                                    $ergebnis1=$guthabenHandler->parsetxtfile($TelNummer["NUMMER"]);                    // Ausgabe Text
+                                    //SetValue($phone1ID,$ergebnis1);
+                                    $ergebnis.=$ergebnis1."\n";
+                                    }
+                                elseif ( (isset($TelNummer["Status"])) && (strtoupper($TelNummer["Status"]) == "ACTIVE" ) )         // Ergebis is strtoupper
+                                    {
+                                    echo "parsetxtfile : ".$TelNummer["Nummer"]."\n";
+                                    $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"], $guthabenid);
+                                    $ergebnis1=$guthabenHandler->parsetxtfile($TelNummer["Nummer"]);
+                                    //SetValue($phone1ID,$ergebnis1);
+                                    $ergebnis.=$ergebnis1."\n";
+                                    }
+                                else 
+                                    {
+                                    echo "keine Ahnung was hier vorgeht.\n";	
+                                    print_r($TelNummer);
+                                    }
+                                }
+
+                            echo "========================================================\n";
+                            echo "Execute, Script ParseDreiGuthaben wird ausgeführt:\n";
+                            echo "Operating Mode              : ".(strtoupper($GuthabenAllgConfig["OperatingMode"]))."\n";            
+                            echo "  Ausgabe Ergebnis parsetxtfile :\n";
+                            echo "  -------------------------------\n";
+                            echo $ergebnis;
+                            echo "  Ausgabe Status der aktiven SIM Karten :\n";
+                            echo "  ---------------------------------------\n";
+                            //if (false)
+                                {
+                                $ergebnis1="";
+                                print_r($GuthabenConfig);
+                                foreach ($GuthabenConfig as $TelNummer)
+                                    {
+                                    //print_r($TelNummer);
+                                    $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"], $guthabenid);
+                                    $dateID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Date", $phone1ID);
+                                    $ldateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_loadDate", $phone1ID);
+                                    $udateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_unchangedDate", $phone1ID);
+                                    $userID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_User", $phone1ID);
+                                    echo "Check ".$TelNummer["Nummer"]." IDs: $guthabenid $phone1ID $dateID $ldateID $udateID $userID \n";
+                                    if (strtoupper($TelNummer["Status"])=="ACTIVE") 
+                                        {
+                                        $ergebnis1.="    ".$TelNummer["Nummer"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
+                                        }
+                                    //echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
+                                    }
+                                echo "  Nummer                Name                                letztes File von       letzte Aenderung Guthaben    letzte Aufladung\n";
+                                echo $ergebnis1;
+                                                        $log_Guthabensteuerung->LogNachrichten($ergebnis1);
+
+                                //print_r($GuthabenConfig);
+
+                                echo "\n=================================================================================\n";
+                                echo "Historie der Guthaben und verbrauchten Datenvolumen.\n";
+                                //$variableID=get_raincounterID();
+                                $endtime=time();
+                                $starttime=$endtime-60*60*24*2;  /* die letzten zwei Tage */
+                                $starttime2=$endtime-60*60*24*800;  /* die letzten 100 Tage */
+                                foreach ($GuthabenConfig as $TelNummer)
+                                    {
+                                    $phone1ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"], $guthabenid);
+                                    $dateID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Date", $phone1ID);
+                                    $ldateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_loadDate", $phone1ID);
+                                    $udateID  = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_unchangedDate", $phone1ID);
+                                    $userID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_User", $phone1ID);
+
+                                    $phone_Volume_ID     = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Volume", $phone1ID);
+                                    $phone_User_ID       = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_User", $phone1ID);
+                                    $phone_VolumeCumm_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_VolumeCumm", $phone1ID);
+
+                                    echo "\n".$TelNummer["Nummer"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
+                                    if (AC_GetLoggingStatus($archiveHandlerID, $phone_VolumeCumm_ID)==false)
+                                        {
+                                        echo "Werte wird noch nicht gelogged.\n";
+                                        }
+                                    else
+                                        {
+                                        $werteLogVolC = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
+                                        $werteLogVol = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
+                                        //$werteAggVol = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tägliche Aggregation */
+                                        $wertAlt=-1; $letzteZeile="";
+                                        foreach ($werteLogVol as $wert)
+                                            {
+                                            if ($wertAlt!=$wert["Value"])
+                                                {
+                                                echo $letzteZeile;
+                                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+                                                //echo $letzteZeile;
+                                                $wertAlt=$wert["Value"];
+                                                }
+                                            else
+                                                {
+                                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+                                                }
+                                            //echo $letzteZeile;
+                                            }
+                                        $phone_Cost_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Cost", $phone1ID);
+                                        $werteLogCost = AC_GetLoggedValues($archiveHandlerID, $phone_Cost_ID, $starttime2, $endtime,0);
+                                        echo "Logged Cost Vaules:\n";
+                                        $wertAlt=-1; $letzteZeile="";
+                                        foreach ($werteLogCost as $wert)
+                                            {
+                                            if ($wertAlt!=$wert["Value"])
+                                                {
+                                                echo $letzteZeile;
+                                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+                                                //echo $letzteZeile;
+                                                $wertAlt=$wert["Value"];
+                                                }
+                                            else
+                                                {
+                                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+                                                }
+                                            }
+                                        $phone_Load_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Load", $phone1ID);
+                                        $werteLogLoad = AC_GetLoggedValues($archiveHandlerID, $phone_Load_ID, $starttime2, $endtime,0);
+                                        echo "Logged Load Vaules:\n";
+                                        $wertAlt=-1; $letzteZeile="";
+                                        foreach ($werteLogLoad as $wert)
+                                            {
+                                            if ($wertAlt!=$wert["Value"])
+                                                {
+                                                echo $letzteZeile;
+                                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+                                                //echo $letzteZeile;
+                                                $wertAlt=$wert["Value"];
+                                                }
+                                            else
+                                                {
+                                                $letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                }       // ende if false
+                            }           // ende if execute
+                        echo "Berechnung Guthaben ist abgeschlossen.\n";
+                        break;
+                    case "EASY":
+                        echo "EASY ============\n";
+                        $seleniumEasycharts = new SeleniumEasycharts();
+
+                        echo "Selenium Operations, read Result from EASY:\n";
+                        $result=$seleniumOperations->readResult("EASY","Result",true);                  // true Debug
+                        //print_R($result);
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        echo "--------\n";
+                        $log_Guthabensteuerung->LogNachrichten("Execute ViewResult, EASY letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"]));    
+                        $lines = explode("\n",$result["Value"]);                       // die Zeilen als einzelne Eintraeg im array abspeichern */
+
+                        $data=$seleniumEasycharts->parseResult($lines);             // einlesen
+                        $shares=$seleniumEasycharts->evaluateResult($data);         // ausgeben als improvisiserte Tabelle, Ergebnis Array bereits nach Ergebnis zuletzt sortiert
+                        echo "--------\n";
+                        $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
+
+                        /**** die ermittelten Werte abspeichern */   
+
+                        $seleniumEasycharts->writeResult($shares,"MusterDepot3",$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
+
+                        /****  noch nicht nachdenken, einfach letzten berechneten Wert hernehmen für die Überprüfung */
+
+                        echo "********************************************************************\n";
+                        echo "Die gespeicherte archivierten historisierten Werte verarbeiten:\n";
+                        print_r($shares);
+                        $resultShares=array();
+                        $archiveOps = new archiveOps();  
+                        foreach($shares as $index => $share)                    //haben immer noch eine gute Reihenfolge, wird auch in resultShares übernommen
+                            {
+                            $oid = $share["OID"];
+                            //echo "Infos ".$share["ID"]." :     ".$archiveOps->getStatus($oid)."   \n";
+                            $checkArchive=$archiveOps->getComponentValues($oid,10,false);                 // true mit Debug
+                            //echo $checkArchive;
+                            $result = $archiveOps->analyseValues($oid,10,false);                 // true mit Debug
+                            //print_r($result); 
+                            $resultShares[$share["ID"]]=$result;
+                            $resultShares[$share["ID"]]["Info"]=$share;
+                            $archiveOps->addInfoValues($oid,$share);
+                            } 
+                        //print_r($resultShares);  
+
+                        $seleniumEasycharts->writeResultAnalysed($resultShares);
+                        echo "\n";
+                        $archiveOps->alignScaleValues();
+                        echo "Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden.\n";
+                        break;
+                    default:
+                        echo (strtoupper($host))."============\n";
+
+                        break;    
+                        
+                    }           // ende switch
+                }           // ende foreach
             break;
         default:
             break;        

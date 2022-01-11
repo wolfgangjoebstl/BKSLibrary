@@ -48,7 +48,6 @@
     *
     ********************************/
 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ("WebCamera_Configuration.inc.php","IPSLibrary::config::modules::WebCamera");
 	IPSUtils_Include ("WebCamera_Library.inc.php","IPSLibrary::app::modules::WebCamera");
@@ -96,6 +95,10 @@
     $webCamera = new webCamera();       // eigene class starten
     echo "\n";
 
+    $systemDir     = $dosOps->getWorkDirectory(); 
+    echo "systemDir : $systemDir \n";           // systemDir : C:/Scripts/ 
+    echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
+
 	/******************************************************
 	 *
 	 *				Logging der Installation 
@@ -112,7 +115,7 @@
         $OperationCenter=new OperationCenter($subnet);
 
         $LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
-		$log_Install=new Logging("C:\Scripts\Install\Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
+		$log_Install=new Logging($systemDir."Install/Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
 		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
 		}    
 

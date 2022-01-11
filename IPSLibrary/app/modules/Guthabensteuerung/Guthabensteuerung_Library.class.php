@@ -411,6 +411,49 @@
                 }
             }
 
+   /* wird von Execute verwendet, ermittelt die Dateien im Download Verzeichnis und gibt diese als Text und
+    * als Array aus
+    */
+
+    function readDownloadDirectory($verzeichnis=false)
+        {
+        if ($verzeichnis===false) $verzeichnis=$GuthabenAllgConfig["DownloadDirectory"];        
+        $dir=array(); $count=0; 
+        // Test, ob ein Verzeichnis angegeben wurde
+        if ( is_dir ( $verzeichnis ) )
+            {
+            // öffnen des Verzeichnisses
+            if ( $handle = opendir($verzeichnis) )
+                {
+                /* einlesen der Verzeichnisses	*/
+                while ((($file = readdir($handle)) !== false) )
+                    {
+                    if ($file!="." and $file != "..")
+                        {	/* kein Directoryverweis (. oder ..), würde zu einer Fehlermeldung bei filetype führen */
+                        //echo "Bearbeite ".$verzeichnis.$file."\n";
+                        $dateityp=filetype( $verzeichnis.$file );
+                        if ($dateityp == "file")			// alternativ dir für Verzeichnis
+                            {
+                            //echo "   Erfasse Verzeichnis ".$verzeichnis.$file."\n";
+                            $dir[$count]["Name"]=$verzeichnis.$file;
+                            $dir[$count++]["Date"]=date ("d.m.Y H:i:s.", filemtime($verzeichnis.$file));
+                            }
+                        }	
+                    //echo "    ".$file."    ".$dateityp."\n";
+                    } /* Ende while */
+                //echo "   Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
+                closedir($handle);
+                } /* end if dir */
+            }/* ende if isdir */
+        else
+            {
+            echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+            }	
+        //print_r($dir);
+        echo "Dateien im Download Verzeichnis.\n";
+        foreach ($dir as $entry) echo "   ".$entry["Name"]."  zuletzt geändert am ".$entry["Date"]."\n";
+        return ($dir);
+        }
 
         /******************************************************************************/
 

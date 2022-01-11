@@ -21,7 +21,12 @@
     *
     * schreiben des Startpage html Strings in der htmlbox der Startpage
     *
-    * es gibt verschiedene darstellungsarten
+    * es gibt verschiedene Darstellungsarten
+    * die Darstellung selbst erfolgt über die Library mit $startpage->StartPageWrite
+    *
+    * Routine bearbeitet auch die Tastendrücke am Webfront
+    *
+    * Bilder im Verzeichnis werden verkleinert um die Darstellung im Webfront zu beschleunigen
     *
     *
     **************************************/
@@ -126,7 +131,7 @@
 
 /******************************************* Bilder initialisieren und bearbeiten ******************************************************/
 
-if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein konvertieren und aussuchen wenn die darstellung auch auf Pictures ist
+if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein konvertieren und aussuchen wenn die Darstellung auch auf Pictures ist
     {
 
     /* 
@@ -217,8 +222,10 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 	echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
     echo "Startpage wird mit folgenden Parametern aufgerufen : Modus:".GetValue($StartPageTypeID)." ShowFile:".($showfile?"true":"false").".\n";
     echo "Darstellung Startpage, Darstellung der links zu Bildern ist nicht möglich.\n";
-	echo $startpage->StartPageWrite(2);
-	}
+
+	echo $startpage->StartPageWrite(1,false,true);                      // true mit Debug
+	
+    }
 
 
 

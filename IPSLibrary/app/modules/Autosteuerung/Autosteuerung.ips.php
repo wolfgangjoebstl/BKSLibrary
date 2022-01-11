@@ -75,9 +75,9 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
 
     $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
-    $register=new AutosteuerungHandler($scriptIdAutosteuerung);
-    $operate=new AutosteuerungOperator($debug);
-    $auto=new Autosteuerung();
+    $register = new AutosteuerungHandler($scriptIdAutosteuerung);
+    $operate  = new AutosteuerungOperator($debug);
+    $auto     = new Autosteuerung();
 
 /********************************************************************************************
  *
@@ -91,21 +91,13 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
 
  	$setup = $register->get_Configuration();
 
-	$NachrichtenIDAuto=IPS_GetCategoryIDByName("Nachrichtenverlauf-Autosteuerung",$CategoryIdData);
-    $NachrichtenInputID=IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAuto);
-    $log_Autosteuerung=new Logging($setup["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");
+	$NachrichtenIDAuto  = IPS_GetCategoryIDByName("Nachrichtenverlauf-Autosteuerung",$CategoryIdData);
+    $NachrichtenInputID = IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAuto);
+    $log_Autosteuerung          = new Logging($setup["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");
 
-    $NachrichtenIDAnwe=IPS_GetCategoryIDByName("Nachrichtenverlauf-AnwesenheitErkennung",$CategoryIdData);
-    $NachrichtenInputID=IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAnwe);
-    $log_Anwesenheitserkennung=new Logging($setup["LogDirectory"]."Anwesenheitserkennung.csv",$NachrichtenInputID,IPS_GetName(0).";Anwesenheitserkennung;");
-
-
-    /* wird jetzt in der jeweiligen Klasse gemacht: 
-    $NachrichtenID = $object_data->osearch("Schaltbefehle");	// Beim ersten Auftreten des Textes im Variablennamen in der Children Liste, diese OID zurückgeben 
-    $object4= new ipsobject($NachrichtenID);
-    $NachrichtenInputID=$object4->osearch("Input");
-    $log_Anwesenheit=new Logging($setup["LogDirectory"]."Anwesenheit.csv",$NachrichtenInputID,IPS_GetName(0).";Anwesenheitssimulation;");
-    */
+    $NachrichtenIDAnwe  = IPS_GetCategoryIDByName("Nachrichtenverlauf-AnwesenheitErkennung",$CategoryIdData);
+    $NachrichtenInputI  = IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAnwe);
+    $log_Anwesenheitserkennung  = new Logging($setup["LogDirectory"]."Anwesenheitserkennung.csv",$NachrichtenInputID,IPS_GetName(0).";Anwesenheitserkennung;");
 
 /***************************
  *

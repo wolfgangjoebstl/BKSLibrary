@@ -45,7 +45,7 @@
      * getOWDs
      * configWeather
      * readPicturedir
-     * StartPageWrite
+     * StartPageWrite                   Darstellung der Startpage am Webfront
      * tempTableLine
      *
      * writeStartpageStyle
@@ -2225,6 +2225,7 @@
         /********************
          *
          * Zelle Tabelleneintrag für die Tabelle für Innen und Aussentemperatur
+         * zeigt die beiden schönen Icons für Innen und Aussenthermometer an
          * macht zumindest 2 Zeilen mit jeweils 2 Zellen
          * ausgelegt als Aufruf als Widget
          *
@@ -2259,12 +2260,13 @@
                 //print_R($tempTableConf);
                 foreach ($tempTableConf as $entry) 
                     {
-                    //print_r($entry);
+                    //if ($debug) print_r($entry);
                     $aussen="unknown";$innen="unknown";
-                    if (isset($entry["Aussen"]["FUNCTION"])) $aussenWert=$entry["Aussen"]["FUNCTION"]();
-                    if (isset($entry["Aussen"]["OID"])) $aussenWert=GetValue($entry["Aussen"]["OID"]);
-                    if (isset($entry["Innen"]["FUNCTION"])) $innenWert=$entry["Innen"]["FUNCTION"]();
-                    if (isset($entry["Innen"]["OID"])) $innenWert=GetValue($entry["Innen"]["OID"]);
+                    if (isset($entry["Aussen"]["FUNCTION"]))    $aussenWert = round($entry["Aussen"]["FUNCTION"](),1);
+                    if (isset($entry["Aussen"]["OID"]))         $aussenWert = round(GetValue($entry["Aussen"]["OID"]),1);
+                    if (isset($entry["Innen"]["FUNCTION"]))     $innenWert  = round($entry["Innen"]["FUNCTION"](),1);
+                    if (isset($entry["Innen"]["OID"]))          $innenWert  = round(GetValue($entry["Innen"]["OID"]),1);
+                    if ($debug) echo " Innenwert: $innenWert und Aussenwert: $aussenWert wurden ermittelt.\n";
                     $unit=$entry["Unit"];
                     $size=strtoupper($entry["Size"]);
                     if ($size == "LARGE") { $aussen="aussen"; $innen="innen"; }

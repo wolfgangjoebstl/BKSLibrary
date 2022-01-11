@@ -1,16 +1,19 @@
 <?
 //--------- DENON AVR 3311 Anbindung V0.95 18.06.11 15:08.53 by Raketenschnecke ---------
 
-/*
+/*****
+ *
+ * Funktionen:
+ *      wird vom Script "DENON.Install_Library" in allen DENON-Variablen als Actionsript
+ *		in den Variableneigenschaften der /data Variablen Einträge eingetragen
+ * sendet (WFE-)Kommandos an das DENON.Functions-Script
+ *
+ * Klassen:
+ *   DENONsteuerung
+ *   installDENON
+ *
+ */
 
-Funktionen:
-	*wird vom Script "DENON.Install_Library" in allen DENON-Variablen als Actionsript
-		in den Variableneigenschaften der /data Variablen Einträge eingetragen
-	* sendet (WFE-)Kommandos an das DENON.Functions-Script
-*/
-
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");
@@ -2199,7 +2202,7 @@ class DENONsteuerung
 	break;
 
 
-############### Zone 2 #########################################################
+    ############### Zone 2 #########################################################
 
 			case "Z2":
 			   /* für alle Zone2 Befehle gilt dieser prefix */
@@ -2539,7 +2542,7 @@ class DENONsteuerung
 		}
 	break;
 
-/* #################### Zone 3 #################################################### */
+    /* #################### Zone 3 #################################################### */
 
 	case "Z3": //Source Input
 		if (intval($zonecat) <100 and intval($zonecat) >9)
@@ -2850,6 +2853,11 @@ class installDENON
 	private $WFC10_Enabled, $WFC10_Path,$RemoteVis_Enabled, $Audio_Enabled, $Audio_Path, $WFC10User_Enabled, $WFC10User_Path, $Mobile_Enabled, $Mobile_Path, $Retro_Enabled, $Retro_Path;
 	private $CategoryIdData, $CategoryIdApp;
 	
+    /* erste Initialisiserung
+     *
+     *
+     */
+
 	public function __construct()
 		{
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -2863,15 +2871,16 @@ class installDENON
 		$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 		$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-		echo "\nKernelversion : ".IPS_GetKernelVersion()."\n";
+		echo "\n";
+        echo "Kernelversion           : ".IPS_GetKernelVersion()."\n";
 		$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-		echo "IPS Version : ".$ergebnis."\n";
+		echo "IPS Version             : ".$ergebnis."    ";
 		$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
 		echo " ".$ergebnis."\n";
 		$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 		echo "IPSModulManager Version : ".$ergebnis."\n";
 		$ergebnis=$moduleManager->VersionHandler()->GetVersion('DENONsteuerung');
-		echo "DENONsteuerung Version : ".$ergebnis."\n";
+		echo "DENONsteuerung Version  : ".$ergebnis."\n";
 
 		$this->installedModules = $moduleManager->GetInstalledModules();
 
@@ -2883,19 +2892,19 @@ class installDENON
 		$this->RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 		$this->WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-		$this->WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+		$this->WFC10_Path        	= $moduleManager->GetConfigValue('Path', 'WFC10');
 
 		$this->Audio_Enabled        = $moduleManager->GetConfigValue('Enabled', 'AUDIO');
-		$this->Audio_Path        	 = $moduleManager->GetConfigValue('Path', 'AUDIO');
+		$this->Audio_Path        	= $moduleManager->GetConfigValue('Path', 'AUDIO');
 
 		$this->WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-		$this->WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+		$this->WFC10User_Path       = $moduleManager->GetConfigValue('Path', 'WFC10User');
 
-		$this->Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-		$this->Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		$this->Mobile_Enabled       = $moduleManager->GetConfigValue('Enabled', 'Mobile');
+		$this->Mobile_Path        	= $moduleManager->GetConfigValue('Path', 'Mobile');
 
 		$this->Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-		$this->Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		$this->Retro_Path        	= $moduleManager->GetConfigValue('Path', 'Retro');
 
 		echo "Variablen vorbereiten.\n";
 
@@ -2909,9 +2918,9 @@ class installDENON
 		$DENON_ActionScript_ID = IPS_GetScriptIDByName("DENON.ActionScript", $this->CategoryIdApp);
 
 		echo "\n";
-		echo "Category          App ID:".$this->CategoryIdApp."\n";
-		echo "DENONsteuerung Script ID:".$scriptIdDENONsteuerung."\n";
-		echo "DENON Action   Script ID:".$DENON_ActionScript_ID."\n";		
+		echo "Category          App ID : ".$this->CategoryIdApp."\n";
+		echo "DENONsteuerung Script ID : ".$scriptIdDENONsteuerung."\n";
+		echo "DENON Action   Script ID : ".$DENON_ActionScript_ID."\n";		
 		}
 
 	/************************************************************************************
@@ -2956,8 +2965,9 @@ class installDENON
 		{
 		echo "\n\n****************************************************************************************************\n";
 		echo "\nDENON.Installer for \"".$config['NAME']."\" started with IP Adresse ".$config['IPADRESSE']."\n";
-
+        echo "Konfiguration für die vereinfachte Darstellung:\n";
 		$display_variables=Denon_WebfrontConfig();
+        print_r($display_variables);
 		if (isset($display_variables[$Denon])==true) echo "Konfiguration für vereinfachtes Webfront im Audio Tab liegt vor.\n";
 		if (isset($display_variables[$Denon]["ZONES"])==true) echo "Konfiguration für anzulegende Zonen im Audio Tab liegt vor.\n";
 		 
@@ -3233,8 +3243,10 @@ class installDENON
 	 *
 	 *******************************************************************************************/
 
-	private function InstallDenonSockets($config)
+	private function InstallDenonSockets($config,$debug=false)
 		{
+        echo "InstallDenonSockets mit folgender konfiguration aufgerufen:\n";
+        print_r($config);
 
 			// Client Socket "DENON Client Socket" anlegen wenn nicht vorhanden
 			$DENON_CS_ID = @IPS_GetObjectIDByName($config['INSTANZ']." Client Socket", 0);

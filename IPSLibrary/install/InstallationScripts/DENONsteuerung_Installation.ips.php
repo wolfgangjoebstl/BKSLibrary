@@ -36,22 +36,30 @@ Installation (erneut/Update)
 	*bestehende Scripte (vorherige Verisionen) werden gelöscht und neu angelegt
 */
 
-
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENONsteuerung.Library.inc.php");
-
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");
 IPSUtils_Include ("DENONsteuerung.Library.inc.php","IPSLibrary::app::modules::DENONsteuerung");
 
-$configuration=Denon_Configuration();
-//print_r($configuration);
-$installDENON=new installDENON();
+    IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 
-	$modulhandling = new ModuleHandling();
-	//$modulhandling->printrLibraries();
+    echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
+	$modulhandling = new ModuleHandling();	                	            // in AllgemeineDefinitionen, alles rund um Bibliotheken, Module und Librariestrue bedeutet mit Debug
+    $topologyLibrary = new TopologyLibraryManagement();                     // in EvaluateHardware Library, neue Form des Topology Managements
 
+    $discovery = $modulhandling->getDiscovery();
+    $hardware = $topologyLibrary->get_HardwareList($discovery);
+    print_r($hardware["DenonAVR"]);
+
+    $hardwareDenon = new HardwareDenonAVR();
+    $socketID = $hardwareDenon->getSocketID();
+    $validModule = @IPS_GetModule($socketID)["ModuleName"];
+    echo "$validModule \n";
+    $sockets=$modulhandling->getInstances($socketID);
+    print_R($sockets);
+    $devices=$hardwareDenon->getDeviceIDInstances();
+    print_R($devices);
+    
 	echo "\n==========================================\n\n";
 
 	echo "Die Module von der Bibliothek \"SymconHUE\" ausgeben : \n";
@@ -69,6 +77,12 @@ $installDENON=new installDENON();
 
 	echo "\n==========================================\n\n";
 
+$installDENON = new installDENON();
+
+echo "\n";
+echo "Denon Konfiguration:\n";
+$configuration=Denon_Configuration();
+print_r($configuration);
 
 
 foreach ($configuration as $Denon => $config)
@@ -76,7 +90,7 @@ foreach ($configuration as $Denon => $config)
 	switch ($config["TYPE"])
 		{
 		case "Denon":
-			$installDENON->setupDENON($Denon,$config);
+			//$installDENON->setupDENON($Denon,$config);
 			break;
 		case "SamsungTV":
 			$installDENON->setupSamsung($Denon,$config);

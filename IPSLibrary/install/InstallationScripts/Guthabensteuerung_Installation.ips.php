@@ -22,6 +22,7 @@
 	 *
 	 * Script um herauszufinden ob die Guthaben der Simkarten schon abgelaufen sind
 	 * Installationsroutine, Eigenes Tab im SystemTP für Selenium Status
+     * Selenium Funktion wird hier immer mehr ausgeweitet
      *
 	 *
 	 * @file          Guthabensteuerung_Installation.ips.php

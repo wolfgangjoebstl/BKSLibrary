@@ -384,8 +384,10 @@
         /* create Highcharts Meteogram for better Weather Overview */
 
        	//$variableIdMeteoChartHtml   = CreateVariable("OpenWeatherMeteoHTML",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe src="./user/IPSHighcharts/IPSTemplates/Highcharts.php?CfgFile=C:\IP-Symcon\webfront\user\IPSHighcharts\Highcharts\HighchartsCfgOpenweather.tmp" width="100%" height="616" frameborder="0" scrolling="no" ></iframe>', 'Graph');
-        $variableIdMeteoChartHtml   = CreateVariable("OpenWeatherMeteoHTML",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe src="./user/IPSHighcharts/IPSTemplates/Highcharts.php?CfgFile=.\user\IPSHighcharts\Highcharts\HighchartsCfgOpenweather.tmp" width="100%" height="616" frameborder="0" scrolling="no" ></iframe>', 'Graph');        CreateLinkByDestination('Meteogram', $variableIdMeteoChartHtml,    $categoryId_OW_WebFront,  10);
-       	$variableIdZusammenfassungHtml   = CreateVariable("OpenWeatherZusammenfassung",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe frameborder="0" width="100%" height="530px" scrolling="yes" src="../user/Startpage/Startpage_Openweather.php" </iframe>', 'Graph');
+        $variableIdMeteoChartHtml   = CreateVariable("OpenWeatherMeteoHTML",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe src="./user/IPSHighcharts/IPSTemplates/Highcharts.php?CfgFile=.\user\IPSHighcharts\Highcharts\HighchartsCfgOpenweather.tmp" width="100%" height="616" frameborder="0" scrolling="no" ></iframe>', 'Graph');        
+        CreateLinkByDestination('Meteogram', $variableIdMeteoChartHtml,    $categoryId_OW_WebFront,  10);
+       	
+        $variableIdZusammenfassungHtml   = CreateVariable("OpenWeatherZusammenfassung",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe frameborder="0" width="100%" height="530px" scrolling="yes" src="../user/Startpage/Startpage_Openweather.php" </iframe>', 'Graph');
         CreateLinkByDestination('Zusammenfassung', $variableIdZusammenfassungHtml,    $categoryId_OW_WebFront,  20);
 
 		}

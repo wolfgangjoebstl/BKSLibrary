@@ -34,8 +34,9 @@
  *
  ********************************/
  
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+	IPSUtils_Include ('Report_class.php', 					'IPSLibrary::app::modules::Report');    
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';	
@@ -50,7 +51,7 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSComponent','2.50.1');
 	
-	echo "\nKernelversion : ".IPS_GetKernelVersion()."\n";
+	echo "\nKernelversion         : ".IPS_GetKernelVersion()."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "IPSModulManager Version : ".$ergebnis."\n";
 	$ergebnisCustoComponent=$moduleManager->VersionHandler()->GetVersion('CustomComponent')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
@@ -252,7 +253,8 @@
  *
  ********************************/
 
-  	$report_config=Report_GetConfiguration();
+    $pcManager = new ReportControl_Manager();
+  	$report_config=$pcManager->getConfiguration();
     echo "\n";
     echo "Report_GetConfiguration abarbeiten. Es gibt ".count($report_config)." Einträge. Das ist die lange detaillierte Liste.\n";
 

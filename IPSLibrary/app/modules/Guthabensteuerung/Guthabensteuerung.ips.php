@@ -208,7 +208,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                         $config["DREI"]["CONFIG"]["Username"]=$phoneID[$ScriptCounter]["Nummer"];          // von 0 bis maxcount-1 durchgehen
                         $config["DREI"]["CONFIG"]["Password"]=$phoneID[$ScriptCounter]["Password"];
                         $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug      
-                        $note="Selenium Abfrage war um ".date("d.m.Y H:i:s")." für ".$phoneID[($ScriptCounter)]["Nummer"]."($ScriptCounter/$maxcount)";
+                        $note="Selenium Abfrage war um ".date("d.m.Y H:i:s")." für ".$phoneID[($ScriptCounter)]["Nummer"]."($ScriptCounter/$maxcount,".exectime($startexec)." Sek)";
                         $log_Guthabensteuerung->LogNachrichten($note);
                         SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	                           
 
@@ -219,7 +219,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                     }
 			    SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);                	
 				}
-			else
+			else            // alles abgefragt, was ist mit der Auswertung, immer noch eigenes Script ParseGuthaben
 				{
 				IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
                 switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
@@ -250,8 +250,13 @@ if ($_IPS['SENDER']=="TimerEvent")
             switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                 {
                 case "SELENIUM":
+                    $startexec=microtime(true);
                     $configTabs = $guthabenHandler->getSeleniumHostsConfig();
+                    unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
                     $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
+                    echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
+                    echo "--------\n";
+                    $log_Guthabensteuerung->LogNachrichten("Automated Query, Exectime : ".exectime($startexec)." Sekunden");                      
                     break;
                 }
             break;
@@ -376,6 +381,7 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
 	echo "Timerprogrammierung: \n";
 	echo "  Timer 1 ID : ".$tim1ID."   ".(IPS_GetEvent($tim1ID)["EventActive"]?"Ein":"Aus")."\n";
     echo "  Timer 2 ID : ".$tim2ID."   ".(IPS_GetEvent($tim2ID)["EventActive"]?"Ein":"Aus")."\n";
+    echo "  Timer 3 ID : ".$tim3ID."   ".(IPS_GetEvent($tim3ID)["EventActive"]?"Ein":"Aus")."\n";
 
 	$ScriptCounter=GetValue($ScriptCounterID);
     echo "Script Counter (aktuell)    : ".$ScriptCounter."\n";
@@ -384,52 +390,9 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {  
         case "SELENIUM":
-            //print_R($GuthabenAllgConfig);
-            //echo "Ausgabe Konfiguration:\n"; print_r($GuthabenConfig);
-            echo "\nEingedampft wird es dann hier:\n";
-            readDownloadDirectory($GuthabenAllgConfig["WebResultDirectory"]);
-            $guthabenHandler->extendPhoneNumberConfiguration($phoneID,$seleniumOperations->getCategory("DREI"));            // phoneID is return parameter
-            /*
-            $registers=array();
-            $childrens=IPS_GetChildrenIDs($seleniumOperations->getCategory("DREI"));
-            foreach ($childrens as $children) 
-                {
-                $name = IPS_GetName($children);
-                //echo "  $name   \n";
-                $register[$name]["LastUpdated"]=IPS_GetVariable($children)["VariableUpdated"];
-                $register[$name]["OID"]=$children;
-                }
-            echo "Register in IP Symcon:\n";
-            //print_R($register);
-            foreach ($phoneID as $index => $entry)
-                {
-                echo "   ".$entry["Nummer"]."    : ";
-                if (isset($register[$entry["Nummer"]])) 
-                    {
-                    echo "available, last update was ".date("d.m.Y H:i:s",$register[$entry["Nummer"]]["LastUpdated"])."\n";
-                    $phoneID[$index]+=$register[$entry["Nummer"]];
-                    }
-                else echo "NOT available\n";
-                }  */
-            print_R($phoneID);
-            foreach ($phoneID as $entry)
-                {
-                if (isset($entry["OID"]))
-                    {
-                    echo "   ".$entry["Nummer"]."    : register (".$entry["OID"].") available, last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"])."\n";
-                    $result=GetValue($entry["OID"]);
-                    }
-
-                }
-
-			//IPS_SetScriptTimer($_IPS['SELF'], 150);
+            $debug=true;
 			if ($ScriptCounter < $maxcount) $value=$ScriptCounter;
             else { $value=0; SetValue($ScriptCounterID,0); }
-
-            //$value=2;       // 0,1  ... (count-1)
-            //$webDriverName="BKS-Server";
-            //$debug=true;
-            $debug=true;
             echo "============================================================================\n";
             echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
             $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
@@ -437,32 +400,129 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
 
             /* die Abendabfrage dazumergen */  
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
-            $config = array_merge($config,$configTabs["Hosts"]);          // true debug
-
-            $seleniumOperations = new SeleniumOperations();                             // macht nichts, erst mit automated query gehts los
-            $seleniumOperations->automatedQuery($webDriverName,$config,$debug);          // true debug      
-
-            $ergebnis1="";
-            echo "Parsetxtfile:\n";        
-            echo "--------------------------------------------------\n   ".$phoneID[$value]["Nummer"]."    : ";
-            if (isset($phoneID[$value]["OID"])) 
+            //print_R($configTabs);
+            unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, durch echte Werte ersetzen
+            //print_R($configTabs);
+            $config = array_merge($configTabs["Hosts"],$config);          // array merge ersetzt die entsprechenden keys, der letzte Eintrag überschreibt die vorangehenden
+            /******************* Vorbereitung */
+            foreach ($config as $host => $entry)
                 {
-                echo "register (".$phoneID[$value]["OID"].") available";
-                if (isset($phoneID[$value]["LastUpdated"])) 
+                switch (strtoupper($host))
                     {
-                    echo ", last update was ".date("d.m.Y H:i:s",$phoneID[$value]["LastUpdated"]);                    
-                    echo "\n";
-                    $result=GetValue($phoneID[$value]["OID"]);
-                    echo "$result\n";
-                    $lines = explode("\n",$result);
-                    $ergebnis1=$guthabenHandler->parsetxtfile($phoneID[$value]["Nummer"],$lines,false,"array");                    
-                    }
-                else echo "\n";
+                    case "DREI":
+                        echo "    $host ".json_encode($entry)."\n";
+                        $guthabenHandler->readDownloadDirectory($GuthabenAllgConfig["WebResultDirectory"]);
+                        $guthabenHandler->extendPhoneNumberConfiguration($phoneID,$seleniumOperations->getCategory("DREI"));            // phoneID is return parameter
+                        echo "       Guthaben Register in der Kategorie:\n";
+                        foreach ($phoneID as $entry)
+                            {
+                            if (isset($entry["OID"]))
+                                {
+                                echo "       ".$entry["Nummer"]."    : register (".$entry["OID"].") available, last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"])."\n";
+                                //$result=GetValue($entry["OID"]);          // letztes Ergebnis interessiert keinen
+                                }
+                            }
+                        break;
+                    case "EASY":
+                        echo "    $host ".json_encode($entry)."\n";
+                        echo "           Selenium Operations, read Result from EASY:\n";
+                        $result=$seleniumOperations->readResult("EASY","Result",true);                  // true Debug
+                        //print_R($result);
+                        echo "           Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        break;
+                    default:
+                        echo "    $host ".json_encode($entry)."\n";
+                        break;    
+                    }    
                 }
-            else echo "\n"; 
-            //print_r($phoneID[$value]);
-            echo $ergebnis1."\n";
-            //SetValue($phone1ID,$ergebnis1);
+            /*************************** Abfrage */
+            $seleniumOperations = new SeleniumOperations();                             // macht nichts, erst mit automated query gehts los
+            $seleniumOperations->automatedQuery($webDriverName,$config,false);          // true debug      
+
+            /***************************** Auswertung */
+            $hosts="";
+            foreach ($config as $host=>$entry) $hosts .= $host." ";
+            echo "Aktuell vergangene Zeit für AutomatedQuery ( $hosts): ".exectime($startexec)." Sekunden\n";            // Zeit von Anfang an
+            echo "--------\n";
+
+            $indexDrei=$value;
+            foreach ($config as $host => $entry)
+                {
+                switch (strtoupper($host))
+                    {
+                    case "DREI":                        // Konkurrenz für ParseDreiGuthaben Script
+                        $ergebnis1=""; $value=$indexDrei;
+                        echo "\n";
+                        echo "Parsetxtfile:\n";        
+                        echo "--------------------------------------------------\n   ".$phoneID[$value]["Nummer"]."    : ";
+                        if (isset($phoneID[$value]["OID"])) 
+                            {
+                            echo "register (".$phoneID[$value]["OID"].") available";
+                            if (isset($phoneID[$value]["LastUpdated"])) 
+                                {
+                                echo ", last update was ".date("d.m.Y H:i:s",$phoneID[$value]["LastUpdated"]);                    
+                                echo "\n";
+                                $result=GetValue($phoneID[$value]["OID"]);
+                                //echo "$result\n";
+                                $lines = explode("\n",$result);
+                                $ergebnis1=$guthabenHandler->parsetxtfile($phoneID[$value]["Nummer"],$lines,false,"array");                    
+                                }
+                            else echo "\n";
+                            }
+                        else echo "\n"; 
+                        //print_r($phoneID[$value]);
+                        echo "Ergebnis DREI: $ergebnis1.\n";
+                        //SetValue($phone1ID,$ergebnis1);
+
+                        break;
+                    case "EASY":
+                        $seleniumEasycharts = new SeleniumEasycharts();
+
+                        echo "Selenium Operations, read Result from EASY:\n";
+                        $result=$seleniumOperations->readResult("EASY","Result",true);                  // true Debug
+                        //print_R($result);
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        echo "Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden,".exectime($startexec)."\n";
+                        echo "--------\n";
+                        $log_Guthabensteuerung->LogNachrichten("Execute ViewResult, EASY letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"]));    
+                        $lines = explode("\n",$result["Value"]);                       // die Zeilen als einzelne Eintraeg im array abspeichern */
+
+                        $data=$seleniumEasycharts->parseResult($lines);
+                        $shares=$seleniumEasycharts->evaluateResult($data);
+                        $value=$seleniumEasycharts->evaluateValue($shares);
+                        $seleniumEasycharts->writeResult();
+
+                        $categoryIdResult = $seleniumEasycharts->getResultCategory();
+                        echo "Category Easy RESULT $categoryIdResult.\n";
+                    
+                        $componentHandling = new ComponentHandling();
+                    
+                        /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
+                        $oid = CreateVariableByName($categoryIdResult,"MusterDepot3",2,'Euro',"Depot",1000);
+                        $componentHandling->setLogging($oid);
+
+                        /* only once per day, If there is change */
+                        if (GetValue($oid) != $value) SetValue($oid,$value);
+
+                        //print_R($shares);
+                        $parent=$oid;
+                        foreach($shares as $share)
+                            {
+                            $value=$share["Kurs"];
+                            $oid = CreateVariableByName($parent,$share["ID"],2,'Euro',"",1000);     //gleiche Identifier in einer Ebene gehen nicht
+                            $componentHandling->setLogging($oid);
+                            //print_r($share);
+                            /* only once per day, If there is change */
+                            if (GetValue($oid) != $value) SetValue($oid,$value);
+                            }
+                        
+
+                        break;
+                    default:
+
+                        break;    
+                    }    
+                }
 
 
             echo "============================================================================\n";
@@ -475,7 +535,7 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
 	
         	//print_r($phone);
 
-            readDownloadDirectory();
+            $guthabenHandler->readDownloadDirectory();
 
             $ScriptCounter=GetValue($ScriptCounterID);
             $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
@@ -562,46 +622,6 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
         }
 	}
 
-
-    function readDownloadDirectory($verzeichnis=false)
-        {
-        if ($verzeichnis===false) $verzeichnis=$GuthabenAllgConfig["DownloadDirectory"];        
-            $dir=array(); $count=0; 
-                // Test, ob ein Verzeichnis angegeben wurde
-                if ( is_dir ( $verzeichnis ) )
-                    {
-                    // öffnen des Verzeichnisses
-                    if ( $handle = opendir($verzeichnis) )
-                        {
-                        /* einlesen der Verzeichnisses	*/
-                        while ((($file = readdir($handle)) !== false) )
-                            {
-                            if ($file!="." and $file != "..")
-                                {	/* kein Directoryverweis (. oder ..), würde zu einer Fehlermeldung bei filetype führen */
-                                //echo "Bearbeite ".$verzeichnis.$file."\n";
-                                $dateityp=filetype( $verzeichnis.$file );
-                                if ($dateityp == "file")			// alternativ dir für Verzeichnis
-                                    {
-                                    //echo "   Erfasse Verzeichnis ".$verzeichnis.$file."\n";
-                                    $dir[$count]["Name"]=$verzeichnis.$file;
-                                    $dir[$count++]["Date"]=date ("d.m.Y H:i:s.", filemtime($verzeichnis.$file));
-                                    }
-                                }	
-                            //echo "    ".$file."    ".$dateityp."\n";
-                            } /* Ende while */
-                        //echo "   Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
-                        closedir($handle);
-                        } /* end if dir */
-                    }/* ende if isdir */
-                else
-                    {
-                    echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
-                    }	
-            //print_r($dir);
-            echo "Dateien im Download Verzeichnis.\n";
-            foreach ($dir as $entry) echo "   ".$entry["Name"]."  zuletzt geändert am ".$entry["Date"]."\n";
-
-        }
-
+ 
 
 ?>

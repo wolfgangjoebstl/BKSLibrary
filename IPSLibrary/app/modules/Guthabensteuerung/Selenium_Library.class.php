@@ -22,7 +22,7 @@
  * wird über die IP ADresse mit einer Portnummer 4444 kontaktiert.
  *
  * für die Automatisiserung der Abfragen gibt es verschieden Klasssen
- *      SeleniumHandler     managed die Handles des Selenium Drivers, offene Tabs
+ *      SeleniumHandler     managed die Handles des Selenium Drivers, offene Tabs, werden von den folgenden Klassen erweitert
  *
  *      SeleniumDrei
  *      SeleniumIiyama
@@ -49,6 +49,8 @@ require_once(IPS_GetKernelDir().'scripts\vendor\autoload.php');
  * dann diese wiederverwenden, sonst neu aufmachen
  *
  * construct
+ * setConfiguration     spezifische konfiguration speichern
+ * getConfiguration     konfiguration lesen
  * syncHandles
  * isTab
  * updateHandles
@@ -72,6 +74,8 @@ class SeleniumHandler
 
     protected static   $webDriver;
     protected   $active;
+    protected   $ipsOps;
+    protected   $CategoryIdData;            /* die RESULT Kategorie, da sind alle Ergebnisse pro Klasse drinnen */
 
     public      $title;                  /* history of Titels */
     private     $index;             /* actual index of title */
@@ -84,6 +88,32 @@ class SeleniumHandler
         {
         $this->active=$active;   
         $this->failure="";
+        $this->ipsOps = new ipsOps();    
+
+        $guthabenHandler = new GuthabenHandler(true,true,true);         // Steuerung für parsetxtfile
+        $categoryId = $guthabenHandler->getCategoryIdSelenium();
+        $this->CategoryIdData =IPS_GetObjectIdByName("RESULT",$categoryId);        
+
+        }
+
+    /* Typische Konfiguration, die übergeben wird und in jeder Klasse gespeichert werden:
+        "DREI"       =>  array (
+        "URL"       => "www.drei.at",
+        "CLASS"     => "SeleniumDrei",
+        "CONFIG"    => array(
+                    "WebResultDirectory"    => $config["WebResultDirectory"],
+                                ),                            
+                        ),                                            
+     */
+
+    public function setConfiguration($configuration)
+        {
+        $this->configuration = $configuration;
+        }
+
+    public function getConfiguration()
+        {
+        return($this->configuration);
         }
 
     /* handle ist gespeichert mit Index als webIndex und der Wert dem kurzen Namen, dem iodentifier, Tab
@@ -454,7 +484,6 @@ class SeleniumHandler
  *
  * es gibt folgende Funktionen
  *  construct
- *  setConfiguration
  *  runAutomatic
  *  pressLogoutButtonIf
  *  pressPrivacyButtonIf
@@ -468,7 +497,7 @@ class SeleniumHandler
 
 class SeleniumDrei extends SeleniumHandler
     {
-    private $configuration;                 //array mit Datensaetzen
+    protected $configuration;                 //array mit Datensaetzen
     private $duetime,$retries;              //für retry timer
     protected $debug;
 
@@ -478,22 +507,6 @@ class SeleniumDrei extends SeleniumHandler
         $this->retries=0;
         $this->debug=$debug;
         }
-
-    /* Typische Konfiguration, die übergeben wird:
-        "DREI"       =>  array (
-        "URL"       => "www.drei.at",
-        "CLASS"     => "SeleniumDrei",
-        "CONFIG"    => array(
-                    "WebResultDirectory"    => $config["WebResultDirectory"],
-                                ),                            
-                        ),                                            
-     */
-
-    public function setConfiguration($configuration)
-        {
-        $this->configuration = $configuration;
-        }
-
 
     /* seleniumDrei::runAutomatic
      * function is part of a state machine. State Machine is in upper section, state machine operates on responses
@@ -771,10 +784,14 @@ class SeleniumDrei extends SeleniumHandler
 /* Selenium Anpassungen für den Iiyama Monitor
  * Ansteuerung geht möglicherweise auch über curl
  * erst einmal so lassen
+ *
+ * zusaetzliche Funktionen sind
+ *
+ *
  */
 class SeleniumIiyama extends SeleniumHandler
     {
-    private $configuration;                 //array mit Datensaetzen
+    protected $configuration;                 //array mit Datensaetzen
     private $duetime,$retries;              //für retry timer
     protected $debug;
 
@@ -785,12 +802,6 @@ class SeleniumIiyama extends SeleniumHandler
         $this->debug=$debug;
         }
 
-    public function setConfiguration($configuration)
-        {
-        echo "set_configuration\n";
-        $this->configuration = $configuration;
-        }
-
     /* SeleniumIiyama::runAutomatic
      *
      * Montor Ein/Aus Schalten
@@ -799,7 +810,7 @@ class SeleniumIiyama extends SeleniumHandler
 
     public function runAutomatic($step=0)
         {
-        echo "runAutomatic SeleniumIiyama Step $step.\n";
+        if ($this->debug) echo "runAutomatic SeleniumIiyama Step $step.\n";
         switch ($step)
             {
             case 0:
@@ -924,11 +935,22 @@ class SeleniumIiyama extends SeleniumHandler
     }           // ende class
 
 /* Bei Easycharts einlogen und die aktuellen Portfolio Kurse auslesen
+ * zusaetzliche Funktionen sind
+ *      parseResult
+ *      writeResult         die Ergebnisse in spezielle Register schreiben
+ *      runAutomatic
+ *
+ * Funktionen zum Einlesen des Host
+ *      getTextValidLoggedInIf
+ *      enterLogin
+ *      gotoLinkMusterdepot
+ *      gotoLinkMusterdepot3
+ *      getTablewithCharts
  *
  */
 class SeleniumEasycharts extends SeleniumHandler
     {
-    private $configuration;     //array mit Datensaetzen
+    protected $configuration;     //array mit Datensaetzen
     private $duetime,$retries;              //für retry timer
     protected $debug;
 
@@ -939,12 +961,13 @@ class SeleniumEasycharts extends SeleniumHandler
         $this->duetime=microtime(true);
         $this->retries=0;
         $this->debug=$debug;
+        parent::__construct();
+        $this->CategoryIdDataEasy = IPS_GetObjectIdByName("EASY",$this->CategoryIdData);
         }
 
-
-    public function setConfiguration($configuration)
+    function getResultCategory()
         {
-        $this->configuration = $configuration;
+        return($this->CategoryIdDataEasy);
         }
 
    /* extract table, function to get fixed elements of a table line per line     
@@ -1047,21 +1070,146 @@ class SeleniumEasycharts extends SeleniumHandler
         return($data);
         }
 
+
+    /* evaluate table, function to calculate the value of the depot
+     *
+     */
+
+    function evaluateResult($data, $debug=false)
+        {
+        //print_R($data["Data"]);
+        /* rebuild table */
+        $shares=array();
+        $count=0;
+        foreach ($data["Data"] as $lineNumber => $line)
+            {
+            foreach ($line as $columnNumber => $column)
+                {
+                echo str_pad($column,$data["Size"][$columnNumber])."|";
+                if ($columnNumber==0) $shares[$count]["ID"]=$column;
+                if ($columnNumber==2) $shares[$count]["Name"]=$column;
+                if ($columnNumber==5) $shares[$count]["Stueck"]=floatval(str_replace(',', '.', str_replace('.', '', $column)));
+                if ($columnNumber==6) $shares[$count]["Kurs"]=floatval(str_replace(',', '.', str_replace('.', '', $column)));
+                if ($columnNumber==8) $shares[$count]["Kursaenderung"]=floatval(str_replace(',', '.', str_replace('.', '', $column)));
+                }
+            $count++;
+            echo "\n";
+
+            }
+
+        echo "\n";
+        $sortTable="Kursaenderung";
+        $this->ipsOps->intelliSort($shares,$sortTable,SORT_DESC);    
+        //print_r($shares);
+        echo "\n";
+        return($shares);
+        }
+
+    /* Summe der Aktienwerte ausrechnen und in der richtigen Reihenfolge darstellen */
+
+    public function evaluateValue($shares)
+        {
+        $value=0;
+
+        foreach ($shares as $index => $entry)
+            {
+            echo str_pad($entry["ID"],14).str_pad($entry["Name"],31).str_pad($entry["Stueck"],8," ", STR_PAD_LEFT).str_pad(number_format($entry["Kurs"],2,",","."),12," ", STR_PAD_LEFT).str_pad(number_format($entry["Kursaenderung"],3,",",".")."%",9," ", STR_PAD_LEFT)." ";
+            $shareValue=$entry["Stueck"]*$entry["Kurs"];
+            echo str_pad(number_format($shareValue,2,",",".")." Euro",18," ", STR_PAD_LEFT)."\n";
+            $value += $shareValue;
+            }
+        echo "------------------------------------------------------------------------------------------------\n";
+        echo "                                                                             ".str_pad(number_format($value,2,",",".")." Euro",18," ", STR_PAD_LEFT)."   \n";
+        return ($value);            
+        }
+
+    /* Werte im Data Block speichern */
+
+    function writeResult(&$shares, $nameDepot="MusterDepot",$value=0)
+        {
+        $componentHandling = new ComponentHandling();           // um Logging zu setzen
+
+        $categoryIdResult = $this->getResultCategory();
+        echo "Store the new values, Category Easy RESULT $categoryIdResult.\n";
+    
+        $share=array();
+        $share["ID"]     = "MusterDepot3";
+        $share["Parent"] = $categoryIdResult;
+        $share["Stueck"] = 1;
+        $share["Kurs"]   = $value;
+        $shares[]=$share;
+
+        /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
+        $oid = CreateVariableByName($categoryIdResult,$share["ID"],2,'Euro',"Depot",1000);
+        $componentHandling->setLogging($oid);
+
+        /* only once per day, If there is change */
+        if (GetValue($oid) != $value) SetValue($oid,$value);
+        
+        //print_R($shares);
+        $parent=$oid;
+        foreach($shares as $index => $share)
+            {
+            $value=$share["Kurs"];
+            $oid = CreateVariableByName($parent,$share["ID"],2,'Euro',"",1000);     //gleiche Identifier in einer Ebene gehen nicht
+            if (isset($shares[$index]["Parent"])===false) $shares[$index]["Parent"]=$parent;
+            $shares[$index]["OID"]=$oid;
+            $componentHandling->setLogging($oid);                                   // Logging einschalten, das wäre eine Install Funktion 
+            //print_r($share);
+            /* only once per day, If there is change */
+            if (GetValue($oid) != $value) SetValue($oid,$value);
+            }
+        }
+
+    /* Easycharts ermittelt verschiedene darstellbare Ergebnisse
+     *
+     */
+
+    function writeResultAnalysed($resultShares)
+        {
+        echo "ID            Name                       StandardAbw  Spread Max/Min        Mittelwert      Trend      Letzter Wert  Result\n";
+        foreach ($resultShares as $share)
+            {
+            echo $share["Info"]["ID"]."  ";
+            if (isset($share["Info"]["Name"])) $name=$share["Info"]["Name"];
+            else $name="";
+            echo str_pad($name,23);
+            $spreadPlus  = ($share["Description"]["Max"]/$share["Description"]["Means"]-1)*100;
+            $spreadMinus = (1-$share["Description"]["Min"]/$share["Description"]["Means"])*100;
+            $description="";
+            if (($spreadPlus+$spreadMinus)>5)
+                {
+                if ($spreadPlus>$spreadMinus) $description="Volatile to high";
+                if ($spreadPlus<$spreadMinus) $description="Volatile to low";
+                }
+            echo str_pad(number_format($share["Description"]["StdDevRel"],2,",",".")."%",12," ", STR_PAD_LEFT);                
+            echo str_pad(number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%",18," ", STR_PAD_LEFT);
+            echo str_pad(number_format($share["Description"]["Means"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
+            if (isset($share["Description"]["Trend"],)) echo str_pad(number_format($share["Description"]["Trend"],2,",",".")."%",12," ", STR_PAD_LEFT);
+            else echo "             ";
+            echo str_pad(number_format($share["Description"]["Latest"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
+            echo "   $description ";
+            echo "\n";
+            }
+
+
+        }
+
     public function runAutomatic($step=0)
         {
-        echo "runAutomatic SeleniumEasycharts Step $step.\n";
+        if ($this->debug) echo "runAutomatic SeleniumEasycharts Step $step.\n";
         switch ($step)
             {
             case 0:
-                echo "--------\n0: check if not logged in, then log in.\n";
+                if ($this->debug) echo "--------\n0: check if not logged in, then log in.\n";
                 if ($this->getTextValidLoggedInIf()!==false)  return(["goto" => 2]);                // brauche ein LogIn Fenster
                 break;
             case 1:
-                echo "--------\n1: enter log in.\n";
+                if ($this->debug) echo "--------\n1: enter log in.\n";
                 $result = $this->enterLogin($this->configuration["Username"],$this->configuration["Password"]);            
                 if ($result === false) 
                     {
-                    echo "   --> failed\n";
+                    if ($this->debug) echo "   --> failed\n";
                     return("retry");                
                     }
                 break;
@@ -1069,7 +1217,7 @@ class SeleniumEasycharts extends SeleniumHandler
                 $result = $this->gotoLinkMusterdepot();
                 if ($result === false) 
                     {
-                    echo "   --> failed\n";
+                    if ($this->debug) echo "   --> failed\n";
                     return("retry");                
                     }
                 break;
@@ -1077,7 +1225,7 @@ class SeleniumEasycharts extends SeleniumHandler
                 $result = $this->gotoLinkMusterdepot3();            // zum dritten Musterdepot wechseln
                 if ($result === false) 
                     {
-                    echo "   --> failed\n";
+                    if ($this->debug) echo "   --> failed\n";
                     return("retry");                
                     }
                 break;
@@ -1104,7 +1252,7 @@ class SeleniumEasycharts extends SeleniumHandler
         $result = $this->getTextIf($xpath,$this->debug);
         if ($result !== false)
             {
-            echo "found fetch data, length is ".strlen($result)."\n";
+            if ($this->debug) echo "found fetch data, length is ".strlen($result)."\n";
             print $result;
             }
         return ($result);
@@ -1164,8 +1312,8 @@ class SeleniumEasycharts extends SeleniumHandler
  * andere Routinen für SeleniumOperations
  *  initResultStorage
  *  getCategory
- *  writeResult
- *  readResult
+ *  writeResult             allgemeine Schreibroutine
+ *  readResult              allgemeine Leseroutine
  *  automatedQuery
  *  findTag
  *
@@ -1186,6 +1334,10 @@ class SeleniumOperations
         $this->CategoryIdData =CreateCategoryByName($this->CategoryId,"RESULT");
         }
 
+    /* wird von automatedQuery aufgerufen, legt alle Kategorien an für die Hosts
+     * geht auch mit getCategory[Host]
+     */
+
     function initResultStorage($configuration)
         {
         if (isset($configuration["Hosts"])) $configuration = $configuration["Hosts"];
@@ -1197,6 +1349,7 @@ class SeleniumOperations
 
     /* getCategory
      * ohne Parameter wird es data.modules.Guthabensteuerung.Selenium.RESULT
+     * mit Parameter  wird es data.modules.Guthabensteuerung.Selenium.RESULT.$sub
      */
     function getCategory($sub=false)
         {
@@ -1217,8 +1370,9 @@ class SeleniumOperations
      * dort hin wird das Ergebnis in result gespeichert
      */
 
-    function writeResult($index,$result,$name="Result")
+    function writeResult($index,$result,$name="Result", $debug=false)
         {
+        echo "SeleniumOperations::writeResult($index,..,$name).\n";
         $categoryID = @IPS_GetObjectIDByName($index, $this->CategoryIdData);
         if ($categoryID===false) return(false);
         $variableID = CreateVariableByName($categoryID, $name, 3);
@@ -1373,7 +1527,7 @@ class SeleniumOperations
                                 }
 
                             $result = $runSelenium[$index]->runAutomatic($steps[$index]);
-                            echo "Aufruf ".$steps[$index]." erfolgt. Rückmeldung ist ".json_encode($result)."\n";
+                            if ($debug) echo "Aufruf ".$steps[$index]." erfolgt. Rückmeldung ist ".json_encode($result)."\n";
                             if (is_Array($result))
                                 {       // komplexe Rückmeldung, Ergebnis speichern in den Variablen Username und Nummer
                                 if (isset($result["Ergebnis"]))

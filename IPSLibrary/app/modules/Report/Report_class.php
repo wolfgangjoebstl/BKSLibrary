@@ -66,11 +66,42 @@
 			$this->categoryIdValues   = IPS_GetObjectIDByIdent('Values', $baseId);
 			$this->categoryIdCommon   = IPS_GetObjectIDByIdent('Common', $baseId);
 			//$this->sensorConfig       = IPSPowerControl_GetSensorConfiguration();
-			$this->valueConfig        = Report_GetValueConfiguration();
-            $this->configuration      = Report_GetConfiguration();
+			$this->valueConfig        = $this->setValueConfiguration();
+            $this->configuration      = $this->setConfiguration();
 		    }
 
 
+        private function setConfiguration()
+            {
+            $config = Report_GetConfiguration();
+            $configValue = $this->setValueConfiguration();
+            foreach ($configValue as $entry)
+                {
+                //print_R($entry);
+                if (isset($entry["Name"])) 
+                    {
+                    if (isset($config[$entry["Name"]]))
+                        {
+                        //echo $entry["Name"]."   \n";
+                        //'color'     => 0x008000,
+                        //'title' wird zum Index
+                        
+                        }
+                    else 
+                        {
+                        echo "Fehler, ".$entry["Name"]." hat keine Konfiguration.  \n";
+                        print_R($entry);
+                        }
+                    }
+                }
+            return($config); 
+            }
+
+        private function setValueConfiguration()
+            {
+            $config = Report_GetValueConfiguration();
+            return($config); 
+            }
 
         public function getConfiguration()
             {
@@ -776,7 +807,12 @@
                 //print_r($CfgDaten["series"]);
                 foreach ($CfgDaten["series"] as $index => $SerienEintrag)
                     {
-                    echo "   Serie ".$index."  ".$SerienEintrag["Id"]."    ".IPS_GetName($SerienEintrag["Id"])."/".IPS_GetName(IPS_GetParent($SerienEintrag["Id"]))."\n";    
+                    if (isset($SerienEintrag["Id"])) echo "   Serie ".$index."  ".$SerienEintrag["Id"]."    ".IPS_GetName($SerienEintrag["Id"])."/".IPS_GetName(IPS_GetParent($SerienEintrag["Id"]))."\n";    
+                    else 
+                        {
+                        echo "    Serie ".$index."  mit einzelnen Datenobjekten \n";
+                        print_R($SerienEintrag);
+                        }
                     }  
                 //print_r($CfgDaten);
                 }
@@ -802,7 +838,17 @@
 		    }
 
         /* compile the Highchart Config File 
-         * CfgDaten             wird als Pointer übergeben, istz dei Highcharts Config
+         * CfgDaten             wird als Pointer übergeben, ist die Highcharts Config
+         * $report_config       ist die eigentliche Konfiguration aus dem Konfig File
+         *
+         *  beinhaltet:
+         *      title
+         *      type
+         *      aggregate
+         *      series array
+         *          name array
+         *              Id
+         *
          * $displaypanel        =$associationsValues[$valueIdx];   welches Feld in getConfiguration 
          */
         
@@ -811,7 +857,11 @@
             $yaxis=array();                        /* Einstellungen der yaxis für alle einzelne Graphen sammeln */
 
             $i=0; $j=0;
-            if ($this->debug) echo "selected Report (".json_encode($report_config).") : -> implemented\n";
+            if ($this->debug) 
+                {
+                echo "compileConfiguration aufgerufen:\n";
+                echo "selected Report (".json_encode($report_config).") : -> implemented\n";
+                }
             
             if (isset($report_config["title"])) $CfgDaten['title']['text']    = $report_config["title"];
             else $CfgDaten['title']['text']    = "unknown title";
@@ -823,11 +873,19 @@
 			if ( (isset($report_config["aggregate"])) || ($chartType == IPSRP_TYPE_WATT) ) $CfgDaten['AggregatedValues']['HourValues']     = 0;      // ist der Zeitraum größer als X Tage werden Stundenwerte geladen, -1 immer alle Wete laden
             if ( (isset($report_config["aggregate"])) && ($report_config["aggregate"]==false) ) $CfgDaten['AggregatedValues']['HourValues']     = -1;
             
-								//$CfgDaten['plotOptions']['series']['step']     = "left";                                // plotOptions: {    series: {         step: 'left' // or 'center' or 'right'     }    }
+            //$CfgDaten['plotOptions']['series']['step']     = "left";                                // plotOptions: {    series: {         step: 'left' // or 'center' or 'right'     }    }
+ 
+            $moduleDefault="default";
+            if (isset($report_config["Module"])) $moduleDefault=strtoupper($report_config["Module"]);
+
+            $archiveOps = new archiveOps();  
 
             /* zuerst yaxis erfassen und schreiben */
+            $index=0;
             foreach ($report_config['series'] as $name=>$defserie)
                 {
+                $serie=array();         // imer neu initialisiseren
+                $scale=0;
                 /* Name sind die einzelnen Kurven und defserie die Konfiguration der einzelnen Kurven */
                 if ($this->debug)
                     { 
@@ -841,7 +899,28 @@
                 if (isset($report_config["type"])) $serie['type'] = $report_config["type"];
                 else $serie['type'] = $defserie['type'];
                 
-                $serie['Id']   = $defserie['Id'];
+                if (isset($defserie["Module"])) $module=strtoupper($defserie["Module"]);
+                else $module=$moduleDefault;
+
+                switch ($module)
+                    {
+                    case "EASY":
+                        $oid=$defserie['Id'];
+                        $result = $archiveOps->analyseValues($oid,10,false)["Values"];                 // true mit Debug
+                        $letzte=array_key_last($result);
+                        $scale=100/$result[$letzte]["Value"];
+                        foreach ($result as $entry)
+                            {
+                            //if ($scale==0) $scale=100/$entry["Value"];
+                            $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
+                            }
+                        //print_R($result);
+                        //$serie['Id']   = $defserie['Id'];
+                        break;
+                    default:
+                        $serie['Id']   = $defserie['Id'];
+                        break;
+                    }
                 //if ($defserie['Unit']=='$')            /* Statuswerte */
                 if ($defserie[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_STATE)
                     {
@@ -873,92 +952,92 @@
                         }
                     }
                 $serie['marker']['enabled'] = false;
-                $CfgDaten['series'][] = $serie;
+                $CfgDaten['series'][$index++] = $serie;
                 }   /* ende foreach */
 									
-							    $i=0;
-						  		$CfgDaten['yAxis'][$i]['opposite'] = false;
-						  		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
+            $i=0;
+            $CfgDaten['yAxis'][$i]['opposite'] = false;
+            $CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
 
-								/* dann yaxis auswerten, und eventuell zwei Achsen links und rechts aufbauen
-								 * die erste Achse kommt links, alle weiteren rechts , bei Status immer alle links
-								 */
-								$opposite=false;
-								foreach ($yaxis as $unit=>$index)
-								   {
-								   //echo "**Bearbeitung von ".$unit." und ".$index." \n";
-									if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
-									    {
-								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
-						   		 	    $CfgDaten['yAxis'][$index]['Unit'] = '°C';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-							    		if ($opposite==false) { $opposite_=true; }
-								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-						   		 	    //$CfgDaten['yAxis'][$i]['min'] = -20;
-							  		 	//$CfgDaten['yAxis'][$i]['max'] = 50;
-							  	 		//$CfgDaten['yAxis'][$i]['ceiling'] = 50;
-							    	    }
-						 			if ($unit==IPSRP_VALUETYPE_STATE)         /* Statuswerte */
-									    {
-								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Status";
-						   		 	    $CfgDaten['yAxis'][$index]['Unit'] = '$';
-								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-						   		 	    $CfgDaten['yAxis'][$index]['min'] = 0;
-							   	 	    //$CfgDaten['yAxis'][$i]['offset'] = 100;
-								  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
-							   	        }
-						 			if ($unit==IPSRP_VALUETYPE_HUMIDITY)
-									    {
-								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
-						   		 	    $CfgDaten['yAxis'][$index]['Unit'] = '%';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-							    		if ($opposite==false) { $opposite_=true; }
-								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-						   		 	    //$CfgDaten['yAxis'][$index]['min'] = 0;
-							   	 	    //$CfgDaten['yAxis'][$i]['offset'] = 100;
-								  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
-							   	        }
-						 			if ($unit==IPSRP_VALUETYPE_CONTROL)
-									    {
-								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Stellwert";
-						   		 	    $CfgDaten['yAxis'][$index]['Unit'] = '%';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-							    		if ($opposite==false) { $opposite_=true; }
-								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-						   		 	    //$CfgDaten['yAxis'][$index]['min'] = 0;
-							   	 	    //$CfgDaten['yAxis'][$i]['offset'] = 100;
-								  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
-							   	        }                                           
-						 			if ($unit==IPSRP_VALUETYPE_LENGTH)
-									    {
-								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Regenmenge";
-						   		 	    $CfgDaten['yAxis'][$index]['Unit'] = 'mm';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-							    		if ($opposite==false) { $opposite_=true; }
-							   	        }
-						 			if ($unit==IPSRP_VALUETYPE_CURRENT)
-									    {
-								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Strom";
-						   		 	    $CfgDaten['yAxis'][$index]['Unit'] = 'A';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-							    		if ($opposite==false) { $opposite_=true; }
-							   	        }
-						 			if ($unit==IPSRP_VALUETYPE_POWER)
-									    {
-								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Leistung";
-								     	/* in der Report_getconfiguration können unterschiedliche Werte stehen, zB W und kW, hier vereinheitlichen */
-						   		 	    $CfgDaten['yAxis'][$index]['Unit'] = 'kW';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-							    		if ($opposite==false) { $opposite_=true; }
-							   	        }
-						 			if ($unit==IPSRP_VALUETYPE_ENERGY)
-									    {
-								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Energie";
-						   		 	    $CfgDaten['yAxis'][$index]['Unit'] = 'kWh';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
-							    		if ($opposite==false) { $opposite_=true; }
-							   	        }
-								 	} /* ende foreach */
+            /* dann yaxis auswerten, und eventuell zwei Achsen links und rechts aufbauen
+                * die erste Achse kommt links, alle weiteren rechts , bei Status immer alle links
+                */
+            $opposite=false;
+            foreach ($yaxis as $unit=>$index)
+                {
+                //echo "**Bearbeitung von ".$unit." und ".$index." \n";
+                if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
+                    {
+                    $CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
+                    $CfgDaten['yAxis'][$index]['Unit'] = '°C';
+                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                    if ($opposite==false) { $opposite_=true; }
+                    //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+                    //$CfgDaten['yAxis'][$i]['min'] = -20;
+                    //$CfgDaten['yAxis'][$i]['max'] = 50;
+                    //$CfgDaten['yAxis'][$i]['ceiling'] = 50;
+                    }
+                if ($unit==IPSRP_VALUETYPE_STATE)         /* Statuswerte */
+                    {
+                    $CfgDaten['yAxis'][$index]['title']['text'] = "Status";
+                    $CfgDaten['yAxis'][$index]['Unit'] = '$';
+                    //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+                    $CfgDaten['yAxis'][$index]['min'] = 0;
+                    //$CfgDaten['yAxis'][$i]['offset'] = 100;
+                    //$CfgDaten['yAxis'][$i]['max'] = 100;
+                    }
+                if ($unit==IPSRP_VALUETYPE_HUMIDITY)
+                    {
+                    $CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
+                    $CfgDaten['yAxis'][$index]['Unit'] = '%';
+                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                    if ($opposite==false) { $opposite_=true; }
+                    //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+                    //$CfgDaten['yAxis'][$index]['min'] = 0;
+                    //$CfgDaten['yAxis'][$i]['offset'] = 100;
+                    //$CfgDaten['yAxis'][$i]['max'] = 100;
+                    }
+                if ($unit==IPSRP_VALUETYPE_CONTROL)
+                    {
+                    $CfgDaten['yAxis'][$index]['title']['text'] = "Stellwert";
+                    $CfgDaten['yAxis'][$index]['Unit'] = '%';
+                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                    if ($opposite==false) { $opposite_=true; }
+                    //$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+                    //$CfgDaten['yAxis'][$index]['min'] = 0;
+                    //$CfgDaten['yAxis'][$i]['offset'] = 100;
+                    //$CfgDaten['yAxis'][$i]['max'] = 100;
+                    }                                           
+                if ($unit==IPSRP_VALUETYPE_LENGTH)
+                    {
+                    $CfgDaten['yAxis'][$index]['title']['text'] = "Regenmenge";
+                    $CfgDaten['yAxis'][$index]['Unit'] = 'mm';
+                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                    if ($opposite==false) { $opposite_=true; }
+                    }
+                if ($unit==IPSRP_VALUETYPE_CURRENT)
+                    {
+                    $CfgDaten['yAxis'][$index]['title']['text'] = "Strom";
+                    $CfgDaten['yAxis'][$index]['Unit'] = 'A';
+                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                    if ($opposite==false) { $opposite_=true; }
+                    }
+                if ($unit==IPSRP_VALUETYPE_POWER)
+                    {
+                    $CfgDaten['yAxis'][$index]['title']['text'] = "Leistung";
+                    /* in der Report_getconfiguration können unterschiedliche Werte stehen, zB W und kW, hier vereinheitlichen */
+                    $CfgDaten['yAxis'][$index]['Unit'] = 'kW';
+                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                    if ($opposite==false) { $opposite_=true; }
+                    }
+                if ($unit==IPSRP_VALUETYPE_ENERGY)
+                    {
+                    $CfgDaten['yAxis'][$index]['title']['text'] = "Energie";
+                    $CfgDaten['yAxis'][$index]['Unit'] = 'kWh';
+                    $CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+                    if ($opposite==false) { $opposite_=true; }
+                    }
+                } /* ende foreach */
 
 
             }

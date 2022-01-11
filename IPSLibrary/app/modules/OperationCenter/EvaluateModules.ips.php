@@ -15,8 +15,16 @@
     echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 800 Sek \n";
     $debug=false;
 
+    echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
+    echo "IPS Kerneldir für Scripts: ".IPS_GetKernelDir()."\n";
+
     $dosOps = new dosOps();
-    $verzeichnis = "/ProgramData/Symcon/scripts/IPSLibrary/config/";
+    $systemDir     = $dosOps->getWorkDirectory(); 
+    echo "Privates SystemDir für Logging : $systemDir \n";     
+    $ls=$dosOps->readdirToArray($systemDir);
+    print_R($ls);
+        
+    $verzeichnis = IPS_GetKernelDir()."scripts/IPSLibrary/config/";
     $ls=$dosOps->readdirToArray($verzeichnis);
     if ($ls===false) echo "********Fehler Verzeichnis $verzeichnis nicht vorhanden.\n";
     else 

@@ -1,16 +1,17 @@
 <?
 
-/* eingefuegt von den timer Events beim Schalten von Stromheizung Switches */
+/* eingefuegt von den Timer Events beim Schalten von Stromheizung Switches */
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
+IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autosteuerung");
+
+IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager)) 
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
-	}
+$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
 
 $installedModules = $moduleManager->GetInstalledModules();
 if ( isset($installedModules["Sprachsteuerung"]) === true )
@@ -37,21 +38,23 @@ if ( isset($installedModules["Stromheizung"]) === true )
 
 $switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
 $groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
-$prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);	
+$prgCategoryId   	= IPS_GetObjectIDByIdent('Programs', $baseId);	
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-$object_data= new ipsobject($CategoryIdData);
-$object_app= new ipsobject($CategoryIdApp);
 
-$NachrichtenID = $object_data->osearch("Nachricht");
-$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+$autosteuerung = new Autosteuerung();
+$config = $autosteuerung->get_Configuration();
 
-if (isset($NachrichtenScriptID))
-	{
-	$object3= new ipsobject($NachrichtenID);
-	$NachrichtenInputID=$object3->osearch("Input");
-	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenInputID);
+$ipsOps = new ipsOps();
+$NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
+$NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdApp);
+
+if ($NachrichtenID)           // nicht 0 oder false
+    {
+    $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
+	$log_Autosteuerung=new Logging($config["LogDirectory"]."Log_Autosteuerung.csv",$NachrichtenInputID);
 	}
+
 
 ?>

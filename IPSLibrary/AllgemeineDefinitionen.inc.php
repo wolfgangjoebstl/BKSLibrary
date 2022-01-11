@@ -1458,7 +1458,9 @@ function send_status($aktuell, $startexec=0, $debug=false)
 			{
 			IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
-			$guthabenid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+			$dataID      = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+            $guthabenid  = @IPS_GetObjectIDByName("Guthaben", $dataID);
+
 			$GuthabenConfig = get_GuthabenConfiguration();
 			//print_r($GuthabenConfig);
 			$guthaben="Guthabenstatus:\n";
@@ -1468,7 +1470,9 @@ function send_status($aktuell, $startexec=0, $debug=false)
 					{
 					$phone1ID      = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"],$guthabenid);
 					$phone_Summ_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_Summary",$phone1ID);
-					$guthaben .= "\n".GetValue($phone_Summ_ID);
+                    if ($phone_Summ_ID) $guthaben .= "\n".GetValue($phone_Summ_ID);
+                    elseif ($phone1ID) echo "send_status historische Werte : Phone_".$TelNummer["NUMMER"]."_Summary in $phone1ID nicht gefunden.\n";
+                    else echo "send_status historische Werte : Phone_".$TelNummer["NUMMER"]." in $guthabenid nicht gefunden.\n";
 					}
 				}
 			$guthaben .= "\n\n";			
@@ -1482,15 +1486,12 @@ function send_status($aktuell, $startexec=0, $debug=false)
 		/************** Werte der Custom Components ****************************************************************************/
 
         $alleComponentsWerte="";
-		if (isset($installedModules["CustomComponents"])==true)
+		if (isset($installedModules["CustomComponent"])==true)
 		   	{
             $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-        	if (!isset($moduleManager)) 
-		        {
-        		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		        $moduleManager = new IPSModuleManager('CustomComponent',$repository);
-        		}
-        	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+            IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+            $moduleManagerCC = new IPSModuleManager('CustomComponent',$repository);
+        	$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
         	$Category=IPS_GetChildrenIDs($CategoryIdData);
             //$search=array('HeatControl','Auswertung');          // Aktuatoren in CustomComponents Daten suchen
             //$search=array('HeatSet','Auswertung');
@@ -1504,7 +1505,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
         		$SubCategory=IPS_GetChildrenIDs($CategoryId);
 		        foreach ($SubCategory as $SubCategoryId)
         			{
-                    if ( (isset($search) == false) || ( ( ($search[0]==$Params[0]) || ($search[0]=="*") ) && ( ($search[1]==$Params[1]) || ($search[1]=="*") ) ) )	
+                    if ( (sizeof($Params)>1) && ( (isset($search) == false) || ( ( ($search[0]==$Params[0]) || ($search[0]=="*") ) && ( ($search[1]==$Params[1]) || ($search[1]=="*") ) ) )	)
                         {
                         //echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
                         $result[]=$SubCategoryId;
@@ -1529,8 +1530,9 @@ function send_status($aktuell, $startexec=0, $debug=false)
 		        	//$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["ORDER"]=IPS_GetObject($SubCategoryId)["ObjectPosition"];
         			}
 		        }
+            $archiveOps = new archiveOps();                
             $alleComponentsWerte .= "\nErfasste Werte in CustomComponents:\n";
-            $alleComponentsWerte .= getComponentValues($result,false);
+            $alleComponentsWerte .= $archiveOps->getComponentValues($result,false);             // keine logs
 			}
 
 		/************** Detect Movement Motion Detect ****************************************************************************/
@@ -2779,6 +2781,405 @@ function send_status($aktuell, $startexec=0, $debug=false)
         else trigger_error("getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'");
         }
 
+/***************************************************************************************************************************
+ *
+ * versammelt Archive Operationen in einer Klasse
+ * die Klasse kann bei der Erzeugung auf die Bearbeitung einer Variable eingeschränkt werden
+ * abhängig davon wird eine Liste aller archivierten Vriablen oder die Konfiguration eines Wertes ausgegeben
+ *
+ * __construct
+ * getConfig
+ * getSize
+ * getStatus
+ * getComponentValues
+ * analyseValues
+ *
+ *
+ *
+ ***************************************************************************************************************************************/
+
+class archiveOps
+    {
+
+    private $archiveID,$oid;
+    public $result;                 // das Array mit den Werten die verarbeitet werden
+
+    function __construct($oid=false)
+        {
+        $this->archiveID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
+        $result = AC_GetAggregationVariables($this->archiveID,false);
+        $this->aggregationConfig=array();
+        $this->oid=false;
+        if ($oid===false) $this->aggregationConfig=$result;
+        else
+            {
+            $this->oid=$oid;
+            foreach ($result as $entry)
+                {
+                if ($entry["VariableID"]==$oid) $this->aggregationConfig=$entry;    
+                }
+            }
+
+        /* Wertespeicher initialisieren */
+        $this->result=array();
+
+        }
+
+    public function getConfig()
+        {
+        return($this->aggregationConfig);
+        }
+
+    public function getSize()
+        {
+        return($this->aggregationConfig["RecordCount"]);
+        }
+
+    /* in einer lesbaren Zeile den Status aus der Archive Config einer Variable ausgeben */
+
+    public function getStatus($oid=false)
+        {
+        if ($oid===false)
+            {
+            $result = "Anzahl: ".$this->aggregationConfig["RecordCount"]." Erster Wert: ".date("d.m.Y H:i:s",$this->aggregationConfig["FirstTime"])." Letzter Wert: ".date("d.m.Y H:i:s",$this->aggregationConfig["LastTime"])."\n";
+            return ($result);
+            }
+        else
+            {
+            foreach ($this->aggregationConfig as $entry)
+                {
+                if ($entry["VariableID"]==$oid) 
+                    {
+                    $entry;
+                    $result = "Anzahl: ".$entry["RecordCount"]." Erster Wert: ".date("d.m.Y H:i:s",$entry["FirstTime"])." Letzter Wert: ".date("d.m.Y H:i:s",$entry["LastTime"])."\n";
+                    return ($result);                        
+                    }
+                }                
+            }
+        return (false);
+        }
+
+    /*************************************************************************************
+    *
+    * alle OIDs die im Array von Component angeführt sind ausgeben
+    * das ist eine besonders hilfreiche Ausgabe, derzeit nur in send_status für die historischen Werte verwendet
+    * wir suchen geloggte Werte in einem bestimmten Zeitintervall zur besseren Orientierung
+    * component ist ein eindimensionales array mit den OIDs aller gemessenen Werte die über eine ArchiveID verfügen
+    * endtime ist entweder die erste Minute des aktuellen Tages, oder die aktuelle Uhrzeit 
+    *
+    ************************************************************************************************/
+
+    function getComponentValues($componentInput=false,$logs=true,$debug=false)
+        {
+        /* für component ein array aus Werten oder einen einzelnen Wert zulassen */
+        if (is_array($componentInput)==false) 
+            {
+            $component=array();
+            if ($componentInput===false) $component[]=$this->oid;
+            else $component[]=$componentInput;
+            }
+        else $component=$componentInput;
+        /* für logs false true oder einen Integer Wert zulassen, integer ist die Anzahl der Log werte die ausgegeben wird */
+        if ($logs>1) 
+            {
+            $maxLogsperInterval=$logs;              // zumindest die geforderte Anzahl an Logwerten anzeigen
+            }
+        else 
+            {
+            $logs=10;
+            $maxLogsperInterval=1;                  // ein Wert reicht aus, max wäre 10
+            }
+
+        $result="";
+    	$jetzt=time();
+        /* endtime ist entweder die erste Minute des aktuellen Tages, oder die aktuelle Uhrzeit 
+	    $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt)); // letzter Tag 24:00
+         */
+        $endtime=$jetzt;
+        if ($debug) echo "getComponentValues aufgerufen, endtime ist ".date("d.m.Y H:i:s",$endtime)."\n";  
+	    $startday=$endtime-60*60*24*1; /* ein Tag */ 
+	    $startweek=$endtime-60*60*24*7; /* 7 Tage, Woche */                    
+  	    $startmonth=$endtime-60*60*24*30; /* 30 Tage, Monat */                    
+  	    $startyear=$endtime-60*60*24*360; /* 360 Tage, Jahr */                    
+        foreach ($component as $oid)
+            {   /* Vorwerte ermitteln */
+            $result .= "  ".str_pad(IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName($oid),60)." (".$oid.")  ";
+		    $werte = @AC_GetLoggedValues($this->archiveID, $oid, $startday, $endtime, 0);
+            if ($werte !== false)             
+                {
+                $count=sizeof($werte); $scale="Day";
+                if ($count<$maxLogsperInterval)
+                    {
+    		        $werte = @AC_GetLoggedValues($this->archiveID, $oid, $startweek, $endtime, 0);
+                    $count=sizeof($werte); $scale="Week";
+                    if ($count<$maxLogsperInterval)
+                        {
+    	        	    $werte = @AC_GetLoggedValues($this->archiveID, $oid, $startmonth, $endtime, 0);
+                        $count=sizeof($werte); $scale="Month";
+                        if ($count<$maxLogsperInterval)
+                            {
+        	        	    $werte = @AC_GetLoggedValues($this->archiveID, $oid, $startyear, $endtime, 0);
+                            $count=sizeof($werte); $scale="Year";
+                            }
+                        }    
+                    }
+	    	    $result .= $count." logged per ".$scale;
+                }
+            else $result .= "no logs available";    
+
+            if ($logs)
+                {
+                $logCount=0;
+        	    foreach($werte as $wert)
+						{
+                        if (is_numeric($wert['Value'])==false) print_R($wert);
+						$result .= "\n     ".date("d.m.y H:i:s",$wert['TimeStamp'])."   ".number_format($wert['Value'], 2, ",", "" );
+                        if (($logCount++)>$logs) break;
+						}
+                }        
+            $result .= "\n";
+            }
+        return ($result);    
+        }
+
+    /* Analyse der letzen Werte im Archive. Hier geht man bereits von einer geordneten Struktur aus, es gelten die folgenden Einschränkungen
+     *    - es werden nur Einzelwerte zugelassen, 
+     *    - Angabe Parameter oid und logs (Anzahl Werte) verpflichtend
+     *      die zahl logs muss durch 2 dividierbar sein, sonst wird aufgerundet
+     *
+     * Rückgabe ist ein Array mit den bereinigten Werten als Referenz, und den Ergebnissen der Auswertung
+     *
+     * Folgende Parameter werden analysiert:
+     *      Maximalwert
+     *      Minimalwert
+     *      Mittelwert
+     *      erster und zweiter Mittelwert 
+     *
+     * Mehrstufige Bearbeitung:
+     *
+     *
+     *
+     *
+     */
+
+    function analyseValues($oid,$logs,$debug=false)
+        {
+        /* für logs false true oder einen Integer Wert zulassen, integer ist die Anzahl der Log werte die ausgegeben wird */
+        if ($logs>1) 
+            {
+            $logs=round($logs/2)*2;              // zumindest die geforderte Anzahl an Logwerten anzeigen
+            $maxLogsperInterval = $logs+$logs/2;
+            }
+        else 
+            {
+            $logs=10;
+            $maxLogsperInterval=1;                  // ein Wert reicht aus, max wäre 10
+            }
+
+
+        /* Vorwerte einlesen, Fehler erkennen und bearbeiten */
+        
+        $werte = @AC_GetLoggedValues($this->archiveID, $oid, $startday, $endtime, 0);
+        if ($werte === false)             
+            {
+            if ($debug) echo "Ergebnis : no logs available\n";  
+            $werte=array();
+            }
+
+        $this->cleanupStoreValues($werte,$oid,$maxLogsperInterval,$debug);         // Werte bereinigen und in result[Values] abpeichern
+        $this->countperIntervalValues($this->result[$oid]["Values"],$debug);    // true Debug
+
+        /* Analyse Ergebnis aus den ausgewählten archivierten Werten */
+
+        $logCount=0; $logCount1=0; $logCount2=0;
+        $summe=0; $summe1=0; $summe2=0; 
+        $max=0; $min=0; $youngestTime=0; $youngestValue=0;
+        if ($debug) echo " # Stunde Datum Wert       Mittelwert       Rollierend          Mittel1       Mittel2\n";
+        foreach($this->result[$oid]["Values"] as $index => $wert)
+            {
+            /* Mittelwert Gesamt berechnen */
+            $summe += $wert['Value'];
+            $logCount++;
+            /* Trendanalyse mit 2 Mittelwerten */
+            if ($logCount<=$logs)
+                {
+                if ($logCount>($logs/2)) 
+                    {
+                    $summe2 += $wert['Value'];
+                    $logCount2++;
+                    }
+                else 
+                    {
+                    $summe1 += $wert['Value'];
+                    $logCount1++;
+                    }
+                }
+
+            /* rollierender Mittelwert */
+            
+            $sumRol=0; $countRol=0;
+            for ($i=0;$i<5;$i++)
+                {
+                if (isset($this->result[$oid]["Values"][$index+$i]["Value"]))
+                    {
+                    $sumRol += $this->result[$oid]["Values"][$index+$i]["Value"];
+                    $countRol++;
+                    }
+                }
+            $this->result[$oid]["Description"]["MeansRoll"][$index]=$sumRol/$countRol;
+
+            /*                */
+            if ($wert['TimeStamp']>$youngestTime)
+                {
+                $youngestTime=$wert['TimeStamp'];
+                $youngestValue=$wert['Value'];   
+                }
+            if ( ($wert['Value']>$max) || ($max==0) ) $max = $wert['Value'];
+            if ( ($wert['Value']<$min) || ($min==0) ) $min = $wert['Value'];
+            if ($debug) 
+                {
+                echo "  ".str_pad($logCount,2)." ".date("H d.m",$wert['TimeStamp'])."  ".number_format($wert['Value'],2,",",".")."   ";
+                //echo str_pad(number_format($summe,2,",","."),18," ", STR_PAD_LEFT)."   ";
+                echo str_pad(number_format($summe/$logCount,2,",","."),18," ", STR_PAD_LEFT);
+                //echo str_pad(number_format($sumRol,2,",","."),18," ", STR_PAD_LEFT)."   $countRol";
+                echo str_pad(number_format($sumRol/$countRol,2,",","."),18," ", STR_PAD_LEFT);
+                echo str_pad(number_format($summe1/$logCount1,2,",","."),18," ", STR_PAD_LEFT);
+                if ($logCount2>0) echo str_pad(number_format($summe2/$logCount2,2,",","."),18," ", STR_PAD_LEFT);
+                else echo str_pad(" ",18);
+                echo "\n";
+                }
+            }      
+        $this->result[$oid]["Description"]["Max"]=$max;
+        $this->result[$oid]["Description"]["Min"]=$min;
+        $this->result[$oid]["Description"]["Latest"]=$youngestValue;
+        $means=$summe/$logCount;
+        $this->result[$oid]["Description"]["Means"]=$means;
+        $means1=$summe1/$logCount1;
+        $this->result[$oid]["Description"]["Means1"]=$means1;
+        //echo "logCount2 $logCount2 \n";
+        if ($debug) echo "Mittelwert ist ".number_format($means,2,",",".")." ".number_format($means1,2,",",".")." ";
+        if ($logCount2>0) 
+            {
+            $means2=$summe2/$logCount2;
+            $this->result[$oid]["Description"]["Means2"]=$means2;
+            $this->result[$oid]["Description"]["Trend"]=($means1/$means2-1)*100;
+            if ($debug) echo "Mittelwert ist ".number_format($means2,2,",",".")." Trend ".number_format($this->result[$oid]["Description"]["Trend"],2,",",".")."% ";
+            }
+        if ($debug) echo "\n";
+        $sdevSum=0;
+        foreach ($this->result[$oid]["Values"] as $wert)
+            {
+            $abw=($wert['Value']-$means);
+            $sdevSum += ($abw*$abw);
+            }
+        $sdev = sqrt($sdevSum/$logCount);
+        $this->result[$oid]["Description"]["StdDev"]=$sdev;
+        $this->result[$oid]["Description"]["StdDevRel"]=$sdev/$means*100;
+        if ($debug) echo "Sdev ist ".number_format($sdev,2,",",".")."  und relativ ".number_format($this->result[$oid]["Description"]["StdDevRel"],2,",",".")."% \n";
+
+        return ($this->result[$oid]);    
+        }
+
+
+    /*
+     *
+     */
+
+    function alignScaleValues()
+        {
+        $ergebnis=array();
+        foreach ($this->result as $oid=>$werte)
+            {
+            //print_R($werte);
+            echo "$oid    ";
+            $ergebnis[$oid]=$werte;
+            $erster=array_key_first($werte["Values"]);
+            $letzter=array_key_last($werte["Values"]);
+            echo "Datum Zeit erster Wert ($letzter): ".date("d.m.y H:i:s",$werte["Values"][$letzter]["TimeStamp"])."\n";
+            }
+        print_r($ergebnis[$oid]);
+
+        }
+
+
+    /* zusätzliches Infofeld speichern */
+
+    public function addInfoValues($oid,$share)
+        {
+        $this->result[$oid]["Info"]=$share;
+        }
+
+    /* Werte bereinigen und in result[Values] abpeichern 
+     * nur die maxLogsperInterval Anzahl von Werten übernehmen
+     * die Anzahl der übernommenen Werte wird zurück gemeldet
+     */
+
+    private function cleanupStoreValues(&$werte,$oid,$maxLogsperInterval,$debug=false)
+        {
+        $logCount=0; $error=0; 
+        if ($debug) echo "cleanupStoreValues für $maxLogsperInterval Werte.\n";
+        foreach($werte as $index => $wert)
+            {
+            if ( (is_numeric($wert['Value'])==false) || ($wert['Value']==0) )
+                {
+                //if ($debug) print_R($wert);
+                unset ($werte[$index]);
+                $error++; 
+                }
+            else            // gültiger Wert, die anderen ignorieren
+                {
+                $this->result[$oid]["Values"][]=$wert;
+                $logCount++;
+                }
+            if ($logCount>$maxLogsperInterval) break;
+            }  
+        if ($debug) 
+            {
+            echo "     $logCount Werte eingelesen.";
+            if ($error) echo " $error Fehler.";
+            echo "\n";
+            }  
+        return ($logCount);
+        }
+
+
+        /* Anzahl Vorwerte die in einem Intervall vorhanden sind ermitteln */
+
+        private function countperIntervalValues(&$werte,$debug=false)
+            {        
+            $jetzt=time();
+            /* endtime ist entweder die erste Minute des aktuellen Tages, oder die aktuelle Uhrzeit 
+            $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt)); // letzter Tag 24:00
+            */
+            $endtime=$jetzt;
+            //if ($debug) echo "countperIntervalValues aufgerufen.\n";  
+            $startday=$endtime-60*60*24*1; /* ein Tag */ 
+            $startweek=$endtime-60*60*24*7; /* 7 Tage, Woche */                    
+            $startmonth=$endtime-60*60*24*30; /* 30 Tage, Monat */                    
+            $startyear=$endtime-60*60*24*360; /* 360 Tage, Jahr */
+            
+            $logCount=0; 
+            $erster=array_key_first($werte);
+            $letzter=array_key_last($werte);
+            //print_r($werte[$erster]); print_r($werte[$letzter]);
+            $count=sizeof($werte); $scale="indefinite";
+            if     ($werte[$letzter]['TimeStamp']>=$startday) $scale="day";
+            elseif ($werte[$letzter]['TimeStamp']>=$startweek) $scale="week";
+            elseif ($werte[$letzter]['TimeStamp']>=$startmonth) $scale="month";
+            elseif ($werte[$letzter]['TimeStamp']>=$startyear) $scale="year";
+            if ($debug) 
+                {
+                echo "countperIntervalValues, Ergebnis ist $count Werte logged per $scale. ";
+                //echo "Erster  : ".date("H:i:s d.m.Y",$werte[$erster]['TimeStamp'])."  ";
+                //echo "Letzter : ".date("H:i:s d.m.Y",$werte[$letzter]['TimeStamp'])."  ";
+                echo "\n";
+                }
+            }
+
+
+    }   // ende class
+
 /**************************************************************************************************************************
  *
  * ipsOps, Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
@@ -3134,10 +3535,14 @@ class ipsOps
         }
 
 
-    /* verwendet array_multisort
+    /* verwendet array_multisort, array wird nach dem key orderby sortiert
+     * Ergebnis ist sortarray, das inputarray besteht aus Zeilen und Spalten, die Spalte assoziert mit dem Key
+     * zuerst alle Zeilen und Spalten durchgehen, es wird ein neues Array mit der Spalte als Key und seinem Wert angelegt, das heisst pro zeile ein Wert
+     * array_multisort nimmt das sortArray mit dem orderby Key als Input für den Sortierungsalgorythmus und sortiert ensprechend das inputArray
+     * als Returnwert wird üblicherweise das inputArray verwendet, return sortArray nur als Hilfestellung
      */
 
-    function intelliSort(&$inputArray, $orderby)
+    function intelliSort(&$inputArray, $orderby, $sort=SORT_ASC)
         {
         $sortArray = array(); 
         foreach($inputArray as $entry)
@@ -3148,7 +3553,7 @@ class ipsOps
                 $sortArray[$key][] = $value; 
                 } 
             } 
-        array_multisort($sortArray[$orderby],SORT_ASC,$inputArray); 
+        array_multisort($sortArray[$orderby],$sort,$inputArray); 
         return($sortArray);
         }
 
@@ -5106,7 +5511,7 @@ class errorAusgabe
 
 /***********************************************************************************
  *
- * Die Komplette Installation von Compnents in einer Klasse zusammenfassen
+ * Die Komplette Installation von Components in einer Klasse zusammenfassen
  *
  * __construct
  * getArchiveSDQL_HandlerID
@@ -5132,6 +5537,12 @@ class ComponentHandling
     private $installedModules, $debug;
     private $remote, $messageHandler;
     //private $congigMessage;
+
+    /* Klasse initialisiseren 
+     * kann archiveHandlerID und archiveSDQL_HandlerID
+     * wenn Modul vorhanden auch RemoteAccess
+     *
+     */
 
 	public function __construct($debug=false)
         {
@@ -5916,7 +6327,6 @@ class ComponentHandling
 			$remServer=$this->listOfRemoteServer();
             $struktur=$this->getStructureofROID($keyword,$debug);
             echo "-------------\n";
-    		$archiveID=$this->getArchiveSDQL_HandlerID();
             if ($debug)
                 {
                 echo "Keyword für Component wird aus dem Resultat ermittelt : $keyword\n";
@@ -5924,6 +6334,7 @@ class ComponentHandling
                 echo "Remote Server herausfinden und Struktur auslesen:\n";
                 print_r($remServer); print_r($struktur);
       			echo "installComponentFull: Resultat für gefundene Geraeteregister verarbeiten:\n";
+        		$archiveID=$this->getArchiveSDQL_HandlerID();       // nicht mehr benötigt, eigene function
                 if ($archiveID) echo "MySQL Archiver installed and available. Archive Variables there as well:\n";
                 }
         	foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen, Steuergroessen alle in getComponent
@@ -5936,6 +6347,7 @@ class ComponentHandling
                     }
 				$oid=$entry["COID"];
                 if ( ($this->debug) || ($debug) ) echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+                /* eigene Routine um Logging zu setzen, erst einmal im Test
                 if ( $archiveID && (ACmySQL_GetLoggingStatus($archiveID,$oid)==false) )
                     {
 					ACmySQL_SetLoggingStatus($archiveID,$oid,true);
@@ -5943,15 +6355,16 @@ class ComponentHandling
 					IPS_ApplyChanges($archiveID);
 					echo "       Variable ".$oid." (".IPS_GetName($oid)."), mySQL Archiv logging für dieses Geraeteregister wurde aktiviert.\n";
                     }
-				/* check, es sollten auch alle Quellvariablen gelogged werden */
+				// check, es sollten auch alle Quellvariablen gelogged werden 
 				if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)==false)
 					{
-					/* Wenn variable noch nicht gelogged automatisch logging einschalten */
+					// Wenn variable noch nicht gelogged automatisch logging einschalten 
 					AC_SetLoggingStatus($this->archiveHandlerID,$oid,true);
 					AC_SetAggregationType($this->archiveHandlerID,$oid,0);
 					IPS_ApplyChanges($this->archiveHandlerID);
 					echo "       Variable ".$oid." (".IPS_GetName($oid)."), Archiv logging für dieses Geraeteregister wurde aktiviert.\n";
-					}
+					}   */
+                $this->setLogging($oid);    
 				if ($donotregister==false)      /* Notbremse, oder generell deaktivierbares registrieren */
 					{                    
 	   		        $detectmovement=$entry["DETECTMOVEMENT"];
@@ -6055,6 +6468,28 @@ class ComponentHandling
         return ($struktur);
 		}	
 
+    function setLogging($oid, $debug=false)
+        {
+        $archiveID = $this->getArchiveSDQL_HandlerID();
+        if ( $archiveID && (ACmySQL_GetLoggingStatus($archiveID,$oid)==false) )
+            {
+            ACmySQL_SetLoggingStatus($archiveID,$oid,true);
+            //ACmySQL_SetAggregationType($archiveID,$oid,0);            // es gibt nur einen Aggregation Type 0
+            IPS_ApplyChanges($archiveID);
+            echo "       Variable ".$oid." (".IPS_GetName($oid)."), mySQL Archiv logging für dieses Geraeteregister wurde aktiviert.\n";
+            }
+        /* check, es sollten auch alle Quellvariablen gelogged werden */
+        if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)==false)
+            {
+            /* Wenn variable noch nicht gelogged automatisch logging einschalten */
+            AC_SetLoggingStatus($this->archiveHandlerID,$oid,true);
+            AC_SetAggregationType($this->archiveHandlerID,$oid,0);
+            IPS_ApplyChanges($this->archiveHandlerID);
+            echo "       Variable ".$oid." (".IPS_GetName($oid)."), Archiv logging für dieses Geraeteregister wurde aktiviert.\n";
+            }        
+        }
+
+        
     } // endof class ComponentHandling
 
     /***********************************************************************************
@@ -6164,60 +6599,6 @@ class ComponentHandling
 				}
 			return ($result);
 			}
-
-    /*************************************************************************************
-    *
-    * alle OIDs die im Array von Component angeführt sind ausgeben
-    *
-    ************************************************************************************************/
-
-    function getComponentValues($component,$logs=true)
-        {
-        $result="";
-        $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-    	$jetzt=time();
-	    $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt)); // letzter Tag 24:00
-        $endtime=$jetzt;
-	    $startday=$endtime-60*60*24*1; /* ein Tag */ 
-	    $startweek=$endtime-60*60*24*7; /* 7 Tage, Woche */                    
-  	    $startmonth=$endtime-60*60*24*30; /* 30 Tage, Monat */                    
-  	    $startyear=$endtime-60*60*24*360; /* 360 Tage, Jahr */                    
-        foreach ($component as $oid)
-            {   /* Vorwerte ermitteln */
-            $result .= "  ".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName($oid)." (".$oid.")  ";
-		    $werte = @AC_GetLoggedValues($archiveHandlerID, $oid, $startday, $endtime, 0);
-            if ($werte !== false)             
-                {
-                $count=sizeof($werte); $scale="Day";
-                if ($count==0)
-                    {
-    		        $werte = @AC_GetLoggedValues($archiveHandlerID, $oid, $startweek, $endtime, 0);
-                    $count=sizeof($werte); $scale="Week";
-                    if ($count==0)
-                        {
-    	        	    $werte = @AC_GetLoggedValues($archiveHandlerID, $oid, $startmonth, $endtime, 0);
-                        $count=sizeof($werte); $scale="Month";
-                        if ($count==0)
-                            {
-        	        	    $werte = @AC_GetLoggedValues($archiveHandlerID, $oid, $startyear, $endtime, 0);
-                            $count=sizeof($werte); $scale="Year";
-                            }
-                        }    
-                    }
-	    	    $result .= $count." logged per ".$scale;
-                }
-            else $result .= "no logs available";    
-            if ($logs)
-                {
-        	    foreach($werte as $wert)
-						{
-						$result .= "\n     ".date("d.m.y H:i:s",$wert['TimeStamp'])."   ".number_format($wert['Value'], 2, ",", "" );
-						}
-                }        
-            $result .= "\n";
-            }
-        return ($result);    
-        }
 
 
 
@@ -6797,7 +7178,11 @@ class WfcHandling
                 }
             else echo "easySetupWebfront: Fehler, kein Pfad für die Kategorie in der die Daten oder diel Links gespeichert werden angegeben.\n"; 
             }
-        else echo "easySetupWebfront: Fehler, keine weitere Bearbeitung. Webfront not enabled.";
+        else 
+            {
+            echo "easySetupWebfront: Fehler, keine weitere Bearbeitung. Webfront $scope not enabled. Config ";
+            print_r($this->configWF);
+            }
         }                           // ende function
 
     /******
