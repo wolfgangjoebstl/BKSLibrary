@@ -21,15 +21,21 @@
     /* Guthabensteuerung
      *
      * soll das verbleibende Guthaben von SIM Karten herausfinden
-     * unterschiedliche STrategien, Aufruf mit
+     * unterschiedliche Strategien, Betriebsarten: Aufruf mit
      *      iMacro
      *      Selenium
      *
      * Dieses Script macht alle drei Anwendungsmöglichkeiten
-     *
      *      Timer
      *      Webfront
      *      Execute
+     *
+     * Der Timer wird immer um 22:16 und um 2:27 aufgerufen. Für die Erfassung der Drei Guthaben gibt es eine Verlängerungsmöglichkeit mit Aufruf alle 150 Sekunden
+     * Bei der Abendabfrage wird der Drei Host definitiv ausgeschlossen. Die Drei Guthabenabfrage funktioniert immer um 2:27.
+     * Am Abend wird nur $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"]... aufgerufen
+     *
+     * Aktuell implementiert:  Drei, Easy, LogWien
+     *
      */
 
 
@@ -175,11 +181,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 	switch ($_IPS['EVENT'])
 		{
-		case $tim1ID:
+		case $tim1ID:               // Aufruftimer immer um 2:27
 			IPS_SetEventActive($tim2ID,true);
 			SetValue($statusReadID,"");			// Beim Erstaufruf Html Log loeschen.
 			break;
-		case $tim2ID:
+		case $tim2ID:               // Exectimer alle 150 Sekunden wenn aktivivert
 			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
 			$ScriptCounter=GetValue($ScriptCounterID);
 			//IPS_SetScriptTimer($_IPS['SELF'], 150);
@@ -246,7 +252,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				IPS_SetEventActive($tim2ID,false);
 				}
 			break;
-		case $tim3ID:               // immer am späten Abend um 22:xx, auch wenn er Evening heisst
+		case $tim3ID:               // immer am späten Abend um 22:16, auch wenn er Evening heisst
             switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                 {
                 case "SELENIUM":
@@ -490,32 +496,34 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
                         $data=$seleniumEasycharts->parseResult($lines);
                         $shares=$seleniumEasycharts->evaluateResult($data);
                         $value=$seleniumEasycharts->evaluateValue($shares);
-                        $seleniumEasycharts->writeResult();
-
-                        $categoryIdResult = $seleniumEasycharts->getResultCategory();
-                        echo "Category Easy RESULT $categoryIdResult.\n";
-                    
-                        $componentHandling = new ComponentHandling();
-                    
-                        /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
-                        $oid = CreateVariableByName($categoryIdResult,"MusterDepot3",2,'Euro',"Depot",1000);
-                        $componentHandling->setLogging($oid);
-
-                        /* only once per day, If there is change */
-                        if (GetValue($oid) != $value) SetValue($oid,$value);
-
-                        //print_R($shares);
-                        $parent=$oid;
-                        foreach($shares as $share)
+                        $seleniumEasycharts->writeResult($shares,"MusterDepot3",$value);
+         
+                        if (false)
                             {
-                            $value=$share["Kurs"];
-                            $oid = CreateVariableByName($parent,$share["ID"],2,'Euro',"",1000);     //gleiche Identifier in einer Ebene gehen nicht
+                            $categoryIdResult = $seleniumEasycharts->getResultCategory();
+                            echo "Category Easy RESULT $categoryIdResult.\n";
+                        
+                            $componentHandling = new ComponentHandling();
+                        
+                            /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
+                            $oid = CreateVariableByName($categoryIdResult,"MusterDepot3",2,'Euro',"Depot",1000);
                             $componentHandling->setLogging($oid);
-                            //print_r($share);
+
                             /* only once per day, If there is change */
                             if (GetValue($oid) != $value) SetValue($oid,$value);
-                            }
-                        
+
+                            //print_R($shares);
+                            $parent=$oid;
+                            foreach($shares as $share)
+                                {
+                                $value=$share["Kurs"];
+                                $oid = CreateVariableByName($parent,$share["ID"],2,'Euro',"",1000);     //gleiche Identifier in einer Ebene gehen nicht
+                                $componentHandling->setLogging($oid);
+                                //print_r($share);
+                                /* only once per day, If there is change */
+                                if (GetValue($oid) != $value) SetValue($oid,$value);
+                                }
+                            }                        
 
                         break;
                     default:

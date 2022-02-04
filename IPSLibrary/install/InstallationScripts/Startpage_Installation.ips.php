@@ -21,7 +21,15 @@
 	 * @ingroup 
 	 * @{
 	 *
-	 * Script zur Ansteuerung der Startpage
+	 * Script zur Ansteuerung der Startpage wird hier installiert
+     * wenn Instanz von OpenWeatherData vorhandenist wird auch das Wetter eingebaut
+     * notwendig geworden da Wunderground nicht mehr funktioniert
+     *
+     * Für duie Startoage wird hier die Visualisiserung aneglegt
+     *      Visualization.WebFront.Administrator. siehe WFC10 Path in config ini
+     *
+     * Für das Wetter Meteogrm wird hier die Visualissierung angelegt:
+     *      Visualization.WebFront.Administrator.Weather.OpenWeather
 	 *
 	 *
 	 * @file          Startpage_Installation.ips.php
@@ -282,9 +290,17 @@
 
 /*******************************
  *
- * Initialisierung für OpenWeatherMap
+ * Initialisierung und Herstellung Webfront für OpenWeatherMap
  *
- ********************************/
+ * wenn es eine Instanz gibt wird eine Kategorie in Data und eine für die Links in der Visualization erstellt.
+ * der Webfront Path ist fix und kann nicht geändert werden, das Item heisst OpenWeatherTPA.TPWeather
+ * 
+ * die HTML Box beinhaltet das Wort Zusammenfassung
+ * die notwendigen Variablen für die Berechnung werden in der Startpage Kategorie angelegt
+ *
+ * insgesamt werden drei html Boxen verlinkt. Die erste ist das Meteogram
+ *
+ *********************************************************************/
  
 	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 	//$modulhandling->printLibraries();

@@ -305,8 +305,25 @@
 	// Custom Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
 
+    /* weitere Möglichkeit die Anzeige der Daten zu selektieren
+     * den Ort wo die Links für Hide/unhide abgespeichert sein einfach als Variable mit abspeichern
+     *
+     */
 
-/* alte variante, bald nicht mehr benötigt */
+    $visualizationCategoryID = CreateVariableByName($CategoryIdData, "VisualizationCategory", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+    $ReportDataSelectorID = CreateVariableByName($CategoryIdData, "ReportDataSelector", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	$pname="ReportDataSelect";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+	   //Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		}
+    IPS_SetVariableCustomProfile($ReportDataSelectorID,$pname);
+    $ReportDataTableID = CreateVariableByName($CategoryIdData, "ReportDataTable",3,'~HTMLBox');
+
+/* alte Variante, bald nicht mehr benötigt */
 
 	$ReportPageTypeID = CreateVariableByName($CategoryIdData, "ReportPageType", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$ReportTimeTypeID = CreateVariableByName($CategoryIdData, "ReportTimeType", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -321,9 +338,9 @@
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 		}
-  	$report_config=Report_GetConfiguration();
+
   	$count=0;
-	foreach ($report_config as $displaypanel=>$values)
+	foreach ($report_config as $displaypanel=>$values)              // da sind noch die Farben dabei
 		{
 	   echo "      Profileintrag ".$displaypanel." mit Farbe ".$values['color'].". \n";
 	   IPS_SetVariableProfileAssociation($pname, $count, $displaypanel, "", $values['color']); //P-Name, Value, Assotiation, Icon, Color
@@ -368,7 +385,7 @@
 	$scriptIdReport   = IPS_GetScriptIDByName('Report', $CategoryIdApp);
 	IPS_SetVariableCustomAction($ReportPageTypeID, $scriptIdReport);
 	IPS_SetVariableCustomAction($ReportTimeTypeID, $scriptIdReport);
-
+	IPS_SetVariableCustomAction($ReportDataSelectorID, $scriptIdReport);
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
@@ -379,6 +396,7 @@
 		EmptyCategory($categoryId_WebFront);
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFront, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFront, 20);
+        SetValue($visualizationCategoryID,$categoryIdRight);
 		echo "Kategorien erstellt, Main: ".$categoryId_WebFront." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
@@ -417,9 +435,11 @@
 			}
 			
 		// Right Panel
-		CreateLink('Type/Offset', $variableIdTypeOffset,  $categoryIdRight, 10);
-		CreateLink('Zeitraum',    $variableIdPeriodCount, $categoryIdRight, 20);
-		CreateLink('Chart',       $variableIdChartHtml,   $categoryIdRight, 40);
+		CreateLink('Type/Offset',       $variableIdTypeOffset,  $categoryIdRight, 10);
+		CreateLink('Zeitraum',          $variableIdPeriodCount, $categoryIdRight, 20);
+		CreateLink('Chart',             $variableIdChartHtml,   $categoryIdRight, 40);
+        CreateLink('AddSelector',       $ReportDataSelectorID,   $categoryIdRight, 100);
+        CreateLink('DataTable',         $ReportDataTableID,   $categoryIdRight, 110);
 
 		ReloadAllWebFronts();
 	}

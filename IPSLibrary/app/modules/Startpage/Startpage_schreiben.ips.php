@@ -24,10 +24,12 @@
     * es gibt verschiedene Darstellungsarten
     * die Darstellung selbst erfolgt über die Library mit $startpage->StartPageWrite
     *
+    * wird alle 8 Minuten vom Timer aufgerufen
     * Routine bearbeitet auch die Tastendrücke am Webfront
     *
     * Bilder im Verzeichnis werden verkleinert um die Darstellung im Webfront zu beschleunigen
     *
+    * die Wetterfunktion wird bearbeitet und mit aggregateOpenWeather in eine schöne Form gebracht
     *
     **************************************/
 
@@ -37,7 +39,6 @@
 
     ini_set('memory_limit', '-1');          // memory unbeschränkt um die Bildbearbeitung zu ermöglichen
 
-    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
     IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
@@ -222,8 +223,8 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 	echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
     echo "Startpage wird mit folgenden Parametern aufgerufen : Modus:".GetValue($StartPageTypeID)." ShowFile:".($showfile?"true":"false").".\n";
     echo "Darstellung Startpage, Darstellung der links zu Bildern ist nicht möglich.\n";
-
-	echo $startpage->StartPageWrite(1,false,true);                      // true mit Debug
+    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+	echo $startpage->StartPageWrite(2,false,true);                      // true mit Debug
 	
     }
 

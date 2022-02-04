@@ -50,6 +50,7 @@
     // max. Scriptlaufzeit definieren
     ini_set('max_execution_time', 500);
     $startexec=microtime(true);
+    $debug=true; 
 
     echo "Update Konfiguration und register CO2, BAROPRESSURE, RAIN Events\n";
 
@@ -66,7 +67,7 @@
 
     $componentHandling=new ComponentHandling();
     $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateAndere um ".date("h:i am d.m.Y ").".";   
-    $debug=false; 
+
 
     if (getfromDataBase() && false)
         {

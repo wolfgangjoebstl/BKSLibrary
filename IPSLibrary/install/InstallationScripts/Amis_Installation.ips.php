@@ -697,12 +697,29 @@ $cutter=true;
 	SetValue($tableID,$Amis->writeEnergyRegisterTabletoString($Meter));
 	SetValue($regID,$Amis->writeEnergyRegisterValuestoString($Meter));
 	
-	/******************* Timer Definition *******************************/
+	/******************* Timer Definition ******************************
+     *
+     *   Momentanwerrte Abfragen alle 60 Sekunden machen
+     *   Die Periodenwerte einmal am Tag updaten
+     *
+     */
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
 	IPS_SetScriptTimer($scriptIdMomAbfrage, 60);  /* alle Minuten */
 
-
+	$BerechnePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$CategoryIdApp);
+	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $BerechnePeriodenwerteID);
+	if ($tim1ID==false)
+		{
+		echo "Timer Aufruftimer erstellen.\n";
+		$tim1ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim1ID, $BerechnePeriodenwerteID);
+		IPS_SetName($tim1ID, "Aufruftimer");
+		IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
+		IPS_SetEventCyclicTimeFrom($tim1ID,1,rand(1,59),0);  /* immer um 01:xx , nicht selbe Zeit damit keine Zugriffsverletzungen auf der Drei Homepage entstehen */
+		}
+	IPS_SetEventActive($tim1ID,true);
+    
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------

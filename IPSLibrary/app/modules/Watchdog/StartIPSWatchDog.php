@@ -52,7 +52,7 @@
     // max. Scriptlaufzeit definieren
     ini_set('max_execution_time', 100);
     $startexec=microtime(true);    
-    echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";
+    echo "Abgelaufene Zeit, nach Start : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$moduleManager = new IPSModuleManager('Watchdog',$repository);
@@ -166,7 +166,7 @@
         echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
         print_r($processStart);
         SetValue($ProcessStartID,json_encode($processStart));
-        echo "Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+        echo "Abgelaufene Zeit, nach Start Runscript : ".exectime($startexec)." Sek \n";
 
 		$status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		if ($status==false)
@@ -206,7 +206,7 @@
         echo "Ermittlung aktiver Prozese abgeschlossen. Die folgenden Programme muessen gestartet (wenn On) werden:\n";
         print_r($processStart);
         SetValue($ProcessStartID,json_encode($processStart));
-        echo "Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+        echo "Abgelaufene Zeit nach Start Execute: ".exectime($startexec)." Sek \n";
 
         /* mehrere Optionen, entweder den ganzen IP Symcon Server hochfahren oder einzelne Prozesse durchstarten 
          * seit es keinen externen Watchdog mehr gibt hat das Hochstarten nicht mehr soviel Bedeutung

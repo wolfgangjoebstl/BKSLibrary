@@ -5,7 +5,7 @@
 	 * @ingroup
 	 * @{
 	 *
-	 * Script zur Auslesung von Energiewerten. Diese Script übernimmt die Webfrontvariablen Bearbeitung und wirdzusaetzlich zu Testzwecken weiterhin verwendet
+	 * Script zur Auslesung von Energiewerten. Diese Script übernimmt die Webfrontvariablen Bearbeitung und wird zusaetzlich zu Testzwecken weiterhin verwendet
 	 * Regelmaessiger Aufruf wird jetzt von MomentanwerteAbfragen uebernommen. Die Antwort eines AMIS Zähler wird automatisch von AMIS Cutter bearbeitet sobald der Wert verfügbar ist
      *
 	 *
@@ -286,6 +286,13 @@ if ($_IPS['SENDER'] == "Execute")
 
 	//Hier die COM-Port Instanz
 	echo "\n--------Execute aufgerufen -------------------------\n";
+    echo $amis->writeEnergyRegistertoString($MeterConfig,true,true);            // output asl html (true) und mit debug (true)
+	echo "\nUebersicht Homematic Registers:\n";
+	foreach ($MeterConfig as $identifier => $meter)
+		{	
+        $amis->writeEnergyHomematic($meter,true);           // true für Debug
+        }
+
 	echo "\nUebersicht serielle Ports:\n";
 	foreach ($MeterConfig as $identifier => $meter)
 		{	

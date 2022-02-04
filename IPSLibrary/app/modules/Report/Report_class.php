@@ -20,9 +20,12 @@
 	/**
 	 * @class Report_Class
 	 *
-     * für die Darstellung von Highcharts Grafiken im Webfront 
+     * für die Darstellung von Highcharts Grafiken im Webfront. Aufruf erfolgt über ActionManaager:
+     *		$variableId   = $_IPS['VARIABLE'];  $value        = $_IPS['VALUE'];
+     *		$pcManager = new ReportControl_Manager(); $pcManager->ChangeSetting($variableId, $value);
+     *
      * der ReportControl_Manager hat nur eine Funktion
-     *      ChangeSetting       für die Aktivitäten wenn eine Variable im Webfront umgestellt wird. Zentrale function
+     *      ChangeSetting       für die Aktivitäten wenn eine Variable im Webfront umgestellt wird. Zentrale function, Übergabe variableID und Wert
      *          abhängig vom Identifier und seinem angehängtem Index wird 
      *          CheckValueSelection     die Einträge überpüft
 	 *		    RebuildGraph            und den Graphen neu zeichnet
@@ -48,6 +51,8 @@
 
 		private $categoryIdValues;              // * ID Kategorie für die berechneten Werte
 		private $categoryIdCommon;  	        // * ID Kategorie für allgemeine Steuerungs Daten
+        private $categoryIdData;  	              // * ID Kategorie des Parents
+        private $visualizationCategoryID;           // hier sind die Links die auf die einzelnen Datenobjekte verweisen, notwendig um ein paar ein oder auszublenden
 		private $sensorConfig;                  // * Konfigurations Daten Array der Sensoren
 		private $valueConfig;                   // * Konfigurations Daten Array der berechneten Werte
         private $configuration;                 // Gesamtkonfiguration
@@ -65,16 +70,19 @@
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Report');
 			$this->categoryIdValues   = IPS_GetObjectIDByIdent('Values', $baseId);
 			$this->categoryIdCommon   = IPS_GetObjectIDByIdent('Common', $baseId);
+            $this->categoryIdData     = $baseId;
+            $this->visualizationCategoryID = IPS_GetObjectIdByName("VisualizationCategory",$this->categoryIdData);
 			//$this->sensorConfig       = IPSPowerControl_GetSensorConfiguration();
-			$this->valueConfig        = $this->setValueConfiguration();
-            $this->configuration      = $this->setConfiguration();
+			$this->valueConfig        = $this->setValueConfiguration();                                 // pro Report eine Index 0..x aufsteigend, kontinuierlich, Name ist der Verweis
+            $this->configuration      = $this->setConfiguration();                                      // auf den Key/Index für die detaillierte Konfiguration des Reports
 		    }
 
 
         private function setConfiguration()
             {
-            $config = Report_GetConfiguration();
-            $configValue = $this->setValueConfiguration();
+            $config = Report_GetConfiguration();                            // detaillierte Konfiguration für jeden einzelnen Report, Index ist ein eindeutiger Name
+            $configValue = $this->setValueConfiguration();                  // Anordnung der einzelnen reports, aufsteigend, Key ist eine Zahl
+            /* check ob die Indexe der Reports durchgängig sind */
             foreach ($configValue as $entry)
                 {
                 //print_R($entry);
@@ -103,19 +111,36 @@
             return($config); 
             }
 
+
+        public function getValueConfiguration()
+            {
+            return($this->valueConfig); 
+            }
+
         public function getConfiguration()
             {
             return ($this->configuration);
             }
 
+        public function getcategoryIdCommon()
+            {
+            return ($this->categoryIdCommon);
+            } 
 
 		/**
 		 * @public
 		 *
 		 * Modifiziert einen Variablen Wert der Report Steuerung
-         * die Variablenamen sind beliebig. Wichtig ist der identifier für die Steuerung der weiteren Tätigkeiten. 
-         * Die letzte Zahl aus dem identifier, es ist 0-9 und 10-99 möglich, wird als Index (pweridx) herausgenommen.
-		 *
+         * die Variablenamen sind beliebig. Wichtig ist der identifier für die Steuerung der weiteren Tätigkeiten.
+         *
+         * Für das linke Auswahlfenster gilt: 
+         *    Die letzte Zahl aus dem identifier, es ist 0-9 und 10-99 möglich, wird als Index (pweridx) herausgenommen.
+		 *    Davor steht "SelectValue" also zB SelectValue12 oder SelectValue3
+         *    es wird CheckValueSelection vor dem Zeichnen aufgerufen
+         *
+         * Für das rechte Auswahlfenster gilt:
+         *    es wird Navigation aufgerufen
+         *
          *
          *
 		 * @param integer $variableId ID der Variable die geändert werden soll
@@ -124,29 +149,130 @@
 		public function ChangeSetting($variableId, $value) 
             {
 			$variableIdent = IPS_GetIdent($variableId);
+
 			if ($this->debug) echo "ReportControl_Manager->ChangeSetting,VariableID : ".$variableId." Variableident : ".$variableIdent." mit Wert ".$value."   \n";
 			if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)                                         // entweder die letzte Zahl ist der Index
 				{   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */
-				$powerIdx      = substr($variableIdent,-1,-1);
+                //echo "go1   $variableIdent Look for: ".IPSRP_VAR_SELECTVALUE;
+				$powerIdx      = intval(substr($variableIdent,-1,1));          // powerIdx ist die letzte Stelle
 				$variableIdent = substr($variableIdent,0,-1);
 				//echo "Select Value mit ID ".$powerIdx."\n";
 				}
 			if (substr($variableIdent,0,-2)==IPSRP_VAR_SELECTVALUE)                         // oder die letzten beiden Zahlen ist der Index 
                 {
-				$powerIdx      = substr($variableIdent,-1,-2);
+                //echo "go2   $variableIdent ";                    
+				$powerIdx      = intval(substr($variableIdent,-2,2));           // powerIdx sind die letzten beiden Stellen
 				$variableIdent = substr($variableIdent,0,-2);
+                //echo " \"$powerIdx\"  \"$variableIdent\" ";
 			    }
 			/* der Identifier von SelectValue 0 .. 99 wird herausgearbeitet und zusätzlich nach poweridx indexiert
 			   sonst wird entsprechend der gedrückten Variable auf die Funktion aufgeteilt
 			*/
+
+            /* 
+            $value_config=$pcManager->getValueConfiguration();          // rausfinden welcher Report selektiert wurde
+            $config=$pcManager->getConfiguration();
+            print_R($value_config);
+            $result=false;
+            foreach ($value_config as $valueIdx => $valueEntry)
+                {
+                $variableIdValueDisplay = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $categoryIdCommon);   
+                if (GetValue($variableIdValueDisplay))                  // nur einer der Schalter ist auf 1
+                    {
+                    echo "Select $valueIdx \n";
+                    $resultIdx=$valueIdx;
+                    if (isset($valueEntry["Name"]))
+                        {
+                        $name=$valueEntry["Name"];
+                        if (isset($config[$name])) $resultConfig=$config[$name];
+                        }
+                    }
+                }
+            // Type is Chart, abhängig von der Konfiguration wird die Formatierung der Auswahlvariable geändert 
+            if (isset($value_config[$resultIdx][IPSRP_PROPERTY_VALUETYPE]))
+                {
+                if ($value_config[$resultIdx][IPSRP_PROPERTY_VALUETYPE] == IPSRP_VALUETYPE_CHART)
+                    {
+                    // es muss der Typ Chart sein
+                    echo json_encode($resultConfig)."\n";
+
+
+                    }
+                }            
+            if (isset($report_config["configuration"]))
+                {
+                unset ($report_config["series"]);                                       // selber erstellen
+                $selectAssociation=array();
+                $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData); 
+                $select=GetValue($ReportDataSelectorID);
+                if ($this->debug) echo "Alternative Configuration for Series Display detected, create series from config var, use selection $select:\n";
+                foreach ($report_config["configuration"] as $index=>$configID)
+                    {
+                    $selectAssociation[]=$index;    
+                    }
+                CreateProfile_Associations ('ReportDataSelect',     $selectAssociation);
+                if (isset($report_config[IPSRP_PROPERTY_VALUETYPE])) $valueType=$report_config[IPSRP_PROPERTY_VALUETYPE];
+                else $valueType="Euro";
+                $config=GetValue($report_config["configuration"][$selectAssociation[$select]]);
+                $configArray=json_decode($config,true);
+                //print_R($configArray);
+                foreach ($configArray as $index => $entry)
+                    {
+                    if ( (isset($entry["Name"])) && ($entry["Name"] != "") ) $name=$entry["Name"];
+                    else $name=$index;
+                    $result["Id"]=$entry["OID"];
+                    $result[IPSRP_PROPERTY_VALUETYPE]=$valueType;
+                    $report_config["series"][$name]=$result;
+                    }
+                }*/
+
 			switch ($variableIdent) {
 				case IPSRP_VAR_SELECTVALUE:         /* Änderung der Variable SelectValue, Auswahlfeld links */
+                    $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData);  
+                    $this->visualizationCategoryID = IPS_GetObjectIdByName("VisualizationCategory",$this->categoryIdData);
+                    if ($this->visualizationCategoryID) 
+                        { 
+                        $AddSelectorID = IPS_GetObjectIdByName("AddSelector", GetValue($this->visualizationCategoryID));
+                        $DataTableID   = IPS_GetObjectIdByName("DataTable",   GetValue($this->visualizationCategoryID)); 
+                        }
+
+                    $valueConfig=$this->getValueConfiguration();
+                    if (isset($valueConfig[$powerIdx][IPSRP_PROPERTY_VALUETYPE]))
+                        {
+                        switch ($valueConfig[$powerIdx][IPSRP_PROPERTY_VALUETYPE])
+                            {
+                            case IPSRP_VALUETYPE_CHART:
+                            case IPSRP_VALUETYPE_TREND:
+                                $name=$valueConfig[$powerIdx][IPSRP_PROPERTY_NAME];
+                                $config=$this->getConfiguration()[$name]; 
+                                if (isset($config["configuration"])) $configAssoc = $config["configuration"];                              
+                                if (isset($config["configSeries"])) $configAssoc = $config["configSeries"];
+                                $selectAssociation=array();
+                                foreach ($configAssoc as $index=>$configID)
+                                    {
+                                    $selectAssociation[]=$index;    
+                                    } 
+                                if ($this->debug) echo "   CreateProfile_Associations ReportDataSelect with ".json_encode($selectAssociation)." \n";
+                                CreateProfile_Associations ('ReportDataSelect',     $selectAssociation);  
+                                IPS_SetVariableCustomProfile ($ReportDataSelectorID, 'ReportDataSelect');                                                           
+                                if ($AddSelectorID) IPS_SetHidden($AddSelectorID,false);          // die Variable darunter sichtbar oder nicht machen
+                                if ($DataTableID)   IPS_SetHidden($DataTableID,  false);          // die Variable darunter sichtbar oder nicht machen
+                                //echo $ReportDataSelectorID;
+                                //echo json_encode($valueConfig[$powerIdx]);   
+                                break;
+                            default:
+                                if ($AddSelectorID) IPS_SetHidden($AddSelectorID,true);
+                                if ($DataTableID)   IPS_SetHidden($DataTableID,  true);
+                                break;
+                            }
+                        }                                         
 					SetValue($variableId, $value);
-					$this->CheckValueSelection($variableId);
+					$this->CheckValueSelection($variableId);                // die anderen auf 0 setzen
 					$this->RebuildGraph();
 					break;
 				case IPSRP_VAR_TYPEOFFSET:          /* Änderung der Variable TypeandOffset, Auswahlfeld erste Zeile */
 				case IPSRP_VAR_PERIODCOUNT:         /* Änderung der Variable PeriodandCount, Auswahlfeld zweite Zeile */
+                    //echo "ANvigattion Rechts oben, sowohl Darstellungsart als auch Zeitraum";
 					$this->Navigation($variableId, $value);
 					$this->RebuildGraph();
 					break;
@@ -185,6 +311,15 @@
 				SetValue(IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.'0', $this->categoryIdCommon), true);
 				}
 			}
+
+        /* eine etwas schräge und sehr kompakte Darstellungsform.
+         * Es gibt zwei Profile die individuell zur Runtime angepasst werden
+         * Bearbeitet werden dadurch folgende Einstellungen
+         *      $variableIdCount  aus der Zeile PeriodAndCount
+         *      $variableIdOffset aus der Zeile TypeAndOffset
+         * die anderen Werte werden geradlinig transparent abgespeichert
+         *
+         */
 
 		private function Navigation($variableId, $value)
 			{
@@ -317,6 +452,28 @@
 			return $return;
 		}
 
+        /* damit macht man die Darstellung 
+         *      $variableIdChartType
+         *      $variableIdPeriod
+         *
+         * die User Konfiguration befindet sich in $report_config
+         *      für jeden Report gibt es eine eigene Konfiguration
+         *      die Zeilennummer (index) verweist auf die Detailkonfiguration, 
+         *      wegen $associationsValues muss die Nummer nicht chronologisch sein
+         *
+         * die Highcharts Konfiguration wird in cfgDaten schrittweise erstellt
+         * der Abschluss über einen Filenamen ist immer gleich:
+         *
+		 *	IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+		 *	$CfgDaten    = CheckCfgDaten($CfgDaten);
+		 *	$sConfig     = CreateConfigString($CfgDaten);           // IPSHighCharts function        
+		 *	$tmpFilename = CreateConfigFile($sConfig, 'IPSPowerControl');    
+	     *  WriteContentWithFilename ($CfgDaten, $tmpFilename);      
+         *
+         * es sieht so aus wenn man unterschiedliche Konfigurationen verwendet dass sie sich auch untereinander auch bei unterschiedlichen Filenamen beeinflussen.
+         *
+         */
+
 		public function RebuildGraph ()
 			{
             //echo "RebuildGraph";
@@ -370,7 +527,7 @@
 			$chartType          = GetValue($variableIdChartType);
 
             if ($this->debug) echo "Background set\n";
-
+            $CfgDaten=array();
             //$CfgDaten['chart']['type']  = "line";         // später setzen
 
             $CfgDaten['chart']['plotBackgroundColor']  = "#cccccc";         // wirklich den Bereich auf den die Kurven geplottet werden einfärben
@@ -477,7 +634,7 @@
 					$serie['marker']['states']['hover']['radius']    = 4;
 					$serie['marker']['states']['hover']['lineWidth'] = 1;
 
-					if ($this->debug) echo $valueData["Name"]." Anzeige vom Chart Typ : ".$chartType."   ".$valueIdx." für Anzeige konfiguriert.  \n";
+					if ($this->debug) echo str_pad($valueData["Name"],35)." Anzeige vom Chart Typ : ".$chartType."   ".$valueIdx." durchgehen. ".(GetValue($variableIdValueDisplay)?"für Anzeige konfiguriert":"")."  \n";
 					//print_r($valueData);
 					
 					switch ($chartType) /* Auswahlfeld erste Zeile */
@@ -810,11 +967,11 @@
                     if (isset($SerienEintrag["Id"])) echo "   Serie ".$index."  ".$SerienEintrag["Id"]."    ".IPS_GetName($SerienEintrag["Id"])."/".IPS_GetName(IPS_GetParent($SerienEintrag["Id"]))."\n";    
                     else 
                         {
-                        echo "    Serie ".$index."  mit einzelnen Datenobjekten \n";
-                        print_R($SerienEintrag);
+                        echo "    Serie ".$index."  mit einzelnen Datenobjekten. Insgesamt ".count($SerienEintrag["data"])." Eintraege. \n";
+                        //print_R($SerienEintrag);
                         }
                     }  
-                //print_r($CfgDaten);
+                print_r($CfgDaten);
                 }
 			if (!array_key_exists('series', $CfgDaten)) 
                 {
@@ -825,7 +982,7 @@
 			// Create Chart with Config File
 			IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
 			$CfgDaten    = CheckCfgDaten($CfgDaten);
-			if ($this->debug) print_r($CfgDaten);
+			//if ($this->debug) print_r($CfgDaten);                 // zuviele Daten
 			$sConfig     = CreateConfigString($CfgDaten);           // IPSHighCharts function        
 			$tmpFilename = CreateConfigFile($sConfig, 'IPSPowerControl');    
 			if ($this->debug) 
@@ -854,13 +1011,75 @@
         
         private function compileConfiguration(&$CfgDaten,$report_config,$chartType=IPSRP_TYPE_KWH)
             {
+            /* Konfiguration vorverarbeiten, series kann automatisch erstellt werden 
+             * funktioniert für EASYCHART und EASTREND
+             * EASYCHART verweist in einem Array auf anzuzeigende Depotnamen. Der Link geht je Depotnamen auf die Depotkonfiguration als jso encoded. Diese könnten auch variable erstellt werden
+             *
+             */
+            if (isset($report_config["configuration"]))                                 // die Serien können für die Charts Darstellung  manuell ausgewählt werden, keine vorkonfigurierte verwenden
+                {
+                unset ($report_config["series"]);                                       // selber erstellen
+                $selectAssociation=array();
+                $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData); 
+                $select=GetValue($ReportDataSelectorID);
+                if ($this->debug) echo "Alternative Configuration for Series Display detected, create series from config var, use selection $select:\n";
+                foreach ($report_config["configuration"] as $index=>$configID)
+                    {
+                    $selectAssociation[]=$index;    
+                    }
+                if (isset($report_config[IPSRP_PROPERTY_VALUETYPE])) $valueType=$report_config[IPSRP_PROPERTY_VALUETYPE];
+                else $valueType="Euro";
+                $config=GetValue($report_config["configuration"][$selectAssociation[$select]]);         // config bzw configArray verweist auf das ausgewählte Musterdepot
+                $configArray=json_decode($config,true);
+                //print_R($configArray);
+                foreach ($configArray as $index => $entry)
+                    {
+                    if ( (isset($entry["Name"])) && ($entry["Name"] != "") ) $name=$entry["Name"];
+                    else $name=$index;
+                    $result["Id"]=$entry["OID"];
+                    $result[IPSRP_PROPERTY_VALUETYPE]=$valueType;
+                    $report_config["series"][$name]=$result;
+                    }
+                }
+            if (isset($report_config["configSeries"]))                              // die Serie kann für die Charts Darstellung  manuell ausgewählt werden, keine vorkonfigurierte verwenden
+                {
+                unset ($report_config["series"]);                                       // selber erstellen
+                $selectAssociation=array();
+                $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData); 
+                $select=GetValue($ReportDataSelectorID);                
+                foreach ($report_config["configSeries"] as $index=>$configID)
+                    {
+                    $selectAssociation[]=$index;    
+                    }
+                if (isset($report_config[IPSRP_PROPERTY_VALUETYPE])) $valueType=$report_config[IPSRP_PROPERTY_VALUETYPE];
+                else $valueType="Euro";  
+                $config=array();              
+                $config[$selectAssociation[$select]]=$report_config["configSeries"][$selectAssociation[$select]];
+                //print_R($config);
+                foreach ($config as $index => $entry)
+                    {
+                    if ( (isset($entry["Name"])) && ($entry["Name"] != "") ) $name=$entry["Name"];
+                    else $name=$index;
+                    $result["Id"]=$entry["Id"];                                     // muss mindestens vorhandens ein
+                    $result[IPSRP_PROPERTY_VALUETYPE]=$valueType;
+                    $result["display"]="normal";
+                    $report_config["series"][$name]=$result;
+                    $result["display"]="meansroll";
+                    $report_config["series"][$name."-means"]=$result;
+                    }
+                }
+
             $yaxis=array();                        /* Einstellungen der yaxis für alle einzelne Graphen sammeln */
 
             $i=0; $j=0;
             if ($this->debug) 
                 {
                 echo "compileConfiguration aufgerufen:\n";
-                echo "selected Report (".json_encode($report_config).") : -> implemented\n";
+                if (isset($report_config["title"])) echo "selected Report ".$report_config["title"].".\n";
+                else echo "selected Report (".json_encode($report_config).") : -> implemented\n";
+                print_R($CfgDaten);
+                echo "Es wurden folgende Linien definiert:\n";
+                print_R($report_config['series']);
                 }
             
             if (isset($report_config["title"])) $CfgDaten['title']['text']    = $report_config["title"];
@@ -902,16 +1121,36 @@
                 if (isset($defserie["Module"])) $module=strtoupper($defserie["Module"]);
                 else $module=$moduleDefault;
 
-                switch ($module)
+                switch ($module)                    /* für EASY und EASYTREND die Serie der daten selbt schreiben und nicht auf ein Archiv verweisen */
                     {
+                    case "EASYTREND":
                     case "EASY":
                         $oid=$defserie['Id'];
-                        $result = $archiveOps->analyseValues($oid,10,false)["Values"];                 // true mit Debug
+                        $analyseConfig = ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
+                        $resultAll = $archiveOps->analyseValues($oid,$analyseConfig,$this->debug);
+                        if ($module=="EASYTREND") 
+                            {
+                            //if ($this->debug) print_r($resultAll);
+
+                            if (strtoupper($defserie["display"])=="MEANSROLL") 
+                                {
+                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert verarbeiten.\n";
+                                $result=$resultAll["Description"]["MeansRoll"];
+                                }
+                            else 
+                                {
+                                $result=$resultAll["Values"];                 // true mit Debug, aus dem Archiv geladene Datenserie nicht einschränken
+                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte verarbeiten.\n";
+                                }
+                            }
+                        else $result=$resultAll["Values"];
+                        if ($this->debug) echo "      Darstellung der Daten für die Anzeige von $module:\n";
                         $letzte=array_key_last($result);
                         $scale=100/$result[$letzte]["Value"];
                         foreach ($result as $entry)
                             {
                             //if ($scale==0) $scale=100/$entry["Value"];
+                            if ($this->debug) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
                             $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
                             }
                         //print_R($result);
@@ -952,9 +1191,53 @@
                         }
                     }
                 $serie['marker']['enabled'] = false;
+                if ($this->debug) echo "Serie $index ermittelt, wird abgespeichert.\n";
                 $CfgDaten['series'][$index++] = $serie;
                 }   /* ende foreach */
 									
+            switch ($module)                    /* für EASY und EASYTREND eine zusätzliche Tabelle schreiben */
+                {
+                case "EASYTREND":
+                case "EASY":   
+                    IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
+                    IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
+                    $seleniumEasycharts = new SeleniumEasycharts();                         
+                    $shares=array(); $logs=0;
+                    foreach ($configArray as $index => $share)
+                        {
+                        $shares[$index]=$share;
+                        $shares[$index]["ID"]=$index;
+                        }
+                    $resultShares=array();
+                    foreach($shares as $index => $share)                    //haben immer noch eine gute Reihenfolge, wird auch in resultShares übernommen
+                        {
+                        //print_R($share);
+                        $oid = $share["OID"];
+                        $result = $archiveOps->analyseValues($oid,$logs,$this->debug);                 // true mit Debug
+                        if ($this->debug) 
+                            {
+                            if ( (isset($share["Name"])) && ($share["Name"] != "") ) echo "Bearbeite Share \"".$share["Name"]."\" :\n";
+                            else echo "Bearbeite Share \"".$share["ID"]."\" :\n";
+                            print_R($result["Description"]["Interval"]);
+                            }
+                        $resultShares[$share["ID"]]=$result;
+                        $resultShares[$share["ID"]]["Info"]=$share;
+                        $archiveOps->addInfoValues($oid,$share);
+                        } 
+                    //print_r($resultShares);
+                    $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true); 
+                    $DataTableID   = IPS_GetObjectIdByName("ReportDataTable",   $this->categoryIdData);  
+                    echo "gefunden $DataTableID" ;                  
+                    SetValue($DataTableID,$wert);                                                                           // eine schöne Tablee schreiben
+                    break;
+                default:
+                    break;
+                }
+            
+            
+            
+            
+            
             $i=0;
             $CfgDaten['yAxis'][$i]['opposite'] = false;
             $CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;

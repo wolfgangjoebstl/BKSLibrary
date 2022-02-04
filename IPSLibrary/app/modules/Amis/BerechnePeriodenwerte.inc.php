@@ -5,7 +5,7 @@
 	 * @ingroup
 	 * @{
 	 *
-	 * Script zur Berechnhung der Periodenwerte von Energieregistern
+	 * Script zur Berechnung der Periodenwerte von Energieregistern
      * es werden Werte von AMIS Zählern als auch von Homematic Energiemessungen verwendet.
      * welche gibt die AMIS Config vor.
 	 *
@@ -31,6 +31,7 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 	$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $installedModules = $moduleManager->GetInstalledModules();
 
 // max. Scriptlaufzeit definieren
 ini_set('max_execution_time', 400);
@@ -39,8 +40,7 @@ $display=false;       /* alle Eintraege auf der Console ausgeben */
 
 $Amis = new Amis();
 
-$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-$archiveHandlerID = $archiveHandlerID[0];
+$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 $MeterConfig = $Amis->getMeterConfig();
 
@@ -57,85 +57,66 @@ foreach ($MeterConfig as $meter)
     $ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
     echo "Create Variableset for : ".$meter["NAME"]." vom Typ ".$meter["TYPE"]." in $ID (".$ipsOps->path($ID).")\n";   
     $variableID = $Amis->getWirkenergieID($meter); 
-
-    if (false)
+    if ($variableID)
         {
-        /* ID von Wirkenergie bestimmen */
-        switch (strtoupper($meter["TYPE"]))
+        $PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
+        $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
+        if ( isset($meter["costKWh"]) )
             {
-            case "AMIS":
-                $AmisID = CreateVariableByName($ID, "AMIS", 3);
-                $variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
-                //$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-                //$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
-                break;
-            case "HOMEMATIC":
-            case "REGISTER":
-            case "SUMME": 
-                $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-                break;
-            default:
-                echo "Fehler, Type noch nicht bekannt.\n";
-                break;	
+            SetValue($KostenID,$meter["costKWh"]);
             }
+
+        $letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2,'kWh',null,100);                         // null keinen identifier schreiben, geht auch ""
+        $letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2,'kWh',null,110);
+        $letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2,'kWh',null,120);
+        $letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2,'kWh',null,130);
+
+        $letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2,'Euro',null,200);
+        $letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2,'Euro',null,210);
+        $letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2,'Euro',null,220);
+        $letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2,'Euro',null,230);         
+
+        $vorwert=0;
+        $zaehler=0;
+        $jetzt=time();
+
+        $endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+        $starttime=$endtime-60*60*24*1;
+        echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+        echo "Variable: ".IPS_GetName($variableID)."     ($variableID)\n";
+
+        //$ergebnis=summestartende2($starttime, $endtime, true,false,$archiveHandlerID,$variableID,$display);
+        //echo "Ergebnis (alt) Wert letzter Tag : ".$ergebnis."kWh \n";
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true,false, $variableID,$display);
+        echo "Ergebnis Wert     letzter Tag : ".number_format($ergebnis,3,",",".")."kWh \n";
+        SetValue($letzterTagID,$ergebnis);
+        SetValue($letzterTagEurID,$ergebnis*GetValue($KostenID));
+
+        $starttime=$endtime-60*60*24*7;
+        //$ergebnis=summestartende2($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
+        //echo "Ergebnis (alt) Wert letzte 7 Tage : ".$ergebnis."kWh \n";
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID, $display);
+        echo "Ergebnis Wert letzte   7 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
+        SetValue($letzte7TageID,$ergebnis);
+        SetValue($letzte7TageEurID,$ergebnis*GetValue($KostenID));
+
+        $starttime=$endtime-60*60*24*30;
+        //$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
+        //echo "Ergebnis (alt) Wert letzte 30 Tage : ".$ergebnis."kWh \n";
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID,$display);
+        echo "Ergebnis Wert letzte  30 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
+        SetValue($letzte30TageID,$ergebnis);
+        SetValue($letzte30TageEurID,$ergebnis*GetValue($KostenID));
+
+        $starttime=$endtime-60*60*24*360;
+        //$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
+        //echo "Ergebnis letzte 360 Tage von $starttime zu $endtime berechnen:\n";
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID,$display);
+        echo "Ergebnis Wert letzte 360 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
+        SetValue($letzte360TageID,$ergebnis);
+        SetValue($letzte360TageEurID,$ergebnis*GetValue($KostenID));
         }
-
-	$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
-	$KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
-	if ( isset($meter["costKWh"]) )
-		{
-		SetValue($KostenID,$meter["costKWh"]);
-		}
-
-    $letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2,'kWh',null,100);                         // null keinen identifier schreiben, geht auch ""
-    $letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2,'kWh',null,110);
-    $letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2,'kWh',null,120);
-    $letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2,'kWh',null,130);
-
-    $letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2,'Euro',null,200);
-    $letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2,'Euro',null,210);
-    $letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2,'Euro',null,220);
-    $letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2,'Euro',null,230);         
-
-	$vorwert=0;
-	$zaehler=0;
-	$jetzt=time();
-
-	$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-	$starttime=$endtime-60*60*24*1;
-	echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-	echo "Variable: ".IPS_GetName($variableID)."\n";
-
-	//$ergebnis=summestartende2($starttime, $endtime, true,false,$archiveHandlerID,$variableID,$display);
-	//echo "Ergebnis (alt) Wert letzter Tag : ".$ergebnis."kWh \n";
-	$ergebnis=$Amis->summestartende($starttime, $endtime, true,false, $variableID,$display);
-	echo "Ergebnis Wert     letzter Tag : ".number_format($ergebnis,3,",",".")."kWh \n";
-	SetValue($letzterTagID,$ergebnis);
-	SetValue($letzterTagEurID,$ergebnis*GetValue($KostenID));
-
-	$starttime=$endtime-60*60*24*7;
-	//$ergebnis=summestartende2($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
-	//echo "Ergebnis (alt) Wert letzte 7 Tage : ".$ergebnis."kWh \n";
-	$ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID, $display);
-	echo "Ergebnis Wert letzte   7 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
-	SetValue($letzte7TageID,$ergebnis);
-	SetValue($letzte7TageEurID,$ergebnis*GetValue($KostenID));
-
-	$starttime=$endtime-60*60*24*30;
-	//$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
-	//echo "Ergebnis (alt) Wert letzte 30 Tage : ".$ergebnis."kWh \n";
-	$ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID,$display);
-	echo "Ergebnis Wert letzte  30 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
-	SetValue($letzte30TageID,$ergebnis);
-	SetValue($letzte30TageEurID,$ergebnis*GetValue($KostenID));
-
-	$starttime=$endtime-60*60*24*360;
-	//$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
-	//echo "Ergebnis letzte 360 Tage von $starttime zu $endtime berechnen:\n";
-	$ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID,$display);
-	echo "Ergebnis Wert letzte 360 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
-	SetValue($letzte360TageID,$ergebnis);
-	SetValue($letzte360TageEurID,$ergebnis*GetValue($KostenID));
+    else echo "VariableID wurde nicht gefunden\n";
    	}
 
 if ($_IPS['SENDER'] == "Execute")
@@ -147,7 +128,6 @@ if ($_IPS['SENDER'] == "Execute")
 	echo "\nIPS aktuelle Kernelversion : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Amis');       /*   <--- change here */
 	echo "\nAmis Modul Version : ".$ergebnis."\n"; 
-    $installedModules = $moduleManager->GetInstalledModules();
 
     echo "\n";
     $count=sizeof($MeterConfig);
@@ -325,7 +305,8 @@ if ($_IPS['SENDER'] == "Execute")
         $tim7ID         = @IPS_GetEventIDByName("FileStatus", $scriptId);
         $status         = IPS_GetEvent($tim7ID);
         //print_r($status);
-        echo "Berechnung das letzte Mal gestartet am/um ".date("d.m.Y H:i:s",$status["LastRun"])."\n";        
+        echo "========================================================================================================\n";
+        echo "Berechnung Historie und Aktuelle Energie das letzte Mal gestartet am/um ".date("d.m.Y H:i:s",$status["LastRun"])."\n";        
 
         $subnet="10.255.255.255";
         $OperationCenter=new OperationCenter($subnet);
@@ -335,10 +316,13 @@ if ($_IPS['SENDER'] == "Execute")
         $dataOID=$amis->getAMISDataOids();
         $tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
         $regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);
-        $Meter=$amis->writeEnergyRegistertoArray($MeterConfig);
-        SetValue($tableID,$amis->writeEnergyRegisterTabletoString($Meter));
-        SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));		
-
+        $MeterValues=$amis->writeEnergyRegistertoArray($MeterConfig,true);                             // erstellen der Werte für die Anzeige in der Tabelle, true für Debug
+        print_R($MeterValues);
+        echo "writeEnergyRegisterTabletoString:\n";
+        SetValue($tableID,$amis->writeEnergyRegisterTabletoString($MeterValues));
+        echo "writeEnergyRegisterValuestoString:\n";
+        SetValue($regID,$amis->writeEnergyRegisterValuestoString($MeterValues));		
+        echo "----------------------------\n";
         echo GetValue($tableID);
         echo GetValue($regID);
 

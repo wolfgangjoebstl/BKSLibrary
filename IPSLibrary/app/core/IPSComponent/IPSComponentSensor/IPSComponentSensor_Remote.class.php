@@ -23,7 +23,9 @@
      *
      * kann Climate und Sensor
      *
-	 * Events werden im Event Handler des IPSMessageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
+	 * Events werden im Event Handler des IPSMessageHandler registriert. 
+     *
+     * Bei Änderung oder Update der Variable wird der Event Handler aufgerufen.
 	 * In der IPSMessageHandler Config steht wie die Daten Variable ID und Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
 	 * 	xxxx => array('OnChange','IPSComponentSensor_Remote,1,2,3','IPSModuleSensor_Remote,1,2,3',),
      *
@@ -208,15 +210,23 @@
 
 
 
-        /* construct wird bereit mit der zu loggenden Variable ID aufgerufen, 
+        /* construct wird bereit mit der zu loggenden Variable ID bei HandleEvent aufgerufen
+         *
          * optional kann ein Variablennamen mitgegeben werden, sonst wird er nach einem einfachen Algorithmus berechnet (Instanz oder Variablenname der ID)
          * oder aus der Config von DetectMovement übernommen
          * im Motion Component wird auch der Wert mitgegeben
+         *
+         * es wird der Reihe nach constructFirst, do_init, do_init_climate und den parent construct aufgerufen
+         *
          *
          * in der übergeordneten class stehen dann alle do_init_xxxx und berechnen den $mirrorNameID
          *
          * ruft do_init in der Logging class mit optionalem Variablenamen und VariableTyp auf, Wert wird keiner übergeben
          * danach ist $this->variableTypeReg definiert, wenn uns nichts dazu einfällt wird es "DATA"
+         *
+         * $variableTypeReg
+         * $variableProfile
+         * $variableType; 
          *
          */
 
@@ -322,6 +332,7 @@
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
                 echo "     DetectMovement ist installiert. Aggregation abarbeiten:\n";
+                echo "            Infos aus dem construct ".$this->variablename."   ".$this->variableTypeReg."  ".$this->variableProfile."   ".$this->variableType." \n";
 				$groups=$this->DetectHandler->ListGroups("Sensor",$this->variable);      // nur die Gruppen für dieses Event updaten
 				foreach($groups as $group=>$name)
 					{
@@ -339,7 +350,7 @@
 					if ($count>0) { $status=round($status/$count,1); }
 					//echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
 					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
-					$statusID=CreateVariableByName($this->AuswertungID,"Gesamtauswertung_".$group,2, "~Temperature", null, 1000, null);
+					$statusID=CreateVariableByName($this->AuswertungID,"Gesamtauswertung_".$group,$this->variableType, $this->variableProfile, null, 1000, null);
                     $oldstatus=GetValue($statusID);
 					if ($oldstatus != $status) 
                         {

@@ -32,6 +32,7 @@
 	 *
 	 */
 
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include ("Report_Constants.inc.php",     	"IPSLibrary::app::modules::Report");
 	IPSUtils_Include ('Report_Configuration.inc.php', 	'IPSLibrary::config::modules::Report');
 	IPSUtils_Include ('Report_class.php', 					'IPSLibrary::app::modules::Report');

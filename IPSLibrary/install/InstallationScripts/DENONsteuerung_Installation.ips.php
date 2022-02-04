@@ -36,9 +36,9 @@ Installation (erneut/Update)
 	*bestehende Scripte (vorherige Verisionen) werden gelöscht und neu angelegt
 */
 
-IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");
-IPSUtils_Include ("DENONsteuerung.Library.inc.php","IPSLibrary::app::modules::DENONsteuerung");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");
+    IPSUtils_Include ("DENONsteuerung.Library.inc.php","IPSLibrary::app::modules::DENONsteuerung");
 
     IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
     IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
@@ -48,8 +48,9 @@ IPSUtils_Include ("DENONsteuerung.Library.inc.php","IPSLibrary::app::modules::DE
     $topologyLibrary = new TopologyLibraryManagement();                     // in EvaluateHardware Library, neue Form des Topology Managements
 
     $discovery = $modulhandling->getDiscovery();
-    $hardware = $topologyLibrary->get_HardwareList($discovery);
-    print_r($hardware["DenonAVR"]);
+    echo "\n";
+    $hardware = $topologyLibrary->get_HardwareList($discovery);             // ruft den HmiReport auf wenn schon länger nicht passiert
+    if (isset($hardware["DenonAVR"])) print_r($hardware["DenonAVR"]);       // hat die topologyLibrary was gefunden ?
 
     $hardwareDenon = new HardwareDenonAVR();
     $socketID = $hardwareDenon->getSocketID();

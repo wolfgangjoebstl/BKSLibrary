@@ -53,12 +53,51 @@
 
     /**************************************** PROGRAM *********************************************************/
 
+    $debug=false;
+
+	$pcManager = new ReportControl_Manager();
+    $report_config = $pcManager->getConfiguration();
+    $categoryIdCommon = $pcManager->getcategoryIdCommon();
+    $variableIdChartType = IPS_GetObjectIDByIdent(IPSRP_VAR_TYPEOFFSET, $categoryIdCommon);
 
     if ($_IPS['SENDER']=="WebFront")
         {
-        /* vom Webfront aus gestartet */
+        $variableId = $_IPS['VARIABLE'];
 
-        SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+        $variableIdent = IPS_GetIdent($variableId);
+        if ($debug) echo "ReportControl_Manager->ChangeSetting,VariableID : ".$variableId." Variableident : ".$variableIdent." mit Wert ".$value."   \n";
+        if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)                                         // entweder die letzte Zahl ist der Index
+            {   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */
+            $powerIdx      = substr($variableIdent,-1,-1);
+            $variableIdent = substr($variableIdent,0,-1);
+            //echo "Select Value mit ID ".$powerIdx."\n";
+            }
+        if (substr($variableIdent,0,-2)==IPSRP_VAR_SELECTVALUE)                         // oder die letzten beiden Zahlen ist der Index 
+            {
+            $powerIdx      = substr($variableIdent,-1,-2);
+            $variableIdent = substr($variableIdent,0,-2);
+            }
+
+			switch ($variableIdent) {
+				case IPSRP_VAR_SELECTVALUE:         /* Änderung der Variable SelectValue, Auswahlfeld links */
+                    echo " ".$powerIdx;                         // da kommt nie wer vorbei !!!
+					break;
+				case IPSRP_VAR_TYPEOFFSET:          /* Änderung der Variable TypeandOffset, Auswahlfeld erste Zeile */
+				case IPSRP_VAR_PERIODCOUNT:         /* Änderung der Variable PeriodandCount, Auswahlfeld zweite Zeile */
+					break;
+				case IPSRP_VAR_VALUEKWH:
+				case IPSRP_VAR_VALUEWATT:
+				case IPSRP_VAR_CHARTHTML:
+				case IPSRP_VAR_TIMEOFFSET:
+				case IPSRP_VAR_TIMECOUNT:
+					break;
+				default:
+			}
+        /* vom Webfront aus gestartet. Drei alternative Steuervariablen haben diese Datei Report als Action Script angegeben */
+        //echo GetValue($variableIdChartType);                    // ChartType kWh Euro Details 
+
+        SetValue($variableId,$_IPS['VALUE']);
+        $pcManager->RebuildGraph();
 
         }
 
@@ -70,7 +109,42 @@
     if ($_IPS['SENDER']=="Execute")
         {
 
-        echo "Report Execute auferufen:\n";
+        echo "Report Execute aufgerufen:\n";
+        $value_config=$pcManager->getValueConfiguration();          // rausfinden welcher Report selektiert wurde
+        $config=$pcManager->getConfiguration();
+        print_R($value_config);
+        $result=false;
+        foreach ($value_config as $valueIdx => $valueEntry)
+            {
+            $variableIdValueDisplay = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $categoryIdCommon);   
+            if (GetValue($variableIdValueDisplay))                  // nur einer der Schalter ist auf 1
+                {
+                echo "Select $valueIdx \n";
+                $resultIdx=$valueIdx;
+                if (isset($valueEntry["Name"]))
+                    {
+                    $name=$valueEntry["Name"];
+                    if (isset($config[$name])) $resultConfig=$config[$name];
+                    }
+                }
+            }
+        /* Type is Chart, abhängig von der Konfiguration wird die Formatierung der Auswahlvariable geändert */
+        if (isset($value_config[$resultIdx][IPSRP_PROPERTY_VALUETYPE]))
+            {
+            if ($value_config[$resultIdx][IPSRP_PROPERTY_VALUETYPE] == IPSRP_VALUETYPE_CHART)
+                {
+                // es muss der Typ Chart sein
+                echo json_encode($resultConfig)."\n";
+
+
+                }
+            }
+        
+
+
+        /* Einsatz von Medienobjekte, es gibt verschiedene Medientypen. 4 ist Charts, 0 ist IPSView, 3 sind die Videostreams
+         *
+         */
 
         //if (IPS_GetMediaID('Highcharts')==0)
         $result=@IPS_GetMediaIDbyName('Highcharts',0);
@@ -83,7 +157,7 @@
             {
             $MediaID = $result;
             }
-        echo "Medienobjekt Highcharts gefunden: $MediaID\n";
+        echo "Medienobjekt Highcharts in ".IPS_GetParent($MediaID)." gefunden: $MediaID\n";
 
         $reportControl_Manager= new ReportControl_Manager(true);
 
@@ -91,7 +165,7 @@
         $displaypanel=getValueFormatted($ReportPageTypeID);
         if (isset($configuration[$displaypanel])) 
             {
-            echo "Aktuelle Konfiguration:\n";
+            echo "Aktuelle Konfiguration für Displaypanel $displaypanel:\n";
             print_r($configuration[$displaypanel]);
             }
 

@@ -247,9 +247,9 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                 {
                 $outputArray[$tag] = $defaultValue;
                 }
-            elseif ($defaultValue==null)
+            elseif ($defaultValue===null)                           // wenn nicht === wird null mit false gleichgesetzt
                 {
-                $outputArray[$tag] = $defaultValue;
+                //$outputArray[$tag] = $defaultValue;               // changed, defaultvalue null does not result into creation of the item per se
                 if ($debug) echo "configfileParser: Tag $tag Null detected as default value.\n";    
                 }
             else  
@@ -2852,7 +2852,7 @@ class archiveOps
                 if ($entry["VariableID"]==$oid) 
                     {
                     $entry;
-                    $result = "Anzahl: ".$entry["RecordCount"]." Erster Wert: ".date("d.m.Y H:i:s",$entry["FirstTime"])." Letzter Wert: ".date("d.m.Y H:i:s",$entry["LastTime"])."\n";
+                    $result = "Anzahl: ".str_pad($entry["RecordCount"],8," ", STR_PAD_LEFT)." Erster Wert: ".date("d.m.Y H:i:s",$entry["FirstTime"])." Letzter Wert: ".date("d.m.Y H:i:s",$entry["LastTime"]);
                     return ($result);                        
                     }
                 }                
@@ -2928,13 +2928,14 @@ class archiveOps
                 }
             else $result .= "no logs available";    
 
-            if ($logs)
+            if ($logs && ($werte !== false) )
                 {
                 $logCount=0;
         	    foreach($werte as $wert)
 						{
-                        if (is_numeric($wert['Value'])==false) print_R($wert);
-						$result .= "\n     ".date("d.m.y H:i:s",$wert['TimeStamp'])."   ".number_format($wert['Value'], 2, ",", "" );
+                        //if (is_numeric($wert['Value'])==false) print_R($wert);
+                        if (is_numeric($wert['Value'])) $result .= "\n     ".date("d.m.y H:i:s",$wert['TimeStamp'])."   ".number_format($wert['Value'], 2, ",", "" );
+                        else echo "Fehler, dieser Wert ist keine Zahl : ".json_encode($wert)." \n";
                         if (($logCount++)>$logs) break;
 						}
                 }        
@@ -2946,7 +2947,8 @@ class archiveOps
     /* Analyse der letzen Werte im Archive. Hier geht man bereits von einer geordneten Struktur aus, es gelten die folgenden Einschränkungen
      *    - es werden nur Einzelwerte zugelassen, 
      *    - Angabe Parameter oid und logs (Anzahl Werte) verpflichtend
-     *      die zahl logs muss durch 2 dividierbar sein, sonst wird aufgerundet
+     *    - die Zahl logs muss durch 2 dividierbar sein, sonst wird aufgerundet
+     *    - logs + logs/2 muss kleiner 10.000 sein
      *
      * Rückgabe ist ein Array mit den bereinigten Werten als Referenz, und den Ergebnissen der Auswertung
      *
@@ -2957,8 +2959,8 @@ class archiveOps
      *      erster und zweiter Mittelwert 
      *
      * Mehrstufige Bearbeitung:
-     *
-     *
+     *      Inputparameter bewerten
+     *      Vorwerte einlesen und bereinigen, Ergebnis als neues Array in der class $result
      *
      *
      */
@@ -2966,42 +2968,78 @@ class archiveOps
     function analyseValues($oid,$logs,$debug=false)
         {
         /* für logs false true oder einen Integer Wert zulassen, integer ist die Anzahl der Log werte die ausgegeben wird */
+        //if ($debug) echo "--->analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen.\n";
+        $startTime=0; $endTime=0;
+        if (is_array($logs))
+            {
+            $startTime = $logs["StartTime"]; 
+            $endTime   = $logs["EndTime"];
+            if ($debug) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, Werte von ".(date("d.m.Y H:i:s",$startTime))." bis ".(date("d.m.Y H:i:s",$endTime))."\n";
+            $logs=0;            // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten, entweder zwischen start und end oder wirklich alle alle
+            }
         if ($logs>1) 
             {
             $logs=round($logs/2)*2;              // zumindest die geforderte Anzahl an Logwerten anzeigen
             $maxLogsperInterval = $logs+$logs/2;
+            if ($debug) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, $maxLogsperInterval Werte werden verarbeitet\n";
             }
         else 
             {
             $logs=10;
             $maxLogsperInterval=1;                  // ein Wert reicht aus, max wäre 10
+            if (($debug) && (is_array($logs) === false) ) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, alle vorhandenen Werte werden verarbeitet\n";
             }
 
-
+        /* Wertespeicher initialisieren */
+        $this->result=array();
+        
         /* Vorwerte einlesen, Fehler erkennen und bearbeiten */
         
-        $werte = @AC_GetLoggedValues($this->archiveID, $oid, $startday, $endtime, 0);
+        $werte = @AC_GetLoggedValues($this->archiveID, $oid, $startTime, $endTime, 0);
         if ($werte === false)             
             {
             if ($debug) echo "Ergebnis : no logs available\n";  
             $werte=array();
             }
+        else            // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten
+            {
+            if ($maxLogsperInterval==1) $maxLogsperInterval=count($werte);
+            if (($debug) && (is_array($logs) === false) ) echo "      --> Ergebnis Abfrage Archiv: ".count($werte)." Values available\n";
+            }
 
-        $this->cleanupStoreValues($werte,$oid,$maxLogsperInterval,$debug);         // Werte bereinigen und in result[Values] abpeichern
-        $this->countperIntervalValues($this->result[$oid]["Values"],$debug);    // true Debug
+        $this->cleanupStoreValues($werte,$oid,$maxLogsperInterval,$debug);          // Werte bereinigen und in result[$oid][Values] abpeichern
+        $this->countperIntervalValues($this->result[$oid]["Values"],$debug);        // true Debug
 
         /* Analyse Ergebnis aus den ausgewählten archivierten Werten */
 
+        $means=array();         // Speicherplatz zur Verfügung stellen
+        $meansFull   = new meansCalc($means);
+        $meansVar   = new meansCalc($means, "Var",$logs);
+        $meansDay   = new meansCalc($means, "Day",2);
+        $meansWeek  = new meansCalc($means, "Week",10);
+        $meansMonth = new meansCalc($means, "Month",40);
+        //print_R($means);
+
         $logCount=0; $logCount1=0; $logCount2=0;
         $summe=0; $summe1=0; $summe2=0; 
-        $max=0; $min=0; $youngestTime=0; $youngestValue=0;
-        if ($debug) echo " # Stunde Datum Wert       Mittelwert       Rollierend          Mittel1       Mittel2\n";
+        //$summeDay1=0; $summeDay2=0; $summeWeek1=0; $summeWeek2=0; $summeMonth1=0; $summeMonth2=0;             // zu kompliziert
+        $max=0; $min=0; $youngestTime=0; $youngestValue=0; $change=0;
+        $scale=0; $oldestTime=0;
+        $displayCalcTable=false;
+        if ($debug && $displayCalcTable) echo " # Stunde Datum Wert       Mittelwert       Rollierend          Mittel1       Mittel2\n";
         foreach($this->result[$oid]["Values"] as $index => $wert)
             {
-            /* Mittelwert Gesamt berechnen */
+            /* Skalierung auf 100 Ausgangswert, das heisst der älteste Wert hat 100 wenn man den Wert mit scale multipliziert */
+            if ( ($wert['TimeStamp']<$oldestTime) || ($oldestTime==0) )
+                {
+                $oldestTime=$wert['TimeStamp'];
+                $scale=100/$wert['Value'];   
+                }
+            /* Mittelwert Gesamt berechnen, das heisst alle Werte zusammenzählen und Anzahl der Werte festhalten */
             $summe += $wert['Value'];
             $logCount++;
-            /* Trendanalyse mit 2 Mittelwerten */
+
+            /* Trendanalyse mit 2 Mittelwerten, variable Länge in Logs, sonst 10=2*5 */
             if ($logCount<=$logs)
                 {
                 if ($logCount>($logs/2)) 
@@ -3016,28 +3054,46 @@ class archiveOps
                     }
                 }
 
-            /* rollierender Mittelwert */
-            
+            $meansFull->addValue($wert['Value']);
+            $meansVar->addValue($wert['Value']);
+            $meansDay->addValue($wert['Value']);
+            $meansWeek->addValue($wert['Value']);
+            $meansMonth->addValue($wert['Value']);
+
+            /* rollierender Mittelwert , dienen und die nächsten 5 Werte zusammenzählen */
             $sumRol=0; $countRol=0;
             for ($i=0;$i<5;$i++)
                 {
+                //echo " ".($index+$i);
                 if (isset($this->result[$oid]["Values"][$index+$i]["Value"]))
                     {
+                    //echo "->".$this->result[$oid]["Values"][$index+$i]["Value"];
                     $sumRol += $this->result[$oid]["Values"][$index+$i]["Value"];
                     $countRol++;
                     }
                 }
-            $this->result[$oid]["Description"]["MeansRoll"][$index]=$sumRol/$countRol;
+            //echo "           $sumRol   $countRol ".($sumRol/$countRol)."\n"; 
+            //echo "               $index\n";
+            $this->result[$oid]["Description"]["MeansRoll"][$index]["Value"]=$sumRol/$countRol;
+            $this->result[$oid]["Description"]["MeansRoll"][$index]["TimeStamp"]=$wert['TimeStamp'];
 
             /*                */
+            //echo "   Vergleiche ".$wert['TimeStamp'].">$youngestTime $change Wert $index : ".$this->result[$oid]["Values"][$index]['Value']."  ";
             if ($wert['TimeStamp']>$youngestTime)
                 {
+                //echo " do ";
                 $youngestTime=$wert['TimeStamp'];
                 $youngestValue=$wert['Value'];   
+                if (isset($this->result[$oid]["Values"][$index+1]['Value'])) 
+                    {
+                    //echo "store";
+                    $change=(($this->result[$oid]["Values"][$index]['Value']-$this->result[$oid]["Values"][$index+1]['Value'])/$this->result[$oid]["Values"][$index+1]['Value'])*100;
+                    }
                 }
+            //echo "\n";
             if ( ($wert['Value']>$max) || ($max==0) ) $max = $wert['Value'];
             if ( ($wert['Value']<$min) || ($min==0) ) $min = $wert['Value'];
-            if ($debug) 
+            if ($debug && $displayCalcTable) 
                 {
                 echo "  ".str_pad($logCount,2)." ".date("H d.m",$wert['TimeStamp'])."  ".number_format($wert['Value'],2,",",".")."   ";
                 //echo str_pad(number_format($summe,2,",","."),18," ", STR_PAD_LEFT)."   ";
@@ -3049,10 +3105,23 @@ class archiveOps
                 else echo str_pad(" ",18);
                 echo "\n";
                 }
-            }      
+            }
+        //if ($debug) print_r($this->result[$oid]["Description"]["MeansRoll"]); 
+        $meansFull->calculate();     
+        $meansVar->calculate();
+        $meansDay->calculate();
+        $meansWeek->calculate();
+        $meansMonth->calculate();             
+        //print_R($means["Result"]);     
+        $this->result[$oid]["Description"]["Interval"]=$means["Result"];
+        //echo "Summe Var $logs $summe1 $summe2 \n";
         $this->result[$oid]["Description"]["Max"]=$max;
         $this->result[$oid]["Description"]["Min"]=$min;
         $this->result[$oid]["Description"]["Latest"]=$youngestValue;
+        $this->result[$oid]["Description"]["Change"]=$change;
+        $this->result[$oid]["Description"]["Scale"]=$scale;
+        $this->result[$oid]["Description"]["Result"]=$scale*$youngestValue-100;
+        if ($debug) echo "Ergebnis Aktie seit der Messung ist ".number_format($this->result[$oid]["Description"]["Result"],2,",",".")."% \n";
         $means=$summe/$logCount;
         $this->result[$oid]["Description"]["Means"]=$means;
         $means1=$summe1/$logCount1;
@@ -3080,7 +3149,6 @@ class archiveOps
 
         return ($this->result[$oid]);    
         }
-
 
     /*
      *
@@ -3117,8 +3185,8 @@ class archiveOps
 
     private function cleanupStoreValues(&$werte,$oid,$maxLogsperInterval,$debug=false)
         {
-        $logCount=0; $error=0; 
-        if ($debug) echo "cleanupStoreValues für $maxLogsperInterval Werte.\n";
+        $logCount=0; $error=0; $ignore=false;
+        if ($debug) echo "   cleanupStoreValues für $maxLogsperInterval Werte.\n";
         foreach($werte as $index => $wert)
             {
             if ( (is_numeric($wert['Value'])==false) || ($wert['Value']==0) )
@@ -3129,8 +3197,19 @@ class archiveOps
                 }
             else            // gültiger Wert, die anderen ignorieren
                 {
-                $this->result[$oid]["Values"][]=$wert;
-                $logCount++;
+                //print_R($wert);
+                $hours = ($wert['Duration']/60/60);
+                if ($hours>200) 
+                    {
+                    $ignore=true;
+                    echo "Wert vom ".date("d.m.Y H:i:s",$wert['TimeStamp'])." ".number_format($hours,2,",",".")." hours \n";
+                    }
+                if ($ignore===false)
+                    {
+                    $this->result[$oid]["Values"][]=$wert;
+                    $logCount++;
+                    }
+                else $error++; 
                 }
             if ($logCount>$maxLogsperInterval) break;
             }  
@@ -3170,7 +3249,7 @@ class archiveOps
             elseif ($werte[$letzter]['TimeStamp']>=$startyear) $scale="year";
             if ($debug) 
                 {
-                echo "countperIntervalValues, Ergebnis ist $count Werte logged per $scale. ";
+                echo "   countperIntervalValues, Ergebnis ist $count Werte logged per $scale. ";
                 //echo "Erster  : ".date("H:i:s d.m.Y",$werte[$erster]['TimeStamp'])."  ";
                 //echo "Letzter : ".date("H:i:s d.m.Y",$werte[$letzter]['TimeStamp'])."  ";
                 echo "\n";
@@ -3179,6 +3258,104 @@ class archiveOps
 
 
     }   // ende class
+
+
+    /*  Berechnung von Mittelwerten, Ausgaben in einen gemeinsamen Speicher
+     *
+     */
+
+    class meansCalc
+        {
+        
+        protected $name;
+        protected $result;
+
+        function __construct(&$result,$name="Full",$logs=false)
+            {
+            if (is_array($result)===false) return (false);
+
+            
+            $this->result=&$result;
+            $this->result[$name]=array();
+            $this->result[$name]["Sum"]=0;
+            $this->result[$name]["Sum1"]=0;
+            $this->result[$name]["Sum2"]=0;
+            $this->result[$name]["Count"]=0;
+            $this->result[$name]["Count1"]=0;
+            $this->result[$name]["Count2"]=0;
+            if ($logs) $logs=round($logs/2)*2;                             // zumindest die geforderte Anzahl an Logwerten anzeigen, Wert soll durch 2 dividierbar sein
+            $this->result[$name]["CountFull"]=$logs;
+            $this->name=$name;
+            return (true);
+            }
+
+        function addValue($wert)
+            {
+            if (is_array($this->result)===false) return (false);
+
+            $this->result[$this->name]["Sum"] += $wert;
+            if ($this->result[$this->name]["CountFull"])            // wenn 0/false alle Werte mitnehmen, keine Teilsummen bilden
+                {
+                if ($this->result[$this->name]["Count"]<$this->result[$this->name]["CountFull"])
+                    {
+                    if ($this->result[$this->name]["Count"]<($this->result[$this->name]["CountFull"]/2))
+                        {
+                        $this->result[$this->name]["Sum1"] += $wert;
+                        $this->result[$this->name]["Count1"]++;
+                        }    
+                    else 
+                        {
+                        $this->result[$this->name]["Sum2"] += $wert;
+                        $this->result[$this->name]["Count2"]++;
+                        }    
+
+                    if (isset($this->result[$this->name]['Max']))  
+                        {
+                        if ($wert>$this->result[$this->name]['Max'])  $this->result[$this->name]['Max'] = $wert;
+                        }
+                    else $this->result[$this->name]['Max'] = $wert;
+                    if (isset($this->result[$this->name]['Min']))  
+                        {
+                        if ($wert<$this->result[$this->name]['Min'])  $this->result[$this->name]['Min'] = $wert;
+                        }
+                    else $this->result[$this->name]['Min'] = $wert;
+
+                    }
+                }
+            $this->result[$this->name]["Count"]++;
+
+            return (true);
+            }
+
+        function calculate()
+            {
+            if (is_array($this->result)===false) return (false);                
+
+            if ($this->result[$this->name]["CountFull"])
+                {
+                if ($this->result[$this->name]["Count1"]==0) return (false);
+                else
+                    {
+                    $this->result["Result"][$this->name]["Means1"]=$this->result[$this->name]["Sum1"]/$this->result[$this->name]["Count1"];
+                    if ($this->result[$this->name]["Count2"]>0)
+                        {
+                        $this->result["Result"][$this->name]["Means2"]=$this->result[$this->name]["Sum2"]/$this->result[$this->name]["Count2"];
+                        $this->result["Result"][$this->name]["Trend"]=($this->result["Result"][$this->name]["Means1"]/$this->result["Result"][$this->name]["Means2"]-1)*100;                
+                        }
+                    }
+                }
+            elseif ($this->result[$this->name]["Count"])  $this->result["Result"][$this->name]["Means"]=$this->result[$this->name]["Sum"]/$this->result[$this->name]["Count"];
+
+            if ( (isset($this->result[$this->name]['Max'])) && (isset($this->result[$this->name]['Min'])) )
+                {
+                $this->result["Result"][$this->name]['Max'] = $this->result[$this->name]['Max'];
+                $this->result["Result"][$this->name]['Min'] = $this->result[$this->name]['Min'];
+                }
+
+            return (true);
+            }
+
+        }
 
 /**************************************************************************************************************************
  *
@@ -5689,7 +5866,7 @@ class ComponentHandling
                     {
                     echo "   getComponent: Passende Geraeteregister in MySQL Database suchen für ";
                     }
-                foreach ($keywords as $index => $entry) echo "$index => $entry ";
+                foreach ($keywords as $index => $entry) echo "\"$index => $entry\" ";
                 echo ":\n";
                 }
             else 
@@ -5853,7 +6030,7 @@ class ComponentHandling
                             {
                             if ($IDkey == $typeRegKey)
                                 {
-                                //if ($debug) echo "   $IDkey gefunden,suche $varName in $oid !\n";
+                                if ($debug) echo "   $IDkey gefunden,suche $varName in $oid !\n";
                                 $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
                                 $keyName["KEY"]=$typeRegKey;
                                 if ( ($debug) && false) 
@@ -5882,7 +6059,7 @@ class ComponentHandling
                     } 
                 }                                
             }
-        if (isset($keyName["KEY"]) === false) $keyName=array();              // ohne gesetztem Key auch nichts gefunden, nachtraeglich korrigieren
+        if ( (isset($keyName["KEY"]) === false) || ($keyName["COID"] === false) ) $keyName=array();              // ohne gesetztem Key oder nicht gefundenem COID auch nichts gefunden, nachtraeglich korrigieren
         if ($debug)
             {
             if (isset($keyName["Name"])) print_r($keyName);
@@ -6156,7 +6333,11 @@ class ComponentHandling
         $keyName["UPDATE"]=$update; 
         if (isset($keyName["COID"])) 
             {
-            if ($debug) echo "addonkeyname based on ".(strtoupper($keyName["KEY"])).", wichtig für ".$keyName["Name"]." ist COID: ".$keyName["COID"]." \n";
+            if ($debug) 
+                {
+                echo "addonkeyname based on ".(strtoupper($keyName["KEY"])).", wichtig für ".$keyName["Name"]." ist COID: ".$keyName["COID"]." \n";
+                print_R($keyName);
+                }
             $variableType=IPS_GetVariable($keyName["COID"]);
             if (isset($variableType["VariableProfile"])) $keyName["VarProfile"]=$variableType["VariableProfile"];
             elseif (isset($variableType["VariableCustomProfile"])) $keyName["CustProfile"]=$variableType["VariableCustomProfile"];
@@ -6297,6 +6478,9 @@ class ComponentHandling
     *			TYPE_SWITCH, TYPE_DIMMER, 
     *			TYPE_ACTUATOR	setzt $keyword auf VALVE_STATE 
     *			TYPE_THERMOSTAT	setzt $keyword auf SET_TEMPERATURE, SET_POINT_TEMPERATURE, TargetTempVar wenn die COID Objekte auch vorhanden sind.
+    *
+    *
+    *
     *
     ****************************************************************************************/
 		

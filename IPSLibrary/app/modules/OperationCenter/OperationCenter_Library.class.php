@@ -9470,6 +9470,8 @@ function dirToArray2($dir)
 							WAC_ClearPlaylist($id_sk1_ton);
 							if ($debug) echo "Tonwiedergabe auf Stopp stellen \n";
 							}
+                        if ($debug) echo "Für Ansagetext erzeuge Datei : ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";     
+                        $dosOps->mkdirtree(IPS_GetKernelDir()."media/wav/");                                               
 						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
 						if (!$status) { echo "Error Erzeugung Sprachfile gescheitert.\n"; $tts_status=false; }
 						WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");

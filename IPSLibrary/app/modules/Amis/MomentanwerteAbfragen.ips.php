@@ -97,7 +97,7 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
  *
  *************************************************************/
 
-if ($_IPS['SENDER']=="TimerEvent")
+if ($_IPS['SENDER']=="TimerEvent")          // alle 60 Sekunden
 	{
 	if (Getvalue($MeterReadID))
 		{		
@@ -113,7 +113,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			switch (Getvalue($TimeSlotReadID))
 				{
 				case "15":  /* Auto */
-					$amis->writeEnergySumme($meter);
+					$amis->writeEnergySumme($meter);            // meter["TYPE"]=="SUMME"  einen Summenwert berechnen
 					break;
 				case "14":  /* Auto */
 				case "13":  /* Auto */
@@ -136,7 +136,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                     break;                
 				case "5":  /* Auto */
 				case "4":  /* Auto */
-					$amis->writeEnergyRegister($meter);
+					$amis->writeEnergyRegister($meter);     // $meter["TYPE"])=="REGISTER"
 					break;					
 				case "3":  /* Auto */
 				case "2":  /* Auto */

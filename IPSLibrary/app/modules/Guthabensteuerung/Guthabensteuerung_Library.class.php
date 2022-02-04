@@ -371,7 +371,7 @@
             return ($result);
             }
 
-        /* aus der Config die Configuration für sie Auslesung der Hosts raussuchen */
+        /* aus der Config die Configuration für die Auslesung der Hosts raussuchen */
 
         public function getSeleniumHostsConfig()
             {
@@ -380,6 +380,20 @@
             if ($this->CategoryIdSelenium===false) return (false);
             $result["Hosts"] = $this->configuration["CONFIG"]["Selenium"]["Hosts"];
             return ($result);
+            }
+
+        /* aus der Config die Configuration für die Auslesung der Tabs raussuchen */
+
+        public function getSeleniumTabsConfig($tabs)
+            {
+            $result = array();
+            if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
+            if ($this->CategoryIdSelenium===false) return (false);
+            if (isset($this->configuration["CONFIG"]["Selenium"]["Hosts"][$tabs]["CONFIG"]))
+                {
+                return ($this->configuration["CONFIG"]["Selenium"]["Hosts"][$tabs]["CONFIG"]);
+                }
+            else return (false);
             }
 
         /* extend phoneID array with Selenium results information

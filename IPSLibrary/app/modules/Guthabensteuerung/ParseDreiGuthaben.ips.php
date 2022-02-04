@@ -28,7 +28,7 @@
      * Diese Programm kann man für zeitversetzte Aufrufe aus dem Webfront ebenfalls verwenden
      *
      * Bei Selenium wird diese Routine noch eingesetzt aber nicht mehr benötigt, der Aufruf der Funktionen zur Auflösung der Ergebnisse kann sofort erfolgen
-     * wird von Guthabensteuerung Timer früh am Morgen bei der Abfrage der Drei Konten aufgerufen
+     * wird von Guthabensteuerung Timer früh am Morgen als Script nach der Abfrage der Drei Konten aufgerufen
      * 
      * Ergebnis für alle Hosts in der Konfiguration ermitteln, wenn nicht schon geschehen
      *
@@ -477,25 +477,64 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                     case "EASY":
                         echo "EASY ============\n";
                         $seleniumEasycharts = new SeleniumEasycharts();
-
+                        echo "Konfiguration von EASY gesucht:\n";
+                        $configTabs = $guthabenHandler->getSeleniumTabsConfig("EASY");
+                        //print_R($configTabs);
+                        $depotRegister=["RESULT"];
+                        if (isset($configTabs["Depot"]))
+                            {
+                            if (is_array($configTabs["Depot"]))
+                                {
+                                $depotRegister=$configTabs["Depot"];    
+                                }
+                            else $depotRegister=[$configTabs["Depot"]];
+                            }
+                        foreach ($depotRegister as $depot)
+                            {
+                            echo "Depot ausgewählt: $depot  \n";
+                            echo "--------------------------------\n";
+                            echo "Selenium Operations, readResult from EASY on $depot:\n";
+                            $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
+                            echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                            $lines = explode("\n",$result["Value"]);    
+                            $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
+                            $shares=$seleniumEasycharts->evaluateResult($data);
+                            $depotName=str_replace(" ","",$depot);                      // Blanks weg
+                            if ($depotName != $depot)               
+                                {
+                                echo "--------\n";
+                                $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
+                                $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
+                                }
+                            else
+                                {
+                                $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
+                                }
+                            $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
+                            }
+                        /*
                         echo "Selenium Operations, read Result from EASY:\n";
                         $result=$seleniumOperations->readResult("EASY","Result",true);                  // true Debug
                         //print_R($result);
                         echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
                         echo "--------\n";
                         $log_Guthabensteuerung->LogNachrichten("Execute ViewResult, EASY letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"]));    
-                        $lines = explode("\n",$result["Value"]);                       // die Zeilen als einzelne Eintraeg im array abspeichern */
+                        $lines = explode("\n",$result["Value"]);                       // die Zeilen als einzelne Eintraeg im array abspeichern 
 
                         $data=$seleniumEasycharts->parseResult($lines);             // einlesen
                         $shares=$seleniumEasycharts->evaluateResult($data);         // ausgeben als improvisiserte Tabelle, Ergebnis Array bereits nach Ergebnis zuletzt sortiert
                         echo "--------\n";
                         $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
 
-                        /**** die ermittelten Werte abspeichern */   
+                        //**** die ermittelten Werte abspeichern 
 
                         $seleniumEasycharts->writeResult($shares,"MusterDepot3",$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
 
-                        /****  noch nicht nachdenken, einfach letzten berechneten Wert hernehmen für die Überprüfung */
+                        //**** die Konfiguration zum Musterdepot speichern 
+
+                        $seleniumEasycharts->writeResultConfiguration($shares, "MusterDepot3");
+
+                        //****  noch nicht nachdenken, einfach letzten berechneten Wert hernehmen für die Überprüfung 
 
                         echo "********************************************************************\n";
                         echo "Die gespeicherte archivierten historisierten Werte verarbeiten:\n";
@@ -506,9 +545,9 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             {
                             $oid = $share["OID"];
                             //echo "Infos ".$share["ID"]." :     ".$archiveOps->getStatus($oid)."   \n";
-                            $checkArchive=$archiveOps->getComponentValues($oid,10,false);                 // true mit Debug
+                            $checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
                             //echo $checkArchive;
-                            $result = $archiveOps->analyseValues($oid,10,false);                 // true mit Debug
+                            $result = $archiveOps->analyseValues($oid,20,true);                 // true mit Debug
                             //print_r($result); 
                             $resultShares[$share["ID"]]=$result;
                             $resultShares[$share["ID"]]["Info"]=$share;
@@ -518,8 +557,19 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
                         $seleniumEasycharts->writeResultAnalysed($resultShares);
                         echo "\n";
-                        $archiveOps->alignScaleValues();
-                        echo "Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden.\n";
+                        $archiveOps->alignScaleValues();                                                            */
+                        echo "Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden.\n";          
+                        break;
+                    case "LOGWIEN":
+                        echo "LOGWIEN ============\n";                    
+                        echo "parse LogWien Ergebnis in Result.\n";
+                        $result=$seleniumOperations->readResult("LogWien","Result",true);                  // true Debug
+                        //print_R($result);
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        echo "--------\n";
+                        //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
+                        $seleniumLogWien = new SeleniumLogWien();
+                        $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");
                         break;
                     default:
                         echo (strtoupper($host))."============\n";

@@ -305,6 +305,8 @@
                         case 'Feuchtigkeit':
                         case 'Humidity':
                         case 'HeatControl':
+                        case "Climate":
+                        case "Sensor":
                         case "Brightness":										
                             if (($type==$params[0]) && ($params[1] != ""))
                                 {
@@ -325,6 +327,15 @@
                 }
             else
                 {
+                switch ($type)
+                    {
+                    case "Sensor":
+                        if (isset($configuration[$varId][0])) $type=$configuration[$varId][0];
+                        break;
+                    default:
+                        break;
+                    }
+
                 if ( (isset($configuration[$varId])) && ($type==$configuration[$varId][0]) && ($configuration[$varId][1] != "") )    
                     {
                     $params1=explode(",",$configuration[$varId][1]);
@@ -675,7 +686,7 @@
         public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $componentOverwrite=false, $moduleOverwrite=false)
             {
             $debug=$this->debug;       // kein Übergabeparameter
-            if ($debug) echo "DetectHandler::RegisterEvent, Aufruf mit VariableID $variableId für EventType $eventType $componentParams $moduleParams \n";
+            if ($debug) echo "DetectHandler::RegisterEvent, Aufruf mit VariableID $variableId (".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId)).") für EventType $eventType $componentParams $moduleParams \n";
             $configurationAuto = $this->Get_EventConfigurationAuto();
             //print_r($configurationAuto);
             $comment = "Letzter Befel war RegisterEvent mit VariableID ".$variableId." ".date("d.m.Y H:i:s");
@@ -758,17 +769,18 @@
                 // Variable NOT found --> Create Configuration
                 if (!$found)
                     {
-                    //echo "Create Event."."\n";
+                    if ($debug) echo "Create Event and store it if Update is true : ".($update?"true":"false")."\n";
                     $configurationAuto[$variableId][] = $eventType;
                     $configurationAuto[$variableId][] = $componentParams;
                     $configurationAuto[$variableId][] = $moduleParams;
+                    $update=true;
                     }
 
                 if ($update) $this->StoreEventConfiguration($configurationAuto,$comment);             // zweiter Parameter wäre jetzt ein Kommentar
                 $this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
                 $debug=true;
                 $this->CreateMirrorRegister($variableId,$debug);
-                }
+                }           // Ende variablID ist nicht false
             else echo "Fehler DetectMovement RegisterEvent, variableId ist false.\n";
             return ($update);
             }
@@ -983,7 +995,7 @@
  *
  * DetectCounterHandler, einfache Erweiterung ohne involvierung von besonderen DetectMovement Funktionen
  *  Detect_DataID   die Kategorie für die Spiegelregister
- +
+ *
  ********************************************************/
 
 	class DetectCounterHandler extends DetectHandler
@@ -1134,7 +1146,12 @@
 			
 		}
 
-/******************************************************************************************************************/
+/*****************************************************************************************************************
+ *
+ * DetectClimateHandler für die Netatmo register
+ *
+ *
+ */
 
 	class DetectClimateHandler extends DetectHandler
 		{
@@ -1151,8 +1168,9 @@
 		 * Initialisierung des DetectClimateHandler Objektes
 		 *
 		 */
-		public function __construct()
+		public function __construct($debug=false)
 			{
+            $this->debug=$debug;
 			/* Customization of Classes */
 			self::$configtype = '$eventClimateConfiguration';
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
@@ -1170,7 +1188,7 @@
 				}			
 			$this->Detect_DataID=$mdID;	
 						
-			parent::__construct();
+			parent::__construct($debug);
 			}
 
 		/* Customization Part */

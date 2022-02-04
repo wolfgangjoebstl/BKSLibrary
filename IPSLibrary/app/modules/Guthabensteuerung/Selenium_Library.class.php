@@ -431,6 +431,168 @@ class SeleniumHandler
         return (false);
         }
 
+    /* SeleniumHandler::innerHtml lesen
+     * es gibt auf Windows keinen vernünftigen Befehl, es wird immer nur Text gelesen
+     * Abhilfe is über ein gestartetes javascrip die Abfrage zu machen. 
+     * nachdem ich den queryselector noch nicht bedienen kann wird der ganze body abgeholt und zurück geliefert
+     *
+        $page = $element->getAttribute('innerHTML');                    // funktioniert in php nicht
+        $page = $element->getDomProperty('innerHTML');                // Befehl geht nicht
+        $page = static::$webDriver->executeScript('return document.querySelector(".selector").innerHTML');
+        $elements = static::$webDriver->findElements(WebDriverBy::xpath($xpath));
+        $page = static::$webDriver->executeScript('return arguments[0].innerHtml',$elements);
+        print_r($page);
+        $children  = $elements->childNodes();
+     *
+     */
+
+    function getInnerHtml($displayMode=false,$commandEntry=false)
+        {
+        $page = static::$webDriver->executeScript('return document.body.innerHTML;');
+        //$this->analyseHtml($page,$displayMode,$commandEntry);
+        return ($page);
+        }
+
+    /* SeleniumHandler::analyseHtml ein html analysieren, ist nur eine Orientierungsfunktion, besser DOM verwenden
+     * hier werden die bekannten Search Algorithmen unterstützt
+     *
+     * false DIV :
+     * <div style="width: 608px">
+     */
+
+    function analyseHtml($page,$displayMode=false,$commandEntry=false)
+        {
+        $pageLength = strlen($page);
+        echo "analyseHtml Size of Input : $pageLength \n";
+        //echo $page;
+        if ($commandEntry !== false) $commandDisplay=strtoupper($commandEntry);
+        else $commandDisplay="UNKNOWN";
+        $display = $displayMode;
+
+        $pos=false; $ident=0; $end=false; 
+        for ($i = 0; $i < $pageLength; $i++) 
+            {
+            if ($page[$i]=="<") 
+                {
+                $pos=$i;
+                $ident++;
+                }
+            if (($page[$i]=="/") && $pos) { $ident--; $end=true; }
+            if ((($page[$i]==" ") || ($page[$i]=="\n") || ($page[$i]=="\r") || ($page[$i]==">")) && $pos)
+                {
+                $epos=strpos($page,">",$pos);
+                $command=strtoupper(substr($page,$pos+1,$i-$pos-1));
+                //if ($command == "SYMBOL") $display=false;
+                if ($command == $commandDisplay) $display=true;
+                if ( ($command != "BR") && ($command != "IMG") )
+                    {
+                    if ($display)
+                        {
+                        //if ($command == "BUTTON")
+                            {
+                            if ( ($ident<100) && ($ident>0) )  for ($p=0;$p<$ident;$p++) echo " ";
+                            echo substr($page,$pos,$epos-$pos+1);
+                            //for ($p=$pos;$p<=$i;$p++) echo ord($page[$p]).".";
+                            echo "  ".strtoupper($command)."\n";
+                            }
+                        }
+                    if ($end) {$ident--; $end=false;}
+                    }
+                else $ident--;
+                $pos=false; 
+                if ($command == "/".$commandDisplay) $display=false;
+                //if ($command == "/SYMBOL") $display=true;
+                }
+            }
+
+        }
+
+    /* innerHtml funktioniert bei PhP nicht
+     * Routine nicht verwendet, für später um DOM auszuprobieren
+     */
+
+    function DOMinnerHTML(DOMNode $element) 
+        { 
+        $innerHTML = ""; 
+        $children  = $element->childNodes;
+
+        foreach ($children as $child) 
+            { 
+            $innerHTML .= $element->ownerDocument->saveHTML($child);
+            }
+
+        return $innerHTML; 
+        } 
+
+    /* query and filter an html with DOM
+        $textfeld    = GetValue($easyResultID);
+        $xPathQuery  = '//div[@*]';
+        $filterAttr  = 'style';
+        $filterValue ="width: 608px";
+     */
+
+    function queryFilterHtml($textfeld,$xPathQuery,$filterAttr,$filterValue,$debug=false)
+        {
+        $innerHTML="";
+        if ($debug) echo "---- queryFilterHtml(...,$xPathQuery,$filterAttr,$filterValue)\n";
+        //echo "$textfeld\n";
+
+        //$dom = DOMDocument::loadHTML($textfeld);          // non static forbidden
+        $dom = new DOMDocument; 
+        $dom->loadHTML($textfeld);
+        $xpath = new DOMXpath($dom);
+        //echo $dom->saveHTML();
+        //echo "-------Auswertungen--------------->\n";
+
+        /*  
+        $links = $dom->getElementsByTagName('div');
+        foreach ($links as $book) 
+            {
+            echo $book->nodeValue, PHP_EOL;
+            }  */
+
+        // Tutorial query https://www.w3schools.com/xml/xpath_syntax.asp
+        //$links = $xpath->query('//div[@class="blog"]//a[@href]');
+        $links = $xpath->query($xPathQuery);
+        echo "Insgesamt ".count($links)." gefunden für \"$xPathQuery\"\n";
+
+        $tmp_doc = new DOMDocument();   
+        foreach ($links as $a) 
+            {
+            //$attribute=$a->getAttribute('@*');  if ($attribute != "") echo $attribute."\n";
+            //echo $a->textContent,PHP_EOL;
+            $style = $a->getAttribute($filterAttr);
+            if ( ($filterValue=="") || ($filterValue=="*") || ($style == $filterValue) )
+                {
+                echo "   -> found:  ".$a->nodeName." , ".$a->nodeType." $style\n";
+                $tmp_doc->appendChild($tmp_doc->importNode($a,true));                 
+                //echo $innerHTML;
+                }
+            }
+        $innerHTML .= $tmp_doc->saveHTML();                      
+        return ($innerHTML);
+        }
+
+    /* den Style als Array rausziehen */
+
+    function extractFilterHtml($textfeld,$xPathQuery,$filterAttr,$debug=false)
+        {
+        $result=array();
+        if ($debug) echo "---- extractFilterHtml(...,$filterAttr)\n";
+        $dom = new DOMDocument; 
+        $dom->loadHTML($textfeld);
+        $xpath = new DOMXpath($dom);
+        $links = $xpath->query($xPathQuery);
+        echo "Insgesamt ".count($links)." gefunden für \"$xPathQuery\"\n";
+        foreach ($links as $a) 
+            {
+            //$attribute=$a->getAttribute('@*');  if ($attribute != "") echo $attribute."\n";
+            //echo $a->textContent,PHP_EOL;
+            $result[] = $a->getAttribute($filterAttr);
+            }
+        return ($result);
+        }
+
     /* html code laden , referenziert wird über xpath
      * if am Ende des Funktionsnamen bedeutet, es wird zuerst geschaut ob das Element vorhanden ist
      * wenn nicht führt das zu einem retun mit false
@@ -449,10 +611,14 @@ class SeleniumHandler
             $element = static::$webDriver->findElement(WebDriverBy::xpath($xpath));        // relative path
             if ($element) 
                 {
-                if ($debug) echo "   -->found [$count], look for innerHtml.\n";
-                $page = $element->getAttribute('innerHTML');
-                if (strlen($page)>10) return ($page);
-                if ($debug) echo "   -->result too short \"$page\", then try text.\n";
+                if ($debug) 
+                    {
+                    echo "   -->found [$count], look for innerHtml.\n";
+                    //print_R($element);
+                    //print_r(static::$webDriver);          // keine Ausgabe
+                    }
+                //if (strlen($page)>10) return ($page);
+                //if ($debug) echo "   -->result too short \"$page\", then try text.\n";
                 $page = $element->getText();
                 if ( (strlen($page)<=10) && ($debug) ) echo "   -->result still too short \"$page\".\n";                
                 return ($page);
@@ -470,7 +636,319 @@ class SeleniumHandler
         }
 
 
+    }           // ende class SeleniumHandler
+
+
+
+/* 
+ * Bei LogWien einlogen und die aktuellen Zählerstände auslesen
+ * RunAutomatic legt die einzelnen Schritte bis zur Auslesung des täglichen Stromzählerstandes fest
+ *
+ *
+ *  __construct
+ *  setConfiguration
+ *  writeEnergyValue
+ *
+ *  runAutomatic            Aufruf der einzelnen Steps, Statemachine
+ *      getTextValidLoggedInIf
+ *      getTextValidLogInIf
+ *      enterLogInButtonIf
+ *      enterLoginEmail
+ *      enterLoginPassword
+ *      enterSliderIf
+ *      clickImageIf
+ *      clickSMLinkIf
+ *      getEnergyValueIf
+ *
+ *
+ */
+
+class SeleniumLogWien extends SeleniumHandler
+    {
+    private $configuration;                     //array mit Datensaetzen
+    protected $CategoryIdDataLoGWien;           // Kategrie als Speicherort
+    private $duetime,$retries;              //für retry timer
+    protected $debug;
+
+    /* Initialisierung der Register die für die Ablaufsteuerung zuständig sind
+     */
+    function __construct($debug=false)
+        {
+        $this->duetime=microtime(true);
+        $this->retries=0;
+        $this->debug=$debug;
+        parent::__construct();
+        $this->CategoryIdDataLogWien = IPS_GetObjectIdByName("LogWien",$this->CategoryIdData);        
+        }
+
+    function getResultCategory()
+        {
+        return($this->CategoryIdDataLogWien);
+        }
+
+    public function setConfiguration($configuration)
+        {
+        $this->configuration = $configuration;
+        }
+
+    /*  Energiewert abspeichern und archivieren
+     *
+     */
+    function writeEnergyValue($value,$name="EnergyCounter")
+        {
+        $componentHandling = new ComponentHandling();           // um Logging zu setzen
+        $categoryIdResult = $this->getResultCategory();
+        echo "Store the new values, Category LogWien RESULT $categoryIdResult.\n";
+    
+        /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
+        $oid = CreateVariableByName($categoryIdResult,$name,2,'kWh',"",1000);         // kein Identifier, darf in einer Ebene nicht gleich sein
+        $componentHandling->setLogging($oid);
+
+        //$value = "10.962";                            // nur der . wird zum Komma umgerechnet
+        $value = str_replace(",",".",$value);           // Beistrich auf . umrechnen
+        $wert=floatval($value);         // Komma wird nicht richtig interpretiert
+        //echo "Umgewandelt ist $value dann : $wert \n";
+        SetValue($oid,$wert);
+        return($wert);
+        }
+
+   /*  Energiewert auslesen vorbereiten, OID holen
+     *
+     */
+    function getEnergyValueId($name="EnergyCounter")
+        {
+        $componentHandling = new ComponentHandling();           // um Logging zu setzen
+        $categoryIdResult = $this->getResultCategory();
+        $oid = IPS_GetObjectIdByName($name,$categoryIdResult);
+        return ($oid);
+        }
+
+
+    /*  Statemachine, der reihe nach Logwien abfragen
+     *      (1) check if not logged in
+     *      (2) log in
+     *
+     */
+
+    public function runAutomatic($step=0)
+        {
+        echo "runAutomatic SeleniumLogWien Step $step.\n";
+        switch ($step)
+            {
+            case 0:
+                echo "--------\n0: check if not logged in, then log in.\n";
+                if ($this->getTextValidLoggedInIf()!==false)  return(["goto" => 4]);                // brauche ein LogIn Fenster, weiter wenn vollständig eingelogged
+                if ($this->getTextValidLogInIf()!==false)  return(["goto" => 6]);
+                break;
+            case 1:
+                echo "--------\n1: check if angular has already started and there is login window, otherwise press Button.\n";
+                $result=$this->enterLogInButtonIf();
+                //if ($result === false)  return(["goto" => 3]);                // brauche ein LogIn Fenster
+                break;
+            case 2:
+                echo "--------\n2: enter log in email Adresse.\n";
+                $result = $this->enterLoginEmail($this->configuration["Username"]);            
+                if ($result === false) 
+                    {
+                    echo "   --> failed\n";
+                    return("retry");                
+                    }
+                break;
+            case 3:
+                echo "--------\n3: enter log in Password.\n";            
+                $result = $this->enterLoginPassword($this->configuration["Password"]);            
+                if ($result === false) 
+                    {
+                    echo "   --> failed\n";
+                    return("retry");                
+                    }
+                break;
+            case 4:
+                echo "--------\n4: Press Slider.\n";            
+                $result = $this->enterSliderIf();
+                if ($result === false) 
+                    {
+                    echo "   --> failed, try if allready on Smart meter Portal\n";
+                    return(["goto" => 6]);
+                    }
+                break;   
+            case 5:
+                echo "--------\n5: Press Slider.\n";             
+                $result = $this->clickImageIf();
+                if ($result === false) 
+                    {
+                    echo "   --> failed, press slider again\n";
+                    return(["goto" => 4]);
+                    }
+                break;  
+            case 6:
+                echo "--------\n6: Goto Smart Meter Portal.\n";             
+                $result = $this->clickSMLinkIf();
+                if ($result === false) 
+                    {
+                    echo "   --> failed, continue nevertheless\n";
+                    }
+                break;  
+            case 7:
+                echo "--------\n7: Read Energy Value.\n";             
+                $result = $this->getEnergyValueIf(true);                // true für Debug
+                if ($result===false) return ("retry");
+                if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
+                return(["Ergebnis" => $result]);
+                break;                                
+            default:
+                return (false);
+            }
+
+        }
+
+    /* get text , find out whether being logged in 
+     * if so skip login session
+     * /html/body/div/div[2]/div[1]/div[4]/div[1]/span
+     * nur der Button Slider
+     * /html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[1]/button[2]
+     * das ganze Datenfeld
+     * /html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[3]
+     */
+    function getTextValidLoggedInIf()
+        {
+        if ($this->debug) echo "getTextValidLoggedInIf ";
+        $xpath='/html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[3]';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            print $result;
+            }
+            
+        return ($result);
+        }     
+
+    /* Smart Meter Portal already selectable        
+     * $xpath='/html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/p'; 
+     */
+
+    function getTextValidLogInIf()
+        {
+        if ($this->debug) echo "getTextValidLogInIf ";
+        $xpath='/html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/p';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            print $result;
+            }
+        return ($result);
+
+        }
+
+    /*  check if log.wien available and structure
+     *  wenn noch kein Login Window erschienen ist: 
+     *  /html/body/app-root/app-start/div/app-header/header/div/button
+     *  sonst gilt:
+     *  /html/body/div/main/form/fieldset/section[2]/c-textfield/input
+     *
+     *  /html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/p
+     */
+
+    function enterLogInButtonIf()
+        {
+        if ($this->debug) echo "enterLogInButton ";
+        $xpath='/html/body/app-root/app-start/div/app-header/header/div/button';
+        $result = $this->getHtmlIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            print $result;
+            $this->pressButtonIf($xpath,true);                                                      // true debug  
+            } 
+        else echo "Button not pressed.\n";
+        return ($result);
+        }
+
+    /* login entry username und password
+     * 
+     * /html/body/div/main/form/fieldset/section[2]/c-textfield/input
+     * 
+     */
+    function enterLoginEmail($username)
+        {
+        /*  <button   /html/body/app-root/app-start/div/app-header/header/div/button 
+           //*[@id="top"]/app-header/header/div/button   
+        $this->sendKeysToFormIf($xpath,$password);              // cloudg06        */
+        //$xpath = '/html/body/app-root/app-start/div/app-header/header/div/button';              // Login Button Top Right
+        //$xpath = '//*[@id="top"]/app-header/header/div/button';
+        //$this->pressButtonIf($xpath,true);                                                      // true debug  
+        $xpath = '/html/body/div/main/form/fieldset/section[2]/c-textfield/input';              // extra Form username
+        $this->sendKeysToFormIf($xpath,$username);
+        /* press Button Weiter 
+         * /html/body/div/main/form/fieldset/section[3]/div[1]/button[1]
+         */
+        $xpath = '/html/body/div/main/form/fieldset/section[3]/div[1]/button[1]';
+        $this->pressButtonIf($xpath,true);          
+        }
+
+    /* login entry username und password
+     * 
+     * /html/body/div/main/form/fieldset/section[2]/c-textfield/input
+     * 
+     */
+    function enterLoginPassword($password)
+        {
+        /*  /html/body/div/main/form/fieldset/section[2]/div[3]/c-textfield/input
+         */
+        $xpath = '/html/body/div/main/form/fieldset/section[2]/div[3]/c-textfield/input';              // extra Form username+password
+        $this->sendKeysToFormIf($xpath,$password);
+        /* press Button Weiter 
+         * /html/body/div/main/form/fieldset/section[3]/div[1]/button[2]
+         */
+        $xpath = '/html/body/div/main/form/fieldset/section[3]/div[1]/button[2]';
+        $this->pressButtonIf($xpath,true);          
+        }
+
+    private function enterSliderIf()
+        {
+        $xpath='/html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[1]/button[2]';
+        $status=$this->pressButtonIf($xpath);             
+        return ($status);                    
+        }
+
+    private function clickImageIf()
+        {
+        /* /html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[3]/ul/app-service-card[8]/div/a/div[1]/img
+         */
+        $xpath='/html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[3]/ul/app-service-card[8]/div/a/div[1]/img';
+        $status=$this->pressButtonIf($xpath);             
+        return ($status);                    
+        }
+
+    /* goto Smart meter App
+     *
+     * /html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/a
+     */
+
+    private function clickSMLinkIf()
+        {
+        $xpath='/html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/a';
+        $status=$this->pressButtonIf($xpath);             
+        return ($status);                    
+        }
+
+    /* /html/body/div[1]/app-root/div/div[1]/app-new-page-layout/main/div/app-smp-welcome/div/div[2]/app-meter-stats/div/div/app-meter-stats-verbrauch/div/div/div[1]/div[1]/span[1]
+     */
+
+    private function getEnergyValueIf($debug=false)
+        {
+        if ($this->debug) echo "getEnergyValueIf\n";
+        $xpath='/html/body/div[1]/app-root/div/div[1]/app-new-page-layout/main/div/app-smp-welcome/div/div[2]/app-meter-stats/div/div/app-meter-stats-verbrauch/div/div/div[1]/div[1]/span[1]';
+        $ergebnis = $this->getTextIf($xpath,$this->debug);    
+        if ((strlen($ergebnis))>3) return($ergebnis);
+        else echo "Fehler, keinen Vernünftigen Wert eingelesen: $ergebnis \n";
+        }
+
     }
+
+
 
 /* reading and Writing results to IP Symcon Registers 
  *
@@ -936,8 +1414,15 @@ class SeleniumIiyama extends SeleniumHandler
 
 /* Bei Easycharts einlogen und die aktuellen Portfolio Kurse auslesen
  * zusaetzliche Funktionen sind
+ *      __construct
+ *      getResultCategory
  *      parseResult
+ *      evaluateResult
+ *      evaluateValue
  *      writeResult         die Ergebnisse in spezielle Register schreiben
+ *      writeResultConfiguration
+ *      getResultConfiguration
+ *      writeResultAnalysed
  *      runAutomatic
  *
  * Funktionen zum Einlesen des Host
@@ -950,9 +1435,13 @@ class SeleniumIiyama extends SeleniumHandler
  */
 class SeleniumEasycharts extends SeleniumHandler
     {
-    protected $configuration;     //array mit Datensaetzen
+    protected $configuration;               //array mit Datensaetzen
+    protected $CategoryIdDataEasy;          // Kategorie Easy
     private $duetime,$retries;              //für retry timer
     protected $debug;
+
+    private $tableOverview;                 // das Table array wird einmal eingelesen
+    private $depotCount;                    // zählt runter, bei 0 ist man fertig
 
     /* Initialisierung der Register die für die Ablaufsteuerung zuständig sind
      */
@@ -1003,7 +1492,7 @@ class SeleniumEasycharts extends SeleniumHandler
                 else $spalte++;
                 if ($column==2) 
                     {
-                    if ($lines[$index+1] != "EUR") 
+                    if ( ($lines[$index+1] != "EUR") && ($lines[$index+1] != "USD") )
                         {
                         $join=strlen($line);
                         }
@@ -1123,7 +1612,7 @@ class SeleniumEasycharts extends SeleniumHandler
         return ($value);            
         }
 
-    /* Werte im Data Block speichern */
+    /* EASY, Werte im Data Block speichern */
 
     function writeResult(&$shares, $nameDepot="MusterDepot",$value=0)
         {
@@ -1133,14 +1622,17 @@ class SeleniumEasycharts extends SeleniumHandler
         echo "Store the new values, Category Easy RESULT $categoryIdResult.\n";
     
         $share=array();
-        $share["ID"]     = "MusterDepot3";
-        $share["Parent"] = $categoryIdResult;
-        $share["Stueck"] = 1;
-        $share["Kurs"]   = $value;
-        $shares[]=$share;
+        if ($value != 0)                      // Default Wert
+            {
+            $share["ID"]     = $nameDepot;
+            $share["Parent"] = $categoryIdResult;
+            $share["Stueck"] = 1;
+            $share["Kurs"]   = $value;
+            $shares[]=$share;
+            }
 
         /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
-        $oid = CreateVariableByName($categoryIdResult,$share["ID"],2,'Euro',"Depot",1000);
+        $oid = CreateVariableByName($categoryIdResult,$nameDepot,2,'Euro',"",1000);         // kein Identifier, darf in einer Ebene nicht gleich sein
         $componentHandling->setLogging($oid);
 
         /* only once per day, If there is change */
@@ -1161,47 +1653,157 @@ class SeleniumEasycharts extends SeleniumHandler
             }
         }
 
-    /* Easycharts ermittelt verschiedene darstellbare Ergebnisse
+
+    /* Easycharts speichert die Konfiguration des Musterdepots
+     * etwas kompliziert. Es gibt ein Musterdepot in dem alle Werte gespeichert sind
+     * zusätzlich wird die Konfiguration für ein Musterdepot abgespeichert. Also welche ID, Name und wieviel Stück.
+     * es können so auch neue Zusammensetzungen mit anderen Aktien kreiert werden
      *
      */
 
-    function writeResultAnalysed($resultShares)
+    function writeResultConfiguration(&$shares, $nameDepot="MusterDepot")
         {
-        echo "ID            Name                       StandardAbw  Spread Max/Min        Mittelwert      Trend      Letzter Wert  Result\n";
-        foreach ($resultShares as $share)
+        $categoryIdResult = $this->getResultCategory();
+        $oid = CreateVariableByName($categoryIdResult,"Config".$nameDepot,3);
+        $config=array();
+        foreach ($shares as $share)
             {
-            echo $share["Info"]["ID"]."  ";
-            if (isset($share["Info"]["Name"])) $name=$share["Info"]["Name"];
+            $config[$share["ID"]]["OID"]=$share["OID"];
+            $config[$share["ID"]]["Stueck"]=$share["Stueck"];
+            if (isset($share["Name"])) $config[$share["ID"]]["Name"]=$share["Name"];
+            }
+        SetValue($oid,json_encode($config));
+        echo "Konfiguration Depot: ".GetValue($oid)."\n";
+        }
+
+    /* Easycharts speichert die Konfiguration des Musterdepots
+     * die Konfiguration für ein Musterdepot wieder abrufen
+     *
+     */
+
+    function getResultConfiguration($nameDepot="MusterDepot")
+        {
+        if (is_numeric($nameDepot))
+            {
+            $oid=intval($nameDepot);                                                        // oder die OID ermitteln
+            }
+        else
+            {
+            $categoryIdResult = $this->getResultCategory();
+            $oid = IPS_GetObjectIdByName("Config".$nameDepot,$categoryIdResult);            // entweder den Namen suchen
+            }
+        //echo "getResultConfiguration from $oid \n";
+        $shares = json_decode(GetValue($oid),true);                   // anspeichern als array
+        $config=array();
+        foreach ($shares as $index => $share)
+            {
+            $config[$index]=$share;
+            $config[$index]["ID"]=$index;
+            }
+        //print_R($config);
+        return($config);
+        }
+
+
+    /* Easycharts writeResultAnalysed analysiert und ermittelt verschiedene darstellbare Ergebnisse
+     * zwei Darstellungsformen, echo Text Tabelle oder html formatierte Tabelle
+     *
+     */
+
+    function writeResultAnalysed($resultShares,$html=false)
+        {
+        $table=false; $wert = "";
+        $sort="Change";
+        
+        if ($html) $wert .= '<font size="1" face="Courier New" ><table><tr><td>ID/Name</td><td>Standard Abw</td><td>Spread Max/Min</td><td>Mittelwert</td><td>Letzter Wert</td><td>Week Trend</td><td>Day Change</td></tr>';
+        else echo "ID            Name                       StandardAbw  Spread Max/Min        Mittelwert      Trend      Letzter Wert  Result\n";
+
+        $sortTable=array();
+        foreach ($resultShares as $index => $share)
+            {
+            $sortTable[$index] = $share["Description"]["Change"];
+            }
+        arsort($sortTable);
+        //print_R($sortTable);
+        
+        /* entsprechend der Sortierung die Tabelle anzeigen */
+        foreach ($sortTable as $index => $line)
+            {
+            if (isset($resultShares[$index]["Info"]["Name"])) $name=$resultShares[$index]["Info"]["Name"];
             else $name="";
-            echo str_pad($name,23);
-            $spreadPlus  = ($share["Description"]["Max"]/$share["Description"]["Means"]-1)*100;
-            $spreadMinus = (1-$share["Description"]["Min"]/$share["Description"]["Means"])*100;
+            $spreadPlus  = ($resultShares[$index]["Description"]["Max"]/$resultShares[$index]["Description"]["Means"]-1)*100;
+            $spreadMinus = (1-$resultShares[$index]["Description"]["Min"]/$resultShares[$index]["Description"]["Means"])*100;
             $description="";
             if (($spreadPlus+$spreadMinus)>5)
                 {
                 if ($spreadPlus>$spreadMinus) $description="Volatile to high";
                 if ($spreadPlus<$spreadMinus) $description="Volatile to low";
                 }
-            echo str_pad(number_format($share["Description"]["StdDevRel"],2,",",".")."%",12," ", STR_PAD_LEFT);                
-            echo str_pad(number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%",18," ", STR_PAD_LEFT);
-            echo str_pad(number_format($share["Description"]["Means"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
-            if (isset($share["Description"]["Trend"],)) echo str_pad(number_format($share["Description"]["Trend"],2,",",".")."%",12," ", STR_PAD_LEFT);
-            else echo "             ";
-            echo str_pad(number_format($share["Description"]["Latest"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
-            echo "   $description ";
-            echo "\n";
+
+            if ($html) 
+                {
+                if ($name=="") $wert .= '<tr><td>'.$resultShares[$index]["Info"]["ID"].'</td>';              // ein Tab reicht für beide
+                else $wert .= '<td>'.$name.'</td>';
+                $wert .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevRel"],2,",",".")."%".'</td>';
+                $wert .= '<td>'.number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%".'</td>';
+                $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Means"],2,",",".")."€".'</td>';
+                $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Latest"],2,",",".")."€".'</td>';
+                if (isset($resultShares[$index]["Description"]["Interval"]["Week"]["Trend"])) $trend = number_format($resultShares[$index]["Description"]["Interval"]["Week"]["Trend"],2,",",".")."%";
+                else $trend="";
+                $wert .= '<td>'.$trend.'</td>';                 // compare last 2 Day Week Month
+                $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Change"],2,",",".")."%".'</td>';
+                $wert .= '</tr>';
+                }
+            else 
+                {
+                echo $share["Info"]["ID"]."  ";
+                echo str_pad($name,23);
+                echo str_pad(number_format($resultShares[$index]["Description"]["StdDevRel"],2,",",".")."%",12," ", STR_PAD_LEFT);                
+                echo str_pad(number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%",18," ", STR_PAD_LEFT);
+                echo str_pad(number_format($resultShares[$index]["Description"]["Means"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
+                if (isset($resultShares[$index]["Description"]["Trend"],)) echo str_pad(number_format($resultShares[$index]["Description"]["Trend"],2,",",".")."%",12," ", STR_PAD_LEFT);
+                else echo "             ";
+                echo str_pad(number_format($resultShares[$index]["Description"]["Latest"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
+                echo str_pad(number_format($resultShares[$index]["Description"]["Change"],2,",",".")."%",12," ", STR_PAD_LEFT);
+                echo "   $description ";
+                echo "\n";
+                }
+            $table=true;
             }
-
-
+        if ($html && $table)
+            {
+            $wert .= '</table></font>';                
+            return($wert);
+            }            
+        return ($table);
         }
 
+    /* hier wird Schritt für Schritt das Automatische Abfragen der Easychart Webseite abgearbeitet
+     *  (1) Abfrage ob bereits eingelogged
+     *  (2) einloggen
+     *  (3) goto Musterdepot
+     *  (4) Musterdepot 3 auswählen
+     *  (5) Tabelle einlesen
+     *
+     * Es gibt eine Konfiguration Depot, diese gibt den Namen des auszulesenden Depots an
+     * Wert kann ein Array sein mit mehren Werten.
+     *
+     */
     public function runAutomatic($step=0)
         {
         if ($this->debug) echo "runAutomatic SeleniumEasycharts Step $step.\n";
         switch ($step)
             {
             case 0:
-                if ($this->debug) echo "--------\n0: check if not logged in, then log in.\n";
+                $this->depotCount=1;              // es können mehrere Depots in einem Durchgang abgefragt werden
+                if (isset($this->configuration["Depot"])) 
+                    {
+                    if (is_array($this->configuration["Depot"]))
+                        {
+                        $this->depotCount=count($this->configuration["Depot"]);    
+                        }
+                    }
+                if ($this->debug) echo "--------\n0: check if not logged in, then log in. ".$this->depotCount." Depots are read. \n";
                 if ($this->getTextValidLoggedInIf()!==false)  return(["goto" => 2]);                // brauche ein LogIn Fenster
                 break;
             case 1:
@@ -1214,6 +1816,7 @@ class SeleniumEasycharts extends SeleniumHandler
                     }
                 break;
             case 2:
+                if ($this->debug) echo "--------\n2: goto Link Musterdepot.\n";
                 $result = $this->gotoLinkMusterdepot();
                 if ($result === false) 
                     {
@@ -1222,27 +1825,57 @@ class SeleniumEasycharts extends SeleniumHandler
                     }
                 break;
             case 3:
-                $result = $this->gotoLinkMusterdepot3();            // zum dritten Musterdepot wechseln
+                if ($this->debug) echo "--------\n3: read Table Musterdepot Uebersicht\n";
+                $this->tableOverview = $this->readTableMusterdepot();                                            //result ist ein array mit den Titel der Links in der Tabelle 
+                if ($this->debug) echo "Ergebnis ------------------\n".json_encode($this->tableOverview)."\n";                 
+                break;
+            case 4:
+                if ($this->debug) echo "--------\n4: goto Link Musterdepot3.\n";
+                $found=false;
+                if (isset($this->configuration["Depot"])) 
+                    {
+                    $depot=$this->configuration["Depot"][($this->depotCount-1)];
+                    foreach ($this->tableOverview as $index => $name)
+                        {
+                        $pos1=strpos($name,$depot);
+                        if ($pos1 !== false) $found = $index+1;
+                        }
+                    echo "Gesuchtes Musterdepot ist auf Position $found \n";                            
+                    }
+                if ($found !== false) $result = $this->gotoLinkMusterdepot3($found);            // zum jeweiligen Musterdepot wechseln
+                else $result = $this->gotoLinkMusterdepot3();
                 if ($result === false) 
                     {
                     if ($this->debug) echo "   --> failed\n";
                     return("retry");                
                     }
                 break;
-            case 4:
+            case 5:
+                if ($this->debug) echo "--------\n5: get Table with Charts.\n";
                 $result = $this->getTablewithCharts();
                 if ($result===false) return ("retry");
                 if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
-                return(["Ergebnis" => $result]);
-
-                break;    // so erfolgt ein stopp
+                if (isset($this->configuration["Depot"])) return(["Ergebnis" => $result, "Depot" => $this->configuration["Depot"][($this->depotCount-1)]]);
+                else return(["Ergebnis" => $result]);
+                break;   
+            case 6:
+                if ($this->debug) echo "--------\n6: go back to Link Musterdepot.\n";
+                $result = $this->gotoLinkMusterdepot();
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    } 
+                $this->depotCount--;
+                if ($this->depotCount>0) return(["goto" => 4]);
+                break;
             default:
                 return (false);
             }
 
         }
 
-    /* get text , find out wheter being logged in 
+    /* Easycharts, get text , find out wheter being logged in 
      * /html/body/div/div[2]/div[1]/div[4]/div[1]/span
      */
     function getTextValidLoggedInIf()
@@ -1273,6 +1906,10 @@ class SeleniumEasycharts extends SeleniumHandler
         $this->pressButtonIf($xpath);        
         }
 
+    /* links unten gibt es ein Feld mit Musterdepot, Kaufoption etc.
+     * hier Musterdepot auswählen
+     */
+
     private function gotoLinkMusterdepot()
         {
         /* //*[@id="7_1_link"]
@@ -1283,11 +1920,51 @@ class SeleniumEasycharts extends SeleniumHandler
         return ($status);                    
         }
 
-    private function gotoLinkMusterdepot3()
+    /* Tabelle aller Musterdepots auslesen 
+     * /html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody
+     *
+     * es wird eine ganze Tabelle ausgelesen, wenn man auch die html Seperatoren haben will braucht man einen Workaround
+     * innerHtml wird noch auf einen selector umgestellt, liefert aktuell den ganzen Body
+     * dieser wird in Debug abgespeichert
+     *
+     */
+
+    private function readTableMusterdepot() 
+        {
+        $xpath='/html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody';
+        $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+        if ((strlen($ergebnis))>10) 
+            {
+            $page=$this->getInnerHtml(false,"DIV");
+            $debugVariable=CreateVariableByName($this->getResultCategory(),"Debug",3);
+            SetValue($debugVariable,$page);
+            $innerHtml = $this->queryFilterHtml($page,'//div[@*]','style',"width: 608px",$this->debug);
+            $ergebnis = $this->extractFilterHtml($innerHtml,'//a[@*]','title',true);             // true für Debug            
+            //$this->analyseHtml($page,true);                 // true alles anzeigen
+            return($ergebnis);
+            }
+        }
+
+    /* Tabelle einzelner Musterdepots auslesen 
+     * Musterdepot 3
+     * /html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody/tr[8]/td[1]/a
+     * Kaufoption
+     * /html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody/tr[4]/td[1]/a
+     */
+
+    private function gotoLinkMusterdepot3($id=0)
         {
         /* /html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody/tr[8]/td[1]/a
          */
-        $xpath='/html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody/tr[8]/td[1]/a';
+        switch ($id)
+            {
+            case 3:
+                $xpath='/html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody/tr[4]/td[1]/a';
+                break;
+            default:
+                $xpath='/html/body/div/div[3]/div/div[2]/table/tbody/tr/td[1]/div[2]/table/tbody/tr[8]/td[1]/a';
+                break;
+            }
         $status=$this->pressButtonIf($xpath);             
         //if ($status===false) return($this->updateUrl($url));
         return ($status);                    
@@ -1538,6 +2215,17 @@ class SeleniumOperations
                                             $this->writeResult($index,$result["Ergebnis"],$entry["CONFIG"]["Username"]);            // das Ergebnis ist in der variable mit dem Usernamen, nicht Result !
                                             $this->writeResult($index,$entry["CONFIG"]["Username"],"Nummer");     // letzte Nummer die bearbeitet wurde zusaetzlich abspeichern
                                             break;
+                                        case "EASY":
+                                            if (isset($result["Depot"]))
+                                                {
+                                                echo "Easy, alternative storage of Variable : ".$result["Depot"]."\n";
+                                                $this->writeResult($index,$result["Ergebnis"],$result["Depot"]);            // das Ergebnis ist in der variable mit dem Usernamen, nicht Result !
+                                                }
+                                            else                                             
+                                                {
+                                                $this->writeResult($index,$result["Ergebnis"]);             //Default Name is Result                                        
+                                                }
+                                            break;    
                                         default:
                                             $this->writeResult($index,$result["Ergebnis"]);             //Default Name is Result                                        
                                             break;

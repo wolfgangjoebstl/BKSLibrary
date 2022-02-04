@@ -1101,6 +1101,9 @@ class Gartensteuerung
     private function getRainevents($werteLog,$events=0)
         {
 		/* Letzen Regen ermitteln, alle Einträge der letzten x (default 10) Tage Niederschlag durchgehen */
+        $debug=$this->debug;
+        //$debug=true;                  // Debug override
+        if ($debug) echo "\ngetRainevents mit ".count($werteLog)." Werten aufgerufen:\n";
         $this->letzterRegen=0;
 		$regenStand=0;			/* der erste Regenwerte, also aktueller Stand */
 		$regenStandAnfang=0;  /* für den Fall dass gar keine Werte gelogget wurden */
@@ -1117,7 +1120,7 @@ class Gartensteuerung
 			{
 			if ($vorwert==0) 
 				{ 
-				if ($this->debug) {	echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
+				if ($debug) {	echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
 				$regenStand=$wert["Value"];
 				}
 			else 
@@ -1125,21 +1128,28 @@ class Gartensteuerung
 				/* die erste Zeile erst mit dem zweiten Eintrag auffuellen ... */
 				$regenMenge=round(($vorwert-$wert["Value"]),1);
 				$regenDauer=round(($vorzeit-$wert["TimeStamp"])/60,0);
-				if ($this->debug) 
+				if ($debug) 
 					{
 					if ( $regenDauer>(60*24*2) ) echo " ".$regenMenge."mm/>2Tage  "; 
 					else echo str_pad(" ".$regenMenge."mm/".$regenDauer."min  ",20); 
 					}
-				if (($regenMenge/$regenDauer*60)>$regenMaxStd) {$regenMaxStd=$regenMenge/$regenDauer*60;} // maximalen Niederschlag pro Stunde ermitteln
+
+                if ($regenDauer==0) 
+                    {
+                    //if ($debug) echo "Fehler, Regendauer $vorzeit - ".$wert["TimeStamp"]." ist ".($vorzeit-$wert["TimeStamp"])." Sekunden. Aufrunden auf eine Minute. \n";
+                    $regenDauer=1;
+                    }
+                if (($regenMenge/$regenDauer*60)>$regenMaxStd) {$regenMaxStd=$regenMenge/$regenDauer*60;} // maximalen Niederschlag pro Stunde ermitteln
+
 				if ( ($regenMenge<0.4) and ($regenDauer>60) ) 
 					{
 					/* gilt nicht als Regen, ist uns zu wenig, mehr ein nieseln */
-					if ($this->debug) echo "  kurzes Nieseln ";
+					if ($debug) echo "  kurzes Nieseln ";
 					if ($regenEndeZeit != 0)
 						{ 
 						/* gilt auch als Regenanfang wenn ein Regenende erkannt wurde*/
 						$regenAnfangZeit=$vorzeit;
-						if ($this->debug) 
+						if ($debug) 
 							{ 
 							echo str_pad($regenMengeAcc."mm ".$regenDauerAcc."min ",20);						
 							echo "  Regenanfang : ".date("d.m H:i",$regenAnfangZeit)."   ".round($vorwert,1)."  ".round($regenMaxStd,1)."mm/Std ";	
@@ -1154,7 +1164,7 @@ class Gartensteuerung
 						}
 					else
 						{
-						if ($this->debug) { echo "* "; }
+						if ($debug) { echo "* "; }
 						}	
 					$regenMenge=0; $regenDauerAcc=0; $regenMengeAcc=0;
 					} 
@@ -1165,12 +1175,12 @@ class Gartensteuerung
 						/* es regnet */
 						$regenMengeAcc+=$regenMenge;
 						$regenDauerAcc+=$regenDauer;				
-						if ($this->debug) { echo str_pad($regenMengeAcc."mm ".$regenDauerAcc."min ",20); }
+						if ($debug) { echo str_pad($regenMengeAcc."mm ".$regenDauerAcc."min ",20); }
 						if ($regenEndeZeit==0)
 							{
 							$regenStandEnde=$vorwert;
 							$regenEndeZeit=$vorzeit;
-							if ($this->debug) { echo "  Regenende : ".date("d.m H:i",$regenEndeZeit)."   ".round($regenStandEnde,1)."  ";	}
+							if ($debug) { echo "  Regenende : ".date("d.m H:i",$regenEndeZeit)."   ".round($regenStandEnde,1)."  ";	}
 							}
 						}
 					else
@@ -1181,7 +1191,7 @@ class Gartensteuerung
 							/* gilt auch als Regenanfang wenn ein Regenende erkannt wurde*/
 							$regenMengeAcc+=$regenMenge;							
 							$regenAnfangZeit=$vorzeit;
-							if ($this->debug) 
+							if ($debug) 
 								{ 
 								echo str_pad($regenMengeAcc."mm ".$regenDauerAcc."min ",20);						
 								echo "  Regenanfang : ".date("d.m H:i",$regenAnfangZeit)."   ".round($vorwert,1)."  ".round($regenMaxStd,1)."mm/Std ";	
@@ -1196,7 +1206,7 @@ class Gartensteuerung
 							}
 						else
 							{
-							if ($this->debug) { echo "* "; }
+							if ($debug) { echo "* "; }
 							}	
 						} 								
 					}
@@ -1204,10 +1214,10 @@ class Gartensteuerung
                     {
                     $this->letzterRegen=$wert["TimeStamp"];
                     $regenStandEnde=$wert["Value"];
-                    if ($this->debug) { echo "Letzter Regen !"; }
+                    if ($debug) { echo "Letzter Regen !"; }
                     }				
 
-				if ($this->debug) { echo "\n   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
+				if ($debug) { echo "\n   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
 				}
 			$vorwert=$wert["Value"];	
 			$vorzeit=$wert["TimeStamp"];

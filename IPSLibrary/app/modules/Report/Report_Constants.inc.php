@@ -41,7 +41,10 @@
 	define ('IPSRP_VALUETYPE_OTHER',				'Other');
 	define ('IPSRP_VALUETYPE_WATER',				'Water');
 	define ('IPSRP_VALUETYPE_GAS',				'Gas');
-	define ('IPSRP_VALUETYPE_TEMPERATURE',		'Temperatur');
+    define ('IPSRP_VALUETYPE_CHART',				'Chart');
+	define ('IPSRP_VALUETYPE_TREND',				'Trend');
+    define ('IPSRP_VALUETYPE_TEMPERATURE',		'Temperatur');
+    define ('IPSRP_VALUETYPE_AIRQUALITY',		'Airquality');
 	define ('IPSRP_VALUETYPE_HUMIDITY',			'Feuchtigkeit');
 	define ('IPSRP_VALUETYPE_CONTROL',			'Aktuator');
 	define ('IPSRP_VALUETYPE_CURRENT',			'Strom');

@@ -114,40 +114,49 @@
             }
 
         /* getWirkenergieID aus der Config
+         * in der AMIS data Kategorie gibt es pro meter["Name"] eine Variable, die Variable wird vorausgesetzt, false wennnicht
+         * unter dieser Variable gibt es dann auch die Zusammenfassung Periodenwerte
+         * die VaroiableID, also die Datenquelle wird durch die Configuration "WirkenergieID" festgelegt
+         * wenn diese nicht vorhanden ist kann abhängig vom Meter "Type"  auch woanders gesucht werden.
          *
          */
 
         public function getWirkenergieID($meter)
             {
-            $ID = IPS_GetObjectIDByName($meter["NAME"], $this->CategoryIdData,);                 
+            $ID = IPS_GetObjectIDByName($meter["NAME"], $this->CategoryIdData);  
+            echo "getWirkenergieID suche nach ".$meter["NAME"]." in ".$this->CategoryIdData."  found as $ID \n";               
             $variableID=false;
-            if (isset($meter["WirkenergieID"]) == true )	 
-                { 
-                $variableID = $meter["WirkenergieID"]; 
-                }
-            else
+            if ($ID)
                 {
-                /* Variable ID selbst festlegen */
-                //echo "     Variable Wirkenergie selber anlegen. nicht in Konfiguration vorgesehen:\n";
-                switch (strtoupper($meter["TYPE"]))
+                if (isset($meter["WirkenergieID"]) == true )	 
+                    { 
+                    $variableID = $meter["WirkenergieID"]; 
+                    }
+                else
                     {
-                    case "AMIS":
-                        $AmisID = IPS_GetObjectIDByName( "AMIS", $ID);
-                        $variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
-                        //$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-                        //$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
-                        break;
-                    case "HOMEMATIC":
-                    case "REGISTER":
-                    case "SUMME": 
-                        $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-                        break;
-                    default:
-                        //echo "Fehler, Type noch nicht bekannt.\n";
-                        break;	
-                    }        
-                //print_r($meter);
+                    /* Variable ID selbst festlegen */
+                    //echo "     Variable Wirkenergie selber anlegen. nicht in Konfiguration vorgesehen:\n";
+                    switch (strtoupper($meter["TYPE"]))
+                        {
+                        case "AMIS":
+                            $AmisID = IPS_GetObjectIDByName( "AMIS", $ID);
+                            $variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
+                            //$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+                            //$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+                            break;
+                        case "HOMEMATIC":
+                        case "REGISTER":
+                        case "SUMME": 
+                            $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                            break;
+                        default:
+                            //echo "Fehler, Type noch nicht bekannt.\n";
+                            break;	
+                        }        
+                    //print_r($meter);
+                    }
                 }
+            else echo "   --> Fehler, Variable ".$meter["NAME"]." in ".$this->CategoryIdData." nicht vorhanden.\n";
 			return ($variableID);
             }
 
@@ -990,6 +999,7 @@
 		 *
 		 * die html Formatierung wird als <style> mit Klassen und mehreren <div> tags aufgebaut. 
 		 * <html> und <body> tags werden nicht erstellt
+         * Formatierung so gewählt das beide Tabellen txt und html gemeinsam erstellt werden
 		 *
 		 *****************************************************************************************************************************/
 
@@ -1293,6 +1303,8 @@
 		 *	Esstisch-Effektlicht     0,01  0,01  0,01  0,01  0,01  0,01  0,01  0,01  0,01 
 		 *	Statusanzeige            0,01  0,02  0,02  0,00  0,04        0,02  0,01  0,01
 		 * 
+         * Die Werte für die Tabelle werden als Array übergeben: $Werte[$line]["EnergieVS"]
+         *
 		 */
 
 		function writeEnergyRegisterTabletoString($Werte,$html=true)			/* alle Werte als String ausgeben */
@@ -1574,16 +1586,9 @@
 					echo "Werte von : ".$meter["NAME"]."\n";
 					}
 				$meterdataID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				/* ID von Wirkenergie bestimmen */
-				switch ( strtoupper($meter["TYPE"]) )
+				$EnergieID = $this->getWirkenergieID($meter);    // ID von Wirkenergie bestimmen 
+				switch ( strtoupper($meter["TYPE"]) )                   // Spezialbehandlung für Hoimematic register, RegID bestimmen
 					{	
-					case "AMIS":
-						$AmisID = CreateVariableByName($meterdataID, "AMIS", 3);
-						//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-						//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
-						$EnergieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
-						$RegID=$EnergieID;
-						break;
 					case "HOMEMATIC":
 						if ( isset($meter["OID"]) == true )
 							{
@@ -1610,22 +1615,25 @@
 							{
 							$RegID  = $meter["HM_EnergieID"];
 							}
-						$EnergieID = CreateVariableByName($meterdataID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 						break;		
-					case "REGISTER":	
 					default:
-						$EnergieID = CreateVariableByName($meterdataID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 						$RegID=$EnergieID;
 						break;
 					}					
-
-
 					
 				/* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
 				$jetzt=time();
-				$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+                if (strtoupper($meter["TYPE"])=="DAILYREAD") 
+                    {
+                    $endtime=$jetzt;                // das ist nur ien Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst
+                    $vorigertag=0;
+                    }
+				else 
+                    {
+                    $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+    				$vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
+                    }
 				$starttime=$endtime-60*60*24*10;
-				$vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
 				if ($debug) echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":\n";
 
 				$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
@@ -1652,13 +1660,19 @@
 						{
 						$zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
 						$zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
-						if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh\n";
-						$zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
-						if ($laufend>1) 
-							{
-							$zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
-							}
-						
+						if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh              (".strtoupper($meter["TYPE"]).")\n";
+                        if (strtoupper($meter["TYPE"])=="DAILYREAD")
+                            {
+                            $zeile[$metercount]["EnergieVS"][date("d.m", $zeit)] = number_format($wert['Value'], 3, ",", "" );
+                            }
+                        else
+                            {
+                            $zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
+                            if ($laufend>1) 
+                                {
+                                $zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
+                                }
+                            }
 						$laufend+=1;
 						$alterWert=$wert['Value']; $altesDatum=date("d.m", $zeit);
 						//echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
