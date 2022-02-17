@@ -101,6 +101,7 @@
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 			$moduleManager = new IPSModuleManager('Startpage',$repository);
 	        $this->installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+
             //print_R($installedModules);
 
 			$moduleManagerHC = new IPSModuleManager('IPSHighcharts',"");
@@ -134,6 +135,7 @@
                 }
 											
 			$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+
 			$this->OWDs=$modulhandling->getInstances('OpenWeatherData');
 			}
 
@@ -2678,6 +2680,7 @@
 	
         /* Wetterdarstellung basierend auf OpenWeatherMap machen
          *
+         * erstellt die entsprechend notwendigen Register in categoryId_OpenWeather
          * die erhaltenen Messwerte werden analysiert und in die bekannte 4 Tagevorschau aggregiert
          * danach wird die Erstellung des Meteograms aufgerufen.
          *
@@ -2686,10 +2689,7 @@
 		function aggregateOpenWeather($debug=false)
 			{
             if (count($this->getOWDs())==0) return (false); 
-			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-			$moduleManagerSP = new IPSModuleManager('StartPage',$repository);
-			$CategoryIdDataSP     = $moduleManagerSP->GetModuleCategoryID('data');
-		    $categoryId_OpenWeather = CreateCategory('OpenWeather',   $CategoryIdDataSP, 2000);
+		    $categoryId_OpenWeather = CreateCategory('OpenWeather',   $this->CategoryIdData, 2000);
 		
 			// Create Variable IDs
 			$LastRefreshDateTime     = IPS_GetObjectIDByName("LastRefreshDateTime",  $categoryId_OpenWeather);
@@ -2837,200 +2837,489 @@
 				$i++;
 				}
 	
-	        /* zusaetzlich auch ein huebsches Meteogram erstellen */
-	
-	        $variableIdMeteoChartHtml   = IPS_GetObjectIDByName("OpenWeatherMeteoHTML", $categoryId_OpenWeather);
-	
-		    $CfgDaten=array();
-		    $CfgDaten['ContentVarableId'] = $variableIdMeteoChartHtml;
-	        $CfgDaten['HighChart']['Theme']="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
-	
-		    $CfgDaten['StartTime']        = $startTime;
-		    $CfgDaten['EndTime']          = $endTime;
-	
-		    $CfgDaten['RunMode'] = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
-	
-	        // Abmessungen des erzeugten Charts
-	        $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
-	        $CfgDaten['HighChart']['Height'] = 600;         // in px
-	
-		    $CfgDaten['title']['text']    = "Meteogram, Darstellung komplett";
-		    $CfgDaten['subtitle']['text'] = "Dargestellter Zeitraum: %STARTTIME% - %ENDTIME%";
-		    $CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";	
-	
-	
-			/* Debugging Einstellungen, werden automatisch von CheckCfgDaten hinzugefügt, wenn Abänderung auf true gibt es Funktion  
-			$CfgDaten['Ips']['Debug']['Modules'] = false;
-			$CfgDaten['Ips']['Debug']['ShowJSON'] = false;
-			$CfgDaten['Ips']['Debug']['ShowJSON_Data'] = false;
-			$CfgDaten['Ips']['Debug']['ShowCfg']   = false;
-			$CfgDaten['Ips']['ChartType'] = 'Highcharts';
-																			*/
-			
-			$CfgDaten['xAxis']['type'] = "datetime";
-			$CfgDaten['xAxis']['plotBands']['from'] = "@" . $this->CreateDateUTC($startTime+60*60*24) ."@";
-			$CfgDaten['xAxis']['plotBands']['to'] = "@" . $this->CreateDateUTC($endTime-60*60*24) ."@";
-			$CfgDaten['xAxis']['plotBands']['color'] = '#2F2F2F';
-			$CfgDaten['xAxis']['plotBands']['label']['text'] = 'Montag';
-	
-	    	/******************************************************************************************
-             *
-		     * mit einem Linechart für Min/Max Temperatur und den Wettersymbolen beginnen (series=0,1,2 und yaxis=0)
-	    	 *
-		     */
+            if (false)   // Routine zum Erstellen eines Highchart Diagrans
+                {
+                /* zusaetzlich auch ein huebsches Meteogram erstellen, benötigter Input ist
+                * $categoryId_OpenWeather,$startTime, $endTime
+                *
+                */
+        
+                $variableIdMeteoChartHtml   = IPS_GetObjectIDByName("OpenWeatherMeteoHTML", $categoryId_OpenWeather);
+        
+                $CfgDaten=array();
+                $CfgDaten['ContentVarableId'] = $variableIdMeteoChartHtml;
+                $CfgDaten['HighChart']['Theme']="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
+        
+                $CfgDaten['StartTime']        = $startTime;
+                $CfgDaten['EndTime']          = $endTime;
+        
+                $CfgDaten['RunMode'] = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
+        
+                // Abmessungen des erzeugten Charts
+                $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
+                $CfgDaten['HighChart']['Height'] = 600;         // in px
+        
+                $CfgDaten['title']['text']    = "Meteogram, Darstellung komplett";
+                $CfgDaten['subtitle']['text'] = "Dargestellter Zeitraum: %STARTTIME% - %ENDTIME%";
+                $CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";	
+        
+        
+                /* Debugging Einstellungen, werden automatisch von CheckCfgDaten hinzugefügt, wenn Abänderung auf true gibt es Funktion  
+                $CfgDaten['Ips']['Debug']['Modules'] = false;
+                $CfgDaten['Ips']['Debug']['ShowJSON'] = false;
+                $CfgDaten['Ips']['Debug']['ShowJSON_Data'] = false;
+                $CfgDaten['Ips']['Debug']['ShowCfg']   = false;
+                $CfgDaten['Ips']['ChartType'] = 'Highcharts';
+                                                                                */
+                
+                $CfgDaten['xAxis']['type'] = "datetime";
+                $CfgDaten['xAxis']['plotBands']['from'] = "@" . $this->CreateDateUTC($startTime+60*60*24) ."@";
+                $CfgDaten['xAxis']['plotBands']['to'] = "@" . $this->CreateDateUTC($endTime-60*60*24) ."@";
+                $CfgDaten['xAxis']['plotBands']['color'] = '#2F2F2F';
+                $CfgDaten['xAxis']['plotBands']['label']['text'] = 'Montag';
+        
+                /******************************************************************************************
+                *
+                * mit einem Linechart für Min/Max Temperatur und den Wettersymbolen beginnen (series=0,1,2 und yaxis=0)
+                *
+                */
 
-	    	$CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
-		    $series=0;
-	
-	    	$CfgDaten['yAxis'][0]['title']['text'] = "Temperatur";
-		    $CfgDaten['yAxis'][0]['Unit'] = "°";    
-	    	$CfgDaten['yAxis'][0]['min'] = -10;
-		    $CfgDaten['yAxis'][0]['minrange'] = 8;
-	    	$CfgDaten['yAxis'][0]['opposite']=false;
-	
-	    	$CfgDaten['series'][$series]['type'] = 'line';
-		    $CfgDaten['series'][$series]['ScaleFactor'] = 1;
-	    	$CfgDaten['series'][$series]['name']        = 'Minimale Temperatur';
-		    $CfgDaten['series'][$series]['Unit'] = '';
-	    	$CfgDaten['series'][$series]['yAxis']         = 0;
-		    $CfgDaten['series'][$series]['visible']       = true;
-	        $CfgDaten['series'][$series]['marker']['symbol']       = 'square';
-	
-		    $CfgDaten['series'][$series+1]['type'] = 'line';
-	    	$CfgDaten['series'][$series+1]['ScaleFactor'] = 1;
-		    $CfgDaten['series'][$series+1]['name']        = 'Maximale Temperatur';
-	        $CfgDaten['series'][$series+1]['Unit'] = '';
-	    	$CfgDaten['series'][$series+1]['yAxis']         = 0;
-		    $CfgDaten['series'][$series+1]['color']         = '#FF0000';
-	    	$CfgDaten['series'][$series+1]['visible']       = true;
-	
-	    	$CfgDaten['series'][$series+2]['type'] = 'line';
-		    $CfgDaten['series'][$series+2]['ScaleFactor'] = 1;
-		    $CfgDaten['series'][$series+2]['name']        = 'Symbole';
-	    	$CfgDaten['series'][$series+2]['Unit'] = '';
-		    $CfgDaten['series'][$series+2]['yAxis']         = 0;
-	    	$CfgDaten['series'][$series+2]['color']         = '#101010';
-	    	$CfgDaten['series'][$series+2]['visible']       = true;
-	        $CfgDaten['series'][$series+2]['opacity']       = 0;
-	
-	        /* Series benötigt Timestamp/y als Keys sonst wird nicht richtig umgesetzt
-	         */
-            $tempforWeekdays=0;          
-		    foreach ($beginn as $index => $value)
-			    {
-                if ($maximale[$index]["Wert"]>$tempforWeekdays) $tempforWeekdays=$maximale[$index]["Wert"];
-	            $CfgDaten['series'][$series]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $minimale[$index]["Wert"]];
-	            $CfgDaten['series'][$series+1]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $maximale[$index]["Wert"]];
-	            $CfgDaten['series'][$series+2]['data'][] = ["TimeStamp" => $value["Wert"],"y" => ($maximale[$index]["Wert"]+2),"marker" => ["symbol" => 'url(http://openweathermap.org/img/w/'.$symbols[$index]["Wert"].'.png)']];
-	    		}
-		
-	    	/*******************************************************************************************************************************************
-	         *
-		     * und dann mit einem Barchart für die Regenmenge, series=3, yaxis=1
-		     *
-	    	 */
-	
-	    	$CfgDaten['plotOptions']['column']['color']     =	 '#0000AA';     // blau
-		    $series=3;
-	
-	    	$CfgDaten['yAxis'][1]['title']['text'] = "Regenmenge";
-		    $CfgDaten['yAxis'][1]['Unit'] = 'mm';    
-	    	$CfgDaten['yAxis'][1]['min'] = 0;
-	    	$CfgDaten['yAxis'][1]['minRange'] = 3;
-            
-            //$CfgDaten['yAxis'][1]['floor'] = 3;           /* y Achse zumindest für 3 mm auslegen, damit werden die Niedeeschlagsmengen im Bedarfsfall nicht so unverhältnismaessig gross */
-	    	//$CfgDaten['yAxis'][1]['max'] = 3;
-            //$CfgDaten['yAxis'][1]['ceiling'] = 3;
-
-		    $CfgDaten['yAxis'][1]['opposite']=true;
-	
-	    	$CfgDaten['series'][$series]['type'] = 'column';
-			$CfgDaten['series'][$series]['ScaleFactor'] = 1;
-		    $CfgDaten['series'][$series]['name']        = 'Regen';
-	    	$CfgDaten['series'][$series]['Unit'] = '';
-		    $CfgDaten['series'][$series]['yAxis']         = 1;
-	    	$CfgDaten['series'][$series]['visible']       = true;
-	
-		    foreach ($beginn as $index => $value)
-			    {
-	            $CfgDaten['series'][$series]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $rains[$index]["Wert"]];
-			    }
-	
-	    	/******************************************************************************************************** 
-             *
-		     * mit einem Linechart für die Wochentage weitermachen (series=4 und yaxis=0)
-	    	 *
-		     */
-	    	$CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
-		    $series=4;
-	
-	    	$CfgDaten['series'][$series]['type'] = 'line';
-		    $CfgDaten['series'][$series]['ScaleFactor'] = 1;
-	    	$CfgDaten['series'][$series]['name']        = 'Wochentage';
-		    $CfgDaten['series'][$series]['Unit'] = '';
-	    	$CfgDaten['series'][$series]['yAxis']         = 0;
-	    	$CfgDaten['series'][$series]['color']         = '#101010';
-		    $CfgDaten['series'][$series]['visible']       = true;
-	        $CfgDaten['series'][$series]['opacity']       = 50;
-	
-	        /* Series benötigt Timestamp/y als Keys sonst wird nicht richtig umgesetzt
-	         */
-            $tempforWeekdays+=5;    /* 5 Grad noch dazu damit sich oben eine Wochentagsliste ausgeht */
-		    foreach ($beginn as $index => $value)
-			    {
-                $stunde=(integer)date("H",$value["Wert"]);
-                if ($stunde<4)  // je nach Sommer oder Winterzeit 2 oder 3
+                $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+                $series=0;
+        
+                $CfgDaten['yAxis'][0]['title']['text'] = "Temperatur";
+                $CfgDaten['yAxis'][0]['Unit'] = "°";    
+                $CfgDaten['yAxis'][0]['min'] = -10;
+                $CfgDaten['yAxis'][0]['minrange'] = 8;
+                $CfgDaten['yAxis'][0]['opposite']=false;
+        
+                $CfgDaten['series'][$series]['type'] = 'line';
+                $CfgDaten['series'][$series]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series]['name']        = 'Minimale Temperatur';
+                $CfgDaten['series'][$series]['Unit'] = '';
+                $CfgDaten['series'][$series]['yAxis']         = 0;
+                $CfgDaten['series'][$series]['visible']       = true;
+                $CfgDaten['series'][$series]['marker']['symbol']       = 'square';
+        
+                $CfgDaten['series'][$series+1]['type'] = 'line';
+                $CfgDaten['series'][$series+1]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series+1]['name']        = 'Maximale Temperatur';
+                $CfgDaten['series'][$series+1]['Unit'] = '';
+                $CfgDaten['series'][$series+1]['yAxis']         = 0;
+                $CfgDaten['series'][$series+1]['color']         = '#FF0000';
+                $CfgDaten['series'][$series+1]['visible']       = true;
+        
+                $CfgDaten['series'][$series+2]['type'] = 'line';
+                $CfgDaten['series'][$series+2]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series+2]['name']        = 'Symbole';
+                $CfgDaten['series'][$series+2]['Unit'] = '';
+                $CfgDaten['series'][$series+2]['yAxis']         = 0;
+                $CfgDaten['series'][$series+2]['color']         = '#101010';
+                $CfgDaten['series'][$series+2]['visible']       = true;
+                $CfgDaten['series'][$series+2]['opacity']       = 0;
+        
+                /* Series benötigt Timestamp/y als Keys sonst wird nicht richtig umgesetzt
+                */
+                $tempforWeekdays=0;          
+                foreach ($beginn as $index => $value)
                     {
-                    //echo "Zeitstempel : ".$stunde."\n";
-                    $CfgDaten['series'][$series]['data'][] = ["Name" => "hallo","TimeStamp" => $value["Wert"],"y" => $tempforWeekdays];
-                    $i=1;
+                    if ($maximale[$index]["Wert"]>$tempforWeekdays) $tempforWeekdays=$maximale[$index]["Wert"];
+                    $CfgDaten['series'][$series]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $minimale[$index]["Wert"]];
+                    $CfgDaten['series'][$series+1]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $maximale[$index]["Wert"]];
+                    $CfgDaten['series'][$series+2]['data'][] = ["TimeStamp" => $value["Wert"],"y" => ($maximale[$index]["Wert"]+2),"marker" => ["symbol" => 'url(http://openweathermap.org/img/w/'.$symbols[$index]["Wert"].'.png)']];
                     }
-	    		}
+            
+                /*******************************************************************************************************************************************
+                *
+                * und dann mit einem Barchart für die Regenmenge, series=3, yaxis=1
+                *
+                */
+        
+                $CfgDaten['plotOptions']['column']['color']     =	 '#0000AA';     // blau
+                $series=3;
+        
+                $CfgDaten['yAxis'][1]['title']['text'] = "Regenmenge";
+                $CfgDaten['yAxis'][1]['Unit'] = 'mm';    
+                $CfgDaten['yAxis'][1]['min'] = 0;
+                $CfgDaten['yAxis'][1]['minRange'] = 3;
+                
+                //$CfgDaten['yAxis'][1]['floor'] = 3;           /* y Achse zumindest für 3 mm auslegen, damit werden die Niedeeschlagsmengen im Bedarfsfall nicht so unverhältnismaessig gross */
+                //$CfgDaten['yAxis'][1]['max'] = 3;
+                //$CfgDaten['yAxis'][1]['ceiling'] = 3;
 
-	    	/* Create Chart with Config File. IPS Highcharts Library dafür verwenden
-             * erst die Konfiguration überprüfen und dann daraus eine Datei erstellen
-             * für die Darstellung wird eine Datei erzeugt:   Openweather
-             *
-             */
+                $CfgDaten['yAxis'][1]['opposite']=true;
+        
+                $CfgDaten['series'][$series]['type'] = 'column';
+                $CfgDaten['series'][$series]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series]['name']        = 'Regen';
+                $CfgDaten['series'][$series]['Unit'] = '';
+                $CfgDaten['series'][$series]['yAxis']         = 1;
+                $CfgDaten['series'][$series]['visible']       = true;
+        
+                foreach ($beginn as $index => $value)
+                    {
+                    $CfgDaten['series'][$series]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $rains[$index]["Wert"]];
+                    }
+        
+                /******************************************************************************************************** 
+                *
+                * mit einem Linechart für die Wochentage weitermachen (series=4 und yaxis=0)
+                *
+                */
+                $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+                $series=4;
+        
+                $CfgDaten['series'][$series]['type'] = 'line';
+                $CfgDaten['series'][$series]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series]['name']        = 'Wochentage';
+                $CfgDaten['series'][$series]['Unit'] = '';
+                $CfgDaten['series'][$series]['yAxis']         = 0;
+                $CfgDaten['series'][$series]['color']         = '#101010';
+                $CfgDaten['series'][$series]['visible']       = true;
+                $CfgDaten['series'][$series]['opacity']       = 50;
+        
+                /* Series benötigt Timestamp/y als Keys sonst wird nicht richtig umgesetzt
+                */
+                $tempforWeekdays+=5;    /* 5 Grad noch dazu damit sich oben eine Wochentagsliste ausgeht */
+                foreach ($beginn as $index => $value)
+                    {
+                    $stunde=(integer)date("H",$value["Wert"]);
+                    if ($stunde<4)  // je nach Sommer oder Winterzeit 2 oder 3
+                        {
+                        //echo "Zeitstempel : ".$stunde."\n";
+                        $CfgDaten['series'][$series]['data'][] = ["Name" => "hallo","TimeStamp" => $value["Wert"],"y" => $tempforWeekdays];
+                        $i=1;
+                        }
+                    }
 
-	  	    IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
-	
-	      	$CfgDaten    = CheckCfgDaten($CfgDaten);
-		    //print_r($CfgDaten);
+                /* Create Chart with Config File. IPS Highcharts Library dafür verwenden
+                * erst die Konfiguration überprüfen und dann daraus eine Datei erstellen
+                * für die Darstellung wird eine Datei erzeugt:   Openweather
+                *
+                */
 
-		    //echo "Create Config String.\n";
-		    $sConfig     = CreateConfigString($CfgDaten);
-	  
-	  	    $tmpFilename = CreateConfigFile($sConfig, 'Openweather');
-	      	WriteContentWithFilename ($CfgDaten, $tmpFilename);
-	
-		    //echo "Filename fuer Aufruf :".$tmpFilename."\n";
-	
-	    	$s = explode("|||" , $sConfig);
-		
-		    if (count($s) >= 2)
-			    {
-			    $TempString = trim($s[0],"\n ");
-	    		$JavaScriptConfigForHighchart = $s[1];	
-			
-		    	$LangOptions="lang: {}";
-			    if (count($s) > 2)	$LangOptions = trim($s[2],"\n ");
-			
-	    		// aus den Daten ein schönes Array machen
-		    	$TempStringArr = explode("\n", $TempString);
-			    foreach($TempStringArr as $Item)
-				    {
-	    			$KeyValue = explode("=>", $Item);
-		    		$AdditionalConfigData[trim($KeyValue[0]," []")] = trim($KeyValue[1]," ");
-			    	}
-			
-	    		// Verzeichnis + Theme
-		    	if ($AdditionalConfigData['Theme'] != '')
-			    	$AdditionalConfigData['Theme']= '/user/IPSHighcharts/Highcharts/js/themes/' . $AdditionalConfigData['Theme'];
-	
-			    }
-			return($CfgDaten);
+                IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+        
+                $CfgDaten    = CheckCfgDaten($CfgDaten);
+                //print_r($CfgDaten);
+
+                //echo "Create Config String.\n";
+                $sConfig     = CreateConfigString($CfgDaten);
+        
+                $tmpFilename = CreateConfigFile($sConfig, 'Openweather');
+                WriteContentWithFilename ($CfgDaten, $tmpFilename);
+        
+                //echo "Filename fuer Aufruf :".$tmpFilename."\n";
+        
+                $s = explode("|||" , $sConfig);
+            
+                if (count($s) >= 2)
+                    {
+                    $TempString = trim($s[0],"\n ");
+                    $JavaScriptConfigForHighchart = $s[1];	
+                
+                    $LangOptions="lang: {}";
+                    if (count($s) > 2)	$LangOptions = trim($s[2],"\n ");
+                
+                    // aus den Daten ein schönes Array machen
+                    $TempStringArr = explode("\n", $TempString);
+                    foreach($TempStringArr as $Item)
+                        {
+                        $KeyValue = explode("=>", $Item);
+                        $AdditionalConfigData[trim($KeyValue[0]," []")] = trim($KeyValue[1]," ");
+                        }
+                
+                    // Verzeichnis + Theme
+                    if ($AdditionalConfigData['Theme'] != '')
+                        $AdditionalConfigData['Theme']= '/user/IPSHighcharts/Highcharts/js/themes/' . $AdditionalConfigData['Theme'];
+        
+                    }
+                return($CfgDaten);
+                }
 			}
+
+        /* Meteogram von Openweather anzeigen
+         * wurde aus dem AggregateOpenWeather herausgenommen, macht keinen Sinn
+         *
+         */
+
+        function displayOpenWeather($debug=false)
+            {
+            if (count($this->getOWDs())==0) return (false);                 
+		    $categoryId_OpenWeather = CreateCategory('OpenWeather',   $this->CategoryIdData, 2000);
+            $startTime=time();
+		    $endTime=time();
+			$daily=array();
+			foreach ($this->OWDs as $OWD)
+				{
+				$beginn=$this->findeVarSerie("Beginn",$OWD);
+				$minimale=$this->findeVarSerie("minimale",$OWD);
+				$maximale=$this->findeVarSerie("maximale",$OWD);
+				$clouds=$this->findeVarSerie("Bew",$OWD);
+				$rains=$this->findeVarSerie("Regenm",$OWD);
+	            $symbols=$this->findeVarSerie("Wetterbedingung-Sym",$OWD);
+				//print_r($clouds);
+				if ($debug) echo "Beginn des Vorhersagezeitraums ist : \n";
+				ksort($beginn);
+				//foreach ($minimale as $index => $value)  echo "   ".$index."  =>   ".$value["Name"]." = ".$value["Wert"]."\n";
+				//print_r($gefunden);
+				foreach ($beginn as $index => $value)
+					{
+					$day=date("d",$value["Wert"]);
+					if (isset($daily[$day]))
+						{
+						if ($daily[$day]["minTemp"]>$minimale[$index]["Wert"]) $daily[$day]["minTemp"]=$minimale[$index]["Wert"];
+						if ($daily[$day]["maxTemp"]<$maximale[$index]["Wert"]) $daily[$day]["maxTemp"]=$maximale[$index]["Wert"];				
+						$daily[$day]["CloudSum"]+=$clouds[$index]["Wert"];
+						$daily[$day]["Count"]++;
+						$daily[$day]["Rains"]+=$rains[$index]["Wert"];
+						if ($rains[$index]["Wert"] > 0) $daily[$day]["RainPeriode"]++;
+						}
+					else
+						{
+						$daily[$day]["Date"]=date("D d",$value["Wert"]);;
+						$daily[$day]["minTemp"]=$minimale[$index]["Wert"];
+						$daily[$day]["maxTemp"]=$maximale[$index]["Wert"];
+						$daily[$day]["CloudSum"]=$clouds[$index]["Wert"];
+						$daily[$day]["Count"]=1;
+						$daily[$day]["Rains"]=$rains[$index]["Wert"];
+						if ($rains[$index]["Wert"] > 0) $daily[$day]["RainPeriode"]=1;
+						else $daily[$day]["RainPeriode"]=0;
+						}
+					
+					if ($debug) echo "   ".$index."  =>   ".str_pad($value["Name"],50)." = ".date("D d H:i",$value["Wert"])." : ".str_pad($minimale[$index]["Wert"]." bis ".$maximale[$index]["Wert"]." °C ",30)."Bewölkung ".$clouds[$index]["Wert"]."%\n";
+	    	        if ($value["Wert"]>$endTime) $endTime=$value["Wert"];
+					}
+				}
+	    	if ($debug) { echo "Zeitreihe verfügbar von ".date("d H:i",$startTime)." bis ".date("d H:i",$endTime).".\n"; print_r($daily); }
+
+            //if (false)   // Routine zum Erstellen eines Highchart Diagrans
+                {
+                /* zusaetzlich auch ein huebsches Meteogram erstellen, benötigter Input ist
+                * $categoryId_OpenWeather,$startTime, $endTime
+                *
+                */
+        
+                $variableIdMeteoChartHtml   = IPS_GetObjectIDByName("OpenWeatherMeteoHTML", $categoryId_OpenWeather);
+        
+                $CfgDaten=array();
+                $CfgDaten['ContentVarableId'] = $variableIdMeteoChartHtml;
+                $CfgDaten['HighChart']['Theme']="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
+        
+                $CfgDaten['StartTime']        = $startTime;
+                $CfgDaten['EndTime']          = $endTime;
+        
+                $CfgDaten['RunMode'] = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
+        
+                // Abmessungen des erzeugten Charts
+                $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
+                $CfgDaten['HighChart']['Height'] = 600;         // in px
+        
+                $CfgDaten['title']['text']    = "Meteogram, Darstellung komplett";
+                $CfgDaten['subtitle']['text'] = "Dargestellter Zeitraum: %STARTTIME% - %ENDTIME%";
+                $CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";	
+        
+        
+                /* Debugging Einstellungen, werden automatisch von CheckCfgDaten hinzugefügt, wenn Abänderung auf true gibt es Funktion  
+                $CfgDaten['Ips']['Debug']['Modules'] = false;
+                $CfgDaten['Ips']['Debug']['ShowJSON'] = false;
+                $CfgDaten['Ips']['Debug']['ShowJSON_Data'] = false;
+                $CfgDaten['Ips']['Debug']['ShowCfg']   = false;
+                $CfgDaten['Ips']['ChartType'] = 'Highcharts';
+                                                                                */
+                /* Plot Bands für bessere Lesbarkeit */
+                $time=$startTime; $startOfThisDay = $time; $index=0; $color=['#dFdFdF','#eFeFeF'];
+                $CfgDaten['xAxis']['type'] = "datetime";
+                do 
+                    {
+                    $nextday=$time+60*60*24;
+                    $startOfNextDay=mktime(0,0,0,date("m",$nextday), date("d",$nextday), date("Y",$nextday));                        
+                    if ($startOfNextDay>$endTime) $startOfNextDay=$endTime;
+
+                    $CfgDaten['xAxis']['plotBands'][$index]['from'] = "@" . $this->CreateDateUTC($startOfThisDay) ."@";
+                    $CfgDaten['xAxis']['plotBands'][$index]['to'] = "@" . $this->CreateDateUTC($startOfNextDay) ."@";
+                    $CfgDaten['xAxis']['plotBands'][$index]['color'] = $color[($index % 2)];
+                    $CfgDaten['xAxis']['plotBands'][$index]['label']['text'] = date("D",$time);
+                    $CfgDaten['xAxis']['plotBands'][$index]['zIndex'] = 3;                                                          // how far in the foreground is shall be plotted
+
+                    $time=$nextday; $index++;
+                    $startOfThisDay = $startOfNextDay;
+
+                    } while ($time < ($endTime+60*60*2));
+
+
+
+                /******************************************************************************************
+                *
+                * mit einem Linechart für Min/Max Temperatur und den Wettersymbolen beginnen (series=0,1,2 und yaxis=0)
+                *
+                */
+
+                $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+                $series=0;
+        
+                $CfgDaten['yAxis'][0]['title']['text'] = "Temperatur";
+                $CfgDaten['yAxis'][0]['Unit'] = "°";    
+                $CfgDaten['yAxis'][0]['min'] = -10;
+                $CfgDaten['yAxis'][0]['minrange'] = 8;
+                $CfgDaten['yAxis'][0]['opposite']=false;
+
+                /* nur wenn kalt anzeigen tbd  
+
+                $CfgDaten['yAxis'][0]['plotLines']['color'] = 'red';     // Color value
+                $CfgDaten['yAxis'][0]['plotLines']['dashStyle'] = 'longdashdot';     // Style of the plot line. Default to solid
+                $CfgDaten['yAxis'][0]['plotLines']['value'] = 0;       // Value of where the line will appear
+                $CfgDaten['yAxis'][0]['plotLines']['width'] = 2; // Width of the line  
+                //$CfgDaten['yAxis'][0]['plotLines']['zIndex'] = 3;                     
+                */
+
+                $CfgDaten['series'][$series]['type'] = 'line';
+                $CfgDaten['series'][$series]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series]['name']        = 'Minimale Temperatur';
+                $CfgDaten['series'][$series]['Unit'] = '';
+                $CfgDaten['series'][$series]['yAxis']         = 0;
+                $CfgDaten['series'][$series]['visible']       = true;
+                $CfgDaten['series'][$series]['marker']['symbol']       = 'square';
+        
+                $CfgDaten['series'][$series+1]['type'] = 'line';
+                $CfgDaten['series'][$series+1]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series+1]['name']        = 'Maximale Temperatur';
+                $CfgDaten['series'][$series+1]['Unit'] = '';
+                $CfgDaten['series'][$series+1]['yAxis']         = 0;
+                $CfgDaten['series'][$series+1]['color']         = '#FF0000';
+                $CfgDaten['series'][$series+1]['visible']       = true;
+        
+                $CfgDaten['series'][$series+2]['type'] = 'line';
+                $CfgDaten['series'][$series+2]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series+2]['name']        = 'Symbole';
+                $CfgDaten['series'][$series+2]['Unit'] = '';
+                $CfgDaten['series'][$series+2]['yAxis']         = 0;
+                $CfgDaten['series'][$series+2]['color']         = '#101010';
+                $CfgDaten['series'][$series+2]['visible']       = true;
+                //$CfgDaten['series'][$series+2]['opacity']       = 0;
+                $CfgDaten['series'][$series+2]['zIndex']       = 7;
+        
+                /* Series benötigt Timestamp/y als Keys sonst wird nicht richtig umgesetzt
+                */
+                $tempforWeekdays=0;          
+                foreach ($beginn as $index => $value)
+                    {
+                    if ($maximale[$index]["Wert"]>$tempforWeekdays) $tempforWeekdays=$maximale[$index]["Wert"];
+                    $CfgDaten['series'][$series]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $minimale[$index]["Wert"]];
+                    $CfgDaten['series'][$series+1]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $maximale[$index]["Wert"]];
+                    $CfgDaten['series'][$series+2]['data'][] = ["TimeStamp" => $value["Wert"],"y" => ($maximale[$index]["Wert"]+2),"marker" => ["symbol" => 'url(http://openweathermap.org/img/w/'.$symbols[$index]["Wert"].'.png)']];
+                    }
+            
+                /*******************************************************************************************************************************************
+                *
+                * und dann mit einem Barchart für die Regenmenge, series=3, yaxis=1
+                *
+                */
+        
+                $CfgDaten['plotOptions']['column']['color']     =	 '#0000AA';     // blau
+                $series=3;
+        
+                $CfgDaten['yAxis'][1]['title']['text'] = "Regenmenge";
+                $CfgDaten['yAxis'][1]['Unit'] = 'mm';    
+                $CfgDaten['yAxis'][1]['min'] = 0;
+                $CfgDaten['yAxis'][1]['minRange'] = 3;
+                
+                //$CfgDaten['yAxis'][1]['floor'] = 3;           /* y Achse zumindest für 3 mm auslegen, damit werden die Niedeeschlagsmengen im Bedarfsfall nicht so unverhältnismaessig gross */
+                //$CfgDaten['yAxis'][1]['max'] = 3;
+                //$CfgDaten['yAxis'][1]['ceiling'] = 3;
+
+                $CfgDaten['yAxis'][1]['opposite']=true;
+        
+                $CfgDaten['series'][$series]['type'] = 'column';
+                $CfgDaten['series'][$series]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series]['name']        = 'Regen';
+                $CfgDaten['series'][$series]['Unit'] = '';
+                $CfgDaten['series'][$series]['yAxis']         = 1;
+                $CfgDaten['series'][$series]['visible']       = true;
+        
+                foreach ($beginn as $index => $value)
+                    {
+                    $CfgDaten['series'][$series]['data'][] = ["TimeStamp" => $value["Wert"],"y" => $rains[$index]["Wert"]];
+                    }
+        
+                /******************************************************************************************************** 
+                *
+                * mit einem Linechart für die Wochentage weitermachen (series=4 und yaxis=0)
+                *
+                
+                $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+                $series=4;
+        
+                $CfgDaten['series'][$series]['type'] = 'line';
+                $CfgDaten['series'][$series]['ScaleFactor'] = 1;
+                $CfgDaten['series'][$series]['name']        = 'Wochentage';
+                $CfgDaten['series'][$series]['Unit'] = '';
+                $CfgDaten['series'][$series]['yAxis']         = 0;
+                $CfgDaten['series'][$series]['color']         = '#101010';
+                $CfgDaten['series'][$series]['visible']       = true;
+                $CfgDaten['series'][$series]['opacity']       = 50;        
+        
+                // Series benötigt Timestamp/y als Keys sonst wird nicht richtig umgesetzt
+
+                $tempforWeekdays+=5;    // 5 Grad noch dazu damit sich oben eine Wochentagsliste ausgeht 
+                foreach ($beginn as $index => $value)
+                    {
+                    $stunde=(integer)date("H",$value["Wert"]);
+                    if ($stunde<4)  // je nach Sommer oder Winterzeit 2 oder 3
+                        {
+                        //echo "Zeitstempel : ".$stunde."\n";
+                        $CfgDaten['series'][$series]['data'][] = ["Name" => "hallo","TimeStamp" => $value["Wert"],"y" => $tempforWeekdays];
+                        $i=1;
+                        }
+                    }    */
+
+                /* Create Chart with Config File. IPS Highcharts Library dafür verwenden
+                * erst die Konfiguration überprüfen und dann daraus eine Datei erstellen
+                * für die Darstellung wird eine Datei erzeugt:   Openweather
+                *
+                */
+
+                IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+        
+                $CfgDaten    = CheckCfgDaten($CfgDaten);
+                //print_r($CfgDaten);
+
+                //echo "Create Config String.\n";
+                $sConfig     = CreateConfigString($CfgDaten);
+        
+                $tmpFilename = CreateConfigFile($sConfig, 'Openweather');
+                WriteContentWithFilename ($CfgDaten, $tmpFilename);
+        
+                //echo "Filename fuer Aufruf :".$tmpFilename."\n";
+        
+                $s = explode("|||" , $sConfig);
+            
+                if (count($s) >= 2)
+                    {
+                    $TempString = trim($s[0],"\n ");
+                    $JavaScriptConfigForHighchart = $s[1];	
+                
+                    $LangOptions="lang: {}";
+                    if (count($s) > 2)	$LangOptions = trim($s[2],"\n ");
+                
+                    // aus den Daten ein schönes Array machen
+                    $TempStringArr = explode("\n", $TempString);
+                    foreach($TempStringArr as $Item)
+                        {
+                        $KeyValue = explode("=>", $Item);
+                        $AdditionalConfigData[trim($KeyValue[0]," []")] = trim($KeyValue[1]," ");
+                        }
+                
+                    // Verzeichnis + Theme
+                    if ($AdditionalConfigData['Theme'] != '')
+                        $AdditionalConfigData['Theme']= '/user/IPSHighcharts/Highcharts/js/themes/' . $AdditionalConfigData['Theme'];
+        
+                    }
+                return($CfgDaten);
+                }
+
+
+            }
 
 		// ------------------------------------------------------------------------
 		// CreateDateUTC, hier in der Klasse noch einmal definiert, gibt es in IPSHighcharts.inc

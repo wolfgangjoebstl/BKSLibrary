@@ -65,7 +65,17 @@
             );
         }
 
+	/* Konfiguration für die Mobile App von IP Symcon 
+	 * Achtung bei der Eingabe der Geraetenamen dürfen zwischen den Beistrichen keine Blanks sein
+	 * nach Änderungen muss die install Routine erneut aufgerufen werden
+	 */ 
 
+	function IPSHeat_GetmobileConfiguration() 
+		{
+		return array(
+
+			);
+		}
 
 	/**@addtogroup IPSHEAT_configuration
 	 * @{

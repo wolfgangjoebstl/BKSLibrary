@@ -131,27 +131,7 @@
                 );
 		return $switches;
 		}
-		
-	/***********************************************************
-	 *
-	 * wie funktioniert die Konfiguration zur Erstellung einer komplexen Webfront Darstellung.
-	 *
-	 *  'Anwesenheit'  => array      das ist der Name der Kategorie die in Visualization.Administrator angelegt wird
-	 *    WFCSPLITPANEL,$WFCId, $ItemId, $ParentId, $Position, $Title, $Icon=““, $Alignment=  0=horizontal, 1=vertical, $Ratio=50, $RatioTarget=  0 or 1, $RatioType 0=Percentage, 1=Pixel, $ShowBorder=’true‘ or ‚false’)
-	 *            $WFCId   Webfront Konfigurator ID (Administrator oder User)
-	 *            $ItemId  der neu Name im Webfront Konfigurator
-	 *            $ParentId  der bestehende Namen auf dem ItemID aufsetzt
-	 *            $Title
-	 *            $Icon
-	 *
-	 ************************************************************************************/
 
-	function Autosteuerung_GetWebFrontConfiguration() {
-		return array(
-
-		);
-
-	}
 
 /* für die Anwesenheitserkennung werden die angeführten Statusvariablen UND und ODER verknüpft */
 
@@ -208,7 +188,7 @@
 					);
 		return $as_setup;
 		}
-
+		
 	/***********************************************************
 	 *
 	 * wie funktioniert die Konfiguration zur Erstellung einer komplexen Webfront Darstellung.

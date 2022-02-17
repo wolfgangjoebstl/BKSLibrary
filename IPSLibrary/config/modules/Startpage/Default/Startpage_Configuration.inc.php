@@ -34,7 +34,12 @@
 		{
 		return array(
 			"Directories"    => array (
-				"Pictures"		=> 'C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/',    /* Dont use Blanks or any other character not suitable for filenames */
+				//"Pictures"		=> 'C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/',    /* Dont use Blanks or any other character not suitable for filenames */
+
+                // if SynologyDrive is Used, configure fixed synchronisation, with on demand the download is not automatically requested
+				"Pictures"		=> 'C:/users/wolfg/SynologyDrive/Drive/IP-Symcon/pictures/',                /* Dont use Blanks or any other character not suitable for filenames */                
+				"Images"		=> 'C:/users/wolfg/SynologyDrive/Drive/IP-Symcon/images/',                  /* Dont use Blanks or any other character not suitable for filenames */
+				"Icons"		    => 'C:/users/wolfg/SynologyDrive/Drive/IP-Symcon/icons/',                   /* Dont use Blanks or any other character not suitable for filenames */                 
 				"Scripts"		=> 'C:/Scripts/process/',
 									),
 			"Display"    => array (

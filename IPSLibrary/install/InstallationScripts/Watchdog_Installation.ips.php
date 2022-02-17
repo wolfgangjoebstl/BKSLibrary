@@ -251,7 +251,7 @@
     $watchDog = new watchDogAutoStart();
     $configWD = $watchDog->getConfiguration();
     print_r($configWD);
-    if ($configWD["RemoteShutDown"]) echo "Remote Shutdown wird unterstützt.\n";
+    if ( (isset($configWD["RemoteShutDown"])) && $configWD["RemoteShutDown"]) echo "Remote Shutdown wird unterstützt.\n";
 
 	$verzeichnis=$configWD["WatchDogDirectory"];
 	$unterverzeichnis="";

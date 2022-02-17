@@ -113,7 +113,20 @@
 		IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
 		echo "Profil ".$pname." erstellt;\n";
 		}
-		
+
+/*******************************
+ *
+ * wichtige Kategorien anlegen, werden für wfcHandling bmnötigt
+ *
+ ********************************/
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	$categoryIdSwitches = CreateCategory('Switches', $CategoryIdData, 10);
+	$categoryIdGroups   = CreateCategory('Groups',   $CategoryIdData, 20);
+	$categoryIdPrograms = CreateCategory('Programs', $CategoryIdData, 30);
+
 /*******************************
  *
  * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
@@ -271,12 +284,6 @@ Path=Visualization.Mobile.Stromheizung
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Program Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
-	$categoryIdSwitches = CreateCategory('Switches', $CategoryIdData, 10);
-	$categoryIdGroups   = CreateCategory('Groups',   $CategoryIdData, 20);
-	$categoryIdPrograms = CreateCategory('Programs', $CategoryIdData, 30);	
 
     $moduleManagerCC      = new IPSModuleManager('CustomComponent',$repository);
 	$CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');

@@ -336,6 +336,10 @@
 	$inputAuto = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenAuto, 0, "",null,null,""  );   /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
     $log_Autosteuerung=new Logging($setup["LogDirectory"]."Autosteuerung.csv",$inputAuto,IPS_GetName(0).";Autosteuerung;");
 
+    $categoryId_NachrichtenHtml    = CreateCategory('Nachrichtenverlauf-Wichtig',   $CategoryIdData, 200); 
+    $inputHtml = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenHtml, 0, "",null,null,""  );   /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
+    $log = new Logging("No-Output",$inputHtml,"", true);            // true für html
+
     $categoryId_NachrichtenAnwe    = CreateCategory('Nachrichtenverlauf-AnwesenheitErkennung',   $CategoryIdData, 20);
     $inputAnwe = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenAnwe, 0, "",null,null,""  );     /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
     $log_Anwesenheitserkennung=new Logging($setup["LogDirectory"]."Anwesenheitserkennung.csv",$inputAnwe,IPS_GetName(0).";Anwesenheitserkennung;");
@@ -349,8 +353,8 @@
 	$categoryId_Control = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 	$inputControl=CreateVariable("ReglerAktionen",3,$categoryId_Control, 0,'',null,'');
     
-    $log_Anwesenheitserkennung->LogMessage('Autosteuerung Installation aufgerufen');
-    $log_Anwesenheitserkennung->LogNachrichten('Autosteuerung Installation aufgerufen');      
+    $log->LogMessage('Autosteuerung Installation aufgerufen');
+    $log_Autosteuerung->LogNachrichten('Autosteuerung Installation aufgerufen');      
 
 	$webfront_links=array();
 	foreach ($AutoSetSwitches as $AutoSetSwitch)
@@ -366,7 +370,7 @@
 		echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 		$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
-        $webfront_links[$AutosteuerungID]["OID_R"]=$inputAuto;
+        $webfront_links[$AutosteuerungID]["OID_R"]=$inputAuto;              // Default Nachrichtenspeicher
 
 		/* Spezialfunktionen hier abarbeiten, default am Ende des Switches */
     	switch (strtoupper($AutoSetSwitch["NAME"]))
@@ -661,6 +665,14 @@
                 // OWNTAB nicht unterstützt
 				//$StatusPrivateID=CreateVariable("StatusPrivate",1, $AutosteuerungID,0,"",null,null,"");
 				break;
+			case "LOGGING":
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Logging'));             
+                if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
+                    {  				
+			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputHtml;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste */				
+                    }
+                //echo "Logging,$AutosteuerungID \n";  print_r($webfront_links[$AutosteuerungID]);
+				break;                
 			case "SILENTMODE":
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'SilentMode'));             
                 // OWNTAB nicht unterstützt
@@ -710,8 +722,6 @@
 		}
 	echo "-------------------------------------------------------\n";		
 	//print_r($AutoSetSwitches);
-    //print_r($webfront_links);
-
 
 	/*
    $AutosteuerungID = CreateVariable("Ventilatorsteuerung", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  
@@ -876,7 +886,7 @@
         $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
 
 		$i=0;
-		foreach ($tabs as $tab)
+		foreach ($tabs as $tab)         // diie Tabs entsprechend TABNAME wurden vorher herausgesucht
 			{
 			//$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
 			//$categoryIdLeft  = CreateCategory($tabItem.$i.'_Left',  $categoryIdTab, 10);
@@ -892,11 +902,11 @@
 				{
 				if ($webfront_link["ADMINISTRATOR"]==true)
 					{
-					if ($webfront_link["TAB"]==$tab)
+					if ($webfront_link["TAB"]==$tab)                        // nur das aktuelle Tab bearbeiten
 						{
                         echo "\n---------------------------------------\n";
 						echo $tab." CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   \n";
-						$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
+						$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);                    // tab kategorie in Visualization erstellen
                         if (isset($webFrontConfiguration[$tab])) 
                             {
                             echo "Webfront Config vorhanden.\n"; 
@@ -918,12 +928,13 @@
                                         break;
                                     }
                                 }
-                            }
-						CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
-						if ( isset( $webfront_link["OID_R"]) == true )
-							{
-							CreateLinkByDestination("Nachrichtenverlauf", $webfront_link["OID_R"],    $categoryIdRight,  20);
-							}
+                            CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
+                            if ( isset( $webfront_link["OID_R"]) == true )
+                                {
+                                CreateLinkByDestination("Nachrichtenverlauf", $webfront_link["OID_R"],    $categoryIdRight,  20);
+                                }
+                            }       // erfordert eine zusätzliche Konfiguration
+                        else echo "FEHLER:  no Config entry for $tab available in Autosteuerung_GetWebFrontConfiguration.\n";
 						}
 					}
 				}

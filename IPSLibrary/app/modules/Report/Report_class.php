@@ -30,12 +30,21 @@
      *          CheckValueSelection     die Einträge überpüft
 	 *		    RebuildGraph            und den Graphen neu zeichnet
      *
+     *
+     *      __construct
+     *      setConfiguration
+     *      setValueConfiguration    
+     *      getValueConfiguration 
+     *      getConfiguration
+     *      getcategoryIdCommon
+     *      ChangeSetting     
      *      CheckValueSelection
      *      Navigation
 	 *      ActivateTimer
      *      GetGraphStartTime
      *      GetGraphEndTime
      *      RebuildGraph
+     *      compileConfiguration
      *      GetYAxisIdx
      *      CalculateKWHValues
      *      CalculateWattValues
@@ -452,9 +461,9 @@
 			return $return;
 		}
 
-        /* damit macht man die Darstellung 
-         *      $variableIdChartType
-         *      $variableIdPeriod
+        /* RebuildGraph, damit macht man die Darstellung entsprechen 
+         *      $variableIdChartType                Watt, Euro
+         *      $variableIdPeriod                   Day,Week,Month
          *
          * die User Konfiguration befindet sich in $report_config
          *      für jeden Report gibt es eine eigene Konfiguration
@@ -526,7 +535,8 @@
 			$archiveHandlerId   = $archiveHandlerList[0];
 			$chartType          = GetValue($variableIdChartType);
 
-            if ($this->debug) echo "Background set\n";
+            /* hier beginnt die Erstellung der Highcharts Konfigration */
+
             $CfgDaten=array();
             //$CfgDaten['chart']['type']  = "line";         // später setzen
 
@@ -534,6 +544,7 @@
             $CfgDaten['chart']['backgroundColor']  = "#ddeedd";
 			//$CfgDaten['legend']['backgroundColor']  = "#f6f6f6";
             $CfgDaten['legend']['align']  = "center";
+            if ($this->debug) echo "Background set\n";
 
 	    	//$CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
 
@@ -590,15 +601,17 @@
 				   trigger_error('Unknown Period '.GetValue($variableIdPeriod));
 			}
 
+            /* Komplette GetValueConfiguration durchgehen, das sind die linken Auswahlfelder, hier sollte nur eines aktiv sein !!!!
+             * valueIdx geht vpn 0 bis x und valuedata ist die aktuelle config des kanals mit
+             *    IPSRP_PROPERTY_NAME			Name
+             *    IPSRP_PROPERTY_DISPLAY  	true,false ob Anzeige
+             *		IPSRP_PROPERTY_VALUETYPE	ValueType Total, Detail, Other aber auch Einheiten für die Anzeige
+             *
+             * die eigentliche Configuration für das Zeichenend er Graphen wird in CompileConfiguration erstellt
+             *
+             */
 			foreach ($this->valueConfig as $valueIdx=>$valueData)
 				{
-				/* Komplette GetValueConfiguration durchgehen, das sind die linken Auswahlfelder, hier sollte nur eines aktiv sein !!!!
-				 * valueIdx geht vpn 0 bis x und valuedata ist die aktuelle config des kanals mit
-				 *    IPSRP_PROPERTY_NAME			Name
-				 *    IPSRP_PROPERTY_DISPLAY  	true,false ob Anzeige
-				 *		IPSRP_PROPERTY_VALUETYPE	ValueType Total, Detail, Other aber auch Einheiten für die Anzeige
-				 *
-				 */
                 if ($this->debug && false) 
                     {
                     echo "foreach evaluate ".$valueData[IPSRP_PROPERTY_VALUETYPE]."   ".$valueData[IPSRP_PROPERTY_DISPLAY]." (1 continue setup serie)\n";
@@ -1016,19 +1029,25 @@
              * EASYCHART verweist in einem Array auf anzuzeigende Depotnamen. Der Link geht je Depotnamen auf die Depotkonfiguration als jso encoded. Diese könnten auch variable erstellt werden
              *
              */
+            $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData); 
+            $select=GetValue($ReportDataSelectorID);
+            $selectAssociation=array();
+
             if (isset($report_config["configuration"]))                                 // die Serien können für die Charts Darstellung  manuell ausgewählt werden, keine vorkonfigurierte verwenden
                 {
                 unset ($report_config["series"]);                                       // selber erstellen
-                $selectAssociation=array();
-                $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData); 
-                $select=GetValue($ReportDataSelectorID);
-                if ($this->debug) echo "Alternative Configuration for Series Display detected, create series from config var, use selection $select:\n";
+                if ($this->debug) echo "compileConfiguration: alternative Configuration at Easycharts for Series Display detected, create series from config var, use selection $select:\n";
                 foreach ($report_config["configuration"] as $index=>$configID)
                     {
                     $selectAssociation[]=$index;    
                     }
                 if (isset($report_config[IPSRP_PROPERTY_VALUETYPE])) $valueType=$report_config[IPSRP_PROPERTY_VALUETYPE];
                 else $valueType="Euro";
+                if (isset($selectAssociation[$select])===false) 
+                    {
+                    if ($this->debug) echo "Kein Eintrag, Select $select falsch. Mit 0 beginnen. ".json_encode($selectAssociation)."\n";
+                    $select=0;
+                    }
                 $config=GetValue($report_config["configuration"][$selectAssociation[$select]]);         // config bzw configArray verweist auf das ausgewählte Musterdepot
                 $configArray=json_decode($config,true);
                 //print_R($configArray);
@@ -1044,15 +1063,18 @@
             if (isset($report_config["configSeries"]))                              // die Serie kann für die Charts Darstellung  manuell ausgewählt werden, keine vorkonfigurierte verwenden
                 {
                 unset ($report_config["series"]);                                       // selber erstellen
-                $selectAssociation=array();
-                $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData); 
-                $select=GetValue($ReportDataSelectorID);                
+                if ($this->debug) echo "compileConfiguration: alternative Configuration at Easytrend for Series Display detected, create series from config var, use selection $select:\n";
                 foreach ($report_config["configSeries"] as $index=>$configID)
                     {
                     $selectAssociation[]=$index;    
                     }
                 if (isset($report_config[IPSRP_PROPERTY_VALUETYPE])) $valueType=$report_config[IPSRP_PROPERTY_VALUETYPE];
                 else $valueType="Euro";  
+                if (isset($selectAssociation[$select])===false) 
+                    {
+                    if ($this->debug) echo "Kein Eintrag, Select $select falsch. Mit 0 beginnen. ".json_encode($selectAssociation)."\n";
+                    $select=0;
+                    }                
                 $config=array();              
                 $config[$selectAssociation[$select]]=$report_config["configSeries"][$selectAssociation[$select]];
                 //print_R($config);
@@ -1121,12 +1143,12 @@
                 if (isset($defserie["Module"])) $module=strtoupper($defserie["Module"]);
                 else $module=$moduleDefault;
 
-                switch ($module)                    /* für EASY und EASYTREND die Serie der daten selbt schreiben und nicht auf ein Archiv verweisen */
+                $analyseConfig = ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
+                switch ($module)                    /* für EASY und EASYTREND die Serie der Daten selbst schreiben und nicht auf ein Archiv verweisen */
                     {
                     case "EASYTREND":
                     case "EASY":
                         $oid=$defserie['Id'];
-                        $analyseConfig = ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
                         $resultAll = $archiveOps->analyseValues($oid,$analyseConfig,$this->debug);
                         if ($module=="EASYTREND") 
                             {
@@ -1194,15 +1216,63 @@
                 if ($this->debug) echo "Serie $index ermittelt, wird abgespeichert.\n";
                 $CfgDaten['series'][$index++] = $serie;
                 }   /* ende foreach */
-									
-            switch ($module)                    /* für EASY und EASYTREND eine zusätzliche Tabelle schreiben */
+
+            /* Plot Bands für bessere Lesbarkeit  ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]] 
+                * Starttime, Endtime, periode
+                * minimum Display resolution is day, if periode is week, start end of week is necessary
+                * Weekday when week starts
+                */
+            $time=$CfgDaten["StartTime"]; $endTime = $CfgDaten["EndTime"]; 
+            $daysToDisplay=round(($endTime-$time)/60/60/24,0);
+            //echo $daysToDisplay;
+            if ($daysToDisplay>20) $periode="Week";              // is Day/Week/Month  , abhängig von der Auswahl der Periode, oder Abstand Starttime-Endtime in Tagen: zB 20
+            else $periode="Day"; 
+            $index=0; $color=['#dFdFdF','#eFeFeF'];
+            $startOfThisDay = $time; 
+            $CfgDaten['xAxis']['type'] = "datetime";
+            do                                                  // plot bands for days or weeks (weeks have less intervals) time has to be increased accordingly
                 {
-                case "EASYTREND":
-                case "EASY":   
+                $nextday=$time+60*60*24;
+                $startOfNextDay=mktime(0,0,0,date("m",$nextday), date("d",$nextday), date("Y",$nextday)); 
+                $startOfNextWeek=$startOfNextDay; $nextweek=$nextday;
+                $weekDay = date("D",$startOfNextDay);           // get week day of next day                       
+                while (date("D",$startOfNextWeek)!= "Sun")
+                    {
+                    $startOfNextWeek = $startOfNextWeek + 60*60*24;  
+                    $nextweek = $nextweek +60*60*24;
+                    }
+                if ($periode != "Day") 
+                    {
+                    $startOfNextDay = $startOfNextWeek;
+                    $nextday   = $nextweek;
+                    }                        
+                if ($startOfNextDay>$endTime) $startOfNextDay=$endTime;
+
+                $CfgDaten['xAxis']['plotBands'][$index]['from'] = "@" . $this->CreateDateUTC($startOfThisDay) ."@";
+                $CfgDaten['xAxis']['plotBands'][$index]['to'] = "@" . $this->CreateDateUTC($startOfNextDay) ."@";
+                $CfgDaten['xAxis']['plotBands'][$index]['color'] = $color[($index % 2)];
+                if ($periode == "Day") $CfgDaten['xAxis']['plotBands'][$index]['label']['text'] = date("D",$time);
+                else $CfgDaten['xAxis']['plotBands'][$index]['label']['text'] = date("W",$time);
+                $CfgDaten['xAxis']['plotBands'][$index]['zIndex'] = 3;                                                          // how far in the foreground is shall be plotted
+
+                $time=$nextday; $index++;
+                $startOfThisDay = $startOfNextDay;
+                } while ($time < ($endTime));
+                //} while ($time < ($endTime+60*60*2));
+            //echo "Index $index";                                                // is this what you see, ende plot bands
+
+            /* für EASY eine zusätzliche Tabelle schreiben, bei EASYTREND bleibt die letzte Tabelle stehen, reine Selenium Easycharts Funktion 
+             * der Zeitraum für die Analyse wird duch den Zeitraum der Spanne für die Darstellung 
+             *
+             */
+            switch ($module)                    
+                {
+                case "EASY": 
+
                     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
                     IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
                     $seleniumEasycharts = new SeleniumEasycharts();                         
-                    $shares=array(); $logs=0;
+                    $shares=array();
                     foreach ($configArray as $index => $share)
                         {
                         $shares[$index]=$share;
@@ -1213,7 +1283,7 @@
                         {
                         //print_R($share);
                         $oid = $share["OID"];
-                        $result = $archiveOps->analyseValues($oid,$logs,$this->debug);                 // true mit Debug
+                        $result = $archiveOps->analyseValues($oid,$analyseConfig,$this->debug);                 // true mit Debug
                         if ($this->debug) 
                             {
                             if ( (isset($share["Name"])) && ($share["Name"] != "") ) echo "Bearbeite Share \"".$share["Name"]."\" :\n";
@@ -1225,9 +1295,9 @@
                         $archiveOps->addInfoValues($oid,$share);
                         } 
                     //print_r($resultShares);
-                    $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true); 
+                    $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true,1);                       // true for html, 1 as size
                     $DataTableID   = IPS_GetObjectIdByName("ReportDataTable",   $this->categoryIdData);  
-                    echo "gefunden $DataTableID" ;                  
+                    //echo "gefunden $DataTableID" ;                  
                     SetValue($DataTableID,$wert);                                                                           // eine schöne Tablee schreiben
                     break;
                 default:
@@ -1325,6 +1395,18 @@
 
             }
 
+		// ------------------------------------------------------------------------
+		// CreateDateUTC, hier in der Klasse noch einmal definiert, gibt es in IPSHighcharts.inc
+		//    Erzeugen des DateTime Strings für Highchart-Config
+		//    IN: $timeStamp = Zeitstempel
+		//    OUT: Highcharts DateTime-Format als UTC String ... Date.UTC(1970, 9, 27, )
+		//       Achtung! Javascript Monat beginnt bei 0 = Januar
+		// ------------------------------------------------------------------------
+		function CreateDateUTC($timeStamp)
+			{
+			$monthForJS = ((int)date("m", $timeStamp))-1 ;	// Monat -1 (PHP->JS)
+			return "Date.UTC(" . date("Y,", $timeStamp) .$monthForJS. date(",j,H,i,s", $timeStamp) .")";
+			}
 
 		private function GetYAxisIdx($CfgDaten, $text) 
             {

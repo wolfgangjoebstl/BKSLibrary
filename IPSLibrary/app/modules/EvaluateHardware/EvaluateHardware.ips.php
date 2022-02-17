@@ -372,33 +372,35 @@ IPS_SetEventActive($tim1ID,true);
         *  diese Routine wird in Zukunft nur mehr dazu verwendet eine vollständige Neuinstallation zu unterstützen
         *
         ******************************************/
+        if ( (isset($installedModules["OperationCenter"])) )                // wenn nich nicht installiert gibt es kein Devicemanagement
+            {
+            //$includefile='<?'."\n".'$fileList = array('."\n";
+            $includefile            = '<?'."\n";             // für die php IP Symcon Runtime
+            $includefile            .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").". */\n\n";
+            $summary = array();
+            $includefile            .= '/* These are the Homematic Sockets: */'."\n\n";
+            $evaluateHardware->getHomeMaticSockets($includefile);            //Wenn vorhanden die Homematic Sockets auflisten
+            $includefile            .= "\n".'/* These are the FHT Devices: */'."\n\n";
+            $evaluateHardware->getFHTDevices($includefile,$summary);
+            $includefile            .= "\n".'/* These are the FS20EX Devices: */'."\n\n";
+            $evaluateHardware->getFS20EXDevices($includefile,$summary);
+            $includefile            .= "\n".'/* These are the FS20 Devices: */'."\n\n";
+            $evaluateHardware->getFS20Devices($includefile,$summary);
+            $includefile            .= "\n".'/* These are the Homematic Devices: */'."\n\n";
+            $homematicList = $evaluateHardware-> getHomematicInstances($includefile,$summary);
 
-        //$includefile='<?'."\n".'$fileList = array('."\n";
-        $includefile            = '<?'."\n";             // für die php IP Symcon Runtime
-        $includefile            .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").". */\n\n";
-        $summary = array();
-        $includefile            .= '/* These are the Homematic Sockets: */'."\n\n";
-        $evaluateHardware->getHomeMaticSockets($includefile);            //Wenn vorhanden die Homematic Sockets auflisten
-        $includefile            .= "\n".'/* These are the FHT Devices: */'."\n\n";
-        $evaluateHardware->getFHTDevices($includefile,$summary);
-        $includefile            .= "\n".'/* These are the FS20EX Devices: */'."\n\n";
-        $evaluateHardware->getFS20EXDevices($includefile,$summary);
-        $includefile            .= "\n".'/* These are the FS20 Devices: */'."\n\n";
-        $evaluateHardware->getFS20Devices($includefile,$summary);
-        $includefile            .= "\n".'/* These are the Homematic Devices: */'."\n\n";
-        $homematicList = $evaluateHardware-> getHomematicInstances($includefile,$summary);
+            $evaluateHardware-> getHomematicDevices($includefile);
 
-        $evaluateHardware-> getHomematicDevices($includefile);
-
-        $includefile.="\n".'?>';	
-        $verzeichnis=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware';
-        $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
-        $filename=$verzeichnis.'EvaluateHardware_Include.inc.php';        
-        if (!file_put_contents($filename, $includefile)) {
-            throw new Exception('Create File '.$filename.' failed!');
-                }
-        //include $filename;
-        //print_r($fileList);
+            $includefile.="\n".'?>';	
+            $verzeichnis=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware';
+            $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
+            $filename=$verzeichnis.'EvaluateHardware_Include.inc.php';        
+            if (!file_put_contents($filename, $includefile)) {
+                throw new Exception('Create File '.$filename.' failed!');
+                    }
+            //include $filename;
+            //print_r($fileList);
+            }
         } // ende else if execute
 
 	echo "\n";

@@ -667,7 +667,7 @@
 
     $params=$BackupCenter->getConfigurationStatus("array");
     if (isset($params["BackupDirectoriesandFiles"]) == false) $params["BackupDirectoriesandFiles"]=array("db","media","modules","scripts","webfront","settings.json");
-    if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$BackupCenter->dosOps->correctDirName($BackupCenter->getSourceDrive());
+    if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$dosOps->correctDirName($BackupCenter->getSourceDrive());
     if (isset($params["cleanup"])===false) $params["cleanup"]="finished";
     if (isset($params["maxcopy"])===false) $params["maxcopy"]=500;
     if (isset($params["maxtime"])===false) $params["maxtime"]=100;
@@ -698,8 +698,8 @@
 		//print_r($result);
 		}
 	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	echo "Default WFC10_ConfigId fuer OperationCenter, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
-	if (IPS_GetName($WFC10_ConfigId) != "Administrator")
+	if (IPS_ObjectExists($WFC10_ConfigId)) echo "Default WFC10_ConfigId fuer OperationCenter, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+	if ( ((IPS_ObjectExists($WFC10_ConfigId)) !== true) || (IPS_GetName($WFC10_ConfigId) != "Administrator") )
 		{
 		$WFC10_ConfigId=$WebfrontConfigID["Administrator"];
 		$WFC10User_ConfigId=$WebfrontConfigID["User"];
@@ -1013,107 +1013,111 @@
      * nur die Geräte die gemeinsam mit Type abgespeichert wurden werden für die RSSI Ermittlung in Betracht gezogen
      *
      */
-	$homematic=HomematicList();
-	$seriennumernliste=array();
-	foreach ($homematic as $instance => $entry)
-		{
-		$adresse=explode(":",$entry["Adresse"])[0];
-		if ( isset($seriennumernliste[$adresse])!=true )
-			{
-			$seriennumernliste[$adresse]["Adresse"]=$adresse;
-			$seriennumernliste[$adresse]["Name"]=$entry["Name"];			
-			if (isset($entry["Type"])==true) $seriennumernliste[$adresse]["Type"]=$entry["Type"];	
-			else $seriennumernliste[$adresse]["Type"]="             ";		
-			if (isset($entry["Device"])==true) $seriennumernliste[$adresse]["Device"]=$entry["Device"];
-			else $seriennumernliste[$adresse]["Device"]="              ";
-			$seriennumernliste[$adresse]["Channel"]=explode(":",$entry["Adresse"])[1];
-			if ($entry["Protocol"]=="Funk") $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSRF;
-			else $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSWI;
-			}		
-		}
-	echo "Es gibt ".sizeof($seriennumernliste)." Seriennummern also Homematic Geräte in der Liste. Die ohne Type Parameter oder HM_TYPE_BUTTON rausnehmen:\n";	
-	foreach ($seriennumernliste as $zeile)
-		{
-		if (trim($zeile["Type"])=="") 
-			{
-			//echo "---> kein RSSI Monitoring : ";
-			unset($seriennumernliste[$zeile["Adresse"]]);
-            //echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  ".$zeile["Type"]."  ".$zeile["Device"]."  \n";            
-			}
-		elseif (trim($zeile["Type"])=="HM_TYPE_BUTTON")  
+    if (function_exists("HomematicList"))
+        {     
+        $homematic=HomematicList();
+        $seriennumernliste=array();
+        foreach ($homematic as $instance => $entry)
             {
-			unset($seriennumernliste[$zeile["Adresse"]]);
+            $adresse=explode(":",$entry["Adresse"])[0];
+            if ( isset($seriennumernliste[$adresse])!=true )
+                {
+                $seriennumernliste[$adresse]["Adresse"]=$adresse;
+                $seriennumernliste[$adresse]["Name"]=$entry["Name"];			
+                if (isset($entry["Type"])==true) $seriennumernliste[$adresse]["Type"]=$entry["Type"];	
+                else $seriennumernliste[$adresse]["Type"]="             ";		
+                if (isset($entry["Device"])==true) $seriennumernliste[$adresse]["Device"]=$entry["Device"];
+                else $seriennumernliste[$adresse]["Device"]="              ";
+                $seriennumernliste[$adresse]["Channel"]=explode(":",$entry["Adresse"])[1];
+                if ($entry["Protocol"]=="Funk") $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSRF;
+                else $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSWI;
+                }		
             }
-        else 
+        echo "Es gibt ".sizeof($seriennumernliste)." Seriennummern also Homematic Geräte in der Liste. Die ohne Type Parameter oder HM_TYPE_BUTTON rausnehmen:\n";	
+        foreach ($seriennumernliste as $zeile)
             {
-            //echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";
-            }            
+            if (trim($zeile["Type"])=="") 
+                {
+                //echo "---> kein RSSI Monitoring : ";
+                unset($seriennumernliste[$zeile["Adresse"]]);
+                //echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  ".$zeile["Type"]."  ".$zeile["Device"]."  \n";            
+                }
+            elseif (trim($zeile["Type"])=="HM_TYPE_BUTTON")  
+                {
+                unset($seriennumernliste[$zeile["Adresse"]]);
+                }
+            else 
+                {
+                //echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";
+                }            
 
-		}
-	echo "Davon sind noch ".sizeof($seriennumernliste)." Geraete entweder Switch oder Dimmer und damit ohne Batteriebetrieb.\n";
-	$homematicConfiguration=array();
-	foreach ($seriennumernliste as $zeile)
-		{
-		//echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  \n";
-        echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";
-		$name=explode(":",$zeile["Name"])[0];
-		$homematicConfiguration[$name][]=$zeile["Adresse"];
-		$homematicConfiguration[$name][]=$zeile["Channel"];
-		$homematicConfiguration[$name][]=$zeile["Protocol"];
-		$homematicConfiguration[$name][]=$zeile["Type"];				
-		}
-    /*ein neues Array $homematicConfiguration nach Name (Zeichen vor dem Doppelpunkt) angelegt */
-    $i=0;
-	foreach ($homematicConfiguration as $component=>$componentData) 
-		{
-		$propertyAddress  = $componentData[0];
-		$propertyChannel  = $componentData[1];
-		$propertyProtocol = $componentData[2];
-		$propertyType     = $componentData[3];
-		$propertyName     = $component;
-		
-        /* für jedes gerät aus der Liste alle Homematic module durchsuchen */
-		$install=true; 
-		foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) 
-			{
-			$HMAddress = HM_GetAddress($HomematicModuleId);
-			if ($HMAddress=="$propertyAddress:$propertyChannel") 
-				{
-                /* ähnliche Nachricht kommt von CreateHomematicInstance */
-				//echo "Found existing HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol\n";
-				$install=false;
-				}
-			}
-		if ($install==true)		/* kein Device gefunden */
-			{
-			echo "*******Fehler, HomaticModule '$propertyName' muss komplett neu installiert werden.\n";
-			$moduleManager->LogHandler()->Log("Create NEW HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol");
-			$DeviceId = CreateHomematicInstance($moduleManager,
-                                            $propertyAddress,
-                                            $propertyChannel,
-                                            $propertyName,
-                                            $CategoryIdHardware,
-                                            $propertyProtocol);
-			}
-        echo str_pad($i++,7);
-		$SystemId = CreateHomematicInstance($moduleManager,
-                                            $propertyAddress,
-                                            0,
-                                            $propertyName.':RSSI',                      //kein # mehr, : ist die Trennung
-                                            $CategoryIdRSSIHardware,
-                                            $propertyProtocol);
-
-        if (IPS_GetName($SystemId)!=($propertyName.':RSSI')) 
-            {
-            echo "RSSI Instanz heisst jetzt $SystemId  (".IPS_GetName($SystemId)."). Name wurde geändert.\n";                
-            IPS_SetName($SystemId,$propertyName.':RSSI');
             }
-		if ($propertyType==HM_TYPE_SMOKEDETECTOR) 
-			{
-			$variableId = IPS_GetVariableIDByName('STATE', $DeviceId);
-			CreateEvent ($propertyName, $variableId, $scriptIdSmokeDetector);
-			} 
-		}
+        echo "Davon sind noch ".sizeof($seriennumernliste)." Geraete entweder Switch oder Dimmer und damit ohne Batteriebetrieb.\n";
+        $homematicConfiguration=array();
+        foreach ($seriennumernliste as $zeile)
+            {
+            //echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  \n";
+            echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";
+            $name=explode(":",$zeile["Name"])[0];
+            $homematicConfiguration[$name][]=$zeile["Adresse"];
+            $homematicConfiguration[$name][]=$zeile["Channel"];
+            $homematicConfiguration[$name][]=$zeile["Protocol"];
+            $homematicConfiguration[$name][]=$zeile["Type"];				
+            }
+        /*ein neues Array $homematicConfiguration nach Name (Zeichen vor dem Doppelpunkt) angelegt */
+        $i=0;
+        foreach ($homematicConfiguration as $component=>$componentData) 
+            {
+            $propertyAddress  = $componentData[0];
+            $propertyChannel  = $componentData[1];
+            $propertyProtocol = $componentData[2];
+            $propertyType     = $componentData[3];
+            $propertyName     = $component;
+            
+            /* für jedes gerät aus der Liste alle Homematic module durchsuchen */
+            $install=true; 
+            foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) 
+                {
+                $HMAddress = HM_GetAddress($HomematicModuleId);
+                if ($HMAddress=="$propertyAddress:$propertyChannel") 
+                    {
+                    /* ähnliche Nachricht kommt von CreateHomematicInstance */
+                    //echo "Found existing HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol\n";
+                    $install=false;
+                    }
+                }
+            if ($install==true)		/* kein Device gefunden */
+                {
+                echo "*******Fehler, HomaticModule '$propertyName' muss komplett neu installiert werden.\n";
+                $moduleManager->LogHandler()->Log("Create NEW HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol");
+                $DeviceId = CreateHomematicInstance($moduleManager,
+                                                $propertyAddress,
+                                                $propertyChannel,
+                                                $propertyName,
+                                                $CategoryIdHardware,
+                                                $propertyProtocol);
+                }
+            echo str_pad($i++,7);
+            $SystemId = CreateHomematicInstance($moduleManager,
+                                                $propertyAddress,
+                                                0,
+                                                $propertyName.':RSSI',                      //kein # mehr, : ist die Trennung
+                                                $CategoryIdRSSIHardware,
+                                                $propertyProtocol);
+
+            if (IPS_GetName($SystemId)!=($propertyName.':RSSI')) 
+                {
+                echo "RSSI Instanz heisst jetzt $SystemId  (".IPS_GetName($SystemId)."). Name wurde geändert.\n";                
+                IPS_SetName($SystemId,$propertyName.':RSSI');
+                }
+            if ($propertyType==HM_TYPE_SMOKEDETECTOR) 
+                {
+                $variableId = IPS_GetVariableIDByName('STATE', $DeviceId);
+                CreateEvent ($propertyName, $variableId, $scriptIdSmokeDetector);
+                } 
+            }
+        }
+    else echo "HomematicList wurde noch nicht angelegt.\n";
 	echo "------------------------------------\n";
 
 		

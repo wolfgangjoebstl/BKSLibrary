@@ -183,7 +183,8 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
     /* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
 
     if ($debug) echo "aggregate Openweather.\n";
-    $startpage->aggregateOpenWeather();						// die Highcharts Darstellung huebsch machen, zusaetzlich die Zusammenfassung für die Wetter-Tabelle auf der Startpage machen
+    $startpage->aggregateOpenWeather();						// die Zusammenfassung für die Wetter-Tabelle auf der Startpage machen
+    $startpage->displayOpenWeather();                       // die Highcharts Darstellung huebsch machen,
     if ($debug) echo "write Summary Openweather.\n";
     $startpage->writeOpenweatherSummarytoFile();			// es gibt eine lange html Zusammenfassung, die man am besten in einen iFrame mit scroll Funktion packt		
 
@@ -218,14 +219,19 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 	$noweather=!$Config["Active"]; 
     print_r($Config);
 
-    $file=$startpage->readPicturedir();
-    $maxcount=count($file);
-	echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
-    echo "Startpage wird mit folgenden Parametern aufgerufen : Modus:".GetValue($StartPageTypeID)." ShowFile:".($showfile?"true":"false").".\n";
-    echo "Darstellung Startpage, Darstellung der links zu Bildern ist nicht möglich.\n";
-    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-	echo $startpage->StartPageWrite(2,false,true);                      // true mit Debug
-	
+    if (false)
+        {
+        $file=$startpage->readPicturedir();
+        $maxcount=count($file);
+        echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
+        echo "Startpage wird mit folgenden Parametern aufgerufen : Modus:".GetValue($StartPageTypeID)." ShowFile:".($showfile?"true":"false").".\n";
+        echo "Darstellung Startpage, Darstellung der links zu Bildern ist nicht möglich.\n";
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+        echo $startpage->StartPageWrite(2,false,true);                      // true mit Debug
+        }
+
+    echo "Erzeugung des Wetter Meteograms:\n";
+    $startpage->displayOpenWeather(true);           //tru für Debug
     }
 
 

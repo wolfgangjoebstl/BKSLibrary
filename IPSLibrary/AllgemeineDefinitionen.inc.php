@@ -346,7 +346,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                 else 
                     {
                     if ($debug) echo "Zu übernehmendes Profil $masterName existiert nicht, vorbereitetes Profil nehmen.\n";
-                    createProfiles($server,$pname);
+                    createProfilesByName($server,$pname);
                     }
                 }
             else    
@@ -2949,6 +2949,7 @@ class archiveOps
      *    - Angabe Parameter oid und logs (Anzahl Werte) verpflichtend
      *    - die Zahl logs muss durch 2 dividierbar sein, sonst wird aufgerundet
      *    - logs + logs/2 muss kleiner 10.000 sein
+     *    - Logs kann auch ein array sein ["StartTime"=>$StartTime,"EndTime"=>$EndTime] und eine Zeitspanne angeben
      *
      * Rückgabe ist ein Array mit den bereinigten Werten als Referenz, und den Ergebnissen der Auswertung
      *
@@ -3013,7 +3014,7 @@ class archiveOps
         /* Analyse Ergebnis aus den ausgewählten archivierten Werten */
 
         $means=array();         // Speicherplatz zur Verfügung stellen
-        $meansFull   = new meansCalc($means);
+        $meansFull   = new meansCalc($means);       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
         $meansVar   = new meansCalc($means, "Var",$logs);
         $meansDay   = new meansCalc($means, "Day",2);
         $meansWeek  = new meansCalc($means, "Week",10);
@@ -3024,11 +3025,37 @@ class archiveOps
         $summe=0; $summe1=0; $summe2=0; 
         //$summeDay1=0; $summeDay2=0; $summeWeek1=0; $summeWeek2=0; $summeMonth1=0; $summeMonth2=0;             // zu kompliziert
         $max=0; $min=0; $youngestTime=0; $youngestValue=0; $change=0;
-        $scale=0; $oldestTime=0;
+        $scale=0; $oldestTime=0; 
+        $previousOne=false; $countPos=0; $countPosMax=0; $countNeg=0; $countNegMax=0; $changeDir="";
         $displayCalcTable=false;
         if ($debug && $displayCalcTable) echo " # Stunde Datum Wert       Mittelwert       Rollierend          Mittel1       Mittel2\n";
         foreach($this->result[$oid]["Values"] as $index => $wert)
             {
+            if ($previousOne===false) $previousOne=$wert['Value']; 
+            if ($previousOne>$wert['Value']) 
+                {
+                //echo "-";
+                $countNeg++;
+                if ($changeDir=="pos")
+                    {
+                    if ($countPos>$countPosMax) $countPosMax=$countPos;
+                    $countPos=0;
+                    }
+                $changeDir="neg";
+                }
+            if ($previousOne<$wert['Value']) 
+                {
+                //echo "+";
+                $countPos++;
+                if ($changeDir=="neg")
+                    {
+                    if ($countNeg>$countNegMax) $countNegMax=$countNeg;
+                    $countNeg=0;
+                    }
+                $changeDir="pos";
+                }
+            $previousOne=$wert['Value'];                 
+
             /* Skalierung auf 100 Ausgangswert, das heisst der älteste Wert hat 100 wenn man den Wert mit scale multipliziert */
             if ( ($wert['TimeStamp']<$oldestTime) || ($oldestTime==0) )
                 {
@@ -3136,17 +3163,26 @@ class archiveOps
             if ($debug) echo "Mittelwert ist ".number_format($means2,2,",",".")." Trend ".number_format($this->result[$oid]["Description"]["Trend"],2,",",".")."% ";
             }
         if ($debug) echo "\n";
-        $sdevSum=0;
+        $sdevSum=0; $sdevSumPos=0; $sdevSumNeg=0;
         foreach ($this->result[$oid]["Values"] as $wert)
             {
             $abw=($wert['Value']-$means);
+            if ($abw>0) $sdevSumPos += ($abw*$abw);
+            else $sdevSumNeg += ($abw*$abw);
             $sdevSum += ($abw*$abw);
             }
         $sdev = sqrt($sdevSum/$logCount);
+        $sdevRelPos = sqrt($sdevSumPos/$logCount)/$means*100;
+        $sdevRelNeg = sqrt($sdevSumNeg/$logCount)/$means*100;
+        
         $this->result[$oid]["Description"]["StdDev"]=$sdev;
         $this->result[$oid]["Description"]["StdDevRel"]=$sdev/$means*100;
+        $this->result[$oid]["Description"]["StdDevPos"]=$sdevRelPos;
+        $this->result[$oid]["Description"]["StdDevNeg"]=$sdevRelNeg;
         if ($debug) echo "Sdev ist ".number_format($sdev,2,",",".")."  und relativ ".number_format($this->result[$oid]["Description"]["StdDevRel"],2,",",".")."% \n";
 
+        $this->result[$oid]["Description"]["CountNeg"]=$countNegMax;
+        $this->result[$oid]["Description"]["CountPos"]=$countPosMax;        
         return ($this->result[$oid]);    
         }
 
@@ -3202,7 +3238,7 @@ class archiveOps
                 if ($hours>200) 
                     {
                     $ignore=true;
-                    echo "Wert vom ".date("d.m.Y H:i:s",$wert['TimeStamp'])." ".number_format($hours,2,",",".")." hours \n";
+                    if ($debug) echo "cleanupStoreValues: Fehler, Wert vom ".date("d.m.Y H:i:s",$wert['TimeStamp'])." ".number_format($hours,2,",",".")." hours, Abstand zu gross. \n";
                     }
                 if ($ignore===false)
                     {
@@ -3261,6 +3297,11 @@ class archiveOps
 
 
     /*  Berechnung von Mittelwerten, Ausgaben in einen gemeinsamen Speicher
+     *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
+     *  beim Construct wird der Name unter dem die Berechnung gespeichert werden soll und die Anzahl der Werte die berücksichtigt werden soll gespeichert
+     *  wenn ich 11 Werte angebe wird auf 10 zurückgerundet
+     *
+     * Sonderfall ist Full mit logs=false
      *
      */
 
@@ -3308,7 +3349,7 @@ class archiveOps
                         $this->result[$this->name]["Sum2"] += $wert;
                         $this->result[$this->name]["Count2"]++;
                         }    
-
+                    // Min/Max nur über den Bereich bis CountFull (logs)
                     if (isset($this->result[$this->name]['Max']))  
                         {
                         if ($wert>$this->result[$this->name]['Max'])  $this->result[$this->name]['Max'] = $wert;
@@ -3322,10 +3363,25 @@ class archiveOps
 
                     }
                 }
+            else    
+                {       // Min/Max über den ganzen Bereich
+                if (isset($this->result[$this->name]['Max']))  
+                    {
+                    if ($wert>$this->result[$this->name]['Max'])  $this->result[$this->name]['Max'] = $wert;
+                    }
+                else $this->result[$this->name]['Max'] = $wert;
+                if (isset($this->result[$this->name]['Min']))  
+                    {
+                    if ($wert<$this->result[$this->name]['Min'])  $this->result[$this->name]['Min'] = $wert;
+                    }
+                else $this->result[$this->name]['Min'] = $wert;
+                }
             $this->result[$this->name]["Count"]++;
 
             return (true);
             }
+
+        /* für Mittelwert gut geeignet, wenn alles summiert ist am Ende dividieren */
 
         function calculate()
             {
@@ -3344,7 +3400,11 @@ class archiveOps
                         }
                     }
                 }
-            elseif ($this->result[$this->name]["Count"])  $this->result["Result"][$this->name]["Means"]=$this->result[$this->name]["Sum"]/$this->result[$this->name]["Count"];
+            elseif ($this->result[$this->name]["Count"])  
+                {
+                $this->result["Result"][$this->name]["Means"]=$this->result[$this->name]["Sum"]/$this->result[$this->name]["Count"];
+                $this->result["Result"][$this->name]["Count"]=$this->result[$this->name]["Count"];                                              // die Anzahl ist nicht bekannt
+                }
 
             if ( (isset($this->result[$this->name]['Max'])) && (isset($this->result[$this->name]['Min'])) )
                 {
@@ -3440,7 +3500,10 @@ class ipsOps
         }     
 
 
-    /* sucht ein Children mit dem Namen der needle enthält */
+    /* sucht ein Children mit dem Namen der needle enthält 
+     * nimmt gleich den ersten Treffer in der Reihe von Children
+     *
+     */
     
     public function searchIDbyName($needle, $oid)
         {

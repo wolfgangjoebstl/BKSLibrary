@@ -155,10 +155,11 @@ class Logging
 
 		$this->prefix=$prefix;
 		//$this->log_File=$logfile;
-		$this->log_File=str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // ales wegloeschen das einem korrekten Filenamen widerspricht
+		$this->log_File=str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // alles wegloeschen das einem korrekten Filenamen widerspricht
 		$this->nachrichteninput_Id=$nachrichteninput_Id;
         $this->config["Prefix"]=$prefix;
         $this->config["HTMLOutput"]=$html;
+        $this->config["MessageTable"]=false;
         if ($count>1) $this->config["TableSize"]=$count; 
         else $this->config["TableSize"]=16;
    		//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
@@ -212,6 +213,24 @@ class Logging
                 $sumTableID = CreateVariable("MessageTable", 3,  $this->nachrichteninput_Id, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
                 $this->storeTableID = CreateVariable("MessageStorage", 3,  $this->nachrichteninput_Id, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
                 SetValue($sumTableID,$this->PrintNachrichten(true));
+                $this->config["MessageTable"]=$sumTableID;
+                IPS_SetHidden($this->storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                IPS_SetHidden($this->zeile1,true);
+                IPS_SetHidden($this->zeile2,true);
+                IPS_SetHidden($this->zeile3,true);
+                IPS_SetHidden($this->zeile4,true);
+                IPS_SetHidden($this->zeile5,true);
+                IPS_SetHidden($this->zeile6,true);
+                IPS_SetHidden($this->zeile7,true);
+                IPS_SetHidden($this->zeile8,true);
+                IPS_SetHidden($this->zeile9,true);
+                IPS_SetHidden($this->zeile10,true);
+                IPS_SetHidden($this->zeile11,true);
+                IPS_SetHidden($this->zeile12,true);
+                IPS_SetHidden($this->zeile13,true);
+                IPS_SetHidden($this->zeile14,true);
+                IPS_SetHidden($this->zeile15,true);
+                IPS_SetHidden($this->zeile16,true);
                 }
 			}
 		else
@@ -1341,7 +1360,12 @@ class Logging
             }
         }
 
+    /*****************************************************************************************/
 
+    function LogConfig()
+        {
+        return($this->config);
+        }
 
 	function LogMessage($message)
 		{

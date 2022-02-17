@@ -236,7 +236,7 @@ if ($_IPS['SENDER']=="Variable")
 		/* es gibt einen Eintrag fuer das Event */
 
 		$params=$configuration[$variableID];
-		$log_Autosteuerung->LogMessage('  erkannter Befehl dafür'.json_encode($params));
+		$log_Autosteuerung->LogMessage('  erkannter Befehl dafür'.json_encode($params));            // erzeugt eine dicke fette Datei
 
 		$wert=$params[1];
         if (strpos($wert,"+"))
@@ -267,7 +267,8 @@ if ($_IPS['SENDER']=="Variable")
 				break;
 			/*********************************************************************************************/
 			case "Anwesenheit":
-				$log_Autosteuerung->LogNachrichten("Wert :".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+				if (is_bool($value)) $log_Anwesenheitserkennung->LogNachrichten("Anwesenheit::Wert: ".($value?"EIN":"AUS")." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+                else                 $log_Anwesenheitserkennung->LogNachrichten("Anwesenheit::Wert: ".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 				$status=Anwesenheit($params,$value,$variableID,false,$wertOpt);
 				$log_Autosteuerung->LogMessage('Befehl der App Anwesenheit wurde ausgeführt : '.json_encode($status));
 				break;
@@ -289,7 +290,8 @@ if ($_IPS['SENDER']=="Variable")
 			/*********************************************************************************************/
 		   case "Status":
                 //echo "Status erkannt mit $wertOpt.\n";
-				$log_Autosteuerung->LogNachrichten("Wert :".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+				if (is_bool($value)) $log_Autosteuerung->LogNachrichten("Status::Wert: ".($value?"EIN":"AUS")." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+                else                 $log_Autosteuerung->LogNachrichten("Status::Wert: ".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 				$status=Status($params,$value,$variableID,false,$wertOpt);
 				$log_Autosteuerung->LogMessage('Befehl Status wurde ausgeführt : '.json_encode($status));
 				break;		   

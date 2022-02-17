@@ -8,7 +8,7 @@
 	 * Script zur Auslesung von Energiewerten. Diese Script übernimmt die Webfrontvariablen Bearbeitung und wird zusaetzlich zu Testzwecken weiterhin verwendet
 	 * Regelmaessiger Aufruf wird jetzt von MomentanwerteAbfragen uebernommen. Die Antwort eines AMIS Zähler wird automatisch von AMIS Cutter bearbeitet sobald der Wert verfügbar ist
      *
-	 *
+	 * Diese Routine kann als Einstieg verwendet werden um einen Überblick über die Installation zu bekommen
 	 *
 	 * @file      
 	 * @author        Wolfgang Joebstl
@@ -85,7 +85,7 @@ else
             $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
             $hardwareTypeDetect->writeRegisterStatistics($statistic);        
             }
-        $deviceListFiltered = $hardwareTypeDetect->getDeviceListFiltered(deviceList(),["TYPECHAN" => "TYPE_METER_POWER"],"Install",true);     // true with Debug, Install hat keinen Einfluss mehr, gibt nur mehr das
+        $deviceListFiltered = $hardwareTypeDetect->getDeviceListFiltered(deviceList(),["TYPECHAN" => "TYPE_METER_POWER"],"Install");     // true with Debug, Install hat keinen Einfluss mehr, gibt nur mehr das
         //print_r($deviceListFiltered);
         $powerMeter=array();
         $energyMeter=array();
@@ -106,7 +106,7 @@ else
                             $energyMeter[$children]=$instance["NAME"];
                             }
                         }
-                    print_R($childrens);
+                    //print_R($childrens); foreach ($childrens as $children) echo IPS_getName($children)."  "; echo "\n";
                     }
                 }
             }
@@ -115,6 +115,7 @@ else
         $powerMeterAll=$powerMeter;
         $energyMeterName=array();
         echo"-------------------------------------------------------------\n";
+        echo "Analysing the AMIS Meter Configuration:\n";                                   // Die Konfiguration durchgehen, bekannte Register löschen und schauen was am Ende noch da ist
         foreach ($MeterConfig as $identifier => $meter)
             {
             if (strtoupper($meter["TYPE"])=="HOMEMATIC")
@@ -140,6 +141,7 @@ else
         //echo"-------------------------------------------------------------\n";
         //print_r($energyMeter);
         echo"-------------------------------------------------------------\n";
+        echo "Register marked with *** is not in the AMIS configuration.\n";
         foreach ($energyMeterAll as $oid => $register)
             {
             $props=IPS_GetVariable($oid);
