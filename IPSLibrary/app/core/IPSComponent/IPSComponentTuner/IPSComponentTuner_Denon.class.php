@@ -71,7 +71,9 @@
 				{
 				$object3= new ipsobject($NachrichtenID);
 				$NachrichtenInputID=$object3->osearch("Input");
-				$this->log_Denon=new Logging("C:\Scripts\Log_Denon.csv",$NachrichtenInputID);
+                $dosOps= new dosOps();
+                $systemDir     = $dosOps->getWorkDirectory();
+				$this->log_Denon=new Logging($systemDir."Log_Denon.csv",$NachrichtenInputID);
 				}
 			//$this->log_Denon->LogMessage("Script wurde über IPSLight aufgerufen.");
 			//$this->log_Denon->LogNachrichten("Script wurde über IPSLight aufgerufen.");

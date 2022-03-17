@@ -29,7 +29,7 @@
      *          abhängig vom Identifier und seinem angehängtem Index wird 
      *          CheckValueSelection     die Einträge überpüft
 	 *		    RebuildGraph            und den Graphen neu zeichnet
-     *
+     *          compileConfiguration    die gemeinsame Konfiguration erstellen, soweit für alle Darstellungsformen gleich
      *
      *      __construct
      *      setConfiguration
@@ -44,11 +44,11 @@
      *      GetGraphStartTime
      *      GetGraphEndTime
      *      RebuildGraph
-     *      compileConfiguration
      *      GetYAxisIdx
      *      CalculateKWHValues
      *      CalculateWattValues
-     *
+     *      
+     * Report zeigt die verschiedenen Kurven und bei Easycharts auch Tabellen an. Auswahl über SChalter auf der linken Seite
      *
      *
 	 * @author Wolfgang Jöbstl
@@ -106,7 +106,7 @@
                         }
                     else 
                         {
-                        echo "Fehler, ".$entry["Name"]." hat keine Konfiguration.  \n";
+                        echo "Fehler, ".$entry["Name"]." in Report_GetValueConfiguration hat keine Konfiguration inReport_GetConfiguration.  \n";
                         print_R($entry);
                         }
                     }
@@ -607,7 +607,7 @@
              *    IPSRP_PROPERTY_DISPLAY  	true,false ob Anzeige
              *		IPSRP_PROPERTY_VALUETYPE	ValueType Total, Detail, Other aber auch Einheiten für die Anzeige
              *
-             * die eigentliche Configuration für das Zeichenend er Graphen wird in CompileConfiguration erstellt
+             * die eigentliche Configuration für das Zeichnen der Graphen wird in CompileConfiguration erstellt
              *
              */
 			foreach ($this->valueConfig as $valueIdx=>$valueData)
@@ -1020,6 +1020,17 @@
          *              Id
          *
          * $displaypanel        =$associationsValues[$valueIdx];   welches Feld in getConfiguration 
+         *
+         * $report_config[] steuert die Anzeige
+         *      configuration
+         *      configseries
+         *      Module
+         *      series
+         *      title,type,aggregate
+         *
+         * Bei Easy und Eaysytrend wird eine zusätzliche Tabelle geschrieben
+         *
+         *
          */
         
         private function compileConfiguration(&$CfgDaten,$report_config,$chartType=IPSRP_TYPE_KWH)
@@ -1179,7 +1190,11 @@
                         //$serie['Id']   = $defserie['Id'];
                         break;
                     default:
-                        $serie['Id']   = $defserie['Id'];
+                        if (IPS_ObjectExists($defserie['Id']))
+                            {
+                            $serie['Id']   = $defserie['Id'];
+                            }
+                        else echo "Fehler, ".$defserie['Id']." nicht vorhanden.\n";
                         break;
                     }
                 //if ($defserie['Unit']=='$')            /* Statuswerte */
@@ -1262,7 +1277,9 @@
             //echo "Index $index";                                                // is this what you see, ende plot bands
 
             /* für EASY eine zusätzliche Tabelle schreiben, bei EASYTREND bleibt die letzte Tabelle stehen, reine Selenium Easycharts Funktion 
-             * der Zeitraum für die Analyse wird duch den Zeitraum der Spanne für die Darstellung 
+             * der Zeitraum für die Analyse wird duch den Zeitraum der Spanne für die Darstellung gewählt 
+             *      $configArray            Auswahl des Musterdepots für die Darstellung in der Tabelle
+             *
              *
              */
             switch ($module)                    
@@ -1272,6 +1289,7 @@
                     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
                     IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
                     $seleniumEasycharts = new SeleniumEasycharts();                         
+                    $orderbook=$seleniumEasycharts->getEasychartConfiguration();
                     $shares=array();
                     foreach ($configArray as $index => $share)
                         {
@@ -1292,6 +1310,7 @@
                             }
                         $resultShares[$share["ID"]]=$result;
                         $resultShares[$share["ID"]]["Info"]=$share;
+                        if (isset($orderbook[$share["ID"]])) $resultShares[$share["ID"]]["Order"]=$orderbook[$share["ID"]];
                         $archiveOps->addInfoValues($oid,$share);
                         } 
                     //print_r($resultShares);

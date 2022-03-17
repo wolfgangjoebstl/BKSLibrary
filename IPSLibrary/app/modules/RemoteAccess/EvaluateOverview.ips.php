@@ -15,12 +15,14 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 *************************************************************/
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 500);
-$startexec=microtime(true);
-$forceDelete=true;
+    // max. Scriptlaufzeit definieren
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(500); 
+    $startexec=microtime(true);
 
-IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+    $forceDelete=true;
+
+    IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');

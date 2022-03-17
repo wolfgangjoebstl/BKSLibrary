@@ -378,9 +378,10 @@
 
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
-            else $directory="C:/Scripts/Switch/";
+            else $directory="Switch/";
             $dosOps= new dosOps();
-			$dosOps->mkdirtree($directory);
+            $systemDir     = $dosOps->getWorkDirectory();
+			$dosOps->mkdirtree($systemDir.$directory);
 			$this->filename=$directory.$this->variablename."_Bewegung.csv";                
             }
 
@@ -410,9 +411,10 @@
 
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
-            else $directory="C:/Scripts/Switch/";
+            else $directory="Switch/";
             $dosOps= new dosOps();
-			$dosOps->mkdirtree($directory);
+            $systemDir     = $dosOps->getWorkDirectory();
+			$dosOps->mkdirtree($systemDir.$directory);
 			$this->filename=$directory.$this->variablename."_Helligkeit.csv";      
             }
 
@@ -431,9 +433,10 @@
             $this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
-            else $directory="C:/Scripts/Switch/";
+            else $directory="Switch/";
             $dosOps= new dosOps();
-			$dosOps->mkdirtree($directory);
+            $systemDir     = $dosOps->getWorkDirectory();            
+			$dosOps->mkdirtree($systemDir.$directory);
 			$this->filename=$directory."Statistik.csv";      
             }
 

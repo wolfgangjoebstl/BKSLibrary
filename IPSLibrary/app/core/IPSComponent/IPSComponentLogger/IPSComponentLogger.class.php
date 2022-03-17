@@ -151,6 +151,9 @@ class Logging
 	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne",$prefix="", $html=false, $count=false)
 		{
         //IPSLogger_Dbg(__file__, 'CustomComponent Motion_Logging Construct '.$logfile.'    '.$nachrichteninput_Id.'   '.$prefix);	
+        $moduleManager_DM=false;
+        $debug=false;
+        if ($debug) echo "******Logging construct aufgerufen:  ($logfile | $nachrichteninput_Id | $prefix | $html | $count)\n";
         $this->constructFirst();
 
 		$this->prefix=$prefix;
@@ -158,7 +161,10 @@ class Logging
 		$this->log_File=str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // alles wegloeschen das einem korrekten Filenamen widerspricht
 		$this->nachrichteninput_Id=$nachrichteninput_Id;
         $this->config["Prefix"]=$prefix;
-        $this->config["HTMLOutput"]=$html;
+        //if ($this->configuration["BasicConfigs"]["LogStyle"] == "html") $html=true;
+        if (strtoupper($this->configuration["BasicConfigs"]["LogStyle"]) == "HTML") $this->config["HTMLOutput"]=true;
+        else $this->config["HTMLOutput"]=$html;
+        //if ($this->config["HTMLOutput"]) echo "Ausgabe als HTML Tabelle). \n"; else echo "Ausgabe zeilenweise). \n";
         $this->config["MessageTable"]=false;
         if ($count>1) $this->config["TableSize"]=$count; 
         else $this->config["TableSize"]=16;
@@ -188,59 +194,90 @@ class Logging
 				fclose($handle3);
 				}
 			}
-		if ($this->nachrichteninput_Id != "Ohne")
-		    {
-            $this->config["MessageInputID"]=$nachrichteninput_Id;                
-            $this->zeile = $this->CreateZeilen($this->nachrichteninput_Id);
-                        $this->zeile1 = CreateVariable("Zeile01",3,$this->nachrichteninput_Id, 10 );
-                        $this->zeile2 = CreateVariable("Zeile02",3,$this->nachrichteninput_Id, 20 );
-                        $this->zeile3 = CreateVariable("Zeile03",3,$this->nachrichteninput_Id, 30 );
-                        $this->zeile4 = CreateVariable("Zeile04",3,$this->nachrichteninput_Id, 40 );
-                        $this->zeile5 = CreateVariable("Zeile05",3,$this->nachrichteninput_Id, 50 );
-                        $this->zeile6 = CreateVariable("Zeile06",3,$this->nachrichteninput_Id, 60 );
-                        $this->zeile7 = CreateVariable("Zeile07",3,$this->nachrichteninput_Id, 70 );
-                        $this->zeile8 = CreateVariable("Zeile08",3,$this->nachrichteninput_Id, 80 );
-                        $this->zeile9 = CreateVariable("Zeile09",3,$this->nachrichteninput_Id, 90 );
-                        $this->zeile10 = CreateVariable("Zeile10",3,$this->nachrichteninput_Id, 100 );
-                        $this->zeile11 = CreateVariable("Zeile11",3,$this->nachrichteninput_Id, 110 );
-                        $this->zeile12 = CreateVariable("Zeile12",3,$this->nachrichteninput_Id, 120 );
-                        $this->zeile13 = CreateVariable("Zeile13",3,$this->nachrichteninput_Id, 130 );
-                        $this->zeile14 = CreateVariable("Zeile14",3,$this->nachrichteninput_Id, 140 );
-                        $this->zeile15 = CreateVariable("Zeile15",3,$this->nachrichteninput_Id, 150 );
-                        $this->zeile16 = CreateVariable("Zeile16",3,$this->nachrichteninput_Id, 160 );
-            if ($this->config["HTMLOutput"]) 
-                {
-                $sumTableID = CreateVariable("MessageTable", 3,  $this->nachrichteninput_Id, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
-                $this->storeTableID = CreateVariable("MessageStorage", 3,  $this->nachrichteninput_Id, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
-                SetValue($sumTableID,$this->PrintNachrichten(true));
-                $this->config["MessageTable"]=$sumTableID;
-                IPS_SetHidden($this->storeTableID,true);                    // Nachrichtenarray nicht anzeigen
-                IPS_SetHidden($this->zeile1,true);
-                IPS_SetHidden($this->zeile2,true);
-                IPS_SetHidden($this->zeile3,true);
-                IPS_SetHidden($this->zeile4,true);
-                IPS_SetHidden($this->zeile5,true);
-                IPS_SetHidden($this->zeile6,true);
-                IPS_SetHidden($this->zeile7,true);
-                IPS_SetHidden($this->zeile8,true);
-                IPS_SetHidden($this->zeile9,true);
-                IPS_SetHidden($this->zeile10,true);
-                IPS_SetHidden($this->zeile11,true);
-                IPS_SetHidden($this->zeile12,true);
-                IPS_SetHidden($this->zeile13,true);
-                IPS_SetHidden($this->zeile14,true);
-                IPS_SetHidden($this->zeile15,true);
-                IPS_SetHidden($this->zeile16,true);
-                }
-			}
-		else
+
+        /*--------------------------------------------------------*/
+		if ($this->nachrichteninput_Id == "Ohne")           // Defaultwert Bewegung
 			{
 			//echo "  Kategorien im Datenverzeichnis Custom Components: ".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
 			$name="Bewegung-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$this->CategoryIdData);
 			if ($vid==0) $vid = CreateCategory($name,$this->CategoryIdData, 10);
             $this->config["MessageInputID"]=$vid; 
-            $this->zeile = $this->CreateZeilen($vid);
+            }
+
+
+		if ($this->nachrichteninput_Id != "Ohne")
+		    {            
+            if ($this->config["HTMLOutput"]) 
+                {
+                $sumTableID = CreateVariable("MessageTable", 3,  $this->nachrichteninput_Id, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $this->storeTableID = CreateVariable("MessageStorage", 3,  $this->nachrichteninput_Id, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
+                IPS_SetHidden($this->storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                SetValue($sumTableID,$this->PrintNachrichten(true));
+                $this->config["MessageTable"]=$sumTableID;
+                $this->config["MessageInputID"]=$nachrichteninput_Id;                
+                if ($debug) echo "      SetHidden ".$this->nachrichteninput_Id." ";
+                for ($i=1;$i<=16;$i++)
+                    {
+                    $zeileId = @IPS_GetObjectIdByName("Zeile".str_pad($i, 2 ,'0', STR_PAD_LEFT),$this->nachrichteninput_Id);
+                    if ($zeileId) 
+                        {
+                        IPS_SetHidden($zeileId,true);
+                        if ($debug) echo "*";
+                        }
+                    }    
+                if ($debug) echo "\n";                
+                }
+            else
+                {
+                $this->config["MessageInputID"]=$nachrichteninput_Id;                
+                $this->zeile = $this->CreateZeilen($this->nachrichteninput_Id);
+                $this->zeile1 = CreateVariable("Zeile01",3,$this->nachrichteninput_Id, 10 );
+                $this->zeile2 = CreateVariable("Zeile02",3,$this->nachrichteninput_Id, 20 );
+                $this->zeile3 = CreateVariable("Zeile03",3,$this->nachrichteninput_Id, 30 );
+                $this->zeile4 = CreateVariable("Zeile04",3,$this->nachrichteninput_Id, 40 );
+                $this->zeile5 = CreateVariable("Zeile05",3,$this->nachrichteninput_Id, 50 );
+                $this->zeile6 = CreateVariable("Zeile06",3,$this->nachrichteninput_Id, 60 );
+                $this->zeile7 = CreateVariable("Zeile07",3,$this->nachrichteninput_Id, 70 );
+                $this->zeile8 = CreateVariable("Zeile08",3,$this->nachrichteninput_Id, 80 );
+                $this->zeile9 = CreateVariable("Zeile09",3,$this->nachrichteninput_Id, 90 );
+                $this->zeile10 = CreateVariable("Zeile10",3,$this->nachrichteninput_Id, 100 );
+                $this->zeile11 = CreateVariable("Zeile11",3,$this->nachrichteninput_Id, 110 );
+                $this->zeile12 = CreateVariable("Zeile12",3,$this->nachrichteninput_Id, 120 );
+                $this->zeile13 = CreateVariable("Zeile13",3,$this->nachrichteninput_Id, 130 );
+                $this->zeile14 = CreateVariable("Zeile14",3,$this->nachrichteninput_Id, 140 );
+                $this->zeile15 = CreateVariable("Zeile15",3,$this->nachrichteninput_Id, 150 );
+                $this->zeile16 = CreateVariable("Zeile16",3,$this->nachrichteninput_Id, 160 );                     
+                }
+			}
+        else
+			{
+            if ($this->config["HTMLOutput"]) 
+                {
+                $vid= $this->config["MessageInputID"];
+                $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $this->storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
+                IPS_SetHidden($this->storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                SetValue($sumTableID,$this->PrintNachrichten(true));
+                $this->config["MessageTable"]=$sumTableID;
+                if ($debug) echo "      SetHidden ".$vid."  ";
+                for ($i=1;$i<=16;$i++)
+                    {
+                    $zeileId = @IPS_GetObjectIdByName("Zeile".str_pad($i, 2 ,'0', STR_PAD_LEFT),$vid);
+                    if ($zeileId) 
+                        {
+                        IPS_SetHidden($zeileId,true);
+                        if ($debug) echo "*";                        
+                        }
+                    } 
+                if ($debug) echo "\n";                                     
+                }
+            else
+                {
+                //echo "  Kategorien im Datenverzeichnis Custom Components: ".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
+                $vid= $this->config["MessageInputID"];
+                $this->zeile = $this->CreateZeilen( $this->config["MessageInputID"]);
+                // remove 
                     $this->zeile1  = CreateVariable("Zeile01",3,$vid, 10 );
                     $this->zeile2  = CreateVariable("Zeile02",3,$vid, 20 );
                     $this->zeile3  = CreateVariable("Zeile03",3,$vid, 30 );
@@ -257,15 +294,17 @@ class Logging
                     $this->zeile14 = CreateVariable("Zeile14",3,$vid, 140 );
                     $this->zeile15 = CreateVariable("Zeile15",3,$vid, 150 );
                     $this->zeile16 = CreateVariable("Zeile16",3,$vid, 160 );
-			if (isset ($this->installedmodules["DetectMovement"]))
-				{
-				/* nur wenn Detect Movement installiert zusaetzlich ein Motion Log fuehren */
-				$moduleManager_DM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
-				$CategoryIdDataDM     = $moduleManager_DM->GetModuleCategoryID('data');
-				//echo "  Kategorien im Datenverzeichnis Detect Movement :".$CategoryIdDataDM."   ".IPS_GetName($CategoryIdDataDM)."\n";
-				$name="Motion-Nachrichten";
-				$vid=@IPS_GetObjectIDByName($name,$CategoryIdDataDM);	
+                }
+            if (isset ($this->installedmodules["DetectMovement"]))
+                {
+                // nur wenn Detect Movement installiert zusaetzlich ein Motion Log fuehren 
+                $moduleManager_DM = new IPSModuleManager('DetectMovement');     //   <--- change here 
+                $CategoryIdDataDM     = $moduleManager_DM->GetModuleCategoryID('data');
+                //echo "  Kategorien im Datenverzeichnis Detect Movement :".$CategoryIdDataDM."   ".IPS_GetName($CategoryIdDataDM)."\n";
+                $name="Motion-Nachrichten";
+                $vid=@IPS_GetObjectIDByName($name,$CategoryIdDataDM);	
                 $this->zeileDM = $this->CreateZeilen($vid);		
+                // remove , actually used in LogNachrichten
                         $this->zeile01DM = CreateVariable("Zeile01",3,$vid, 10 );
                         $this->zeile02DM = CreateVariable("Zeile02",3,$vid, 20 );
                         $this->zeile03DM = CreateVariable("Zeile03",3,$vid, 30 );
@@ -282,9 +321,19 @@ class Logging
                         $this->zeile14DM = CreateVariable("Zeile14",3,$vid, 140 );
                         $this->zeile15DM = CreateVariable("Zeile15",3,$vid, 150 );
                         $this->zeile16DM = CreateVariable("Zeile16",3,$vid, 160 );			
-				}
+                }
 			}	
-	   }
+        if ($debug) 
+            {
+            $vid = $this->config["MessageInputID"];
+            echo "      InputId: ".IPS_GetName($vid)."/".IPS_GetName(IPS_GetParent($vid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($vid)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($vid))))."\n";
+            if ($moduleManager_DM) 
+                {
+                $vid=@IPS_GetObjectIDByName($name,$CategoryIdDataDM);   
+                echo "      InputId: ".IPS_GetName($vid)."/".IPS_GetName(IPS_GetParent($vid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($vid)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($vid))))."\n";
+                }
+            }
+	    }
 
     /* Vereinheitlichung des Constructs, was macht das child und was der parent 
      * sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
@@ -305,7 +354,7 @@ class Logging
         $this->logConfCatID = IPS_GetObjectIdByName("LoggingConfig",$this->CategoryIdData);
         $this->logConfID    = IPS_GetObjectIdByName("Logging_Variable",$this->logConfCatID);
         if ($logging=GetValue($this->logConfID)) $this->SetDebugInstance($logging);
-        if (self::$debugInstance) $debug=true; else $debug=false;
+        //if (self::$debugInstance) $debug=true; else $debug=false;
 		//if ($debug) echo "Logging Construct: ".IPS_GetName(self::$debugInstance)." (".self::$debugInstance.")   MirrorCat ".$this->mirrorCatID."  ConfigCat ".$this->logConfCatID." (at) ".$this->CategoryIdData."\n";
 
         $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
@@ -383,10 +432,11 @@ class Logging
         if (function_exists("get_IPSComponentLoggerConfig")) $configInput=get_IPSComponentLoggerConfig();
         else echo "*************Fehler, Logging Konfig File nicht included oder Funktion get_IPSComponentLoggerConfig() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
 
-        configfileParser($configInput, $config, ["BasicConfigs"],"BasicConfigs",null);    
+        configfileParser($configInput, $config, ["BasicConfigs","Basicconfigs","basicconfigs","BASICCONFIGS"],"BasicConfigs",null);    
         configfileParser($configInput, $config, ["LogDirectories" ],"LogDirectories" ,null);    
         configfileParser($configInput, $config, ["LogConfigs"],"LogConfigs",null); 
         $configInput=$config;
+
         /* check BasicConfigs and fill them automatically */
         $dosOps = new dosOps();
         $operatingSystem = $dosOps->evaluateOperatingSystem();
@@ -394,6 +444,8 @@ class Logging
         if ($operatingSystem ==  "WINDOWS") configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","C:/Scripts/");   
         else configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/");
         configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["OperatingSystem"],"OperatingSystem",$operatingSystem);     
+        configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["LogStyle","Logstyle","logstyle","LOGSTYLE"],"LogStyle","text");
+
         /* check logDirectories, replace c:/Scripts/ with systemdir */
         configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["TemperatureLog"],"TemperatureLog","/Temperature/");    
         $this->createFullDir($config["LogDirectories"]["TemperatureLog"],$config["BasicConfigs"]["SystemDir"]);
@@ -1381,84 +1433,92 @@ class Logging
 
 	function LogNachrichten($message, $debug=false)
 		{
-        if ($debug) echo "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." (".IPS_GetName($this->zeile1)."/".IPS_GetName(IPS_GetParent($this->zeile1)).") den Wert $message speichern. \n"; 
-        //IPSLogger_Dbg(__file__, "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." (".IPS_GetName($this->zeile1)."/".IPS_GetName(IPS_GetParent($this->zeile1)).") den Wert $message speichern");	
-		if ($this->nachrichteninput_Id != "Ohne")
-		    {
-			SetValue($this->zeile16,GetValue($this->zeile15));
-			SetValue($this->zeile15,GetValue($this->zeile14));
-			SetValue($this->zeile14,GetValue($this->zeile13));
-			SetValue($this->zeile13,GetValue($this->zeile12));
-			SetValue($this->zeile12,GetValue($this->zeile11));
-			SetValue($this->zeile11,GetValue($this->zeile10));
-			SetValue($this->zeile10,GetValue($this->zeile9));
-			SetValue($this->zeile9,GetValue($this->zeile8));
-			SetValue($this->zeile8,GetValue($this->zeile7));
-			SetValue($this->zeile7,GetValue($this->zeile6));
-			SetValue($this->zeile6,GetValue($this->zeile5));
-			SetValue($this->zeile5,GetValue($this->zeile4));
-			SetValue($this->zeile4,GetValue($this->zeile3));
-			SetValue($this->zeile3,GetValue($this->zeile2));
-			SetValue($this->zeile2,GetValue($this->zeile1));
-			SetValue($this->zeile1,date("d.m.y H:i:s")." : ".$message);
-			}
-		else
-			{
-			SetValue($this->zeile16,GetValue($this->zeile15));
-			SetValue($this->zeile15,GetValue($this->zeile14));
-			SetValue($this->zeile14,GetValue($this->zeile13));
-			SetValue($this->zeile13,GetValue($this->zeile12));
-			SetValue($this->zeile12,GetValue($this->zeile11));
-			SetValue($this->zeile11,GetValue($this->zeile10));
-			SetValue($this->zeile10,GetValue($this->zeile9));
-			SetValue($this->zeile9,GetValue($this->zeile8));
-			SetValue($this->zeile8,GetValue($this->zeile7));
-			SetValue($this->zeile7,GetValue($this->zeile6));
-			SetValue($this->zeile6,GetValue($this->zeile5));
-			SetValue($this->zeile5,GetValue($this->zeile4));
-			SetValue($this->zeile4,GetValue($this->zeile3));
-			SetValue($this->zeile3,GetValue($this->zeile2));
-			SetValue($this->zeile2,GetValue($this->zeile1));
-			SetValue($this->zeile1,date("d.m.y H:i:s")." : ".$message);
-			if (isset ($this->installedmodules["DetectMovement"]))
-				{
-				SetValue($this->zeile16DM,GetValue($this->zeile15DM));
-				SetValue($this->zeile15DM,GetValue($this->zeile14DM));
-				SetValue($this->zeile14DM,GetValue($this->zeile13DM));
-				SetValue($this->zeile13DM,GetValue($this->zeile12DM));
-				SetValue($this->zeile12DM,GetValue($this->zeile11DM));
-				SetValue($this->zeile11DM,GetValue($this->zeile10DM));
-				SetValue($this->zeile10DM,GetValue($this->zeile09DM));
-				SetValue($this->zeile09DM,GetValue($this->zeile08DM));
-				SetValue($this->zeile08DM,GetValue($this->zeile07DM));
-				SetValue($this->zeile07DM,GetValue($this->zeile06DM));
-				SetValue($this->zeile06DM,GetValue($this->zeile05DM));
-				SetValue($this->zeile05DM,GetValue($this->zeile04DM));
-				SetValue($this->zeile04DM,GetValue($this->zeile03DM));
-				SetValue($this->zeile03DM,GetValue($this->zeile02DM));
-				SetValue($this->zeile02DM,GetValue($this->zeile01DM));
-				SetValue($this->zeile01DM,date("d.m.y H:i:s")." : ".$message);
-                echo "    Detect Movement Ausgabe zusätzlich in ".$this->zeile01DM." \n";
-				}
-			}
-        if ($this->config["HTMLOutput"]) 
+        if ($this->config["HTMLOutput"])
             {
-            $sumTableID = IPS_GetObjectIDByName("MessageTable", $this->nachrichteninput_Id); 
-            if ($this->storeTableID)
+            $sumTableID = @IPS_GetObjectIDByName("MessageTable", $this->nachrichteninput_Id); 
+            if ($sumTableID===false) echo "LogNachrichten  ".$this->nachrichteninput_Id."\n";
+            else
                 {
-                $messages = json_decode(GetValue($this->storeTableID),true);
-                $messages[time()]=$message;
-                krsort($messages);
-                if (count($messages)>50)
+                if ($this->storeTableID)
                     {
-                    end( $messages );
-                    $key = key( $messages );
-                    unset ($messages[$key]);
+                    $messages = json_decode(GetValue($this->storeTableID),true);
+                    $messages[time()]=$message;
+                    krsort($messages);
+                    if (count($messages)>50)
+                        {
+                        end( $messages );
+                        $key = key( $messages );
+                        unset ($messages[$key]);
+                        }
+                    SetValue($this->storeTableID,json_encode($messages));
+                    }    
+                SetValue($sumTableID,$this->PrintNachrichten(true));
+                }
+            }   
+        else
+            {         								
+            if ($debug) echo "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." (".IPS_GetName($this->zeile1)."/".IPS_GetName(IPS_GetParent($this->zeile1)).") den Wert $message speichern. \n"; 
+            //IPSLogger_Dbg(__file__, "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." (".IPS_GetName($this->zeile1)."/".IPS_GetName(IPS_GetParent($this->zeile1)).") den Wert $message speichern");	
+            if ($this->nachrichteninput_Id != "Ohne")
+                {
+                SetValue($this->zeile16,GetValue($this->zeile15));
+                SetValue($this->zeile15,GetValue($this->zeile14));
+                SetValue($this->zeile14,GetValue($this->zeile13));
+                SetValue($this->zeile13,GetValue($this->zeile12));
+                SetValue($this->zeile12,GetValue($this->zeile11));
+                SetValue($this->zeile11,GetValue($this->zeile10));
+                SetValue($this->zeile10,GetValue($this->zeile9));
+                SetValue($this->zeile9,GetValue($this->zeile8));
+                SetValue($this->zeile8,GetValue($this->zeile7));
+                SetValue($this->zeile7,GetValue($this->zeile6));
+                SetValue($this->zeile6,GetValue($this->zeile5));
+                SetValue($this->zeile5,GetValue($this->zeile4));
+                SetValue($this->zeile4,GetValue($this->zeile3));
+                SetValue($this->zeile3,GetValue($this->zeile2));
+                SetValue($this->zeile2,GetValue($this->zeile1));
+                SetValue($this->zeile1,date("d.m.y H:i:s")." : ".$message);
+                }
+            else
+                {
+                SetValue($this->zeile16,GetValue($this->zeile15));
+                SetValue($this->zeile15,GetValue($this->zeile14));
+                SetValue($this->zeile14,GetValue($this->zeile13));
+                SetValue($this->zeile13,GetValue($this->zeile12));
+                SetValue($this->zeile12,GetValue($this->zeile11));
+                SetValue($this->zeile11,GetValue($this->zeile10));
+                SetValue($this->zeile10,GetValue($this->zeile9));
+                SetValue($this->zeile9,GetValue($this->zeile8));
+                SetValue($this->zeile8,GetValue($this->zeile7));
+                SetValue($this->zeile7,GetValue($this->zeile6));
+                SetValue($this->zeile6,GetValue($this->zeile5));
+                SetValue($this->zeile5,GetValue($this->zeile4));
+                SetValue($this->zeile4,GetValue($this->zeile3));
+                SetValue($this->zeile3,GetValue($this->zeile2));
+                SetValue($this->zeile2,GetValue($this->zeile1));
+                SetValue($this->zeile1,date("d.m.y H:i:s")." : ".$message);
+                if (isset ($this->installedmodules["DetectMovement"]))
+                    {
+                    SetValue($this->zeile16DM,GetValue($this->zeile15DM));
+                    SetValue($this->zeile15DM,GetValue($this->zeile14DM));
+                    SetValue($this->zeile14DM,GetValue($this->zeile13DM));
+                    SetValue($this->zeile13DM,GetValue($this->zeile12DM));
+                    SetValue($this->zeile12DM,GetValue($this->zeile11DM));
+                    SetValue($this->zeile11DM,GetValue($this->zeile10DM));
+                    SetValue($this->zeile10DM,GetValue($this->zeile09DM));
+                    SetValue($this->zeile09DM,GetValue($this->zeile08DM));
+                    SetValue($this->zeile08DM,GetValue($this->zeile07DM));
+                    SetValue($this->zeile07DM,GetValue($this->zeile06DM));
+                    SetValue($this->zeile06DM,GetValue($this->zeile05DM));
+                    SetValue($this->zeile05DM,GetValue($this->zeile04DM));
+                    SetValue($this->zeile04DM,GetValue($this->zeile03DM));
+                    SetValue($this->zeile03DM,GetValue($this->zeile02DM));
+                    SetValue($this->zeile02DM,GetValue($this->zeile01DM));
+                    SetValue($this->zeile01DM,date("d.m.y H:i:s")." : ".$message);
+                    echo "    Detect Movement Ausgabe zusätzlich in ".$this->zeile01DM." \n";
                     }
-                SetValue($this->storeTableID,json_encode($messages));
-                }    
-            SetValue($sumTableID,$this->PrintNachrichten(true));
-            }            								
+                }
+            }
+
 		}
 
     /* alle Zeilen entweder als text oder html Tabelle ausgeben */
@@ -1522,10 +1582,24 @@ class Logging
         return ($zeile);
         }
 
-    function shiftZeile($message, $zeile, $count=16)
+    function shiftZeile($message, $zeile=false, $count=16)
         {
+        if ($zeile===false) $zeile=$this->zeile;
+        if (count($zeile) != $count) 
+            {
+            echo "shiftZeile: Warnung, Groesse des Nachrichtenspeichers passt nicht zusammen.\n";
+            $count = count($zeile);
+            }
         //print_r($zeile);
-        for ($i=1;$i<=$count;$i++) echo str_pad($i, 2 ,'0', STR_PAD_LEFT)."   ".GetValue($zeile[$i])."\n";
+        $ct=$count;
+        for ($i=1;$i<$count;$i++) 
+            {
+            echo str_pad($i, 2 ,'0', STR_PAD_LEFT)."   ".GetValue($zeile[$ct])."\n";
+            SetValue($zeile[$ct],GetValue($zeile[$ct-1]));
+            $ct--;
+            }
+        echo str_pad($i, 2 ,'0', STR_PAD_LEFT)."   ".GetValue($zeile[$ct])."\n";
+        SetValue($zeile[$ct],$message);
         }
 
     function shiftZeileDebug()

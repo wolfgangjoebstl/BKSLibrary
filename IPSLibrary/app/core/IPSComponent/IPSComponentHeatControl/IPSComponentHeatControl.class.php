@@ -220,8 +220,9 @@
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["HeatControlLog"]))  { $directory=$directories["LogDirectories"]["HeatControlLog"]; }
-			else {$directory="C:/Scripts/HeatControl/"; }	
-			$dosOps->mkdirtree($directory);
+			else {$directory="HeatControl/"; }
+            $systemDir     = $dosOps->getWorkDirectory(); 	
+			$dosOps->mkdirtree($systemDir.$directory);
 			$filename=$directory.$this->variablename."_HeatControl.csv";
 			parent::__construct($filename,$this->HeatControlNachrichtenID);
 			}

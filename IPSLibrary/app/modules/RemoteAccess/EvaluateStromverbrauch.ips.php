@@ -32,15 +32,16 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 *************************************************************/
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 400);
-$startexec=microtime(true);
+    // max. Scriptlaufzeit definieren
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(400); 
+    $startexec=microtime(true);
 
-IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+    IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
-/* wird von Remote Access erzeugt : */
-IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
+    /* wird von Remote Access erzeugt : */
+    IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
 /*	ROID_List() bestimmt die Server an die Daten gesendet werden sollen,  
  *  Function Ist in EvaluateVariables.inc in Modul RemoteAccess und wird von add_remoteServer aus RemoteAccess_GetConfiguration angelegt !

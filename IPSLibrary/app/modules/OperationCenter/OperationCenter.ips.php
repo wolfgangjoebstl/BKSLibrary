@@ -43,11 +43,11 @@ $debug=false;	                    // keine lokalen Echo Ausgaben
 
 *************************************************************/
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 500);
-ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
-
-$startexec=microtime(true);
+    // max. Scriptlaufzeit definieren
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(500);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
+    ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
+    $startexec=microtime(true);
 
 $dir655=false;
 

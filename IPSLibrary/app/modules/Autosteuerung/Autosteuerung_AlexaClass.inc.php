@@ -3,13 +3,16 @@
 /*****************************************************************************************************
  *
  * Hier besondere Alexa Mangement Funktionen zusammenfassen. Hier wird die Alexa Konfiguration ausgegeben und für Debugzwecke analysiert.
- * Die Config AUswertung greift auch auf Remote Server zu.
+ * Die Config AUswertung greift wenn keine lokalen Instanzen vorhanden sind auch auf Remote Server zu.
+ * wenn mehrere Instanzen verfügbar sind wird die rste instanmz genommen
  * Temperaturwerte werden nur abgefragt. Kommen aus den Spiegelregistern oder aus den RemoteAccess Registern.
  * Stellwerte veraendern eine lokale Variable die auch gleichzeitig ein Script aufruft. Der Entry in das Script Austosteuerung_AlexaControl ist VoiceControl.
  * Bei der Config überprüfen ob das Autorun Script auch gesetzt ist.
  *
- * countAlexa sind die Anzahl der vorhandenen Alexas. Wenn der WEert negativ ist, handelt es sich um remote Alexas
- * 
+ * Mit dem construct bereits ermittelt:
+ *  countAlexa sind die Anzahl der vorhandenen Alexas. Wenn der WEert negativ ist, handelt es sich um remote Alexas
+ *  instances
+ *  configAlexa
  *
  **************************************************************************************************************/ 
 
@@ -63,7 +66,13 @@ class AutosteuerungAlexaHandler
         return($this->configAlexa);
         }        
 
-    /* Alexa Konfiguration aus der Instanz laden und analysieren */
+    /* Alexa Konfiguration aus der Instanz laden und analysieren
+     * Konfiguration besteht aus einem Typ und einer Unterkonfiguration
+     * Alle Typen durchgehen
+     *   
+     *      countAllexa und configAlexa von der Instanz bekannt
+     *      
+     */
 
     public function getAlexaConfig($debug=false)
         {
@@ -113,7 +122,8 @@ class AutosteuerungAlexaHandler
 		        		$id="SceneControllerDeactivatableActivateID";
 				        break;
             		case "DeviceSimpleScene":
-	            		$id="SceneControllerSimpleID";
+	            		$id="SceneControllerSimpleID";            // war früher der Parameter
+                        $id="unknown";                            // keine ID nur eine SceneControllerSimpleAction
 		    	        break;
             		case "DeviceGenericSlider":
 	            		$id="PercentageControllerID";
@@ -147,7 +157,7 @@ class AutosteuerungAlexaHandler
             		case "EmulateStatus":
                     case "ShowExpertDevices":
                         /* neue Statusvariablen ohne ID Parameter */
-                        echo "Status $typ ist $conf. Will not be used in script.\n";
+                        if ($debug) echo "Status $typ ist $conf. Will not be used in script.\n";
                         $conf="[]";
                 	    $confStruct=json_decode($conf);
                         break;										
@@ -160,6 +170,7 @@ class AutosteuerungAlexaHandler
                             }
 		    	        break;
                     } 
+                // für jeden Typ die Unterkonfiguration analysieren
             	foreach ($confStruct as $struct) 
 	            	{
                     if ($debug) 
@@ -169,8 +180,12 @@ class AutosteuerungAlexaHandler
                         }
                     if ($this->countAlexa > 0)
                         {   // lokal Alexa
-                        if ( (isset($struct->$id)) === false) echo "Kenn ich nicht.\n";
-        				if ( IPS_ObjectExists($struct->$id)==true )
+                        if ( (isset($struct->$id)) === false) 
+                            {
+                            print_r($struct);
+                            echo "Kenne die $id nicht.\n";
+                            }
+        				elseif ( IPS_ObjectExists($struct->$id)==true )
 		        			{
                             $Name=IPS_GetName($struct->$id);        // same structure as for remote, idea ist to reduce the number of accesses to remote server
                             $parent=IPS_GetParent($struct->$id);

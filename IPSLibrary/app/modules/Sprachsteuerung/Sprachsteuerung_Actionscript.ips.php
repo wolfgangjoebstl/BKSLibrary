@@ -36,6 +36,8 @@
 		}
         
     $ipsOps = new ipsOps();
+    $dosOps = new dosOps();    
+    $systemDir     = $dosOps->getWorkDirectory();     
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -59,7 +61,7 @@
         //$object3= new ipsobject($NachrichtenID); $NachrichtenInputID=$object3->osearch("Input"); $object3->oprint();
         $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
         /* logging in einem File und in einem String am Webfront */
-        $log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
+        $log_Sprachsteuerung=new Logging($systemDir."Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
         }
     else 
         {

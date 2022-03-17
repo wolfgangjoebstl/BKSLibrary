@@ -25,13 +25,13 @@
  *
  */
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 500);
-
-$startexec=microtime(true);
-
-    //Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+
+    // max. Scriptlaufzeit definieren
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(400); 
+    $startexec=microtime(true);
+
     IPSUtils_Include ("WebCamera_Configuration.inc.php","IPSLibrary::config::modules::WebCamera");
 	IPSUtils_Include ("WebCamera_Library.inc.php","IPSLibrary::app::modules::WebCamera");
 

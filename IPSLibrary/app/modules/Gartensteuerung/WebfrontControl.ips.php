@@ -63,10 +63,13 @@ if ($_IPS['SENDER']=="WebFront")
 
 	$GartensteuerungScriptID   		= IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 
+    $dosOps = new dosOps();    
+    $systemDir     = $dosOps->getWorkDirectory(); 
+
 	$object2= new ipsobject($CategoryIdData);
 	$object3= new ipsobject($object2->osearch("Nachricht"));
 	$NachrichtenInputID=$object3->osearch("Input");
-	$log_Giessanlage=new Logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
+	$log_Giessanlage=new Logging($systemDir."Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
 
 	$timerDawnID = @IPS_GetEventIDByName("Timer3", $GartensteuerungScriptID);
 	$UpdateTimerID = @IPS_GetEventIDByName("UpdateTimer", $GartensteuerungScriptID);

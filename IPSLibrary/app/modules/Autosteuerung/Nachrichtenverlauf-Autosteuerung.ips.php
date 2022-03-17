@@ -1,6 +1,6 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -10,9 +10,11 @@ $baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Autosteuerung
 //echo "BaseID :".$baseId."\n";
 
 // Init
+    $dosOps = new dosOps();    
+    $systemDir     = $dosOps->getWorkDirectory(); 
 
 	$input = CreateVariableByName($baseId, "Nachricht_Input", 3);
-	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$input);
+	$log_Autosteuerung=new Logging($systemDir."Log_Autosteuerung.csv",$input);
 	
 	/*
 	$zeile1 = CreateVariableByName($baseId, "Nachricht_Zeile01", 3);

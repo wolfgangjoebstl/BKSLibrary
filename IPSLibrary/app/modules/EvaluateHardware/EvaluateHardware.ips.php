@@ -42,8 +42,11 @@
  * wenn DetectMovement und die TopologyMappingLibrary instaliert ist, wird eine Topologie aufgebaut.
  *
  */
-    // max. Scriptlaufzeit definieren
-    ini_set('max_execution_time', 500);
+
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(500);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
 
     $ExecuteExecute=false;          // false: Execute routine gesperrt, es wird eh immer die Timer Routine aufgerufen. Ist das selbe !
     $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
@@ -54,7 +57,6 @@
  *
  *************************************************************/
 
-    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
     IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
     IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
@@ -71,7 +73,6 @@
     $installedModules = $moduleManager->GetInstalledModules();
 
     $ipsOps = new ipsOps();
-    $dosOps = new dosOps(); 
 
     $fullDir = IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
     $fullDir = $dosOps->correctDirName($fullDir,false);          //true für Debug

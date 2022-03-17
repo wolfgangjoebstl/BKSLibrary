@@ -22,6 +22,10 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
         //echo "Module DetectMovement ist installiert.\n";
         IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
         }
+        
+    $SchalterMonitorID = "unknown";             // Defaultwerte nicht vergessen
+    $StatusMonitorID   = "unknown";
+    $PushSoundID       = "unknown";
 
 	$categoryId_Ansteuerung       = @IPS_GetObjectIDByIdent("Ansteuerung", $CategoryIdData);            // Unterfunktionen wie Stromheizung, Anwesenheitsberechnung sind hier
     $MonitorModeID                = @IPS_GetObjectIDByName("MonitorMode", $categoryId_Ansteuerung);
@@ -40,6 +44,8 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $debug=true;
     $operate=new AutosteuerungOperator($debug);    
     $auto=new Autosteuerung();
+    $ipsOps = new ipsOps();
+
     $ergebnisTyp=false;
 
     $AutoSetSwitches = Autosteuerung_SetSwitches();
@@ -120,8 +126,7 @@ if ($_IPS['SENDER']=="WebFront")
 	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 	switch ($_IPS['VARIABLE'])
 		{
-		case $SchalterSortAS_ID:
-			/* Tabelle updaten wenn die Taste gedrueckt wird */
+		case $SchalterSortAS_ID:            			// Autosteuerungs Events, Tabelle updaten wenn die Taste gedrueckt wird 
             if ( isset($installedModules["DetectMovement"]) === true )
                 {            
                 $detectMovement = new TestMovement($debug);
@@ -168,11 +173,27 @@ if ($_IPS['SENDER']=="WebFront")
                 SetValue($TableEventsAS_ID,$html);
                 }                				
 			break;
-		case $SchalterSortAlexa_ID:
+		case $SchalterSortAlexa_ID:                 // Alexa Befehle, Tabelle updaten wenn die Taste gedrueckt wird 
+            //echo "Alexa";
 			$Alexa = new AutosteuerungAlexaHandler();
 			$alexaConfiguration=$Alexa->getAlexaConfig();
+            switch ($_IPS['VALUE'])
+                {
+                case 0:            
+                    break;
+                case 1:
+                    $ipsOps-> intelliSort($alexaConfiguration,"Name");            
+                    break;
+                case 2:
+                    $ipsOps-> intelliSort($alexaConfiguration,"Type");            
+                    break;
+                case 3:
+                    $ipsOps-> intelliSort($alexaConfiguration,"Pfad");            
+                    break;
+                }
 			$table = $Alexa->writeAlexaConfig($alexaConfiguration,"",true);	// html Ausgabe
-			SetValue($TableEventsAlexa_ID,$table);			
+			SetValue($TableEventsAlexa_ID,$table);
+            //echo "fertig";			
 			break;
         case $MonitorModeID:                // immer hier
             //echo "monitor control ".GetValueIfFormatted($MonitorModeID);
@@ -231,7 +252,11 @@ if ($_IPS['SENDER']=="Execute")
 	echo "\n";
     echo "Alexa Configuration:\n";
     $alexaConfiguration=$Alexa->getAlexaConfig(true);               // true für Debug
+    $ipsOps-> intelliSort($alexaConfiguration,"Name");
     print_r($alexaConfiguration);
+	$table = $Alexa->writeAlexaConfig($alexaConfiguration,"",true);	// html Ausgabe
+    echo $table;
+
     echo "Ausgabe DeviceTemperature:\n";
     $filter="DeviceTemperatureSensor";
     $Alexa->writeAlexaConfig($alexaConfiguration,$filter);

@@ -242,8 +242,9 @@
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["HeatSetLog"])) { $directory=$directories["LogDirectories"]["HeatSetLog"]; }
-			else {$directory="C:/Scripts/HeatSet/"; }	
-			$dosOps->mkdirtree($directory);
+			else {$directory="HeatSet/"; }	
+            $systemDir     = $dosOps->getWorkDirectory();
+			$dosOps->mkdirtree($systemDir.$directory);
 			$filename=$directory.$this->variablename."_HeatSet.csv";
 			parent::__construct($filename,$this->HeatSetNachrichtenID);
             echo "~~~~~~~~~~~~~~~~~~~\n";

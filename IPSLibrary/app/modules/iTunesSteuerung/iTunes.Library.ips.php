@@ -168,7 +168,7 @@
                 IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
                 $startpage = new StartpageHandler();
-                $configurationSP = $startpage->getStartpageConfiguration(); print_r($configurationSP["SpecialRegs"]);
+                //$configurationSP = $startpage->getStartpageConfiguration(); print_r($configurationSP["SpecialRegs"]);
                 $html .= $startpage->writeStartpageStyle();
                 $html .= "<div><table>";        
                 //$html .= $startpage->StartPageWrite(1,true);

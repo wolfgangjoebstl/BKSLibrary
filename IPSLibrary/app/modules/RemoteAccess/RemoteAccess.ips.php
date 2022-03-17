@@ -29,13 +29,14 @@
  *     und die Kategorien der dort angelegten Tabs
  */
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 500);
-$startexec=microtime(true);
+    // max. Scriptlaufzeit definieren
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(500); 
+    $startexec=microtime(true);
 
 /********************************************************************************
  *

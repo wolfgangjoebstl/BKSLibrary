@@ -293,7 +293,7 @@
                     }  // if AMIS Zähler
                 if (!file_exists($this->getSystemDir()."\Log_Cutter_".$identifierTrim.".csv"))
                     {
-                    $handle=fopen("C:\Scripts\Log_Cutter_".$identifierTrim.".csv", "a");
+                    $handle=fopen( $this->systemDir."Log_Cutter_".$identifierTrim.".csv", "a");
                     fwrite($handle, date("d.m.y H:i:s").";Quelle;Laenge;Zählerdatensatz\r\n");
                     fclose($handle);
                     }				
@@ -478,7 +478,7 @@
 							}
 						}  /* ende foreach */				
 
-					$handlelog=fopen("C:\Scripts\Log_Cutter_AMIS.csv","a");
+					$handlelog=fopen( $this->systemDir."Log_Cutter_AMIS.csv","a");
 					Setvalue($SendTimeID,time());
 					COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
 					IPS_Sleep(1550);

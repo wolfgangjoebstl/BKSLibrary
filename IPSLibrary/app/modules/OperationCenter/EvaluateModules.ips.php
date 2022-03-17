@@ -10,15 +10,16 @@
    	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    
    // max. Scriptlaufzeit definieren
-    ini_set('max_execution_time', 800);
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(800);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
     $startexec=microtime(true);
     echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 800 Sek \n";
     $debug=false;
 
+    $dosOps = new dosOps();
     echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
     echo "IPS Kerneldir für Scripts: ".IPS_GetKernelDir()."\n";
 
-    $dosOps = new dosOps();
     $systemDir     = $dosOps->getWorkDirectory(); 
     echo "Privates SystemDir für Logging : $systemDir \n";     
     $ls=$dosOps->readdirToArray($systemDir);

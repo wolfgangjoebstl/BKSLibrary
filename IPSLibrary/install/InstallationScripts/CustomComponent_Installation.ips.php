@@ -30,7 +30,7 @@
 
     $noinstall=true;                        /* true, keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen */
     $evaluateHardware=false;                /* false, keine EvaluateHardware aufgerufen für die Aktualisierung */
-    $excessiveLog=false;                    /* true für mehr Logging */ 
+    $excessiveLog=true;                    /* true für mehr echo Logging when doing install */ 
 
     /*******************************
     *
@@ -42,8 +42,6 @@
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
-    // max. Scriptlaufzeit definieren
-    ini_set('max_execution_time', 30);
     $startexec=microtime(true);    
     echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 30 Sek \n";
 	
@@ -79,6 +77,8 @@
     $dosOps = new dosOps();
     $ipsOps = new ipsOps();    
 	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
+
+    $dosOps->setMaxScriptTime(30);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
 
     /*******************************
      *
@@ -205,10 +205,10 @@
     $wfcHandling =  new WfcHandling();
     /* Workaround wenn im Webfront die Root fehlt */
     $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
-    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["Administrator"],"roottp","",0,"IP-Symcon","IPS");  
-    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["User"],"roottp","",0,"IP-Symcon","IPS");  
+    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["Administrator"],"roottp","",0,"IP-Symcon","IPS");         // roottp im Administrator Webfront anlegen
+    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["User"],"roottp","",0,"IP-Symcon","IPS");                  // roottp im User Webfront anlegen
     /* Standard Config überprüfen */    
-    $WebfrontConfigID = $wfcHandling->installWebfront();
+    $WebfrontConfigID = $wfcHandling->installWebfront();            // die beiden Webfronts anlegen und das Standard Webfront loeschen
 
     /*******************************
     *
@@ -223,13 +223,33 @@
         print_R($configWFront);
         }
 
-    /* extra abfragen, kann auch aus dem Array abgeleitet werden, redundante register, kann man später entfernen  */
+
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
 	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
     $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 
+	if ($WFC10_Enabled==true)
+		{
+		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
+        }
+	if ($WFC10User_Enabled==true)
+		{
+		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
+        }
+
+	if ($Mobile_Enabled==true)
+	   	{
+		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		}
+		
+	if ($Retro_Enabled==true)
+	   	{
+		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		}
+
+    /* extra abfragen, kann auch aus dem Array abgeleitet werden, redundante register, kann man später entfernen  
 	if ($WFC10_Enabled==true)
 		{
 		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
@@ -293,27 +313,7 @@
             }
 		}
       
-
-	if ($Mobile_Enabled==true)
-	   	{
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-        if ($excessiveLog) 
-            {
-            echo "Mobile \n";
-		    echo "  Path          : ".$Mobile_Path."\n";
-            }
-		}
-		
-
-	if ($Retro_Enabled==true)
-	   	{
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-        if ($excessiveLog) 
-            {
-            echo "Retro \n";
-            echo "  Path          : ".$Retro_Path."\n";		
-            }
-		}
+   */
 	
     /**************************************************
      *
@@ -524,21 +524,20 @@
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
 
+        $configWF = $configWFront["Administrator"];
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneParent.",Parent:roottp,Order:".$WFC10_TabPaneOrder."Name:,Icon:HouseRemote\n";        
- 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:".$WFC10_TabPaneParent.",Order:20,Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n"; 
-        if ($WFC10_TabPaneParent !=  "roottp")      
+		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$configWF["TabPaneParent"].",Parent:roottp,Order:".$configWF["TabPaneOrder"]."Name:,Icon:HouseRemote\n";        
+ 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$configWF["TabPaneItem"].",Parent:".$configWF["TabPaneParent"].",Order:20,Name:".$configWF["TabPaneName"].",Icon:".$configWF["TabPaneIcon"]."\n"; 
+        if ($configWF["TabPaneParent"] !=  "roottp")      
             {               
-            CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneParent, "roottp",             $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
-            CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem  , $WFC10_TabPaneParent,  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
-
-            $configWF = $configWFront["Administrator"];
+            CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneParent"], "roottp",             $configWF["TabPaneOrder"], "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
+            CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"]  , $configWF["TabPaneParent"],  20, $configWF["TabPaneName"], $configWF["TabPaneIcon"]);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
             //print_R($configWF);
             //$wfcHandling->deletePane($configWF["ConfigId"], "roottpBewegung");
             echo "\n\n===================================================================================================\n";
             $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
             }
-        else echo "***Fehler, $WFC10_TabPaneParent darf nicht roottp sein.\n";
+        else echo "***Fehler, ".$configWF["TabPaneParent"]." darf nicht roottp sein.\n";
         }
 
 

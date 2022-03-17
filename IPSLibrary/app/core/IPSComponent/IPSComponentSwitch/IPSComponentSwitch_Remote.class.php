@@ -31,7 +31,7 @@
 	 * Für jede Variable die gelogged wird erfolgt ein Eintrag ins config File IPSMessageHandler_Configuration
 	 * Es wird ein Event erzeugt dass bei Änderung der Variable HandleEvent mit VariableID udn Wert aufruft.
      *
-     * Unterschied zu IPSComponentSwitch_RHomematic:
+     * Unterschied zu IPSComponentSwitch_RHomematic :
 	 *   __construct
      *      zusaetzliche Variablen für instanceID und SupportsonTime
      *      Verbiegen des DutyCycle Error Handlers um nicht Erreichbarkeits Events etc abzufangen
@@ -204,8 +204,9 @@
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["SwitchLog"]))
 		   		 { $directory=$directories["LogDirectories"]["SwitchLog"]; }
-			else {$directory="C:/Scripts/Switch/"; }	
-			$dosOps->mkdirtree($directory);
+			else {$directory="Switch/"; }	
+            $systemDir     = $dosOps->getWorkDirectory();
+            $dosOps->mkdirtree($systemDir.$directory);
 			$filename=$directory.$this->variablename."_Switch.csv";
 			parent::__construct($filename,$this->SwitchNachrichtenID);
 			}

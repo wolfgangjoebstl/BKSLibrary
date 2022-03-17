@@ -748,12 +748,18 @@ class OperationCenter
 	 * Wenn der Remote Server erreichbar ist werden Kernel Version und Uptime abgefragt und lokal gespeichert
 	 *
 	 */
-	function server_ping()
+	function server_ping($debug=false)
 		{
 		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 		$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
 		$RemoteServer=array();
-		//print_r($remServer);
+        if ($debug)
+            {
+            echo "Aufruf von OperationCenter::server_ping mit der Konfiguration aus RemoteAccess_GetServerConfig():\n";
+		    print_r($remServer);
+            $status = sys_ping("8.8.8.8",1000);
+            if ($status===false) echo "    Google ping nicht erfolgreich. Internet möglicherweise nicht erreichbar.\n"; 
+            }
 		$method="IPS_GetName"; $params=array();
 
 		foreach ($remServer as $Name => $Server)
@@ -798,6 +804,8 @@ class OperationCenter
 				if (!is_array($params)) {
 						throw new Exception('Params must be given as array');
 					}
+                //if ($debug) echo "    Ping ".json_encode($data).":\n";
+
 				$id = round(fmod(microtime(true)*1000, 10000));
 				$params = array_values($params);
 				$strencode = function(&$item, $key) {
@@ -830,7 +838,8 @@ class OperationCenter
 				$response = @file_get_contents($url, false, $context);
 				if ($response===false)
 					{
-					echo "   Server : ".$UrlAddress." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
+                    $status = sys_ping($data["host"],1000); 
+					echo "   Server : ".$UrlAddress." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht. Ping $status\n";
 					SetValue($IPS_UpTimeID,0);
 					$RemoteServer[$Name]["Status"]=false;
 					if (GetValue($ServerStatusID)==true)
@@ -842,6 +851,8 @@ class OperationCenter
 					}
 				else
 					{
+                    $status = sys_ping($data["host"],1000); 
+                    if ($status===false) echo "   Seltsam, ICMP Ping für ".$data["host"]." funktioniert nicht.\n";
 					$ServerName=$rpc->IPS_GetName(0);
 					$ServerUptime=$rpc->IPS_GetKernelStartTime();
 	   				$IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
@@ -6512,7 +6523,7 @@ class DeviceManagement
 
 		$categoryId_DeviceManagement    = IPS_GetObjectIDByName('DeviceManagement',$this->CategoryIdData);
         $this->HMI_ReportStatusID       = IPS_GetObjectIDByName("HMI_ReportStatus",$categoryId_DeviceManagement);
-        if ($debug) echo "found $categoryId_DeviceManagement und ".$this->HMI_ReportStatusID."\n";
+        if ($debug) echo "DeviceManagement: found category DeviceManagement $categoryId_DeviceManagement mit dem HMI_ReportStatus : ".$this->HMI_ReportStatusID."\n";
         
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		
@@ -7354,12 +7365,12 @@ class DeviceManagement
                         //echo GetValue($childrens[0]);
                         $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
                         //print_R($HomeMaticEntries);
-                        echo "updateHmiReport, ".IPS_GetName($HMI)." ($HMI) HomeMaticEntries erzeugt : ".sizeof($HomeMaticEntries)."\n";
+                        if ($debug) echo "updateHmiReport, ".IPS_GetName($HMI)." ($HMI) HomeMaticEntries erzeugt : ".sizeof($HomeMaticEntries)."\n";
                         if ( ( ( (is_array($HomeMaticEntries)) && (sizeof($HomeMaticEntries)>0) ) === false) || $callCreateReport)
                             {
                             //if ($debug) 
                                 {
-                                echo "     HMI_CreateReport($HMI) aufrufen:";   
+                                echo "     updateHmiReport: HMI_CreateReport($HMI) aufrufen:";   
                                 }
                             HMI_CreateReport($HMI);  
                             if ($debug) echo "  --> done\n";                  

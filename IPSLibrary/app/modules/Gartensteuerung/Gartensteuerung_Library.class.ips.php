@@ -156,7 +156,10 @@ class Gartensteuerung
 		$object2= new ipsobject($CategoryIdData);
 		$object3= new ipsobject($object2->osearch("Nachricht"));
 		$NachrichtenInputID=$object3->osearch("Input");
-		$this->log_Giessanlage=new Logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
+
+        $dosOps = new dosOps();
+        $systemDir     = $dosOps->getWorkDirectory();         
+		$this->log_Giessanlage=new Logging($systemDir."Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
 
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$endtime=time();

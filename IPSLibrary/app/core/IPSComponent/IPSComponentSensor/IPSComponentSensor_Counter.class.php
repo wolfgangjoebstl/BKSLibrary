@@ -319,14 +319,6 @@
 				IPS_ApplyChanges($archiveHandlerID);
 				}
 
-			/* Filenamen für die Log Eintraege herausfunfen und Verzeichnis bzw. File anlegen wenn nicht vorhanden
-			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
-			$directories=get_IPSComponentLoggerConfig();
-			if (isset($directories["LogDirectories"]["CounterLog"]))
-		   		 { $directory=$directories["LogDirectories"]["CounterLog"]; }
-			else {$directory="C:/Scripts/Counter/"; }	
-			$dosOps->mkdirtree($directory);
-			$filename=$directory.$this->variablename."_Counter.csv";    */
 			parent::__construct($this->filename,$NachrichtenID);
 			}
 

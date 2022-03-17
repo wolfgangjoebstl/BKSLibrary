@@ -96,7 +96,7 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
     $log_Autosteuerung          = new Logging($setup["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");
 
     $NachrichtenIDAnwe  = IPS_GetCategoryIDByName("Nachrichtenverlauf-AnwesenheitErkennung",$CategoryIdData);
-    $NachrichtenInputI  = IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAnwe);
+    $NachrichtenInputID = IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAnwe);
     $log_Anwesenheitserkennung  = new Logging($setup["LogDirectory"]."Anwesenheitserkennung.csv",$NachrichtenInputID,IPS_GetName(0).";Anwesenheitserkennung;");
 
 /***************************

@@ -50,7 +50,9 @@
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
     // max. Scriptlaufzeit definieren
-    ini_set('max_execution_time', 100);
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(200); 
+
     $startexec=microtime(true);    
     echo "Abgelaufene Zeit, nach Start : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";
 

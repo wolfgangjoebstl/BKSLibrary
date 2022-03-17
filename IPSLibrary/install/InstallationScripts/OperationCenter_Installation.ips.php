@@ -64,8 +64,7 @@
 	$debug=false;
     $startexec=microtime(true);     /* Laufzeitmessung */
 
-    // max. Scriptlaufzeit definierensonst stoppt vorher wegen langsamer Kamerainstallation
-    ini_set('max_execution_time', 500);
+
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
@@ -86,7 +85,6 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 	echo "IP Symcon Daten:\n";
-	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
 	echo "  Modulversion : ".$ergebnis."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
@@ -95,6 +93,14 @@
 	echo "  IPSModulManager Version : ".$ergebnis."\n";
 	$ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('OperationCenter');
 	echo "  OperationCenter Version : ".$ergebnisVersion."\n";
+    echo "\n";
+    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+    echo "Kernel Datum ist                           : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+    echo "Kernel Startzeit ist                       : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
+    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+    echo "Kernel Install Dir ist auf                 : ".IPS_GetKernelDirEx()."\n";
+    echo "Kernel Log Dir ist auf                     : ".IPS_GetLogDir()."\n";
+    echo "\n";
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -108,8 +114,12 @@
     $ipsOps = new ipsOps();
 
     $systemDir     = $dosOps->getWorkDirectory(); 
-    echo "systemDir : $systemDir \n";           // systemDir : C:/Scripts/ 
-    echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
+    $opSystem      = $dosOps->getOperatingSystem();
+    echo "Operating System : $opSystem\n";
+    echo "Working Directory from IPSComponentLogger_Configuration : $systemDir\n";          // ersetzt hart kodiertes C:/Scripts, hat ein / am Ende
+
+    // max. Scriptlaufzeit definierensonst stoppt vorher wegen langsamer Kamerainstallation
+    $dosOps->setMaxScriptTime(400); 
 
 	/******************************************************
 	 *
@@ -460,7 +470,7 @@
 			$host          = $router["IPADRESSE"];
 			if (isset($router["COMMUNITY"])) $community     = $router["COMMUNITY"]; 
 			else $community     = "public";				 
-            $binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+            $binary        = $systemDir."ssnmpq/ssnmpq.exe";    // Pfad zur ssnmpq.exe
 								
             switch (strtoupper($router["TYP"]))
                 {
@@ -593,7 +603,7 @@
 
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$NachrichtinputID = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$NachrichtinputID);
+	$log_OperationCenter=new Logging($systemDir."/Log_OperationCenter.csv",$NachrichtinputID);
     $MessageTableID           = @IPS_GetObjectIDByName("MessageTable", $NachrichtinputID);
     IPS_SetHidden($categoryId_Nachrichten,true);            // in der normalen Kategorie Darstellung ausblenden
 
@@ -1150,7 +1160,27 @@
 			IPS_SetVariableProfileAssociation($pname, 10, "Autosteuerung", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color			
 			echo "Profil ".$pname." erstellt;\n";
 			}
-			
+
+		$pname="SortTableEventsAlexa";
+		if (IPS_VariableProfileExists($pname) == false)
+			{
+			//Var-Profil erstellen
+			IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+			IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+            echo "Profil ".$pname." erstellt;\n";
+            }
+        /* Synchronization bei Profilen gibt es so nicht, SynchronizeProfiles erstellt neue nach einem Ebenbild */
+        $profileConfig=IPS_GetVariableProfile ($pname);
+        if ($profileConfig["MaxValue"] != 3) 
+            {
+            IPS_SetVariableProfileValues($pname, 0, 3, 1); //PName, Minimal, Maximal, Schrittweite
+            IPS_SetVariableProfileAssociation($pname, 0, "ID", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+            IPS_SetVariableProfileAssociation($pname, 1, "Name", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
+            IPS_SetVariableProfileAssociation($pname, 2, "Typ", "", 		0x1ef1f7); //P-Name, Value, Assotiation, Icon, Color
+            IPS_SetVariableProfileAssociation($pname, 3, "Pfad", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+            echo "Profil ".$pname." upgedatet;\n";
+            }
+
 	if (isset ($installedModules["DetectMovement"]))
 		{
 	    echo "===========================================\n";
@@ -1215,7 +1245,7 @@
 		$categoryId_AutosteuerungAlexa    = CreateCategory('Alexa',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_AutosteuerungAlexa, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
 		$TableEventsAlexa_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungAlexa,0,"~HTMLBox",null,null,"");
-		$SchalterSortAlexa_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$SchalterSortAlexa_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEventsAlexa",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 
 	    echo "===========================================\n";
 	    echo "Zusammenfassung Taster anzeigen.\n";		

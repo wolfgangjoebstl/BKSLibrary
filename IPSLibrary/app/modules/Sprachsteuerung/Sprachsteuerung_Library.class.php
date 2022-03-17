@@ -22,6 +22,9 @@
  		{
 		$tts_status=true;
         $ipsOps = new ipsOps();
+        $dosOps = new dosOps();    
+        $systemDir     = $dosOps->getWorkDirectory(); 
+
 		echo "Aufgerufen als Teil der Library der Sprachsteuerung.\n";
 		//echo "tts_play, Textausgabe, Soundkarte : ".$sk.".\n";
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -57,7 +60,7 @@
 						{
 						//$object3= new ipsobject($NachrichtenID); $NachrichtenInputID=$object3->osearch("Input");
                         $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
-						$log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
+						$log_Sprachsteuerung=new Logging($systemDir."Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
 						$log_Sprachsteuerung->LogNachrichten("Sprachsteuerung: Ausgabe von \"".$ansagetext."\"");
 						}
 					}

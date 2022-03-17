@@ -52,7 +52,8 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 *************************************************************/
 
 	// max. Scriptlaufzeit definieren
-	ini_set('max_execution_time', 500);
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(500); 
 	$startexec=microtime(true);
 
 	echo "Update Konfiguration und register Events fuer HeatControl:\n\n";

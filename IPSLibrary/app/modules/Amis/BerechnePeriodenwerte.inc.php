@@ -33,8 +33,9 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
     $installedModules = $moduleManager->GetInstalledModules();
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 400);
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(100);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
+
 $display=false;       /* alle Eintraege auf der Console ausgeben */
 //$display=true;
 

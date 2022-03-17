@@ -25,10 +25,11 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
 
 *************************************************************/
 
-// Scriptlaufzeit erfassen, kann sehr viel länger sein da remote Server kontaktiert werden müssen
-$startexec=microtime(true);
-ini_set('max_execution_time', 120);
-
+    // Scriptlaufzeit erfassen, kann sehr viel länger sein da remote Server kontaktiert werden müssen
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(400); 
+    $startexec=microtime(true);
+    
 echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n<br>";
 $status=RemoteAccessServerTable();
 print_r($status);

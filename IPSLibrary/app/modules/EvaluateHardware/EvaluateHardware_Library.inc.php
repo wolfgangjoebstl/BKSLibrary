@@ -112,9 +112,9 @@ class TopologyLibraryManagement
             $hardwareType = $hardwareTypeDetect->getHardwareType($entry["ModuleID"]);
             if ($hardwareType != false) 
                 {
-                if ($debug) echo "    get_SocketList, bearbeite $hardwareType \n";
+                if ($debug) echo "    get_SocketList, bearbeite $hardwareType, new Hardware.$hardwareType class\n";
                 $objectClassName = "Hardware".$hardwareType;
-                $object = new $objectClassName(); 
+                $object = new $objectClassName($debug); 
                 $socketID = $object->getSocketID();
                 $validModule = @IPS_GetModule($socketID)["ModuleName"];
                 if ($validModule != "")

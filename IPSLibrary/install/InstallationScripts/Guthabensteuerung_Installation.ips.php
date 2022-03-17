@@ -42,7 +42,8 @@
     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");    
 
 	// max. Scriptlaufzeit definieren
-	ini_set('max_execution_time', 500);
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(400); 
 	$startexec=microtime(true);
 
 	//$repository = 'https://10.0.1.6/user/repository/';
@@ -108,11 +109,14 @@
     $categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 20);
     $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 1000);
 
+    $dosOps = new dosOps();    
+    $systemDir     = $dosOps->getWorkDirectory(); 
+
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 	$categoryId_Nachrichten     = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 100);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$log_OperationCenter=new Logging("C:\Scripts\Log_Guthabensteuerung.csv",$input);
+	$log_OperationCenter=new Logging($systemDir."Log_Guthabensteuerung.csv",$input);
 
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);

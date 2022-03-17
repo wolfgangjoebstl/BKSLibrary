@@ -975,8 +975,9 @@ class HardwareHomematic extends Hardware
         $this->setInstalledModules();
         if (isset($this->installedModules["OperationCenter"])) 
             {
-            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
-            $this->DeviceManager = new DeviceManagement(); 
+            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            if ($debug) echo "class DeviceManagement aufgerufen:\n";   
+            $this->DeviceManager = new DeviceManagement($debug); 
             }
         parent::__construct($debug);
         }

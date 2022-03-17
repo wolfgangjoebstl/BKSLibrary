@@ -5636,6 +5636,10 @@ class Autosteuerung
  * Funktionen innerhalb der Autosteuerung
  * die AbstractClass verwendet ihr eigenes Logging, InitMesagePuffer wird von der benutzenden Klasse bereitgestellt
  * verwendet von:
+ *       AutosteuerungRegler
+ *       AutosteuerungAnwesenheitsSimulation
+ *       AutosteuerungAlexa
+ *       AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung 
  *
  **************************************************************************************************************/
 
@@ -5741,10 +5745,12 @@ abstract class AutosteuerungFunktionen
 			}
 		}																												
 
+    /* verweist auf den jeweiligen InitMesagePuffer 
+     */
+
 	function InitLogNachrichten($type,$profile)
 		{
-		/*momentan nur durchreichen */
-		$this->InitMesagePuffer($type,$profile);
+		$this->InitMesagePuffer($type,$profile);                // momentan nur durchreichen 
 		}
 		
 	abstract function InitMesagePuffer($type,$profile);
@@ -5762,21 +5768,103 @@ abstract class AutosteuerungFunktionen
 			}
 		}
 		
+    /* kein Logging wenn nicht html und nachrichteninput_Id == Ohne
+     */
+
 	function LogNachrichten($message)
-		{		
-		if ($this->nachrichteninput_Id != "Ohne")
-			{
-			//print_r($this->zeile);
-			for ($i=16; $i>1;$i--) 
-				{ 
-				SetValue($this->zeile[$i],GetValue($this->zeile[$i-1])); 
-				//echo "Wert : ".$i."\n";
-				}
-			SetValue($this->zeile[$i],date("d.m.y H:i:s")." : ".$message);
-			}		
+		{
+        echo "LogNachrichten ".json_encode($this->config)." Nachricht \"$message\"";
+        if ($this->config["HTMLOutput"])
+            {
+            echo "  Ausgabe als html\n";
+            $sumTableID = $this->config["sumTableID"]; 
+            if ($sumTableID===false) echo "LogNachrichten, Fehler  InputID $sumTableID nicht definiert.\n";
+            else
+                {
+                if ($this->config["storeTableID"])
+                    {
+                    $messages = json_decode(GetValue($this->config["storeTableID"]),true);
+                    $messages[time()]=$message;
+                    krsort($messages);
+                    if (count($messages)>50)
+                        {
+                        end( $messages );
+                        $key = key( $messages );
+                        unset ($messages[$key]);
+                        }
+                    SetValue($this->config["storeTableID"],json_encode($messages));
+                    }    
+                SetValue($sumTableID,$this->PrintNachrichten(true));
+                }
+            }   
+        else
+            {   
+            echo "  Ausgabe als array of lines\n";         		
+            if ($this->nachrichteninput_Id != "Ohne")
+                {
+                //print_r($this->zeile);
+                for ($i=16; $i>1;$i--) 
+                    { 
+                    SetValue($this->zeile[$i],GetValue($this->zeile[$i-1])); 
+                    //echo "Wert : ".$i."\n";
+                    }
+                SetValue($this->zeile[$i],date("d.m.y H:i:s")." : ".$message);
+                }		
+            }
 		}
-		
-	function PrintNachrichten()
+
+    /* Ausgeb des Logspeichers */
+
+	function PrintNachrichten($html=false)
+		{
+		$result=false;
+        $PrintHtml="";
+        $PrintHtml.='<style>';             
+        $PrintHtml.='.messagy table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+        $PrintHtml.='.messagy table    {table-layout: fixed; width: 100%; }';
+        $PrintHtml.='.messagy td:nth-child(1) { width: 30%; }';
+        $PrintHtml.='.messagy td:nth-child(2) { width: 70%; }';
+        $PrintHtml.='</style>';        
+        $PrintHtml.='<table class="messagy">';
+        if ($this->config["HTMLOutput"] && $this->config["storeTableID"])
+            {
+            $messageJson=GetValue($this->config["storeTableID"]);
+            $messages = json_decode($messageJson,true);
+            //IPSLogger_Inf(__file__, "Logging:PrintNachrichten ".$messageJson."   ".$this->log_File."   ".$this->zeile1);
+            $PrintHtml .= '<tr><td>Date</td><td>Message</td></tr>';
+            if (is_array($messages))
+                {
+                if (count($messages)>0) 
+                    {
+                    foreach ($messages as $timeIndex => $message)
+                        {
+                        $PrintHtml .= '<tr><td>'.date("d.m H:i:s",$timeIndex).'</td><td>'.$message.'</td></tr>';
+                        }
+                    }
+                }
+            }  
+		elseif ($this->nachrichteninput_Id != "Ohne")
+		    {
+            $result="";
+            $count=sizeof($this->zeile);
+            if ($count>1)
+                {
+                for ($i=1;$i<=$count;$i++)
+                    {
+                    $result    .= GetValue($this->zeile[$i])."\n";
+                    //$PrintHtml .= '<tr><td>'.str_pad($i, 2 ,'0', STR_PAD_LEFT).'</td><td>'.GetValue($this->zeile[$i]).'</td></tr>';
+                    $PrintHtml .= '<tr><td>'.GetValue($this->zeile[$i]).'</td></tr>';
+                    }
+                }
+            else $result=GetValue($this->zeile1)."\n".GetValue($this->zeile2)."\n".GetValue($this->zeile3)."\n".GetValue($this->zeile4)."\n".GetValue($this->zeile5)."\n".GetValue($this->zeile6)."\n".GetValue($this->zeile7)."\n".GetValue($this->zeile8)."\n".GetValue($this->zeile9)."\n".GetValue($this->zeile10)."\n".GetValue($this->zeile11)."\n".GetValue($this->zeile12)."\n".GetValue($this->zeile13)."\n".GetValue($this->zeile14)."\n".GetValue($this->zeile15)."\n".GetValue($this->zeile16)."\n";
+			}
+        $PrintHtml.='</table>';        
+
+		if ($html) return ($PrintHtml);
+        else return $result;
+		}
+
+	/*function PrintNachrichten()
 		{
 		$result=false;
 		if ($this->nachrichteninput_Id != "Ohne")
@@ -5789,7 +5877,7 @@ abstract class AutosteuerungFunktionen
 			//$result=GetValue($this->zeile1)."\n".GetValue($this->zeile2)."\n".GetValue($this->zeile3)."\n".GetValue($this->zeile4)."\n".GetValue($this->zeile5)."\n".GetValue($this->zeile6)."\n".GetValue($this->zeile7)."\n".GetValue($this->zeile8)."\n".GetValue($this->zeile9)."\n".GetValue($this->zeile10)."\n".GetValue($this->zeile11)."\n".GetValue($this->zeile12)."\n".GetValue($this->zeile13)."\n".GetValue($this->zeile14)."\n".GetValue($this->zeile15)."\n".GetValue($this->zeile16)."\n";
 			}
 		return $result;
-		}
+		}*/
 
 	function status()
 	   {
@@ -5821,6 +5909,12 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 	protected $scriptIdHeatControl;	
 
     protected $configuration;                   // Configuration from Config File
+    protected $config=array();                  // internal configuration
+
+    protected $htmlLogging=true;
+
+    /* construct 
+     */
 
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
@@ -5839,6 +5933,7 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 		/******************************* Nachrichten Logging *********/
 		
 		$type=3;$profile=""; $this->zeile=array();
+        $this->config["HTMLOutput"]=$this->htmlLogging;        
 		$this->InitLogNachrichten($type,$profile);		/*  ruft das Geraete spezifische InitMesagePuffer() auf, logging in Objekten mit String und ohne Profil festlegen, keien Abstrkte Routine, auf jeden Fall programmieren */
 		}
 
@@ -5848,7 +5943,7 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 		$this->zeile[$i] = CreateVariableByName($vid,"Zeile".$i,$type,$profile,"",$i*10,$scriptIdHeatControl);
 		}
 
-	function InitMesagePuffer($type=3,$profile="")
+	function InitMesagePuffer($type=3,$profile="")              // AutosteuerungRegler
 		{		
 		if ($this->nachrichteninput_Id != "Ohne")
 			{
@@ -5858,11 +5953,6 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 				{
 				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Regleraktionen InitMessagePuffer, keine Kategorie"ReglerAktionene in '.$this->nachrichteninput_Id);
 				}
-			else
-				{	
-				//EmptyCategory($vid);			
-				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }  /* kein Actionscript notwendig */
-				}	
 			}
 		else
 			{
@@ -5878,12 +5968,27 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 				{
 				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung "Regleraktionen InitMessagePuffer, keine Kategorie ReglerAktionen in '.$this->nachrichteninput_Id);
 				}
-			else
-				{
-				//EmptyCategory($vid);			
-				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
-				}		
 			}
+
+      if ($vid)
+            {
+            if ($this->config["HTMLOutput"])
+                {
+                echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
+                $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
+                IPS_SetHidden($storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                $this->config["storeTableID"]=$storeTableID;
+                $this->config["sumTableID"]=$sumTableID;
+                $this->config["nachrichteninput_Id"]=$vid;
+                SetValue($sumTableID,$this->PrintNachrichten(true));            // true für htmlOutput
+                }
+            else
+                {
+				//EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }                    
+                }
+            }            
 		}
 
 	function LogMessage($message)
@@ -5919,6 +6024,9 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 	protected $scriptIdHeatControl;	
 
     protected $configuration;                   // Configuration from Config File
+    protected $config=array();                  // internal configuration
+
+    protected $htmlLogging=true;
 
     /**************************/
 
@@ -5937,6 +6045,7 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 		
 		/******************************* Nachrichten Logging *********/
 		$type=3;$profile=""; $this->zeile=array();
+        $this->config["HTMLOutput"]=$this->htmlLogging;
 		$this->InitLogNachrichten($type,$profile);      /*  ruft das Geraete spezifische InitMesagePuffer() auf */
 		}
 
@@ -5946,8 +6055,9 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 		$this->zeile[$i] = CreateVariableByName($vid,"Zeile".$i,$type,$profile,"",$i*10,$scriptIdHeatControl);
 		}
 
-	function InitMesagePuffer($type=3,$profile="")
-		{		
+	function InitMesagePuffer($type=3,$profile="")                  // AutosteuerungAnwesenheitssimulation
+		{
+        //echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer\n";		
 		if ($this->nachrichteninput_Id != "Ohne")
 			{
 			// bei etwas anderem als einem String stimmt der defaultwert nicht
@@ -5956,11 +6066,6 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 				{
 				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Anwesenheitssimulation InitMessagePuffer, keine Kategorie Schaltbefehle in '.$this->nachrichteninput_Id);
 				}
-			else
-				{	
-				//EmptyCategory($vid);			
-				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
-				}	
 			}
 		else
 			{
@@ -5976,12 +6081,27 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 				{
 				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Anwesenheitssimulation InitMessagePuffer, keine Kategorie Schaltbefehle in '.$this->nachrichteninput_Id);
 				}
-			else
-				{
-				//EmptyCategory($vid);			
-				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
-				}		
 			}
+
+        if ($vid)
+            {
+            if ($this->config["HTMLOutput"])
+                {
+                echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
+                $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
+                IPS_SetHidden($storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                $this->config["storeTableID"]=$storeTableID;
+                $this->config["sumTableID"]=$sumTableID;
+                $this->config["nachrichteninput_Id"]=$vid;
+                SetValue($sumTableID,$this->PrintNachrichten(true));            // true für htmlOutput
+                }
+            else
+                {
+				//EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }                    
+                }
+            }
 		}
 
 	function LogMessage($message)
@@ -6021,7 +6141,10 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 	protected $scriptIdHeatControl;	
 
     protected $configuration;                   // Configuration from Config File
+    protected $config=array();                  // internal configuration
 
+    protected $htmlLogging=true;
+    
     /**************************/
 
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
@@ -6039,6 +6162,7 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 		
 		/******************************* Nachrichten Logging *********/
 		$type=3;$profile=""; $this->zeile=array();
+        $this->config["HTMLOutput"]=$this->htmlLogging;        
 		$this->InitLogNachrichten($type,$profile);          /*  ruft das Geraete spezifische InitMesagePuffer() auf */
 		}
 
@@ -6058,11 +6182,6 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 				{
 				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Anwesenheitssimulation InitMessagePuffer, keine Kategorie Schaltbefehle in '.$this->nachrichteninput_Id);
 				}
-			else
-				{	
-				//EmptyCategory($vid);			
-				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
-				}	
 			}
 		else
 			{
@@ -6078,12 +6197,26 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 				{
 				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Anwesenheitssimulation InitMessagePuffer, keine Kategorie Schaltbefehle in '.$this->nachrichteninput_Id);
 				}
-			else
-				{
-				//EmptyCategory($vid);			
-				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
-				}		
 			}
+        if ($vid)
+            {
+            if ($this->config["HTMLOutput"])
+                {
+                echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
+                $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
+                IPS_SetHidden($storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                $this->config["storeTableID"]=$storeTableID;
+                $this->config["sumTableID"]=$sumTableID;
+                $this->config["nachrichteninput_Id"]=$vid;
+                SetValue($sumTableID,$this->PrintNachrichten(true));            // true für htmlOutput
+                }
+            else
+                {
+				//EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }                    
+                }
+            }            
 		}
 
 	function LogMessage($message)
@@ -7566,7 +7699,10 @@ function parseParameter($params,$result=array())
 
 /********************************************************************************************
  *
- * Zuordnung webfrontLink in einer Zeile
+ * Zuordnung webfrontLink in einer Zeile, erweitert Konfiguration in Autosteuerung_SetSwitches
+ * wenn in AutosetSwitches OWNTAB konfiguriert ist wird ein eigener Subtab mit dem A´Namen angelegt. Sonst bleibt die Darstellung im Autosteuerung Tab untereinander angeordnet
+ *
+ *
  * es werden $webfront_link["TAB"] und $webfront_link["TABNAME"] beschrieben
  * es bleibt bei TAB Autosteurung wenn kein OWNTAB definiert ist.
  * bei OWNTAB wird TAB auf einen neuen eigenen TAB gesetzt und ein neuer Name dafür definiert, sonst wird der per Default übergebene verwednet
@@ -7574,7 +7710,7 @@ function parseParameter($params,$result=array())
  ***************************************************************************/
 
 
-function defineWebfrontLink($AutoSetSwitch, $default)
+function defineWebfrontLink($AutoSetSwitch, $default="Default")
     {
     $webfront_link["TAB"]="Autosteuerung";
 	if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )				/* es ist doch ein Tab konfiguriert, kann immer noch der selbe sein */

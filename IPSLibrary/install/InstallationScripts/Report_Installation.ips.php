@@ -202,6 +202,9 @@
 	$categoryIdValues   = CreateCategory('Values',  $CategoryIdData, 20);
 	//$categoryIdCustom   = CreateCategory('Custom',  $CategoryIdData, 30);
 
+    /* muss bevor die Class zum ersten Mal aufgerufen wird bereits vorhanden sein */
+    $visualizationCategoryID = CreateVariableByName($CategoryIdData, "VisualizationCategory", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
 	// Add Scripts
 	$scriptIdActionScript   = IPS_GetScriptIDByName('Report_ActionManager', $CategoryIdApp);
 	//$scriptIdNavPrev        = IPS_GetScriptIDByName('IPSPowerControl_NavigatePrev', $CategoryIdApp);
@@ -310,7 +313,7 @@
      *
      */
 
-    $visualizationCategoryID = CreateVariableByName($CategoryIdData, "VisualizationCategory", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+    //$visualizationCategoryID = CreateVariableByName($CategoryIdData, "VisualizationCategory", 1);   // vor class Aufruf unterbringen
 
     $ReportDataSelectorID = CreateVariableByName($CategoryIdData, "ReportDataSelector", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$pname="ReportDataSelect";

@@ -21,9 +21,10 @@ IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules:
 
 *************************************************************/
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 900);
-$startexec=microtime(true);
+    // max. Scriptlaufzeit definieren
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(900);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
+    $startexec=microtime(true);
 
 $dir655=false;
 

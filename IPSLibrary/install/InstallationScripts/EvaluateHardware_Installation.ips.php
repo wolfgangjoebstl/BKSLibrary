@@ -13,10 +13,10 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-    $startexec=microtime(true);
-    
     // max. Scriptlaufzeit definieren
-    ini_set('max_execution_time', 500);
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(400); 
+    $startexec=microtime(true);
 
 	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');

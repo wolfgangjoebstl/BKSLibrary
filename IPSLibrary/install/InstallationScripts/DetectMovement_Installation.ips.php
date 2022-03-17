@@ -70,8 +70,8 @@
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
     // max. Scriptlaufzeit definierensonst stoppt vorher wegen langsamer Kamerainstallation
-    ini_set('max_execution_time', 500);
-    
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(400); 
 	$startexec=microtime(true);
     $installModules=false;
     $debug = true;    

@@ -6,14 +6,12 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
 
 */
 
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-$startexec=microtime(true);
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 800);
-//exectime($startexec)
-
+    // max. Scriptlaufzeit definieren
+    $dosOps = new dosOps();
+    $dosOps->setMaxScriptTime(800);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
+    $startexec=microtime(true);
 
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
