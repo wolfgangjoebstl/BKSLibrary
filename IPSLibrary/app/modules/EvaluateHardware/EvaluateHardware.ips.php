@@ -71,6 +71,9 @@
         $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
         }
     $installedModules = $moduleManager->GetInstalledModules();
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $statusEvaluateHardwareID       = IPS_GetObjectIDByName("StatusEvaluateHardware", $CategoryIdData);
+    $logEvaluateHardwareID          = IPS_GetObjectIDByName("LogEvaluateHardware", $CategoryIdData);
 
     $ipsOps = new ipsOps();
 
@@ -116,8 +119,27 @@
 
         $arrHM_Errors = $DeviceManager->HomematicFehlermeldungen(true);         // true Ausgabe als MariaDB freundliches Array
         echo "Aktuelle Homematic Fehlermeldungen, insgesamt ".sizeof($arrHM_Errors).":\n";
-        print_r($arrHM_Errors);
-
+        //print_r($arrHM_Errors);
+        $html = '';  
+        $html.='<style>';             
+        $html.='.statyHm table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+        $html.='.statyHm table    {table-layout: fixed; width: 100%; }';
+        //$html.='.statyHm td:nth-child(1) { width: 60%; }';                        // fixe breiten, sehr hilfreich
+        //$html.='.statyHm td:nth-child(2) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(3) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(4) { width: 10%; }';
+        $html.='</style>';        
+        $html.='<table class="statyHm">';              
+        foreach ($arrHM_Errors as $oid=>$entry) 
+            {
+            $html .= '<tr><td>';
+            $text = "   ".$entry["ErrorMessage"]."\n";
+            echo $text;
+            $html .= $text;
+            $html .= '</td></tr>';               
+            }
+        $html .= '</table>';
+        SetValue($statusEvaluateHardwareID,$html);
         /* für eine OID die DeviceID herausfinden. es gibt wie bei AuditTrail einen Eintrag, mit EventId, Datum/Zeitstempel, NameOfIndex, IndexId, Event Description, EventShort 
          *
          */
@@ -151,7 +173,8 @@
                 }
             }
 
-        $i=0; $storedError_Log=array();
+        $i=0; 
+        //$storedError_Log=array();
         echo "Diese Meldungen sind weggefallen, insgesamt ".sizeof($storedHM_Errors).":\n";
         print_R($storedHM_Errors);
         foreach ($storedHM_Errors as $oid=>$entry)
@@ -170,7 +193,27 @@
             $storedError_Log[date ("YmdHis",$today+$i)]["State"]="ADD";
             $i++;
             }  
-        print_R($storedError_Log);      
+        //print_R($storedError_Log);   
+        $html = '';  
+        $html.='<style>';             
+        $html.='.statyHm table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+        $html.='.statyHm table    {table-layout: fixed; width: 100%; }';
+        //$html.='.statyHm td:nth-child(1) { width: 60%; }';                        // fixe breiten, sehr hilfreich
+        //$html.='.statyHm td:nth-child(2) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(3) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(4) { width: 10%; }';
+        $html.='</style>';        
+        $html.='<table class="statyHm">'; 
+        foreach ($storedError_Log as $date => $entry)
+            {
+            $html .= '<tr><td>';
+            $text = $date."    ".$entry["State"]." ".$entry["Message"]."\n";
+            echo $text;
+            $html .= $text;
+            $html .= '</td></tr>';    
+            }
+        $html .= '</table>';
+        SetValue($logEvaluateHardwareID,$html);           
 
         $statusDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
         $statusDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 

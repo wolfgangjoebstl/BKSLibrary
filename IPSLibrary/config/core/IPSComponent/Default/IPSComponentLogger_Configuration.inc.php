@@ -43,6 +43,11 @@
 			"LogConfigs"         => array (
 			   "DelayMotion"        => 1800,                            /* verzoegerte Bewegungswerte um Hüllkurve zu erzeugen und kurze Unterbrechungen auszufiltern */
 			                     ),
+            "BasicConfigs"      => array (
+                "LogStyle"          => "html",
+            /*    "SystemDir"         => "C:/Scripts/",
+                "OperatingSystem"   => "Windows",   */
+                                ),                                  
 			);
 		}
 

@@ -29,7 +29,16 @@
 	 *
 	 */
 
-
+    /* Struktur Startpage Configuration
+     *      Directories     wichtige Verzeichnisse, erforderlich für die Funktion
+     *      Display         Darstellung Startpage, Info über Widgetstyle ist aber hier
+     *      Widgets         Eigene Infoscreen Darstellung mit Kacheln in mehreren Ebenen
+     *      Monitor
+     *      SpecialRegs
+     *      Temperature
+     *
+     */
+     
 	function startpage_configuration()
 		{
 		return array(

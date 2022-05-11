@@ -231,7 +231,10 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         }
 
     echo "Erzeugung des Wetter Meteograms:\n";
-    $startpage->displayOpenWeather(true);           //tru für Debug
+    $startpage->displayOpenWeather(true);           //true für Debug
+
+    echo "Durchlauf Startpage Write mit Debug ein:\n";
+    $startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,true);      // true für Debug
     }
 
 

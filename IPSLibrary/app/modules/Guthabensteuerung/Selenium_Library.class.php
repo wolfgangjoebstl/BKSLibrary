@@ -1724,6 +1724,7 @@ class SeleniumEasycharts extends SeleniumHandler
      * Mit Size werden verschiedene Darstellungsgroessen und Detailierungen für die html Tabelle ausgewählt
      *   0  einfache Tabele, geeignet für halb- oder viertelseitige Darstellungen
      *   1  zusätzliche informationen
+     *   2  erweiterte Darstellung mit mehr Fokus auf Win/Loss des eigenen Depots, Monats/wochen/Tagestrend
      *
      * Wie der Name schon sagt gibt es verschiedene Analyse Funktionen für die Visualisiserung
      *          Anzeige des Tageskurses mit Rotem oder grünen Hintergrund
@@ -1752,9 +1753,11 @@ class SeleniumEasycharts extends SeleniumHandler
             $wert .= '<';
             if ($size==0) $wert .= 'font size="1" ';
             else $wert .= 'font size="2" ';
-            $wert .= 'face="Courier New" ><table id="easycharts"><tr><td>ID/Name</td><td>Standard<br>Abw</td><td>Spread Max/Min</td><td>Mittelwert</td><td>';
-            if ($size>0) $wert .= '++/--</td><td>Min</td><td>Max</td><td>Order</td><td>';
-            $wert .= 'Letzter Wert</td><td>Week Trend</td><td>Day Change</td><td>Recommendation</td></tr>';
+            $wert .= 'face="Courier New" ><table id="easycharts"><tr><td>ID/Name</td><td>Standard<br>Abw</td><td>Spread Max/Min</td><td>';
+            if ($size>0) $wert .= '++/--</td><td>Min</td><td>Max</td><td>Order</td><td>Win/Loss</td><td>';
+            else $wert .= 'Mittelwert</td><td>';
+            if ($size>1) $wert .= 'Letzter Wert</td><td>Month Trend</td><td>Week Trend</td><td>Day Change</td><td>Recommendation</td></tr>';
+            else $wert .= 'Letzter Wert</td><td>Week Trend</td><td>Day Change</td><td>Recommendation</td></tr>';
             }
         else echo "ID            Name                       StandardAbw  Spread Max/Min        Mittelwert      Trend      Letzter Wert  Result\n";
 
@@ -1766,35 +1769,74 @@ class SeleniumEasycharts extends SeleniumHandler
         arsort($sortTable);
         //print_R($sortTable);
         
-        /* entsprechend der Sortierung die Tabelle anzeigen */
+        /* entsprechend der Sortierung die Tabelle anzeigen 
+         * Rating Engine:
+         *          stdDev<5
+         *
+         */
         foreach ($sortTable as $index => $line)
             {
+            $rating=0;
             if (isset($resultShares[$index]["Info"]["Name"])) $name=$resultShares[$index]["Info"]["Name"];
             else $name="";
+            if ($resultShares[$index]["Description"]["StdDevRel"]<5) 
+                {
+                $rating += 1;
+                $strength=1.2;          // Bewertung StDevPos zu StdDevNeg
+                }
+            else $strength=1.6; 
             if (isset($resultShares[$index]["Description"]["Interval"]["Week"]["Trend"])) $trendPerc = $resultShares[$index]["Description"]["Interval"]["Week"]["Trend"];
             else $trendPerc=0;
             $spreadPlus  = ($resultShares[$index]["Description"]["Max"]/$resultShares[$index]["Description"]["Means"]-1)*100;
             $spreadMinus = (1-$resultShares[$index]["Description"]["Min"]/$resultShares[$index]["Description"]["Means"])*100;
             $description="";
-            if (($resultShares[$index]["Description"]["StdDevPos"]+$resultShares[$index]["Description"]["StdDevNeg"])>5)           // 5% in welchem Zeitraum
+            if (($resultShares[$index]["Description"]["StdDevPos"]+$resultShares[$index]["Description"]["StdDevNeg"])>5)           // 5% in welchem Zeitraum, bei Report der eingestellten Dauer, zB 3 Monate, sonst alle
                 {
-                $strength=1.2; 
-                if ($resultShares[$index]["Description"]["StdDevPos"]>($strength*$resultShares[$index]["Description"]["StdDevNeg"])) $description .= "Volatile to high";
+                if ($resultShares[$index]["Description"]["StdDevPos"]>($strength*$resultShares[$index]["Description"]["StdDevNeg"])) 
+                    {
+                    $description .= "Volatile to high";
+                    $rating += 1;
+                    }
                 if (($strength*$resultShares[$index]["Description"]["StdDevPos"])<$resultShares[$index]["Description"]["StdDevNeg"]) $description .= "Volatile to low";
                 }
             $targetSell=1.2; $targetSellNow=1.3;
-            if (($resultShares[$index]["Description"]["Latest"]*$targetSell)<$resultShares[$index]["Description"]["Interval"]["Full"]["Max"]) 
+            if (isset($resultShares[$index]["Order"])) 
                 {
-                if ($trendPerc < (-10)) $description .= " Sell!";
-                elseif ($trendPerc < (-5)) 
+                $result=$this->calcOrderBook($resultShares[$index]["Order"]);
+                if ($result["pcs"]>0)
                     {
-                    if (($resultShares[$index]["Description"]["Latest"]*$targetSellNow)<$resultShares[$index]["Description"]["Interval"]["Full"]["Max"]) $description .= " Sell";
-                    else $description .= " Hold";
+                    if (($resultShares[$index]["Description"]["Latest"]*$targetSell)<$resultShares[$index]["Description"]["Interval"]["Full"]["Max"]) 
+                        {
+                        if ($trendPerc < (-10)) $description .= " Sell!";
+                        elseif ($trendPerc < (-5)) 
+                            {
+                            if (($resultShares[$index]["Description"]["Latest"]*$targetSellNow)<$resultShares[$index]["Description"]["Interval"]["Full"]["Max"]) $description .= " Sell";
+                            else $description .= " Hold";
+                            }
+                        else $description .= " Buy";
+                        }
+                    if ($resultShares[$index]["Description"]["Latest"]>($resultShares[$index]["Description"]["Interval"]["Full"]["Min"]*$targetSell)) $description .= " Sell";
                     }
-                else $description .= " Buy";
                 }
-            if ($resultShares[$index]["Description"]["Latest"]>($resultShares[$index]["Description"]["Interval"]["Full"]["Min"]*$targetSell)) $description .= " Sell";
+            if ( (isset($resultShares[$index]["Order"])===false) || ($result["pcs"]==0))
+                {
+                // alles verkauft, oder kein Orderbuch angelegt
 
+                }
+
+            /* Show in Tab
+             *      Name
+             *      StdDev (Volatilität)
+             *      StdDevPos/StdDevNeg
+             *          Means                           --> nicht in der erweiterten Darstellung
+             *      CountPos/CountNeg               positive/negative change in a row maximum
+             *      Min                             über gesamte Periode
+             *      Max                             über gesamte Periode
+             *      Order
+             *
+             *      Latest                          Algorithmus, wenn in der Nähe (3%) von Max oder Min, verfärbe rot oder grün wenn der Abstand zum Mittelwert größer 10% ist
+             *
+             */
             if ($html) 
                 {
                 if ($name=="") $wert .= '<tr><td>'.$resultShares[$index]["Info"]["ID"].'</td>';              // ein Tab reicht für beide
@@ -1802,16 +1844,20 @@ class SeleniumEasycharts extends SeleniumHandler
                 $wert .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevRel"],2,",",".")."%".'</td>';
                 //$wert .= '<td>'.number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%".'</td>';                   // nur Prozent PosMax/negMax zu Mittelwert ist uns zu wenig
                 $wert .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevPos"],2,",",".")."/".number_format($resultShares[$index]["Description"]["StdDevNeg"],2,",",".")."%".'</td>';
-                $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Means"],2,",",".")."€".'</td>';
                 if ($size>0)            // erweiterte Darstellung
                     {
                     $wert .= '<td>'.$resultShares[$index]["Description"]["CountPos"]."/".$resultShares[$index]["Description"]["CountNeg"].'</td>';
                     $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Interval"]["Full"]["Min"],2,",",".")."€".'</td>';
                     $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Interval"]["Full"]["Max"],2,",",".")."€".'</td>';
-                    $order="";
+                    $order=""; $winLoss="";
                     if (isset($resultShares[$index]["Order"])) 
                         {
                         $orderBook=$resultShares[$index]["Order"];
+                        if ($result["pcs"]>0)
+                            {
+                            $winLoss = ($resultShares[$index]["Description"]["Latest"]/($result["cost"]/$result["pcs"])-1)*100;   // in Prozent
+                            $winLoss = number_format($winLoss,2,",",".")."%";
+                            }
                         $orderEntry=$orderBook[array_key_last($orderBook)];
                         //echo "Letzte Veränderung, Order Book:\n";  print_R($orderEntry);
                         if (isset($orderEntry["price"])) 
@@ -1821,8 +1867,11 @@ class SeleniumEasycharts extends SeleniumHandler
                             $order .= number_format($orderEntry["price"],2,",",".")."€";
                             }
                         }
-                    $wert .= '<td>'.$order.'</td>';    
+                    $wert .= '<td>'.$order.'</td>'; 
+                    $wert .= '<td>'.$winLoss.'</td>';   
                     }
+                else $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Means"],2,",",".")."€".'</td>';
+
                 // Darstellung letzter Wert, also der aktuelle Börsenkurs
                 $bgcolor="";
                 if ( ($spreadPlus >10) && ($resultShares[$index]["Description"]["Latest"]>(0.97*$resultShares[$index]["Description"]["Interval"]["Full"]["Max"])) ) $bgcolor='bgcolor="green"';
@@ -1830,9 +1879,33 @@ class SeleniumEasycharts extends SeleniumHandler
                 $wert .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Latest"],2,",",".")."€".'</td>';
                 if ($trendPerc != 0) $trend = number_format($trendPerc,2,",",".")."%";
                 else $trend="";
-                $wert .= '<td>'.$trend.'</td>';                 // compare last 2 Day Week Month
-                $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Change"],2,",",".")."%".'</td>';
-                if ($size>0) $wert .= '<td>'.$description.'</td>';
+                if ($size>1)            // Show Month, Week and Day Trend, otherwise it shows week and day trend only
+                    {
+                    if ( (isset($resultShares[$index]["Description"]["Interval"]["Month"]["Trend"])) && (isset($resultShares[$index]["Description"]["Interval"]["Week"]["Trend"])) && (isset($resultShares[$index]["Description"]["Interval"]["Day"]["Trend"])) )
+                        {
+                        // Analyse
+                        $bgcolor="";
+                        $monthTrend = $resultShares[$index]["Description"]["Interval"]["Month"]["Trend"];
+                        $weekTrend  = $resultShares[$index]["Description"]["Interval"]["Week"]["Trend"];
+                        $dayTrend   = $resultShares[$index]["Description"]["Interval"]["Day"]["Trend"];
+                        if ( ($monthTrend>0) && ($weekTrend>0) && ($dayTrend>0) ) $bgcolor='bgcolor="green"';
+                        if ( ($monthTrend<0) && ($weekTrend<0) && ($dayTrend<0) ) $bgcolor='bgcolor="red"';
+                        }
+                    
+                    if (isset($resultShares[$index]["Description"]["Interval"]["Month"]["Trend"])) $wert .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Interval"]["Month"]["Trend"],2,",",".")."%".'</td>';
+                    else $wert .= '<td></td>';
+                    // $wert .= '<td>('.number_format($resultShares[$index]["Description"]["Interval"]["Week"]["Trend"],2,",",".")."%".')</td>';
+                    $wert .= '<td '.$bgcolor.'>'.$trend.'</td>';
+                    if (isset($resultShares[$index]["Description"]["Interval"]["Day"]["Trend"])) $wert .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Interval"]["Day"]["Trend"],2,",",".")."%".'</td>';
+                    else $wert .= '<td></td>';
+                    }
+                else 
+                    {
+                    $wert .= '<td>'.$trend.'</td>';                 // compare last 2 Day Week Month
+                    $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Change"],2,",",".")."%".'</td>';
+                    }
+                if ($size>0) $wert .= '<td>'.$rating." ".$description.'</td>';
+                $wert .= '<td>'.$resultShares[$index]["Description"]["Count"].'</td>';
                 $wert .= '</tr>';
                 }
             else            // Darstellung als Text Tabelle mit fixer Anzahl von Leerzeichen
@@ -1858,6 +1931,35 @@ class SeleniumEasycharts extends SeleniumHandler
             }            
         return ($table);
         }
+
+    /* Orderbook Evaluation of a single share
+     * Structure is index date with entries pcs and price
+     * Result is amount of pcs and cost/price
+     *
+     */
+
+    public function calcOrderBook($orderbook,$debug=false)
+        {
+        $pcs=0; $pcs1=0;    
+        $cost = 0; $cost1 = 0; 
+        foreach ($orderbook as $date => $order)
+            {
+            if ($debug) echo "    $date   ".str_pad(json_encode($order),70)."|\n";
+            $pcsA  = $order["pcs"];
+            $costA = $order["pcs"]*$order["price"];
+            if ($order["pcs"]>0) 
+                {
+                $cost1 += $order["pcs"]*$order["price"];
+                $pcs1 += $order["pcs"];
+                }
+            $cost += $costA;
+            $pcs  += $pcsA;
+            }
+        if (($pcs>0) && $debug) echo "    $date             ".str_pad($pcs,18, " ", STR_PAD_LEFT).str_pad(nf($cost,"€"),18, " ", STR_PAD_LEFT)." \n";  
+        return(["pcs"=>$pcs,"cost"=>$cost]);
+        }
+
+
 
     /* hier wird Schritt für Schritt das Automatische Abfragen der Easychart Webseite abgearbeitet
      *  (1) Abfrage ob bereits eingelogged

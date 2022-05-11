@@ -1036,7 +1036,7 @@
         private function compileConfiguration(&$CfgDaten,$report_config,$chartType=IPSRP_TYPE_KWH)
             {
             /* Konfiguration vorverarbeiten, series kann automatisch erstellt werden 
-             * funktioniert für EASYCHART und EASTREND
+             * funktioniert für EASYCHART und EASYTREND
              * EASYCHART verweist in einem Array auf anzuzeigende Depotnamen. Der Link geht je Depotnamen auf die Depotkonfiguration als jso encoded. Diese könnten auch variable erstellt werden
              *
              */
@@ -1095,10 +1095,15 @@
                     else $name=$index;
                     $result["Id"]=$entry["Id"];                                     // muss mindestens vorhandens ein
                     $result[IPSRP_PROPERTY_VALUETYPE]=$valueType;
-                    $result["display"]="normal";
-                    $report_config["series"][$name]=$result;
-                    $result["display"]="meansroll";
+
+                    $result["display"]="normal";                                    // normale Kurve
+                    $report_config["series"][$name]=$result;    
+                    $result["display"]="meansroll";                                 // Mittelwert Woche
                     $report_config["series"][$name."-means"]=$result;
+                    $result["display"]="meansrollmonth";                            // noch eine Kurve dazunehmen, Mittelwert Monat
+                    $report_config["series"][$name."-meansmonth"]=$result;                    
+                    $result["display"]="trendmonth";                            // noch eine Kurve dazunehmen, Mittelwert Monat
+                    $report_config["series"][$name."-trendmonth"]=$result;                     
                     }
                 }
 
@@ -1167,19 +1172,35 @@
 
                             if (strtoupper($defserie["display"])=="MEANSROLL") 
                                 {
-                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert verarbeiten.\n";
+                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Wochen verarbeiten.\n";
                                 $result=$resultAll["Description"]["MeansRoll"];
+                                }
+                            elseif (strtoupper($defserie["display"])=="MEANSROLLMONTH") 
+                                {
+                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
+                                $result=$resultAll["Description"]["MeansRollMonth"];
+                                }
+                            elseif (strtoupper($defserie["display"])=="TRENDMONTH") 
+                                {
+                                if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
+                                $result=$resultAll["Description"]["Interval"]["Month"]["MeansVar"];
+                                //print_r($result);
                                 }
                             else 
                                 {
                                 $result=$resultAll["Values"];                 // true mit Debug, aus dem Archiv geladene Datenserie nicht einschränken
                                 if ($this->debug) echo "Modul Easytrend ".count($result)." Werte verarbeiten.\n";
                                 }
+                            $scale=1;
                             }
-                        else $result=$resultAll["Values"];
+                        else 
+                            {
+                            $result=$resultAll["Values"];
+                            $letzte=array_key_last($result);
+                            $scale=100/$result[$letzte]["Value"];
+                            }                            
                         if ($this->debug) echo "      Darstellung der Daten für die Anzeige von $module:\n";
-                        $letzte=array_key_last($result);
-                        $scale=100/$result[$letzte]["Value"];
+
                         foreach ($result as $entry)
                             {
                             //if ($scale==0) $scale=100/$entry["Value"];
@@ -1314,7 +1335,7 @@
                         $archiveOps->addInfoValues($oid,$share);
                         } 
                     //print_r($resultShares);
-                    $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true,1);                       // true for html, 1 as size
+                    $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true,2);                       // true for html, 1 as size
                     $DataTableID   = IPS_GetObjectIdByName("ReportDataTable",   $this->categoryIdData);  
                     //echo "gefunden $DataTableID" ;                  
                     SetValue($DataTableID,$wert);                                                                           // eine schöne Tablee schreiben

@@ -130,7 +130,7 @@
 	$eventlist = $eventConf + $eventCust;
 	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
 
-    if (false)
+    if (false)          // Alle Events einsammeln und strukturieren, auf nicht mehr benötigte Events untersuchen und diese löschen
         {
         $resultEventList=array();
         $filter = "";
@@ -522,6 +522,7 @@
             {
             $eventListonOID[$entry["TriggerVariableID"]]=$entry;
             }
+        //print_r($eventListonOID); 
 
     	$events=$DetectMovementHandler->ListEvents();               /* Alle Events für DetectMovement */
         $eventMoveConfig=$DetectMovementHandler->Get_EventConfigurationAuto();    
@@ -617,9 +618,8 @@
         $MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdDataCC);
         checkMirrorRegisters($MoveAuswertungID,$mirrorsMoveFound);
 
-
+        echo "---------\n";
         echo "Ausgabe aller Temperatur Spiegelregister:\n";
-       
     	$events=$DetectTemperatureHandler->ListEvents();
         $mirrorsFound = $DetectTemperatureHandler->getMirrorRegisters($events);
         /* Get Category to store the Temperature-Spiegelregister */	
@@ -633,13 +633,10 @@
 
         echo "\n";
         echo "=======================================================================\n";
-        echo "Summenregister suchen und evaluieren :\n";
-        echo "\n";
-        echo "Bewegungsregister hereinholen:\n";								
-
-        $events=$DetectMovementHandler->ListEvents();
+        echo "Detect Movement Modul Summenregister suchen und evaluieren :\n";
+        echo "---------\n";
         echo "Die Configurationen der Bewegungsregisterregister auf Konsistenz prüfen:\n";
-        $events=$DetectTemperatureHandler->ListEvents();
+        $events=$DetectMovementHandler->ListEvents();
         foreach ($events as $oid => $typ)
             {
             $moid=$DetectMovementHandler->getMirrorRegister($oid);
@@ -680,6 +677,8 @@
             echo "     ".$soid."  ".str_pad(IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid))),70)."  ".(integer)GetValue($soid)."\n";
             //$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Movement');		
             }	
+
+        echo "---------\n";
         echo "Die Configurationen der Temperaturregister auf Konsistenz prüfen:\n";
         $events=$DetectTemperatureHandler->ListEvents();
         foreach ($events as $oid => $typ)
@@ -715,13 +714,10 @@
             //$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');		
             }
         }	
-
-   print_r($eventListonOID);   
-
         echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
 
 
-
+/**********************************************************************************************/
 
 
         function checkMirrorRegisters($TempAuswertungID,$mirrorsFound)

@@ -13,14 +13,13 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+
     // max. Scriptlaufzeit definieren
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(400); 
     $startexec=microtime(true);
 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-    
 	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
@@ -62,6 +61,9 @@
 	echo "\n";
 	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";	
 	
+    $statusEvaluateHardwareID       = CreateVariable("StatusEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+    $logEvaluateHardwareID          = CreateVariable("LogEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");
+
 	echo "\n";
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
@@ -197,6 +199,52 @@
 	 * WebFront Administrator Installation
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
+
+    /* Webfront in SystemTPA, Anzeige Homematic Errror Status und Log */
+
+    $wfcHandling =  new WfcHandling();
+    $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
+
+    $moduleManagerGUI = new IPSModuleManager('IPSModuleManagerGUI',$repository);
+    $configWFrontGUI=$ipsOps->configWebfront($moduleManagerGUI,false);     // wenn true mit debug Funktion
+    $tabPaneParent="roottp";                        // Default Wert
+
+    $configWF=array();                                      // für die Verwendung vorbereiten
+    if (isset($configWFrontGUI["Administrator"]))
+        {
+        $tabPaneParent=$configWFrontGUI["Administrator"]["TabPaneItem"];
+        echo "EvaluateHardware Module Überblick im Administrator Webfront $tabPaneParent abspeichern.\n";
+        //print_r($configWFrontGUI["Administrator"]);   
+
+        /* es gibt kein Module mit passenden ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
+        $configWF["Enabled"]=true;
+        $configWF["Path"]="Visualization.WebFront.Administrator.EvaluateHardware";
+        $configWF["ConfigId"]=$WebfrontConfigID["Administrator"];              
+        $configWF["TabPaneParent"]=$tabPaneParent;
+        $configWF["TabPaneItem"]="EvaluateHardware"; 
+        $configWF["TabPaneOrder"]=1050;                                          
+        }
+    $webfront_links=array();
+    $webfront_links["EvaluateHardware"]["Auswertung"]=array();
+    $webfront_links["EvaluateHardware"]["Nachrichten"] = array(
+        $logEvaluateHardwareID => array(
+                "NAME"				=> "Nachrichten",
+                "ORDER"				=> 10,
+                "ADMINISTRATOR" 	=> true,
+                "USER"				=> false,
+                "MOBILE"			=> false,
+                    ),
+        $statusEvaluateHardwareID => array(
+                "NAME"				=> "Auswertung",
+                "ORDER"				=> 10,
+                "ADMINISTRATOR" 	=> true,
+                "USER"				=> false,
+                "MOBILE"			=> false,
+                    ),
+                );	
+    $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+
+    /*-------------*/
 
 	if ($WFC10_Enabled)
 		{

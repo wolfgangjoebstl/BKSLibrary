@@ -425,6 +425,13 @@ class Logging
         return ($this->configuration);
         }
 
+    /* konfiguration einlesen und eventuell anpassen oder ergänzen
+     * drei Haupt-Blöcke
+     *      BasicConfigs
+     *      LogDirectories
+     *      LogConfigs
+     */
+
     protected function set_IPSComponentLoggerConfig($debug=false)
         {
         $config=array();
@@ -441,8 +448,16 @@ class Logging
         $dosOps = new dosOps();
         $operatingSystem = $dosOps->evaluateOperatingSystem();
         if ($debug) echo "Operating System $operatingSystem\n";
-        if ($operatingSystem ==  "WINDOWS") configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","C:/Scripts/");   
-        else configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/");
+        if ($operatingSystem ==  "WINDOWS") 
+            {
+            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","C:/Scripts/"); 
+            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["UserDir"],"UserDir","C:/Users/");   
+            }
+        else 
+            {
+            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/");
+            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["UserDir"],"UserDir",null);  
+            }
         configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["OperatingSystem"],"OperatingSystem",$operatingSystem);     
         configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["LogStyle","Logstyle","logstyle","LOGSTYLE"],"LogStyle","text");
 

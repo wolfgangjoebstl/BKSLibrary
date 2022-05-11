@@ -118,8 +118,7 @@
                 'ADMINISTRATOR'      	=> true,
                 'USER'      			=> false,
                 'MOBILE'  				=> false,
-				'OWNTAB'				=> 'Anwesenheit',
-				'TABNAME'				=> 'Wochenplan',					  
+				'OWNTAB'				=> 'AnwesenheitSimulation',				  
                     ),
              'Anwesenheitserkennung'   =>  array(
              	'NAME'               => 'Anwesenheitserkennung',
@@ -127,6 +126,7 @@
                 'ADMINISTRATOR'      => true,
                 'USER'      			=> false,
                 'MOBILE'  				=> false,
+                'OWNTAB'				=> 'Anwesenheitserkennung',                
                     ),
                 );
 		return $switches;
@@ -207,9 +207,8 @@
 		return array(
 			'Administrator' => array(
 				'AnwesenheitSimulation' => array(
-					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails0',       'AutoTPA',        'AnwesenheitSimulation','Bed',1,40,0,0,'true'),    /*  vertical=1, Ratio=33,RatioTarget=0,Percentage,ShowBorder */
-					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails0_Left',  'AutoTPADetails0', null,null),
-					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails0_Right',  'AutoTPADetails0', null,null),
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPAAnwesenheitSimulation',       'AutoTPA',        'AnwesenheitSimulation','Bed',1,40,0,0,'true'),    /*  vertical=1, Ratio=33,RatioTarget=0,Percentage,ShowBorder */
+
 					),
 				'AnwesenheitErkennung' => array(
 					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails1',       'AutoTPA',        'AnwesenheitErkennung','Bed',1,40,0,0,'true'),    /*  vertical=1, Ratio=33,RatioTarget=0,Percentage,ShowBorder */

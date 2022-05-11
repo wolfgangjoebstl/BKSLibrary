@@ -539,15 +539,21 @@
 
 		/** 
 		 * checkMirrorRegisters
+         * in CustomComponent Data (data.core.IPSComponent.xxx_Auswertung) gibt es die bereinigten Spiegelregister
+         * in der Kategorie werden einige Register gefunden (Istzustand) und über mirrorsFound wird der Sollzustand übergeben
+         * Sollzustand so ermitteln:
+         *    	$events=$DetectTemperatureHandler->ListEvents();
+         *      $mirrorsFound = $DetectTemperatureHandler->getMirrorRegisters($events);
+         * Für jeden  Eintrag in der Kategorie den Status ausgeben
          *
 		 */
 
 		public function checkMirrorRegisters($AuswertungID,$mirrorsFound)
             {
             $i=0;
-            $childrens=IPS_getChildrenIDs($AuswertungID);
+            $childrens=IPS_getChildrenIDs($AuswertungID);               // welche register gibt es in der Kategorie
             $mirrors = array();
-            foreach ($childrens as $oid)
+            foreach ($childrens as $oid)                                // diese einmal einlesen und sortieren
                 {    
                 $mirrors[IPS_GetName($oid)]=$oid;
                 }
@@ -555,6 +561,7 @@
             //print_r($mirrors);
             foreach ($mirrors as $oid)
                 {
+                $nochange=true;
                 $werte = @AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-120*24*60*60, time(),10000);      // 120 Tage oder 10.000 Werte zurück
                 if ($werte === false) echo "   ".str_pad($i,4).str_pad($oid,6).str_pad("(".IPS_GetName($oid).")",35)."  : no archive\n";
                 else 
@@ -564,13 +571,19 @@
                     if ($count>0) 
                         {
                         //print_r($werte[0]);
-                        echo " change from ".date("d.m.Y H:i:s",$werte[$count-1]["TimeStamp"])." to ".date("d.m.Y H:i:s",$werte[0]["TimeStamp"]);
+                        $recentChange=$werte[0]["TimeStamp"];
+                        echo " change from ".date("d.m.Y H:i:s",$werte[$count-1]["TimeStamp"])." to ".date("d.m.Y H:i:s",$recentChange);
+                        $delay=time()-$recentChange;
+                        $delay = $delay/60/60/24;           // Delay in Tagen
+                        if ($delay>10) echo " =>10 Tage kein Wert! ";
+                        else $nochange=false;
                         //echo " last change ".date("d.m.Y H:i:s",$werte[0]["TimeStamp"]);
                         }
                     else echo "                                ";
                     if (isset($mirrorsFound[$oid])) echo "   -> Mirror in Config";
                     echo "\n";
                     }
+                if ($nochange) IPS_SetHidden($oid,true);
                 $i++;
                 }
             }

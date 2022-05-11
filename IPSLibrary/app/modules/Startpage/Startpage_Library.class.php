@@ -13,7 +13,6 @@
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 	 * GNU General Public License for more details.
 	 *
-	 * You should have received a copy of the GNU General Public License
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */  
 
@@ -350,7 +349,7 @@
 			$noweather=!$Config["Active"];
             if ($debug)
                 {
-                echo "StartPageWrite aufgerufen für Seite $PageType, Debug aktiviert:\n";
+                echo "StartPageWrite aufgerufen für Seite mit PageType $PageType, Debug aktiviert:\n";
                 //secho "Weather Konfiguration: ".json_encode($Config)."\n";
                 }                
 	    	/* html file schreiben, Anfang Style für alle gleich */
@@ -422,7 +421,7 @@
                         //echo "Anzeige Startpage Typ 2";   */
                         }
                     break;
-                case 5:         // mit Media
+                case 5:         // mit Media auf der linken Seite (OE3 Player)
                 case 1:         // mit Picture
                     /*******************************************
                      *
@@ -430,14 +429,21 @@
                      * Bild und Wetterstation als zweispaltige Tabelle gestalten
                      *
                      *************************/
-                    if ($debug) echo "Page Type Style is Picture.\n";
                     $wert.='<table id="startpage">';
                     //$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
                     //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
                     $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
                     $wert.='<td height="40%">';     // sonst zu gross
-                    if ($PageType==5) $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
-                    else $wert.= $this->showMediaWidget();
+                    if ($PageType==5) 
+                        {
+                        if ($debug) echo "Page Type Style is Picture.\n";
+                        $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
+                        }
+                    else 
+                        {
+                        if ($debug) echo "Page Type Style is Media.\n";
+                        $wert.= $this->showMediaWidget();
+                        }
                     if ( $noweather==false ) 
                         {
                         $wert.= $this->showWeatherTemperatureWidget($debug);     // zweite Zelle, eine dritte gibt es nicht
@@ -2334,7 +2340,8 @@
          * macht zumindest 2 Zeilen mit jeweils 2 Zellen
          * ausgelegt als Aufruf als Widget
          *
-         * es gibt auch eine Konfiguration
+         * es gibt auch eine Konfiguration, getTempTableConf zum Vorverarbeiten verwendet
+         * Aufruf von StartpageWrite als Grossbild übergibt keine Konfiguration
          *
          **************************************/
 
@@ -2343,13 +2350,17 @@
             if ($config===false) $tempTableConf = $this->getTempTableConf(false,$debug);
             else $tempTableConf=$this->getTempTableConf($config["Config"],$debug);
 
-            if ($debug) echo "showTemperatureTable aufgerufen Config: ".json_encode($tempTableConf)."\n";
+            if ($debug) 
+                {
+                echo "showTemperatureTable aufgerufen Config: ".json_encode($tempTableConf)."  \n";
+                if ($config) "    Konfiguration wurde als [Config][Index] übergeben.\n";   
+                }
 
             $wert="";
             $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
             $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
 
-            if ( ($tempTableConf===null) || (count($tempTableConf)==0) )
+            if ( ($tempTableConf===null) || (count($tempTableConf)==0) )            // schon wieder Defaultwerte
                 {
                 if ($debug) echo "Keine Konfiguration angegeben. So wie früher die beiden functions innentemperatur() und aussentemperatur() einlesen.\n";    
                 /* get Variables */
@@ -2360,32 +2371,39 @@
                 $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
                 if ($debug) echo "Aussen ".number_format($this->aussentemperatur, 1, ",", "" )."°C Innen ".number_format($this->innentemperatur,1, ",", "" )."°C \n";
                 }
-            else
+            else                        // entsprechend der Konfiguration
                 {    
                 //print_R($tempTableConf);
                 foreach ($tempTableConf as $entry) 
                     {
                     //if ($debug) print_r($entry);
                     $aussen="unknown";$innen="unknown";
+                    $aussenWert="unknown";
+                    $unitAussen=$entry["Unit"]; $unitInnen=$unitAussen;
                     if (isset($entry["Aussen"]["FUNCTION"]))    $aussenWert = round($entry["Aussen"]["FUNCTION"](),1);
                     if (isset($entry["Aussen"]["OID"]))         $aussenWert = round(GetValue($entry["Aussen"]["OID"]),1);
+                    if (isset($entry["Aussen"]["ARRAY"]))       { $aussenWert = $entry["Aussen"]["ARRAY"]["Value"]; $unitAussen=""; }
                     if (isset($entry["Innen"]["FUNCTION"]))     $innenWert  = round($entry["Innen"]["FUNCTION"](),1);
                     if (isset($entry["Innen"]["OID"]))          $innenWert  = round(GetValue($entry["Innen"]["OID"]),1);
                     if ($debug) echo " Innenwert: $innenWert und Aussenwert: $aussenWert wurden ermittelt.\n";
-                    $unit=$entry["Unit"];
                     $size=strtoupper($entry["Size"]);
                     if ($size == "LARGE") { $aussen="aussen"; $innen="innen"; }
                     elseif ($size == "MED")  { $aussen="aussenMed"; $innen="innenMed"; }
                     else { $aussen="aussenSmall"; $innen="innenSmall"; }
-                    $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><'.$aussen.'>'.$aussenWert.$unit.'</'.$aussen.'></td><td align="center"> <'.$innen.'>'.$innenWert.$unit.'</'.$innen.'> </td></tr>';
+                    $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><'.$aussen.'>'.$aussenWert.$unitAussen.'</'.$aussen.'></td><td align="center"> <'.$innen.'>'.$innenWert.$unitInnen.'</'.$innen.'> </td></tr>';
                     }
                 }
             return ($wert);
             }
 
-        /* read configuration for showTempGroupWidget */
+        /* read configuration for showTemperatureTable 
+         * Aufruf von StartpageWrite als Grossbild übergibt keine Konfiguration, interne configuration["Temperature"] nehmen
+         * Konfiguration von Key ist Name auf laufende Nummer ändern, wichtig für korrekte Reihenfolge
+         * für dieses Grossbild Widget gilt immer es gibt immer Innen und Aussen Werte
+         *
+         */
 
-        function getTempTableConf($groupsInput=false,$debug=false)
+        function getTempTableConf($groupsInput=false,$altText=false,$debug=false)
             { 
             if ($groupsInput===false)
                 {
@@ -2407,18 +2425,33 @@
                 configfileParser($tempConf[$index], $config[$indexNum], ["Aussen"],"Aussen",null);
                 configfileParser($tempConf[$index], $config[$indexNum], ["Unit","UNIT"],"Unit","");
                 configfileParser($tempConf[$index], $config[$indexNum], ["Size","SIZE"],"Size","Large");
-                $config[$indexNum]["Innen"] = $this->analyseEntry($config[$indexNum]["Innen"]);
-                $config[$indexNum]["Aussen"] = $this->analyseEntry($config[$indexNum]["Aussen"]);
+                $config[$indexNum]["Innen"] = $this->analyseEntry($config[$indexNum]["Innen"],"Innen",$debug);
+                $config[$indexNum]["Aussen"] = $this->analyseEntry($config[$indexNum]["Aussen"],"Aussen",$debug);
                 $indexNum++; 
                 }
             if ($debug) print_r($config);
             return ($config);
             }
 
-        function analyseEntry($value)
+        /* jeder Innen oder Aussenwert kann auf unterschiedliche Weise dargetsellt werden 
+         *      Zahl        OID, Wert wird überprüft
+         *      Funktion    FUNCTION, Wert wird überprüft
+         * 
+         */ 
+
+        function analyseEntry($value,$altText=false, $debug)
             {
             $analyze=array();
-            if (is_numeric($value)) 
+            if (is_array($value))
+                {
+                $analyze["ARRAY"]=$this->evaluateEntry($value,$altText,$debug);
+                if ($debug)
+                    {
+                    echo "analyseEntry ".json_encode($value)."\n";
+                    //print_r($analyze);
+                    }
+                }  
+            elseif (is_numeric($value)) 
                 {
                 if (IPS_ObjectExists ($value)) $analyze["OID"]=$value;
                 //echo "Wert ist Numerisch : \n";
@@ -2428,6 +2461,203 @@
             return ($analyze); 
             }
 
+        /* Idee ist das Werte mit dem Parameter Aggregate ähnlich bearbeitet werden 
+         * und das die Bearbeitung gleich mit der Berechnung des Wertes abschliesst
+         * Grundbedingung, fixe Keys
+         *      OID
+         *
+         * OID wird evaluiert
+         * Es wird wieder eine config ausgegeben
+         */
+
+        function evaluateEntry($tableEntry, $altText=false, $debug=false)
+            {
+            /* check ob eine oder mehrere OIDs angegeben wurden */
+            $typeOfObject="STANDARD";
+            $wert="";
+            $config=array();        // immer neu anfangen
+            configfileParser($tableEntry, $config, ["OID","Oid"],"OID",false);                 //configfile als tableEntry vereinheitlichen, überprüfen, Wert für OID muss vorhanden sein und das Objekt erreichbar
+            if (isset($config["OID"])) $oid=$config["OID"];
+            if ($oid === false) 
+                {
+                if ($debug) echo "Konfiguration enthält keinen Key mit Namen OID, ".json_encode($config)."\n";
+                $config["OID"] = $tableEntry;           // ShortCut, Workaround, alles andere bleibt im Default 
+                $oid=$config["OID"];
+                }
+            if ($oid !== false)         // kein Defaultwert
+                {
+                if (is_array($oid)) $oidArray=$oid;                     // auch Arrays zulassen, dann sollten zwei Werte nebeneinander stehen
+                else $oidArray=[$oid];
+                /* check ob die Objekte vorhanden sind */
+                $objectExists=false;
+                $entries=count($oidArray);
+                foreach ($oidArray as $key => $oid) 
+                    {
+                    if (IPS_ObjectExists($oid)) $objectExists=true;         // wenn zumindest eines der Objekte existiert weitermachen
+                    else unset($oidArray[$key]);
+                    }
+                $entries2=count($oidArray);
+                if ($debug) echo "--------evaluateEntry ($entries/$entries2) \n";            
+                // immer so tun als ob mehrere Werte zusammengefasst werden, selbe Routine
+                if ($objectExists)          // es wird zumindest einen Eintrag geben 
+                    {
+                    // für jeden ConfigEintrag tableEntry die Config überprüfen und in $config abspeichern und diese Config verwenden
+                    configfileParser($tableEntry, $config, ["Name","NAME"],"Name",IPS_GetName($oid)); 
+                    configfileParser($tableEntry, $config, ["Icon","ICON"],"Icon","IPS");
+                    configfileParser($tableEntry, $config, ["Integrate","INTEGRATE","integrate"],"Integrate",false);
+                    configfileParser($tableEntry, $config, ["Property","PROPERTY","property"],"Property",null);            // default kein Eintrag wenn kein Eintrag
+                    configfileParser($tableEntry, $config, ["Type","TYPE","type"],"Type",null);                             // default kein Eintrag wenn kein Eintrag
+                    configfileParser($tableEntry, $config, ["AGGREGATE","Aggregate","aggregate"],"Aggregate",false); 
+                    configfileParser($tableEntry, $config, ["PROFILE","Profile","profile"],"Profile",null); 
+                    configfileParser($tableEntry, $config, ["UNIT","Unit","unit"],"Unit",""); 
+                    if ($debug) // die Werte der OIDs ausgeben, einer oder mehrere
+                        {
+                        $i=1;
+                        if (count($oidArray)==1) echo "   Eintrag : Name ".$config["Name"]." OID $oid Icon ".$config["Icon"]." Value ".GetValue($oid)."\n";
+                        else foreach ($oidArray as $oid) echo "   ".$i++.":Eintrag : Name ".$config["Name"]." OID $oid Icon ".$config["Icon"]." Value ".GetValue($oid)."\n";
+                        }
+
+                    if ($altText) $config["altText"]=$altText;
+                    $init=true; $addInfo="";                    // zuerst Aggregate bearbeiten wenn angefordert wurde
+                    $result=true;                               // result wird false wenn die Darstellung nicht erfolgreich war
+                    if ($config["Aggregate"] !== false)
+                        {
+                        // oidarray vor der Darstellung gemäß Type aggregieren
+                        if ($debug) echo "   Aggregate ".$config["Aggregate"]." gefunden \n";
+                        switch (strtoupper($config["Aggregate"]))
+                            {
+                            case "MEANS":
+                                $sum=0; $sumCount=0;
+                                foreach ($oidArray as $oid) 
+                                    {
+                                    $sum += GetValue($oid);
+                                    $sumCount++;
+                                    }
+                                $value=$sum/$sumCount;
+                                break;
+                            case "MAX":
+                                $max=0;
+                                foreach ($oidArray as $oid) 
+                                    {
+                                    $value = GetValue($oid);
+                                    if ($value > $max) $max=$value;
+                                    }
+                                $value=$max;
+                                break;    
+                            case "MIN":
+                                $min=100;
+                                foreach ($oidArray as $oid) 
+                                    {
+                                    $value = GetValue($oid);
+                                    if ($value < $min) $min=$value;
+                                    }
+                                $value=$min;
+                                break;    
+                            default:
+                                $value=0;  // unknown pocedure
+                                break;
+                            }
+                        // wert hat bereits den Tabellenbeginn, und eventuell ein Icon, ab hier kommt der Name und der Wert
+                        $result=$this->displayValue($wert,$value,$config,$init,$oid,$debug);          // $wert wird erweitert
+                        $config["Value"]=$wert;
+                        }
+                    if ( ($config["Aggregate"] === false) || ($result==false) )            // kein Aggregate or Display failed
+                        {                                
+                        // Unterschied ob mehrere Werte dargestellt oder vorher zusammengefasst werden sollen
+                        foreach ($oidArray as $oid)         // die Werte der Reihe nach durchgehen, jeder Wert hat einen eigenen Eintrag innerhalb der TAbelle
+                            {
+                            $archiveID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                            if (isset($tableEntry["Property"])) 
+                                {
+                                $variableChanged=IPS_GetVariable($oid)["VariableChanged"];
+                                $timeGone=time()-$variableChanged;
+                                $startOfToday=mktime(0,0,0,date("m"), date("d"), date("Y"));
+                                if ($timeGone<(time()-$startOfToday))                   $addInfo=date("H:i",$variableChanged);
+                                elseif ($timeGone<(time()-($startOfToday-7*24*60*60)))  $addInfo=date("D H:i",$variableChanged);
+                                elseif ($timeGone<(time()-($startOfToday-60*24*60*60))) $addInfo=date("d.m H:i",$variableChanged); 
+                                else                                                    $addInfo=date("d.m.Y H:i",$variableChanged);
+                                if ($addInfo != "") $config["AddInfo"]=$addInfo;
+                                if ($debug) 
+                                    {
+                                    echo "      ".date("d.m.Y H:i:s",$startOfToday)."\n";
+                                    echo "      Variable Changed $addInfo, got from Property:".$tableEntry["Property"]."   ".json_encode(IPS_GetVariable($oid))."\n";
+                                    $endtime=time();
+                                    $starttime=$endtime-$timeGone-(10*60*60);
+                                    $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
+                                    if ($werteLog===false) ;        // $oid bleibt unverändert
+                                    else
+                                        {
+                                        $count=0; $sum=0; $init2=true;
+                                        foreach ($werteLog as $eintrag)
+                                            {
+                                            if ($init2) { $start=$eintrag["Value"]; $init2=false; }
+                                            echo "             ".date("d.m.Y H:i",$eintrag["TimeStamp"])."    ".$eintrag["Value"]."\n";
+                                            $count++;
+                                            }
+                                        }
+                                    }               // ende if debug
+                                }
+                            if (isset($config["Type"]))
+                                {
+                                $typeOfObject=strtoupper($config["Type"]);
+                                if ($debug) echo "****Type available : $typeOfObject\n";                                    
+                                } 
+                            $value = GetValue($oid);
+                            if ($config["Integrate"]>59)       // nur Werte ab einer Minute integrieren
+                                {
+                                $endtime=time();
+                                $starttime=$endtime-$config["Integrate"];   // die Werte entsprechend dem angegebenen Zeitraum laden
+                                $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
+                                if ( ($werteLog===false) || (sizeof($werteLog)==0) ) ;        // $oid bleibt unverändert
+                                else
+                                    {
+                                    switch ($typeOfObject)
+                                        {
+                                        case "STANDARD":
+                                            $count=0; $sum=0; $max=0; $min=0;
+                                            foreach ($werteLog as $eintrag)
+                                                {
+                                                //If ($debug) echo str_pad($count,6).str_pad($eintrag["Value"],15," ",STR_PAD_LEFT)."   ".date("H:i:s",$eintrag["TimeStamp"])."   \n";
+                                                $sum += $eintrag["Value"];
+                                                if ( ($min==0) || ($min>$eintrag["Value"]) ) $min=$eintrag["Value"];
+                                                if             ($max<$eintrag["Value"])   $max=$eintrag["Value"];
+                                                $count++;
+                                                }
+                                            $value = (float)$sum/$count;            // formatEntry erkennt oid (wenn integer) und oid als value 
+                                            if ($debug) echo "     Integrate $count Values from last ".$config["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")." Min ".number_format($min,0,",",".")." Max ".number_format($max,0,",",".")."\n";
+                                            break;
+                                        case "RAINCOUNTER":
+                                            if ($debug)
+                                                {
+                                                //print_r($werteLog); 
+                                                echo "RainCounter gefunden :\n";
+                                                $count=0;
+                                                foreach ($werteLog as $eintrag)
+                                                    {
+                                                    echo str_pad($count,6).str_pad($eintrag["Value"],15," ",STR_PAD_LEFT)."   ".date("d.m.Y H:i",$eintrag["TimeStamp"])."   \n";                                                    
+                                                    $count++;
+                                                    }
+                                                echo "------------\n";
+                                                }
+                                            $first = reset($werteLog);
+                                            $last  = end($werteLog);
+                                            // print_R($first);  print_R($last);
+                                            $value = $first["Value"]-$last["Value"];
+                                            if ($debug) echo "   First : ".$first["Value"]."    ".date("d.m.Y H:i",$first["TimeStamp"])."   Last:  ".$last["Value"]."    ".date("d.m.Y H:i",$last["TimeStamp"])." Wert ergibt sich mit $value.\n";
+                                            break;
+                                        }
+                                    }
+                                }
+
+                            $result=$this->displayValue($wert,$value,$config,$init,$oid,$debug);          // $wert wird erweitert                                    
+                            $config["Value"]=$wert;
+                            }                           // ende foreach
+                        }                           // ende ifnot Aggregate
+                    }                           // ende ifObjectExists
+                else $config = false;
+                }                           // ende OID nicht Default
+            return $config;
+            }
 
         /********************
          *
@@ -2437,6 +2667,7 @@
 
 		function showWeatherTemperatureWidget($debug=false)
 			{
+            if ($debug) echo "showWeatherTemperatureWidget aufgerufen. Zeigt Bilder, Temperatur, Add lines und Wettertabelle:\n";
             $wert="";
             $weather=$this->getWeatherData();
 
@@ -3359,6 +3590,7 @@
 	
         /* bottomTableLines()
          * die Bottom Table Line ist am unteren Ende des Bild und Wetter Bildschirms angesiedelt
+         * => soll in Zukunft vereinheitlicht this->evaluateEntry oder Routinen daraus verwenden
          *
          * es wird eine eigene Tabellenzeile aufgebaut, die Zellen von darüber werden zusammengefasst und eine neue Tabelle in einer Zeile aufgebaut
          * Input pro Eintrag ist immer die Objekt OID, diese kann ein oder mehrere Werte sein, wird immer als array bearbeitet
@@ -3389,7 +3621,18 @@
                 $wert.='<table><tr>';
 	            foreach($this->configuration["Display"]["BottomLine"] as $tableEntry)       // jeden Eintrag durchgehen
 	                {
-                    /* check ob eine oder mehrere OIDs angegeben wurden */
+                    $configBottomLine = $this->evaluateEntry($tableEntry, false, $debug);           //addText is used
+                    if ($configBottomLine)
+                        {
+                        $wert.= '<td>';
+                        $wert.='<img src="user/Startpage/user/icons/'.$configBottomLine["Icon"].'.svg" alt="'.$configBottomLine["Icon"].' Icon">';
+                        $wert.='</td><td>';
+                        if ( (isset($configBottomLine["Value"])) && ($configBottomLine["Value"] !== false) )     $wert.= $configBottomLine["Value"];
+                        if ( (isset($configBottomLine["AddInfo"])) && ($configBottomLine["AddInfo"] !== false) ) $wert.= '<addText>    '.$configBottomLine["AddInfo"].'</addtext>';
+                        $wert.='</td>';
+                        }
+                    /* alte Routine wird nicht mehr benötigt, oder doch
+                    // check ob eine oder mehrere OIDs angegeben wurden 
                     $config=array();        // immer neu anfangen
                     configfileParser($tableEntry, $config["Display"]["BottomLine"], ["OID","Oid"],"OID",false);                 //configfile als tableEntry vereinheitlichen, überprüfen, Wert für OID muss vorhanden sein und das Objekt erreichbar
                     if (isset($config["Display"]["BottomLine"]["OID"])) $oid=$config["Display"]["BottomLine"]["OID"];
@@ -3397,8 +3640,7 @@
                         {
                         if (is_array($oid)) $oidArray=$oid;                     // auch Arrays zulassen, dann sollten zwei Werte nebeneinander stehen
                         else $oidArray=[$oid];
-                        /* check ob die Objekte vorhanden sind */
-                        $objectExists=false;
+                        $objectExists=false;        // check ob die Objekte vorhanden sind
                         $entries=count($oidArray);
                         if ($debug) echo "--------BottomLine ($entries) \n";            
                         // immer so tun als ob mehrere Werte zusammengefasst werden, selbe Routine
@@ -3411,7 +3653,7 @@
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Icon","ICON"],"Icon","IPS");
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Integrate","INTEGRATE","integrate"],"Integrate",false);
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Property","PROPERTY","property"],"Property",null);            // default kein Eintrag wenn kein Eintrag
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Type","TYPE","type"],"Type",null);            // default kein Eintrag wenn kein Eintrag
+                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Type","TYPE","type"],"Type",null);                            // default kein Eintrag wenn kein Eintrag
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["AGGREGATE","Aggregate","aggregate"],"Aggregate",false); 
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["PROFILE","Profile","profile"],"Profile",null); 
                             configfileParser($tableEntry, $config["Display"]["BottomLine"], ["UNIT","Unit","unit"],"Unit",""); 
@@ -3549,56 +3791,14 @@
                                         }
 
                                     $result=$this->displayValue($wert,$value,$config["Display"]["BottomLine"],$init,$oid,$debug);          // $wert wird erweitert                                    
-                                    /* zur Darstellung des Wertes 
-
-                                    if (isset($config["Display"]["BottomLine"]["Profile"]))                          // es gibt ein IP Symcon Profil
-                                        {
-                                        $profileConfig=IPS_GetVariableProfile ($config["Display"]["BottomLine"]["Profile"]);
-                                        $color="F1F1F1";                                // default color
-                                        if (isset($profileConfig["Associations"]))  
-                                            {
-                                            foreach ($profileConfig["Associations"] as $index => $association)
-                                                {
-                                                if ($association["Value"]<=GetValue($oid))                  // Wert groesser 0 color setzen usw.
-                                                    {
-                                                    //print_R($association);
-                                                    $color = "000000".dechex($association["Color"]);
-                                                    $color = substr($color,-6);
-                                                    if ($debug) echo "     Farbe Association ist #$color  (".$association["Color"].")\n";
-                                                    //if (hexdec($color) > 1000000) $color="1F2F1F";
-                                                    }
-                                                }
-                                            //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
-                                            //$result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
-                                            }
-                                        if (($debug) && false)
-                                            {
-                                            print_R($profileConfig);
-                                            echo "Letzte Farbe Association ist #$color\n";
-                                            }
-                                        if ($init) { $wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$config["Display"]["BottomLine"]["Name"].'   '; $init=false; }
-                                        else $wert .= '<addText style="background-color:#'.$color.';color:darkgrey;">|';
-                                        $wert .= $this->formatEntry($oid, $config["Display"]["BottomLine"]["Unit"]).'</addtext>';
-                                        }
-                                    elseif (isset($tableEntry["UNIT"]))                         // es gibt eine Einheitsbezeichnung
-                                        {
-                                        if ($init) { $wert .= '<addText>'.$config["Display"]["BottomLine"]["Name"].'   ';$init=false; }
-                                        else $wert .= '<addText>|';
-                                        $wert .= $this->formatEntry($oid, $config["Display"]["BottomLine"]["Unit"]).'</addtext>';
-                                        }
-                                    else                                                        // es gibt nix
-                                        {
-                                        if ($init) { $wert .= '<addText>'.$config["Display"]["BottomLine"]["Name"].'   ';$init=false; }
-                                        else $wert .= '<addText>|';
-                                        $wert .= $this->formatEntry($oid, "").'</addtext>';
-                                        } */
-
                                     if ($addInfo != "") $wert .= '<addText>    '.$addInfo.'</addtext>';
                                     }                           // ende foreach
                                 $wert.='</td>';                                
                                 }                           // ende ifnot Aggregate
-                            }                           // ene ifObjectExists
-                        }                           // ende OID nicht Default
+                            }                           // ende ifObjectExists
+                        }                           // ende OID nicht Default       */
+
+
                     }                           // ende foreach Einträge
 
                 $wert.='</tr></table>';
@@ -3611,9 +3811,15 @@
 
         /* einen Wert anzeigen 
          * der Wert wird als value übergeben, die Art der Darstellung steht in config und wert ist die Darstellung innerhalb einer html Tabelle
-         * tableEntry ist Config $config["Display"]["BottomLine"]
-         * Nachdem nur ein Wert und keine OID übergeben wird funktioniert die Config ["Unit"]="AUTO" nicht, verwende string GetValueFormattedEx (integer $VariableID, variant $value)
+         * verwendet <addText> als Text identifier
          *
+         * tableEntry ist Configuration stored in config["Display"]["BottomLine"] oder config["Temperature"]
+         * Nachdem nur ein Wert und keine OID übergeben wird, funktioniert die Config ["Unit"]="AUTO" nicht, verwende string GetValueFormattedEx (integer $VariableID, variant $value)
+         * mit &init wird gesteuert on am Anfang der Name ausgegeben werden soll: init=false nein, wenn ja wird nachher auf false gesetzt
+         * Verwendet:  oder 
+         *      Profile     für die Farbkodierung
+         *      Unit        für die Einheit
+         *      ---         normales formatEntry, auch in dieser class
          *
          * kann folgende Befehle nicht, returns false
          *
@@ -3622,6 +3828,8 @@
         function displayValue(&$wert, float $value, $tableEntry, &$init, $oidAlt=false, $debug=false)
             {
             /* zur Darstellung des Wertes */
+            if (isset($tableEntry["altText"])) $addText=$tableEntry["altText"];
+            else $addText="addText";
             if ($debug) echo "   displayValue mit Konfiguration ".json_encode($tableEntry)." und Wert $value aufgerufen. Init ist ".($init?"aktiv":"nicht aktiv")."\n";
             //if ( (isset($tableEntry["Property"])) || (isset($tableEntry["Integrate"])) ) return (false);
             if (isset($tableEntry["Profile"])) 
@@ -3649,27 +3857,25 @@
                     //print_R($profileConfig);
                     echo "displayValue: Profile, letzte Farbe Association ist #$color\n";
                     }
-                if ($init) { $wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$tableEntry["Name"].'   '; $init=false; }
-                else $wert .= '<addText style="background-color:#'.$color.';color:darkgrey;">|';                    
+                if ($init) { $wert .='<'.$addText.' style="background-color:#'.$color.';color:darkgrey;">'.$tableEntry["Name"].'   '; $init=false; }
+                else $wert .= '<'.$addText.' style="background-color:#'.$color.';color:darkgrey;">|';                    
                 //$wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$tableEntry["Name"].'   ';
-                $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</addtext>';                   // wenn als float übergeben wird handelt es sich nicht um eine OID
+                $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</'.$addText.'>';                   // wenn als float übergeben wird handelt es sich nicht um eine OID
                 }
             elseif (isset($tableEntry["Unit"]))                         // es gibt eine Einheitsbezeichnung
                 {
-                if ($init) { $wert .= '<addText>'.$tableEntry["Name"].'   ';$init=false; }
-                else $wert .= '<addText>|';                    
+                if ($init) { $wert .= '<'.$addText.'>'.$tableEntry["Name"].'   ';$init=false; }
+                else $wert .= '<'.$addText.'>|';                    
                 //$wert .= '<addText>'.$tableEntry["Name"].'   ';
-                $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</addtext>';
+                $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</'.$addText.'>';
                 }
             else                                                        // es gibt nix
                 {
-                if ($init) { $wert .= '<addText>'.$tableEntry["Name"].'   ';$init=false; }
-                else $wert .= '<addText>|';                    
+                if ($init) { $wert .= '<'.$addText.'>'.$tableEntry["Name"].'   ';$init=false; }
+                else $wert .= '<'.$addText.'>|';                    
                 //$wert .= '<addText>'.$tableEntry["Name"].'   ';
-                $wert .= $this->formatEntry($value, "").'</addtext>';
+                $wert .= $this->formatEntry($value, "").'</'.$addtext.'>';
                 }
-            //if ($addInfo != "") $wert .= '<addText>    '.$addInfo.'</addtext>';
-
             return (true);
             }
 
@@ -3735,7 +3941,9 @@
 			$html   .= '<html><body>'."\n";
 			foreach ($this->OWDs as $OWD)
 				{
-				$html .= GetValue($this->findeVariableName("Zusammenfassung",$OWD))."\n\n";
+                $zusammenfassungID=$this->findeVariableName("Zusammenfassung",$OWD);
+				if ($zusammenfassungID) $html .= GetValue($zusammenfassungID)."\n\n";
+                else echo "Fehler, Zusammenfassung des Wetters bei OpenWeather noch nicht aktiviert.\n";
 				}
 			$html    .= "\n".'</body>'."\n".'</html>';             // Abschluss für das Include als iFrame
             $verzeichnis = $this->dosOps->correctDirName(IPS_GetKernelDir().'webfront\user\Startpage');					
@@ -3743,7 +3951,6 @@
 			if (!file_put_contents($filename, $html)) {
 		        throw new Exception('Create File '.$filename.' failed!');
 		    		}			
-			
 			}
 
 

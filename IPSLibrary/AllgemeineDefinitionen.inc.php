@@ -2959,7 +2959,7 @@ class archiveOps
         }
 
     /* Analyse der letzen Werte im Archive. Hier geht man bereits von einer geordneten Struktur aus, es gelten die folgenden Einschränkungen
-     *    - es werden nur Einzelwerte zugelassen, 
+     *    - es werden für die OID nur Einzelwerte zugelassen, 
      *    - Angabe Parameter oid und logs (Anzahl Werte) verpflichtend
      *    - die Zahl logs muss durch 2 dividierbar sein, sonst wird aufgerundet
      *    - logs + logs/2 muss kleiner 10.000 sein
@@ -2984,13 +2984,20 @@ class archiveOps
         {
         /* für logs false true oder einen Integer Wert zulassen, integer ist die Anzahl der Log werte die ausgegeben wird */
         //if ($debug) echo "--->analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen.\n";
+
+        /* Wertebereich festlegen */
+        $config = array();
+        $config["EventLog"]=true;
+        $config["LogChange"]=["pos"=>5,"neg"=>5];          // in Prozent auf den Vorwert
         $startTime=0; $endTime=0;
+
         if (is_array($logs))
             {
             $startTime = $logs["StartTime"]; 
             $endTime   = $logs["EndTime"];
             if ($debug) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, Werte von ".(date("d.m.Y H:i:s",$startTime))." bis ".(date("d.m.Y H:i:s",$endTime))."\n";
             $logs=0;            // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten, entweder zwischen start und end oder wirklich alle alle
+            if (isset($logs["Config"])) $config=$logs["Config"];
             }
         if ($logs>1) 
             {
@@ -3004,6 +3011,7 @@ class archiveOps
             $maxLogsperInterval=1;                  // ein Wert reicht aus, max wäre 10
             if (($debug) && (is_array($logs) === false) ) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, alle vorhandenen Werte werden verarbeitet\n";
             }
+        //print_r($config);
 
         /* Wertespeicher initialisieren */
         $this->result=array();
@@ -3029,48 +3037,76 @@ class archiveOps
 
         /* Analyse Ergebnis aus den ausgewählten archivierten Werten */
 
+        /* Mittelwertberechnung für Trendanalysen vorbereiten */
         $means=array();         // Speicherplatz zur Verfügung stellen
         $meansFull   = new meansCalc($means);       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
-        $meansVar   = new meansCalc($means, "Var",$logs);
-        $meansDay   = new meansCalc($means, "Day",2);
+        $meansVar   = new meansCalc($means, "Var",$logs);                       // Ergebnis in means[Var]
+        $meansDay   = new meansCalc($means, "Day",2);                           // Ergebnis in means[Day]
         $meansWeek  = new meansCalc($means, "Week",10);
         $meansMonth = new meansCalc($means, "Month",40);
         //print_R($means);
 
+        /* Event Log */
+        $events=array();
+        $eventLogAll = new eventLogEvaluate($events,"All",$config);             // events ist der Speicherplatz für Berechnungen
+
+        /* rollierender Mittelwert */
+        $meansRoll = new meansRollEvaluate($this->result[$oid]["Values"]);
+
+        /* Wertebereich bearbeiten */
         $logCount=0; $logCount1=0; $logCount2=0;
-        $summe=0; $summe1=0; $summe2=0; 
+        $summe=0; $summe1=0; $summe2=0; $sumTime1=0; $sumTime2=0; 
         //$summeDay1=0; $summeDay2=0; $summeWeek1=0; $summeWeek2=0; $summeMonth1=0; $summeMonth2=0;             // zu kompliziert
         $max=0; $min=0; $youngestTime=0; $youngestValue=0; $change=0;
         $scale=0; $oldestTime=0; 
+
         $previousOne=false; $countPos=0; $countPosMax=0; $countNeg=0; $countNegMax=0; $changeDir="";
+
         $displayCalcTable=false;
         if ($debug && $displayCalcTable) echo " # Stunde Datum Wert       Mittelwert       Rollierend          Mittel1       Mittel2\n";
         foreach($this->result[$oid]["Values"] as $index => $wert)
             {
-            if ($previousOne===false) $previousOne=$wert['Value']; 
-            if ($previousOne>$wert['Value']) 
+            $eventLogAll->addValue($wert);                  /* Vorwert, änderungs Analyse */
+
+            /* if ($previousOne===false) $previousOne=$wert['Value']; 
+            $changeValue=($wert['Value']/$previousOne-1)*100;
+            if ( (isset($config["EventLog"])) && ($changeValue<0) )            // von nun an geht es bergab 
                 {
                 //echo "-";
+                if ( (isset($config["LogChange"]["neg"])) && ($changeValue<(-$config["LogChange"]["neg"])) )
+                    {
+                    //echo "Event: Kursänderung größer -2%: \n";
+                    //echo "!";
+                    //echo nf(($wert['Value']/$previousOne-1)*100,"%")." ";
+                    $eventLog[$wert['TimeStamp']] = "Event: Kursänderung ".nf($changeValue,"%").", größer als ".$config["LogChange"]["neg"]."%"; 
+                    }
                 $countNeg++;
-                if ($changeDir=="pos")
+                if ($changeDir=="pos")                  // das war ein Richtungswechsel
                     {
                     if ($countPos>$countPosMax) $countPosMax=$countPos;
                     $countPos=0;
                     }
                 $changeDir="neg";
                 }
-            if ($previousOne<$wert['Value']) 
+            if ( (isset($config["EventLog"])) && ($changeValue>0) )           // von nun an gehts bergauf
                 {
                 //echo "+";
+                if ( (isset($config["LogChange"]["pos"])) && ($changeValue>($config["LogChange"]["pos"])) )
+                    {
+                    //echo "Event: Kursänderung größer -2%: \n";
+                    //echo "!";
+                    //echo nf(($wert['Value']/$previousOne-1)*100,"%")." ";
+                    $eventLog[$wert['TimeStamp']]="Event: Kursänderung ".nf($changeValue,"%").", größer als ".$config["LogChange"]["pos"]."%"; 
+                    }                
                 $countPos++;
-                if ($changeDir=="neg")
+                if ($changeDir=="neg")                  // Richtungswechsel, Analyse des bisherigen Geschehens
                     {
                     if ($countNeg>$countNegMax) $countNegMax=$countNeg;
                     $countNeg=0;
                     }
                 $changeDir="pos";
                 }
-            $previousOne=$wert['Value'];                 
+            $previousOne=$wert['Value'];   */              
 
             /* Skalierung auf 100 Ausgangswert, das heisst der älteste Wert hat 100 wenn man den Wert mit scale multipliziert */
             if ( ($wert['TimeStamp']<$oldestTime) || ($oldestTime==0) )
@@ -3078,6 +3114,7 @@ class archiveOps
                 $oldestTime=$wert['TimeStamp'];
                 $scale=100/$wert['Value'];   
                 }
+
             /* Mittelwert Gesamt berechnen, das heisst alle Werte zusammenzählen und Anzahl der Werte festhalten */
             $summe += $wert['Value'];
             $logCount++;
@@ -3088,20 +3125,22 @@ class archiveOps
                 if ($logCount>($logs/2)) 
                     {
                     $summe2 += $wert['Value'];
+                    $sumTime2 += $wert['TimeStamp'];
                     $logCount2++;
                     }
                 else 
                     {
                     $summe1 += $wert['Value'];
+                    $sumTime1 += $wert['TimeStamp'];
                     $logCount1++;
                     }
                 }
 
-            $meansFull->addValue($wert['Value']);
-            $meansVar->addValue($wert['Value']);
-            $meansDay->addValue($wert['Value']);
-            $meansWeek->addValue($wert['Value']);
-            $meansMonth->addValue($wert['Value']);
+            $meansFull->addValue($wert);                        // oder $wert['Value'] aber dann wird kein mittler Timestamp berechnet
+            $meansVar->addValue($wert);
+            $meansDay->addValue($wert);
+            $meansWeek->addValue($wert);
+            $meansMonth->addValue($wert);
 
             /* rollierender Mittelwert , dienen und die nächsten 5 Werte zusammenzählen */
             $sumRol=0; $countRol=0;
@@ -3119,6 +3158,8 @@ class archiveOps
             //echo "               $index\n";
             $this->result[$oid]["Description"]["MeansRoll"][$index]["Value"]=$sumRol/$countRol;
             $this->result[$oid]["Description"]["MeansRoll"][$index]["TimeStamp"]=$wert['TimeStamp'];
+
+            $this->result[$oid]["Description"]["MeansRollMonth"][$index] = $meansRoll->meansValues($index, 20);
 
             /*                */
             //echo "   Vergleiche ".$wert['TimeStamp'].">$youngestTime $change Wert $index : ".$this->result[$oid]["Values"][$index]['Value']."  ";
@@ -3155,13 +3196,17 @@ class archiveOps
         $meansDay->calculate();
         $meansWeek->calculate();
         $meansMonth->calculate();             
-        //print_R($means["Result"]);     
-        $this->result[$oid]["Description"]["Interval"]=$means["Result"];
+
         //echo "Summe Var $logs $summe1 $summe2 \n";
         $this->result[$oid]["Description"]["Max"]=$max;
         $this->result[$oid]["Description"]["Min"]=$min;
         $this->result[$oid]["Description"]["Latest"]=$youngestValue;
         $this->result[$oid]["Description"]["Latest-TimeStamp"]=$youngestTime;
+
+        $meansMonth->extrapolate($youngestTime);
+        //print_R($means["Result"]);     
+        $this->result[$oid]["Description"]["Interval"]=$means["Result"];
+
         $this->result[$oid]["Description"]["Change"]=$change;
         $this->result[$oid]["Description"]["Scale"]=$scale;
         $this->result[$oid]["Description"]["Result"]=$scale*$youngestValue-100;
@@ -3169,13 +3214,15 @@ class archiveOps
         $means=$summe/$logCount;
         $this->result[$oid]["Description"]["Means"]=$means;
         $means1=$summe1/$logCount1;
-        $this->result[$oid]["Description"]["Means1"]=$means1;
+        $this->result[$oid]["Description"]["MeansVar"][0]["Value"]=$means1;
+        $this->result[$oid]["Description"]["MeansVar"][0]["TimeStamp"]=$sumTime1/$logCount1;
         //echo "logCount2 $logCount2 \n";
         if ($debug) echo "Mittelwert ist ".number_format($means,2,",",".")." ".number_format($means1,2,",",".")." ";
         if ($logCount2>0) 
             {
             $means2=$summe2/$logCount2;
-            $this->result[$oid]["Description"]["Means2"]=$means2;
+            $this->result[$oid]["Description"]["MeansVar"][1]["Value"]=$means2;
+            $this->result[$oid]["Description"]["MeansVar"][1]["TimeStamp"]=$sumTime2/$logCount2;            
             $this->result[$oid]["Description"]["Trend"]=($means1/$means2-1)*100;
             if ($debug) echo "Mittelwert ist ".number_format($means2,2,",",".")." Trend ".number_format($this->result[$oid]["Description"]["Trend"],2,",",".")."% ";
             }
@@ -3198,8 +3245,12 @@ class archiveOps
         $this->result[$oid]["Description"]["StdDevNeg"]=$sdevRelNeg;
         if ($debug) echo "Sdev ist ".number_format($sdev,2,",",".")."  und relativ ".number_format($this->result[$oid]["Description"]["StdDevRel"],2,",",".")."% \n";
 
-        $this->result[$oid]["Description"]["CountNeg"]=$countNegMax;
-        $this->result[$oid]["Description"]["CountPos"]=$countPosMax;        
+        //print_r($events);
+        $this->result[$oid]["Description"]["eventLog"]=$events["All"]["eventLog"];
+
+        $this->result[$oid]["Description"]["CountNeg"]=$events["All"]["countNegMax"];
+        $this->result[$oid]["Description"]["CountPos"]=$events["All"]["countPosMax"]; 
+        $this->result[$oid]["Description"]["Count"]=$logCount;                      // alle Werte die für die Berechnung des Mittelwertes herangezogen wurden
         return ($this->result[$oid]);    
         }
 
@@ -3234,6 +3285,11 @@ class archiveOps
     /* Werte bereinigen und in result[Values] abpeichern 
      * nur die maxLogsperInterval Anzahl von Werten übernehmen
      * die Anzahl der übernommenen Werte wird zurück gemeldet
+     *
+     * es werden die Werte als Pointer übergeben, es werden alle Werte überprüft
+     * Werte mit 0 oder nicht numerische Werte werden in dem als Original mit Pointer übergegebenen Array gelöscht
+     * Wenn eine Lücke, jetzt größer 300 Stunden, erkannt wird, werden die Werte davor ignoriert, es werden keine weiteren Werte in result[Vales] abgespeichert
+     *
      */
 
     private function cleanupStoreValues(&$werte,$oid,$maxLogsperInterval,$debug=false)
@@ -3252,7 +3308,7 @@ class archiveOps
                 {
                 //print_R($wert);
                 $hours = ($wert['Duration']/60/60);
-                if ($hours>200) 
+                if ($hours>300) 
                     {
                     $ignore=true;
                     if ($debug) echo "cleanupStoreValues: Fehler, Wert vom ".date("d.m.Y H:i:s",$wert['TimeStamp'])." ".number_format($hours,2,",",".")." hours, Abstand zu gross. \n";
@@ -3327,46 +3383,120 @@ class archiveOps
         
         protected $name;
         protected $result;
+        protected $sum,$sum1,$sum2,$sumTime1,$sumTime2,$count1,$count2;
 
         function __construct(&$result,$name="Full",$logs=false)
             {
             if (is_array($result)===false) return (false);
 
+            $this->sum=0; $this->sum1=0; $this->sum2=0;
+            $this->sumTime1=0; $this->sumTime2=0;
+            $this->count1=0; $this->count2=0;
             
             $this->result=&$result;
             $this->result[$name]=array();
             $this->result[$name]["Sum"]=0;
             $this->result[$name]["Sum1"]=0;
             $this->result[$name]["Sum2"]=0;
-            $this->result[$name]["Count"]=0;
             $this->result[$name]["Count1"]=0;
             $this->result[$name]["Count2"]=0;
+
+            $this->result[$name]["Count"]=0;
             if ($logs) $logs=round($logs/2)*2;                             // zumindest die geforderte Anzahl an Logwerten anzeigen, Wert soll durch 2 dividierbar sein
             $this->result[$name]["CountFull"]=$logs;
+
             $this->name=$name;
             return (true);
             }
 
-        function addValue($wert)
+        /* Übergabe wert[value] und wert[TimeStamp] oder wert
+         */
+        function addValue($wertInput)
             {
             if (is_array($this->result)===false) return (false);
-
-            $this->result[$this->name]["Sum"] += $wert;
-            if ($this->result[$this->name]["CountFull"])            // wenn 0/false alle Werte mitnehmen, keine Teilsummen bilden
+            if (isset($wertInput["Value"])) 
                 {
-                if ($this->result[$this->name]["Count"]<$this->result[$this->name]["CountFull"])
+                $this->sum += $wertInput["Value"];
+                if ($this->result[$this->name]["CountFull"])            // wenn 0/false alle Werte mitnehmen, keine Teilsummen bilden
                     {
-                    if ($this->result[$this->name]["Count"]<($this->result[$this->name]["CountFull"]/2))
+                    if ($this->result[$this->name]["Count"]<$this->result[$this->name]["CountFull"])
                         {
-                        $this->result[$this->name]["Sum1"] += $wert;
-                        $this->result[$this->name]["Count1"]++;
-                        }    
-                    else 
+                        if ($this->result[$this->name]["Count"]<($this->result[$this->name]["CountFull"]/2))
+                            {
+                            $this->sum1 += $wertInput["Value"];
+                            $this->sumTime1 += $wertInput["TimeStamp"];
+                            $this->count1++;
+                            }    
+                        else 
+                            {
+                            $this->sum2 += $wertInput["Value"];
+                            $this->sumTime2 += $wertInput["TimeStamp"];
+                            $this->count2++;                                
+                            }    
+                        // Min/Max nur über den Bereich bis CountFull (logs)
+                        if (isset($this->result[$this->name]['Max']))  
+                            {
+                            if ($wertInput["Value"]>$this->result[$this->name]['Max'])  $this->result[$this->name]['Max'] = $wertInput["Value"];
+                            }
+                        else $this->result[$this->name]['Max'] = $wertInput["Value"];
+                        if (isset($this->result[$this->name]['Min']))  
+                            {
+                            if ($wertInput["Value"]<$this->result[$this->name]['Min'])  $this->result[$this->name]['Min'] = $wertInput["Value"];
+                            }
+                        else $this->result[$this->name]['Min'] = $wertInput["Value"];
+
+                        }
+                    }
+                else            // wenn 0/false alle Werte mitnehmen, keine Teilsummen bilden
+                    {       // Min/Max über den ganzen Bereich
+                    if (isset($this->result[$this->name]['Max']))  
                         {
-                        $this->result[$this->name]["Sum2"] += $wert;
-                        $this->result[$this->name]["Count2"]++;
-                        }    
-                    // Min/Max nur über den Bereich bis CountFull (logs)
+                        if ($wertInput["Value"]>$this->result[$this->name]['Max'])  $this->result[$this->name]['Max'] = $wertInput["Value"];
+                        }
+                    else $this->result[$this->name]['Max'] = $wertInput["Value"];
+                    if (isset($this->result[$this->name]['Min']))  
+                        {
+                        if ($wertInput["Value"]<$this->result[$this->name]['Min'])  $this->result[$this->name]['Min'] = $wertInput["Value"];
+                        }
+                    else $this->result[$this->name]['Min'] = $wertInput["Value"];
+                    }
+                $this->result[$this->name]["Count"]++;
+                }
+            else            // alte Art der Berechnung, ohne Timestamp
+                {
+                $wert = $wertInput;
+
+                $this->result[$this->name]["Sum"] += $wert;
+                if ($this->result[$this->name]["CountFull"])            // wenn 0/false alle Werte mitnehmen, keine Teilsummen bilden
+                    {
+                    if ($this->result[$this->name]["Count"]<$this->result[$this->name]["CountFull"])
+                        {
+                        if ($this->result[$this->name]["Count"]<($this->result[$this->name]["CountFull"]/2))
+                            {
+                            $this->result[$this->name]["Sum1"] += $wert;
+                            $this->result[$this->name]["Count1"]++;
+                            }    
+                        else 
+                            {
+                            $this->result[$this->name]["Sum2"] += $wert;
+                            $this->result[$this->name]["Count2"]++;
+                            }    
+                        // Min/Max nur über den Bereich bis CountFull (logs)
+                        if (isset($this->result[$this->name]['Max']))  
+                            {
+                            if ($wert>$this->result[$this->name]['Max'])  $this->result[$this->name]['Max'] = $wert;
+                            }
+                        else $this->result[$this->name]['Max'] = $wert;
+                        if (isset($this->result[$this->name]['Min']))  
+                            {
+                            if ($wert<$this->result[$this->name]['Min'])  $this->result[$this->name]['Min'] = $wert;
+                            }
+                        else $this->result[$this->name]['Min'] = $wert;
+
+                        }
+                    }
+                else    
+                    {       // Min/Max über den ganzen Bereich
                     if (isset($this->result[$this->name]['Max']))  
                         {
                         if ($wert>$this->result[$this->name]['Max'])  $this->result[$this->name]['Max'] = $wert;
@@ -3377,24 +3507,9 @@ class archiveOps
                         if ($wert<$this->result[$this->name]['Min'])  $this->result[$this->name]['Min'] = $wert;
                         }
                     else $this->result[$this->name]['Min'] = $wert;
-
                     }
+                $this->result[$this->name]["Count"]++;
                 }
-            else    
-                {       // Min/Max über den ganzen Bereich
-                if (isset($this->result[$this->name]['Max']))  
-                    {
-                    if ($wert>$this->result[$this->name]['Max'])  $this->result[$this->name]['Max'] = $wert;
-                    }
-                else $this->result[$this->name]['Max'] = $wert;
-                if (isset($this->result[$this->name]['Min']))  
-                    {
-                    if ($wert<$this->result[$this->name]['Min'])  $this->result[$this->name]['Min'] = $wert;
-                    }
-                else $this->result[$this->name]['Min'] = $wert;
-                }
-            $this->result[$this->name]["Count"]++;
-
             return (true);
             }
 
@@ -3403,24 +3518,50 @@ class archiveOps
         function calculate()
             {
             if (is_array($this->result)===false) return (false);                
-
-            if ($this->result[$this->name]["CountFull"])
+            if ($this->sum>0)
                 {
-                if ($this->result[$this->name]["Count1"]==0) return (false);
-                else
+                //echo "Berechne Mittelwert mit TimeStamp \"".$this->name."\":\n";
+                if ($this->result[$this->name]["CountFull"])
                     {
-                    $this->result["Result"][$this->name]["Means1"]=$this->result[$this->name]["Sum1"]/$this->result[$this->name]["Count1"];
-                    if ($this->result[$this->name]["Count2"]>0)
+                    if ($this->count1==0) return (false);
+                    else
                         {
-                        $this->result["Result"][$this->name]["Means2"]=$this->result[$this->name]["Sum2"]/$this->result[$this->name]["Count2"];
-                        $this->result["Result"][$this->name]["Trend"]=($this->result["Result"][$this->name]["Means1"]/$this->result["Result"][$this->name]["Means2"]-1)*100;                
+                        $this->result["Result"][$this->name]["MeansVar"][1]["Value"]=$this->sum1/$this->count1;
+                        $this->result["Result"][$this->name]["MeansVar"][1]["TimeStamp"]=$this->sumTime1/$this->count1;
+                        if ($this->count2>0)
+                            {
+                            $this->result["Result"][$this->name]["MeansVar"][2]["Value"]=$this->sum2/$this->count2;
+                            $this->result["Result"][$this->name]["MeansVar"][2]["TimeStamp"]=$this->sumTime2/$this->count2;
+                            $this->result["Result"][$this->name]["Trend"]=(($this->sum1/$this->count1)/($this->sum2/$this->count2)-1)*100;                                            
+                            }
                         }
                     }
+                elseif ($this->result[$this->name]["Count"])  
+                    {
+                    $this->result["Result"][$this->name]["Means"]=$this->sum/$this->result[$this->name]["Count"];
+                    $this->result["Result"][$this->name]["Count"]=$this->result[$this->name]["Count"];                                              // die Anzahl ist nicht bekannt
+                    }
                 }
-            elseif ($this->result[$this->name]["Count"])  
+            else                    // alte Art der Berechnung
                 {
-                $this->result["Result"][$this->name]["Means"]=$this->result[$this->name]["Sum"]/$this->result[$this->name]["Count"];
-                $this->result["Result"][$this->name]["Count"]=$this->result[$this->name]["Count"];                                              // die Anzahl ist nicht bekannt
+                if ($this->result[$this->name]["CountFull"])
+                    {
+                    if ($this->result[$this->name]["Count1"]==0) return (false);
+                    else
+                        {
+                        $this->result["Result"][$this->name]["Means1"]=$this->result[$this->name]["Sum1"]/$this->result[$this->name]["Count1"];
+                        if ($this->result[$this->name]["Count2"]>0)
+                            {
+                            $this->result["Result"][$this->name]["Means2"]=$this->result[$this->name]["Sum2"]/$this->result[$this->name]["Count2"];
+                            $this->result["Result"][$this->name]["Trend"]=($this->result["Result"][$this->name]["Means1"]/$this->result["Result"][$this->name]["Means2"]-1)*100;                
+                            }
+                        }
+                    }
+                elseif ($this->result[$this->name]["Count"])  
+                    {
+                    $this->result["Result"][$this->name]["Means"]=$this->result[$this->name]["Sum"]/$this->result[$this->name]["Count"];
+                    $this->result["Result"][$this->name]["Count"]=$this->result[$this->name]["Count"];                                              // die Anzahl ist nicht bekannt
+                    }
                 }
 
             if ( (isset($this->result[$this->name]['Max'])) && (isset($this->result[$this->name]['Min'])) )
@@ -3430,6 +3571,188 @@ class archiveOps
                 }
 
             return (true);
+            }
+
+        /* Mittelwert hat jetzt einen Zeitbereich 
+         *
+         */
+
+        function extrapolate($youngestTime)
+            {
+            if ( ($this->count1==0) || ($this->count2==0) ) return (false);
+            $duration =  $this->sumTime1/$this->count1-$this->sumTime2/$this->count2;
+            $change   =  $this->sum1/$this->count1-$this->sum2/$this->count2;
+            $duration2 = $youngestTime-$this->sumTime1/$this->count1;
+            $change2 = $change/$duration*$duration2+($this->sum1/$this->count1);
+            //echo "Extrapolate ".nf($duration/60/60/24,"Tage")." ".nf($duration2/60/60/24,"Tage")." $change $change2\n";
+            $result = $this->result["Result"][$this->name]["MeansVar"];
+            unset($this->result["Result"][$this->name]["MeansVar"]);
+            $result[0]["Value"]=$change2;
+            $result[0]["TimeStamp"]=$youngestTime;
+            ksort($result);
+            $this->result["Result"][$this->name]["MeansVar"]=$result;
+            foreach ($this->result["Result"][$this->name]["MeansVar"] as $index => $entry)
+                {
+                //echo "$index ".date("d.m.Y H:i:s",$entry["TimeStamp"])." ".$entry["Value"]."\n";
+                }
+            return (true);
+            }
+
+        }
+
+
+    /*  Auswertung von Archive Einträgen, Ausgaben in einen gemeinsamen Speicher
+     *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
+     *
+     */
+
+    class eventLogEvaluate
+        {
+        
+        protected $name;
+        protected $previousOne,$countPos,$countNeg,$changeDir;
+        protected $previousTime;                                            // um die Richtung feststellen zu können
+        protected $confEventLog, $confLogChangeNeg;
+        protected $result;
+
+        function __construct(&$result,$name="All",$config=false)
+            {
+            if (is_array($result)===false) return (false);
+         
+            $this->result=&$result;
+            /* Config vorbereiten */
+            if ( (isset($config["EventLog"])) && ($config["EventLog"]==true) )  $this->confEventLog=true;          
+            else $this->confEventLog=false;
+            if ( (isset($config["LogChange"]["neg"])) && ($config["LogChange"]["neg"]>0) ) $this->confLogChangeNeg=$config["LogChange"]["neg"];
+            else $this->confLogChangeNeg=false;
+            if ( (isset($config["LogChange"]["pos"])) && ($config["LogChange"]["pos"]>0) ) $this->confLogChangePos=$config["LogChange"]["pos"];
+            else $this->confLogChangePos=false;            
+            //echo "Config ".$this->confEventLog." ".$this->confLogChangeNeg." ".$this->confLogChangePos."\n";
+            
+            /* init der für die Analyse benötigten Variablen, es müssen nicht alle Werte die für die Berechnung benötigt werden als Ergebnis zur Verfügung stehen */
+            $this->previousOne=false; $this->previousTime=false;
+            $this->countPos=0;
+            $this->countNeg=0;
+            $this->changeDir=0;
+            $this->name=$name;
+
+            $this->result[$name]=array();
+            $this->result[$name]["eventLog"]=array();
+            $this->result[$name]["countPosMax"]=0;
+            $this->result[$name]["countNegMax"]=0;
+            return (true);
+            }
+
+        /* Übergabe wert[value] und wert[TimeStamp]
+         * previousOne ist rückwärts oder vorwärts möglich, TimeStamp mit betrachten
+         *
+         */
+        function addValue($wert)
+            {
+            if (is_array($this->result)===false) return (false);
+            if (is_array($wert)===false) return (false);
+
+            if ($this->previousOne===false) 
+                {
+                $this->previousOne=$wert['Value']; 
+                $this->previousTime=$wert['TimeStamp'];
+                $delay=0;
+                }
+            else $delay = $this->previousTime-$wert['TimeStamp'];
+            if ($delay>0) $changeValue=($this->previousOne/$wert['Value']-1)*100;
+            else $changeValue=($wert['Value']/$this->previousOne-1)*100;
+            if ( ($this->confEventLog) && ($changeValue<0) )            // von nun an geht es bergab 
+                {
+                //echo "-";
+                if ( ($this->confLogChangeNeg) && ($changeValue<(-$this->confLogChangeNeg)) )
+                    {
+                    //echo "Event: Kursänderung größer -2%: \n";
+                    //echo "!";
+                    //echo nf(($wert['Value']/$previousOne-1)*100,"%")." ";
+                    $this->result[$this->name]["eventLog"][$wert['TimeStamp']] = "Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangeNeg."%"; 
+                    }
+                $this->countNeg++;
+                if ($this->changeDir=="pos")                  // das war ein Richtungswechsel
+                    {
+                    if ($this->countPos>$this->result[$this->name]["countPosMax"]) $this->result[$this->name]["countPosMax"]=$this->countPos;
+                    $this->countPos=0;
+                    }
+                $this->changeDir="neg";
+                }
+
+            if ( ($this->confEventLog) && ($changeValue>0) )           // von nun an gehts bergauf
+                {
+                //echo "+";
+                if ( ($this->confLogChangePos) && ($changeValue>$this->confLogChangePos) )
+                    {
+                    //echo "Event: Kursänderung größer -2%: \n";
+                    //echo "!";
+                    //echo nf(($wert['Value']/$previousOne-1)*100,"%")." ";
+                    $this->result[$this->name]["eventLog"][$wert['TimeStamp']]="Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."%"; 
+                    //$this->result[$this->name]["eventLog"][$wert['TimeStamp']]="Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."%".$this->previousOne." ".$wert['Value'];
+                    }                
+                $this->countPos++;
+                if ($this->changeDir=="neg")                  // Richtungswechsel, Analyse des bisherigen Geschehens
+                    {
+                    if ($this->countNeg>$this->result[$this->name]["countNegMax"]) $this->result[$this->name]["countNegMax"]=$this->countNeg;
+                    $this->countNeg=0;
+                    }
+                $this->changeDir="pos";
+                }
+            $this->previousOne=$wert['Value'];  $this->previousTime=$wert['TimeStamp'];               
+            return (true);
+            }
+
+        }
+
+
+    /*  Auswertung von Archive Einträgen, Input ist ein externes array, es wird nur der pointer übergeben
+     *
+     *
+     */
+
+    class meansRollEvaluate
+        {
+        
+        protected $name;
+        protected $input;
+
+        function __construct(&$input)
+            {
+            if (is_array($input)===false) return (false);
+            $this->input=&$input;
+
+            /* Config vorbereiten */
+                       
+            /* init der für die Analyse benötigten Variablen, es müssen nicht alle Werte die für die Berechnung benötigt werden als Ergebnis zur Verfügung stehen */
+
+            return (true);
+            }
+
+        /* Übergabe wert[value] und wert[TimeStamp]
+         * previousOne ist rückwärts oder vorwärts möglich, TimeStamp mit betrachten
+         *
+         */
+        function meansValues($index, $count)
+            {
+            if (is_array($this->input)===false) return (false);
+
+            /* rollierender Mittelwert , diesen und die nächsten count Werte zusammenzählen */
+            $sumRol=0; $countRol=0;
+            for ($i=0;$i<$count;$i++)
+                {
+                //echo " ".($index+$i);
+                if (isset($this->input[$index+$i]["Value"]))
+                    {
+                    //echo "->".$this->result[$oid]["Values"][$index+$i]["Value"];
+                    $sumRol += $this->input[$index+$i]["Value"];
+                    $countRol++;
+                    }
+                }
+            $ergebnis=array();
+            $ergebnis["Value"]=$sumRol/$countRol;
+            $ergebnis["TimeStamp"]=$this->input[$index]["TimeStamp"];
+            return ($ergebnis);
             }
 
         }
@@ -4676,6 +4999,33 @@ class dosOps
 
         }
 
+    /* noch ein typisches Verzeichnis, das des Users
+     */
+
+    public function getUserDirectory()
+        {
+        IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	                
+        $logging=new Logging();
+        $config=$logging->get_IPSComponentLoggerConfig();
+        //echo "GetWorkDirectory: .json_encode($config["BasicConfigs"])."\n";
+        $verzeichnis=$config["BasicConfigs"]["UserDir"];
+        if ($verzeichnis != "")
+            {
+            $ls=$this->readdirToArray($verzeichnis);
+            if ($ls===false) echo "********Fehler Verzeichnis $verzeichnis nicht vorhanden.\n";
+            }
+        /*  $verzeichnis="C:/scripts/";
+            $ls=$this->readdirToArray($verzeichnis);
+            if ($ls===false) 
+                {
+                echo "    UNIX System. Anderes privates Verzeichnis.\n";
+                $verzeichnis="/var/script/symcon/";
+                $ls=$this->readdirToArray($verzeichnis);
+                if ($ls===false) echo "   Fehler, Docker Container Pfad nicht richtig konfiguriert.\n";
+                }       */
+        return($verzeichnis);
+        }
+
     /*  Anhand von einer Configuration oder
      *  durch Test von C:/Scripts herausfinden ob Unix oder Windows system
      echo IPS_GetKernelDir();
@@ -4698,8 +5048,8 @@ class dosOps
         $directory=IPS_GetKernelDir();
         //echo "getOperatingSystem from this directory $directory:\n";                
         $pos1=strpos($directory,"/");
-        if ($pos1==0) return("WINDOWS");
-        else return("UNIX");
+        if ($pos1===0) return("UNIX");          // nur Linux hat das / am Anfang
+        else return("WINDOWS");
         }
 
     public function getOperatingSystem()
