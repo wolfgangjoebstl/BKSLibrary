@@ -5974,7 +5974,7 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
             {
             if ($this->config["HTMLOutput"])
                 {
-                echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
+                //echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
                 $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
                 $storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
                 IPS_SetHidden($storeTableID,true);                    // Nachrichtenarray nicht anzeigen
@@ -6087,7 +6087,7 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
             {
             if ($this->config["HTMLOutput"])
                 {
-                echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
+                //echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
                 $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
                 $storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
                 IPS_SetHidden($storeTableID,true);                    // Nachrichtenarray nicht anzeigen
@@ -6202,7 +6202,7 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
             {
             if ($this->config["HTMLOutput"])
                 {
-                echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
+                //echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
                 $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
                 $storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
                 IPS_SetHidden($storeTableID,true);                    // Nachrichtenarray nicht anzeigen

@@ -1177,9 +1177,9 @@ class Logging
                         {
                         $vartype=IPS_GetVariable($variable)["VariableType"];
                         if ($vartype==0) $this->variableTypeReg = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache, Boolean = MOTION
-                        elseif ($vartype==0) $this->variableTypeReg = "BRIGHTNESS";     // Integer ist Brightness
+                        elseif ($vartype==1) $this->variableTypeReg = "BRIGHTNESS";     // Integer ist Brightness
                         else $this->variableTypeReg = "DATA";                           // Rest ist Data
-                        IPSLogger_Inf(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs geht nicht mehr. Annahme:".$this->variableTypeReg);
+                        IPSLogger_Inf(__file__, "Logging::do_init,getfromDatabase für ".IPS_GetName($variable)." ohne Ergebnis, selber bestimmen aufgrund des Typs $vartype geht nicht mehr. Annahme:".$this->variableTypeReg);
                         if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs : $vartype => ".$this->variableTypeReg."\n";    
                         }
                     else

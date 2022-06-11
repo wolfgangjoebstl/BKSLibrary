@@ -126,8 +126,11 @@
         }
     $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     //$testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMacro,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+    $startActionID      = IPS_GetObjectIdByName("StartAction", $CategoryId_Mode);	
+
 
     $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+    $checkScriptCounterID=CreateVariableByName($CategoryIdData,"checkScriptCounter",1);
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	/*****************************************************
@@ -168,10 +171,17 @@
  *
  *				TIMER
  *
- * zwei TimerEvents. Eines einmal am Tag und das andere alle 150 Sekunden
- * tim1 ist der Aufruftimer um 2 Uhr morgens. Der macht nix anderes als den Ausführtimer tim2 zu starten
+ * drei TimerEvents. Zwei einmal am Tag (morgens und Abends) und das andere alle 150 Sekunden
+ * tim1 ist der Aufruftimer um 2:27 Uhr morgens. Der macht nix anderes als den Ausführtimer tim2 zu starten
  *
  * tim2 ist ausgelegt alle 150 Sekunden aufgerufen zu werden bis die Aufgabe erledigt ist
+ *      ScriptCounter muss maxcount erreichen
+ *      danach wird ParseDreiGuthaben aufgerufen
+ *
+ * tim3 ist alternativ am Abend um 22:16 für Selenium Operationen
+ *      DREI wird immer morgens gemacht, mehrmalige Aufrufe je Nummer, daher Abands ausnehmen, die anderen Hosts abfragen
+ *
+ *
  *
  *************************************************************/
 
@@ -184,10 +194,16 @@ if ($_IPS['SENDER']=="TimerEvent")
 		case $tim1ID:               // Aufruftimer immer um 2:27
 			IPS_SetEventActive($tim2ID,true);
 			SetValue($statusReadID,"");			// Beim Erstaufruf Html Log loeschen.
+			SetValue($checkScriptCounterID,GetValue($checkScriptCounterID));
 			break;
 		case $tim2ID:               // Exectimer alle 150 Sekunden wenn aktivivert
 			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
 			$ScriptCounter=GetValue($ScriptCounterID);
+			$checkScriptCounter=GetValue($checkScriptCounterID);
+
+            if ($checkScriptCounter>($maxcount*2)) break;                  // 100% Fehler durch Abbrüche zulassen, dann Funktion einstellen
+			SetValue($checkScriptCounterID,$checkScriptCounter+1);
+
 			//IPS_SetScriptTimer($_IPS['SELF'], 150);
             $note="";            
 			if ($ScriptCounter < $maxcount)                                     // normale Abfrage, Nummer für Nummer bis fertig
@@ -262,7 +278,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                     $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
                     echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
                     echo "--------\n";
-                    $log_Guthabensteuerung->LogNachrichten("Automated Query, Exectime : ".exectime($startexec)." Sekunden");                      
+                    $log_Guthabensteuerung->LogNachrichten("Automated Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden");                      
                     break;
                 }
             break;
@@ -366,6 +382,51 @@ if ($_IPS['SENDER']=="WebFront")
                     break;	
                 }       // end switch
             break;
+        case $startActionID:
+            $startexec=microtime(true);
+            $configTabs = $guthabenHandler->getSeleniumHostsConfig();
+            if ($value==0) $configTemp["EASY"] = $configTabs["Hosts"]["EASY"];
+            else
+                {
+                unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
+                $configTemp = $configTabs["Hosts"];
+                } 
+            $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+            $log_Guthabensteuerung->LogNachrichten("Requested Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden");   
+            /* Auswertung */
+            $configTabs = $guthabenHandler->getSeleniumTabsConfig("EASY");
+            $depotRegister=["RESULT"];
+            if (isset($configTabs["Depot"]))
+                {
+                if (is_array($configTabs["Depot"]))
+                    {
+                    $depotRegister=$configTabs["Depot"];    
+                    }
+                else $depotRegister=[$configTabs["Depot"]];
+                }
+            foreach ($depotRegister as $depot)
+                {
+                $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
+                $lines = explode("\n",$result["Value"]);    
+                $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
+                $shares=$seleniumEasycharts->evaluateResult($data);
+                $depotName=str_replace(" ","",$depot);                      // Blanks weg
+                if ($depotName != $depot)               
+                    {
+                    $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
+                    $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
+                    }
+                else
+                    {
+                    $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
+                    }
+                $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
+                }
+
+            break;
+        default:
+            echo "GuthabenSteuerung, unknown ActionID Variable : $variable";
+            break;
         }            //end switch
 	}           // ende if
 
@@ -384,12 +445,18 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
     $tim1ID = IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
     $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
 
+    $timerOps = new timerOps();
 	echo "Timerprogrammierung: \n";
-	echo "  Timer 1 ID : ".$tim1ID."   ".(IPS_GetEvent($tim1ID)["EventActive"]?"Ein":"Aus")."\n";
-    echo "  Timer 2 ID : ".$tim2ID."   ".(IPS_GetEvent($tim2ID)["EventActive"]?"Ein":"Aus")."\n";
-    echo "  Timer 3 ID : ".$tim3ID."   ".(IPS_GetEvent($tim3ID)["EventActive"]?"Ein":"Aus")."\n";
+	//echo "  Timer 1 ID : ".$tim1ID."   ".(IPS_GetEvent($tim1ID)["EventActive"]?"Ein":"Aus")."\n";
+    //echo "  Timer 2 ID : ".$tim2ID."   ".(IPS_GetEvent($tim2ID)["EventActive"]?"Ein":"Aus")."\n";
+    //echo "  Timer 3 ID : ".$tim3ID."   ".(IPS_GetEvent($tim3ID)["EventActive"]?"Ein":"Aus")."\n";
+    $timerOps->getEventData($tim1ID);
+    $timerOps->getEventData($tim2ID);
+    $timerOps->getEventData($tim3ID);
 
 	$ScriptCounter=GetValue($ScriptCounterID);
+	$checkScriptCounter=GetValue($checkScriptCounterID);
+    echo "Check Script Counter        : ".$checkScriptCounter."\n";
     echo "Script Counter (aktuell)    : ".$ScriptCounter."\n";
     echo "Webfront MacroID            : ".$startImacroID."\n";
     echo "Operating Mode              : ".(strtoupper($GuthabenAllgConfig["OperatingMode"]))."\n";
@@ -397,6 +464,16 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
         {  
         case "SELENIUM":
             $debug=true;
+            echo "============================================================================\n";
+            if ($webDriverName) echo "WebDriverName: Default\n";
+            else echo "WebDriverName:  $webDriverName\n";
+            echo "GuthabenHandler Aktive Selenium Konfiguration:\n";
+            $configSelenium = $guthabenHandler->getSeleniumWebDriverConfig($webDriverName);       // ist jetzt immer false, könnte aber auch ein Name sein     
+            print_r($configSelenium);
+            echo "GuthabenHandler Selenium Hosts Konfiguration:\n";
+            $configSeleniumHosts = $guthabenHandler->getSeleniumHostsConfig();
+            print_r($configSeleniumHosts);
+
 			if ($ScriptCounter < $maxcount) $value=$ScriptCounter;
             else { $value=0; SetValue($ScriptCounterID,0); }
             echo "============================================================================\n";
@@ -431,19 +508,21 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
                         break;
                     case "EASY":
                         echo "    $host ".json_encode($entry)."\n";
-                        echo "           Selenium Operations, read Result from EASY:\n";
+                        /*
+                        echo "           Selenium Operations, read Result from EASY:\n";                // schenbar nicht ehr aktuel, hier kommt immer der 26.1.2022
                         $result=$seleniumOperations->readResult("EASY","Result",true);                  // true Debug
                         //print_R($result);
-                        echo "           Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        echo "           Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";  */
                         break;
                     default:
                         echo "    $host ".json_encode($entry)."\n";
                         break;    
                     }    
                 }
-            /*************************** Abfrage */
+            /*************************** Abfrage über Selenium aus dem Internet, hier gehts los*/
+            echo "============================================================================\n";            
             $seleniumOperations = new SeleniumOperations();                             // macht nichts, erst mit automated query gehts los
-            $seleniumOperations->automatedQuery($webDriverName,$config,false);          // true debug      
+            $seleniumOperations->automatedQuery($webDriverName,$config,true);          // true debug, config für Drei und Easy      
 
             /***************************** Auswertung */
             $hosts="";

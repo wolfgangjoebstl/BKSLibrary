@@ -179,6 +179,30 @@ class SeleniumHandler
             }
         }
 
+    /* initHost und andere try catch Fehlermeldungen von Selenium analysieren und in eine leserliche Form bringen
+     *
+     */
+
+    function analyseFailure($failure,$debug=false)
+        {
+        $this->failure = $failure;
+        $pos1=strpos($this->failure,"No active session with ID");
+        $failureShort=false;
+        if ($pos1===0) $failureShort=$this->failure;                    // "No active session samt ID ist die Fehlermeldung
+        else
+            {
+            $pos1=strpos($this->failure,"session not created: This version of");
+            if ($pos1===0)
+                {
+                $pos2=strpos($this->failure,"Build info:");
+                if ($pos2>$pos1) $failureShort = substr($this->failure,$pos1,$pos2-$pos1);   
+                }
+            if ($failureShort === false) $failureShort = substr($this->failure,0,6000);
+            }
+        if ($debug) echo "analyseFailure, Failure short : \"$failureShort\"   \n";
+
+        return($failureShort);
+        }
 
     /* $hostIP      'http://10.0.0.34:4444/wd/hub'
      * browser   Chrome
@@ -189,6 +213,7 @@ class SeleniumHandler
      */
     function initHost($hostIP,$browser="Chrome",$sessionID=false, $debug=false)
         {
+        $result=array();
         if ($this->active===false) return;
         if ( (strtoupper($browser))=="CHROME") $capabilities = DesiredCapabilities::chrome();
         if ($sessionID && (GetValue($sessionID)!="") )
@@ -203,14 +228,13 @@ class SeleniumHandler
                 }
             catch (Exception $e) 
                 { 
-                $this->failure = $e->getMessage();
-                $failureShort = substr($this->failure,0,60);
+                $failureShort = $this->analyseFailure($e->getMessage());
                 if ($failureShort=="Curl error thrown fo") echo "Es sieht so aus als wäre Selenium nicht gestartet.\n";
                 elseif ($failureShort=="session not created: This version of ChromeDriver only suppo") echo "Neuesten ChromeDriver laden.\n";
                 else 
                     {
-                    echo "Fehler erkannt :\"$failureShort\"\n";
-                    if ($debug) echo "  -->selenium Webdriver mit Session $session nicht gestartet. Noch einmal ohne Session probieren. Fehlermeldung ".$e->getMessage()."\n";
+                    //echo "initHost Fehler erkannt :\"$failureShort\"\n";
+                    if ($debug) echo "  -->selenium Webdriver mit Session $session nicht gestartet. Noch einmal ohne Session probieren. Fehlermeldung $failureShort n";
                     }
                 $this->handle=array();      // Handle array loeschen
                 try { 
@@ -218,8 +242,11 @@ class SeleniumHandler
                     }
                 catch (Exception $e) 
                     { 
-                    echo "  -->selenium Webdriver nicht gestartet. Fehlermeldung ".$e->getMessage()." Bitte starten.\n"; 
-                    return (false); 
+                    $failureShort = $this->analyseFailure($e->getMessage());
+                    if ($debug) echo "  -->selenium Webdriver nicht gestartet. Fehlermeldung \"$failureShort\" Bitte starten.\n"; 
+                    $result["Failure"]["Full"]  = $this->failure;
+                    $result["Failure"]["Short"] = $failureShort;
+                    return ($result); 
                     }
                 }
             static::$webDriver = $webDriver; 
@@ -233,16 +260,18 @@ class SeleniumHandler
                 }
             catch (Exception $e) 
                 { 
-                $this->failure = $e->getMessage();
-                $failureShort = substr($this->failure,0,60);
+                $failureShort = $this->analyseFailure($e->getMessage());
+                //echo "Failure short : \"$failureShort\"   \n";
                 if ($failureShort=="Curl error thrown fo") echo "Es sieht so aus als wäre Selenium nicht gestartet.\n";
                 elseif ($failureShort=="session not created: This version of ChromeDriver only suppo") echo "Neuesten ChromeDriver laden.\n";
                 else 
                     {
-                    echo "Fehler erkannt :\"$failureShort\"\n";
+                    //echo "Fehler erkannt :\"$failureShort\"\n";
                     if ($debug) echo "  -->selenium Webdriver nicht gestartet. Fehlermeldung ".$e->getMessage()." Bitte starten.\n"; 
                     }
-                return (false); 
+                $result["Failure"]["Full"]  = $this->failure;
+                $result["Failure"]["Short"] = $failureShort;
+                return ($result); 
                 }
             }
         if ($sessionID) 
@@ -366,7 +395,7 @@ class SeleniumHandler
             {
             if ($count>1) if ($debug) echo "   -->check, found in total $count times.\n";                
             $element = static::$webDriver->findElement(WebDriverBy::xpath($xpath));
-            if($element) {
+            if ($element) {
                 $this->title[$this->index++]=static::$webDriver->getTitle();
                 $statusEnabled=$element->isEnabled();
                 $statusDisplayed=$element->isDisplayed();
@@ -375,9 +404,71 @@ class SeleniumHandler
 					{
 					if ($statusDisplayed)
 						{
-						$element->click();
-						if ($debug) print "found xpath , click Button\n";
+                        //Only Click when it's clickable gonna works
+                        static::$webDriver->wait()->until(
+                            function () use ($element) 
+                                {
+                                try 
+                                    {
+                                    static::$webDriver->executeScript('console.log("clicking");');
+                                    echo "try click\n";
+                                    $element->click();
+                                    }
+                                catch (WebDriverException $e) 
+                                    {
+                                    return false;
+                                    }
+                                static::$webDriver->executeScript('console.log("clickable");');
+                                return true;
+                                }
+                            );
+						if ($debug) print "found xpath , waited and click Button\n";
 						return (true);                                          // nur hier erfolgreich
+						}
+					}
+                //print_r($element);
+                }
+            }
+        return (false);            
+        }
+
+    /* pressSubmitIf
+     * sucht einen xpath und überprüft:
+     * wenn vorhanden               findElements
+     * wenn clickable/visible       elementToBeClickable
+     * drückt er da darauf den Button
+     * webDriver muss bereits angelegt sein
+     *
+     * xpath kann gar nicht, einmal oder mehrmals gefunden werden
+     * bei gar nicht keine Funktion, bei mehrmals wird der erste genommen, aber eine echo Ausgabe gemacht
+     * 
+     */
+
+    function pressSubmitIf($xpath,$debug=false)
+        {        
+        //$element = $webDriver->findElement(WebDriverBy::xpath('/html/body/div[4]/div[2]/div/div/div[2]/div/div/button'));
+        if ($debug) echo "pressSubmitIf($xpath):\n";
+        //$result=$this->webDriver->findElements(WebDriverBy::xpath($xpath)); print_R($result);
+        $count=count(static::$webDriver->findElements(WebDriverBy::xpath($xpath)));
+        if ( $count === 0) {
+            if ($debug) echo "   -->Button not found.\n";
+            }
+        else
+            {
+            if ($count>1) if ($debug) echo "   -->check, found in total $count times.\n";                
+            $element = static::$webDriver->findElement(WebDriverBy::xpath($xpath));
+            if ($element) 
+                {
+                $this->title[$this->index++]=static::$webDriver->getTitle();
+                $statusEnabled=$element->isEnabled();
+                $statusDisplayed=$element->isDisplayed();
+                if ($debug) echo "Element Status Enabled $statusEnabled Displayed $statusDisplayed\n";
+                if ($statusEnabled)
+					{
+					if ($statusDisplayed)
+						{
+                        //do submit instead of click
+                        $element->submit();
 						}
 					}
                 //print_r($element);
@@ -554,7 +645,7 @@ class SeleniumHandler
         // Tutorial query https://www.w3schools.com/xml/xpath_syntax.asp
         //$links = $xpath->query('//div[@class="blog"]//a[@href]');
         $links = $xpath->query($xPathQuery);
-        echo "Insgesamt ".count($links)." gefunden für \"$xPathQuery\"\n";
+        if ($debug) echo "Insgesamt ".count($links)." gefunden für \"$xPathQuery\"\n";
 
         $tmp_doc = new DOMDocument();   
         foreach ($links as $a) 
@@ -564,7 +655,7 @@ class SeleniumHandler
             $style = $a->getAttribute($filterAttr);
             if ( ($filterValue=="") || ($filterValue=="*") || ($style == $filterValue) )
                 {
-                echo "   -> found:  ".$a->nodeName." , ".$a->nodeType." $style\n";
+                if ($debug) echo "   -> found:  ".$a->nodeName." , ".$a->nodeType." $style\n";
                 $tmp_doc->appendChild($tmp_doc->importNode($a,true));                 
                 //echo $innerHTML;
                 }
@@ -1185,7 +1276,8 @@ class SeleniumDrei extends SeleniumHandler
             $this->sendKeysToFormIf($xpath,$password);              // admin        
             if ($this->debug) echo "   -> press Submit Button\n";
             $xpath = '//*[@id="ssoSubmitButton"]';
-            $this->pressButtonIf($xpath);        
+            $this->pressSubmitIf($xpath,$this->debug);        
+            if ($this->debug) echo "   -> Button pressed\n";
             }
         return($result);
         }
@@ -1416,6 +1508,7 @@ class SeleniumIiyama extends SeleniumHandler
  * zusaetzliche Funktionen sind
  *      __construct
  *      getResultCategory
+ *      getEasychartConfiguration
  *      parseResult
  *      evaluateResult
  *      evaluateValue
@@ -1423,12 +1516,14 @@ class SeleniumIiyama extends SeleniumHandler
  *      writeResultConfiguration
  *      getResultConfiguration
  *      writeResultAnalysed
+ *      calcOrderBook
  *      runAutomatic
  *
  * Funktionen zum Einlesen des Host
  *      getTextValidLoggedInIf
  *      enterLogin
  *      gotoLinkMusterdepot
+ *      readTableMusterdepot
  *      gotoLinkMusterdepot3
  *      getTablewithCharts
  *
@@ -1669,6 +1764,9 @@ class SeleniumEasycharts extends SeleniumHandler
      * Inputformat:  ohne Key als Index
      * Writefromat:  Key ist der Börsenname "USxxx"
      *
+     * Folgende Felder werden übernommen:
+     *  OID, Name (optional), Stueck, Kosten (optional)
+     *
      */
 
     function writeResultConfiguration(&$shares, $nameDepot="MusterDepot")
@@ -1680,10 +1778,11 @@ class SeleniumEasycharts extends SeleniumHandler
             {
             $config[$share["ID"]]["OID"]=$share["OID"];
             $config[$share["ID"]]["Stueck"]=$share["Stueck"];
+            if (isset($share["Kosten"])) $config[$share["ID"]]["Kosten"]=$share["Kosten"];
             if (isset($share["Name"])) $config[$share["ID"]]["Name"]=$share["Name"];
             }
         SetValue($oid,json_encode($config));
-        echo "Konfiguration Depot: ".GetValue($oid)."\n";
+        echo "Konfiguration Depot $nameDepot: ".GetValue($oid)."\n";
         }
 
     /* Easycharts speichert die Konfiguration des Musterdepots
@@ -1722,27 +1821,44 @@ class SeleniumEasycharts extends SeleniumHandler
      * Bei html kann man sich eine erweiterte Tabell für die Darstellung unter den Reports aussuchen
      *
      * Mit Size werden verschiedene Darstellungsgroessen und Detailierungen für die html Tabelle ausgewählt
-     *   0  einfache Tabele, geeignet für halb- oder viertelseitige Darstellungen
+     *  -x  Limitierung der Zeilen 
+     *   0  einfache Tabelle, geeignet für halb- oder viertelseitige Darstellungen
      *   1  zusätzliche informationen
      *   2  erweiterte Darstellung mit mehr Fokus auf Win/Loss des eigenen Depots, Monats/wochen/Tagestrend
      *
      * Wie der Name schon sagt gibt es verschiedene Analyse Funktionen für die Visualisiserung
      *          Anzeige des Tageskurses mit Rotem oder grünen Hintergrund
      *              Positiver  Spread (Abstand Max zu Mittelwert) größer 10% und Tageskurs > 97% vom Maxwert
-     *              Naegativer Spread (Abstand Min zu Mittelwert) größer 10% und Tageskurs < 97% vom Minwert
+     *              Negativer Spread (Abstand Min zu Mittelwert) größer 10% und Tageskurs < 97% vom Minwert
      *          Bearbeitung der Description, letze Spalte in der Tabelle
      *
      */
 
-    function writeResultAnalysed($resultShares,$html=false, $size=0)
+    function writeResultAnalysed($resultShares,$html=false, $size=0,$debug=false)
         {
         $table=false; $wert = "";
         $sort="Change";
-        
+        $lines=false; $countLines=0;
+        if (is_array($size)) echo "Angabe er Konfiguration mit einem Array. Umwandeln.\n";
+        else
+            {
+            if ($size<0) 
+                {
+                $lines=abs($size);
+                $linesBegin=round($lines/2);        // keine Kommas, half up
+                $linesEnd=$linesBegin;
+                $size=0;
+                }
+            }
+        if ($debug) echo "writeResultAnalysed, Ausgabe Tabelle für ".count($resultShares)." Werte mit Größe der Darstellung $size und Lines $lines aufgerufen.\n";
+
         if ($html) 
             {
             $wert.="<style>";
-            $wert.='#easycharts { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; font-size: 12px; color:black; border-collapse: collapse; width: 100%; }';
+            $wert.='#easycharts { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
+            if ($size==0) $wert.='font-size: 100%; ';
+            else $wert.='font-size: 150%; ';
+            $wert.='color:black; border-collapse: collapse; width: 100%; }';
             $wert.='#easycharts td, #customers th { border: 1px solid #ddd; padding: 8px; }';
             $wert.='#easycharts tr:nth-child(even){background-color: #f2f2f2;}';
             $wert.='#easycharts tr:nth-child(odd){background-color: #e2e2e2;}';
@@ -1750,10 +1866,7 @@ class SeleniumEasycharts extends SeleniumHandler
             $wert.='#easycharts th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; }';
             $wert.="</style>";                
             //echo $size;
-            $wert .= '<';
-            if ($size==0) $wert .= 'font size="1" ';
-            else $wert .= 'font size="2" ';
-            $wert .= 'face="Courier New" ><table id="easycharts"><tr><td>ID/Name</td><td>Standard<br>Abw</td><td>Spread Max/Min</td><td>';
+            $wert .= '<font size="1" face="Courier New" ><table id="easycharts"><tr><td>ID/Name</td><td>Standard<br>Abw</td><td>Spread Max/Min</td><td>';
             if ($size>0) $wert .= '++/--</td><td>Min</td><td>Max</td><td>Order</td><td>Win/Loss</td><td>';
             else $wert .= 'Mittelwert</td><td>';
             if ($size>1) $wert .= 'Letzter Wert</td><td>Month Trend</td><td>Week Trend</td><td>Day Change</td><td>Recommendation</td></tr>';
@@ -1768,6 +1881,7 @@ class SeleniumEasycharts extends SeleniumHandler
             }
         arsort($sortTable);
         //print_R($sortTable);
+        //echo "Anzahl Zeilen : ".count($sortTable)." \n";
         
         /* entsprechend der Sortierung die Tabelle anzeigen 
          * Rating Engine:
@@ -1824,7 +1938,7 @@ class SeleniumEasycharts extends SeleniumHandler
 
                 }
 
-            /* Show in Tab
+            /* Show in Tab, eine html oder text Zeile schreiben
              *      Name
              *      StdDev (Volatilität)
              *      StdDevPos/StdDevNeg
@@ -1839,16 +1953,17 @@ class SeleniumEasycharts extends SeleniumHandler
              */
             if ($html) 
                 {
-                if ($name=="") $wert .= '<tr><td>'.$resultShares[$index]["Info"]["ID"].'</td>';              // ein Tab reicht für beide
-                else $wert .= '<td>'.$name.'</td>';
-                $wert .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevRel"],2,",",".")."%".'</td>';
-                //$wert .= '<td>'.number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%".'</td>';                   // nur Prozent PosMax/negMax zu Mittelwert ist uns zu wenig
-                $wert .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevPos"],2,",",".")."/".number_format($resultShares[$index]["Description"]["StdDevNeg"],2,",",".")."%".'</td>';
+                $zeile="";
+                if ($name=="") $zeile .= '<tr><td>'.$resultShares[$index]["Info"]["ID"].'</td>';              // ein Tab reicht für beide
+                else $zeile .= '<td>'.$name.'</td>';
+                $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevRel"],2,",",".")."%".'</td>';
+                //$zeile .= '<td>'.number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%".'</td>';                   // nur Prozent PosMax/negMax zu Mittelwert ist uns zu wenig
+                $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevPos"],2,",",".")."/".number_format($resultShares[$index]["Description"]["StdDevNeg"],2,",",".")."%".'</td>';
                 if ($size>0)            // erweiterte Darstellung
                     {
-                    $wert .= '<td>'.$resultShares[$index]["Description"]["CountPos"]."/".$resultShares[$index]["Description"]["CountNeg"].'</td>';
-                    $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Interval"]["Full"]["Min"],2,",",".")."€".'</td>';
-                    $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Interval"]["Full"]["Max"],2,",",".")."€".'</td>';
+                    $zeile .= '<td>'.$resultShares[$index]["Description"]["CountPos"]."/".$resultShares[$index]["Description"]["CountNeg"].'</td>';
+                    $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["Interval"]["Full"]["Min"],2,",",".")."€".'</td>';
+                    $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["Interval"]["Full"]["Max"],2,",",".")."€".'</td>';
                     $order=""; $winLoss="";
                     if (isset($resultShares[$index]["Order"])) 
                         {
@@ -1867,16 +1982,16 @@ class SeleniumEasycharts extends SeleniumHandler
                             $order .= number_format($orderEntry["price"],2,",",".")."€";
                             }
                         }
-                    $wert .= '<td>'.$order.'</td>'; 
-                    $wert .= '<td>'.$winLoss.'</td>';   
+                    $zeile .= '<td>'.$order.'</td>'; 
+                    $zeile .= '<td>'.$winLoss.'</td>';   
                     }
-                else $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Means"],2,",",".")."€".'</td>';
+                else $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["Means"],2,",",".")."€".'</td>';
 
                 // Darstellung letzter Wert, also der aktuelle Börsenkurs
                 $bgcolor="";
                 if ( ($spreadPlus >10) && ($resultShares[$index]["Description"]["Latest"]>(0.97*$resultShares[$index]["Description"]["Interval"]["Full"]["Max"])) ) $bgcolor='bgcolor="green"';
                 if ( ($spreadMinus>10) && ($resultShares[$index]["Description"]["Latest"]<(1.03*$resultShares[$index]["Description"]["Interval"]["Full"]["Min"])) ) $bgcolor='bgcolor="red"';
-                $wert .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Latest"],2,",",".")."€".'</td>';
+                $zeile .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Latest"],2,",",".")."€".'</td>';
                 if ($trendPerc != 0) $trend = number_format($trendPerc,2,",",".")."%";
                 else $trend="";
                 if ($size>1)            // Show Month, Week and Day Trend, otherwise it shows week and day trend only
@@ -1892,21 +2007,30 @@ class SeleniumEasycharts extends SeleniumHandler
                         if ( ($monthTrend<0) && ($weekTrend<0) && ($dayTrend<0) ) $bgcolor='bgcolor="red"';
                         }
                     
-                    if (isset($resultShares[$index]["Description"]["Interval"]["Month"]["Trend"])) $wert .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Interval"]["Month"]["Trend"],2,",",".")."%".'</td>';
-                    else $wert .= '<td></td>';
-                    // $wert .= '<td>('.number_format($resultShares[$index]["Description"]["Interval"]["Week"]["Trend"],2,",",".")."%".')</td>';
-                    $wert .= '<td '.$bgcolor.'>'.$trend.'</td>';
-                    if (isset($resultShares[$index]["Description"]["Interval"]["Day"]["Trend"])) $wert .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Interval"]["Day"]["Trend"],2,",",".")."%".'</td>';
-                    else $wert .= '<td></td>';
+                    if (isset($resultShares[$index]["Description"]["Interval"]["Month"]["Trend"])) $zeile .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Interval"]["Month"]["Trend"],2,",",".")."%".'</td>';
+                    else $zeile .= '<td></td>';
+                    // $zeile .= '<td>('.number_format($resultShares[$index]["Description"]["Interval"]["Week"]["Trend"],2,",",".")."%".')</td>';
+                    $zeile .= '<td '.$bgcolor.'>'.$trend.'</td>';
+                    if (isset($resultShares[$index]["Description"]["Interval"]["Day"]["Trend"])) $zeile .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Interval"]["Day"]["Trend"],2,",",".")."%".'</td>';
+                    else $zeile .= '<td></td>';
                     }
                 else 
                     {
-                    $wert .= '<td>'.$trend.'</td>';                 // compare last 2 Day Week Month
-                    $wert .= '<td>'.number_format($resultShares[$index]["Description"]["Change"],2,",",".")."%".'</td>';
+                    $zeile .= '<td>'.$trend.'</td>';                 // compare last 2 Day Week Month
+                    $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["Change"],2,",",".")."%".'</td>';
                     }
-                if ($size>0) $wert .= '<td>'.$rating." ".$description.'</td>';
-                $wert .= '<td>'.$resultShares[$index]["Description"]["Count"].'</td>';
-                $wert .= '</tr>';
+                if ($size>0) $zeile .= '<td>'.$rating." ".$description.'</td>';
+                $zeile .= '<td>'.$resultShares[$index]["Description"]["Count"].'</td>';
+                $zeile .= '</tr>';
+                if ($lines)
+                    {
+                    if ($countLines<$lines) 
+                        {
+                        if ( ($countLines<=$linesBegin) || ($countLines>($lines-$linesEnd)) ) $wert .= $zeile;
+                        } 
+                    } 
+                else $wert .= $zeile;
+                $countLines++;
                 }
             else            // Darstellung als Text Tabelle mit fixer Anzahl von Leerzeichen
                 {
@@ -1957,6 +2081,203 @@ class SeleniumEasycharts extends SeleniumHandler
             }
         if (($pcs>0) && $debug) echo "    $date             ".str_pad($pcs,18, " ", STR_PAD_LEFT).str_pad(nf($cost,"€"),18, " ", STR_PAD_LEFT)." \n";  
         return(["pcs"=>$pcs,"cost"=>$cost]);
+        }
+
+    /* Depotbook create from Orderbook
+     * verwendet calcOrderbook um die Summe cost und pcs zu bekommen und nicht die Kosten und Stück aus der Depot konfiguration
+     *
+     */
+
+    public function createDepotBook(&$orderbook,$resultShares, $debug=false)
+        {
+        $spend=0; $actual=0;
+        if ($debug)
+            {
+            echo "\n";
+            echo str_pad("",105)."|           Geld         Geld Acc         Wert         Gewinn\n";
+            }
+        $depotbook=array();
+        $contMax=false;
+        foreach ($orderbook as $id => $book)
+            {
+            $latest=0; $kursKauf=0;
+            if (isset($resultShares[$id]))              // wenn nicht mehr im actualDepot keine Ausgabe
+                {
+                if ($debug)
+                    {
+                    echo str_pad($id,15);
+                    if (isset($resultShares[$id]["Info"]["Name"]))  
+                        {
+                        echo str_pad($resultShares[$id]["Info"]["Name"],50);
+                        echo str_pad($resultShares[$id]["Description"]["Count"],6, " ", STR_PAD_LEFT)." ";
+                        }
+                    else  echo str_pad("",57);
+                    }
+                $result=$this->calcOrderBook($book);            // es gibt pcs und cost, ausgerechnet aus allen Transaktionen
+                $orderbook[$id]["Summary"]=$result;
+                //print_R($result);
+                if ($result["pcs"]>0) 
+                    {
+                    $kursKauf=$result["cost"]/$result["pcs"];
+                    //echo " ".$result["pcs"]." : ".$result["cost"]." ".str_pad(nf(($result["cost"]/$result["pcs"]),"€"),18, " ", STR_PAD_LEFT);        
+                    if ($debug) echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT);        
+                    $depotbook[$id]["Stueck"] = $result["pcs"];
+                    $depotbook[$id]["Kosten"] = $result["cost"];
+                    if (isset($resultShares[$id]["Info"]["Name"])) $depotbook[$id]["Name"]=$resultShares[$id]["Info"]["Name"];
+                    $depotbook[$id]["ID"]=$id;
+                    $depotbook[$id]["OID"]=$resultShares[$id]["Info"]["OID"];
+                    }
+                else 
+                    {
+                    //unset ($orderbook[$id]);                            //cleanup orderbook
+                    }
+                $spend += $result["cost"]; 
+                if (isset($resultShares[$id]["Description"]["Latest"])) 
+                    {
+                    $latest = $resultShares[$id]["Description"]["Latest"]["Value"];
+                    //echo $latest." (".date("d.m.Y H:i:s",$resultShares[$id]["Description"]["Latest"]["TimeStamp"]).") ";
+                    if ($result["pcs"] != 0) $actual += $latest*$result["pcs"];
+                    if ( ($debug) && ($kursKauf>0) && ($latest>0) ) 
+                        {
+                        echo "->";
+                        echo str_pad(nf($latest,"€"),16, " ", STR_PAD_LEFT)." (".date("d.m.Y H:i:s",$resultShares[$id]["Description"]["Latest"]["TimeStamp"]).") ";
+                        echo "  ".str_pad(nf(($latest/$kursKauf-1)*100,"%"),10, " ", STR_PAD_LEFT);
+                        echo str_pad(nf($result["cost"],"€"),16, " ", STR_PAD_LEFT).str_pad(nf($spend,"€"),16, " ", STR_PAD_LEFT);
+                        echo str_pad(nf($latest*$result["pcs"],"€"),16, " ", STR_PAD_LEFT).str_pad(nf($actual,"€"),16, " ", STR_PAD_LEFT);
+                        echo "\n";
+                        }
+                    }
+                else 
+                    {
+                    echo "Description Latest ist nicht vorhanden:\n";
+                    }
+                }
+            else echo "createDepotBook, Eintrag in Orderbook für ID $id aber nicht in resultshares.\n";
+            }
+        if ($debug) 
+            {
+            echo "Gesamtergebnis Depot ist Kosten ".nf($spend,"€")." und Wert ".nf($actual,"€")."\n";
+            }
+
+        return($depotbook);
+        }
+
+    /* evaluate Depotbook verwendet Kosten und Stueck um den Wert des Depots zu berechnen
+     * calcOrderbook nicht mehr notwendig, es gibt bereits Stueck und Kosten
+     * Depotbook wird um zusätzliche Daten erweitert
+     *
+     */
+
+    public function evaluateDepotBook(&$depotbook,$resultShares, $debug=false)
+        {
+        $spend=0; $actual=0;
+        if ($debug)
+            {
+            echo "\n";
+            echo "evaluateDepotBook:\n";
+            echo str_pad("",105)."|           Geld         Geld Acc         Wert         Gewinn\n";
+            }
+        $countMax=false;
+
+        $valuebook=array();
+        foreach ($depotbook as $id => $book)
+            {
+            //echo $id."  ";
+            if (isset($resultShares[$id]["Values"]))              // wenn nicht mehr im actualDepot keine Ausgabe
+                {
+                //echo ":";
+                foreach ($resultShares[$id]["Values"] as $index=>$wert)
+                    {
+                    //echo ".";
+                    $indexTimeDay=date("ymd",$wert["TimeStamp"]);
+                    $valuebook[$indexTimeDay]["TimeStamp"]=$wert["TimeStamp"];
+                    $valuebook[$indexTimeDay]["Value"] = 0;
+                    if (isset($valuebook[$indexTimeDay]["ID"])) 
+                        {
+                        $pos1=strpos($valuebook[$indexTimeDay]["ID"],$id);
+                        if ($pos1 !==false) echo "doppelter Eintrag für ID $id am $indexTimeDay !\n";
+                        else $valuebook[$indexTimeDay]["ID"] .= " ".$id;
+                        }
+                    else 
+                        {
+                        $valuebook[$indexTimeDay]["ID"] = $id;
+                        }
+
+                    }
+                }
+            }
+        ksort($valuebook);
+        $depotbook["Value"]=$valuebook;
+        $countMax=36;
+        //echo "\n";
+
+        $knownValues=array();
+        foreach ($depotbook as $id => $book)
+            {
+            $latest=0; $kursKauf=0;
+            if (isset($resultShares[$id]))              // wenn nicht mehr im actualDepot keine Ausgabe
+                {
+                if ($debug)
+                    {
+                    echo str_pad($id,15);
+                    if (isset($resultShares[$id]["Info"]["Name"]))  
+                        {
+                        echo str_pad($resultShares[$id]["Info"]["Name"],50);
+                        echo str_pad($resultShares[$id]["Description"]["Count"],6, " ", STR_PAD_LEFT)." ";
+                        }
+                    else  echo str_pad("",57);
+                    }
+                //print_R($book);
+                if ($book["Stueck"]>0)                // unwahrscheinlich, dass keine Stueck hier vorkommen
+                    {
+                    $kursKauf=$book["Kosten"]/$book["Stueck"];
+                    if ($debug) echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT);        
+                    if (isset($resultShares[$id]["Info"]["Name"])) $depotbook[$id]["Name"]=$resultShares[$id]["Info"]["Name"];
+                    }
+                else 
+                    {
+                    echo "evaluateDepotBook, Fehler Depotbook ist leer für $id\n";
+                    }
+                $spend += $book["Kosten"]; 
+                if (isset($resultShares[$id]["Description"]["Latest"])) 
+                    {
+                    $latest = $resultShares[$id]["Description"]["Latest"]["Value"];
+                    $knownValues[$id]=$resultShares[$id]["Description"]["Latest"];                  // wenn kein aktueller Wert vorhanden ist
+                    //echo $latest." (".date("d.m.Y H:i:s",$resultShares[$id]["Description"]["Latest"]["TimeStamp"]).") ";
+                    if ($book["Stueck"] != 0) $actual += $latest*$book["Stueck"];
+                    if ( ($kursKauf>0) && ($latest>0) ) 
+                        {
+                        echo "->";
+                        echo str_pad(nf($latest,"€"),16, " ", STR_PAD_LEFT)." (".date("d.m.Y H:i:s",$resultShares[$id]["Description"]["Latest"]["TimeStamp"]).") ";
+                        echo "  ".str_pad(nf(($latest/$kursKauf-1)*100,"%"),10, " ", STR_PAD_LEFT);
+                        echo str_pad(nf($book["Kosten"],"€"),16, " ", STR_PAD_LEFT).str_pad(nf($spend,"€"),16, " ", STR_PAD_LEFT);
+                        echo str_pad(nf($latest*$book["Stueck"],"€"),16, " ", STR_PAD_LEFT).str_pad(nf($actual,"€"),16, " ", STR_PAD_LEFT);
+                        echo "\n";
+                        }
+                    }
+                else 
+                    {
+                    echo "Description Latest ist nicht vorhanden:\n";
+                    }
+                for ($i=0;$i<$countMax;$i++)
+                    {
+                    $indexTimeDay=date("ymd",$resultShares[$id]["Values"][$i]["TimeStamp"]);
+                    if (isset($valuebook[$indexTimeDay]))
+                        {
+                //$valuebook[$indexTimeDay][$i]["Value"] += $array["Info"]["Stueck"]*$resultShares[$index]["Values"][$i]["Value"];
+                //$actual[$i]["TimeStamp"] = $resultShares[$index]["Values"][$i]["TimeStamp"];
+                        }
+                    }
+
+                }
+            else echo "evaluateDepotBook, Fehler Eintrag in Depotbook aber nicht in resultshares.\n";
+            }
+        if ($debug) 
+            {
+            echo "Gesamtergebnis Depot ist Kosten ".nf($spend,"€")." und Wert ".nf($actual,"€")."\n";
+            }
+
+        return(true);
         }
 
 
@@ -2310,6 +2631,13 @@ class SeleniumOperations
         $configSelenium = $guthabenHandler->getSeleniumWebDriverConfig($webDriverName);
         $webDriverUrl   = $configSelenium["WebDriver"];
 
+        /* Ausgabe in StatusVariable, zum debuggen während der Runtime */
+        if ( ($webDriverName==false) || ($webDriverName=="false") ) $webDriverName2="Default";
+        else $webDriverName2=$webDriverName; 
+        $webDriverStatusId=IPS_GetObjectIDByName("StatusWebDriver".$webDriverName2,$this->CategoryId);
+        $status="$webDriverName2 unter $webDriverUrl Browser: ".$configSelenium["Browser"];
+        SetValue($webDriverStatusId,$status);
+
         if ($debug) 
             {
             echo "automatedQuery: $webDriverName, Aufruf mit Configuration:\n";
@@ -2317,12 +2645,10 @@ class SeleniumOperations
             $startexec=microtime(true);
 
             if ( ($sessionID) && ($sessionID != "") ) echo "SessionID in Datenbank verfügbar :".$sessionID." mit Wert \"".GetValue($sessionID)."\"\n";
-            if ( ($webDriverName==false) || ($webDriverName=="false") ) $webDriverName2="Default";
-            else $webDriverName2=$webDriverName; 
             echo "WebDriver ausgewählt: $webDriverName2 unter $webDriverUrl Browser: ".$configSelenium["Browser"]."  \n"; 
-            $webDriverStatusId=IPS_GetObjectIDByName("StatusWebDriver".$webDriverName2,$this->CategoryId);
-            echo "Ergebnisse auch hier speichern : $webDriverStatusId \n";           
+            echo "Ergebnisse auch hier speichern : $webDriverStatusId (".IPS_GetName($webDriverStatusId).")\n";           
             }
+
 
         /* Handler abgleichen */
         $handler      = $guthabenHandler->getSeleniumHandler($webDriverName);                         // den Selenium Handler vom letzten Mal wieder aus der IP Symcon Variable holen. php kann sich von Script zu Script nix merken
@@ -2333,8 +2659,18 @@ class SeleniumOperations
             }
 
         /* WebDriver starten */
-        $result = $seleniumHandler->initHost($webDriverUrl,$configSelenium["Browser"],$sessionID,$debug);          // ersult sind der Return wert von syncHandles
-        if ($result !== false)  
+        $result = $seleniumHandler->initHost($webDriverUrl,$configSelenium["Browser"],$sessionID,$debug);          // result sind der Return wert von syncHandles
+        if ( ($result === false) || (isset($result["Failure"])) )
+            {
+            if ($result === false) echo "Kann Webdriver $webDriverUrl nicht finden.\n";
+            else 
+                {
+                //echo "Fehler erkannt, schreiben.\n";
+                SetValue($webDriverStatusId,date("d.m.Y H:i:s")." : ".$result["Failure"]["Short"]);
+                //print_r($result["Failure"]);
+                }
+            } 
+        else            
             {
             if ($debug)
                 {
@@ -2441,7 +2777,7 @@ class SeleniumOperations
                 print_R($seleniumHandler->title);
                 }
             }
-        else echo "Kann Webdriver $webDriverUrl nicht finden.\n";
+
         }
 
     function storeString($string)

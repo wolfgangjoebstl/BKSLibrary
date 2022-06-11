@@ -269,6 +269,36 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             } 
         }
 
+    /* SpezialProfile für Action Aufrufe aus dem Webfront 
+     *  pname ist der Name
+     *  nameID ein Array aus einzelnen Einträgen
+     * die Farbe wird automatisch bestimmt
+     *
+     */
+
+    function createActionProfileByName($pname,$nameID)
+        {
+        $create=false;
+        $namecount=count($nameID);
+        if (IPS_VariableProfileExists($pname) == false)
+            {
+            //Var-Profil existiert noch nicht, neu erstellen
+            IPS_CreateVariableProfile($pname, 1);                           // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
+            IPS_SetVariableProfileDigits($pname, 0);                        // PName, Nachkommastellen
+            $create=true;
+            }
+        // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
+        if ($namecount>1) IPS_SetVariableProfileValues($pname, 0, ($namecount-1), 1);      //PName, Minimal, Maximal, Schrittweite
+        $i=0;
+        foreach ($nameID as $name)
+            {
+            IPS_SetVariableProfileAssociation($pname, $i, $name, "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
+            $i++;       // sonst wird letzter Wert überschrieben
+            }
+        if ($create) echo "Aktions Profil ".$pname." erstellt.\n";
+        else echo "Aktions Profil ".$pname." überarbeitet.\n";		
+        }
+
 
     /* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
     * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
@@ -282,7 +312,19 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
         else
             {
             if ($rpc) $rpc->IPS_CreateVariableProfile ($pname, $type);
-            else IPS_CreateVariableProfile ($pname, $type);
+            else 
+                {
+                if (IPS_VariableProfileExists($pname))
+                    {
+                    $targetTyp=IPS_GetVariableProfile($pname)["ProfileType"];
+                    if ($targetTyp != $type)
+                        {
+                        echo "rpc_CreateVariableProfile,Profile has different type, requested $type, existing $targetTyp.\n";
+                        return (false);
+                        }
+                    }
+                else IPS_CreateVariableProfile ($pname, $type);                                             // wird immer erstellt, es könnte sich ja auch der Typ geändert haben
+                }
             }        
         }
 
@@ -329,6 +371,10 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
     /* die vollautomatiosche Function zum synchronisieren von Profilen, lokal oder remote 
      * wenn ein Profil erzeugt werden soll wird createProfilesByName aufgerufen
      *
+     *      server      ist der Remote Server, kann auch Local/false annehmen
+     *      profilname  ist ein Array [pname => masterName]
+     *                  pname ist das neue Profil das auf Basis von masterName angelegt werden soll     
+     *
      */
 
     function synchronizeProfiles($server,$profilname,$debug=false)
@@ -338,7 +384,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
                 {
                 if ($debug) echo "Profile existiert nicht oder neu anlegen/update,\n";
-                createProfilesByName("local",$pname);
+                createProfilesByName($pname);               //lokal
                 }
             elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
             elseif (IPS_VariableProfileExists($masterName) == false)
@@ -354,7 +400,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                 else 
                     {
                     if ($debug) echo "Zu übernehmendes Profil $masterName existiert nicht, vorbereitetes Profil nehmen.\n";
-                    createProfilesByName($server,$pname);
+                    createProfilesByName($pname,$server);
                     }
                 }
             else    
@@ -371,6 +417,9 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
 
     /* Anlegen und Synchronisieren von Profilen, Aufruf geht auch rekursiv
      * soll auch gleich Remote gehen
+     *
+     *  server      Remote Server oder Local/false, damit wird rpc false, sonst der Server Zugriffsname
+     *  master      kann auch ein leeres array sien
      *
      */
 
@@ -400,7 +449,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
         // Profile name needs to be set
         
         //print_r($master); print_r($target);
-        foreach ($master as $index => $entry)
+        foreach ($master as $index => $entry)           // kann ach ein leeres array sein, dann wird hier übersprungen und nix gemacht
             {
             if (is_array($master[$index])) 
                 {
@@ -485,15 +534,29 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             }
         }
 
-    /* alle Profile manuell erzeugen, geht auch lokal oder remote
+    /* alle Profile manuell erzeugen, geht auch lokal oder remote, keine Update Funktion
+     * die Profile haben alle vorgegebene Namen und werden hier zentral ausschliesslich nach dem erkannten Namen erzeugt
+     *
+     *      Temperatur            °C
+     *      TemperaturSet          °C
+     *      Humidity
+     *      Switch
+     *      Contact
+     *      Button
+     *      Motion      
+     *      Pressure
+     *      CO2
+     *      mode.HM
+     *      Rainfall
+     *
      *
      */
 
-	function createProfilesByName($server,$pname)
+	function createProfilesByName($pname,$server="LOCAL")
         {
         if (strtoupper($server) != "LOCAL") 
             {
-            $rpc = new JSONRPC($eerver);
+            $rpc = new JSONRPC($server);
             $remote=true;
             }
         else $rpc=false;
@@ -639,6 +702,16 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                 IPS_SetVariableProfileText ($pname, ""," mm");
                 //IPS_SetVariableProfileValues ($pname, 0,0,0);
                 IPS_SetVariableProfileDigits ($tpname, 1);			
+                break;
+            case "Euro":
+        		rpc_CreateVariableProfile($rpc, $pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		        IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+		        IPS_SetVariableProfileText($pname,'','Euro');
+                break;
+            case "MByte":
+        		rpc_CreateVariableProfile($rpc, $pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		        IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+		        IPS_SetVariableProfileText($pname,'',' MByte');
                 break;
             default:
                 break;
@@ -2850,7 +2923,7 @@ class archiveOps
         return($this->aggregationConfig["RecordCount"]);
         }
 
-    /* in einer lesbaren Zeile den Status aus der Archive Config einer Variable ausgeben */
+    /* archiveOps, getStatus in einer lesbaren Zeile den Status aus der Archive Config einer Variable ausgeben */
 
     public function getStatus($oid=false)
         {
@@ -2875,7 +2948,7 @@ class archiveOps
         }
 
     /*************************************************************************************
-    *
+    * archiveOps
     * alle OIDs die im Array von Component angeführt sind ausgeben
     * das ist eine besonders hilfreiche Ausgabe, derzeit nur in send_status für die historischen Werte verwendet
     * wir suchen geloggte Werte in einem bestimmten Zeitintervall zur besseren Orientierung
@@ -2958,8 +3031,276 @@ class archiveOps
         return ($result);    
         }
 
-    /* Analyse der letzen Werte im Archive. Hier geht man bereits von einer geordneten Struktur aus, es gelten die folgenden Einschränkungen
-     *    - es werden für die OID nur Einzelwerte zugelassen, 
+    /* archiveOps::getValues
+     * parallelfunktion für analyseValues
+     * Get/AnalyseValues,ArchiveOps, Abgrenzung klar, eine kann auch ohne Zeitangabe Werte verarbeiten
+     *
+     * kann bereits beide Formate, Logged [Value/TimeStamp] und aggregated [Avg/TimeStamp] , und kann auch ein Array [Value/TimeStamp] verarbeiten
+     * verwendete Klassen:
+     *      maxminCalc
+     *      eventLogEvaluate
+     *      meansRollEvaluate
+     *
+     * es gibt noch kein cleanUp und kopieren der Werte
+     *
+     */
+
+    function getValues($oid,$logs,$debug=false)
+        {
+        if ($debug) 
+            {
+            echo "archiveOps::getValues(";
+            if (is_array($oid)) echo "array";
+            else echo $oid;
+            echo "...  aufgerufen.\n";
+            }
+
+        /* Wertebereich festlegen */
+        $statistics = new statistics();
+        $config = $statistics->setConfiguration($logs);
+        $maxLogsperInterval = $config["maxLogsperInterval"];                // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten
+        //print_R($config);
+
+        /* Ergebnis festlegen */
+        $result=array();
+
+        /* Vorwerte einlesen, Fehler erkennen und bearbeiten */
+        if  ($config["DataType"]=="Array")
+            {
+            $werte=$oid;
+            $oid="Array";           // Ist in Result ein Kex, praktischerweise umbenennen
+            if (is_array($werte)===false) $werte=false;
+            }
+        elseif  ($config["Aggregated"]===false)
+            {
+            $werte = @AC_GetLoggedValues($this->archiveID, $oid, $config["StartTime"], $config["EndTime"], 0);
+            }
+        else
+            {
+            $werte = @AC_GetAggregatedValues($this->archiveID, $oid, $config["Aggregated"], $config["StartTime"], $config["EndTime"], 0);
+            }
+        if ($werte === false)             
+            {
+            if ($debug) echo "Ergebnis : no logs available\n";  
+            $werte=array();
+            }
+        else            
+            {
+            $firstTime = $werte[array_key_last($werte)]["TimeStamp"];
+            $lastTime  = $werte[array_key_first($werte)]["TimeStamp"];
+            if ($maxLogsperInterval==1) $maxLogsperInterval=count($werte);
+            $count = count($werte);
+            $duration = $lastTime - $firstTime;
+            $span = $duration/$count;
+            if ($debug) 
+                {
+                echo "   --> Ergebnis Abfrage ";
+                if ($config["Aggregated"]===false) echo " logged ";
+                else                               echo " aggregated ";
+                echo " Archiv (getValues): ";
+                //print_R($werte[array_key_first($werte)]);
+                //print_R(array_key_last($werte));
+                }
+            }
+
+        $result = $this->countperIntervalValues($werte,$debug);        // true Debug
+        //print_r($result);
+        if ($result["order"] == "newfirst") 
+            {
+            if ($debug) echo "   --> Reihenfolge, neuerster Wert zuerst, hat niedrigsten Index, andersrum sortieren.\n";
+            krsort($werte);             // andersrum sortieren
+            }
+        $this->cleanupStoreValues($werte,$oid,$maxLogsperInterval,$debug);          // Werte bereinigen und in result[$oid][Values] abpeichern            
+
+        /* maxminCalc macht Max Min und Means für den gesamten Zeitbereich */
+        $maxmin=array();         // Speicherplatz zur Verfügung stellen
+        $maxminFull   = new maxminCalc($maxmin);       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
+
+        /* Event Log, events ist der lokale Speicher für die Ergebnisse */
+        $events=array();
+        $config["InputValues"]=$this->result[$oid]["Values"];              // <- etwas strange, hier versteckt alle Werte noch einmal zu übergeben
+        //print_r($config);
+        $eventLogAll = new eventLogEvaluate($events,"All",$config,$debug);             // events ist der Speicherplatz für Berechnungen
+
+        /* Standardabweichung am Monatsmittelwert */
+        $sdevSum=0; $sdevSumPos=0; $sdevSumNeg=0;
+
+        /* rollierender Mittelwert */
+        $meansRollConfig["TimeStampPos"]="Mid";
+        $meansRoll = new meansRollEvaluate($this->result[$oid]["Values"],$meansRollConfig,true);                                     // rollierenden Mittelwert berechnen, benötigt das ganze Archiv, Array, false für keine Config, true für Debug
+        /* Wertebereich bearbeiten */
+        $lateStart=0; 
+        $indexCount=0;                              // nur die Werte zählen für die es bereits einen gültigen Monatswert gibt
+        $logCount=0;                                // alle Einträge zählen
+
+        $konto=0; $geldwert=0; $depot=0;
+        $mittelWertMonatZuletzt=false; $mittelWertWocheZuletzt=false;  $trendMonat=false;  $trendWoche =false;
+        foreach ($this->result[$oid]["Values"] as $index => $entry)
+            {
+            $logCount++;    
+            $wertAktuell = $statistics->wert($entry);
+            $maxminFull->addValue($entry);
+            $eventLogAll->addValueAsIndex($index);                  // Vorwert, änderungs Analyse 
+            if ($indexCount >= $lateStart)                          // nur brauchbar wenn in die Vergangenheit der Mittelwert berechnet wird oder es schon zu viele Werte sind
+                {
+                $mittelWertMonat = $meansRoll->meansValues($index, 20);                    // aus den nächsten 20 Werten einen Mittelwert berechnen, sollte auch für ein Intervall funktionieren
+                if ( (isset($mittelWertMonat["error"])) === false)
+                    {
+                    $this->result[$oid]["MeansRoll"]["Month"][$index] = $mittelWertMonat;            // beide Werte mit Index abspeichern
+                    $wertMonatMittel =  $statistics->wert($mittelWertMonat);                    // nur den Wert ohne TimeStamp extrahieren
+                    /* Standardabweichung vom Monats Mittelwert */
+                    $abw=($wertAktuell-$wertMonatMittel);
+                    if ($abw>0) $sdevSumPos += ($abw*$abw);
+                    else $sdevSumNeg += ($abw*$abw);
+                    $sdevSum += ($abw*$abw);
+                    $indexCount++;                       
+                    if (isset($this->result[$oid]["MeansRoll"]["Month"][$index-20]))
+                        {
+                        /* Trendberechnung */
+                        $wertMonatMittel2 =  $statistics->wert($this->result[$oid]["MeansRoll"]["Month"][$index-20]);                    // nur den Wert ohne TimeStamp extrahieren
+                        $trendMonat = ($wertMonatMittel/$wertMonatMittel2-1)*100;
+                        $mittelWertMonatZuletzt = $mittelWertMonat;
+                        }
+                    }
+                $mittelWertWoche = $meansRoll->meansValues($index,  5);                    // aus den nächsten  5 Werten einen Mittelwert berechnen
+                if ( (isset($mittelWertWoche["error"])) === false)
+                    {                
+                    $this->result[$oid]["MeansRoll"]["Week"][$index]  = $mittelWertWoche;
+                    $wertWocheMittel =  $statistics->wert($mittelWertWoche);                    // nur den Wert ohne TimeStamp extrahieren
+                    if (isset($this->result[$oid]["MeansRoll"]["Week"][$index-5]))
+                        {
+                        /* Trendberechnung */
+                        $wertWocheMittel2 =  $statistics->wert($this->result[$oid]["MeansRoll"]["Week"][$index-5]);                    // nur den Wert ohne TimeStamp extrahieren
+                        $trendWoche = ($wertWocheMittel/$wertWocheMittel2-1)*100;
+                        $mittelWertWocheZuletzt = $mittelWertWoche;
+                        }
+                    }
+
+
+
+                
+                /*----------------------------------------------------------------------------------*/
+                if (strtoupper($config["KIfeature"])=="SHARES")
+                    {
+                    /* KI Feature 
+                    * fixe Stückzahlen bewertet die Aktien mit hohem Kurs stärker
+                    * fester Kauf und Verkaufspreis erscheint gerecht
+                    *
+                    */
+                    $stueck=100;
+                    $budget=200;    // sonst false
+                    //$budget=false;
+                    $action=  "     ";
+                    if ( ($wertAktuell>$wertMonatMittel) && ($wertAktuell>$wertWocheMittel) ) 
+                        {
+                        $action=  "sell ";
+                        if ($budget) $stueck = $budget/$wertAktuell; 
+                        if ($depot >= $stueck)
+                            {
+                            $depot -= $stueck;
+                            $konto += $stueck * $wertAktuell;                        
+                            }
+                        } 
+                    if ( ($wertAktuell<$wertMonatMittel) && ($wertAktuell<$wertWocheMittel) ) 
+                        {
+                        $action=  "buy  ";
+                        if ($budget) $stueck = $budget/$wertAktuell; 
+                        $depot += $stueck;
+                        $konto -= $stueck * $wertAktuell;                        
+                        } 
+                    $geldwert = $depot * $wertAktuell;
+                    if ($debug) 
+                        {
+                        echo str_pad($index,6).date("d.m.Y H:i:s",$entry["TimeStamp"])." Aktuell $action ".nf($wertAktuell,"€",8)." ".nf($wertWocheMittel,"€",8).nf($wertMonatMittel,"€",8)." bis ".date("d.m.Y H:i:s",$mittelWertMonat["startTime"]);
+                        echo "                ".nf($depot,"",8)."    ".nf($geldwert,"€",12)."   $konto   \n";
+                        }
+                    }
+                else
+                    {
+                    if ( ($debug) && false ) 
+                        {
+                        echo str_pad($index,6).date("d.m.Y H:i:s",$entry["TimeStamp"])." Aktuell ".nf($wertAktuell,"€",8);
+                        if ( (isset($mittelWertWoche["error"])) === false) 
+                            {
+                            echo " Mittel Woche ".nf($wertWocheMittel,"€",8)." (".date("d.m.Y H:i:s",$mittelWertWoche["TimeStamp"]).") ";
+                            if ($trendWoche) echo "   ".nf($trendWoche,"%")." ";
+                            else echo "          ";
+                            }
+                        else echo "                                             ";
+                        if ( (isset($mittelWertMonat["error"])) === false)  
+                            {
+                            echo "Monat ".nf($wertMonatMittel,"€",8)." ,berechnet bis ".date("d.m.Y H:i:s",$mittelWertMonat["startTime"]);
+                            if ($trendMonat) echo "   ".nf($trendMonat,"%")." ";
+                            echo "\n";
+                            }
+                        else echo "                                           \n";
+                        }
+
+                    }
+                }
+
+            if (isset($entry["Max"]))
+                {
+                //echo str_pad($index,4).date("d.m.Y",$entry["TimeStamp"])." ".str_pad($entry["Max"],12)." ".date("H:i:s",$entry["MaxTime"])." ".str_pad($entry["Min"],12)." ".date("H:i:s",$entry["MinTime"])."\n";
+                }
+            else 
+                {
+
+                }
+            }
+
+        $maxminFull->calculate();                   // Max Min Werte im Ergebnis Array maxmin abspeichern
+        $maxminFull->youngest();
+        //$maxminFull->print();
+        //print_r($maxmin);
+        $this->result[$oid]["Description"]["MaxMin"] = $maxmin["All"];              // All ist die Defaultgruppe für die Ausgabe 
+        $means=$maxmin["All"]["Means"]["Value"];
+
+        if (strtoupper($config["KIfeature"])=="SHARES")
+            {
+            $this->result[$oid]["Analytics"]["stueck"]=$stueck;
+            $this->result[$oid]["Analytics"]["geldwert"]=$geldwert;
+            $this->result[$oid]["Analytics"]["konto"]=$konto;
+            }
+
+        $this->result[$oid]["Description"]["Trend"]["Week"]=$trendWoche;
+        $this->result[$oid]["Description"]["Trend"]["Month"]=$trendMonat;
+
+        $this->result[$oid]["Description"]["Means"]["Week"]=$mittelWertWocheZuletzt;
+        $this->result[$oid]["Description"]["Means"]["Month"]=$mittelWertMonatZuletzt;
+
+        $this->result[$oid]["Description"]["Latest"]=$maxmin["All"]["Youngest"];
+
+        /* Standardabweichung ergebnis abspeichern */
+        $sdev = sqrt($sdevSum/$indexCount);
+        $sdevRelPos = sqrt($sdevSumPos/$indexCount)/$means*100;
+        $sdevRelNeg = sqrt($sdevSumNeg/$indexCount)/$means*100;
+        
+        $this->result[$oid]["Description"]["StdDev"]=$sdev;
+        $this->result[$oid]["Description"]["StdDevRel"]=$sdev/$means*100;
+        $this->result[$oid]["Description"]["StdDevPos"]=$sdevRelPos;
+        $this->result[$oid]["Description"]["StdDevNeg"]=$sdevRelNeg;
+        if ($debug) 
+            {
+            echo "Mittelwert : ".nf($means)." Sdev ist ".number_format($sdev,2,",",".")."  und relativ ".number_format($this->result[$oid]["Description"]["StdDevRel"],2,",",".")."% \n";
+            echo "Aktuell ".nf($wertAktuell)." Max ".nf($maxmin["All"]["Max"]["Value"])." Min ".nf($maxmin["All"]["Min"]["Value"])." Trend Monat ".nf($trendMonat,"%")." Woche ".nf($trendWoche,"%")."\n";
+            }
+        $this->result[$oid]["Description"]["eventLog"]=$events["All"]["eventLog"];            
+        $this->result[$oid]["Description"]["Count"]=$logCount;                              // alle Werte, die für die Berechnung des Mittelwertes herangezogen wurden
+        if ($debug && false)
+            {
+            //print_R($this->result[$oid]["Description"]["eventLog"]);
+            foreach ($this->result[$oid]["Description"]["eventLog"] as $time => $event) echo date("d.m.Y H:i:s",$time)." ".$event["Event"]."\n";
+            }
+
+
+        //return ($werte);
+        return ($this->result[$oid]);
+        }
+
+    /* archiveOps::analyseValues
+     * Analyse der letzen Werte im Archive. Hier geht man bereits von einer geordneten Struktur aus, es gelten die folgenden Einschränkungen
+     *    - es werden für die OID nur Einzelwerte zugelassen, keine aggregierten Werte, TimeStamp ist optional 
      *    - Angabe Parameter oid und logs (Anzahl Werte) verpflichtend
      *    - die Zahl logs muss durch 2 dividierbar sein, sonst wird aufgerundet
      *    - logs + logs/2 muss kleiner 10.000 sein
@@ -2977,7 +3318,14 @@ class archiveOps
      *      Inputparameter bewerten
      *      Vorwerte einlesen und bereinigen, Ergebnis als neues Array in der class $result
      *
+     * verwendete Klassen:
+     *      meansCalc
+     *      eventLogEvaluate
      *
+     * Ergebnis
+     *      Value
+     *      MeansRoll
+     *      Description
      */
 
     function analyseValues($oid,$logs,$debug=false)
@@ -2985,7 +3333,20 @@ class archiveOps
         /* für logs false true oder einen Integer Wert zulassen, integer ist die Anzahl der Log werte die ausgegeben wird */
         //if ($debug) echo "--->analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen.\n";
 
-        /* Wertebereich festlegen */
+        $statistics = new statistics();
+        $config = $statistics->setConfiguration($logs);
+
+        $logs      = $config["Logs"];
+        $maxLogsperInterval = $config["maxLogsperInterval"];
+
+        if ($debug) 
+            {
+            if ($config["StartTime"]) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, Werte von ".(date("d.m.Y H:i:s",$config["StartTime"]))." bis ".(date("d.m.Y H:i:s",$config["EndTime"]))."\n";
+            elseif ($logs==0) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, alle vorhandenen Werte werden verarbeitet\n";
+            else echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, $maxLogsperInterval Werte werden verarbeitet\n";
+            }
+
+        /* Wertebereich festlegen 
         $config = array();
         $config["EventLog"]=true;
         $config["LogChange"]=["pos"=>5,"neg"=>5];          // in Prozent auf den Vorwert
@@ -2996,8 +3357,18 @@ class archiveOps
             $startTime = $logs["StartTime"]; 
             $endTime   = $logs["EndTime"];
             if ($debug) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, Werte von ".(date("d.m.Y H:i:s",$startTime))." bis ".(date("d.m.Y H:i:s",$endTime))."\n";
+            //print_R($logs);
+            if (isset($logs["Config"])) 
+                {
+                $config=$logs["Config"];
+                if ( $debug && false) 
+                    {
+                    echo "Config detected:\n";    
+                    print_r($config);
+                    }
+                }
+            // Array mit der Konfiguration überschreiben 
             $logs=0;            // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten, entweder zwischen start und end oder wirklich alle alle
-            if (isset($logs["Config"])) $config=$logs["Config"];
             }
         if ($logs>1) 
             {
@@ -3011,14 +3382,16 @@ class archiveOps
             $maxLogsperInterval=1;                  // ein Wert reicht aus, max wäre 10
             if (($debug) && (is_array($logs) === false) ) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, alle vorhandenen Werte werden verarbeitet\n";
             }
-        //print_r($config);
+        $startTime = $config["StartTime"];
+        $endTime   = $config["EndTime"];            
+        //print_r($config);*/
 
         /* Wertespeicher initialisieren */
         $this->result=array();
         
         /* Vorwerte einlesen, Fehler erkennen und bearbeiten */
         
-        $werte = @AC_GetLoggedValues($this->archiveID, $oid, $startTime, $endTime, 0);
+        $werte = @AC_GetLoggedValues($this->archiveID, $oid, $$config["StartTime"], $config["EndTime"], 0);
         if ($werte === false)             
             {
             if ($debug) echo "Ergebnis : no logs available\n";  
@@ -3027,7 +3400,7 @@ class archiveOps
         else            // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten
             {
             if ($maxLogsperInterval==1) $maxLogsperInterval=count($werte);
-            if (($debug) && (is_array($logs) === false) ) echo "      --> Ergebnis Abfrage Archiv: ".count($werte)." Werte verfügbar. Erster Wert vom ".date("d.m.Y H:i:s",$werte[array_key_last($werte)]["TimeStamp"])."\n";
+            if (($debug) && (is_array($logs) === false) ) echo "      --> Ergebnis Abfrage Archiv (analyseValues) für logged Werte: ".count($werte)." Werte verfügbar. Erster Wert vom ".date("d.m.Y H:i:s",$werte[array_key_last($werte)]["TimeStamp"])."\n";
             //print_R($werte[array_key_first($werte)]);
             //print_R(array_key_last($werte));
             }
@@ -3046,12 +3419,12 @@ class archiveOps
         $meansMonth = new meansCalc($means, "Month",40);
         //print_R($means);
 
-        /* Event Log */
+        /* Event Log, events ist der lokale Speicher für die Ergebnisse */
         $events=array();
-        $eventLogAll = new eventLogEvaluate($events,"All",$config);             // events ist der Speicherplatz für Berechnungen
+        $eventLogAll = new eventLogEvaluate($events,"All",$config,$debug);             // events ist der Speicherplatz für Berechnungen
 
         /* rollierender Mittelwert */
-        $meansRoll = new meansRollEvaluate($this->result[$oid]["Values"]);
+        $meansRoll = new meansRollEvaluate($this->result[$oid]["Values"]);              // das Array mit den Werten, die Config und Debug       
 
         /* Wertebereich bearbeiten */
         $logCount=0; $logCount1=0; $logCount2=0;
@@ -3156,10 +3529,10 @@ class archiveOps
                 }
             //echo "           $sumRol   $countRol ".($sumRol/$countRol)."\n"; 
             //echo "               $index\n";
-            $this->result[$oid]["Description"]["MeansRoll"][$index]["Value"]=$sumRol/$countRol;
-            $this->result[$oid]["Description"]["MeansRoll"][$index]["TimeStamp"]=$wert['TimeStamp'];
+            $this->result[$oid]["MeansRoll"]["Var"][$index]["Value"]=$sumRol/$countRol;
+            $this->result[$oid]["MeansRoll"]["Var"][$index]["TimeStamp"]=$wert['TimeStamp'];
 
-            $this->result[$oid]["Description"]["MeansRollMonth"][$index] = $meansRoll->meansValues($index, 20);
+            $this->result[$oid]["MeansRoll"]["Month"][$index] = $meansRoll->meansValues($index, 20);
 
             /*                */
             //echo "   Vergleiche ".$wert['TimeStamp'].">$youngestTime $change Wert $index : ".$this->result[$oid]["Values"][$index]['Value']."  ";
@@ -3189,7 +3562,8 @@ class archiveOps
                 else echo str_pad(" ",18);
                 echo "\n";
                 }
-            }
+            }           // ende alle Werte durchgehen
+
         //if ($debug) print_r($this->result[$oid]["Description"]["MeansRoll"]); 
         $meansFull->calculate();     
         $meansVar->calculate();
@@ -3227,6 +3601,8 @@ class archiveOps
             if ($debug) echo "Mittelwert ist ".number_format($means2,2,",",".")." Trend ".number_format($this->result[$oid]["Description"]["Trend"],2,",",".")."% ";
             }
         if ($debug) echo "\n";
+
+        /* Standardabweichung, noch einmal alle Werte durchgehen */
         $sdevSum=0; $sdevSumPos=0; $sdevSumNeg=0;
         foreach ($this->result[$oid]["Values"] as $wert)
             {
@@ -3248,6 +3624,7 @@ class archiveOps
         //print_r($events);
         $this->result[$oid]["Description"]["eventLog"]=$events["All"]["eventLog"];
 
+        /* Auswertung wie oft der tägliche Wechsel hintereinander nach plus oder minus schaut */
         $this->result[$oid]["Description"]["CountNeg"]=$events["All"]["countNegMax"];
         $this->result[$oid]["Description"]["CountPos"]=$events["All"]["countPosMax"]; 
         $this->result[$oid]["Description"]["Count"]=$logCount;                      // alle Werte die für die Berechnung des Mittelwertes herangezogen wurden
@@ -3295,7 +3672,6 @@ class archiveOps
     private function cleanupStoreValues(&$werte,$oid,$maxLogsperInterval,$debug=false)
         {
         $logCount=0; $error=0; $ignore=false;
-        if ($debug) echo "   cleanupStoreValues für $maxLogsperInterval Werte.\n";
         foreach($werte as $index => $wert)
             {
             if ( (is_numeric($wert['Value'])==false) || ($wert['Value']==0) )
@@ -3311,7 +3687,7 @@ class archiveOps
                 if ($hours>300) 
                     {
                     $ignore=true;
-                    if ($debug) echo "cleanupStoreValues: Fehler, Wert vom ".date("d.m.Y H:i:s",$wert['TimeStamp'])." ".number_format($hours,2,",",".")." hours, Abstand zu gross. \n";
+                    if ($debug) echo "        Fehler, Wert vom ".date("d.m.Y H:i:s",$wert['TimeStamp'])." ".number_format($hours,2,",",".")." hours, Abstand zu gross.\n";
                     }
                 if ($ignore===false)
                     {
@@ -3324,6 +3700,7 @@ class archiveOps
             }  
         if ($debug) 
             {
+            echo "   --> cleanupStoreValues für $maxLogsperInterval Werte, ";
             echo "     $logCount Werte eingelesen.";
             if ($error) echo " $error Fehler.";
             echo "\n";
@@ -3332,10 +3709,15 @@ class archiveOps
         }
 
 
-        /* Anzahl Vorwerte die in einem Intervall vorhanden sind ermitteln */
+        /* Anzahl Vorwerte die in einem Intervall vorhanden sind ermitteln 
+         * es wird das Array als Pointer übergeben. Auswertung der Periode auf Größenaordnung Tag, Woche, Monat, Jahr
+         *
+         *
+         */
 
         private function countperIntervalValues(&$werte,$debug=false)
             {        
+            $result=array();
             $jetzt=time();
             /* endtime ist entweder die erste Minute des aktuellen Tages, oder die aktuelle Uhrzeit 
             $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt)); // letzter Tag 24:00
@@ -3350,27 +3732,146 @@ class archiveOps
             $logCount=0; 
             $erster=array_key_first($werte);
             $letzter=array_key_last($werte);
+            $termin1 = $werte[$erster]['TimeStamp'];
+            $termin2 = $werte[$letzter]['TimeStamp'];
+            if ($termin2>$termin1) { $anfang = $termin1; $ende = $termin2; }
+            else                   { $anfang = $termin2; $ende = $termin1; }    
             //print_r($werte[$erster]); print_r($werte[$letzter]);
             $count=sizeof($werte); $scale="indefinite";
             if     ($werte[$letzter]['TimeStamp']>=$startday) $scale="day";
             elseif ($werte[$letzter]['TimeStamp']>=$startweek) $scale="week";
             elseif ($werte[$letzter]['TimeStamp']>=$startmonth) $scale="month";
             elseif ($werte[$letzter]['TimeStamp']>=$startyear) $scale="year";
+            $duration = $werte[$erster]['TimeStamp'] - $werte[$letzter]['TimeStamp'];
+            $span = $duration/$count;
+            $result["count"]=$count;
+            $result["span"]=$span;
+            if ($letzter == ($count-1)) $result["index"]="index";
+            else $result["index"]="time";
+            /* Archive speichert mit 0 den neuesten Wert, also erster 0, letzter count-1,
+             */
+            if ($letzter>$erster)
+                {
+                if ($termin2>$termin1)  $result["order"]="oldfirst";
+                else                    $result["order"]="newfirst";
+                }
+            else  
+                {
+                if ($termin1>$termin2) $result["order"]="oldfirst";
+                else                   $result["order"]="newfirst";
+                }
+            $result["anfang"] = $anfang; $result["ende"]=$ende;
             if ($debug) 
                 {
-                echo "   countperIntervalValues, Ergebnis ist $count Werte logged per $scale. ";
+                //echo "   countperIntervalValues, Ergebnis ist $count Werte logged per $scale. ";
                 //echo "Erster  : ".date("H:i:s d.m.Y",$werte[$erster]['TimeStamp'])."  ";
                 //echo "Letzter : ".date("H:i:s d.m.Y",$werte[$letzter]['TimeStamp'])."  ";
-                echo "\n";
+                echo "$count Werte im $scale verfügbar. Werte von ".date("d.m.Y H:i:s",$anfang)." bis ".date("d.m.Y H:i:s",$ende)." Span durchschnittlich ".nf($span,"s")."\n";
+                echo "       Erster und letzter Key sind $erster : ".date("d.m.Y H:i:s",$termin1)." und $letzter ".date("d.m.Y H:i:s",$termin2)."\n";
+                //echo "\n";
                 }
+            return($result);
             }
 
 
-    }   // ende class
+        }   // ende class archiveOps
+
+
+    /* Statistikfunktionen in einer Parent class zusammen gefasst
+     *
+     *
+     */
+
+    class statistics
+        {
+
+        protected $config;
+
+        /* einheitliche Konfiguration mit Variablen für die Nutzung in den Statistikfunktionen
+         * EventLog
+         * Aggregated false,0,1,2,
+         * StartTime, EndTime
+         *
+         */
+
+        public function setConfiguration($logs,$debug=false)
+            {
+
+            /* Wertebereich festlegen */
+            $config = array();
+
+            if (is_array($logs)) { $logInput = $logs; $logs=0; }
+            else $logInput=array();
+
+            configfileParser($logInput, $config, ["EVENTLOG","EventLog","eventLog" ],"EventLog" ,true); 
+            configfileParser($logInput, $config, ["DataType","DATATYPE","datatype" ],"DataType" ,"Archive");
+            if ($config["DataType"] == "Aggregated") $config[Aggregated]=true;
+            elseif ($config["DataType"] == "Logged") $config[Aggregated]=false;
+            else configfileParser($logInput, $config, ["Aggregated","AGGREGATED","aggregated" ],"Aggregated" ,false); 
+            configfileParser($logInput, $config, ["KIFeature","KIFEATURE","kifeature","KIfeature" ],"KIfeature" ,"none");
+
+            configfileParser($logInput, $config, ["STARTTIME","StartTime","startTime","starttime" ],"StartTime" ,0);
+            configfileParser($logInput, $config, ["ENDTIME","EndTime","endTime","endtime" ],"EndTime" ,0);
+            configfileParser($logInput, $config, ["LOGCHANGE","LogChange","logChance","logchance" ],"LogChange" ,["pos"=>5,"neg"=>5]);      // in Prozent auf den Vorwert
+
+            if (false)                
+                {
+                $startTime = $logs["StartTime"]; 
+                $endTime   = $logs["EndTime"];
+
+                //print_R($logs);
+                if (isset($logs["Config"])) 
+                    {
+                    //$config=$logs["Config"];
+  
+
+                    if ( $debug && false) 
+                        {
+                        echo "Config detected:\n";    
+                        print_r($config);
+                        }
+                    }
+                /* Array mit der Konfiguration überschreiben */
+                $logs=0;            // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten, entweder zwischen start und end oder wirklich alle alle
+                }
+
+
+
+            if ($logs>1) 
+                {
+                $logs=round($logs/2)*2;              // zumindest die geforderte Anzahl an Logwerten anzeigen
+                $maxLogsperInterval = $logs+$logs/2;
+                if ($debug) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, $maxLogsperInterval Werte werden verarbeitet\n";
+                }
+            else 
+                {
+                $logs=10;
+                $maxLogsperInterval=1;                  // ein Wert reicht aus, max wäre 10
+                if (($debug) && (is_array($logs) === false) ) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, alle vorhandenen Werte werden verarbeitet\n";
+                }
+
+            //print_r($config);
+            $config["Logs"] = $logs;
+            $config["maxLogsperInterval"] = $maxLogsperInterval;
+            
+            $this->config = $config;
+            return($config);
+            }
+
+        public function wert($input)
+            {
+            $value=false;
+            if (isset($input["Avg"]))   $value = $input["Avg"];
+            if (isset($input["Value"])) $value = $input["Value"]; 
+            return($value);
+            }
+
+        }
 
 
     /*  Berechnung von Mittelwerten, Ausgaben in einen gemeinsamen Speicher
      *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
+     *
      *  beim Construct wird der Name unter dem die Berechnung gespeichert werden soll und die Anzahl der Werte die berücksichtigt werden soll gespeichert
      *  wenn ich 11 Werte angebe wird auf 10 zurückgerundet
      *
@@ -3378,7 +3879,7 @@ class archiveOps
      *
      */
 
-    class meansCalc
+    class meansCalc extends statistics
         {
         
         protected $name;
@@ -3601,24 +4102,38 @@ class archiveOps
         }
 
 
+
     /*  Auswertung von Archive Einträgen, Ausgaben in einen gemeinsamen Speicher
      *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
+     *  es gilt besondere Ereignisse heruaszufiltern.
+     *  Übergabe config als Parameter:
+     *      EventLog                aktiv
+     *      LogChange.neg/pos       in prozent vom Wert
+     *      LogChange.time          Zeit die betrachtet werden soll
+     *      InputValues              das ganze Array mit den Daten, dann wird der aktuelle Index übergeben
      *
+     * Ergebnis ist in result, die Inputdaten werden entweder als Einzelwert oder index übergeben
      */
 
-    class eventLogEvaluate
+    class eventLogEvaluate extends statistics
         {
         
         protected $name;
         protected $previousOne,$countPos,$countNeg,$changeDir;
         protected $previousTime;                                            // um die Richtung feststellen zu können
-        protected $confEventLog, $confLogChangeNeg;
+        protected $previousMax,$previousMaxTime,$previousMin,$previousMinTime;
+        protected $confEventLog, $confLogChangeNeg, $confLogChangePos, $confLogChangeTime;
+        protected $inputValues;
         protected $result;
+        protected $first=false,$debug;
 
-        function __construct(&$result,$name="All",$config=false)
+        /* die wichtigsten Variablen initialisieren */
+
+        function __construct(&$result,$name="All",$config=false,$debug=false)
             {
             if (is_array($result)===false) return (false);
-         
+            $this->debug = $debug;
+
             $this->result=&$result;
             /* Config vorbereiten */
             if ( (isset($config["EventLog"])) && ($config["EventLog"]==true) )  $this->confEventLog=true;          
@@ -3627,8 +4142,24 @@ class archiveOps
             else $this->confLogChangeNeg=false;
             if ( (isset($config["LogChange"]["pos"])) && ($config["LogChange"]["pos"]>0) ) $this->confLogChangePos=$config["LogChange"]["pos"];
             else $this->confLogChangePos=false;            
-            //echo "Config ".$this->confEventLog." ".$this->confLogChangeNeg." ".$this->confLogChangePos."\n";
-            
+            if ( (isset($config["LogChange"]["time"])) && ($config["LogChange"]["time"]>0) ) 
+                {
+                $this->confLogChangeTime=$config["LogChange"]["time"];
+                //echo "Logchange Time ".nf($this->confLogChangeTime,"s")."\n";
+                }
+            else $this->confLogChangeTime=false;            
+            if ($this->debug) 
+                {
+                //print_r($config);
+                //echo "Config für eventLogEvaluate : ".$this->confEventLog." . ".$this->confLogChangeNeg." . ".$this->confLogChangePos." . ".$this->confLogChangeTime."\n";
+                }
+
+            if ( (isset($config["InputValues"])) && (is_array($config["InputValues"])) )
+                {
+                $this->inputValues = &$config["InputValues"];
+                //echo "Array mit Werten übergeben, ".sizeof($this->inputValues)." Einträge, verwende addValueAsIndex:\n";
+                }
+
             /* init der für die Analyse benötigten Variablen, es müssen nicht alle Werte die für die Berechnung benötigt werden als Ergebnis zur Verfügung stehen */
             $this->previousOne=false; $this->previousTime=false;
             $this->countPos=0;
@@ -3643,27 +4174,29 @@ class archiveOps
             return (true);
             }
 
-        /* Übergabe wert[value] und wert[TimeStamp]
-         * previousOne ist rückwärts oder vorwärts möglich, TimeStamp mit betrachten
+        /* Übergabe wert[value] oder wert[avg] und wert[TimeStamp]
+         * previousOne ist rückwärts oder vorwärts möglich, TimeStamp als PreviousTime mit betrachten
          *
          */
         function addValue($wert)
             {
             if (is_array($this->result)===false) return (false);
             if (is_array($wert)===false) return (false);
+            if (isset($wert["Avg"])) $messwert = $wert['Avg'];  
+            else $messwert = $wert['Value']; 
 
             if ($this->previousOne===false) 
                 {
-                $this->previousOne=$wert['Value']; 
+                $this->previousOne=$messwert;
                 $this->previousTime=$wert['TimeStamp'];
                 $delay=0;
                 }
             else $delay = $this->previousTime-$wert['TimeStamp'];
-            if ($delay>0) $changeValue=($this->previousOne/$wert['Value']-1)*100;
-            else $changeValue=($wert['Value']/$this->previousOne-1)*100;
+            if ($delay>0) $changeValue=($this->previousOne/$messwert-1)*100;
+            else $changeValue=($messwert/$this->previousOne-1)*100;
             if ( ($this->confEventLog) && ($changeValue<0) )            // von nun an geht es bergab 
                 {
-                //echo "-";
+                if ($this->debug) echo "-";
                 if ( ($this->confLogChangeNeg) && ($changeValue<(-$this->confLogChangeNeg)) )
                     {
                     //echo "Event: Kursänderung größer -2%: \n";
@@ -3682,14 +4215,14 @@ class archiveOps
 
             if ( ($this->confEventLog) && ($changeValue>0) )           // von nun an gehts bergauf
                 {
-                //echo "+";
+                if ($this->debug) echo "+";
                 if ( ($this->confLogChangePos) && ($changeValue>$this->confLogChangePos) )
                     {
                     //echo "Event: Kursänderung größer -2%: \n";
                     //echo "!";
                     //echo nf(($wert['Value']/$previousOne-1)*100,"%")." ";
-                    $this->result[$this->name]["eventLog"][$wert['TimeStamp']]="Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."%"; 
-                    //$this->result[$this->name]["eventLog"][$wert['TimeStamp']]="Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."%".$this->previousOne." ".$wert['Value'];
+                    //$this->result[$this->name]["eventLog"][$wert['TimeStamp']]="Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."%"; 
+                    $this->result[$this->name]["eventLog"][$wert['TimeStamp']]="Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."% Wertänderung ".$this->previousOne." um ".date("d.m.Y H:i:s",$this->previousTime)." auf ".$messwert." ";
                     }                
                 $this->countPos++;
                 if ($this->changeDir=="neg")                  // Richtungswechsel, Analyse des bisherigen Geschehens
@@ -3699,63 +4232,511 @@ class archiveOps
                     }
                 $this->changeDir="pos";
                 }
-            $this->previousOne=$wert['Value'];  $this->previousTime=$wert['TimeStamp'];               
+            /* Update Letzter Wert für Differenzbetrachtung, entweder jeder Wert oder einen Zeitabstand in Sekunden
+             * muss eine for Schleife werden
+             */
+            if ($this->confLogChangeTime)
+                {
+                $timegone =abs($this->previousTime-$wert['TimeStamp']);         // wann wurde der letzte Wert betrachtet, ein fixes Raster wird darüber gelegt
+                if ($timegone>$this->confLogChangeTime)
+                    {
+                    //echo "."; 
+                    $this->previousOne=$messwert;                      // am Ende des Rasters wird der neue Referenzwert geschrieben, bis zum nächsten beginn muss die Differenz erkannt werden
+                    $this->previousTime=$wert['TimeStamp'];               
+                    }
+                }   
+            else            // jeder Wert wird betrachtet
+                { 
+                $this->previousOne=$messwert;  
+                $this->previousTime=$wert['TimeStamp'];               
+                }
+            return (true);
+            }
+
+
+        /* eventLogEvaluate
+         * wenn ich Vorwerte auch berücksichtigen muss, dann das ganze Array übergeben 
+         * benötigt den TimeStamp kann aber sowohl Value als auch Max/Min und Avg
+         * Automatische Erkennung von Aggregated Werten wenn Avg vorhanden ist
+         *
+         * Messwert wird in previousOne/previousTime für den nächsten Durchlauf gespeichert, beim ersten Mal zusätzlich am Anfang, sonst am Ende der Funktion
+         * Ergebnis in result[name][eventLog][inputValues[index][TimeStamp]]
+         *
+         * Konfiguration
+         *      confEventLog        true für die Auswertung
+         *      confLogChangeTime   
+         *
+         * letztes, voriges Ergebnis in
+         */
+
+        function addValueAsIndex($index)
+            {
+            /* Meswert für die weitere Bearbeitung herausfinden */
+            if (is_array($this->result)===false) return (false);
+            if (is_array($this->inputValues)===false) return (false);
+            if ((is_int($index)) === false) echo $index." ";
+            $aggregated=false;
+            if (isset($this->inputValues[$index]["Avg"])) 
+                {
+                $aggregated=true;
+                $messwert = $this->inputValues[$index]["Avg"];          // für previousOne
+                }
+            elseif (isset($this->inputValues[$index]["Value"])) $messwert = $this->inputValues[$index]["Value"];   // für previousOne 
+            else return (false);
+
+            /* beim ersten Mal alles vorbereiten, Ergebnis ist delay, beim ersten Mal 0 sonst die zeitliche Differenz zum vorigen Wert und damit Info ob die Auswertung zeitlich nach vorne oder nach hinten geht */
+            if ($this->previousOne===false)         // Wert von der ersten, später letzten Berechnung speichern , benötigt für Einzelwerte Analyse ohne zeitlicher Komponente
+                {
+                $this->previousOne=$messwert;
+                $this->previousTime=$this->inputValues[$index]['TimeStamp'];
+                $delay=0;
+                if ($aggregated)                       // es gibt aggregierte Werte
+                    {         
+                    $this->previousMax     = $this->inputValues[$index]["Max"];
+                    $this->previousMaxTime = $this->inputValues[$index]["MaxTime"];
+                    $this->previousMin     = $this->inputValues[$index]["Min"];
+                    $this->previousMinTime = $this->inputValues[$index]["MinTime"];                               
+                    }
+                else
+                    {
+                    $this->previousMax     = $messwert;  
+                    $this->previousMaxTime = $this->previousTime;                     
+                    $this->previousMin     = $messwert;   
+                    $this->previousMinTime = $this->previousTime;
+                    }
+                }
+            else $delay = $this->previousTime-$this->inputValues[$index]['TimeStamp'];
+
+            if ($delay>0) $changeValue=($this->previousOne/$messwert-1)*100;
+            elseif ($delay==0)
+                {
+                // Delay ist 0, erster Wert, höchster Index
+                if ($this->debug) echo "Delay=0, Index ist $index, Date ".date("d.m.Y H:i:s",$this->inputValues[$index]['TimeStamp'])."\n";
+                $changeValue=0;
+                } 
+            else
+                {
+                //echo $delay."\n";
+                $changeValue=($messwert/$this->previousOne-1)*100;
+                }
+            /* nach all der Vorbereitung haben wir eine Veränderung in changeValue, zeitlich bereinigt */
+
+            if ($this->confEventLog)
+                {
+                if ($this->confLogChangeTime)    // Eventlog für einen Zeitraum evaluieren
+                    {
+                    $span=0;
+                    if ($aggregated)
+                        {
+                        $messwertSpan        = $this->inputValues[$index+$span]["Avg"];
+                        $messwertSpanTime    = $this->inputValues[$index+$span]["TimeStamp"];
+                        $messwertSpanMax     = $this->inputValues[$index+$span]["Max"];
+                        $messwertSpanMaxTime = $this->inputValues[$index+$span]["MaxTime"];
+                        $messwertSpanMin     = $this->inputValues[$index+$span]["Min"];
+                        $messwertSpanMinTime = $this->inputValues[$index+$span]["MinTime"];
+                        $messwertMax=$messwertSpanMax;$messwertMin=$messwertSpanMin;$messwertMaxTime=$messwertSpanMaxTime;$messwertMinTime=$messwertSpanMinTime;
+                        }
+                    else 
+                        {
+                        $messwertSpan        = $this->inputValues[$index+$span]["Value"];
+                        $messwertSpanTime    = $this->inputValues[$index+$span]["TimeStamp"];
+                        $messwertMax=$messwertSpan;$messwertMin=$messwertSpan;$messwertMaxTime=$messwertSpanTime;$messwertMinTime=$messwertSpanTime;
+                        }
+                    $changePos=0; $changeNeg=0;
+                    /*
+                    $messwertSpan        = $this->previousOne;          // letzter Wert bevor aufgerufen
+                    $messwertSpanMax     = $this->previousMax;
+                    $messwertSpanMaxTime = $this->previousMaxTime;
+                    $messwertSpanMin     = $this->previousMin;
+                    $messwertSpanMinTime = $this->previousMinTime; */
+                    
+                    do                              // do-while besser als while, weil Werte der Abfrage möglicherweise nicht vorhanden
+                        {
+                        if ($aggregated)
+                            {
+                            if ($messwertSpanMax>$messwertMax) { $messwertMax = $messwertSpanMax; $messwertMaxTime = $messwertSpanMaxTime; }
+                            if ($messwertSpanMin<$messwertMin) { $messwertMin = $messwertSpanMin; $messwertMinTime = $messwertSpanMinTime; }
+                            }    
+                        else
+                            {
+                            if ($messwertSpan>$messwertMax)    { $messwertMax = $messwertSpan; $messwertMaxTime = $messwertSpanTime; }
+                            if ($messwertSpan<$messwertMin)    { $messwertMin = $messwertSpan; $messwertMinTime = $messwertSpanTime; }
+                            }
+                        $span++;
+                        if (isset($this->inputValues[$index+$span]["Avg"])) 
+                            {
+                            $messwertSpan        = $this->inputValues[$index+$span]["Avg"];
+                            $messwertSpanMax     = $this->inputValues[$index+$span]["Max"];
+                            $messwertSpanMaxTime = $this->inputValues[$index+$span]["MaxTime"];
+                            $messwertSpanMin     = $this->inputValues[$index+$span]["Min"];
+                            $messwertSpanMinTime = $this->inputValues[$index+$span]["MinTime"];
+                            }  
+                        elseif (isset($this->inputValues[$index+$span]["Value"])) 
+                            {
+                            $messwertSpan     = $this->inputValues[$index+$span]["Value"];
+                            $messwertSpanTime = $this->inputValues[$index+$span]["TimeStamp"];
+                            } 
+                        else break;   
+                        }
+                    while ((abs($this->inputValues[$index]['TimeStamp']-$this->inputValues[$index+$span]['TimeStamp']))<=$this->confLogChangeTime);
+                    //echo "($span)";
+                    if ( ( ($messwertMaxTime>$messwertMinTime) && ($delay>0) ) || ( ($messwertMaxTime<$messwertMinTime) && ($delay<0) ) ) $changeValue=($messwertMax/$messwertMin-1)*100;
+                    else $changeValue=($messwertMin/$messwertMax-1)*100;
+                    //echo nf($changeValue,"%");
+                    if ($this->first===false)
+                        {
+                        //$this->first=true;
+                        }
+                    }                   // Ende confLogChangeTime
+
+                $eventEntries = &$this->result[$this->name]["eventLog"];
+                $keyprevious = array_key_last($eventEntries);   
+                $keyactual   = $this->inputValues[$index]['TimeStamp'];
+                if ($changeValue<0)             // von nun an geht es bergab , changevalue in Prozent
+                    {
+                    //echo "-";
+                    if ( ($this->confLogChangeNeg) && ($changeValue<(-$this->confLogChangeNeg)) )
+                        {
+                           
+                        //echo "Event: Kursänderung größer -2%: \n";
+                        //echo "!";
+                        //echo nf(($wert['Value']/$previousOne-1)*100,"%")." ";
+                        /*if ($this->first===false)
+                            {
+                            $this->first=true;
+                            echo date("d.m.Y H:i:s",$this->previousTime)."       ".$this->previousOne=$messwert."\n";
+                            if ($aggregated) for ($span=0;$span<10;$span++) echo date("d.m.Y H:i:s",$this->inputValues[$index+$span]['MaxTime'])."     ".$this->inputValues[$index+$span]["Max"]."     ".date("d.m.Y H:i:s",$this->inputValues[$index+$span]['MinTime'])."     ".$this->inputValues[$index+$span]["Min"]."\n";
+                            else             for ($span=0;$span<10;$span++) echo date("d.m.Y H:i:s",$this->inputValues[$index+$span]['TimeStamp'])."     ".$this->inputValues[$index+$span]["Value"]."\n";
+                            }  */
+                        $eventEntries[$keyactual]["Change"]    = $changeValue;
+                        $eventEntries[$keyactual]["TimeStamp"] = $keyactual;
+                        if ($this->confLogChangeTime) 
+                            {
+                            $eventEntries[$keyactual]["Event"] = "Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangeNeg."%,  Wertänderung $messwertMax ".date("H:i:s",$messwertMaxTime)." / $messwertMin ".date("H:i:s",$messwertMinTime);
+                            $eventEntries[$keyactual]["Max"]     = $messwertMax;
+                            $eventEntries[$keyactual]["MaxTime"] = $messwertMaxTime;
+                            $eventEntries[$keyactual]["Min"]     = $messwertMin;
+                            $eventEntries[$keyactual]["MinTime"] = $messwertMinTime;
+                            }
+                        else 
+                            {
+                            $eventEntries[$keyactual]["Event"] = "Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangeNeg."%, Wertänderung ".$this->previousOne." um ".date("H:i:s",$this->previousTime)." auf ".$messwert." um ".date("H:i:s",$this->previousTime); 
+                            }
+                        }
+                    $this->countNeg++;
+                    if ($this->changeDir=="pos")                  // das war ein Richtungswechsel
+                        {
+                        if ($this->countPos>$this->result[$this->name]["countPosMax"]) $this->result[$this->name]["countPosMax"]=$this->countPos;
+                        $this->countPos=0;
+                        }
+                    $this->changeDir="neg";
+                    }
+
+                if ($changeValue>0)            // von nun an gehts bergauf
+                    {
+                    //echo "+";
+                    if ( ($this->confLogChangePos) && ($changeValue>$this->confLogChangePos) )
+                        {
+                        //echo "Event: Kursänderung größer -2%: \n";
+                        //echo "!";
+                        //echo nf(($wert['Value']/$previousOne-1)*100,"%")." ";
+                        //$this->result[$this->name]["eventLog"][$wert['TimeStamp']]="Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."%"; 
+                        /* if ($this->first===false)
+                            {
+                            $this->first=true;
+                            echo date("d.m.Y H:i:s",$this->previousTime)."       ".$this->previousOne=$messwert."\n";
+                            if ($aggregated) for ($span=0;$span<10;$span++) echo date("d.m.Y H:i:s",$this->inputValues[$index+$span]['MaxTime'])."     ".$this->inputValues[$index+$span]["Max"]."     ".date("d.m.Y H:i:s",$this->inputValues[$index+$span]['MinTime'])."     ".$this->inputValues[$index+$span]["Min"]."\n";
+                            else             for ($span=0;$span<10;$span++) echo date("d.m.Y H:i:s",$this->inputValues[$index+$span]['TimeStamp'])."     ".$this->inputValues[$index+$span]["Value"]."\n";
+                            } */
+                        if ( (isset($this->result[$this->name]["eventLog"][$keyprevious]["Change"])) && ($changeValue > $this->result[$this->name]["eventLog"][$keyprevious]["Change"]) ) 
+                            {
+                            //echo "\n";
+                            //unset($this->result[$this->name]["eventLog"][$keyprevious]);
+                            }
+                        //if ($changeValue > $this->result[$this->name]["eventLog"][$this->previousTime]["Change"]) ) unset($this->result[$this->name]["eventLog"][$this->previousTime]);
+                        $event=&$this->result[$this->name]["eventLog"][$this->inputValues[$index]['TimeStamp']];
+                        $eventEntries[$keyactual]["Change"]    = $changeValue;
+                        $eventEntries[$keyactual]["TimeStamp"] = $keyactual;
+                        if ($this->confLogChangeTime)
+                            {
+                            $eventEntries[$keyactual]["Event"] = "Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."%,  Wertänderung $messwertMax ".date("H:i:s",$messwertMaxTime)." / $messwertMin ".date("H:i:s",$messwertMinTime);
+                            $eventEntries[$keyactual]["Max"]     = $messwertMax;
+                            $eventEntries[$keyactual]["MaxTime"] = $messwertMaxTime;
+                            $eventEntries[$keyactual]["Min"]     = $messwertMin;
+                            $eventEntries[$keyactual]["MinTime"] = $messwertMinTime;
+                            }
+                        else 
+                            {
+                            $eventEntries[$keyactual]["Event"] = "Event: Kursänderung ".nf($changeValue,"%").", größer als ".$this->confLogChangePos."%, Wertänderung ".$this->previousOne." um ".date("H:i:s",$this->previousTime)." auf ".$messwert." um ".date("H:i:s",$this->previousTime);
+                            }
+                        }                
+                    $this->countPos++;
+                    if ($this->changeDir=="neg")                  // Richtungswechsel, Analyse des bisherigen Geschehens
+                        {
+                        if ($this->countNeg>$this->result[$this->name]["countNegMax"]) $this->result[$this->name]["countNegMax"]=$this->countNeg;
+                        $this->countNeg=0;
+                        }
+                    $this->changeDir="pos";
+                    }
+                }               // confEventLog true konfiguriert, Events bearbeiten
+
+            /* Nachbearbeitung der Events, neues Event vorhanden, zumindest ein altes Event bereits angelegt */
+    	    if ( (isset($eventEntries[$keyactual])) && (isset($eventEntries[$keyprevious])) )
+                {
+                if (abs($keyactual-$keyprevious)<=$this->confLogChangeTime)
+                    {
+                    if ( ($eventEntries[$keyactual]["Change"]<0) && ($eventEntries[$keyprevious]["Change"]<0) )
+                        {
+                        //if ( ( ($delay>0) &&  ($eventEntries[$keyactual]["Change"] < $eventEntries[$keyprevious]["Change"]) ) || ( ($delay<0) &&  ($eventEntries[$keyactual]["Change"] > $eventEntries[$keyprevious]["Change"]) ) )
+                        if ( ($eventEntries[$keyactual]["Change"] < $eventEntries[$keyprevious]["Change"]) )
+                            {
+                            //echo "Two Events ".date("d.m.Y H:i:s",$keyactual)."  ".$eventEntries[$keyactual]["Change"]." delete: ".date("d.m.Y H:i:s",$keyprevious)."  ".$eventEntries[$keyprevious]["Change"]."\n";
+                            unset ($eventEntries[$keyprevious]);
+                            }
+                        else
+                            {
+                            //echo "Two Events ".date("d.m.Y H:i:s",$keyprevious)."  ".$eventEntries[$keyprevious]["Change"]." delete: ".date("d.m.Y H:i:s",$keyactual)."  ".$eventEntries[$keyactual]["Change"]."\n";
+                            unset ($eventEntries[$keyactual]);
+                            }
+                        }
+                    elseif ( ($eventEntries[$keyactual]["Change"]>0) && ($eventEntries[$keyprevious]["Change"]>0) )
+                        {
+                        if ( ( ($delay>0) &&  ($eventEntries[$keyactual]["Change"] > $eventEntries[$keyprevious]["Change"]) ) || ( ($delay<0) &&  ($eventEntries[$keyactual]["Change"] > $eventEntries[$keyprevious]["Change"]) ) )
+                            {
+                            //echo "Two Events ".date("d.m.Y H:i:s",$keyactual)."  ".$eventEntries[$keyactual]["Change"]." delete: ".date("d.m.Y H:i:s",$keyprevious)."  ".$eventEntries[$keyprevious]["Change"]."\n";
+                            unset ($eventEntries[$keyprevious]);    
+                            }
+                        else
+                            {
+                            //echo "Two Events ".date("d.m.Y H:i:s",$keyprevious)."  ".$eventEntries[$keyprevious]["Change"]." delete: ".date("d.m.Y H:i:s",$keyactual)."  ".$eventEntries[$keyactual]["Change"]."\n";
+                            unset ($eventEntries[$keyactual]);
+                            }
+                        }
+                    }
+                //echo "Abstand war ".nf($keyprevious-$keyactual,"s")."\n";
+                }
+            $this->previousOne=$messwert;                      // am Ende des Rasters wird der neue Referenzwert geschrieben, bis zum nächsten beginn muss die Differenz erkannt werden
+            $this->previousTime=$this->inputValues[$index]['TimeStamp'];               
             return (true);
             }
 
         }
 
 
-    /*  Auswertung von Archive Einträgen, Input ist ein externes array, es wird nur der pointer übergeben
+    /*  meansRollEvaluate, Auswertung von Archive Einträgen, Input ist ein externes array, es wird nur der pointer übergeben
      *
      *
      */
 
-    class meansRollEvaluate
+    class meansRollEvaluate extends statistics
         {
         
         protected $name;
-        protected $input;
+        protected $input,$config;
+        protected $debug;
 
-        function __construct(&$input)
+        function __construct(&$input,$config=false,$debug=false)
             {
             if (is_array($input)===false) return (false);
             $this->input=&$input;
 
+            $this-> debug = $debug;
             /* Config vorbereiten */
+            if ($config ===false)
+                {
+                $this->config["TimeStampPos"]="End";
+                }
+            else $this->config=$config; 
                        
             /* init der für die Analyse benötigten Variablen, es müssen nicht alle Werte die für die Berechnung benötigt werden als Ergebnis zur Verfügung stehen */
 
             return (true);
             }
 
-        /* Übergabe wert[value] und wert[TimeStamp]
+        /* Übergabe wert[value] oder wert[avg] und wert[TimeStamp]
          * previousOne ist rückwärts oder vorwärts möglich, TimeStamp mit betrachten
          *
          */
         function meansValues($index, $count)
             {
             if (is_array($this->input)===false) return (false);
+            if (isset($this->input[$index]["TimeStamp"])) $timeStamp = $this->input[$index]["TimeStamp"];
+            else $timeStamp = false; 
 
             /* rollierender Mittelwert , diesen und die nächsten count Werte zusammenzählen */
-            $sumRol=0; $countRol=0;
+            $sumRol=0; $countRol=0; $sumTime=0; $startTime = false; $endTime=false; $error=0;
             for ($i=0;$i<$count;$i++)
                 {
-                //echo " ".($index+$i);
-                if (isset($this->input[$index+$i]["Value"]))
+                //echo "\n ".str_pad($index+$i,6)."  ";
+              
+                if (isset($this->input[$index+$i]["Value"])) $value = $this->input[$index+$i]["Value"]; 
+                elseif (isset($this->input[$index+$i]["Avg"])) $value = $this->input[$index+$i]["Avg"];
+                else $value=false;
+                if (isset($this->input[$index+$i]["TimeStamp"])) 
                     {
-                    //echo "->".$this->result[$oid]["Values"][$index+$i]["Value"];
-                    $sumRol += $this->input[$index+$i]["Value"];
+                    $startTime = $this->input[$index+$i]["TimeStamp"];
+                    $sumTime += $startTime;
+                    //echo date("d.m.Y H:i:s",$startTime)."  ";
+                    }
+                if ($value)
+                    {
+                    //echo "->".$this->input[$index+$i]["Value"];
+                    $sumRol += $value;
                     $countRol++;
                     }
+                else $error++;
                 }
+            /* Mittelwert */
             $ergebnis=array();
-            $ergebnis["Value"]=$sumRol/$countRol;
-            $ergebnis["TimeStamp"]=$this->input[$index]["TimeStamp"];
+            $ergebnis["Value"] = $sumRol/$countRol;
+            $midTime = $sumTime/$countRol;
+            if (strtoupper($this->config["TimeStampPos"])=="MID")
+                {
+                $ergebnis["TimeStamp"]=$midTime;
+                }
+            else $ergebnis["TimeStamp"]=$timeStamp;
+            $ergebnis["startTime"]=$startTime;
+            if ($error) $ergebnis["error"]=$error;
+
             return ($ergebnis);
             }
 
         }
+
+
+    /*  Auswertung von Archive Einträgen, Als speicher für das Ergebns wird ein externes array benutzt, es wird nur der pointer übergeben
+     *  Immer überprüfen ob alles in Ordnung ist, damit nicht irgendwo ein Speicher überschrieben wird
+     *  addValue kann alle drei Formate, nur den Wert, mit TimeStamp oder mit Max/Min Aggregated
+     *  Ergebnis ist ein array mit Value/Timestamp. 
+     *  Aktuell verwendet in GetValues. 
+     *
+     *  Berechnet folgende Werte:
+     *      Max
+     *      Min
+     *      Means
+     *
+     *  Konfiguration:  aktuell keine
+     *
+     */
+
+    class maxminCalc extends statistics
+        {
+        
+        protected $name;
+        protected $result;
+        protected $maxValue=false, $maxTime=false, $minValue=false, $minTime=false;                                 // Max/Min Berechnung
+        protected $youngest=array();                                                                            // jüngster Wert, mit höchstem Zeitstempel
+        protected $sum=0, $sumTime=false, $count=0;                                                                                       // Mittelwert Berechnung
+        protected $sum1=0,$sum2=0,$sumTime1=false,$sumTime2=false,$count1=0,$count2=0;                          //
+
+        function __construct(&$result,$name="All",$config=false,$debug=false)
+            {
+            if (is_array($result)===false) return (false);
+            $this->result=&$result;
+            if (is_array($this->result)===false) return (false);
+            if ($debug) echo "maxminCalc für $name aufgerufen.\n";
+            $this->youngest["TimeStamp"] = 0;
+            $this->youngest["Value"]     = 0;
+            $this->name=$name;
+            return (true);
+            }
+
+        /* Übergabe wert[value] und wert[TimeStamp]
+         *
+         */
+        function addValue($wert)
+            {
+            //echo ".";
+            if (is_array($this->result)===false) return (false);
+            if (is_array($wert)===false)                                        // Wert ist nur Wert, es gibt keinen Zeitstempel
+                {
+                $wert["Value"]=$wert;
+                $wert["TimeStamp"]=false;
+                }
+            if (isset($wert["Max"]))                                            // aggregated Archive Avg
+                {
+                if ( ($this->maxValue===false) || ($this->maxValue<$wert["Max"]) )
+                    {
+                    $this->maxValue = $wert["Max"]; 
+                    $this->maxTime  = $wert["MaxTime"]; 
+                    }
+                if ( ($this->minValue===false) || ($this->minValue>$wert["Min"]) )
+                    {
+                    $this->minValue = $wert["Min"]; 
+                    $this->minTime  = $wert["MinTime"]; 
+                    }
+                $this->sum     += $wert["Avg"];                                     // Mittelwert mit Einzelwerte Berechnung
+                if ($this->sumTime===false) $this->sumTime = $wert["TimeStamp"];
+                else $this->sumTime += $wert["TimeStamp"];
+
+                // Alternative als Dreiecke und Flächen, Integral
+
+                }
+            else                                                                // logged Archive Value
+                {
+                if ( ($this->maxValue===false) || ($this->maxValue<$wert["Value"]) )
+                    {
+                    $this->maxValue = $wert["Value"]; 
+                    $this->maxTime  = $wert["TimeStamp"]; 
+                    }
+                if ( ($this->minValue===false) || ($this->minValue>$wert["Value"]) )
+                    {
+                    $this->minValue = $wert["Value"]; 
+                    $this->minTime  = $wert["TimeStamp"]; 
+                    }
+                $this->sum += $wert["Value"];
+                if ($wert["TimeStamp"])
+                    {
+                    if ($this->sumTime===false) $this->sumTime = $wert["TimeStamp"];
+                    else $this->sumTime += $wert["TimeStamp"];
+                    }
+                }
+
+            if ($wert["TimeStamp"]>$this->youngest["TimeStamp"] )         // bei false nicht der Fall, für alle anderen passt es
+                {
+                $this->youngest["TimeStamp"] = $wert['TimeStamp'];
+                $this->youngest["Value"]     = $wert['Value'];   
+                }
+
+            $this->count++;
+            }
+
+        /* für Mittelwert gut geeignet, wenn alles summiert ist am Ende dividieren 
+         * für Max, Min nur das Array schreiben
+         */
+
+        function calculate()
+            {
+            $this->result[$this->name]["Max"]["Value"]     = $this->maxValue; 
+            $this->result[$this->name]["Max"]["TimeStamp"] = $this->maxTime; 
+            $this->result[$this->name]["Min"]["Value"]     = $this->minValue; 
+            $this->result[$this->name]["Min"]["TimeStamp"] = $this->minTime;
+            if ($this->sumTime)
+                { 
+                $this->result[$this->name]["Means"]["Value"]     = $this->sum/$this->count; 
+                $this->result[$this->name]["Means"]["TimeStamp"] = $this->sumTime/$this->count;
+                }
+            else  $this->result[$this->name]["Means"]["Value"]     = $this->sum/$this->count;
+            return (true);
+            }    
+
+        function youngest()
+            {
+            $this->result[$this->name]["Youngest"] = $this->youngest; 
+            }
+
+
+        function print()
+            {
+            echo "Result from maxminCalc für ".$this->name.":\n";
+            echo "     Max Value  ".$this->maxValue." on ".date("d.m.Y H:i:s",$this->maxTime)."\n";
+            echo "     Min Value  ".$this->minValue." on ".date("d.m.Y H:i:s",$this->minTime)."\n";
+            if ($this->sumTime) echo "     Means Value  ".$this->result[$this->name]["Means"]["Value"]." on ".date("d.m.Y H:i:s",$this->result[$this->name]["Means"]["TimeStamp"])."\n";
+            else echo "     Means Value  ".$this->result[$this->name]["Means"]["Value"]."\n";
+            }        
+
+        }
+
 
 /**************************************************************************************************************************
  *
@@ -6011,6 +6992,10 @@ class fileOps
  * Timer Routinen von OperationCenter übernommen
  * ohne fixe Zuordnung der scriptIDs
  * 
+ * CreateTimerHour
+ * CreateTimerSync
+ * setTimerPerMinute
+ *
  *
  ******************************************************/
 
@@ -6024,7 +7009,7 @@ class timerOps
 
 	/* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen */
 
-	function CreateTimerHour($name,$stunde,$minute,$scriptID)
+	public function CreateTimerHour($name,$stunde,$minute,$scriptID)
 		{
 		/* EventHandler Config regelmaessig bearbeiten */
 			
@@ -6047,7 +7032,7 @@ class timerOps
 		return($timID);
 		}
 
-	function CreateTimerSync($name,$sekunden,$scriptID)
+	public function CreateTimerSync($name,$sekunden,$scriptID)
 		{
 		$timID = @IPS_GetEventIDByName($name, $scriptID);
 		if ($timID==false)
@@ -6091,6 +7076,17 @@ class timerOps
             IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
             }
         return ($tim4ID);
+        }
+
+    public function getEventData($EreignisID,$debug=false)
+        {
+        $EreignisInfo = IPS_GetEvent($EreignisID);
+        $eventID = $EreignisInfo["EventID"];
+        $lastrun=date("d.m.Y H:i:s",$EreignisInfo["LastRun"]);
+        $nextrun=date("d.m.Y H:i:s",$EreignisInfo["NextRun"]);
+        echo str_pad("$eventID (".IPS_GetName($eventID).")",32)." Lastrun $lastrun   Nextrun $nextrun  Status ".($EreignisInfo["EventActive"]?"Ein":"Aus")."  \n";
+        if ($debug) print_r($EreignisInfo);
+
         }
 
     function write($string)

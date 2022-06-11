@@ -121,7 +121,7 @@
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
 
-    $DoInstall=true;
+    $DoInstall=true; $seleniumWeb=false;
 
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
@@ -144,19 +144,23 @@
                 $pos=10;
                 foreach ($GuthabenAllgConfig["Selenium"]["WebDrivers"] as $category => $entry)
                     {
+                    $seleniumWeb=true;
                     $categoryId_WebDriver        = CreateCategory($category,        $CategoryId_Mode, $pos);
                     $sessionID          = CreateVariableByName($categoryId_WebDriver,"SessionId", 3);                       
                     $handleID           = CreateVariableByName($categoryId_WebDriver,"HandleId", 3);  
                     $statusID           = CreateVariable("StatusWebDriver".$category, 3, $categoryId_WebDriver,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
+                    SetValue($statusID,"updated");
                     $pos=$pos+10;
                     }
                 }
             if (isset($GuthabenAllgConfig["Selenium"]["WebDriver"])) 
                 {
+                $seleniumWeb=true;
                 //$sessionID          = CreateVariable("SessionId", 3, $categoryId_Selenium,1000,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
                 $sessionID          = CreateVariableByName($CategoryId_Mode,"SessionId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 $handleID           = CreateVariableByName($CategoryId_Mode,"HandleId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 $statusID           = CreateVariable("StatusWebDriverDefault", 3, $CategoryId_Mode,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
+                SetValue($statusID,"updated");
                 }
             $categoryDreiID = $seleniumOperations->getCategory("DREI");                
             echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";                 
@@ -173,7 +177,15 @@
     $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
-	
+
+    if ($seleniumWeb)
+        {
+        // Es gibt Selenium Webdriver, die kann man wieder starten, so wie bei Guthaben StartSelenium,  CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,""
+        $pname="SeleniumAktionen";                                         // keine Standardfunktion, da Inhalte Variable
+        $nameID=["Easy"];
+        createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
+        $actionWebID          = CreateVariableByName($CategoryId_Mode,"StartAction", 1,$pname,"",1000,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        }
     if ($DoInstall)         // siehe weiter oben, lokaler Switch
         {
         /* die Simkartendaten in Archive und Guthaben speichern bzw aus dem Data dorthin verschieben */
@@ -293,36 +305,19 @@
         AC_SetAggregationType($archiveHandlerID,$phone_Load_ID,0);
         IPS_ApplyChanges($archiveHandlerID);
 
-        $pname="GuthabenKonto";
-        if (IPS_VariableProfileExists($pname) == false)
+
+        $pname="GuthabenKonto";                                         // keine Statndardfunktion, da Inhalte Variable
+        $nameID=array();
+        for ($i=0;$i<$maxcount;$i++)
             {
-                //Var-Profil erstellen
-            IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-            IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-            IPS_SetVariableProfileValues($pname, 0, ($maxcount+1), 1); //PName, Minimal, Maximal, Schrittweite
-            for ($i=0;$i<$maxcount;$i++)
-                {
-                IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
-                }
-            $i++;       // sonst wird letzter Wert überschrieben	
-            IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
-            IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
-            echo "Profil ".$pname." erstellt;\n";
+            $nameID[$i]=$phoneID[$i]["Short"];
             }
-        else
-            {	/* profil sicherheitshalber überarbeiten */
-            IPS_SetVariableProfileValues($pname, 0, ($maxcount+1), 1); //PName, Minimal, Maximal, Schrittweite
-            for ($i=0;$i<$maxcount;$i++)
-                {
-                IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
-                }
-            IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
-            IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau	
-            echo "Profil ".$pname." überarbeitet. ;\n";		
-            }
+        $i++;       // sonst wird letzter Wert überschrieben	
+        $nameID[$i++]="Alle";
+        $nameID[$i++]="Test";
+        createActionProfileByName($pname,$nameID);
 
-
-         if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
+        if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
             {
             $startImacroID      = CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             }
@@ -338,34 +333,8 @@
 	 *
 	 ************************************************************************/
 
-	$pname="Euro";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
-		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-		IPS_SetVariableProfileText($pname,'','Euro');
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-		{
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-
-	$pname="MByte";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
-		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-		IPS_SetVariableProfileText($pname,'',' MByte');
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-		{
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-
+	createProfilesByName("Euro");
+	createProfilesByName("MByte");
 
 	/*****************************************************
 	 *
@@ -531,8 +500,13 @@
             $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=90;
             $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
             }
-
-
+        if ($seleniumWeb)
+            {
+            $statusID           = IPS_GetObjectIdByName("StartAction",$CategoryId_Mode);
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StartAction";
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=200;
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+            }
 
 
         echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";

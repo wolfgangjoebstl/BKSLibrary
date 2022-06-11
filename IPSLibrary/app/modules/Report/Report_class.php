@@ -1173,12 +1173,12 @@
                             if (strtoupper($defserie["display"])=="MEANSROLL") 
                                 {
                                 if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Wochen verarbeiten.\n";
-                                $result=$resultAll["Description"]["MeansRoll"];
+                                $result=$resultAll["MeansRoll"]["Var"];
                                 }
                             elseif (strtoupper($defserie["display"])=="MEANSROLLMONTH") 
                                 {
                                 if ($this->debug) echo "Modul Easytrend ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
-                                $result=$resultAll["Description"]["MeansRollMonth"];
+                                $result=$resultAll["MeansRoll"]["Month"];
                                 }
                             elseif (strtoupper($defserie["display"])=="TRENDMONTH") 
                                 {

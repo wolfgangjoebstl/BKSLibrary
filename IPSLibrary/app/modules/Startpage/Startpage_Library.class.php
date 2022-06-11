@@ -36,15 +36,27 @@
      * mit der Absage des IPSWeather Moduls wurden die Wetter Aktivitäten hier her verlagert.
      *
      * Hauptroutine ist StartPageWrite mit den 4 unterschiedlichen Darstellungen
+     * aufgerufen werden dazu analog die folgenden Funktionen:   showHierarchy, [showPictureWidget,showTopology], [showDisplayStation, bottomTableLines], [showPictureWidget,showWeatherTemperatureWidget,bottomTableLines]     
      *
      * _construct
      * getWorkDirectory
      * setStartpageConfiguration
      * getStartpageConfiguration
+     * getStartpageDisplayConfiguration
      * getOWDs
      * configWeather
      * readPicturedir
+     *
      * StartPageWrite                   Darstellung der Startpage am Webfront
+     * showDisplayStation
+     * showAstronomyWidget
+     * showAstronomy
+     * showTopology
+     * mergeTopologyObjectsSP
+     * transformConfigWidget
+     * writeTable
+     * transformStatus
+     *
      * tempTableLine
      *
      * writeStartpageStyle
@@ -471,6 +483,8 @@
          * Die Darstellung sollte soweit möglich responsive sein und konfigurierbar.
          * WidgetsConfig wird transformiert
          *
+         *
+         *
          */
 
 		function showDisplayStation($subscreen=1, $debug=false)
@@ -508,6 +522,20 @@
                             }
                         $tdformat='bgcolor="'.$entry["Format"]["BGColor"].'"';
 
+                        /* verfügbare Widgets:
+                         *  Astronomy               showAstronomyWidget
+                         *  Moon                    showAstronomyWidget
+                         *  Weather                 showWeatherTable
+                         *  Grouptemp               showTempGroupWidget
+                         *  Heating                 showHeatingWidget
+                         *  Picture                 showPictureWidget
+                         *  Specialregs             showSpecialRegsWidget
+                         *  Temperature             showTemperatureTable
+                         *  empty
+                         *  Rainmeter               showRainmeterWidget
+                         *  Charts                  showChartsWidget
+                         *
+                         */
                         switch (strtoupper($entry["Type"]))
                             {
                             case "ASTRONOMY":
@@ -1626,10 +1654,10 @@
             $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
             $wert.='</div>';*/
             $wert .='<iframe src="https://oe3.orf.at/player" width="900" height="800"
-    <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
-       Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
-    <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
-     </p></iframe>';
+                     <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
+                        Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
+                        <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
+                     </p></iframe>';
             return ($wert);
             }
 
@@ -1832,6 +1860,8 @@
         /********************
          *
          * Zelle Tabelleneintrag für die Tabelle für Darstellung der Ergebnisse von Easychart 
+         * Config aus dem Configfile wird als erster Eintrag übergeben.
+         * Eine Tabelle ist einer Chartskonfiguration zugeordnet, auf diese wird gepointert
          *
          *
          **************************************/
@@ -1859,7 +1889,8 @@
                 $wert .= '<tr><td>'.$chartsConf["Name"].'</td></tr>'; 
                 $wert .= '<tr><td>';                
 
-                $shares = $seleniumEasycharts->getResultConfiguration($chartsConf["OID"]);
+                if ($chartsConf["OID"] != "default") $shares = $seleniumEasycharts->getResultConfiguration($chartsConf["OID"]);
+                else $shares = $seleniumEasycharts->getResultConfiguration($chartsConf["Name"]);
                 $resultShares=array();
                 foreach($shares as $index => $share)                    //haben immer noch eine gute Reihenfolge, wird auch in resultShares übernommen
                     {
@@ -1875,7 +1906,7 @@
                     } 
                 //if ($debug) print_r($resultShares);  
 
-                $wert .= $seleniumEasycharts->writeResultAnalysed($resultShares,true);          // true für Ausgabe als html Tabelle
+                $wert .= $seleniumEasycharts->writeResultAnalysed($resultShares,true,-6,$debug);          // true für Ausgabe als html Tabelle, Size = -6 (not more than 6 lines) and true für Debug
                 $wert .= '</td>';   
                 $wert .= '</tr>';
                 }
@@ -1971,21 +2002,50 @@
             return($config);
             }
 
-        /* read configuration for showChartsWidget, eliminate unknown indizes */
+        /* read configuration for showChartsWidget, eliminate unknown indizes 
+         *
+         */
 
         function getConfigChartsWidget($groupsInput=false,$debug=false)
             { 
+            //$debug=true;
             //print_r($this->configuration);
             if ($groupsInput===false)
                 {
+                if ($debug) 
+                    {
+                    echo "getConfigChartsWidget, no input for Configuration File. Use Default Input for Startpage Config:\n";
+                    print_r($this->configuration);
+                    }
                 if (isset($this->configuration["Easycharts"]) ) $chartsConf=$this->configuration["Easycharts"];
+                elseif (isset($this->configuration["Widgets"]) )
+                    {
+                    echo "Keine Defaultkonfiguration, in Widgets suchen\n";
+                    foreach ($this->configuration["Widgets"] as $pageIndex => $page)
+                        {
+                        foreach ($page as $rowIndex => $row)    
+                            {
+                            foreach ($row as $colIndex => $entry)    
+                                {
+                                //echo $entry["Type"]."\n";
+                                if (strtoupper($entry["Type"])=="CHARTS")
+                                    {
+                                    //print_r($entry);
+                                    $chartsConf=$entry;    
+                                    }
+                                }
+                            }
+                        }
+                    }
                 else $chartsConf=array();
                 }
             else $chartsConf = $groupsInput;                
 
             if ($debug) echo "getConfigChartsWidget Configuration analysieren: ".json_encode($chartsConf)."\n";
             configfileParser($chartsConf, $config, ["Config","Configuration","config","CONFIGURATION"],"Config",null);         //wenn config fehlt nur Values
-            $chartsConf=$config["Config"]; $config=array();
+            if (isset($config["Config"])) $chartsConf=$config["Config"]; 
+            else $chartsConf=array();
+            $config=array();
             configfileParser($chartsConf, $config, ["OID","Oid","oid"],"OID",false);                 //configfile als tableEntry vereinheitlichen, überprüfen, Wert für OID muss vorhanden sein und das Objekt erreichbar
             $config=array();
             foreach ($chartsConf as $index => $regsConf)
