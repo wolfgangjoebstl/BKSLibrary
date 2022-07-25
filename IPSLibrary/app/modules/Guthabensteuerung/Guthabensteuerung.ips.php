@@ -69,11 +69,17 @@
     $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
     $ipsOps = new ipsOps();    
+    $dosOps = new dosOps();
+    $timerOps = new timerOps();
+
+    $systemDir     = $dosOps->getWorkDirectory();     
 
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
     /* logging in einem File und in einem String am Webfront */
-    $log_Guthabensteuerung=new Logging("C:\Scripts\Guthabensteuerung\Log_Guthaben.csv",$NachrichtenInputID);
+    //$log_Guthabensteuerung=new Logging("C:\Scripts\Guthabensteuerung\Log_Guthaben.csv",$NachrichtenInputID);
+    $log_Guthabensteuerung=new Logging($systemDir."Guthabensteuerung/Log_Guthaben.csv",$NachrichtenInputID);
+
 
     $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
 	$GuthabenConfig         = $guthabenHandler->getContractsConfiguration();            // get_GuthabenConfiguration();
@@ -154,6 +160,8 @@
         //IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
         }
 
+    $tim4ID = $timerOps->CreateTimerHour("AufrufMorgens",4,55,$_IPS['SELF']);
+
     $phoneID=$guthabenHandler->getPhoneNumberConfiguration();
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
@@ -171,17 +179,23 @@
  *
  *				TIMER
  *
- * drei TimerEvents. Zwei einmal am Tag (morgens und Abends) und das andere alle 150 Sekunden
- * tim1 ist der Aufruftimer um 2:27 Uhr morgens. Der macht nix anderes als den Ausführtimer tim2 zu starten
+ * mehrere TimerEvents. Zwei einmal am Tag (morgens und Abends) und das andere alle 150 Sekunden
+ *
+ * tim1 ist der Aufruftimer um 2:27 Uhr morgens. Setzt die beiden Counter Register zurück udn startet den Ausführtimer tim2 zu starten
  *
  * tim2 ist ausgelegt alle 150 Sekunden aufgerufen zu werden bis die Aufgabe erledigt ist
  *      ScriptCounter muss maxcount erreichen
+ *      wenn der Scriptcounter nicht maxcount erreicht wird nach der doppelten Anzahl an versuchen abgebrochen, ein Eintrag ins Nachrichten log erstellt und der Timer deaktiviert
+ *      es wir für alle Rufnummern einzeln die Drei Guthaben abfrage gestartet, entweder als Selenium oder wenn noch funktioniert als imacro
  *      danach wird ParseDreiGuthaben aufgerufen
+ *      und bei iMacro geprüft ob die ergebnisdateien jetzt da sind
  *
  * tim3 ist alternativ am Abend um 22:16 für Selenium Operationen
- *      DREI wird immer morgens gemacht, mehrmalige Aufrufe je Nummer, daher Abands ausnehmen, die anderen Hosts abfragen
+ *      DREI wird immer morgens gemacht, mehrmalige Aufrufe je Nummer, daher Abends rausnehmen, wird dezidiert aus der Config gelöscht,
+ *      am Abend die anderen Hosts abfragen, wenn evening oder morning dann nur die jeweilige Abfrage machen
  *
- *
+ * tim4, neu ruft morgens um 4:55 ein paar Funktionen auf
+ *      jetzt auch für Selenium Morning Funktionen verwendbar
  *
  *************************************************************/
 
@@ -194,14 +208,21 @@ if ($_IPS['SENDER']=="TimerEvent")
 		case $tim1ID:               // Aufruftimer immer um 2:27
 			IPS_SetEventActive($tim2ID,true);
 			SetValue($statusReadID,"");			// Beim Erstaufruf Html Log loeschen.
-			SetValue($checkScriptCounterID,GetValue($checkScriptCounterID));
+			SetValue($checkScriptCounterID,0);  // mit 0 wieder beginnen, neuer Tag neues Glück
+			SetValue($ScriptCounterID,0);       // mit 0 wieder beginnen, wenn die Abfrage fehlerhaft ist wird dieser Wert nicht inkrementiert    
 			break;
 		case $tim2ID:               // Exectimer alle 150 Sekunden wenn aktivivert
 			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
 			$ScriptCounter=GetValue($ScriptCounterID);
 			$checkScriptCounter=GetValue($checkScriptCounterID);
+            //$log_Guthabensteuerung->LogNachrichten("Script Counter $ScriptCounter, Check Script Counter $checkScriptCounter > ".($maxcount*2));
 
-            if ($checkScriptCounter>($maxcount*2)) break;                  // 100% Fehler durch Abbrüche zulassen, dann Funktion einstellen
+            if ($checkScriptCounter>($maxcount*2)) 
+                {
+                $log_Guthabensteuerung->LogNachrichten("Guthabensteuerung tim2, CheckScriptCounter $checkScriptCounter exceeded Maxcount of ".($maxcount*2));  
+				IPS_SetEventActive($tim2ID,false);
+                break;                  // 100% Fehler durch Abbrüche zulassen, dann Funktion einstellen
+                }
 			SetValue($checkScriptCounterID,$checkScriptCounter+1);
 
 			//IPS_SetScriptTimer($_IPS['SELF'], 150);
@@ -243,6 +264,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				}
 			else            // alles abgefragt, was ist mit der Auswertung, immer noch eigenes Script ParseGuthaben
 				{
+                $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
 				IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
                 switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                     {
@@ -273,7 +295,23 @@ if ($_IPS['SENDER']=="TimerEvent")
                 {
                 case "SELENIUM":
                     $startexec=microtime(true);
-                    $configTabs = $guthabenHandler->getSeleniumHostsConfig();
+                    $configTabs = $guthabenHandler->getSeleniumHostsConfig("evening");              // Filter evening
+                    unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
+                    $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
+                    echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
+                    echo "--------\n";
+                    $log_Guthabensteuerung->LogNachrichten("Automated Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden"); 
+                    // parse wird gemeinsam mit dem drei Guthaben aufgerufen, wenns nicht klappt gibts einen zweiten versuch um 4:55                     
+                    break;
+                }
+            break;
+		case $tim4ID:               // immer am frühen morgen um 4:55, macht das Selbe wie am Späten Abend
+            $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
+            switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                {
+                case "SELENIUM":
+                    $startexec=microtime(true);
+                    $configTabs = $guthabenHandler->getSeleniumHostsConfig("morning");                              // Filter morning
                     unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
                     $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
                     echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
@@ -281,6 +319,8 @@ if ($_IPS['SENDER']=="TimerEvent")
                     $log_Guthabensteuerung->LogNachrichten("Automated Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden");                      
                     break;
                 }
+            $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
+            IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
             break;
 		default:
 			break;
@@ -420,6 +460,7 @@ if ($_IPS['SENDER']=="WebFront")
                     {
                     $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
                     }
+                $seleniumEasycharts->updateResultConfigurationSplit($shares);                // Die wunderschöne split Konfiguration wird hier wieder zunichte gemacht da sie aus der Konfiguration für das Depot , daher aus dem Konfig auslesen       
                 $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
                 }
 
@@ -445,7 +486,6 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
     $tim1ID = IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
     $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
 
-    $timerOps = new timerOps();
 	echo "Timerprogrammierung: \n";
 	//echo "  Timer 1 ID : ".$tim1ID."   ".(IPS_GetEvent($tim1ID)["EventActive"]?"Ein":"Aus")."\n";
     //echo "  Timer 2 ID : ".$tim2ID."   ".(IPS_GetEvent($tim2ID)["EventActive"]?"Ein":"Aus")."\n";
@@ -453,6 +493,7 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
     $timerOps->getEventData($tim1ID);
     $timerOps->getEventData($tim2ID);
     $timerOps->getEventData($tim3ID);
+    $timerOps->getEventData($tim4ID);
 
 	$ScriptCounter=GetValue($ScriptCounterID);
 	$checkScriptCounter=GetValue($checkScriptCounterID);

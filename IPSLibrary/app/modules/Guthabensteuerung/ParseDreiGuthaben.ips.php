@@ -50,7 +50,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
  *
  *************************************************************/
 
-    $startexec=microtime(true);    
+    $startexec=microtime(true);   
+    $execute=false;                     // Execute extra code when called manually
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager))
@@ -108,7 +109,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
     /* logging in einem File und in einem String am Webfront */
     $log_Guthabensteuerung=new Logging($systemDir."Guthabensteuerung/Log_Guthaben.csv",$NachrichtenInputID);
-
+    $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben called.");  
 
 /*********************************************************************************************
  * 
@@ -129,7 +130,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
             /* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
 
 
-            if ($_IPS['SENDER']=="Execute")
+            if ($execute && ($_IPS['SENDER']=="Execute"))
                 {
                 /* Logging Einstellungen zum Debuggen */
                 
@@ -177,7 +178,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
             *
             *************************************************************/
 
-            if ($_IPS['SENDER']=="Execute")
+            if ($execute && ($_IPS['SENDER']=="Execute"))
                 {
                 echo "========================================================\n";
                 echo "Execute, Script ParseDreiGuthaben wird ausgeführt:\n\n";
@@ -323,7 +324,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             }
                         print_R($ergebnis);
 
-                        if ($_IPS['SENDER']=="Execute")
+                        if ($execute && ($_IPS['SENDER']=="Execute"))
                             {
                             //print_r($GuthabenConfig);
                             echo "Alle Aktiven Simkarten neu parsen, Input sind die Dateien:\n";
@@ -478,17 +479,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         echo "EASY ============\n";
                         $seleniumEasycharts = new SeleniumEasycharts();
                         echo "Konfiguration von EASY gesucht:\n";
-                        $configTabs = $guthabenHandler->getSeleniumTabsConfig("EASY");
-                        //print_R($configTabs);
-                        $depotRegister=["RESULT"];
-                        if (isset($configTabs["Depot"]))
-                            {
-                            if (is_array($configTabs["Depot"]))
-                                {
-                                $depotRegister=$configTabs["Depot"];    
-                                }
-                            else $depotRegister=[$configTabs["Depot"]];
-                            }
+                        $depotRegister = $seleniumEasycharts->getDebotBooksfromConfig($guthabenHandler->getSeleniumTabsConfig("EASY"));                 //  Auswertung
                         foreach ($depotRegister as $depot)
                             {
                             echo "Depot ausgewählt: $depot  \n";
@@ -510,54 +501,20 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                 {
                                 $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
                                 }
+                            $seleniumEasycharts->updateResultConfigurationSplit($shares);                           // es kann sein dass es Splits für Aktien gibt
                             $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
                             }
-                        /*
-                        echo "Selenium Operations, read Result from EASY:\n";
-                        $result=$seleniumOperations->readResult("EASY","Result",true);                  // true Debug
-                        //print_R($result);
-                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
-                        echo "--------\n";
-                        $log_Guthabensteuerung->LogNachrichten("Execute ViewResult, EASY letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"]));    
-                        $lines = explode("\n",$result["Value"]);                       // die Zeilen als einzelne Eintraeg im array abspeichern 
-
-                        $data=$seleniumEasycharts->parseResult($lines);             // einlesen
-                        $shares=$seleniumEasycharts->evaluateResult($data);         // ausgeben als improvisiserte Tabelle, Ergebnis Array bereits nach Ergebnis zuletzt sortiert
-                        echo "--------\n";
-                        $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
-
-                        //**** die ermittelten Werte abspeichern 
-
-                        $seleniumEasycharts->writeResult($shares,"MusterDepot3",$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
-
-                        //**** die Konfiguration zum Musterdepot speichern 
-
-                        $seleniumEasycharts->writeResultConfiguration($shares, "MusterDepot3");
-
-                        //****  noch nicht nachdenken, einfach letzten berechneten Wert hernehmen für die Überprüfung 
-
-                        echo "********************************************************************\n";
-                        echo "Die gespeicherte archivierten historisierten Werte verarbeiten:\n";
-                        print_r($shares);
-                        $resultShares=array();
-                        $archiveOps = new archiveOps();  
-                        foreach($shares as $index => $share)                    //haben immer noch eine gute Reihenfolge, wird auch in resultShares übernommen
+                        // Split in allen Depots eintragen, immer machen, es könnte sich ja etwas geändert haben
+                        $allDepotRegisters=$seleniumEasycharts->showDepotConfigurations(false,false);           // true für Debug
+                        foreach ($allDepotRegisters as $result)       // es können auch mehrere sein
                             {
-                            $oid = $share["OID"];
-                            //echo "Infos ".$share["ID"]." :     ".$archiveOps->getStatus($oid)."   \n";
-                            $checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
-                            //echo $checkArchive;
-                            $result = $archiveOps->analyseValues($oid,20,true);                 // true mit Debug
-                            //print_r($result); 
-                            $resultShares[$share["ID"]]=$result;
-                            $resultShares[$share["ID"]]["Info"]=$share;
-                            $archiveOps->addInfoValues($oid,$share);
-                            } 
-                        //print_r($resultShares);  
-
-                        $seleniumEasycharts->writeResultAnalysed($resultShares);
-                        echo "\n";
-                        $archiveOps->alignScaleValues();                                                            */
+                            if (isset($result["Depot"]))
+                                {
+                                $shares = $seleniumEasycharts->getResultConfiguration($result["Depot"]["Name"]);
+                                $seleniumEasycharts->updateResultConfigurationSplit($shares);                           // es kann sein dass es Splits für Aktien gibt
+                                $seleniumEasycharts->writeResultConfiguration($shares,$result["Depot"]["Name"]);
+                                }
+                            }
                         echo "Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden.\n";          
                         break;
                     case "LOGWIEN":
@@ -570,6 +527,15 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
                         $seleniumLogWien = new SeleniumLogWien();
                         $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");
+                        break;
+                    case "YAHOOFIN":
+                        echo "YAHOOFIN ============\n";                    
+                        echo "parse YahooFin Ergebnis in Result.\n";
+                        $result=$seleniumOperations->readResult("YAHOOFIN");                  // true Debug   , lest RESULT als Egebnis Variable, wenn zweite Variable ausgefüllt ist es das entsprechende register
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                        $yahoofin = new SeleniumYahooFin();
+                        $ergebnis = $yahoofin->parseResult($result);                        // eigentlich nur json_decode auf ein array
+                        $yahoofin->writeResult($ergebnis,"TargetValue",true);
                         break;
                     default:
                         echo (strtoupper($host))."============\n";

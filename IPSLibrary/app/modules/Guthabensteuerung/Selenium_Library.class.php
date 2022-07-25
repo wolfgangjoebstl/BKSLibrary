@@ -24,11 +24,13 @@
  * für die Automatisiserung der Abfragen gibt es verschieden Klasssen
  *      SeleniumHandler     managed die Handles des Selenium Drivers, offene Tabs, werden von den folgenden Klassen erweitert
  *
+ *      SeleniumYahooFin    extends SeleniumHandler, de.finance.yahoo.com Abfrage
+ *      SeleniumLogWien
  *      SeleniumDrei
  *      SeleniumIiyama
  *      SeleniumEasycharts
  *
- *      SeleniumOperations
+ *      SeleniumOperations  damit werden die Funktionen hergestellt
  *
  * SeleniumDrei sorgt für die individuellen States und SeleniumOperations für die Statemachine
  *
@@ -731,6 +733,271 @@ class SeleniumHandler
 
 
 
+/*
+ *  Finanz Nachrichten und historische Kurse auslesen 
+ *
+ */
+
+class SeleniumYahooFin extends SeleniumHandler
+    {
+    private $configuration;                 //array mit Datensaetzen
+    private $CategoryIdDataYahooFin;         // sub Kategorie YAHOOFIN in RESULT
+    private $duetime,$retries;              //für retry timer
+    private $symbols,$index;                       // die auf Finance abufragenden Symbole
+    protected $debug;
+
+    /* Initialisierung der Register die für die Ablaufsteuerung zuständig sind
+     */
+    function __construct($debug=false)
+        {
+        $this->duetime=microtime(true);
+        $this->retries=0;
+        $this->debug=$debug;
+        $num=0;
+        foreach ($this->getSymbolsfromConfig() as $index=>$short) 
+            {
+            $this->symbols[$num]["Short"]=$short;
+            $this->symbols[$num]["Index"]=$index;
+            $num++;
+            }
+
+        parent::__construct();          // nicht vergessen den parent construct auch aufrufen
+        $this->CategoryIdDataYahooFin = IPS_GetObjectIdByName("YAHOOFIN",$this->CategoryIdData);        
+        $this->IndexToSymbols = CreateVariableByName($this->CategoryIdDataYahooFin,"IndexToSymbols",1);        
+        $this->index=0;             // fängt immer mit Null an
+        }
+
+    function getResultCategory()
+        {
+        return($this->CategoryIdDataYahooFin);
+        }
+
+
+    /* Konfiguration ausgeben, min Function
+     */
+    public function setConfiguration($configuration)
+        {
+        $this->configuration = $configuration;
+        }
+
+    /* aus dem Easycharts Configuration File, dem Orderbook die passenden Shortnames für yahoo finance herauslesen
+     * eigentlich müsste man die Easycharts Klasse dazu aufrufen, aktuell vereinfacht implementiert
+     *
+     */
+    public function getSymbolsfromConfig()
+        {
+        $result=array();
+        $orderbook=get_EasychartConfiguration();
+        foreach ($orderbook as $index=>$entry)
+            {
+            if (isset($entry["Short"])) $result[$index] = $entry["Short"]; 
+            }   
+        return ($result);
+        }
+
+    /* Symbols hat x Einträge, wenn x überschritten wird, wieder am Anfang weitermachen
+     * this->index nicht überschreiben
+     */
+    private function addIndexToSymbols($add)
+        {
+        $size=count($this->symbols);
+        $index=GetValue($this->IndexToSymbols)+$add;
+        if ($index>=$size) $index-=$size; 
+        SetValue($this->IndexToSymbols,$index);
+        }
+
+    /*
+    */
+    public function getErgebnis()
+        {
+        return ($this->symbols);
+        }
+
+    /*  Nachdem bereits als json encoded array übergeben wird gibt es nicht alzuviel zu tun
+     *  also Ausgabe der Kursziele und das wars auch schon wieder  
+     *
+     */
+
+    function parseResult($input, $debug=false)
+        {
+        $data = json_decode($input["Value"],true);               //true speichern als Array, String Wert ist bereits historisiert
+        return($data);
+        }
+
+
+    /* YAHOOFIN, Werte in einer Category speichern 
+     * die ermittelten Werte als Archiv speichern
+     *
+     */
+
+    function writeResult($shares, $name="TargetValue", $debug=false)
+        {
+        $componentHandling = new ComponentHandling();           // um Logging mit Historisietrung (Archive) zu setzen
+        $categoryIdResult = $this->getResultCategory();
+        if ($debug) echo "seleniumYahooFin::writeResult, store the updated target values, Category YahooFin RESULT $categoryIdResult mit Name $name.\n";
+    
+        /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
+        $oid = CreateVariableByName($categoryIdResult,$name,3,'',"",1000);         // kein Identifier, darf in einer Ebene nicht gleich sein
+
+        $parent=$oid;                               // Parent ist TargetValue, jetzt die shares Liste durchgehen und den jeweiligen TargetValue abspeichern, Name ist Short
+        foreach($shares as $index => $share)
+            {
+            if ( (isset($share["Short"])) && (isset($share["Target"])) )
+                { 
+                $oid = CreateVariableByName($parent,$share["Short"],2,'Euro',"",100);     //gleiche Identifier in einer Ebene gehen nicht
+                $componentHandling->setLogging($oid);
+
+                $value = $share["Target"];
+                if (GetValue($oid) != $value) SetValue($oid,$value);
+                elseif ($debug)
+                    {
+                    echo "gleicher Wert $value at ".IPS_GetName($oid)." ($oid)  last changed: ".date("d.m.Y H:i:s",IPS_GetVariable($oid)["VariableChanged"])."   ";
+                    echo "\n"; 
+                    }
+                }
+            }
+        }
+
+    /* YAHOOFIN, alle Werte aus der Kategorie lesen 
+     * die ermittelten Werte als Array speichern
+     *
+     */
+
+    function getResult($name="TargetValue", $debug=false)
+        {
+        $result=array();
+        $archiveOps=new archiveOps();
+        $categoryIdResult = $this->getResultCategory();
+        if ($debug) echo "seleniumYahooFin::getResult, get the target values and write them to an array.\n";
+    
+        $config=array();
+        $parent = IPS_GetObjectIdByName($name,$categoryIdResult);         // kein Identifier, darf in einer Ebene nicht gleich sein
+        $childrens = IPS_GetChildrenIDs($parent);
+        foreach($childrens as $children)
+            {
+            $archiveOps->getValues($children,$config,$debug);                 // true mit Debug    
+            $result[IPS_GetName($children)]=GetValue($children);
+            }
+        $ergebnis=array();
+        foreach ($this->getErgebnis() as $index => $entry)
+            {
+            if ( (isset($entry["Short"])) && (isset($entry["Index"])) ) 
+                {
+                $ergebnis[$entry["Index"]]["Short"]=$entry["Short"];
+                if (isset($result[$entry["Short"]])) $ergebnis[$entry["Index"]]["Target"] = $result[$entry["Short"]];
+                }
+            //print_R($entry);
+            }
+
+        return ($ergebnis);
+        }
+
+    /* Statemachine abarbeiten, min Function
+     */
+    public function runAutomatic($step=0)
+        {
+        echo "runAutomatic SeleniumYahooFin Step $step.\n";
+        switch ($step)
+            {
+            case 0:         // yahoo consent
+                echo "--------\n0: check if there is consent window, accept.\n";
+                $result=$this->pressConsentButtonIf();          // den Consent Button clicken, wenn er noch da ist, spätestens nach 2 Sekunden aufgeben
+                if  ($result === false) echo "Consent Button not found.";
+
+                break;
+            case ($this->index+1):
+                echo "--------\n".($this->index+1).": ";
+                //echo json_encode($this->symbols)."\n";
+                $num=GetValue($this->IndexToSymbols);
+                if ( (isset($this->symbols[($num)]["Short"])) && ($this->index<8) ) 
+                    {
+                    $shareID=$this->symbols[($num)]["Short"];
+                    echo "go to url with \"$shareID\".\n";
+                    //$this->index++;
+                    $result=$this->goToShareLink($shareID);
+                    echo $result;
+                    }
+                else $this->index+=3;
+                break;
+            case ($this->index+2):
+                echo "--------\n";
+                echo ($this->index+2).": get Ergebnis.\n";
+                $ergebnis = $this->getJahresKursziel();
+                $num=GetValue($this->IndexToSymbols);
+                $this->symbols[($num)]["Target"]=$ergebnis;
+                $this->index+=2;
+                $this->addIndexToSymbols(1);                // index um eins weiterzählen
+                //echo $ergebnis;
+                $result=json_encode($this->symbols);
+                return(["Ergebnis" => $result]);                                //Zwischenergebnis wegspeichern 
+                break;
+            case ($this->index+3):
+                echo "--------\n";
+                echo ($this->index+3).": ready.\n";
+                $result=json_encode($this->symbols);
+                return(["Ergebnis" => $result]); 
+                break;               
+            default:
+                return (false);
+            }
+
+        }
+
+    /* Consent on Privacy, press Button
+     */
+    function pressConsentButtonIf()
+        {        
+        /* Consent Window click xpath
+         * /html/body/div/div/div/div/form/div[2]/div[2]/button
+         */
+        $xpath='/html/body/div/div/div/div/form/div[2]/div[2]/button';
+        return($this->pressButtonIf($xpath));
+        }
+
+    /* goto share link
+     *  das ist ein Link hier hin: https://de.finance.yahoo.com/quote/SAP?p=SAP
+     *
+     */
+    function goToShareLink($shareID)
+        {
+        $url='de.finance.yahoo.com/quote/'.$shareID.'?p='.$shareID;
+        return($this->updateUrl($url));
+        } 
+
+    /* get 1 Jahres Kursziel
+     * /html/body/div[1]/div/div/div[1]/div/div[3]/div[1]/div/div[1]/div/div[2]/div[2]/table/tbody/tr[8]/td[2]
+     * //*[@id="quote-summary"]/div[2]/table/tbody/tr[8]/td[2]
+     */
+    function getJahresKursziel()
+        {
+        //$xpath='/html/body/div[1]/div/div/div[1]/div/div[3]/div[1]/div/div[1]/div/div[2]/div[2]/table/tbody/tr[8]/td[2]';
+        $xpath='//*[@id="quote-summary"]/div[2]/table/tbody/tr[8]/td[2]';
+        //$ergebnis = $this->getHtmlIf($xpath,$this->debug);  
+        $ergebnis = $this->getTextIf($xpath,$this->debug);
+        if ($ergebnis !== false)
+            {
+            if ($this->debug) echo "found fetch data, length is ".strlen($ergebnis)."\n";  
+            if ((strlen($ergebnis))>3) 
+                {
+                if(strstr($ergebnis, ",")) 
+                    {
+                    $ergebnis = str_replace(".", "", $ergebnis); // replace dots (thousand seps) with blancs
+                    $ergebnis = str_replace(",", ".", $ergebnis); // replace ',' with '.' 
+                    }                   
+                $result = floatval($ergebnis);
+                echo "\"$ergebnis\" ergibt $result";
+                return($result);
+                }
+            else echo $ergebnis;
+            }
+        return (false);
+        }
+
+    }
+
+
+
+
 /* 
  * Bei LogWien einlogen und die aktuellen Zählerstände auslesen
  * RunAutomatic legt die einzelnen Schritte bis zur Auslesung des täglichen Stromzählerstandes fest
@@ -787,7 +1054,7 @@ class SeleniumLogWien extends SeleniumHandler
      */
     function writeEnergyValue($value,$name="EnergyCounter")
         {
-        $componentHandling = new ComponentHandling();           // um Logging zu setzen
+        $componentHandling = new ComponentHandling();           // um Logging mit Historisietrung (Archive) zu setzen
         $categoryIdResult = $this->getResultCategory();
         echo "Store the new values, Category LogWien RESULT $categoryIdResult.\n";
     
@@ -1075,6 +1342,7 @@ class SeleniumDrei extends SeleniumHandler
         $this->duetime=microtime(true);
         $this->retries=0;
         $this->debug=$debug;
+        parent::__construct();          // nicht vergessen den parent construct auch aufrufen
         }
 
     /* seleniumDrei::runAutomatic
@@ -1370,6 +1638,7 @@ class SeleniumIiyama extends SeleniumHandler
         $this->duetime=microtime(true);
         $this->retries=0;
         $this->debug=$debug;
+        parent::__construct();          // nicht vergessen den parent construct auch aufrufen
         }
 
     /* SeleniumIiyama::runAutomatic
@@ -1506,17 +1775,26 @@ class SeleniumIiyama extends SeleniumHandler
 
 /* Bei Easycharts einlogen und die aktuellen Portfolio Kurse auslesen
  * zusaetzliche Funktionen sind
- *      __construct
- *      getResultCategory
- *      getEasychartConfiguration
+ *      __construct                         OID von Kategorie EASY in data herausfinden und speichern
+ *      getResultCategory                   OID von Kategorie EASY in data ausgeben
+ *      getEasychartConfiguration           Easychart Configuration und Orderbook 
+ *      getEasychartOrderConfiguration
+ *      getEasychartSharesConfiguration     die bereits ausgef+ührten Splits um die Aktienkurse zurückzurechnen
  *      parseResult
  *      evaluateResult
  *      evaluateValue
- *      writeResult         die Ergebnisse in spezielle Register schreiben
+ *      writeResult                         die Ergebnisse in spezielle Register schreiben
+ *      getDebotBooksfromConfig             aus der Guthaben Configuration für die Arbeit von Selenium
  *      writeResultConfiguration
+ *      updateResultConfigurationSplit      in die interne Konfiguration auch Split Werte dazunehmen
  *      getResultConfiguration
+ *      showDepotConfiguration
+ *      getSplitfromOid
+ *      showDepotConfigurations             // es werden auch mehrer Depots ausgegeben wo lookup passt, es gibt einen index
  *      writeResultAnalysed
  *      calcOrderBook
+ *      createDepotBook
+ *      evaluateDepotBook
  *      runAutomatic
  *
  * Funktionen zum Einlesen des Host
@@ -1556,11 +1834,52 @@ class SeleniumEasycharts extends SeleniumHandler
         return($this->CategoryIdDataEasy);
         }
 
+    /* Easychart Configuration und Orderbook 
+     * zwei unterschiedliche Formatierungen, angleichen auf Standard flexibles Format
+     * Orderbook ist mit Index Orders und Short
+     */
     function getEasychartConfiguration()
         {
-        return (get_EasychartConfiguration());
+        $orderbook=array();    
+        foreach (get_EasychartConfiguration() as $index => $entry)
+            {
+            // parse configuration, entry ist der Input und orderbook der angepasste Output
+            configfileParser($entry, $orderbook[$index], ["ORDERS","Orders","Order","orders" ],"Orders" , null); 
+            /*if (isset($entry["Orders"])) $orderbook[$index]["Orders"]=$entry["Orders"];
+            elseif (isset($entry["Order"])) $orderbook[$index]["Orders"]=$entry["Order"];
+            elseif (isset($entry["ORDERS"])) $orderbook[$index]["Orders"]=$entry["ORDERS"];
+            else $orderbook[$index]["Orders"]=$entry;  */
+            if ((isset($orderbook[$index]["Orders"]))===false) $orderbook[$index]["Orders"]=$entry;
+            configfileParser($entry, $orderbook[$index], ["Short","SHORT","short","Shortname","ShortName" ],"Short" , null); 
+            }
+        return ($orderbook);
         }
 
+    /* Easychart Configuration und Orderbook 
+     * zwei unterschiedliche Formatierungen, angleichen auf Standard flexibles Format
+     * Orderbook ist ohne Index Orders und Short
+     */
+    function getEasychartOrderConfiguration()
+        {
+        $orderbook=array();    
+        foreach (get_EasychartConfiguration() as $index => $entry)
+            {
+            // parse configuration, entry ist der Input und order der angepasste Output
+            configfileParser($entry, $order, ["ORDERS","Orders","Order","orders" ],"Orders" , null); 
+            if ((isset($order["Orders"]))===false) $order["Orders"]=$entry;
+            $orderbook[$index]=$order["Orders"];
+            }
+        return ($orderbook);
+        }
+    
+    /* weitere Konfiguration, hier stehen alle Splits drinnen
+     */
+
+    function getEasychartSharesConfiguration()
+        {
+        return (get_EasychartSharesConfiguration());
+        }
+        
    /* extract table, function to get fixed elements of a table line per line     
      * input ist array mit Eintraegen pro Spalte (umgewandelt aus dem resultat mit zeienumbrüchen)
      * hier sind die Formatierungsanweiseungen: 
@@ -1696,7 +2015,9 @@ class SeleniumEasycharts extends SeleniumHandler
         return($shares);
         }
 
-    /* Summe der Aktienwerte ausrechnen und in der richtigen Reihenfolge darstellen */
+    /* Summe der Aktienwerte ausrechnen und in der richtigen Reihenfolge darstellen 
+     * zum Vergleich Depotwert mit Easycharts
+     */
 
     public function evaluateValue($shares)
         {
@@ -1714,14 +2035,18 @@ class SeleniumEasycharts extends SeleniumHandler
         return ($value);            
         }
 
-    /* EASY, Werte im Data Block speichern */
+    /* EASY, Werte im Data Block speichern 
+     * die ermittelten Werte im Archiv speichern, festellen wenn etwas nicht stimmt
+     * es kann ein vorher ermittelter Depotwert geschrieben werden
+     *
+     */
 
-    function writeResult(&$shares, $nameDepot="MusterDepot",$value=0)
+    function writeResult(&$shares, $nameDepot="MusterDepot",$value=0, $debug=false)
         {
         $componentHandling = new ComponentHandling();           // um Logging zu setzen
 
         $categoryIdResult = $this->getResultCategory();
-        echo "Store the new values, Category Easy RESULT $categoryIdResult.\n";
+        if ($debug) echo "seleniumEasycharts::writeResult, store the new values, Category Easy RESULT $categoryIdResult.\n";
     
         $share=array();
         if ($value != 0)                      // Default Wert
@@ -1752,9 +2077,34 @@ class SeleniumEasycharts extends SeleniumHandler
             //print_r($share);
             /* only once per day, If there is change */
             if (GetValue($oid) != $value) SetValue($oid,$value);
+            elseif ($debug)
+                {
+                echo "gleicher Wert $value at ".IPS_GetName($oid)." ($oid)  last changed: ".date("d.m.Y H:i:s",IPS_GetVariable($oid)["VariableChanged"])."   ";
+                //print_r($share);
+                if (isset($share["Name"])) echo $share["Name"];
+                echo "\n"; 
+                }
             }
         }
 
+    /* Easycharts muss mit Selenium zwei Depots auslesen
+     *
+     */ 
+    function getDebotBooksfromConfig($configTabs)
+        {
+        //$configTabs = $guthabenHandler->getSeleniumTabsConfig("EASY");
+        //print_R($configTabs);
+        $depotRegister=["RESULT"];
+        if (isset($configTabs["Depot"]))
+            {
+            if (is_array($configTabs["Depot"]))
+                {
+                $depotRegister=$configTabs["Depot"];    
+                }
+            else $depotRegister=[$configTabs["Depot"]];
+            }
+        return ($depotRegister);
+        }
 
     /* Easycharts speichert die Konfiguration des Musterdepots
      * etwas kompliziert. Es gibt ein Musterdepot in dem alle Werte gespeichert sind
@@ -1780,9 +2130,41 @@ class SeleniumEasycharts extends SeleniumHandler
             $config[$share["ID"]]["Stueck"]=$share["Stueck"];
             if (isset($share["Kosten"])) $config[$share["ID"]]["Kosten"]=$share["Kosten"];
             if (isset($share["Name"])) $config[$share["ID"]]["Name"]=$share["Name"];
+            if (isset($share["Split"])) $config[$share["ID"]]["Split"]=$share["Split"];
             }
         SetValue($oid,json_encode($config));
         echo "Konfiguration Depot $nameDepot: ".GetValue($oid)."\n";
+        }
+
+    /* Split Konfiguration dazunehmen, da die Konfiguration immer aus Easycharts wieder überschrieben wird
+     * ist auch in Gutahabensteuerung_configuration gespeichert
+     */
+
+    function updateResultConfigurationSplit(&$shares,$split=false,$debug=false)
+        {
+        if ($split===false)
+            {
+            $split = $this->getEasychartSharesConfiguration();
+            if ($debug)
+                {
+                echo "Split Entries taken from Config:\n";
+                print_R($split);
+                }
+            }
+        foreach ($shares as $id => $share)
+            {
+            $shareID=$share["ID"];
+            if (isset($split[$shareID])) 
+                {
+                echo "Split Eintrag für $id mit $shareID gefunden.\n";
+                if (isset($shares[$id]["Split"])) 
+                    {
+                    echo "Warning, Split already set.\n";
+                    unset($shares[$id]["Split"]);
+                    }
+                $shares[$id]["Split"]=$split[$shareID];
+                }
+            }        
         }
 
     /* Easycharts speichert die Konfiguration des Musterdepots
@@ -1815,6 +2197,116 @@ class SeleniumEasycharts extends SeleniumHandler
         return($config);
         }
 
+    /* eine Depot Konfiguration finden mit Lookup als Eintrag
+     * zuerst werden die Depotnamen Depotkonfigurationen gesucht die einen Eintrag von Lookup haben
+     * alternativ kann man eine Depotnamen bereits angeben
+     *
+     */
+
+    function showDepotConfiguration($lookup,$nameDepot=false,$debug=false)
+        {
+        if ($debug) echo "showDepotConfiguration($lookup,$nameDepot,...) aufgerufen.\n";
+        $result=false;
+        if ($nameDepot===false)
+            {
+            if ($debug) echo "Ein Depot finden in dem OID $lookup gelistet ist:\n";
+            $resultDepotArray=$this->showDepotConfigurations($lookup,$debug);            // es werden auch mehrer Depots ausgegeben, es gibt einen index
+            //print_R($resultDepotArray);
+            if (is_array($resultDepotArray))
+                {
+                foreach ($resultDepotArray as $resultDepot)
+                    {
+                    if (isset($resultDepot["Depot"])) $nameDepot = $resultDepot["Depot"]["Name"];
+                    }
+                }
+            }
+        if ($nameDepot!==false)
+            {
+            $config = $this->getResultConfiguration($nameDepot);
+            foreach ($config as $id => $configEntry)
+                {
+                if ($configEntry["OID"]==$lookup) return ($configEntry);
+                }
+            }
+        return($result);
+        }
+
+    /* für eine DepotKonfiguration die mit der OID erkenntlich gemacht wurde
+     *
+     */
+
+    function getSplitfromOid($oid,$debug=false)
+        {
+        if ($debug) echo "getSplitfromOid($oid,..) aufgerufen.\n";
+        $configuration = $this->showDepotConfiguration($oid,false,$debug);                           // eine Depot Konfiguration finden
+        if ($debug) print_r($configuration);
+        if (isset($configuration["Split"])) return $configuration["Split"];
+        else 
+            {
+            if ($debug) print_r($configuration);
+            return false;
+            }
+        }
+
+    /* Easycharts speichert die Konfiguration des Musterdepots im Namen beginnend mit Config im EASY Result
+     * In den Depotkonfigurationen ein Musterdepot mit einer speziellen Aktie suchen
+     * lookup kann false, ein String oder eine OID Zahl sein
+     * bei false werden alle, sonnst nur die bei denen die OID oder der Name gleich ist
+     * Ausgabe als ein Array mit einem Array Eintrag [Depot] mit Name und OID
+     */
+
+    function showDepotConfigurations($lookup=false,$debug=false)
+        {
+        if ($debug) echo "showDepotConfigurations($lookup,...) aufgerufen.\n";
+        $result=false;
+        $categoryIdResult = $this->getResultCategory();
+        $childrens=IPS_GetChildrenIDs($categoryIdResult);
+        $index=0;           //  mehrer Depots als Ergebnis, index vergeben          
+        //print_r($childrens);
+        foreach ($childrens as $children) 
+            {
+            $name=IPS_GetName($children);
+            $pos1 = strpos($name,"Config");
+            if ($pos1===0)                                              //Children fangt mit Config an
+                {
+                $name=substr($name,$pos1+strlen("Config"));             //Name ohne Config am Anfang ermitteln
+                $shares = json_decode(GetValue($children),true);                   // Config auslesen und anspeichern als array
+                $shareInfo=""; $found=false;
+                foreach ($shares as $id=>$share)
+                    {
+                    if (isset($share["Name"])) 
+                        {
+                        $shareInfo .= $share["Name"]." "; 
+                        if ($lookup===false) $found=true;
+                        elseif (is_numeric($lookup))
+                            {
+                            if ($lookup == $share["OID"]) $found=true;    
+                            }
+                        else
+                            {
+ 
+                            $pos2=strpos($share["Name"],$lookup);
+                            if ($pos2 !==false) $found=$id;
+                            $pos2=strpos(strtoupper($share["Name"]),strtoupper($lookup));
+                            if ($pos2 !==false) $found=$id;
+                            }
+                        }
+                    //print_R($share);
+                    //$pos2=
+                    }
+                if ($debug) echo str_pad($name,32).count($shares)." \n";
+                if ($found)
+                    {                    
+                    if ($debug) echo $found."     ".$shareInfo."\n";
+                    $result[$index]["Depot"]["Name"]=$name;
+                    $result[$index]["Depot"]["OID"]=$children;
+                    $index++;
+                    }
+                //print_R($shares);
+                }
+            }
+        return($result);
+        }
 
     /* Easycharts writeResultAnalysed analysiert und ermittelt verschiedene darstellbare Ergebnisse
      * zwei Darstellungsformen, echo Text Tabelle oder html formatierte Tabelle
@@ -1839,7 +2331,7 @@ class SeleniumEasycharts extends SeleniumHandler
         $table=false; $wert = "";
         $sort="Change";
         $lines=false; $countLines=0;
-        if (is_array($size)) echo "Angabe er Konfiguration mit einem Array. Umwandeln.\n";
+        if (is_array($size)) echo "Angabe der Konfiguration mit einem Array. Umwandeln.\n";
         else
             {
             if ($size<0) 
@@ -1866,9 +2358,16 @@ class SeleniumEasycharts extends SeleniumHandler
             $wert.='#easycharts th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; }';
             $wert.="</style>";                
             //echo $size;
-            $wert .= '<font size="1" face="Courier New" ><table id="easycharts"><tr><td>ID/Name</td><td>Standard<br>Abw</td><td>Spread Max/Min</td><td>';
-            if ($size>0) $wert .= '++/--</td><td>Min</td><td>Max</td><td>Order</td><td>Win/Loss</td><td>';
+            $wert .= '<font size="1" face="Courier New" ><table id="easycharts"><tr><td>ID/Name</td><td>';
+            if ($size>2) $wert .= '';           // mehr externe Analytics als eigene Auswertungen anzeigen 
+            else 
+                {
+                $wert .= 'Standard<br>Abw</td><td>Spread Max/Min</td><td>';
+                if ($size>0) $wert .= '++/--</td><td>';
+                }
+            if ($size>0) $wert .= 'Min</td><td>Max</td><td>Order</td><td>Win/Loss</td><td>';
             else $wert .= 'Mittelwert</td><td>';
+            if ($size>2) $wert .= 'Target</td><td>';           // Show Analytic Information from YahooFin or Others
             if ($size>1) $wert .= 'Letzter Wert</td><td>Month Trend</td><td>Week Trend</td><td>Day Change</td><td>Recommendation</td></tr>';
             else $wert .= 'Letzter Wert</td><td>Week Trend</td><td>Day Change</td><td>Recommendation</td></tr>';
             }
@@ -1877,7 +2376,7 @@ class SeleniumEasycharts extends SeleniumHandler
         $sortTable=array();
         foreach ($resultShares as $index => $share)
             {
-            $sortTable[$index] = $share["Description"]["Change"];
+            if (isset($share["Description"]["Change"])) $sortTable[$index] = $share["Description"]["Change"];           // wenn kein Change existiert erfolgt auch kein Eintrag in der Tabelle
             }
         arsort($sortTable);
         //print_R($sortTable);
@@ -1893,7 +2392,7 @@ class SeleniumEasycharts extends SeleniumHandler
             $rating=0;
             if (isset($resultShares[$index]["Info"]["Name"])) $name=$resultShares[$index]["Info"]["Name"];
             else $name="";
-            if ($resultShares[$index]["Description"]["StdDevRel"]<5) 
+            if ( (isset($resultShares[$index]["Description"]["StdDevRel"])) && ($resultShares[$index]["Description"]["StdDevRel"]<5) )
                 {
                 $rating += 1;
                 $strength=1.2;          // Bewertung StDevPos zu StdDevNeg
@@ -1904,7 +2403,7 @@ class SeleniumEasycharts extends SeleniumHandler
             $spreadPlus  = ($resultShares[$index]["Description"]["Max"]/$resultShares[$index]["Description"]["Means"]-1)*100;
             $spreadMinus = (1-$resultShares[$index]["Description"]["Min"]/$resultShares[$index]["Description"]["Means"])*100;
             $description="";
-            if (($resultShares[$index]["Description"]["StdDevPos"]+$resultShares[$index]["Description"]["StdDevNeg"])>5)           // 5% in welchem Zeitraum, bei Report der eingestellten Dauer, zB 3 Monate, sonst alle
+            if ( (isset($resultShares[$index]["Description"]["StdDevPos"])) && (($resultShares[$index]["Description"]["StdDevPos"]+$resultShares[$index]["Description"]["StdDevNeg"])>5) )           // 5% in welchem Zeitraum, bei Report der eingestellten Dauer, zB 3 Monate, sonst alle
                 {
                 if ($resultShares[$index]["Description"]["StdDevPos"]>($strength*$resultShares[$index]["Description"]["StdDevNeg"])) 
                     {
@@ -1919,17 +2418,17 @@ class SeleniumEasycharts extends SeleniumHandler
                 $result=$this->calcOrderBook($resultShares[$index]["Order"]);
                 if ($result["pcs"]>0)
                     {
-                    if (($resultShares[$index]["Description"]["Latest"]*$targetSell)<$resultShares[$index]["Description"]["Interval"]["Full"]["Max"]) 
+                    if (($resultShares[$index]["Description"]["Latest"]["Value"]*$targetSell)<$resultShares[$index]["Description"]["Interval"]["Full"]["Max"]) 
                         {
                         if ($trendPerc < (-10)) $description .= " Sell!";
                         elseif ($trendPerc < (-5)) 
                             {
-                            if (($resultShares[$index]["Description"]["Latest"]*$targetSellNow)<$resultShares[$index]["Description"]["Interval"]["Full"]["Max"]) $description .= " Sell";
+                            if (($resultShares[$index]["Description"]["Latest"]["Value"]*$targetSellNow)<$resultShares[$index]["Description"]["Interval"]["Full"]["Max"]) $description .= " Sell";
                             else $description .= " Hold";
                             }
                         else $description .= " Buy";
                         }
-                    if ($resultShares[$index]["Description"]["Latest"]>($resultShares[$index]["Description"]["Interval"]["Full"]["Min"]*$targetSell)) $description .= " Sell";
+                    if ($resultShares[$index]["Description"]["Latest"]["Value"]>($resultShares[$index]["Description"]["Interval"]["Full"]["Min"]*$targetSell)) $description .= " Sell";
                     }
                 }
             if ( (isset($resultShares[$index]["Order"])===false) || ($result["pcs"]==0))
@@ -1956,25 +2455,45 @@ class SeleniumEasycharts extends SeleniumHandler
                 $zeile="";
                 if ($name=="") $zeile .= '<tr><td>'.$resultShares[$index]["Info"]["ID"].'</td>';              // ein Tab reicht für beide
                 else $zeile .= '<td>'.$name.'</td>';
-                $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevRel"],2,",",".")."%".'</td>';
-                //$zeile .= '<td>'.number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%".'</td>';                   // nur Prozent PosMax/negMax zu Mittelwert ist uns zu wenig
-                $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevPos"],2,",",".")."/".number_format($resultShares[$index]["Description"]["StdDevNeg"],2,",",".")."%".'</td>';
+                if ($size>2) $zeile .= '';           // erweiterte Darstellung, mehr externe Analytics statt eigen Auswertungen
+                else
+                    {
+                    if (isset($resultShares[$index]["Description"]["StdDevRel"])) $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevRel"],2,",",".")."%".'</td>';
+                    else $zeile .= '<td></td>';
+                    //$zeile .= '<td>'.number_format($spreadPlus,2,",",".")."/".number_format($spreadMinus,2,",",".")."%".'</td>';                   // nur Prozent PosMax/negMax zu Mittelwert ist uns zu wenig
+                    if (isset($resultShares[$index]["Description"]["StdDevPos"])) $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["StdDevPos"],2,",",".")."/".number_format($resultShares[$index]["Description"]["StdDevNeg"],2,",",".")."%".'</td>';
+                    else $zeile .= '<td></td>';
+                    if ($size>0)            // erweiterte Darstellung
+                        {
+                        if ($debug) echo "$name ";
+                        if (isset($resultShares[$index]["Description"]["CountPos"]))$zeile .= '<td>'.$resultShares[$index]["Description"]["CountPos"]."/".$resultShares[$index]["Description"]["CountNeg"].'</td>';
+                        else $zeile .= '<td></td>';
+                        }
+                    }
                 if ($size>0)            // erweiterte Darstellung
                     {
-                    $zeile .= '<td>'.$resultShares[$index]["Description"]["CountPos"]."/".$resultShares[$index]["Description"]["CountNeg"].'</td>';
                     $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["Interval"]["Full"]["Min"],2,",",".")."€".'</td>';
                     $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["Interval"]["Full"]["Max"],2,",",".")."€".'</td>';
                     $order=""; $winLoss="";
                     if (isset($resultShares[$index]["Order"])) 
                         {
+                        if ($debug) 
+                            {
+                            echo "Order "; 
+                            print_r($resultShares[$index]["Order"]);
+                            }
                         $orderBook=$resultShares[$index]["Order"];
                         if ($result["pcs"]>0)
                             {
-                            $winLoss = ($resultShares[$index]["Description"]["Latest"]/($result["cost"]/$result["pcs"])-1)*100;   // in Prozent
+                            $winLoss = ($resultShares[$index]["Description"]["Latest"]["Value"]/($result["cost"]/$result["pcs"])-1)*100;   // in Prozent
                             $winLoss = number_format($winLoss,2,",",".")."%";
                             }
                         $orderEntry=$orderBook[array_key_last($orderBook)];
-                        //echo "Letzte Veränderung, Order Book:\n";  print_R($orderEntry);
+                        if ($debug) 
+                            {
+                            echo "Book :\n";  
+                            print_R($orderEntry);
+                            }
                         if (isset($orderEntry["price"])) 
                             {
                             if ($orderEntry["pcs"]<0) $order ="s ";
@@ -1986,12 +2505,21 @@ class SeleniumEasycharts extends SeleniumHandler
                     $zeile .= '<td>'.$winLoss.'</td>';   
                     }
                 else $zeile .= '<td>'.number_format($resultShares[$index]["Description"]["Means"],2,",",".")."€".'</td>';
-
+                if ($size>2)            // Show Analytic Information from YahooFin or Others
+                    {
+                    if (isset($resultShares[$index]["Description"]["Target"])) 
+                        {
+                        $bgcolor="";
+                        if ($resultShares[$index]["Description"]["Latest"]["Value"]>(0.97*$resultShares[$index]["Description"]["Target"])) $bgcolor='bgcolor="green"';
+                        $zeile .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Target"],2,",",".")."€".'</td>';
+                        }
+                    else $zeile .= '<td>'.'</td>';   
+                    }
                 // Darstellung letzter Wert, also der aktuelle Börsenkurs
                 $bgcolor="";
-                if ( ($spreadPlus >10) && ($resultShares[$index]["Description"]["Latest"]>(0.97*$resultShares[$index]["Description"]["Interval"]["Full"]["Max"])) ) $bgcolor='bgcolor="green"';
-                if ( ($spreadMinus>10) && ($resultShares[$index]["Description"]["Latest"]<(1.03*$resultShares[$index]["Description"]["Interval"]["Full"]["Min"])) ) $bgcolor='bgcolor="red"';
-                $zeile .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Latest"],2,",",".")."€".'</td>';
+                if ( ($spreadPlus >10) && ($resultShares[$index]["Description"]["Latest"]["Value"]>(0.97*$resultShares[$index]["Description"]["Interval"]["Full"]["Max"])) ) $bgcolor='bgcolor="green"';
+                if ( ($spreadMinus>10) && ($resultShares[$index]["Description"]["Latest"]["Value"]<(1.03*$resultShares[$index]["Description"]["Interval"]["Full"]["Min"])) ) $bgcolor='bgcolor="red"';
+                $zeile .= '<td '.$bgcolor.'>'.number_format($resultShares[$index]["Description"]["Latest"]["Value"],2,",",".")."€".'</td>';
                 if ($trendPerc != 0) $trend = number_format($trendPerc,2,",",".")."%";
                 else $trend="";
                 if ($size>1)            // Show Month, Week and Day Trend, otherwise it shows week and day trend only
@@ -2041,7 +2569,7 @@ class SeleniumEasycharts extends SeleniumHandler
                 echo str_pad(number_format($resultShares[$index]["Description"]["Means"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
                 if (isset($resultShares[$index]["Description"]["Trend"],)) echo str_pad(number_format($resultShares[$index]["Description"]["Trend"],2,",",".")."%",12," ", STR_PAD_LEFT);
                 else echo "             ";
-                echo str_pad(number_format($resultShares[$index]["Description"]["Latest"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
+                echo str_pad(number_format($resultShares[$index]["Description"]["Latest"]["Value"],2,",",".")." Euro",18," ", STR_PAD_LEFT);
                 echo str_pad(number_format($resultShares[$index]["Description"]["Change"],2,",",".")."%",12," ", STR_PAD_LEFT);
                 echo "   $description ";
                 echo "\n";
@@ -2064,6 +2592,7 @@ class SeleniumEasycharts extends SeleniumHandler
 
     public function calcOrderBook($orderbook,$debug=false)
         {
+        if (isset($orderbook["Orders"])) $orderbook = $orderbook["Orders"];         // kompatibilität mit alter Darstellung
         $pcs=0; $pcs1=0;    
         $cost = 0; $cost1 = 0; 
         foreach ($orderbook as $date => $order)
@@ -2164,6 +2693,7 @@ class SeleniumEasycharts extends SeleniumHandler
 
     /* evaluate Depotbook verwendet Kosten und Stueck um den Wert des Depots zu berechnen
      * calcOrderbook nicht mehr notwendig, es gibt bereits Stueck und Kosten
+     * createDepotBook wird vorher aufgerufen und generiert das depotbook
      * Depotbook wird um zusätzliche Daten erweitert
      *
      */
@@ -2175,11 +2705,14 @@ class SeleniumEasycharts extends SeleniumHandler
             {
             echo "\n";
             echo "evaluateDepotBook:\n";
-            echo str_pad("",105)."|           Geld         Geld Acc         Wert         Gewinn\n";
             }
         $countMax=false;
 
+        /* die Depotwerte zu jedem Zeitpunkt berechnen, Grundgerüst anlegen udn vorhandene Werte auswerten */
+        echo "Grundgeruest anlegen:\n";
         $valuebook=array();
+        $failures=array();
+        $resultValues=array();
         foreach ($depotbook as $id => $book)
             {
             //echo $id."  ";
@@ -2190,28 +2723,36 @@ class SeleniumEasycharts extends SeleniumHandler
                     {
                     //echo ".";
                     $indexTimeDay=date("ymd",$wert["TimeStamp"]);
-                    $valuebook[$indexTimeDay]["TimeStamp"]=$wert["TimeStamp"];
-                    $valuebook[$indexTimeDay]["Value"] = 0;
-                    if (isset($valuebook[$indexTimeDay]["ID"])) 
+                    $resultValues[$indexTimeDay]["TimeStamp"]=$wert["TimeStamp"];
+                    $resultValues[$indexTimeDay]["Value"] = 0;
+                    $valuebook[$id]["Values"][$indexTimeDay]=$wert;
+                    if (isset($resultValues[$indexTimeDay]["ID"])) 
                         {
-                        $pos1=strpos($valuebook[$indexTimeDay]["ID"],$id);
-                        if ($pos1 !==false) echo "doppelter Eintrag für ID $id am $indexTimeDay !\n";
-                        else $valuebook[$indexTimeDay]["ID"] .= " ".$id;
+                        $pos1=strpos($resultValues[$indexTimeDay]["ID"],$id);
+                        if ($pos1 !==false) 
+                            {
+                            //echo "doppelter Eintrag für ID $id am $indexTimeDay !\n";
+                            if (isset($failure[$indexTimeDay]["ID"]["Double"])) $failure[$indexTimeDay]["ID"]["Double"] .= " ".$id;
+                            else $failure[$indexTimeDay]["ID"]["Double"] = $id;
+                            }
+                        else $resultValues[$indexTimeDay]["ID"] .= " ".$id;
                         }
                     else 
                         {
-                        $valuebook[$indexTimeDay]["ID"] = $id;
+                        $resultValues[$indexTimeDay]["ID"] = $id;
                         }
 
                     }
                 }
+            else echo "evaluateDepotBook, Fehler, keine Werte vorhanden für $id obwohl im Depotbook.\n";
             }
-        ksort($valuebook);
-        $depotbook["Value"]=$valuebook;
+        ksort($resultValues);
         $countMax=36;
         //echo "\n";
 
+        echo "Tabelle berechnen:\n";
         $knownValues=array();
+        if ($debug) echo str_pad("",130)."|           Geld         Geld Acc         Wert         Wert Acc\n";
         foreach ($depotbook as $id => $book)
             {
             $latest=0; $kursKauf=0;
@@ -2277,6 +2818,35 @@ class SeleniumEasycharts extends SeleniumHandler
             echo "Gesamtergebnis Depot ist Kosten ".nf($spend,"€")." und Wert ".nf($actual,"€")."\n";
             }
 
+        /* wir fangen mit dem ältesten Datum an und arbeiten uns in die Gegenwart, 
+         * dazu gehen wir das Depotbook durch und schauen ob es einen Eintrag in Resultshares gibt 
+         */  
+        $once=false;            // false, keinen Verlauf ausgeben
+        foreach ($resultValues as $indexTimeDay => $entry)
+            {
+            foreach ($depotbook as $id => $book)
+                {
+                if ($book["Stueck"]>0) 
+                    {
+                    if (isset($valuebook[$id]["Values"][$indexTimeDay]))              // wenn nicht mehr im actualDepot oder im depotbook keine Stück erfolgt keine Ausgabe 
+                        {
+                        if ($once) { print_R($valuebook[$id]["Values"]); $once=false; }
+                        $resultValues[$indexTimeDay]["Value"] += $valuebook[$id]["Values"][$indexTimeDay]["Value"]*$book["Stueck"];
+                        $knownValues[$id]=$valuebook[$id]["Values"][$indexTimeDay];
+                        }
+                    else
+                        {
+                        $resultValues[$indexTimeDay]["Value"] += $knownValues[$id]["Value"]*$book["Stueck"];
+                        if (isset($failure[$indexTimeDay]["ID"]["Missing"])) $failure[$indexTimeDay]["ID"]["Missing"] .= " ".$id;
+                        else $failure[$indexTimeDay]["ID"]["Missing"] = $id;                        
+                        }
+                    }
+                }
+  
+            }
+        ksort($failure);
+        print_R($failure);
+        $depotbook["Value"]=$resultValues;
         return(true);
         }
 
@@ -2707,11 +3277,17 @@ class SeleniumOperations
                             }
                         else $debugAll=false;
                         $handler[$index] = $seleniumHandler->getHost($url,$index,$debug);          // öffnen einer url oder umschalten ohne neue url
+                        echo "getHost($url,$index,...) erledigt. \n";
                         if (isset($entry["CLASS"]))
                             {
                             // benannte Class öffnen und eine benannte Routine ausführen
                             if ($step == 0) 
                                 {
+                                if ($debug) 
+                                    {
+                                    if (isset($entry["CLASS"])) echo "New Class ".$entry["CLASS"]."\n";
+                                    else echo "Error, class not defined.\n";
+                                    }
                                 $runSelenium[$index] = new $entry["CLASS"]($debug);
                                 $config=array();
                                 if (isset($entry["CONFIG"])) 

@@ -96,7 +96,10 @@
 	        return ($this->CategoryIdSelenium);
 	        }
             
-        /* Konfiguration ist gekapselt, hier die gesamte Konfiguration ausgeben, wird von setConfiguration ermittelt, Teil von construct */
+        /* Konfiguration aus get_GuthabenConfiguration und get_GuthabenAllgemeinConfig ist gekapselt, 
+         * hier die gesamte Konfiguration ausgeben, wird von setConfiguration ermittelt, 
+         * Teil von construct als Aufruf von setConfiguration 
+         */
 
 		public function getConfiguration()
 	        {
@@ -373,13 +376,27 @@
 
         /* aus der Config die Configuration für die Auslesung der Hosts raussuchen */
 
-        public function getSeleniumHostsConfig()
+        public function getSeleniumHostsConfig($select="ALL")
             {
             $result = array();
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
             if ($this->CategoryIdSelenium===false) return (false);
             $result["Hosts"] = $this->configuration["CONFIG"]["Selenium"]["Hosts"];
-            return ($result);
+            
+            // Filter noch ausprobieren
+            $configResult=array();
+            foreach ($result["Hosts"] as $host => $entry)
+                {
+                $found=false;
+                if (strtoupper($select)=="ALL") $found=true;
+                if ( (isset($entry["CONFIG"])) && (isset($entry["CONFIG"]["ExecTime"])) )
+                    { 
+                    if ( (strtoupper($select)) == (strtoupper($entry["CONFIG"]["ExecTime"])) ) $found=true;
+                    }
+                else $found=true;
+                if ($found) $configResult["Hosts"][$host]=$result["Hosts"][$host];
+                }    
+            return ($configResult);
             }
 
         /* aus der Config die Configuration für die Auslesung der Tabs raussuchen */

@@ -1160,12 +1160,22 @@
                 else $module=$moduleDefault;
 
                 $analyseConfig = ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
-                switch ($module)                    /* für EASY und EASYTREND die Serie der Daten selbst schreiben und nicht auf ein Archiv verweisen */
+
+                 /* für EASY und EASYTREND die Serie der Daten selbst schreiben und nicht auf ein Archiv verweisen 
+                  * compile configuration Highcharts
+                  */
+                switch ($module)                   
                     {
                     case "EASYTREND":
                     case "EASY":
                         $oid=$defserie['Id'];
-                        $resultAll = $archiveOps->analyseValues($oid,$analyseConfig,$this->debug);
+                        IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
+                        IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
+                        $seleniumEasycharts = new SeleniumEasycharts();  
+                        $split=$seleniumEasycharts->getSplitfromOid($oid);
+                        $analyseConfig1=$analyseConfig;
+                        if ($split) $analyseConfig1["Split"]=$split;
+                        $resultAll = $archiveOps->analyseValues($oid,$analyseConfig1,$this->debug);          // oid wurde
                         if ($module=="EASYTREND") 
                             {
                             //if ($this->debug) print_r($resultAll);
@@ -1195,9 +1205,13 @@
                             }
                         else 
                             {
-                            $result=$resultAll["Values"];
-                            $letzte=array_key_last($result);
-                            $scale=100/$result[$letzte]["Value"];
+                            if (is_array($resultAll))
+                                {
+                                $result=$resultAll["Values"];
+                                $letzte=array_key_last($result);
+                                $scale=100/$result[$letzte]["Value"];
+                                }
+                            else $result=array();
                             }                            
                         if ($this->debug) echo "      Darstellung der Daten für die Anzeige von $module:\n";
 
@@ -1308,21 +1322,27 @@
                 case "EASY": 
 
                     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
-                    IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
+                    IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");  
+                    $yahoofin = new SeleniumYahooFin();
+                    $targets = $yahoofin->getResult("TargetValue", false);                //true für Debug
+
                     $seleniumEasycharts = new SeleniumEasycharts();                         
-                    $orderbook=$seleniumEasycharts->getEasychartConfiguration();
-                    $shares=array();
+                    $orderbook = $seleniumEasycharts->getEasychartOrderConfiguration();
+                    $shares    = $seleniumEasycharts->getResultConfiguration($report_config["configuration"][$selectAssociation[$select]]);
+                    /*$shares=array();
                     foreach ($configArray as $index => $share)
                         {
                         $shares[$index]=$share;
                         $shares[$index]["ID"]=$index;
-                        }
+                        }*/
                     $resultShares=array();
                     foreach($shares as $index => $share)                    //haben immer noch eine gute Reihenfolge, wird auch in resultShares übernommen
                         {
                         //print_R($share);
+                        $analyseConfig1=$analyseConfig;         //Backup Config
                         $oid = $share["OID"];
-                        $result = $archiveOps->analyseValues($oid,$analyseConfig,$this->debug);                 // true mit Debug
+                        if (isset($share["Split"])) $analyseConfig1["Split"]=$share["Split"];                   // add split to this config
+                        $result = $archiveOps->analyseValues($oid,$analyseConfig1,$this->debug);                 // true mit Debug
                         if ($this->debug) 
                             {
                             if ( (isset($share["Name"])) && ($share["Name"] != "") ) echo "Bearbeite Share \"".$share["Name"]."\" :\n";
@@ -1333,11 +1353,13 @@
                         $resultShares[$share["ID"]]["Info"]=$share;
                         if (isset($orderbook[$share["ID"]])) $resultShares[$share["ID"]]["Order"]=$orderbook[$share["ID"]];
                         $archiveOps->addInfoValues($oid,$share);
+                        if (isset($targets[$index])) $resultShares[$index]["Description"]["Target"]=$targets[$index]["Target"];
                         } 
                     //print_r($resultShares);
-                    $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true,2);                       // true for html, 1 as size
+                    $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true,3);                       // true for html, 1 as size
                     $DataTableID   = IPS_GetObjectIdByName("ReportDataTable",   $this->categoryIdData);  
-                    //echo "gefunden $DataTableID" ;                  
+                    //echo "write html Table ($DataTableID) based on resultshares (".json_encode($analyseConfig)."):";
+                    //print_r($analyseConfig);
                     SetValue($DataTableID,$wert);                                                                           // eine schöne Tablee schreiben
                     break;
                 default:
