@@ -12,7 +12,9 @@
  */
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
 IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
@@ -29,155 +31,184 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(400); 
     $startexec=microtime(true);
-    
-echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n<br>";
-$status=RemoteAccessServerTable();
-print_r($status);
 
-echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n<br>";
-$remServer=ROID_List();
-print_r($remServer);
+	$remote=new RemoteAccess();
 
-$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-$installedModules=$moduleManager->GetInstalledModules();
-//print_r($result);
+    echo "EvaluateVariables, RemoteAccess für Modulvariablen:\n";    
+    echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n<br>";
+    $status=RemoteAccessServerTable();
+    print_r($status);
 
-echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
-if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "  Modul Guthabensteuerung ist NICHT installiert.\n"; }
-if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCenter ist installiert.\n"; } else { echo "  Modul OperationCenter ist NICHT installiert.\n"; }
-echo "\n";
+    echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n<br>";
+    $remServer=ROID_List();
+    print_r($remServer);
 
-$messageHandler = new IPSMessageHandler();
+    $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+    $installedModules=$moduleManager->GetInstalledModules();
+    //print_r($result);
 
-if (isset ($installedModules["Guthabensteuerung"]))
-	{
-	/* nur wenn Guthabensteuerung installiert ist ausführen */
-	echo "Mobilfunk Guthaben Struktur auf Remote Servern aufbauen:\n";
+    echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
+    if (isset ($installedModules["Guthabensteuerung"])) { 		echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "  Modul Guthabensteuerung ist NICHT installiert.\n"; }
+    if (isset ($installedModules["OperationCenter"])) { 	    echo "  Modul OperationCenter ist installiert.\n"; } else { echo "  Modul OperationCenter ist NICHT installiert.\n"; }
+    if (isset ($installedModules["Autosteuerung"]))         { 	echo "  Modul Autosteuerung ist installiert.\n"; } else { echo "  Modul Autosteuerung ist NICHT installiert.\n"; }
+    echo "\n";
 
-	$struktur=array();$guthID=array();
-	foreach ($remServer as $Name => $Server)
-		{
-		echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-		if ( $status[$Name]["Status"] == true )
-			{
-			$rpc = new JSONRPC($Server["Adresse"]);
-			$guthID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Guthaben");
-			$children=$rpc->IPS_GetChildrenIDs($guthID[$Name]);
-			$struktur[$Name]=array();
-			foreach ($children as $oid)
-				{
-				$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
-				}		
-			}
-		}	
-	echo "Struktur Server :\n";
-	print_r($struktur);
-	
-	/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
+    $messageHandler = new IPSMessageHandler();
 
-	$Guthabensteuerung=GuthabensteuerungList();
-	
-	foreach ($Guthabensteuerung as $Key)
-		{
-		//set_time_limit(120);
-		$oid=(integer)$Key["OID"];
-		$variabletyp=IPS_GetVariable($oid);
-		//print_r($variabletyp);
-		if ($variabletyp["VariableProfile"]!="")
-			{
-			echo "    ".str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
-			}
-		else
-			{
-			echo "    ".str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
-			}
-		$parameter="";
-		foreach ($remServer as $Name => $Server)
-			{
-			echo "   Guthabensteuerung: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-			if ( $status[$Name]["Status"] == true )
-				{			
-				$rpc = new JSONRPC($Server["Adresse"]);
-				$result=RPC_CreateVariableByName($rpc, $guthID[$Name], $Key["Name"], $Key["Typ"],$struktur[$Name]);
-				//$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
-				//$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
-				//$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
-				//$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
-				$parameter.=$Name.":".$result.";";
-				}
-			}
-		$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-		$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
-		}
-	}
+    if (isset ($installedModules["Autosteuerung"]))
+        {
+        /* nur wenn Autosteuerung installiert ist ausführen */
+        echo "Anwesenheitserkennung Struktur auf Remote Servern aufbauen:\n";
+        $struktur = $remote->RPC_CreateModuleByName("Autosteuerung");
+        echo "Struktur Server :\n";
+        print_r($struktur);
+        $remoteAS = new RA_Autosteuerung();
+        $statusAnwesendID = $remoteAS->getStatusAnwesendID();
+        echo "Status Anwesend auf lokaler ID $statusAnwesendID mit Wert \"".(GetValue($statusAnwesendID)?"Anwesend":"Abwesend")."\"\n";
+        $oid=$statusAnwesendID;
 
-//set_time_limit(180);
+            $variabletyp=IPS_GetVariable($oid);
+            $name = IPS_GetName($oid);
 
-if (isset ($installedModules["OperationCenter"]))
-	{
-	/* nur wenn OperationCenter installiert ist ausführen */
+            //print_r($variabletyp);
+            if ($variabletyp["VariableProfile"]!="")                //~Presence
+                {
+                echo "    ".str_pad($name,30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
+                }
+            else
+                {
+                echo "    ".str_pad($name,30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
+                }
+            $parameter="";
+            foreach ($remServer as $Name => $Server)
+                {
+                echo "   Autosteuerung: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+                if ( $status[$Name]["Status"] == true )
+                    {
+                    echo "anlegen\n";
+                    $rpc = new JSONRPC($Server["Adresse"]);
+                    $result=RPC_CreateVariableByName($rpc, $struktur[$Name]["ModuleID"], $name, 0);
+                    $parameter.=$Name.":".$result.";";                    
+                    }
+                }
+            $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');                    
+                        
+        }
 
-	echo "\nSysInfo Struktur auf Remote Servern aufbauen:\n";
-	$SysInfos=SysInfoList();
-	foreach ($SysInfos as $SysInfo)
-		{
-		$oid=(integer)$SysInfo["OID"];
-		$variabletyp=IPS_GetVariable($oid);
-		if ($variabletyp["VariableProfile"]!="")
-			{
-			echo "    ".str_pad($SysInfo["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
-			}
-		else
-			{
-			echo "    ".str_pad($SysInfo["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
-			}	
-		$parameter="";
-		foreach ($remServer as $Name => $Server)
-			{
-			echo "   System Information: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-			if ( $status[$Name]["Status"] == true )
-				{			
-				$rpc = new JSONRPC($Server["Adresse"]);
-				$result=RPC_CreateVariableByName($rpc, (integer)$Server["SysInfo"], $SysInfo["Name"], $SysInfo["Typ"]);
-				$parameter.=$Name.":".$result.";";
-				}
-			}
-		$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-		$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
-		}				
+    if (isset ($installedModules["Guthabensteuerung"]))
+        {
+        /* nur wenn Guthabensteuerung installiert ist ausführen */
+        echo "Mobilfunk Guthaben Struktur auf Remote Servern aufbauen:\n";
+        $struktur = $remote->RPC_CreateModuleByName("Guthaben");
+        echo "Struktur Server :\n";
+        print_r($struktur);
+        
+        /* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
 
-	echo "\nRouter Datenverbrauch Struktur auf Remote Servern aufbauen:\n";
-	$OperationCenterID=array();
-	foreach ($remServer as $Name => $Server)
-		{
-		echo "   OperationCenter: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-		if ( $status[$Name]["Status"] == true )
-			{					
-			$rpc = new JSONRPC($Server["Adresse"]);
-			$OperationCenterID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "OperationCenter");
-			}
-		}
+        $Guthabensteuerung=GuthabensteuerungList();
+        
+        foreach ($Guthabensteuerung as $Key)
+            {
+            //set_time_limit(120);
+            $oid=(integer)$Key["OID"];
+            $variabletyp=IPS_GetVariable($oid);
+            //print_r($variabletyp);
+            if ($variabletyp["VariableProfile"]!="")
+                {
+                echo "    ".str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
+                }
+            else
+                {
+                echo "    ".str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
+                }
+            $parameter="";
+            foreach ($remServer as $Name => $Server)
+                {
+                echo "   Guthabensteuerung: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+                if ( $status[$Name]["Status"] == true )
+                    {			
+                    $rpc = new JSONRPC($Server["Adresse"]);
+                    $result=RPC_CreateVariableByName($rpc, $guthID[$Name], $Key["Name"], $Key["Typ"],$struktur[$Name]);
+                    //$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
+                    //$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+                    //$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
+                    //$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
+                    $parameter.=$Name.":".$result.";";
+                    }
+                }
+            $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events, das sind viele, einmal am Ende besser */
+            $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+            $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
+            }
+        }
 
-	/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
+    //set_time_limit(180);
 
-	$OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
-					
-	IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
-	$OperationCenterConfig = OperationCenter_Configuration();
-  	foreach ($OperationCenterConfig['ROUTER'] as $router)
-		{
-		echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
-		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$OperationCenterDataId);
-		if ($router_categoryId != false)
-			{
-			setup_variable("Download",$router['NAME'],$OperationCenterID);
-			setup_variable("Upload",$router['NAME'],$OperationCenterID);
-  			setup_variable("Total",$router['NAME'],$OperationCenterID);
-			}
-   		}
-	}
+    if (isset ($installedModules["OperationCenter"]))
+        {
+        /* nur wenn OperationCenter installiert ist ausführen */
+
+        echo "\nSysInfo Struktur auf Remote Servern aufbauen:\n";
+        $SysInfos=SysInfoList();
+        print_R($SysInfos);
+        foreach ($SysInfos as $SysInfo)
+            {
+            $oid=(integer)$SysInfo["OID"];
+            $variabletyp=IPS_GetVariable($oid);
+            if ($variabletyp["VariableProfile"]!="")
+                {
+                echo "    ".str_pad($SysInfo["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
+                }
+            else
+                {
+                echo "    ".str_pad($SysInfo["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
+                }	
+            $parameter="";
+            foreach ($remServer as $Name => $Server)
+                {
+                echo "   System Information: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+                if ( $status[$Name]["Status"] == true )
+                    {			
+                    $rpc = new JSONRPC($Server["Adresse"]);
+                    $result=RPC_CreateVariableByName($rpc, (integer)$Server["SysInfo"], $SysInfo["Name"], $SysInfo["Typ"]);
+                    $parameter.=$Name.":".$result.";";
+                    }
+                }
+            $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+            $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+            $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
+            }				
+
+        echo "\nRouter Datenverbrauch Struktur auf Remote Servern aufbauen:\n";
+        $OperationCenterID=array();
+        foreach ($remServer as $Name => $Server)
+            {
+            echo "   OperationCenter: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+            if ( $status[$Name]["Status"] == true )
+                {					
+                $rpc = new JSONRPC($Server["Adresse"]);
+                $OperationCenterID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "OperationCenter");
+                }
+            }
+
+        /* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
+
+        $OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
+                        
+        IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+        $OperationCenterConfig = OperationCenter_Configuration();
+        foreach ($OperationCenterConfig['ROUTER'] as $router)
+            {
+            echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+            $router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$OperationCenterDataId);
+            if ($router_categoryId != false)
+                {
+                setup_variable("Download",$router['NAME'],$OperationCenterID);
+                setup_variable("Upload",$router['NAME'],$OperationCenterID);
+                setup_variable("Total",$router['NAME'],$OperationCenterID);
+                }
+            }
+        }
 
 /*******************************************************************/
 

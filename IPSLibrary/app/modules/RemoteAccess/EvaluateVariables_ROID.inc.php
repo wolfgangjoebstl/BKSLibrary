@@ -36,6 +36,12 @@ function GuthabensteuerungList() { return array(
          "Typ" => 1, 
          "Order" => "505", 
              	),
+"checkScriptCounter" => array(
+         "OID" => 31530, 
+         "Name" => "checkScriptCounter", 
+         "Typ" => 1, 
+         "Order" => "506", 
+             	),
 
       );}
 

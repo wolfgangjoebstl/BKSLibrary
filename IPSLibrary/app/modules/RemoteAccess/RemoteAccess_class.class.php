@@ -15,7 +15,16 @@
 	 * You should have received a copy of the GNU General Public License
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */    
-	 
+
+	/*********************
+	 *
+     *  Überblick zur Verfügung gestellter classes und functions
+     *
+     * RemoteAccess Class
+     * IPSMessageHandlerExtended extends IPSMessageHandler
+     *
+     */
+
 	/*********************
 	 *
 	 * RemoteAccess Class
@@ -29,15 +38,39 @@
      * Die Struktur der Remote Server wird vorab erfasst und gespeichert um Zeit zu sparen
 	 * abgespeichert wird als Includefile das regelmaessig erzeugt wird
 	 * Routinen um Ihre Daten im Incliudefile zu speichern
-	 *     add_Guthabensteuerung()
-	 *     add_Amis()
-	 *     add_Sysinfo()
-	 *     add_Remoteserver(array)    legt function ROID_List() an
-     *     write_includeFile()
-     *     read_includeFile()
-	 *
+	 *      add_Guthabensteuerung()
+	 *      add_Amis()
+	 *      add_Sysinfo()
+     *
 	 * Server_ping()	ermittelt die Erreichbarkeit aller Server in der Liste und gibt sie als Array aus
+     *
+	 *      add_Remoteserver(array)    legt function ROID_List() an
+     *      write_includeFile()
+     *      read_includeFile()
 	 *
+	 * rpc_showProfiles
+     * rpc_deleteProfiles
+     * rpc_createProfiles
+     * write_classresult
+     *
+     * get_listofROIDs
+     * write_listofROIDs
+     * get_StructureofROID
+     * get_listofOIDs
+     *
+     * RPC_CreateVariableByName
+     * RPC_CreateCategoryByName
+     * RPC_CreateVariableField
+     * RPC_getExtendedStructure
+     * RPC_writeExtendedStructure
+     * RPC_setHiddenExtendedStructure
+     *
+     * RemoteAccessServerTable
+     * writeRemoteAccessServerTable
+     * RemoteAccess_GetConfigurationNew
+     * add_variable
+     * add_variablewithname
+     *
 	 ****************************************************/
 
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
@@ -356,7 +389,7 @@ class RemoteAccess
 	 *
 	 * zum Include File werden die OIDs der Kategorien der Remote Server hinzugefügt
 	 *
-	 *   legt function ROID_List() an
+	 * erstellt includeFile und legt function ROID_List() an
 	 *
 	 * und legt auch gleich die Kategorien aud den Logging Servern an. Ziel ist die Remote OIDs hier zu speichern, 
 	 * damit die verarbeitung schneller geht und die ROIDs zuerst erst gesucht werden muessen. auch angelegt
@@ -471,7 +504,7 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * das Include File das in der class gespeichert ist abschliuessen und als File EvaluateVariables_ROID.inc.php schreiben
+	 * das Include File das in der class gespeichert ist abschliessen und als File EvaluateVariables_ROID.inc.php schreiben
      *
      * erstellt function ROID_List() über die OIDs auf den remote Servern und die lokalen OIDs
      *  in function SysInfoList(), function AmisStromverbrauchList() und function GuthabensteuerungList()
@@ -819,9 +852,13 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * von der ursprünglichen function uebernommen, vereinheitlichung des Anlegens von Remote Variablen
-	 *
-	 *
+	 * von der ursprünglichen function uebernommen, Vereinheitlichung des Anlegens von Remote Variablen
+	 * 
+     * id           Kategorie OID vom RemoteServer
+	 * struktur     wenn nicht übergeben, wird versucht sie aus der Struktur/Children des Remote Server zu ermitteln
+     *              oid => name oder oid => array(Name => name)
+     * type         0 Boolean usw.
+     *
 	 */
 	function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
 		{
@@ -830,7 +867,7 @@ class RemoteAccess
 
 		$result="";
 		$size=sizeof($struktur);
-		if ($size==0)
+		if ($size==0)                       // ermitteln der Struktur
 			{
 			$children=$rpc->IPS_GetChildrenIDs($id);
 			foreach ($children as $oid)
@@ -846,9 +883,10 @@ class RemoteAccess
 			//echo "    RPC_CreateVariableByName, Struktur übergeben.\n";
 			//print_r($struktur);
 			}					
-		foreach ($struktur as $oid => $oname)
+        /* struktur hat oid => array(Name => name) oder oid => name */
+		foreach ($struktur as $oid => $oname)               
 			{
-			if ( isset($oname["Name"]) )
+			if ( isset($oname["Name"]) )            // struktur hat oid => array(Name => name)
 				{
 				if ($name==$oname["Name"]) 
 					{
@@ -858,7 +896,7 @@ class RemoteAccess
 				}
 			else
 				{
-				if ($name==$oname) 
+				if ($name==$oname)                  // struktur hat oid => name
 					{
 					$result=$name;$vid=$oid;
 					echo "      RPC_CreateVariableByName, Variable ".$name." bereits als ".$vid." angelegt, keine weiteren Aktivitäten.\n";					
@@ -904,6 +942,41 @@ class RemoteAccess
 	      }
     	return $vid;
 		}
+
+    /* für evaluateVariable, die Struktur für zusätzliche Module auf allen remote Logging Servern erstellen
+     * ist abhängig ob das Modul geladen wurde
+     * nameModule ist zum Beispiel Guthaben, Autosteuerung,OperationCenter
+     *
+     * gleiche Funktion wie get_StructureofROID nur mit zusätzlichen CreateCategory
+     *
+     * struktur gibt jetzt oid mit Name und Parent aus
+     * auf Ebene oid gibt es ModuleID für die category OID
+     *
+     */
+	function RPC_CreateModuleByName($nameModule)
+		{
+        $struktur=array();$guthID=array();
+		$remServer=$this->get_listofROIDs();       // Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben) aus dem Logging File
+        $status=$this->RemoteAccessServerTable();
+        foreach ($remServer as $Name => $Server)
+            {
+            echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+            if ( $status[$Name]["Status"] == true )
+                {
+                $rpc = new JSONRPC($Server["Adresse"]);
+                $categoryID=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], $nameModule);
+                $children=$rpc->IPS_GetChildrenIDs($categoryID);
+                $struktur[$Name]=array();
+                $struktur[$Name]["ModuleID"]   = $categoryID;
+                foreach ($children as $oid)
+                    {
+                    $struktur[$Name][$oid]["Name"]   = $rpc->IPS_GetName($oid);
+                    $struktur[$Name][$oid]["Parent"] = $categoryID;
+                    }		
+                }
+            }
+        return($struktur);
+        }
 
 	/*****************************************************************
 	 *
@@ -1052,7 +1125,7 @@ class RemoteAccess
 	/*****************************************************************
 	 *
 	 * anhand der Struktur von Visualization für jeden einzelnen remote Server Eintraege die nicht mehr 
-	 * benötigt werden, Zusatand = false dann hiden (setHidden true)
+	 * benötigt werden, Zustand = false dann hiden (setHidden true)
 	 *
 	 **********************************************************************/	
 
@@ -1193,11 +1266,57 @@ class RemoteAccess
 		}
 
 	}  /* Ende class */
-	
+
 /*****************************************************************************
  *
+ * RA_Autosteuerung class
  *
+ * Autosteuerungsvariablen finden	
+ *
+ *
+ **********************************************************************************/	
+
+class RA_Autosteuerung extends RemoteAccess
+    {
+    private $statusAnwesendID;
+
+
+    public function __construct()
+        {
+        IPSUtils_Include ('Autosteuerung_Class.inc.php', 'IPSLibrary::app::modules::Autosteuerung');            
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        if (!isset($moduleManager)) 
+            {
+            IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+            $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+            }
+        $CategoryIdData             = $moduleManager->GetModuleCategoryID('data');
+    	$categoryId_Ansteuerung     = IPS_GetObjectIDByIdent("Ansteuerung", $CategoryIdData);
+        $category_Anwesenheitserkennung = IPS_GetObjectIDByName("Anwesenheitserkennung",$categoryId_Ansteuerung);
+        $this->statusAnwesendID     = @IPS_GetObjectIDByName("StatusAnwesend",$category_Anwesenheitserkennung);
+        parent::__construct();
+        }
+
+    public function getStatusAnwesendID()
+        {
+        return($this->statusAnwesendID);
+        }
+
+    }
+
+/*****************************************************************************
+ *
+ * IPSMessageHandlerExtended class
+ *
+ * uses $eventConfiguration
  *	
+ *  Get_EventConfigurationAuto
+ *  Get_EventConfigurationCust
+ *  StoreEventConfiguration
+ *  DeleteEvent
+ *  UnRegisterEvent
+ *
+ *
  **********************************************************************************/	
 	
 class IPSMessageHandlerExtended extends IPSMessageHandler 
@@ -1241,7 +1360,7 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 		 *
 		 * @param string[] $configuration Konfigurations Array
 		 */
-		private static function StoreEventConfiguration($configuration) {
+	private static function StoreEventConfiguration($configuration) {
 
 			// Build Configuration String
 			$configString = '$eventConfiguration = array(';
@@ -1325,13 +1444,16 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 			self::StoreEventConfiguration($configurationAuto);
 			}
 		}
+
 	}  /* Ende class */	
 	
-	/****************************************************************************************************************
-	 *
-	 *                                      Functions
-	 *
-	 ****************************************************************************************************************/
+/****************************************************************************************************************
+ *
+ *                                      Functions
+ *
+ *      installAccess
+ *
+ ****************************************************************************************************************/
 
 	function installAccess($Elements,$keyword,$identifier,$profile)
 		{

@@ -105,6 +105,7 @@
 			{
 			/* standardize configuration */
 			
+			$this->dosOps = new dosOps();                                           // wird überall verwendet
 			$this->configuration=$this->setStartpageConfiguration($debug);
 			
 			/* get Directories */
@@ -122,7 +123,6 @@
 
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
-			$this->dosOps = new dosOps();
 
 			$this->picturedir = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\");
             $this->imagedir   = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\images\\");                   // Astronomy Path to Moon Pic: user/Startpage/user/images/mond/mond357.gif
@@ -130,8 +130,7 @@
 
 			$this->contentID=CreateVariable("htmlChartTable",3, $this->CategoryIdData,0,"~HTMLBox",null,null,"Graph");
 
-            $dosOps = new dosOps();
-            $verzeichnis=$dosOps->getWorkDirectory();
+            $verzeichnis=$this->dosOps->getWorkDirectory();
             if ($verzeichnis===false) echo "Fehler, Work directory nicht verfügbar. bitte erstellen.\n";
             else
                 {
@@ -161,6 +160,11 @@
             return($this->workdir);
             }
 
+        public function getAvailableIcons()
+            {
+            return($this->dosOps->readdirToArray($this->icondir));
+            }
+
 		/*
 		 * Abstrahierung der Startpage Konfiguration
 		 * Einlesen aus der Datei und Abspeichern in der Class
@@ -169,8 +173,7 @@
 		function setStartpageConfiguration($debug=false)
 	        {
             $config=array(); $configInput=array();
-            $dosOps = new dosOps();
-            $systemDir     = $dosOps->getWorkDirectory(); 
+            $systemDir     = $this->dosOps->getWorkDirectory(); 
 
             if ((function_exists("startpage_configuration"))===false) IPSUtils_Include ("Startpage_Configuration.inc.php","IPSLibrary::config::modules::Startpage");				
             if (function_exists("startpage_configuration"))  $configInput = startpage_configuration();
@@ -197,13 +200,13 @@
             if (strpos($config["Directories"]["Pictures"],"C:/Scripts/")===0) 
                 {
                 $config["Directories"]["Pictures"]=substr($config["Directories"]["Pictures"],10);      // Workaround für C:/Scripts"
-                $config["Directories"]["Pictures"] = $dosOps->correctDirName($systemDir.$config["Directories"]["Pictures"]);
+                $config["Directories"]["Pictures"] = $this->dosOps->correctDirName($systemDir.$config["Directories"]["Pictures"]);
                 }
             configfileParser($configInput["Directories"], $config["Directories"], ["Images"],"Images",null);                // null es wird als Default zumindest ein Indexknoten angelegt
             configfileParser($configInput["Directories"], $config["Directories"], ["Icons"],"Icons",null);                      // null es wird als Default zumindest ein Indexknoten angelegt
             configfileParser($configInput["Directories"], $config["Directories"], ["Scripts"],"Scripts",null);                // null es wird als Default zumindest ein Indexknoten angelegt
             if (strpos($config["Directories"]["Scripts"],"C:/Scripts/")===0) $config["Directories"]["Scripts"]=substr($config["Directories"]["Scripts"],10);      // Workaround für C:/Scripts"
-            $config["Directories"]["Scripts"] = $dosOps->correctDirName($systemDir.$config["Directories"]["Scripts"]);
+            $config["Directories"]["Scripts"] = $this->dosOps->correctDirName($systemDir.$config["Directories"]["Scripts"]);
 
             /* Sub Display */
             configfileParser($configInput["Display"], $config["Display"], ["Weather"],"Weather","[]"); 
@@ -2521,13 +2524,27 @@
             return ($analyze); 
             }
 
-        /* Idee ist das Werte mit dem Parameter Aggregate ähnlich bearbeitet werden 
-         * und das die Bearbeitung gleich mit der Berechnung des Wertes abschliesst
-         * Grundbedingung, fixe Keys
-         *      OID
+        /* evaluateEntry, Darstellung von einem oder mehreren Werten in einer Tabelle/Zelle, zb Bottom Line mit displayValue
          *
-         * OID wird evaluiert
-         * Es wird wieder eine config ausgegeben
+         * Es wird immer nur ein Eintrag bearbeitet, OID kann ein Wert oder ein Array aus Werten sein
+         * für jede oid prüfen ob das Objekt erreichbar ist, sonst aus der Tabelle von oidArray rausnehmen, es muss zumindest einen gültigen Wert geben
+         *
+         * Idee ist das Werte mit dem Parameter Aggregate ähnlich bearbeitet werden 
+         * und das die Bearbeitung gleich mit der Berechnung des Wertes abschliesst
+         *
+         * Grundbedingung, mindestens enthaltene Keys
+         *      OID     wird als oid bzw oidArray weiter bearbeitet
+         *
+         * OID wird evaluiert, es wird daraus wieder eine config ausgegeben
+         *
+         * Zusatzfunktionen
+         *      Aggregate       MEANS,MAX,MIN
+         *      Property        nette Darstellung wann letzte Änderung erfolgt ist
+         *      Type
+         *      Integrate
+         *
+         * die Zusatzfunktionen vorbereiten und weiter an displayValue
+         *
          */
 
         function evaluateEntry($tableEntry, $altText=false, $debug=false)
@@ -2557,7 +2574,7 @@
                     else unset($oidArray[$key]);
                     }
                 $entries2=count($oidArray);
-                if ($debug) echo "--------evaluateEntry ($entries/$entries2) \n";            
+                if ($debug) echo "--------evaluateEntry ($entries2 valid, out of $entries) \n";               // was blieb über nach dem check      
                 // immer so tun als ob mehrere Werte zusammengefasst werden, selbe Routine
                 if ($objectExists)          // es wird zumindest einen Eintrag geben 
                     {
@@ -2570,6 +2587,7 @@
                     configfileParser($tableEntry, $config, ["AGGREGATE","Aggregate","aggregate"],"Aggregate",false); 
                     configfileParser($tableEntry, $config, ["PROFILE","Profile","profile"],"Profile",null); 
                     configfileParser($tableEntry, $config, ["UNIT","Unit","unit"],"Unit",""); 
+                    configfileParser($tableEntry, $config, ["SHOW","Show","show"],"Show",null);             // Default ist kein Eintrag
                     if ($debug) // die Werte der OIDs ausgeben, einer oder mehrere
                         {
                         $i=1;
@@ -2708,7 +2726,18 @@
                                         }
                                     }
                                 }
-
+                            if (isset($config["Show"]))         //rausfinden ob die Anzeige nur wenn Bedingungen erfüllt werden erfolgen soll, wenn keine Anzeige erfolgen soll config=false
+                                {
+                                if ($debug) print_R($config);         //neue Konfig Keys auch in displayValue nachziehen
+                                $min=100; $max=-100;
+                                foreach ($oidArray as $oid) 
+                                    {
+                                    $value = GetValue($oid);
+                                    if ($value < $min) $min=$value;
+                                    if ($value > $max) $max=$value;
+                                    }                      
+                                echo "Show activated Min $min und Max $max\n";          
+                                }    
                             $result=$this->displayValue($wert,$value,$config,$init,$oid,$debug);          // $wert wird erweitert                                    
                             $config["Value"]=$wert;
                             }                           // ende foreach
@@ -3650,7 +3679,8 @@
 	
         /* bottomTableLines()
          * die Bottom Table Line ist am unteren Ende des Bild und Wetter Bildschirms angesiedelt
-         * => soll in Zukunft vereinheitlicht this->evaluateEntry oder Routinen daraus verwenden
+         * Darstellung vereinheitlicht mit this->evaluateEntry,  für Config dort schauen 
+         * nur wenn evaluateEntry erfolgreich, wird ein Eintrag geschrieben
          *
          * es wird eine eigene Tabellenzeile aufgebaut, die Zellen von darüber werden zusammengefasst und eine neue Tabelle in einer Zeile aufgebaut
          * Input pro Eintrag ist immer die Objekt OID, diese kann ein oder mehrere Werte sein, wird immer als array bearbeitet
@@ -3691,174 +3721,6 @@
                         if ( (isset($configBottomLine["AddInfo"])) && ($configBottomLine["AddInfo"] !== false) ) $wert.= '<addText>    '.$configBottomLine["AddInfo"].'</addtext>';
                         $wert.='</td>';
                         }
-                    /* alte Routine wird nicht mehr benötigt, oder doch
-                    // check ob eine oder mehrere OIDs angegeben wurden 
-                    $config=array();        // immer neu anfangen
-                    configfileParser($tableEntry, $config["Display"]["BottomLine"], ["OID","Oid"],"OID",false);                 //configfile als tableEntry vereinheitlichen, überprüfen, Wert für OID muss vorhanden sein und das Objekt erreichbar
-                    if (isset($config["Display"]["BottomLine"]["OID"])) $oid=$config["Display"]["BottomLine"]["OID"];
-                    if ($oid !== false)         // kein Defaultwert
-                        {
-                        if (is_array($oid)) $oidArray=$oid;                     // auch Arrays zulassen, dann sollten zwei Werte nebeneinander stehen
-                        else $oidArray=[$oid];
-                        $objectExists=false;        // check ob die Objekte vorhanden sind
-                        $entries=count($oidArray);
-                        if ($debug) echo "--------BottomLine ($entries) \n";            
-                        // immer so tun als ob mehrere Werte zusammengefasst werden, selbe Routine
-                        foreach ($oidArray as $oid) if (IPS_ObjectExists($oid)) $objectExists=true;         // wenn zumindest eines der Objekte existiert weitermachen
-                        if ($objectExists)          // es wird zumindest einen Eintrag geben 
-                            {
-                            $wert.='<td>';
-                            // für jeden ConfigEintrag tableEntry die Config überprüfen und in $config abspeichern und diese Config verwenden
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Name","NAME"],"Name",IPS_GetName($oid)); 
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Icon","ICON"],"Icon","IPS");
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Integrate","INTEGRATE","integrate"],"Integrate",false);
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Property","PROPERTY","property"],"Property",null);            // default kein Eintrag wenn kein Eintrag
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Type","TYPE","type"],"Type",null);                            // default kein Eintrag wenn kein Eintrag
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["AGGREGATE","Aggregate","aggregate"],"Aggregate",false); 
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["PROFILE","Profile","profile"],"Profile",null); 
-                            configfileParser($tableEntry, $config["Display"]["BottomLine"], ["UNIT","Unit","unit"],"Unit",""); 
-                            if ($debug) 
-                                {
-                                $i=1;
-                                if (count($oidArray)==1) echo "   Eintrag : Name ".$config["Display"]["BottomLine"]["Name"]." OID $oid Icon ".$config["Display"]["BottomLine"]["Icon"]." Value ".GetValue($oid)."\n";
-                                else foreach ($oidArray as $oid) echo "   ".$i++.":Eintrag : Name ".$config["Display"]["BottomLine"]["Name"]." OID $oid Icon ".$config["Display"]["BottomLine"]["Icon"]." Value ".GetValue($oid)."\n";
-                                }
-                            $wert.='<img src="user/Startpage/user/icons/'.$config["Display"]["BottomLine"]["Icon"].'.svg" alt="'.$config["Display"]["BottomLine"]["Icon"].' Icon">';
-                            $wert.='</td><td>';
-                            $init=true; $addInfo=""; 
-                            $result=true;                               // result wird false wenn die Darstellung nicht erfolgreich war
-
-                            if ($config["Display"]["BottomLine"]["Aggregate"] !== false)
-                                {
-                                // oidarray vor der Darstellung gemäß Type aggregieren
-                                if ($debug) echo "   Aggregate ".$config["Display"]["BottomLine"]["Aggregate"]." gefunden \n";
-                                switch (strtoupper($config["Display"]["BottomLine"]["Aggregate"]))
-                                    {
-                                    case "MEANS":
-                                        $sum=0; $sumCount=0;
-                                        foreach ($oidArray as $oid) 
-                                            {
-                                            $sum += GetValue($oid);
-                                            $sumCount++;
-                                            }
-                                        $value=$sum/$sumCount;
-                                        break;
-                                    case "MAX":
-                                        $max=0;
-                                        foreach ($oidArray as $oid) 
-                                            {
-                                            $value = GetValue($oid);
-                                            if ($value > $max) $max=$value;
-                                            }
-                                        $value=$max;
-                                        break;    
-                                    default:
-                                        // nix tun
-                                        break;
-                                    }
-                                // wert hat bereits den Tabellenbeginn, und eventuell ein Icon, ab hier kommt der Name und der Wert
-                                $result=$this->displayValue($wert,$value,$config["Display"]["BottomLine"],$init,$oid,$debug);          // $wert wird erweitert
-                                if ($result) $wert.='</td>';                                // result wird false wenn die Darstellung nicht erfolgreich war, dann noch einmal für beide Werte versuchen
-                                }
-                            if ( ($config["Display"]["BottomLine"]["Aggregate"] === false) || ($result==false) )            // kein Aggregate or Display failed
-                                {                                
-                                // Unterschied ob mehrere Werte dargestellt oder vorher zusammengefasst werden sollen
-                                foreach ($oidArray as $oid)         // die Werte der Reihe nach durchgehen, jeder Wert hat einen eigenen Eintrag innerhalb der TAbelle
-                                    {
-                                    $archiveID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-                                    if (isset($tableEntry["Property"])) 
-                                        {
-                                        $variableChanged=IPS_GetVariable($oid)["VariableChanged"];
-                                        $timeGone=time()-$variableChanged;
-                                        $startOfToday=mktime(0,0,0,date("m"), date("d"), date("Y"));
-                                        if ($timeGone<(time()-$startOfToday))                   $addInfo=date("H:i",$variableChanged);
-                                        elseif ($timeGone<(time()-($startOfToday-7*24*60*60)))  $addInfo=date("D H:i",$variableChanged);
-                                        elseif ($timeGone<(time()-($startOfToday-60*24*60*60))) $addInfo=date("d.m H:i",$variableChanged); 
-                                        else                                                    $addInfo=date("d.m.Y H:i",$variableChanged);
-                                        if ($debug) 
-                                            {
-                                            echo "      ".date("d.m.Y H:i:s",$startOfToday)."\n";
-                                            echo "      Variable Changed $addInfo, got from Property:".$tableEntry["Property"]."   ".json_encode(IPS_GetVariable($oid))."\n";
-                                            $endtime=time();
-                                            $starttime=$endtime-$timeGone-(10*60*60);
-                                            $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
-                                            if ($werteLog===false) ;        // $oid bleibt unverändert
-                                            else
-                                                {
-                                                $count=0; $sum=0; $init2=true;
-                                                foreach ($werteLog as $eintrag)
-                                                    {
-                                                    if ($init2) { $start=$eintrag["Value"]; $init2=false; }
-                                                    echo "             ".date("d.m.Y H:i",$eintrag["TimeStamp"])."    ".$eintrag["Value"]."\n";
-                                                    $count++;
-                                                    }
-                                                //$value = (float)$sum/$count;
-                                                //if ($debug) echo "     Integrate Values from last ".$config["Display"]["BottomLine"]["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")."\n";
-                                                //$oid=$value;            // formatEntry erkennt oid (wenn integer) und oid als value
-                                                }
-                                            }               // ende if debug
-                                        }
-                                    if (isset($config["Display"]["BottomLine"]["Type"]))
-                                        {
-                                        $typeOfObject=strtoupper($config["Display"]["BottomLine"]["Type"]);
-                                        if ($debug) echo "****Type available : $typeOfObject\n";                                    
-                                        } 
-                                    $value = GetValue($oid);
-                                    if ($config["Display"]["BottomLine"]["Integrate"]>59)       // nur Werte ab einer Minute integrieren
-                                        {
-                                        $endtime=time();
-                                        $starttime=$endtime-$config["Display"]["BottomLine"]["Integrate"];   // die Werte entsprechend dem angegebenen Zeitraum laden
-                                        $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
-                                        if ( ($werteLog===false) || (sizeof($werteLog)==0) ) ;        // $oid bleibt unverändert
-                                        else
-                                            {
-                                            switch ($typeOfObject)
-                                                {
-                                                case "STANDARD":
-                                                    $count=0; $sum=0; $max=0; $min=0;
-                                                    foreach ($werteLog as $eintrag)
-                                                        {
-                                                        //If ($debug) echo str_pad($count,6).str_pad($eintrag["Value"],15," ",STR_PAD_LEFT)."   ".date("H:i:s",$eintrag["TimeStamp"])."   \n";
-                                                        $sum += $eintrag["Value"];
-                                                        if ( ($min==0) || ($min>$eintrag["Value"]) ) $min=$eintrag["Value"];
-                                                        if             ($max<$eintrag["Value"])   $max=$eintrag["Value"];
-                                                        $count++;
-                                                        }
-                                                    $value = (float)$sum/$count;            // formatEntry erkennt oid (wenn integer) und oid als value 
-                                                    if ($debug) echo "     Integrate $count Values from last ".$config["Display"]["BottomLine"]["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")." Min ".number_format($min,0,",",".")." Max ".number_format($max,0,",",".")."\n";
-                                                    break;
-                                                case "RAINCOUNTER":
-                                                    if ($debug)
-                                                        {
-                                                        //print_r($werteLog); 
-                                                        echo "RainCounter gefunden :\n";
-                                                        $count=0;
-                                                        foreach ($werteLog as $eintrag)
-                                                            {
-                                                            echo str_pad($count,6).str_pad($eintrag["Value"],15," ",STR_PAD_LEFT)."   ".date("d.m.Y H:i",$eintrag["TimeStamp"])."   \n";                                                    
-                                                            $count++;
-                                                            }
-                                                        echo "------------\n";
-                                                        }
-                                                    $first = reset($werteLog);
-                                                    $last  = end($werteLog);
-                                                    // print_R($first);  print_R($last);
-                                                    $value = $first["Value"]-$last["Value"];
-                                                    if ($debug) echo "   First : ".$first["Value"]."    ".date("d.m.Y H:i",$first["TimeStamp"])."   Last:  ".$last["Value"]."    ".date("d.m.Y H:i",$last["TimeStamp"])." Wert ergibt sich mit $value.\n";
-                                                    break;
-                                                }
-                                            }
-                                        }
-
-                                    $result=$this->displayValue($wert,$value,$config["Display"]["BottomLine"],$init,$oid,$debug);          // $wert wird erweitert                                    
-                                    if ($addInfo != "") $wert .= '<addText>    '.$addInfo.'</addtext>';
-                                    }                           // ende foreach
-                                $wert.='</td>';                                
-                                }                           // ende ifnot Aggregate
-                            }                           // ende ifObjectExists
-                        }                           // ende OID nicht Default       */
-
-
                     }                           // ende foreach Einträge
 
                 $wert.='</tr></table>';
@@ -3869,7 +3731,7 @@
 	        return ($wert);            
 	        }
 
-        /* einen Wert anzeigen 
+        /* einen Wert am Webfront als Tabelleneintrag anzeigen , nutzt formatEntry
          * der Wert wird als value übergeben, die Art der Darstellung steht in config und wert ist die Darstellung innerhalb einer html Tabelle
          * verwendet <addText> als Text identifier
          *
@@ -3939,8 +3801,11 @@
             return (true);
             }
 
-        /* formatting with hints 
-         * es wird die OID übergeben. Wenn die OID nicht integer ist dann als Wert betrachten. Übergabe in diesem Fall als float
+        /* formatting with hints in format oder nutzt zusätzlich als Quelle eine andere oidAlt 
+         *
+         * es wird die OID übergeben. Wenn die OID nicht integer ist dann als Wert betrachten. Übergabe in diesem Fall als float oder boolean
+         * displayValue verwendet zum Beispiel den Wert
+         *
          * return ist der formattierte Wert
          * 
          */
@@ -3977,6 +3842,11 @@
                     if ($value > 10000) $wert.=number_format($value/1000, 0, ",", "." )."kbps";
                     else $wert.=number_format($value, 0, ",", "." )."bps";               // schöne grosse Integer Zahlen klar darstellen
                     break;
+                case "PRESENCE":
+                    if (is_integer($oid)) $value=GetValue($oid);                // es wurde eine oid übergeben
+                    else $value=$oid;
+                    $wert.=($value?"Ava":"Off");            
+                    break;                    
                 default:   
                     if (is_integer($oid)) $wert.=number_format(GetValue($oid), 3, ",", "." ).$format;               // schöne grosse Integer Zahlen klar darstellen
                     else $wert.=number_format($oid, 3, ",", "" ).$format;

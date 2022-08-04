@@ -2918,6 +2918,11 @@ class archiveOps
         return($this->aggregationConfig);
         }
 
+    public function getArchiveID()
+        {
+        return($this->archiveID);
+        }
+
     public function getSize()
         {
         return($this->aggregationConfig["RecordCount"]);
@@ -3031,15 +3036,49 @@ class archiveOps
         return ($result);    
         }
 
+    /* Ausgabe von historischen Werte mit Berücksichtigung von Duration
+     * Problem es fehlt der Nullwert bei geloogten Werten. Kein Problem wenn bei einem Köhlschrank der Verbrauch auf 4W zurückgeht. Aber 0 wird nicht geloggt.
+     * Eigentlich ganz einfache Lösung ist es Duration mitzuberücksichtigen. Timestamp[n]+Duration[n] != Timestamp[n+1] bedeutet es gibt Nullwerte dazwischen, einfach als zusätzlichen Wert aufnehmen
+     */
+
+    function showValues($werte)
+        {
+        //foreach ($werte as $wert) echo "   ".date ("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";           // einfache Routine
+        $timeStamp2=false; $timeStamp1=false;
+        foreach ($werte as $wert) 
+            {
+            // Richtung bestimmen
+            $timeStamp=$wert["TimeStamp"];
+            $value=$wert["Value"];
+            if ($timeStamp1 !==false) 
+                {
+                if ($timeStamp<$timeStamp1)  $direction="down";
+                else $direction="up";            
+                $timeStamp1=$timeStamp;
+                echo "   ".date ("d.m.Y H:i:s",$timeStamp1)."   ".str_pad($value,20)."     \n";   
+                // Zwischenwerte 
+                if ( ($timeStamp2 !==false) && ($timeStamp1 != $timeStamp2) ) echo "   ".date("d.m.Y H:i:s",$timeStamp2)."   ".str_pad(0,20)."     (calculated)\n";
+                if ($direction=="up") $timeStamp2=$wert["TimeStamp"]+$wert["Duration"];
+                else $timeStamp2=$wert["TimeStamp"]-$wert["Duration"];
+                }
+            else echo "   ".date ("d.m.Y H:i:s",$timeStamp)."   ".str_pad($value,20)."     \n";
+            }
+        echo "   $timeStamp2        \n";
+        }
+
     /* archiveOps::getValues
      * parallelfunktion für analyseValues
      * Get/AnalyseValues,ArchiveOps, Abgrenzung klar, eine kann auch ohne Zeitangabe Werte verarbeiten
      *
      * kann bereits beide Formate, Logged [Value/TimeStamp] und aggregated [Avg/TimeStamp] , und kann auch ein Array [Value/TimeStamp] verarbeiten
+     * Werte mit Archive haben keinen 0 Wert sondern die Dauer gibt an wann der Wert nicht mehr da ist. Es wird 0 angenommen und der Wert ergänzt.
      * verwendete Klassen:
      *      maxminCalc
      *      eventLogEvaluate
      *      meansRollEvaluate
+     *
+     * Es können Konfigurationen anstelle des logs Parameter übergeben werden, Werden mit setConfiguration ermittelt und bearbeitet 
+     *  
      *
      * es gibt noch kein cleanUp und kopieren der Werte
      *
@@ -3061,7 +3100,6 @@ class archiveOps
             //print_R($config);
             }
         
-
         /* Ergebnis festlegen */
         $result=array();
 
@@ -3081,7 +3119,7 @@ class archiveOps
                 if (is_array($werte))
                     {
                     echo "Historie des Wertes $oid (".IPS_GetName($oid).") mit aktuellem Wert ".GetValue($oid)."\n";
-                    foreach ($werte as $wert) echo "   ".date ("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";
+                    $this->showValues($werte);
                     }
                 }
             }
@@ -3112,7 +3150,8 @@ class archiveOps
                 //print_R(array_key_last($werte));
                 }
             }
-        if (isset($config["Split"])) $debug=true; else $debug=false;
+        $config["maxLogsperInterval"]=$maxLogsperInterval;              // Eintrag überschreiben
+        //if (isset($config["Split"])) $debug=true; else $debug=false;
 
         $result = $this->countperIntervalValues($werte,$debug);        // true Debug
         if ($result===false) return (false);                            // spätestens hier abbrechen, eigentlich schon vorher wenn wir draufkommen dass es kein Array mit historischen Werten gibt
@@ -3122,7 +3161,7 @@ class archiveOps
             if ($debug) echo "   --> Reihenfolge, neuerster Wert zuerst, hat niedrigsten Index, andersrum sortieren.\n";
             krsort($werte);             // andersrum sortieren
             }
-        $this->cleanupStoreValues($werte,$oid,$maxLogsperInterval,$debug);          // Werte bereinigen und in this->result[$oid][Values] abpeichern            
+        $this->cleanupStoreValues($werte,$oid,$config,$debug);          // Werte bereinigen und in this->result[$oid][Values] abpeichern, config übernimmt maxLogsperInterval            
         $this->calculateSplitOnData($oid,$config,$debug);
         /* maxminCalc macht Max Min und Means für den gesamten Zeitbereich */
         $maxmin=array();         // Speicherplatz zur Verfügung stellen
@@ -3130,9 +3169,12 @@ class archiveOps
 
         /* Event Log, events ist der lokale Speicher für die Ergebnisse */
         $events=array();
-        $config["InputValues"]=$this->result[$oid]["Values"];              // <- etwas strange, hier versteckt alle Werte noch einmal zu übergeben
-        //print_r($config);
-        $eventLogAll = new eventLogEvaluate($events,"All",$config,$debug);             // events ist der Speicherplatz für Berechnungen
+        if (isset($this->result[$oid]["Values"]))
+            {
+            $config["InputValues"]=$this->result[$oid]["Values"];              // <- etwas strange, hier versteckt alle Werte noch einmal zu übergeben
+            //print_r($config);
+            $eventLogAll = new eventLogEvaluate($events,"All",$config,$debug);             // events ist der Speicherplatz für Berechnungen
+            }
 
         /* Standardabweichung am Monatsmittelwert */
         $sdevSum=0; $sdevSumPos=0; $sdevSumNeg=0;
@@ -3150,200 +3192,202 @@ class archiveOps
         $mittelWertMonatZuletzt=false; $mittelWertWocheZuletzt=false;  
         $trendMonat=false;  $trendWoche=false; $trendTag=false;
         
-        $debugCount=12; $count = count($this->result[$oid]["Values"]);
-        foreach ($this->result[$oid]["Values"] as $index => $entry)
+        if (isset($this->result[$oid]["Values"]))
             {
-            $logCount++;    
-            $wertAktuell = $statistics->wert($entry);
-
-            $maxminFull->addValue($entry);
-            $eventLogAll->addValueAsIndex($index);                  // Vorwert, änderungs Analyse 
-            if ($indexCount >= $lateStart)                          // nur brauchbar wenn in die Vergangenheit der Mittelwert berechnet wird oder es schon zu viele Werte sind
+            $debugCount=12; $count = count($this->result[$oid]["Values"]);
+            foreach ($this->result[$oid]["Values"] as $index => $entry)
                 {
-                $mittelWertMonat = $meansRoll->meansValues($index, 20);                    // aus den nächsten 20 Werten einen Mittelwert berechnen, sollte auch für ein Intervall funktionieren
-                if ( (isset($mittelWertMonat["error"])) === false)
-                    {
-                    $this->result[$oid]["MeansRoll"]["Month"][$index] = $mittelWertMonat;            // beide Werte mit Index abspeichern
-                    $wertMonatMittel =  $statistics->wert($mittelWertMonat);                    // nur den Wert ohne TimeStamp extrahieren
-                    /* Standardabweichung vom Monats Mittelwert */
-                    $abw=($wertAktuell-$wertMonatMittel);
-                    if ($abw>0) $sdevSumPos += ($abw*$abw);
-                    else $sdevSumNeg += ($abw*$abw);
-                    $sdevSum += ($abw*$abw);
-                    $indexCount++;                       
-                    if (isset($this->result[$oid]["MeansRoll"]["Month"][$index-20]))
-                        {
-                        /* Trendberechnung */
-                        $wertMonatMittel2 =  $statistics->wert($this->result[$oid]["MeansRoll"]["Month"][$index-20]);                    // nur den Wert ohne TimeStamp extrahieren
-                        $trendMonat = ($wertMonatMittel/$wertMonatMittel2-1)*100;
-                        $mittelWertMonatZuletzt = $mittelWertMonat;
-                        }
-                    }
-                $mittelWertWoche = $meansRoll->meansValues($index,  5);                    // aus den nächsten  5 Werten einen Mittelwert berechnen
-                if ( (isset($mittelWertWoche["error"])) === false)
-                    {                
-                    $this->result[$oid]["MeansRoll"]["Week"][$index]  = $mittelWertWoche;
-                    $wertWocheMittel =  $statistics->wert($mittelWertWoche);                    // nur den Wert ohne TimeStamp extrahieren
-                    if (isset($this->result[$oid]["MeansRoll"]["Week"][$index-5]))
-                        {
-                        /* Trendberechnung */
-                        $wertWocheMittel2 =  $statistics->wert($this->result[$oid]["MeansRoll"]["Week"][$index-5]);                    // nur den Wert ohne TimeStamp extrahieren
-                        $trendWoche = ($wertWocheMittel/$wertWocheMittel2-1)*100;
-                        $mittelWertWocheZuletzt = $mittelWertWoche;
-                        }
-                    }
-                //$mittelWertTag = $meansRoll->meansValues($index,  1);                    // aus den nächsten 1 Werten einen Mittelwert berechnen, 1 liefert den aktuellen Wert
-                if ($logCount>($count-$debugCount)) echo str_pad($logCount,6).date("d.m.Y H:i:s",$entry["TimeStamp"])."  $wertAktuell";
-                if (isset($this->result[$oid]["Values"][($index-1)]))
-                    {
-                    $value1=$this->result[$oid]["Values"][$index]["Value"];
-                    $timestamp1=date("d.m.Y H:i:s",$this->result[$oid]["Values"][$index]["TimeStamp"]);
-                    $value2=$this->result[$oid]["Values"][($index-1)]["Value"];
-                    $timestamp2=date("d.m.Y H:i:s",$this->result[$oid]["Values"][($index-1)]["TimeStamp"]);
-                    $trendTag=($value1/$value2-1)*100;
-                    if ($logCount>($count-$debugCount)) echo "  Change    $value1 ($timestamp1) $value2 ($timestamp2)    ".nf($trendTag,"%");         // value2 ist der vorige Tag
-                    }
-                if ($logCount>($count-$debugCount)) echo "\n";
+                $logCount++;    
+                $wertAktuell = $statistics->wert($entry);
 
-                
-                /*----------------------------------------------------------------------------------*/
-                if (strtoupper($config["KIfeature"])=="SHARES")
+                $maxminFull->addValue($entry);
+                $eventLogAll->addValueAsIndex($index);                  // Vorwert, änderungs Analyse 
+                if ($indexCount >= $lateStart)                          // nur brauchbar wenn in die Vergangenheit der Mittelwert berechnet wird oder es schon zu viele Werte sind
                     {
-                    /* KI Feature 
-                    * fixe Stückzahlen bewertet die Aktien mit hohem Kurs stärker
-                    * fester Kauf und Verkaufspreis erscheint gerecht
-                    *
-                    */
-                    $stueck=100;
-                    $budget=200;    // sonst false
-                    //$budget=false;
-                    $action=  "     ";
-                    if ( (isset($mittelWertMonat["error"])) === false)      // es gibt bereits eiunen Monatsmittelwert, andernfalls sind die Datenmengen noch zu klein oder falsch
+                    $mittelWertMonat = $meansRoll->meansValues($index, 20);                    // aus den nächsten 20 Werten einen Mittelwert berechnen, sollte auch für ein Intervall funktionieren
+                    if ( (isset($mittelWertMonat["error"])) === false)
                         {
-                        if ( ($wertAktuell>$wertMonatMittel) && ($wertAktuell>$wertWocheMittel) ) 
+                        $this->result[$oid]["MeansRoll"]["Month"][$index] = $mittelWertMonat;            // beide Werte mit Index abspeichern
+                        $wertMonatMittel =  $statistics->wert($mittelWertMonat);                    // nur den Wert ohne TimeStamp extrahieren
+                        /* Standardabweichung vom Monats Mittelwert */
+                        $abw=($wertAktuell-$wertMonatMittel);
+                        if ($abw>0) $sdevSumPos += ($abw*$abw);
+                        else $sdevSumNeg += ($abw*$abw);
+                        $sdevSum += ($abw*$abw);
+                        $indexCount++;                       
+                        if (isset($this->result[$oid]["MeansRoll"]["Month"][$index-20]))
                             {
-                            $action=  "sell ";
-                            if ($budget) $stueck = $budget/$wertAktuell; 
-                            if ($depot >= $stueck)
+                            /* Trendberechnung */
+                            $wertMonatMittel2 =  $statistics->wert($this->result[$oid]["MeansRoll"]["Month"][$index-20]);                    // nur den Wert ohne TimeStamp extrahieren
+                            $trendMonat = ($wertMonatMittel/$wertMonatMittel2-1)*100;
+                            $mittelWertMonatZuletzt = $mittelWertMonat;
+                            }
+                        }
+                    $mittelWertWoche = $meansRoll->meansValues($index,  5);                    // aus den nächsten  5 Werten einen Mittelwert berechnen
+                    if ( (isset($mittelWertWoche["error"])) === false)
+                        {                
+                        $this->result[$oid]["MeansRoll"]["Week"][$index]  = $mittelWertWoche;
+                        $wertWocheMittel =  $statistics->wert($mittelWertWoche);                    // nur den Wert ohne TimeStamp extrahieren
+                        if (isset($this->result[$oid]["MeansRoll"]["Week"][$index-5]))
+                            {
+                            /* Trendberechnung */
+                            $wertWocheMittel2 =  $statistics->wert($this->result[$oid]["MeansRoll"]["Week"][$index-5]);                    // nur den Wert ohne TimeStamp extrahieren
+                            $trendWoche = ($wertWocheMittel/$wertWocheMittel2-1)*100;
+                            $mittelWertWocheZuletzt = $mittelWertWoche;
+                            }
+                        }
+                    //$mittelWertTag = $meansRoll->meansValues($index,  1);                    // aus den nächsten 1 Werten einen Mittelwert berechnen, 1 liefert den aktuellen Wert
+                    if ($logCount>($count-$debugCount)) echo str_pad($logCount,6).date("d.m.Y H:i:s",$entry["TimeStamp"])."  $wertAktuell";
+                    if (isset($this->result[$oid]["Values"][($index-1)]))
+                        {
+                        $value1=$this->result[$oid]["Values"][$index]["Value"];
+                        $timestamp1=date("d.m.Y H:i:s",$this->result[$oid]["Values"][$index]["TimeStamp"]);
+                        $value2=$this->result[$oid]["Values"][($index-1)]["Value"];
+                        $timestamp2=date("d.m.Y H:i:s",$this->result[$oid]["Values"][($index-1)]["TimeStamp"]);
+                        $trendTag=($value1/$value2-1)*100;
+                        if ($logCount>($count-$debugCount)) echo "  Change    $value1 ($timestamp1) $value2 ($timestamp2)    ".nf($trendTag,"%");         // value2 ist der vorige Tag
+                        }
+                    if ($logCount>($count-$debugCount)) echo "\n";
+
+                    
+                    /*----------------------------------------------------------------------------------*/
+                    if (strtoupper($config["KIfeature"])=="SHARES")
+                        {
+                        /* KI Feature 
+                        * fixe Stückzahlen bewertet die Aktien mit hohem Kurs stärker
+                        * fester Kauf und Verkaufspreis erscheint gerecht
+                        *
+                        */
+                        $stueck=100;
+                        $budget=200;    // sonst false
+                        //$budget=false;
+                        $action=  "     ";
+                        if ( (isset($mittelWertMonat["error"])) === false)      // es gibt bereits eiunen Monatsmittelwert, andernfalls sind die Datenmengen noch zu klein oder falsch
+                            {
+                            if ( ($wertAktuell>$wertMonatMittel) && ($wertAktuell>$wertWocheMittel) ) 
                                 {
-                                $depot -= $stueck;
-                                $konto += $stueck * $wertAktuell;                        
+                                $action=  "sell ";
+                                if ($budget) $stueck = $budget/$wertAktuell; 
+                                if ($depot >= $stueck)
+                                    {
+                                    $depot -= $stueck;
+                                    $konto += $stueck * $wertAktuell;                        
+                                    }
+                                } 
+                            if ( ($wertAktuell<$wertMonatMittel) && ($wertAktuell<$wertWocheMittel) ) 
+                                {
+                                $action=  "buy  ";
+                                if ($budget) $stueck = $budget/$wertAktuell; 
+                                $depot += $stueck;
+                                $konto -= $stueck * $wertAktuell;                        
+                                } 
+                            $geldwert = $depot * $wertAktuell;
+                            if ($debug) 
+                                {
+                                echo str_pad($index,6).date("d.m.Y H:i:s",$entry["TimeStamp"])." Aktuell $action ".nf($wertAktuell,"€",8)." ".nf($wertWocheMittel,"€",8).nf($wertMonatMittel,"€",8)." bis ".date("d.m.Y H:i:s",$mittelWertMonat["startTime"]);
+                                echo "                ".nf($depot,"",8)."    ".nf($geldwert,"€",12)."   $konto   \n";
                                 }
-                            } 
-                        if ( ($wertAktuell<$wertMonatMittel) && ($wertAktuell<$wertWocheMittel) ) 
-                            {
-                            $action=  "buy  ";
-                            if ($budget) $stueck = $budget/$wertAktuell; 
-                            $depot += $stueck;
-                            $konto -= $stueck * $wertAktuell;                        
-                            } 
-                        $geldwert = $depot * $wertAktuell;
-                        if ($debug) 
-                            {
-                            echo str_pad($index,6).date("d.m.Y H:i:s",$entry["TimeStamp"])." Aktuell $action ".nf($wertAktuell,"€",8)." ".nf($wertWocheMittel,"€",8).nf($wertMonatMittel,"€",8)." bis ".date("d.m.Y H:i:s",$mittelWertMonat["startTime"]);
-                            echo "                ".nf($depot,"",8)."    ".nf($geldwert,"€",12)."   $konto   \n";
                             }
                         }
-                    }
-                else
-                    {
-                    if ( ($debug) && false ) 
+                    else
                         {
-                        echo str_pad($index,6).date("d.m.Y H:i:s",$entry["TimeStamp"])." Aktuell ".nf($wertAktuell,"€",8);
-                        if ( (isset($mittelWertWoche["error"])) === false) 
+                        if ( ($debug) && false ) 
                             {
-                            echo " Mittel Woche ".nf($wertWocheMittel,"€",8)." (".date("d.m.Y H:i:s",$mittelWertWoche["TimeStamp"]).") ";
-                            if ($trendWoche) echo "   ".nf($trendWoche,"%")." ";
-                            else echo "          ";
+                            echo str_pad($index,6).date("d.m.Y H:i:s",$entry["TimeStamp"])." Aktuell ".nf($wertAktuell,"€",8);
+                            if ( (isset($mittelWertWoche["error"])) === false) 
+                                {
+                                echo " Mittel Woche ".nf($wertWocheMittel,"€",8)." (".date("d.m.Y H:i:s",$mittelWertWoche["TimeStamp"]).") ";
+                                if ($trendWoche) echo "   ".nf($trendWoche,"%")." ";
+                                else echo "          ";
+                                }
+                            else echo "                                             ";
+                            if ( (isset($mittelWertMonat["error"])) === false)  
+                                {
+                                echo "Monat ".nf($wertMonatMittel,"€",8)." ,berechnet bis ".date("d.m.Y H:i:s",$mittelWertMonat["startTime"]);
+                                if ($trendMonat) echo "   ".nf($trendMonat,"%")." ";
+                                echo "\n";
+                                }
+                            else echo "                                           \n";
                             }
-                        else echo "                                             ";
-                        if ( (isset($mittelWertMonat["error"])) === false)  
-                            {
-                            echo "Monat ".nf($wertMonatMittel,"€",8)." ,berechnet bis ".date("d.m.Y H:i:s",$mittelWertMonat["startTime"]);
-                            if ($trendMonat) echo "   ".nf($trendMonat,"%")." ";
-                            echo "\n";
-                            }
-                        else echo "                                           \n";
+
                         }
+                    }
+
+                if (isset($entry["Max"]))
+                    {
+                    //echo str_pad($index,4).date("d.m.Y",$entry["TimeStamp"])." ".str_pad($entry["Max"],12)." ".date("H:i:s",$entry["MaxTime"])." ".str_pad($entry["Min"],12)." ".date("H:i:s",$entry["MinTime"])."\n";
+                    }
+                else 
+                    {
 
                     }
                 }
 
-            if (isset($entry["Max"]))
+            $maxminFull->calculate();                   // Max Min Werte im Ergebnis Array maxmin abspeichern
+            $maxminFull->youngest();
+            //$maxminFull->print();
+            //print_r($maxmin);
+            $this->result[$oid]["Description"]["MaxMin"] = $maxmin["All"];              // All ist die Defaultgruppe für die Ausgabe
+            $means=$maxmin["All"]["Means"]["Value"];
+
+            // Kompatibilität mit analyseValues
+            $this->result[$oid]["Description"]["Max"]=$maxmin["All"]["Max"]["Value"]; 
+            $this->result[$oid]["Description"]["Interval"]["Full"]["Max"]=$maxmin["All"]["Max"]["Value"];     
+            $this->result[$oid]["Description"]["Min"]=$maxmin["All"]["Min"]["Value"];       
+            $this->result[$oid]["Description"]["Interval"]["Full"]["Min"]=$maxmin["All"]["Min"]["Value"];     
+            $this->result[$oid]["Description"]["Means"]=$means;
+            $this->result[$oid]["Description"]["Change"]=$trendTag;  
+            $this->result[$oid]["Description"]["Interval"]["Month"]["Trend"]=$trendMonat;                         
+            $this->result[$oid]["Description"]["Interval"]["Week"]["Trend"]=$trendWoche;                         
+            $this->result[$oid]["Description"]["Interval"]["Day"]["Trend"]=$trendTag;                         
+
+            if (strtoupper($config["KIfeature"])=="SHARES")
                 {
-                //echo str_pad($index,4).date("d.m.Y",$entry["TimeStamp"])." ".str_pad($entry["Max"],12)." ".date("H:i:s",$entry["MaxTime"])." ".str_pad($entry["Min"],12)." ".date("H:i:s",$entry["MinTime"])."\n";
+                $this->result[$oid]["Analytics"]["stueck"]=$stueck;
+                $this->result[$oid]["Analytics"]["geldwert"]=$geldwert;
+                $this->result[$oid]["Analytics"]["konto"]=$konto;
                 }
-            else 
+
+            /* die letzten aktuellen Trends,  */
+            //print_R($trendTag);
+            if (isset($this->result[$oid]["Description"]["Trend"]))         print_R($this->result[$oid]["Description"]["Trend"]);
+            else
                 {
-
+                $this->result[$oid]["Description"]["Trend"]["Day"]=$trendTag;
+                $this->result[$oid]["Description"]["Trend"]["Week"]=$trendWoche;
+                $this->result[$oid]["Description"]["Trend"]["Month"]=$trendMonat;
                 }
-            }
+                
+            $this->result[$oid]["Description"]["MeansPeriode"]["Week"]=$mittelWertWocheZuletzt;
+            $this->result[$oid]["Description"]["MeansPeriode"]["Month"]=$mittelWertMonatZuletzt;
 
-        $maxminFull->calculate();                   // Max Min Werte im Ergebnis Array maxmin abspeichern
-        $maxminFull->youngest();
-        //$maxminFull->print();
-        //print_r($maxmin);
-        $this->result[$oid]["Description"]["MaxMin"] = $maxmin["All"];              // All ist die Defaultgruppe für die Ausgabe
-        $means=$maxmin["All"]["Means"]["Value"];
+            $this->result[$oid]["Description"]["Latest"]=$maxmin["All"]["Youngest"];
 
-        // Kompatibilität mit analyseValues
-        $this->result[$oid]["Description"]["Max"]=$maxmin["All"]["Max"]["Value"]; 
-        $this->result[$oid]["Description"]["Interval"]["Full"]["Max"]=$maxmin["All"]["Max"]["Value"];     
-        $this->result[$oid]["Description"]["Min"]=$maxmin["All"]["Min"]["Value"];       
-        $this->result[$oid]["Description"]["Interval"]["Full"]["Min"]=$maxmin["All"]["Min"]["Value"];     
-        $this->result[$oid]["Description"]["Means"]=$means;
-        $this->result[$oid]["Description"]["Change"]=$trendTag;  
-        $this->result[$oid]["Description"]["Interval"]["Month"]["Trend"]=$trendMonat;                         
-        $this->result[$oid]["Description"]["Interval"]["Week"]["Trend"]=$trendWoche;                         
-        $this->result[$oid]["Description"]["Interval"]["Day"]["Trend"]=$trendTag;                         
-
-        if (strtoupper($config["KIfeature"])=="SHARES")
-            {
-            $this->result[$oid]["Analytics"]["stueck"]=$stueck;
-            $this->result[$oid]["Analytics"]["geldwert"]=$geldwert;
-            $this->result[$oid]["Analytics"]["konto"]=$konto;
-            }
-
-        /* die letzten aktuellen Trends,  */
-        //print_R($trendTag);
-        if (isset($this->result[$oid]["Description"]["Trend"]))         print_R($this->result[$oid]["Description"]["Trend"]);
-        else
-            {
-            $this->result[$oid]["Description"]["Trend"]["Day"]=$trendTag;
-            $this->result[$oid]["Description"]["Trend"]["Week"]=$trendWoche;
-            $this->result[$oid]["Description"]["Trend"]["Month"]=$trendMonat;
-            }
-            
-        $this->result[$oid]["Description"]["MeansPeriode"]["Week"]=$mittelWertWocheZuletzt;
-        $this->result[$oid]["Description"]["MeansPeriode"]["Month"]=$mittelWertMonatZuletzt;
-
-        $this->result[$oid]["Description"]["Latest"]=$maxmin["All"]["Youngest"];
-
-        /* Standardabweichung Ergebnis abspeichern, es muss zumindest einen Monatsmittelwert geben */
-        if ($indexCount>0)
-            {
-            $sdev = sqrt($sdevSum/$indexCount);
-            $sdevRelPos = sqrt($sdevSumPos/$indexCount)/$means*100;
-            $sdevRelNeg = sqrt($sdevSumNeg/$indexCount)/$means*100;
-            $this->result[$oid]["Description"]["StdDev"]=$sdev;
-            $this->result[$oid]["Description"]["StdDevRel"]=$sdev/$means*100;
-            $this->result[$oid]["Description"]["StdDevPos"]=$sdevRelPos;
-            $this->result[$oid]["Description"]["StdDevNeg"]=$sdevRelNeg;
-            if ($debug) 
+            /* Standardabweichung Ergebnis abspeichern, es muss zumindest einen Monatsmittelwert geben */
+            if ($indexCount>0)
                 {
-                echo "Mittelwert : ".nf($means)." Sdev ist ".number_format($sdev,2,",",".")."  und relativ ".number_format($this->result[$oid]["Description"]["StdDevRel"],2,",",".")."% \n";
-                echo "Aktuell ".nf($wertAktuell)." Max ".nf($maxmin["All"]["Max"]["Value"])." Min ".nf($maxmin["All"]["Min"]["Value"])." Trend Monat ".nf($trendMonat,"%")." Woche ".nf($trendWoche,"%")."\n";
+                $sdev = sqrt($sdevSum/$indexCount);
+                $sdevRelPos = sqrt($sdevSumPos/$indexCount)/$means*100;
+                $sdevRelNeg = sqrt($sdevSumNeg/$indexCount)/$means*100;
+                $this->result[$oid]["Description"]["StdDev"]=$sdev;
+                $this->result[$oid]["Description"]["StdDevRel"]=$sdev/$means*100;
+                $this->result[$oid]["Description"]["StdDevPos"]=$sdevRelPos;
+                $this->result[$oid]["Description"]["StdDevNeg"]=$sdevRelNeg;
+                if ($debug) 
+                    {
+                    echo "Mittelwert : ".nf($means)." Sdev ist ".number_format($sdev,2,",",".")."  und relativ ".number_format($this->result[$oid]["Description"]["StdDevRel"],2,",",".")."% \n";
+                    echo "Aktuell ".nf($wertAktuell)." Max ".nf($maxmin["All"]["Max"]["Value"])." Min ".nf($maxmin["All"]["Min"]["Value"])." Trend Monat ".nf($trendMonat,"%")." Woche ".nf($trendWoche,"%")."\n";
+                    }
+                }
+            else echo "Warning, $oid, noch nicht ausreichend gültige Werte für die Mittelwert und Stabdardabweichungsberechnung verfügbar.\n";
+            $this->result[$oid]["Description"]["eventLog"]=$events["All"]["eventLog"];            
+            $this->result[$oid]["Description"]["Count"]=$logCount;                              // alle Werte, die für die Berechnung des Mittelwertes herangezogen wurden
+            if ($debug && false)
+                {
+                //print_R($this->result[$oid]["Description"]["eventLog"]);
+                foreach ($this->result[$oid]["Description"]["eventLog"] as $time => $event) echo date("d.m.Y H:i:s",$time)." ".$event["Event"]."\n";
                 }
             }
-        else echo "Warning, $oid, noch nicht ausreichend gültige Werte für die Mittelwert und Stabdardabweichungsberechnung verfügbar.\n";
-        $this->result[$oid]["Description"]["eventLog"]=$events["All"]["eventLog"];            
-        $this->result[$oid]["Description"]["Count"]=$logCount;                              // alle Werte, die für die Berechnung des Mittelwertes herangezogen wurden
-        if ($debug && false)
-            {
-            //print_R($this->result[$oid]["Description"]["eventLog"]);
-            foreach ($this->result[$oid]["Description"]["eventLog"] as $time => $event) echo date("d.m.Y H:i:s",$time)." ".$event["Event"]."\n";
-            }
-
 
         //return ($werte);
         return ($this->result[$oid]);
@@ -3644,12 +3688,27 @@ class archiveOps
      *
      */
 
-    private function cleanupStoreValues(&$werte,$oid,$maxLogsperInterval,$debug=false)
+    private function cleanupStoreValues(&$werte,$oid,$config,$debug=false)
         {
+        if (is_array($config)) 
+            {
+            $maxLogsperInterval = $config["maxLogsperInterval"];
+            $suppressZero       = $config["SuppressZero"];
+            }
+        else 
+            {
+            $maxLogsperInterval = $config;
+            $suppressZero=true;
+            }
+        if ($debug)
+            {
+            echo "cleanupStoreValues aufgerufen. Es werden $maxLogsperInterval Werte kopiert. \n";
+            //print_r($config);
+            }
         $logCount=0; $error=0; $ignore=false;
         foreach($werte as $index => $wert)
             {
-            if ( (is_numeric($wert['Value'])==false) || ($wert['Value']==0) )
+            if ( (is_numeric($wert['Value'])==false) || ( ($wert['Value']==0) && $suppressZero ) )
                 {
                 //if ($debug) print_R($wert);
                 unset ($werte[$index]);
@@ -3825,9 +3884,14 @@ class archiveOps
         protected $config;
 
         /* einheitliche Konfiguration mit Variablen für die Nutzung in den Statistikfunktionen
-         * EventLog
-         * Aggregated false,0,1,2,
-         * StartTime, EndTime
+         *      EventLog        true
+         *      DataType        Archive, Aggregated, Logged
+         *      Aggregated      true if dataType is Aggregated, werte false,0,1,2,
+         *      KIfeature       none, besondere Auswertungen machen
+         *      Split           Spli, Änderungen der Skalierung zu einem bestimmten zeitpunkt
+         *      StartTime 
+         *      EndTime
+         *      LogChange
          *
          */
 
@@ -3850,9 +3914,11 @@ class archiveOps
             configfileParser($logInput, $config, ["KIFeature","KIFEATURE","kifeature","KIfeature" ],"KIfeature" ,"none");
             configfileParser($logInput, $config, ["Split","SPLIT","split"],"Split" ,null);
 
+            configfileParser($logInput, $config, ["SuppressZero","SUPPRESSZERO","suppresszero"],"SuppressZero" ,true);
+
             configfileParser($logInput, $config, ["STARTTIME","StartTime","startTime","starttime" ],"StartTime" ,0);
             configfileParser($logInput, $config, ["ENDTIME","EndTime","endTime","endtime" ],"EndTime" ,0);
-            configfileParser($logInput, $config, ["LOGCHANGE","LogChange","logChance","logchance" ],"LogChange" ,["pos"=>5,"neg"=>5]);      // in Prozent auf den Vorwert
+            configfileParser($logInput, $config, ["LOGCHANGE","LogChange","logChange","logchange" ],"LogChange" ,["pos"=>5,"neg"=>5]);      // in Prozent auf den Vorwert
 
             if ($logs>1) 
                 {
@@ -7107,6 +7173,32 @@ class timerOps
 
         }
 
+    /* verwendet in IpsComponentSensor_Motion für die Delayed Bewegungungsereignisse
+     *
+     */
+
+    public function setDelayedEvent($name,$scriptId,$delay,$execScript="",$debug=false)
+        {
+        if ($debug) echo "setDelayedEvent($name,$scriptId,$delay,$execScript,$debug) aufgerufen.\n";
+        $EreignisID = @IPS_GetEventIDByName($name, IPS_GetParent($scriptId));
+        if ($EreignisID === false)
+            { 
+            if ($debug) echo "Event nicht gefunden > neu anlegen.\n";
+            $EreignisID = IPS_CreateEvent(1);
+            IPS_SetName($EreignisID,$name);
+            IPS_SetParent($EreignisID, IPS_GetParent($scriptId));
+            }
+        IPS_SetEventCyclic($EreignisID,0,1,0,0,1,$delay);           // konfigurierbar, zB alle 30 Minuten, d.h. 30 Minuten kann man still sitzen bevor keine Bewegung mehr erkannt wird 
+        $zeit=time();
+        $stunde=intval(date("H",$zeit),10);             // integer dezimal enkodiern
+        $minute=intval(date("i",$zeit),10);             // integer dezimal enkodiern
+        //IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);         // damit die Timer hintereinander ausgeführt werden 
+        IPS_SetEventCyclicTimeFrom($EreignisID,$stunde,$minute,0);  // (integer $EreignisID, integer $Stunde, integer $Minute, integer $Sekunde)
+        if ($execScript !="") IPS_SetEventScript($EreignisID,$execScript);
+        IPS_SetEventActive($EreignisID,true);
+
+        }
+
     function write($string)
         {
         echo $string;
@@ -7228,7 +7320,7 @@ class ComponentHandling
         return($remServer);
         } 
 
-    /* die Remote Struktur für das Keyword auslesen */
+    /* ComponentHandling, die Remote Struktur für das Keyword auslesen */
 
     public function getStructureofROID($keyword,$debug=false)
         {
@@ -7249,6 +7341,9 @@ class ComponentHandling
             }
         return($struktur);
         }
+
+    /* ComponentHandling, regioster Event
+     */
 
     public function registerEvent($oid,$update,$component,$module,$commentField)
         {
@@ -7434,7 +7529,8 @@ class ComponentHandling
         return (false);             // Ergebnis wird schon vorher zurückgemeldet, abhängig von write
 		}	
 
-    /* Handle Keys and Keywords on deviceList 
+    /* ComponentHandling
+     * Handle Keys and Keywords on deviceList 
      *      Key         Eintrag eines Gerätes/device
      *      keywords    etwas wie ["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"]
      *
@@ -7621,7 +7717,7 @@ class ComponentHandling
         return $keyName;
         }
 
-    /* Zuweisung von Orientierungshilfen für das Anlegen der Variablen. addOnKeyName wird von folgenden Routinen aufgerufen:   getComponent
+    /* ComponentHandling, Zuweisung von Orientierungshilfen für das Anlegen der Variablen. addOnKeyName wird von folgenden Routinen aufgerufen:   getComponent
      *
      *   Index          DetectMovement
      *  HeatSet 
@@ -7910,7 +8006,7 @@ class ComponentHandling
 
     /***********************************************************************************
     *
-    * installComponentFull, anlegen von CustomComponents Events
+    * ComponentHandling::installComponentFull, anlegen von CustomComponents Events
     *
     * verwendet zum schnellen und einheitlichen Anlegen der Variablen und Events für CustomComponents, RemoteAccess und EvaluateHeatControl 
     * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
@@ -8111,6 +8207,9 @@ class ComponentHandling
         return ($struktur);
 		}	
 
+    /* ComponentHandling
+     */
+
     function setLogging($oid, $debug=false)
         {
         $archiveID = $this->getArchiveSDQL_HandlerID();
@@ -8132,6 +8231,15 @@ class ComponentHandling
             }        
         }
 
+    /* ComponentHandling
+     */
+
+    function getLoggingStatus($oid, $debug=false)
+        {
+        $logStatus=false;
+        if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)==true) $logStatus=true;
+        return($logStatus);
+        }
         
     } // endof class ComponentHandling
 

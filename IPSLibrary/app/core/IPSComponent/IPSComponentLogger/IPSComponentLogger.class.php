@@ -548,7 +548,11 @@ class Logging
         if ($this->CheckDebugInstance($variable)) IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für Motion VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.($value?"Bewegung":"Still"));
         if ($debug) echo "      Aufruf do_init_motion:\n";
 
-        if (isset ($this->installedmodules["DetectMovement"])) $this->DetectHandler = new DetectMovementHandler();  // für getVariableName benötigt 
+        if (isset ($this->installedmodules["DetectMovement"])) 
+            {
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');                  
+            $this->DetectHandler = new DetectMovementHandler();  // für getVariableName benötigt 
+            }
         $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
 
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
@@ -1262,7 +1266,12 @@ class Logging
                     }
                 }
             else $NachrichtenID=$this->do_init_statistics($debug);  
-            if ($debug) echo "---------do_init abgeschlossen. Nachrichten werden hier gelogged: $NachrichtenID (".IPS_GetName($NachrichtenID)."/".IPS_GetName(IPS_GetParent($NachrichtenID)).")\n";
+            if ($debug) 
+                {
+                echo "---------do_init abgeschlossen. Nachrichten werden hier gelogged: $NachrichtenID (";
+                if ($NachrichtenID != "Ohne") echo IPS_GetName($NachrichtenID)."/".IPS_GetName(IPS_GetParent($NachrichtenID)).")";
+                echo "\n";
+                }            
             return ($NachrichtenID);    // damit die Nachrichtenanzeige richtig aufgesetzt wird 
             }
 
@@ -1399,19 +1408,24 @@ class Logging
         }
 
     /*
-        * Wert auf die konfigurierten remoteServer laden, gemeinsame Funktion im Component
-        */
+     * Wert auf die konfigurierten remoteServer laden, gemeinsame Funktion im Component
+     *  remServer   ist die Liste der Remote Server mit Url und Passwort
+     *  RemoteOID   ist die mit Doppelpunkt dargestellte Liste mit ServerName und Remote OID
+     *
+     * Anhand der MessageHandler Config wird der Parameter übergeben, da sind insgesamt 3 Parametzer drinnen, es muss der richtige Parameter extrahiert werden
+     */
 
     public function RemoteLogValue($value, $remServer, $RemoteOID, $debug=false )
         {
+        //if ($debug) echo "RemoteLogValue aufgerufen:\n";            
         if ($RemoteOID != Null)
             {
-            if ($debug) echo "RemoteLogValue($value,...,$RemoteOID) aufgerufen.\n";
+            if ($debug) echo "RemoteLogValue($value,".json_encode($remServer).",$RemoteOID) aufgerufen.\n";
             $params= explode(';', $RemoteOID);
             foreach ($params as $val)
                 {
                 $para= explode(':', $val);
-                if ($debug) echo "Wert :".$val." Anzahl ",count($para)." \n";
+                if ($debug) echo "Wert :".$val." Anzahl ",count($para)." -> sollen 2 sein.\n";
                 if (count($para)==2)
                     {
                     $Server=$remServer[$para[0]]["Url"];
@@ -1425,6 +1439,7 @@ class Logging
                     }
                 }
             }
+        elseif ($debug) echo "RemoteLogValue mit RemoteOID==Null aufgerufen. Keine RemoteServer konfiguriert.\n"; 
         }
 
     /*****************************************************************************************/

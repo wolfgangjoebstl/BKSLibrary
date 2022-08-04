@@ -493,8 +493,11 @@ class SNMP_OperationCenter
 		$oid = ltrim($oid,".");
 		if ( ($this->SNMPmodul))
 			{
+            //echo "Abfrage von $oid von ".$this->SNMPinstanz."  ";
 			$valueObj=IPSSNMP_ReadSNMP($this->SNMPinstanz, $oid);
-			$value=$valueObj[".".$oid];
+            //print_r($valueObj);
+			if (isset($valueObj[".".$oid])) $value=$valueObj[".".$oid];          // alte Darstellung mit . am Anfang
+            else $value=$valueObj[$oid];
 			echo "getSNMObject, Wert von IPS SNMP Modul für $oid empfangen : ".$value."\n";
 			}
 		elseif ($this->SNMPRead)

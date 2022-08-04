@@ -41,28 +41,28 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $dosOps->setMaxScriptTime(120); 
     $startexec=microtime(true);
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager))
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    if (!isset($moduleManager))
+        {
+        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-	$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
-	}
+        echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+        $moduleManager = new IPSModuleManager('RemoteAccess',$repository);
+        }
 
-$installedModules = $moduleManager->GetInstalledModules();
-$inst_modules="\nInstallierte Module:\n";
-foreach ($installedModules as $name=>$modules)
-	{
-	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	}
-echo $inst_modules."\n\n";
+    $installedModules = $moduleManager->GetInstalledModules();
+    $inst_modules="\nInstallierte Module:\n";
+    foreach ($installedModules as $name=>$modules)
+        {
+        $inst_modules.=str_pad($name,30)." ".$modules."\n";
+        }
+    echo $inst_modules."\n\n";
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-echo "RA Category Data ID   : ".$CategoryIdData."\n";
-echo "RA Category App ID    : ".$CategoryIdApp."\n";
+    echo "RA Category Data ID   : ".$CategoryIdData."\n";
+    echo "RA Category App ID    : ".$CategoryIdApp."\n";
 
     echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
     if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }

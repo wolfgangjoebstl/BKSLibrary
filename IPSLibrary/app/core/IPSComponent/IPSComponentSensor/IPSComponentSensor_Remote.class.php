@@ -74,6 +74,8 @@
 		private $tempValue;
 		private $installedmodules;
 
+        private $debug;
+
 		private $remServer;
 		
 		/**
@@ -90,9 +92,19 @@
 
 		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-			//echo "IPSComponentSensor_Remote: Construct Sensor with ($instanceId,$remoteOID,$tempValue). --> (".IPS_GetName($instanceId).")\n";	
-            //$this->RemoteOID    = instanceID;                // par1 manchmal auch par2		
-			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1 (bei Motion ?)
+            $this->debug=false;
+			if ($this->debug) echo "IPSComponentSensor_Remote: Construct Sensor with ($instanceId,$remoteOID,$tempValue).\n";	
+            if (strpos($instanceId,":") !== false)                // par1 manchmal auch par2, rausfinden
+                {
+                $this->tempObject   = $remoteOID;         // alte Parametrierung, var1 ist die Server:remoteOID Parametrierung
+                $this->RemoteOID    = $instanceId;                    
+                }
+            else                                            // zweiter Parameter
+                {
+                if ($this->debug) echo "   Erster Parameter, lokale ID  --> (".IPS_GetName($instanceId).")\n";
+                $this->tempObject   = $instanceId;
+                $this->RemoteOID    = $remoteOID;                    
+                }
 			$this->tempValue    = $tempValue;           // par3
 
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -138,17 +150,21 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
             $debug=false;
-			//echo "HandleEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
+			if ($debug) echo "HandleEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
             //$startexec=microtime(true);    
             $log=new Sensor_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
             $mirrorValue=$log->updateMirorVariableValue($value);
     	    //IPSLogger_Not(__file__,"IPSComponentSensor_Remote:HandleEvent mit VariableID $variable (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") mit neuem Wert $value und altem Wert $mirrorValue (".$log->getMirorNameID().") bzw. ".GetValue($variable).".");
-            if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // gleiche Werte unterdrücken, dazu Spiegelvariable verwenden.
+            if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) || $debug)     // gleiche Werte unterdrücken, dazu Spiegelvariable verwenden.
                 {
     			//IPSLogger_Inf(__file__, 'IPSComponentSensor_Remote HandleEvent: Sensor Remote Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			    echo "IPSComponentSensor_Remote:HandleEvent Wert != Mirror, VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."   \"".$this->tempValue."\"\n";
-    			$result=$log->Sensor_LogValue($value);                  // SetValue($this->variableLogID,GetValue($this->variable));
-                $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );
+    			$result=$log->Sensor_LogValue($value,$debug);                  // SetValue($this->variableLogID,GetValue($this->variable));
+                $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
+                }
+            else 
+                {
+                echo "IPSComponentSensor_Remote:HandleEvent Wert == Mirror, Logging supressed.\n";
                 }
 
 			}
@@ -318,14 +334,20 @@
 	    	$unchanged=time()-$variabletyp["VariableChanged"];
 			$oldvalue=GetValue($this->variableLogID);
 		
+            if ($debug) echo "   Debug Mode on, Log Value in Variable with ID : ".$this->variableLogID." with this Value $value instead of Value from Variable ".$this->variable." : ".GetValue($this->variable)."\n";
             if ( ($this->variableTypeReg == "POWER") && ($this->variableProfile=="~Power") && ($this->mirrorProfile=="~Watt.3680") )
                 {
                 echo "   ****Variablenanpassung eventuell entsprechend ".$this->variableTypeReg.": ",$this->variableProfile." versus ".$this->mirrorProfile."\n";
-                SetValue($this->variableLogID,GetValue($this->variable)/1000);
+                if ($debug) SetValue($this->variableLogID,$value/1000);
+                else SetValue($this->variableLogID,GetValue($this->variable)/1000);
                 }
-        	else SetValue($this->variableLogID,GetValue($this->variable));
+        	else 
+                {
+                if ($debug) SetValue($this->variableLogID,$value);
+                else SetValue($this->variableLogID,GetValue($this->variable));
+                }
             
-			echo "      Sensor_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValueIfFormatted($this->variable).". Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
+            echo "     Sensor_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValueIfFormatted($this->variableLogID).". Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
 			if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Sensor_LogValue: Variable OID : '.$this->variable.' ('.IPS_GetName($this->variable).'/'.IPS_GetName(IPS_GetParent($this->variable)).'Name : '.$this->variablename.'  TypeReg : '.$this->variableTypeReg);
 
 			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */

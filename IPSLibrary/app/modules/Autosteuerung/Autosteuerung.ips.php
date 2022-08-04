@@ -12,15 +12,18 @@
  * TimerEvent           Anwesenheitserkennung und -simulation
  * Execute
  *
-
-
-Automatisches Ansteuern der Heizung, durch Timer, mit Overwrite etc.
-
-zB durch wenn die FS20-STR einen Heizkoerper ansteuert, gleich wieder den Status aendern
-
-funktioniert nur mit elektrischen Heizkoerpern
-
-***********************************************************/
+ * Timer, regelmaessige Aufrufe
+ *      OnUpdate/OnChange für alle konfigirierten Events
+ *      Anwesendtimer    alle 60 sec  
+ *      Aufruftimer      alle 5 mins
+ *
+ * Automatisches Ansteuern der Heizung, durch Timer, mit Overwrite etc.
+ *
+ * zB durch wenn die FS20-STR einen Heizkoerper ansteuert, gleich wieder den Status aendern
+ *
+ * funktioniert nur mit elektrischen Heizkoerpern
+ *
+ ***********************************************************/
 
 //Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
@@ -79,6 +82,8 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
     $operate  = new AutosteuerungOperator($debug);
     $auto     = new Autosteuerung();
 
+    $timerOps = new timerOps();
+
 /********************************************************************************************
  *
  * es gibt 4 verschiedene Logging Registersets
@@ -106,11 +111,14 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
  ********************************/
         
     $timerAufrufID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
-    $tim2ID = @IPS_GetEventIDByName("KalenderTimer", $scriptIdHeatControl);
     $tim3ID = @IPS_GetEventIDByName("Anwesendtimer", $scriptIdAutosteuerung);
 
     if ($timerAufrufID==false) $fatalerror=true;
+
+    /*
+    $tim2ID = @IPS_GetEventIDByName("KalenderTimer", $scriptIdHeatControl);
     if ($tim2ID==false) $fatalerror=true;
+    */
 
 /*****************************
  *
@@ -349,8 +357,15 @@ if ($_IPS['SENDER']=="Variable")
 if ($_IPS['SENDER']=="TimerEvent")
 	{
 	/********************************
-	 * Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun
-	 *
+	 * zwei Timer implementert:
+     *   (1)  Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun
+	 *   (2)  wird alle 60 Sekunden aufgerufen, Anwesenheit erkennen etc
+     *
+     * Aufgaben 60sec Anwesendtimer
+     *      Monitor ein/ausschalten     $AutoSetSwitches["MonitorMode"]["NAME"]
+     *      Anwesendheit Status         $StatusAnwesend=$operate->Anwesend();
+     *
+     *
 	 * lassen sich aber nicht in der event gesteuerten Parametrierung einstellen
 	 *
 	 * Anwesenheitssimulation (TYPE=AWS):
@@ -418,6 +433,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			$topology = $operate->getLogicAnwesend();
 			$html=$operate->writeTopologyTable($topology);
 			SetValue($StatusTableMapHtml,$html);
+            
 			if ($changesDetected) IPSLogger_Not(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , Monitor : '.($state?"Ein":"Aus").' Anwesend : '.($StatusAnwesend ?"Ja":"Nein"));
             break;
 		case $timerAufrufID:
@@ -572,7 +588,11 @@ if ($_IPS['SENDER']=="Execute")
 	echo "--------------------------------------------------------------\n";
 	echo "        EXECUTE aufgerufen, es erfolgt die Überprüfung mit Testwerten:\n";
 	echo "--------------------------------------------------------------\n\n";
-	//IPSLogger_Dbg(__file__, 'Exec aufgerufen ...');
+    echo "Timerprogrammierung: \n";
+    $timerOps->getEventData($timerAufrufID);
+    //$timerOps->getEventData($tim2ID);                         // Kalendertimer gibt es nicht
+    $timerOps->getEventData($tim3ID);
+
 	
 
             	$AutoSetSwitches = Autosteuerung_SetSwitches();
@@ -626,8 +646,14 @@ if ($_IPS['SENDER']=="Execute")
 		}
 		
 	echo "----------------------------------------------\n";
-	echo "Status Anwesenheitssimulation : ".(GetValue($AnwesenheitssimulationID))." (0 aus 1 ein 2 auto)\n";
-	echo "Festellung der Anwesenheit : ".($operate->Anwesend()?"Anwesend":"Abwesend")."\n"; 	
+    echo "Anwesenheitserkennung:\n";
+	echo "Festellung der Anwesenheit : ".($operate->Anwesend()?"Anwesend":"Abwesend")."\n"; 
+    /* Kurzüberblick als Tabelle machen über Bewegnung in den Räumen */
+    $topology = $operate->getLogicAnwesend(false,true);             //array output und Debug
+    $html=$operate->writeTopologyTable($topology);	
+    echo $html;
+	echo "----------------------------------------------\n";
+	echo "Status Schalter Anwesenheitssimulation : ".(GetValue($AnwesenheitssimulationID))." (0 aus 1 ein 2 auto)\n";    
 	echo "\nEingestellte Anwesenheitssimulation:\n\n";
     $scenes=Autosteuerung_GetScenes();    
 	foreach($scenes as $scene)

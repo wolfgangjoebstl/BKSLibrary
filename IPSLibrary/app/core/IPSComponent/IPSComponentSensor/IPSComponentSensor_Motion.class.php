@@ -81,8 +81,16 @@
 		public function __construct($var1=null, $lightObject=null, $lightValue=null)
 			{
 		    //echo "Build Motion Sensor with OID ".$var1.", RemoteOIds $lightObject und Type Definitionen: $lightValue.\n";
-			$this->tempObject   = $lightObject;
-			$this->RemoteOID    = $var1;                    // par1 manchmal auch par2
+            if (strpos($var1,":") !== false)                // par1 manchmal auch par2, rausfinden
+                {
+                $this->tempObject   = $lightObject;         // alte Parametrierung, var1 ist die Server:remoteOID Parametrierung
+                $this->RemoteOID    = $var1;                    
+                }
+            else                                            // zweiter Parameter
+                {
+                $this->tempObject   = $var1;
+                $this->RemoteOID    = $lightObject;                    
+                }
 			$this->tempValue    = $lightValue;
 			
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -134,8 +142,8 @@
 			$log=new Motion_Logging($variable,Null,$value,$this->tempValue, $debug);                 // kein Variablename vorgegeben, Initialisierung je nach Typ des registers (Motion, Brightness oder Contact) 
             $mirrorOldValue=$log->updateMirrorVariableValue($value);         // noch eine Mirrorvariable, aber hier ganz einfach gelöst, alle in Mirror Category
 			$result=$log->Motion_LogValue($value, $debug);                  // hier könnte man mit der Mirrorvariable gleiche Werte noch unterdrücken
-            
-            $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );
+            if ($debug) echo "Übergebene Parameter relevant für Logging : \"".$this->tempObject."\",\"".$this->RemoteOID."\",\"".$this->tempValue."\" \n";
+            $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
 			}
 
 		/**
@@ -403,8 +411,12 @@
 	   
 		function Motion_LogValue($value,$debug=false)
 			{
-            if ($debug) echo "Motion_logValue aufgerufen. Typ $this->variableTypeReg \n";
-			$result=GetValue($this->variable);
+            if ($debug) 
+                {
+                echo "Motion_logValue aufgerufen. Typ $this->variableTypeReg. Wert ist $value. \n";
+                $result=$value;         // mit simuliertem Wert arbeiten
+                }
+			else $result=GetValue($this->variable);
             switch ($this->variableTypeReg)
                 {            
                 case "MOTION":
@@ -433,7 +445,7 @@
          *         
          */
 
-        private function doLogMotion($result)
+        private function doLogMotion($result,$debug=false)
             {
             if (true)
                 {
@@ -447,6 +459,15 @@
                 {
                 if ($result==true)
                     {
+                    $timerOps = new timerOps();                        
+                    $delaytime=$this->configuration["LogConfigs"]["DelayMotion"];
+                    SetValue($this->variableDelayLogID,$result);
+                    $name=$this->variable."_".$this->variablename."_EVENT";
+                    $EreignisID = @IPS_GetEventIDByName($name, IPS_GetParent($_IPS['SELF']));
+                    echo "   Verzögerung der Events konfiguriert, Timer im selben Verzeichnis wie Script gesetzt : $name .\n";
+                    $execScript="if (GetValue(".$this->variable.")==false) { SetValue(".$this->variableDelayLogID.",false); IPS_SetEventActive(".$EreignisID.",false);} \n";
+                    $timerOps->setDelayedEvent($name,$_IPS['SELF'],$delaytime,$execScript, $debug);
+                    /*                        
                     $delaytime=$this->configuration["LogConfigs"]["DelayMotion"];
                     SetValue($this->variableDelayLogID,$result);
                     echo "   Verzögerung der Events konfiguriert, Timer im selben Verzeichnis wie Script gesetzt : ".$this->variable."_".$this->variablename."_EVENT"."\n";
@@ -458,10 +479,10 @@
                         IPS_SetName($EreignisID,$this->variable."_".$this->variablename."_EVENT");
                         IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
                         }
-                    IPS_SetEventCyclic($EreignisID,0,1,0,0,1,$delaytime);      /* konfigurierbar, zB alle 30 Minuten, d.h. 30 Minuten kann man still sitzen bevor keine Bewegung mehr erkannt wird */
-                    IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+                    IPS_SetEventCyclic($EreignisID,0,1,0,0,1,$delaytime);      // konfigurierbar, zB alle 30 Minuten, d.h. 30 Minuten kann man still sitzen bevor keine Bewegung mehr erkannt wird 
+                    IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);  // damit die Timer hintereinander ausgeführt werden 
                     IPS_SetEventScript($EreignisID,"if (GetValue(".$this->variable.")==false) { SetValue(".$this->variableDelayLogID.",false); IPS_SetEventActive(".$EreignisID.",false);} \n");
-                    IPS_SetEventActive($EreignisID,true);
+                    IPS_SetEventActive($EreignisID,true);                   */
                     }
                 }	
             else

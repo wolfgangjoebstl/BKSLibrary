@@ -880,7 +880,7 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
  *      writeTopologyTable
  *      getGeofencyInformation
  *
- *
+ * für die Ermittleung von Delayed Werten wird das Modul DetectMovement benötigt das die Werte in Ihrer Katorie unter Detect_Movement speichert
  *
  *
  *
@@ -1114,10 +1114,14 @@ class AutosteuerungOperator
 		}
 
 
-    /* set/get LogicAnwesend 
-     * analyse der entsprechenden Konfiguration und abspeichern in einem class object 
-     *
+    /* AutosteuerungOperator::setLogicAnwesend   die Configuration schreiben , get Funktion dazu passend siehe weiter unten
+     * analyse der entsprechenden Konfiguration in Autosteuerung_Configuration.inc.php mit der Funktion Autosteuerung_Anwesend und abspeichern in einem class object
+     * wird von construct aufgerufen 
+     * Funktion Delayed ist Default false, kann man in der Config einschalten
+     * AND/OR kann ein Array aus Werten enthalten oder eine Array aus weiteren Arrayzeilen mit der Topologieinformation für eine kleine Minitabelee
+     * zu jeder Array Zeile noch den Delayed Wert hinzufügen, das ist der Wert der mit dem selben Namen in der Kategorie $this->motionDetect_DataID steht
      */ 
+     
 	public function setLogicAnwesend($debug=false)
 		{
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
@@ -1142,21 +1146,10 @@ class AutosteuerungOperator
                             if (is_array($oid)) 
                                 {
                                 $name=IPS_GetName($index);
-                                $DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);
-                                if ($debug) echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index)))."). Verzoegert : $DataID\n";
-                                //$config[$type][$index] = $oid;
+                                $oidEntry=$index;
                                 $newPos="x";
                                 foreach ($oid as $pos => $entry) 
                                     {
-                                    //echo "     $pos => $entry\n";
-                                    
-                                    /* Achtung mit Typecast, ein Vergleich eines Strings mit einer Zahl führt dazu das der String in eine Zahl umgerechnet wird 
-                                    $position=(string)$pos;
-                                    if ($position == "x") 
-                                        {
-                                        echo "STRANGE == Funktion : x erkannt.\n";
-                                        if ($pos == "y") echo "STRANGE == Funktion : y erkannt.\n";			// DAS IST STRANGE !!!!! es wird sowohl x und y erkannt beim selben Wert
-                                        } */
                                     if ($pos === "x") 
                                         {
                                         //echo "x erkannt : $pos mit $entry\n";
@@ -1179,17 +1172,24 @@ class AutosteuerungOperator
                                         $config[$type][$index][$pos] = $entry;
                                         }	
                                     }
-                                if ($DataID>0) $config[$type][$index]["Delayed"]=$DataID;     
                                 }
                             else
                                 {  /* add default entry and remove old one */
                                 //unset($configAnwesend[$type][$index]);
                                 if ($debug) echo " --> kein Array, Topology hinzufuegen.\n";
                                 $name=IPS_GetName($oid);
-                                $DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);							
-                                if ($debug) echo " --> Index $oid (".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."). Verzoegert : $DataID\n";							//$config[$type][$index] = $oid;
+                                $oidEntry=$oid;
                                 $config[$type][$oid]=["x" => 0,"y" => 0];
                                 }
+                            $DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);							
+                            if ($debug) echo " --> Index $oidEntry (".IPS_GetName($oidEntry)."/".IPS_GetName(IPS_GetParent($oidEntry))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oidEntry)))."). Verzoegert : $DataID\n";							//$config[$type][$index] = $oid;
+                            if ($DataID===false)
+                                {
+                                $parentName=IPS_GetName(IPS_GetParent($index));
+                                $DataID=@IPS_GetObjectIDByName($parentName,$this->motionDetect_DataID);
+                                if ($debug) echo "Suche Detect Movement zu $parentName/$name in ".$this->motionDetect_DataID." : $DataID  \n";
+                                }
+                            if ($DataID>0) $config[$type][$index]["Delayed"]=$DataID;           // Delayed Paraeter ermitteln und der in der class gespeicherten config hinzufügen   
                             }
                         unset($operation);
                         break;
@@ -1208,21 +1208,28 @@ class AutosteuerungOperator
         return ($config);
         }
 
-    /* das ist die passende Debug Funktion zu Anwesend()
+    /* AutosteuerungOperator::getLogicAnwesend   das ist die passende Debug Funktion zu Anwesend()
      * hier ausgeben wie berechnet wurde. Könnte als Zusatzinfo in Autosteuerung Anwesenheitserkennung gemacht werden.
      *
+     * zwei Ausgabemöglichkeiten, html oder als Array
+     * es wird das Array logicAnwesend au der Config durchgegangen und nach Index OR oder AND durchsucht, 
+     * Eintrag wird nach oid=>topology ausgewertet
+     *
+     *
      */ 
-	public function getLogicAnwesend($htmlOut=false,$debug=false)
+	
+    public function getLogicAnwesend($htmlOut=false,$debug=false)
 		{
+        if ($debug) echo "getLogicAnwesend aufgerufen. Ausgabe als ".($htmlOut?"Html":"Array").".\n";
         $html='<table id="infoAnwesenheit">';                                 // style definition in writeTopologyTable
 		$delayed = $this->logicAnwesend["Config"]["Delayed"];
 		if ($debug) print_r($this->logicAnwesend );
-        $result=false; $resultDelayed=false;
+        $result=false; $resultDelayed=false;                                // ie beiden Ergebniswerte für das AND/OR Ergebnis
 		$operator="";
-		$topologyStatus=array();	
+		$topologyStatus=array();	                                        // Rückgabewert wenn Array
 		foreach($this->logicAnwesend as $type => $operation)
 			{
-			if ($type == "OR")
+			if ($type == "OR")              // entweder OR oder AND, gleiche Funktion
 				{
 				$operator.="OR(";
                 $html.='<tr><td colspan="6">'."Operation OR</td></tr>";
@@ -1230,9 +1237,9 @@ class AutosteuerungOperator
 
 				//print_r($operation);
                 $first=true;
-				foreach ($operation as $oid=>$topology)
+				foreach ($operation as $oid=>$topology)                 // die OIDs durchgehen, dahinter kommt das Array mit der Topology, hier gibt es auch den Delayed Parameter für die andere Variable
 					{
-					$result1=GetValueBoolean($oid);
+					$result1=GetValueBoolean($oid);                     // Status und wann geändert auslesen
 					$statusChanged=IPS_GetVariable($oid)["VariableChanged"];
 
                     $result = $result || $result1;
@@ -1312,9 +1319,12 @@ class AutosteuerungOperator
 
 
 	/*
-	 * die Topologischen Werte für die ANzeige des Status verwenden, derzeit Anzeige als simple Tabelle, gibt aber schon einen grundsätzlichen Überblick
-	 *
-	 *
+	 * die Topologischen Werte für die Anzeige des Status verwenden, derzeit Anzeige als simple Tabelle, gibt aber schon einen grundsätzlichen Überblick
+	 * style für html wird hier definiert, max x für die Breite der Tabelle  wird automatisch definiert
+	 * die Werte kommen von Input topology, da ist auch der Status drinnen, also ob Anwesend oder nicht (2,1,0)
+     * darunter noch eine Tabelle als Legende zeichnen
+     * und noch eine Tabelle mit getLogicAnwesend mit detaillierten Informationen
+     *
 	 */
 	public function writeTopologyTable($topology)
 		{
@@ -1330,7 +1340,7 @@ class AutosteuerungOperator
 		$html.="</style>";
 		$html.="<table id=anwesenheit>";
 		$maxx=1;
-		foreach ($topology as $y => $line)	foreach ($line as $x => $status) {if ($x > $maxx) $maxx=$x; }
+		foreach ($topology as $y => $line)	foreach ($line as $x => $status) {if ($x > $maxx) $maxx=$x; }           //max x für die Breite der Tabelle  wird automatisch definiert
 
 		foreach ($topology as $y => $line)
 			{

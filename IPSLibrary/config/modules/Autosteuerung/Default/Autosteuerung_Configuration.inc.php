@@ -128,6 +128,14 @@
                 'MOBILE'  				=> false,
                 'OWNTAB'				=> 'Anwesenheitserkennung',                
                     ),
+			'Alarmanlage'   				=>  array(					// diesen Namen nicht verändern
+				'NAME'               => 'Alarmanlage',
+				'PROFIL'             => 'AusEinAuto',
+				'ADMINISTRATOR'      => true,
+				'USER'      			=> true,
+				'MOBILE'  				=> true,
+                                                                    // zumindest eine ohne OWNTAB sonst wird AUtosteuerung nicht angelegt
+					),                      
                 );
 		return $switches;
 		}
