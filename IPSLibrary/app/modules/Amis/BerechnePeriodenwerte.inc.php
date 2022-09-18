@@ -81,7 +81,7 @@ foreach ($MeterConfig as $meter)
         $zaehler=0;
         $jetzt=time();
 
-        $endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+        $endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));     // mktime(hour,minute,second,month,day,year)
         $starttime=$endtime-60*60*24*1;
         echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
         echo "Variable: ".IPS_GetName($variableID)."     ($variableID)\n";
@@ -96,7 +96,7 @@ foreach ($MeterConfig as $meter)
         $starttime=$endtime-60*60*24*7;
         //$ergebnis=summestartende2($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
         //echo "Ergebnis (alt) Wert letzte 7 Tage : ".$ergebnis."kWh \n";
-        $ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID, $display);
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID, true);
         echo "Ergebnis Wert letzte   7 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
         SetValue($letzte7TageID,$ergebnis);
         SetValue($letzte7TageEurID,$ergebnis*GetValue($KostenID));
@@ -148,8 +148,8 @@ if ($_IPS['SENDER'] == "Execute")
 	foreach ($MeterConfig as $meter)
 		{
 		echo"-------------------------------------------------------------\n";
-		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-        echo "Create Variableset for : ".$meter["NAME"]." vom Typ ".$meter["TYPE"]." in $ID (".$ipsOps->path($ID).")\n";   
+		$ID = IPS_GetObjectIdByName($meter["NAME"],$CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
+        echo "Get Variableset for : ".$meter["NAME"]." vom Typ ".$meter["TYPE"]." in $ID (".$ipsOps->path($ID).")\n";   
         $variableID = $Amis->getWirkenergieID($meter); 
 		$Amis->getArchiveData($variableID, $starttime, $endtime);
 
@@ -292,9 +292,10 @@ if ($_IPS['SENDER'] == "Execute")
             }    // ende if false
 	    }       // ende foreach
 
-    $Amis->getArchiveData(17449, $starttime, $endtime, "A");  
-    $Amis->getArchiveData(46020, $starttime, $endtime, "A"); 
-    $Amis->getArchiveData(33623, $starttime, $endtime, "A"); 
+    // für spezielle Archive ausprobieren
+    //$Amis->getArchiveData(17449, $starttime, $endtime, "A");  
+    //$Amis->getArchiveData(46020, $starttime, $endtime, "A"); 
+    //$Amis->getArchiveData(33623, $starttime, $endtime, "A"); 
 
     if (isset($installedModules["OperationCenter"]))
         {

@@ -44,7 +44,7 @@
 	 *    14
      *    15        writeEnergySumme
 	 *
-     * writeEnergyHomematic 
+     * writeEnergyHomematic ist Teil der AMIS class
      *   Aufruf mit dem Einzeleintrag der Konfiguration ohne identifier
      *
      *

@@ -1146,8 +1146,8 @@
                 /* Name sind die einzelnen Kurven und defserie die Konfiguration der einzelnen Kurven */
                 if ($this->debug)
                     { 
-                    echo "     Kurve : ".$name." \n";
-                    print_r($defserie); echo "\n";
+                    echo "RebuildGraph: Kurve : ".$name." ermitteln : ".json_encode($defserie)."\n";
+                    //print_r($defserie); echo "\n";
                     }
                 $serie['name'] = $name;
 
@@ -1175,6 +1175,7 @@
                         $split=$seleniumEasycharts->getSplitfromOid($oid);
                         $analyseConfig1=$analyseConfig;
                         if ($split) $analyseConfig1["Split"]=$split;
+                        if ($this->debug) echo "-------------\nReport calls analyseValues($oid,...)\n"; 
                         $resultAll = $archiveOps->analyseValues($oid,$analyseConfig1,$this->debug);          // oid wurde
                         if ($module=="EASYTREND") 
                             {
@@ -1263,10 +1264,11 @@
                         }
                     }
                 $serie['marker']['enabled'] = false;
-                if ($this->debug) echo "Serie $index ermittelt, wird abgespeichert.\n";
+                if ($this->debug) echo "RebuildGraph: Serie $index wurde ermittelt, wird jetzt abgespeichert.\n";
                 $CfgDaten['series'][$index++] = $serie;
                 }   /* ende foreach */
 
+            if ($this->debug) echo "RebuildGraph: Kurven ermitteln abgeschlossen.\n";
             /* Plot Bands für bessere Lesbarkeit  ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]] 
                 * Starttime, Endtime, periode
                 * minimum Display resolution is day, if periode is week, start end of week is necessary
@@ -1325,7 +1327,7 @@
                     IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");  
                     $yahoofin = new SeleniumYahooFin();
                     $targets = $yahoofin->getResult("TargetValue", false);                //true für Debug
-
+                    if ($this->debug) echo "  targets from YahooFin found.\n";
                     $seleniumEasycharts = new SeleniumEasycharts();                         
                     $orderbook = $seleniumEasycharts->getEasychartOrderConfiguration();
                     $shares    = $seleniumEasycharts->getResultConfiguration($report_config["configuration"][$selectAssociation[$select]]);
@@ -1342,6 +1344,7 @@
                         $analyseConfig1=$analyseConfig;         //Backup Config
                         $oid = $share["OID"];
                         if (isset($share["Split"])) $analyseConfig1["Split"]=$share["Split"];                   // add split to this config
+                        if ($this->debug) echo "==================\nReport calls analyseValues($oid,...)\n"; 
                         $result = $archiveOps->analyseValues($oid,$analyseConfig1,$this->debug);                 // true mit Debug
                         if ($this->debug) 
                             {
@@ -1354,6 +1357,7 @@
                         if (isset($orderbook[$share["ID"]])) $resultShares[$share["ID"]]["Order"]=$orderbook[$share["ID"]];
                         $archiveOps->addInfoValues($oid,$share);
                         if (isset($targets[$index])) $resultShares[$index]["Description"]["Target"]=$targets[$index]["Target"];
+                        if (isset($share["Split"])) $resultShares[$share["ID"]]["Split"]=$share["Split"];         // aus der Depotkonfig nehmen, alternativ auch aus dem Array
                         } 
                     //print_r($resultShares);
                     $wert = $seleniumEasycharts->writeResultAnalysed($resultShares,true,3);                       // true for html, 1 as size

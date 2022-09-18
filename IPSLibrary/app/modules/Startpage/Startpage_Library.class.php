@@ -334,6 +334,13 @@
 			return($file);
 			}
 
+        /* Kapselung des Bilder Verzeichnisses 
+         * selbes Wording wie für WorkDirectory
+         */
+		function getPictureDirectory()
+			{
+            return ($this->picturedir);
+            }
 	
 		/**************************************** FUNCTIONS *********************************************************/
 

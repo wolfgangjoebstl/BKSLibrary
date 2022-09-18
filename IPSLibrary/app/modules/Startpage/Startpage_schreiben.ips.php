@@ -178,7 +178,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         }
     }
         
-    /**************************************** und jetzt sich auch noch um das Wetter kuemmern *********************************************************/
+/**************************************** und jetzt sich auch noch um das Wetter kuemmern *********************************************************/
 
     /* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
 
@@ -219,11 +219,42 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 	$noweather=!$Config["Active"]; 
     print_r($Config);
 
+    /* Verzeichnisse auslesen für besseren Überblick */
+    $dosOps = new dosOps();
+    $Verzeichnis=$dosOps->correctDirName($dosOps->getWorkDirectory());
+    $dosOps->writeDirStat($Verzeichnis);
+    $Verzeichnis       = $dosOps->correctDirName($startpage->getPictureDirectory());
+    $VerzeichnisBilder = $dosOps->correctDirName($startpage->getPictureDirectory()."SmallPics");
+    $dosOps->writeDirStat($VerzeichnisBilder);
+
+    $files = $dosOps->readDirToArray($VerzeichnisBilder);
+    $maxcount=count($files);
+    $files1 = $dosOps->readDirToArray($Verzeichnis);                    // Input Directory
+    $maxcount1=count($files1);
+    echo "Bildanzeige, es gibt insgesamt ".$maxcount."/".$maxcount1." Bilder (Ziel/Quelle) auf dem angegebenen Laufwerk.\n";
+
+    $fileName=array(); $fileName1=array();
+    foreach ($files as $name)  
+        {
+        if (is_dir($VerzeichnisBilder.$name)===false) $fileName[$name]  = filesize($VerzeichnisBilder.$name);
+        }
+    $maxcount=count($fileName);        
+    foreach ($files1 as $name) 
+        {
+        if (is_dir($Verzeichnis.$name)===false) $fileName1[$name] = filesize($Verzeichnis.$name);
+        }
+    $maxcount1=count($fileName1); 
+    echo "Bildanzeige, es gibt insgesamt ".$maxcount."/".$maxcount1." Bilder (Ziel/Quelle) auf dem angegebenen Laufwerk.\n";           
+    
+    if ($maxcount1>$maxcount)
+        {
+        foreach ($fileName as $name => $size) unset($fileName1[$name]);
+        echo "Files that have not been converted from $Verzeichnis to $VerzeichnisBilder.\n";
+        print_R($fileName1);
+        }
+
     if (false)
         {
-        $file=$startpage->readPicturedir();
-        $maxcount=count($file);
-        echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
         echo "Startpage wird mit folgenden Parametern aufgerufen : Modus:".GetValue($StartPageTypeID)." ShowFile:".($showfile?"true":"false").".\n";
         echo "Darstellung Startpage, Darstellung der links zu Bildern ist nicht möglich.\n";
         echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";

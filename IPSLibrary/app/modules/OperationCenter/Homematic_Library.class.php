@@ -177,7 +177,7 @@ class Homematic_OperationCenter
 			$str = "<table width='90%' align='center'>"; 
 			$str .= "<tr><td><b>Gerätname</b></td><td><b>GeräteID</b></td><td><b>Empfangsstärke</b></td></tr>";
 			foreach($rssiDeviceList as $instanceId=>$value) {
-				$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".HM_GetAddress($instanceId)."</td><td>".$value."</td></tr>";
+				$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".IPS_GetProperty($instanceId,'Address')."</td><td>".$value."</td></tr>";
 				$variableId = @IPS_GetVariableIDByName('RSSI_DEVICE', $instanceId);
 				if ($variableId!==false)
 					{
@@ -190,7 +190,7 @@ class Homematic_OperationCenter
 			$str = "<table width='90%' align='center'>"; 
 			$str .= "<tr><td><b>Gerätname</b></td><td><b>GeräteID</b></td><td><b>Empfangsstärke</b></td></tr>";
 			foreach($rssiPeerList as $instanceId=>$value) {
-				$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".HM_GetAddress($instanceId)."</td><td>".$value."</td></tr>";
+				$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".IPS_GetProperty($instanceId,'Address')."</td><td>".$value."</td></tr>";
 			}
 			$str .= "</table>";
 			SetValue($variableIdRssiPeer, $str);
@@ -201,7 +201,7 @@ class Homematic_OperationCenter
 			foreach($rssiDeviceList as $instanceId=>$value) {
 				$idx++;
 				if ($idx<=10) {
-					$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".HM_GetAddress($instanceId)."</td><td>".$value."</td></tr>";
+					$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".IPS_GetProperty($instanceId,'Address')."</td><td>".$value."</td></tr>";
 				}
 			}
 			$str .= "</table>";
@@ -356,7 +356,7 @@ class Homematic_OperationCenter
 			$homematicMaintainanceList = array();
 
 			foreach ($homematicInstanceList as $homematicInstanceId ) {
-				$homematicAddress = HM_GetAddress($homematicInstanceId);
+				$homematicAddress = IPS_GetProperty($homematicInstanceId,'Address');
 				$homematicAddressList[$homematicAddress] = $homematicInstanceId;
 				
 				$pos = strpos($homematicAddress, ':0');

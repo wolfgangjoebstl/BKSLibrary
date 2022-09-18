@@ -18,8 +18,12 @@
      * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
      */
 
-    /*
-     * hier nur mehr Testbench, Routinen in diesem Script werden nicht verwendet, dienen nur der Kontrolle und Entwicklung
+    /* Webfront:
+     *
+     *
+     * Execute:
+     * als script aufgerufen nur mehr Testbench, Routinen in diesem Script werden nicht verwendet, dienen nur der Kontrolle und Entwicklung
+     *
      * modul Report erstellt verschiedene Reports aus den vorhandenen Daten, benötigt HighCharts
      * macht auch das Variablesetzen aus dem Webfront, die tatsächliche Funktion ist in Report_ActionManager
      *
@@ -112,7 +116,8 @@
         echo "Report Execute aufgerufen:\n";
         $value_config=$pcManager->getValueConfiguration();          // rausfinden welcher Report selektiert wurde
         $config=$pcManager->getConfiguration();
-        print_R($value_config);
+        //print_R($value_config);
+        foreach ($value_config as $index => $configEntry) echo "  $index  ".json_encode($configEntry)."\n";
         $result=false;
         foreach ($value_config as $valueIdx => $valueEntry)
             {
@@ -168,7 +173,9 @@
             echo "Aktuelle Konfiguration für Displaypanel $displaypanel:\n";
             print_r($configuration[$displaypanel]);
             }
-
+        echo "=============================================\n";
+        echo "start ReBuildGraph mit Debug:\n";
+        echo "=============================================\n";
         $reportControl_Manager->RebuildGraph(true);         //true für Debug
 
         if (false)

@@ -7483,8 +7483,9 @@ class DeviceManagement
 		foreach($rssiDeviceList as $instanceId=>$value) 
 			{
 			$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanceId)['ConnectionID']);
-			if ($debug) echo "    ".$HM_CCU_Name."     ".IPS_GetName($instanceId)."    ".HM_GetAddress($instanceId)."    ".$value."\n";
-			$HMaddress=explode(":",HM_GetAddress($instanceId));
+            $HMaddressName=IPS_GetProperty($instanceId,'Address');                              //HM_GetAddress($instanceId)
+			if ($debug) echo "    ".$HM_CCU_Name."     ".IPS_GetName($instanceId)."    $HMaddressName    ".$value."\n";
+			$HMaddress=explode(":",$HMaddressName);
 			$this->HomematicSerialNumberList[$HM_CCU_Name][$HMaddress[0]]["RSSI"]=$value;
 			}			
 		}
@@ -7672,8 +7673,9 @@ class DeviceManagement
 			foreach($rssiDeviceList as $instanceId=>$value) 
 				{
 				$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanceId)['ConnectionID']);
-				echo "    ".$HM_CCU_Name."     ".IPS_GetName($instanceId)."    ".HM_GetAddress($instanceId)."    ".$value."\n";
-				$HMaddress=explode(":",HM_GetAddress($instanceId));
+                $HMaddressName=IPS_GetProperty($instanceId,'Address');                              //HM_GetAddress($instanceId)
+				echo "    ".$HM_CCU_Name."     ".IPS_GetName($instanceId)."    $HMaddressName    ".$value."\n";
+				$HMaddress=explode(":",$HMaddressName);
 				$serienNummer[$HM_CCU_Name][$HMaddress[0]]["RSSI"]=$value;
 				}			
         

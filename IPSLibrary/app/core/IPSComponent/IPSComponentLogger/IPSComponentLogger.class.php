@@ -651,7 +651,8 @@ class Logging
         $dosOps= new dosOps();
         $dosOps->mkdirtree($directory);
         $this->filename=$directory.$this->variablename."_Bewegung.csv";                
-        return("Ohne");
+        //return("Ohne");
+        return($this->NachrichtenID);        
         }
 
     /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde

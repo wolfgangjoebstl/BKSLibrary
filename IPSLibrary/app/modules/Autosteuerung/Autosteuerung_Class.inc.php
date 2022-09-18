@@ -5425,17 +5425,18 @@ class Autosteuerung
     
     function setEventTimer($name,$delay,$command)
 	    {
-    	echo "setEventTimer: Jetzt wird der Timer gesetzt : ".$name."_EVENT mit Zeitverzoegerung von $delay Sekunden. Befehl lautet : ".str_replace("\n","",$command)."\n";
-	    IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
-    	$now = time();
+        $timerOps = new TimerOps();
+        $timerOps->setEventTimer($name,$delay,$command,$this->CategoryIdApp);
+    	/*
+        $now = time();
     	$EreignisID = $this->getEventTimerID($name."_EVENT");
     	IPS_SetEventActive($EreignisID,true);
 	    IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
-    	/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
-	    /* EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+    	// EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit 
+	    // EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit 
     	IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
 	    IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
-    	IPS_SetEventScript($EreignisID,$command);
+    	IPS_SetEventScript($EreignisID,$command);*/
 	    }
 
 	/* einen zyklischen Timer anlegen und setzen, ist für ein einmaliges Event 
@@ -5443,21 +5444,27 @@ class Autosteuerung
 
 	function setDimTimer($name,$delay,$command)
 		{
-		echo "setDimTimer: Jetzt wird der Timer gesetzt : ".$name."_EVENT_DIM"." und 10x alle ".$delay." Sekunden aufgerufen\n";
-		IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
+        $timerOps = new TimerOps();
+        $result = $timerOps->setDimTimer($name,$delay,$command,$this->CategoryIdApp);
+        /*
   		$now = time();
 		$EreignisID = $this->getEventTimerID($name."_EVENT_DIM");
    		IPS_SetEventActive($EreignisID,true);
    		IPS_SetEventCyclic($EreignisID, 0, 0, 0, 0, 1, $delay);
-		/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 1 Sekuendlich,  Anzahl Sekunden */
-		/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
-		/* EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
-   		IPS_SetEventScript($EreignisID,$command);
+		// EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 1 Sekuendlich,  Anzahl Sekunden 
+		// EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit 
+		// EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit 
+   		IPS_SetEventScript($EreignisID,$command);  */
 		}
 
-	/* für einen Timer Namen die ID zurückgeben, wenn die ID noch nocht bekannt ist den timer zumindest dem Namen nach anlegen */
+	/* für einen Timer Namen den aktuellen Status zurückmelden 
+     *
+     */
     function getEventTimerStatus($name)
 	    {
+        $timerOps = new TimerOps();
+        $result = $timerOps->getEventTimerStatus($name,$this->CategoryIdApp);	
+        /*
     	$EreignisID = $this->getEventTimerID($name);
         //echo "Timer ID : ".$EreignisID."   (".IPS_GetName($EreignisID)."/".IPS_GetName(IPS_GetParent($EreignisID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($EreignisID))).")\n";
         $status=IPS_GetEvent($EreignisID);
@@ -5466,20 +5473,23 @@ class Autosteuerung
         $targetTime=strtotime($status["CyclicDateFrom"]["Day"].".".$status["CyclicDateFrom"]["Month"].".".$status["CyclicDateFrom"]["Year"]." ".$status["CyclicTimeFrom"]["Hour"]
             .":".$status["CyclicTimeFrom"]["Minute"].":".$status["CyclicTimeFrom"]["Second"]);
         if ( ($status["EventActive"]==true) && (time()<=$targetTime) ) $result=true;
-        else $result=false;    
+        else $result=false;    */
         return($result);
         }
 
-	/* einen Timer anlegen und setzen */
+	/* für einen Timer Namen die ID zurückgeben, wenn die ID noch nocht bekannt ist den timer zumindest dem Namen nach anlegen */
     function getEventTimerID($name)
 	    {
+        $timerOps = new TimerOps();
+        $EreignisID = $timerOps->getEventTimerID($name,$this->CategoryIdApp);	
+        /*
 	    $EreignisID = @IPS_GetEventIDByName($name,  $this->CategoryIdApp);
     	if ($EreignisID === false)
 	    	{ //Event nicht gefunden > neu anlegen
 		    $EreignisID = IPS_CreateEvent(1);
     		IPS_SetName($EreignisID,$name);
 	    	IPS_SetParent($EreignisID, $this->CategoryIdApp);
-		    }
+		    }  */
 		return($EreignisID);
 		}
 
@@ -6807,55 +6817,6 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 
 
 
-    /*********************************************************************************************/
-
-    /*  setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60)                                
-
-    function setEventTimer($name,$delay,$command)
-        {
-        echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
-        IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
-        $now = time();
-        $EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
-        if ($EreignisID === false)
-            { //Event nicht gefunden > neu anlegen
-            $EreignisID = IPS_CreateEvent(1);
-            IPS_SetName($EreignisID,$name."_EVENT");
-            IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-            }
-        IPS_SetEventActive($EreignisID,true);
-        IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
-        IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
-        IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
-        IPS_SetEventScript($EreignisID,$command);
-        }
-
-
-    function getEventTimerStatus($name)
-        {
-        $EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
-        echo "Timer ID : ".$EreignisID."\n";
-
-        }
-
-    function setDimTimer($name,$delay,$command)
-        {
-        echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT_DIM"." und 10x alle ".$delay." Sekunden aufgerufen\n";
-        IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
-        $now = time();
-    $EreignisID = @IPS_GetEventIDByName($name."_EVENT_DIM", IPS_GetParent($_IPS['SELF']));
-    if ($EreignisID === false)
-            { //Event nicht gefunden > neu anlegen
-        $EreignisID = IPS_CreateEvent(1);
-        IPS_SetName($EreignisID,$name."_EVENT_DIM");
-        IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-            }
-    IPS_SetEventActive($EreignisID,true);
-    IPS_SetEventCyclic($EreignisID, 0, 0, 0, 0, 1, $delay);
-    IPS_SetEventScript($EreignisID,$command);
-        }
-    */
-
 
 /********************************************************************************************
  *
@@ -7378,52 +7339,6 @@ function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
 		//else $nachrichtenVent->LogNachrichten("Erg: ".$result["COMMENT"]);
         $ergebnis=$auto->timerCommand($result,$simulate);		
 		//print_r($command[$entry]);	
-
-		/********************
-		 *
-		 * Timer wird einmail aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
-		 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
-		 * 
-		 * Delay ist davon unabhängig und kann zusätzlich verwendet werden
-		 *
-		 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
-		 *
-							
-		if ($result["SWITCH"]===true)
-			{
-			if (isset($result["DIM"])==true)
-				{
-				echo "**********Execute Command Dim mit Level : ".$result["DIM#LEVEL"]." und Time : ".$result["DIM#TIME"]." Ausgangswert : ".$result["VALUE_ON"]." für OID ".$result["OID"]."\n";
-				$value=(integer)(($result["DIM#LEVEL"]-$result["VALUE_ON"])/10);
-				$time=(integer)($result["DIM#TIME"]/10);
-				$EreignisID = @IPS_GetEventIDByName($result["NAME"]."_EVENT_DIM", IPS_GetParent($_IPS["SELF"]));
-			
-				$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
-				$befehl.='$value=$lightManager->GetValue('.$result["OID"].')+'.$value.";\n";
-				$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
-				$befehl.='  $lightManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
-				$befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
-				$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
-				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
-				if ($simulate==false)
-					{
-					setDimTimer($result["NAME"],$time,$befehl);
-					}
-				}
-			if (isset($result["DELAY"])==true)
-				{
-				if ($result["DELAY"]>0)
-					{
-					echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-					//print_r($result);
-					if ($simulate==false)
-						{
-						setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
-						}
-					}
-				}
-			}	*/
 		$entry++;			
 		} /* Ende foreach Kommando */
 	return($command);
@@ -7477,51 +7392,6 @@ function Alexa($params,$status,$request,$simulate=false,$wertOpt="")
 		
 		if ($simulate) echo "Bislang erhaltene Kommentare : ".$result["COMMENT"]."\n";
         $ergebnis=$auto->timerCommand($result,$simulate);
-		/********************
-		 *
-		 * Timer wird einmal aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
-		 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
-		 * 
-		 * Delay ist davon unabhängig und kann zusätzlich verwendet werden
-		 *
-		 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
-		 *
-		 ************************************************
-		if ($result["SWITCH"]===true)
-			{
-			if (isset($result["DIM"])==true)
-				{
-				echo "**********Execute Command Dim mit Level : ".$result["DIM#LEVEL"]." und Time : ".$result["DIM#TIME"]." Ausgangswert : ".$result["VALUE_ON"]." für OID ".$result["OID"]."\n";
-				$value=(integer)(($result["DIM#LEVEL"]-$result["VALUE_ON"])/10);
-				$time=(integer)($result["DIM#TIME"]/10);
-				$EreignisID = @IPS_GetEventIDByName($result["NAME"]."_EVENT_DIM", IPS_GetParent($_IPS["SELF"]));
-			
-				$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
-				$befehl.='$value=$lightManager->GetValue('.$result["OID"].')+'.$value.";\n";
-				$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
-				$befehl.='  $lightManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
-				$befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
-				$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
-				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
-				if ($simulate==false)
-					{
-					setDimTimer($result["NAME"],$time,$befehl);
-					}
-				}
-			if (isset($result["DELAY"])==true)
-				{
-				if ($result["DELAY"]>0)
-					{
-					echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-					//print_r($result);
-					if ($simulate==false)
-						{
-						setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
-						}
-					}
-				}
-			}	*/
 		$entry++;			
 		} /* Ende foreach Kommando */
 	return($command);

@@ -191,21 +191,15 @@
 	class Contact_Logging extends Logging
 		{
 
-		private $variable, $variablename, $variableTypeReg;              /* Untergruppen, hier MOTION oder BRIGHTNESS */
+		private $variable, $variableTypeReg;              /* Untergruppen, hier MOTION oder BRIGHTNESS */
         private $variableProfile, $variableType, $Type;        // Eigenschaften der input Variable auf die anderen Register clonen        
-		private $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
 
-		private $AuswertungID, $NachrichtenID, $filename;             /* Auswertung für Custom Component */
-
-		private $configuration;
-		private $CategoryIdData;
+		//private $AuswertungID, $NachrichtenID, $filename;             /* Auswertung für Custom Component */
+		//private $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
+		//private $configuration, $variablename, $CategoryIdData;
+		//private $GesamtID,$EreignisID,$GesamtCountID,$variableLogID, $variableDelayLogID;
 
 		/* zusaetzliche Variablen für DetectMovement Funktionen, Detect Movement ergründet Bewegungen im Nachhinein */
-		private $EreignisID;
-		private $GesamtID;
-		private $GesamtCountID;
-		private $variableLogID, $variableDelayLogID;
-
 		private $motionDetect_NachrichtenID;            /* zusätzliche Auswertungen */
 		private $motionDetect_DataID;
         
@@ -555,21 +549,14 @@
                     {
                     if ($result==true)
                         {
+                        $timerOps = new timerOps();  
                         $delaytime=$this->configuration["LogConfigs"]["DelayMotion"];
                         SetValue($this->variableDelayLogID,$result);
-                        echo "   Verzögerung der Events konfiguriert, Timer im selben Verzeichnis wie Script gesetzt : ".$this->variable."_".$this->variablename."_EVENT"."\n";
-                        $now = time();
-                        $EreignisID = @IPS_GetEventIDByName($this->variable."_".$this->variablename."_EVENT", IPS_GetParent($_IPS['SELF']));
-                        if ($EreignisID === false)
-                            { //Event nicht gefunden > neu anlegen
-                            $EreignisID = IPS_CreateEvent(1);
-                            IPS_SetName($EreignisID,$this->variable."_".$this->variablename."_EVENT");
-                            IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-                            }
-                        IPS_SetEventCyclic($EreignisID,0,1,0,0,1,$delaytime);      /* konfigurierbar, zB alle 30 Minuten, d.h. 30 Minuten kann man still sitzen bevor keine Bewegung mehr erkannt wird */
-                        IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
-                        IPS_SetEventScript($EreignisID,"if (GetValue(".$this->variable.")==false) { SetValue(".$this->variableDelayLogID.",false); IPS_SetEventActive(".$EreignisID.",false);} \n");
-                        IPS_SetEventActive($EreignisID,true);
+                        $name=$this->variable."_".$this->variablename."_EVENT";
+                        $EreignisID = @IPS_GetEventIDByName($name, IPS_GetParent($_IPS['SELF']));
+                        echo "   Verzögerung der Events konfiguriert, Timer im selben Verzeichnis wie Script gesetzt : $name .\n";
+                        $execScript="if (GetValue(".$this->variable.")==false) { SetValue(".$this->variableDelayLogID.",false); IPS_SetEventActive(".$EreignisID.",false);} \n";
+                        $timerOps->setDelayedEvent($name,$_IPS['SELF'],$delaytime,$execScript, $debug);
                         }
                     }	
                 else
