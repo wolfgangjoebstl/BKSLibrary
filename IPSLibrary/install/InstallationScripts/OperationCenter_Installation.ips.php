@@ -1088,7 +1088,8 @@
             $install=true; 
             foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) 
                 {
-                $HMAddress = HM_GetAddress($HomematicModuleId);
+                //$HMAddress = HM_GetAddress($HomematicModuleId);
+                $HMAddress = IPS_GetProperty($HomematicModuleId,'Address');
                 if ($HMAddress=="$propertyAddress:$propertyChannel") 
                     {
                     /* ähnliche Nachricht kommt von CreateHomematicInstance */
@@ -1941,7 +1942,8 @@
         {
 		foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) 
             {
-			$HMAddress = HM_GetAddress($HomematicModuleId);
+			//$HMAddress = HM_GetAddress($HomematicModuleId);
+            $HMAddress = IPS_GetProperty($HomematicModuleId,'Address');            
 			if ($HMAddress=="$Address:$Channel") 
                 {
 				$moduleManager->LogHandler()->Log("Found existing HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol");
