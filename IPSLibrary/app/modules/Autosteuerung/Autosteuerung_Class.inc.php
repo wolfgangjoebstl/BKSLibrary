@@ -916,6 +916,22 @@ class AutosteuerungOperator
 		return($this->logicAnwesend);
 		}
 
+    /* Delayed Einträge als indexierte Liste ausgeben
+     */
+
+	public function getConfigDelayed()
+		{
+        $delayed=array();
+        foreach($this->getConfig() as $type => $operation)
+            {
+            foreach ($operation as $oid=>$topology) 
+                {
+                if (isset($topology["Delayed"])) $delayed[$topology["Delayed"]]=array();
+                }    
+            }            
+		return($delayed);
+		}
+
 
     /*
      * Im Configfile gibt es eine Möglichkeit den gewünschten  Status des Monitors (Ein/Aus) aus einer OR und AND Verknüpfung von Statuswerten zu ermitteln.
@@ -1218,23 +1234,34 @@ class AutosteuerungOperator
      *
      */ 
 	
-    public function getLogicAnwesend($htmlOut=false,$debug=false)
+    public function getLogicAnwesend($htmlOut=false,$dispMode=false,$debug=false)
 		{
-        if ($debug) echo "getLogicAnwesend aufgerufen. Ausgabe als ".($htmlOut?"Html":"Array").".\n";
+        if ($debug) echo "getLogicAnwesend aufgerufen. Ausgabe als ".($htmlOut?"Html":"Array").". Displaymode ".($dispMode?$dispMode:"false")."\n";
         $html='<table id="infoAnwesenheit">';                                 // style definition in writeTopologyTable
 		$delayed = $this->logicAnwesend["Config"]["Delayed"];
-		if ($debug) print_r($this->logicAnwesend );
+		if ($debug&&false) 
+            {
+            echo "Eingabewerte erhalten:\n";
+            print_r($this->logicAnwesend );
+            }
         $result=false; $resultDelayed=false;                                // ie beiden Ergebniswerte für das AND/OR Ergebnis
 		$operator="";
-		$topologyStatus=array();	                                        // Rückgabewert wenn Array
+		$topologyStatus=array();	                                        // Rückgabewert wenn Array parallel ermitteln
 		foreach($this->logicAnwesend as $type => $operation)
 			{
 			if ($type == "OR")              // entweder OR oder AND, gleiche Funktion
 				{
 				$operator.="OR(";
                 $html.='<tr><td colspan="6">'."Operation OR</td></tr>";
-                $html.="<tr><td>Name</td><td>OID</td><td>Bewegung Ist</td><td>Delayed</td><td>Summe<br>Status</td><td>Koordinaten</td></tr>";
-
+                switch ($dispMode)
+                    {
+                    case 1:
+                        $html.="<tr><td>Name</td><td>Bewegung Ist</td><td>Delayed</td><td>Letzte Änderung</td></tr>";
+                        break;
+                    default:
+                        $html.="<tr><td>Name</td><td>OID</td><td>Bewegung Ist</td><td>Delayed</td><td>Summe<br>Status</td><td>Koordinaten</td></tr>";
+                        break;
+                    }
 				//print_r($operation);
                 $first=true;
 				foreach ($operation as $oid=>$topology)                 // die OIDs durchgehen, dahinter kommt das Array mit der Topology, hier gibt es auch den Delayed Parameter für die andere Variable
@@ -1267,7 +1294,22 @@ class AutosteuerungOperator
 					else $operator.=" ".IPS_GetName($oid);
 					
 					echo "Operation OR for OID : ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50)." (".$oid.") ".($result1?"Anwesend":"Abwesend")."  ".($resultDelayed1?"Anwesend":"Abwesend")." Result : ".($result+$resultDelayed)."   [".$topology["x"].",".$topology["y"]."]\n";
-                    $html.="<tr><td>".IPS_GetName($oid)."</td><td>".$oid."</td>".$this->colorCodeAnwesenheit($result1).$this->colorCodeAnwesenheit($resultDelayed1,$statusDelay)."<td>".($result+$resultDelayed)."</td><td>[".$topology["x"].",".$topology["y"]."]</td></tr>";
+                    $html.="<tr><td>".IPS_GetName($oid);
+                    switch ($dispMode)
+                        {
+                        case 1:
+                            $html.="</td>".$this->colorCodeAnwesenheit($result1).$this->colorCodeAnwesenheit($resultDelayed1,$statusDelay);
+                            $html.="</td><td>".date("d.m.Y H:i:s",$statusChanged);
+                            break;
+                        default:
+                            $html.="</td><td>".$oid;
+                            $html.="</td>".$this->colorCodeAnwesenheit($result1).$this->colorCodeAnwesenheit($resultDelayed1,$statusDelay);
+                            $html.="<td>".($result+$resultDelayed);
+                            $html.="</td><td>[".$topology["x"].",".$topology["y"]."]";
+                            break;
+                        }
+                    $html.="</td></tr>";
+
 					$topologyStatus[$topology["y"]][$topology["x"]]["Status"]=(integer)GetValueBoolean($oid);
 					if (isset($topology["Delayed"])) $topologyStatus[$topology["y"]][$topology["x"]]["Status"]+=(integer)GetValueBoolean($topology["Delayed"]);
 					if (isset($topology["ShortName"])) $topologyStatus[$topology["y"]][$topology["x"]]["ShortName"]=$topology["ShortName"];
@@ -1363,7 +1405,7 @@ class AutosteuerungOperator
         $html.='<table><tr><td colspan="3">Legende</td></tr>';
         $html.='<tr><td bgcolor="0000FF">off</td><td bgcolor="00FFFF">delayed</td><td bgcolor="00FF00">active</td></tr>';
 		$html.="</table><br>";
-        $html.=$this->getLogicAnwesend(true);           // html Output
+        $html.=$this->getLogicAnwesend(true,1);           // true html Output der netten Tabelle mit den Zuständen ist und delayed, alternative Darstellung mit Zeitpunkt letzter Bewegung 
         $html.="<br>zuletzt aktualisert am ".date("d.m.Y H:i:s");
 		return ($html);
 		}

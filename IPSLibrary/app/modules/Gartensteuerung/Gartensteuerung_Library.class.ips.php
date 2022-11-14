@@ -639,8 +639,11 @@ class Gartensteuerung
             {
             /* Sub Configuration abarbeiten */
             if ($debug) echo "setGartensteuerungConfiguration: moderne Darstellung der Konfiguration mit Unterpunkt Configuration: \n";
+            // Darstellung Webfronts, individuelle Tabs einstellen
             configfileParser($configConf["Configuration"], $config["Configuration"], ["STATISTICS","Statistics","statistics"],"Statistics" ,"ENABLED");  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["IRRIGATION","Irrigation","irrigation"],"Irrigation" ,"ENABLED");  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["POWERPUMP","PowerPump","powerpump","PowerPump",],"PowerPump" ,"ENABLED");  
+
             configfileParser($configConf["Configuration"], $config["Configuration"], ["MODE","Mode","mode"],"Mode" ,"Switch");          //Default, mit automatischen Regenkreisumschalter  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["WATERPUMP","WaterPump","Waterpump","waterpump"],"WaterPump" ,false);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["VALVECONTROL","ValveControl","Valvecontrol","valvecontrol"],"ValveControl" ,false);  

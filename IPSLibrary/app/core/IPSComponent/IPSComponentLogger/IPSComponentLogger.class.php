@@ -96,16 +96,17 @@ class Logging
      * constructFirst sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
      */
 
-    protected       $startexecute;                  /* interne Zeitmessung */
-    protected       $installedmodules;
-    protected       $CategoryIdData;
-	protected       $mirrorCatID;                   // Spiegelregister in CustomComponent um eine Änderung zu erkennen
-    protected       $logConfCatID, $logConfID;                 // Welche Variable wird ausschliesslich gelogged
-    protected       $configuration;                      /* verwaltet gesamte Konfiguration, für die do_init_xxxx */
-    public static   $debugInstance=false;               // wenn nicht false werden besondere Debug Nachrichten generiert
-    protected       $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */ 
+    protected       $startexecute;                          // interne Zeitmessung 
+    protected       $installedmodules;                      // constructFirst, alle installerten Module
+    protected       $CategoryIdData;                        // constructFirst, category Data von CustomComponent Modul
+	protected       $mirrorCatID;                           // Spiegelregister in CustomComponent um eine Änderung zu erkennen
+    protected       $logConfCatID, $logConfID;              // Welche Variable wird ausschliesslich gelogged
+    protected       $configuration;                         // verwaltet gesamte Konfiguration, für die do_init_xxxx 
 
-	private         $prefix;							/* Zuordnung File Log Data am Anfang nach Zeitstempel */
+    public static   $debugInstance=false;                   // wenn nicht false werden besondere Debug Nachrichten generiert
+    protected       $archiveHandlerID;                      // Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden  
+
+	private         $prefix;							    // Zuordnung File Log Data am Anfang nach Zeitstempel 
 	private         $log_File="Default";
 	private         $nachrichteninput_Id="Default";
     private         $config=array();                    /* interne Konfiguration */
@@ -154,7 +155,7 @@ class Logging
         $moduleManager_DM=false;
         $debug=false;
         if ($debug) echo "******Logging construct aufgerufen:  ($logfile | $nachrichteninput_Id | $prefix | $html | $count)\n";
-        $this->constructFirst();
+        $this->constructFirst();                            // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
 		$this->prefix=$prefix;
 		//$this->log_File=$logfile;
@@ -196,7 +197,7 @@ class Logging
 			}
 
         /*--------------------------------------------------------*/
-		if ($this->nachrichteninput_Id == "Ohne")           // Defaultwert Bewegung
+		if ($this->nachrichteninput_Id == "Ohne")           // Defaultwert Bewegung, vid festlegen
 			{
 			//echo "  Kategorien im Datenverzeichnis Custom Components: ".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
 			$name="Bewegung-Nachrichten";
@@ -215,7 +216,8 @@ class Logging
                 IPS_SetHidden($this->storeTableID,true);                    // Nachrichtenarray nicht anzeigen
                 SetValue($sumTableID,$this->PrintNachrichten(true));
                 $this->config["MessageTable"]=$sumTableID;
-                $this->config["MessageInputID"]=$nachrichteninput_Id;                
+                $this->config["MessageInputID"]=$nachrichteninput_Id;
+
                 if ($debug) echo "      SetHidden ".$this->nachrichteninput_Id." ";
                 for ($i=1;$i<=16;$i++)
                     {
@@ -362,20 +364,65 @@ class Logging
         }
 
     /**
-        * @public
-        *
-        * Funktion liefert String IPSComponent Constructor String.
-        * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
-        * wieder neu zu erzeugen.
-        *
-        * @return string Parameter String des IPSComponent Object
-        */
+     * @public
+     *
+     * Funktion liefert String IPSComponent Constructor String.
+     * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+     * wieder neu zu erzeugen.
+     *
+     * @return string Parameter String des IPSComponent Object
+     */
+
     public function GetComponentParams() {
         return get_class($this);
         }
 
     public function GetComponent() {
         return ($this);
+        }
+
+    public function GetNachrichtenInputID() {
+        return ($this->nachrichteninput_Id);
+        }
+
+    /* NachrichtenInputID festlegen, auch nachträglich möglich
+     * unterstützt nur mehr Html_Output
+     * Input Parameter kann eine ID sein, aber auch andere Möglichkeit der Ermittlung zB Statistik
+     */
+
+    public function SetNachrichtenInputID($nachrichteninput_Id) 
+        {
+        if (is_numeric($nachrichteninput_Id))
+            {
+            $oid = (integer)$nachrichteninput_Id;
+            }
+        else
+            {
+            $oid=false;
+            $ipsOps = new ipsOps();
+            $switch = strtoupper($nachrichteninput_Id);
+            switch ($switch)
+                {
+                case "STATISTIK":
+                    $oid = $ipsOps->searchIDbyName($nachrichteninput_Id,$this->CategoryIdData);        // needle in der categorie suchen
+                    break;
+                default:
+                    echo "Do not know $switch.\n";
+                    break;
+                }
+            }
+        if ( ($oid>100) && ($this->config["HTMLOutput"]) )
+            {
+            $this->nachrichteninput_Id=$oid;        // qualifizierte ID
+                $sumTableID = CreateVariable("MessageTable", 3,  $this->nachrichteninput_Id, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $this->storeTableID = CreateVariable("MessageStorage", 3,  $this->nachrichteninput_Id, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
+                IPS_SetHidden($this->storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                SetValue($sumTableID,$this->PrintNachrichten(true));
+                $this->config["MessageTable"]=$sumTableID;
+                $this->config["MessageInputID"]=$this->nachrichteninput_Id;
+            return ($oid);
+            }
+        else return(false);
         }
 
     /* Steuerung der Debugging Funktion. Ziel ist es nicht so viele Info Messages im Webfront Logging zu bekommen
@@ -1189,12 +1236,13 @@ class Logging
                         }
                     else
                         {
-                        if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, dann übergebenes typedev $typedev nehmen.\n";    
+                        if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, dann übergebenes typedev ($typedev) nehmen.\n";    
                         switch (strtoupper($typedev))
                             {
                             case "CO2":
                             case "BAROPRESSURE":
                             case "MOTION":
+                            case "DIRECTION":                       // Durchgangssensoren
                             case "BRIGHTNESS":
                             case "CONTACT":
                             case "POWER":
@@ -1229,11 +1277,12 @@ class Logging
                         $NachrichtenID = $this->do_init_climate($variable, $variablename);
                         break;
                     case "MOTION":
-                        $this->Type=0;      // Motion und Contact ist boolean
+                    case "DIRECTION":                       // Durchgangssensoren                    
+                        $this->Type=0;      // Motion und DIRECTION ist boolean
                         $NachrichtenID=$this->do_init_motion($variable, $variablename, $value, $debug);
                         break;
                     case "CONTACT":
-                        $this->Type=0;      // Motion und Contact ist boolean
+                        $this->Type=0;      // Contact ist boolean
                         $NachrichtenID=$this->do_init_contact($variable, $variablename,$value,$debug);
                         break;
                     case "BRIGHTNESS":
@@ -1450,9 +1499,12 @@ class Logging
         return($this->config);
         }
 
-	function LogMessage($message)
+    /* Ausgabe message in einem File mit dem Namen log_File
+     */
+
+	function LogMessage($message, $debug=false)
 		{
-        //echo "LogMessage: ".$this->log_File."  $message \n";
+        if ($debug) echo "LogMessage, Nachricht in File: ".$this->log_File." mit text \"$message\" schreiben\n";
 		if ($this->log_File != "No-Output")
 			{
 			$handle3=fopen($this->log_File, "a");
@@ -1461,6 +1513,11 @@ class Logging
 			//echo ""LogMessage: Schreibe in Datei ".$this->log_File." die Zeile ".$message."\n";
 			}
 		}
+
+    /* Ausgabe message in einem Nachrichtenspeicher, abhängig von config entweder als html Tabelle oder Register basierter Tabelle
+     * Tabelle wird identifiziert mit nachrichteninput_id
+     * für html wird auch storeTableID als Datenspeicher verwendet
+     */
 
 	function LogNachrichten($message, $debug=false)
 		{
@@ -1473,7 +1530,8 @@ class Logging
                 if ($this->storeTableID)
                     {
                     $messages = json_decode(GetValue($this->storeTableID),true);
-                    $messages[time()]=$message;
+                    if (isset($messages[time()])) $messages[(time()+1)]=$message;                                                 //nur eine Nachricht pro Sekunde, kleiner Workaround
+                    else $messages[time()]=$message;                                                 
                     krsort($messages);
                     if (count($messages)>50)
                         {
@@ -1483,8 +1541,9 @@ class Logging
                         }
                     SetValue($this->storeTableID,json_encode($messages));
                     }    
-                SetValue($sumTableID,$this->PrintNachrichten(true));
+                SetValue($sumTableID,$this->PrintNachrichten(true));                //html Formatierung
                 }
+            if ($debug) echo "LogNachrichten ".$this->nachrichteninput_Id.",html Text \"$message\" schreiben. Speicherort Tabelle ist $sumTableID. Daten sind hier gespeichert: ".$this->storeTableID." \n";
             }   
         else
             {         								
@@ -1563,6 +1622,8 @@ class Logging
         $PrintHtml.='.messagy table    {table-layout: fixed; width: 100%; }';
         $PrintHtml.='.messagy td:nth-child(1) { width: 30%; }';
         $PrintHtml.='.messagy td:nth-child(2) { width: 70%; }';
+        $PrintHtml .= "table.statiSub { border-collapse: collapse; border: 1px solid #ddd; width:100%; align:center; }";                   // Untergruppe, tabelle in Tabelle
+        $PrintHtml .= ".statiSub th, .statiSub td { padding: 5px; border: solid 1px #777; width:20%; font-style:italic;}";        
         $PrintHtml.='</style>';        
         $PrintHtml.='<table class="messagy">';
         if ($this->config["HTMLOutput"] && $this->storeTableID)

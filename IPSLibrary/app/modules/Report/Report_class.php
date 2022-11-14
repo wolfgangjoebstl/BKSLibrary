@@ -1326,6 +1326,9 @@
                     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");                
                     IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");  
                     $yahoofin = new SeleniumYahooFin();
+                    $guthabenHandler = new GuthabenHandler(true,true,false); 
+                    $configs = $guthabenHandler->getSeleniumTabsConfig("YAHOOFIN",false);            // true for Debug
+                    $yahoofin->setConfiguration($configs);
                     $targets = $yahoofin->getResult("TargetValue", false);                //true für Debug
                     if ($this->debug) echo "  targets from YahooFin found.\n";
                     $seleniumEasycharts = new SeleniumEasycharts();                         
@@ -1356,7 +1359,14 @@
                         $resultShares[$share["ID"]]["Info"]=$share;
                         if (isset($orderbook[$share["ID"]])) $resultShares[$share["ID"]]["Order"]=$orderbook[$share["ID"]];
                         $archiveOps->addInfoValues($oid,$share);
-                        if (isset($targets[$index])) $resultShares[$index]["Description"]["Target"]=$targets[$index]["Target"];
+                        if (isset($targets[$index])) 
+                            {
+                            if (isset($targets[$index]["Target"]))
+                                {
+                                $resultShares[$index]["Description"]["Target"]=$targets[$index]["Target"];
+                                //echo "Target $index ";
+                                }
+                            }
                         if (isset($share["Split"])) $resultShares[$share["ID"]]["Split"]=$share["Split"];         // aus der Depotkonfig nehmen, alternativ auch aus dem Array
                         } 
                     //print_r($resultShares);

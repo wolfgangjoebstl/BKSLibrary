@@ -182,7 +182,7 @@
         {
         // Es gibt Selenium Webdriver, die kann man wieder starten, so wie bei Guthaben StartSelenium,  CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,""
         $pname="SeleniumAktionen";                                         // keine Standardfunktion, da Inhalte Variable
-        $nameID=["Easy"];
+        $nameID=["Easy","YahooFin"];
         createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
         $actionWebID          = CreateVariableByName($CategoryId_Mode,"StartAction", 1,$pname,"",1000,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
         }

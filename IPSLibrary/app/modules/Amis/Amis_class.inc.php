@@ -1778,12 +1778,16 @@
                 $config=array();
                 $config["StartTime"] = $starttime;   // 0 endtime ist now
                 $config["EndTime"]   = $endtime;
-                $valuesAnalysed = $archiveOps->getValues($EnergieID,$config,1);
-                $werte=$valuesAnalysed["Values"];
-                $result=$archiveOps->countperIntervalValues($werte,2);
-                //print_R($result);
-                //print_r($valuesAnalysed["Description"]);
-
+                $valuesAnalysed = $archiveOps->getValues($EnergieID,$config,1);     // Analyse der Archivdaten
+                if (isset($valuesAnalysed["Values"]))
+                    {
+                    $werte=$valuesAnalysed["Values"];
+                    $result=$archiveOps->countperIntervalValues($werte,2);
+                    //print_R($result);
+                    //print_r($valuesAnalysed["Description"]);
+                    }
+                else $werte=false;
+                
 				if ($debug) 
                     {
                     echo "~~~~~~~~~~~~~~~~\n";

@@ -171,15 +171,15 @@
 		}
 
 	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	if ($Mobile_Enabled==true)
+	if ($Mobile_Enabled==true)              // funktinoiert auch mit Defaultwerten
 		{
 		echo "Mobile \n";
 		$Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');
-		$Mobile_PathOrder     = $moduleManager->GetConfigValueInt('PathOrder', 'Mobile');
-		$Mobile_PathIcon      = $moduleManager->GetConfigValue('PathIcon', 'Mobile');
-		$Mobile_Name          = $moduleManager->GetConfigValue('Name', 'Mobile');
-		$Mobile_Order         = $moduleManager->GetConfigValueInt('Order', 'Mobile');
-		$Mobile_Icon          = $moduleManager->GetConfigValue('Icon', 'Mobile');
+		$Mobile_PathOrder     = $moduleManager->GetConfigValueIntDef('PathOrder', 'Mobile',15);
+		$Mobile_PathIcon      = $moduleManager->GetConfigValueDef('PathIcon', 'Mobile','Graph');
+		$Mobile_Name          = $moduleManager->GetConfigValueDef('Name', 'Mobile', 'Report');
+		$Mobile_Order         = $moduleManager->GetConfigValueIntDef('Order', 'Mobile',15);
+		$Mobile_Icon          = $moduleManager->GetConfigValueDef('Icon', 'Mobile','Image');
 		}
 
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');

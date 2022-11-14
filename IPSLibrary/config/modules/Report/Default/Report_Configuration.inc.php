@@ -240,12 +240,19 @@ function Report_GetConfiguration()
 	
 */
 
-function Report_GetConfiguration()
-	{
-		return array(
-						);
-	}
+    function Report_GetConfiguration()
+        {
+            return array(
+                            );
+        }
 
+
+	function Report_GetValueConfiguration() 
+		{
+		return array(
+
+					);
+		}						  
 
 	/** @}*/
 ?>

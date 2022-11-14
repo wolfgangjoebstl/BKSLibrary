@@ -33,8 +33,11 @@
      * Der Timer wird immer um 22:16 und um 2:27 aufgerufen. Für die Erfassung der Drei Guthaben gibt es eine Verlängerungsmöglichkeit mit Aufruf alle 150 Sekunden
      * Bei der Abendabfrage wird der Drei Host definitiv ausgeschlossen. Die Drei Guthabenabfrage funktioniert immer um 2:27.
      * Am Abend wird nur $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"]... aufgerufen
+     * Zusätzlich gibt es einen Tasktimer, der nach dem Start alle 310 Sekundn aktiv wird
      *
-     * Aktuell implementiert:  Drei, Easy, LogWien
+     * Aktuell implementiert:  Drei, Easy, LogWien, YahooFin
+     *
+     * Webfront übernimmt den Tastendruck
      *
      */
 
@@ -49,7 +52,7 @@
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
     $dosOps = new dosOps();
-    $dosOps->setMaxScriptTime(100);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
+    $dosOps->setMaxScriptTime(100);                              // kein Abbruch vor dieser Zeit, funktioniert nicht für linux basierte Systeme
     $startexec=microtime(true);    
     //echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";         //keine Ausgabe da auch vom Webfront aufgerufen 
 
@@ -64,12 +67,11 @@
         IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
         $moduleManager = new IPSModuleManager('Guthabensteuerung',$repository);
     }
-    $installedModules = $moduleManager->GetInstalledModules();
+    $installedModules   = $moduleManager->GetInstalledModules();
     $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
     $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
     $ipsOps = new ipsOps();    
-    $dosOps = new dosOps();
     $timerOps = new timerOps();
 
     $systemDir     = $dosOps->getWorkDirectory();     
@@ -135,9 +137,11 @@
     $startActionID      = IPS_GetObjectIdByName("StartAction", $CategoryId_Mode);	
 
 
-    $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
-    $checkScriptCounterID=CreateVariableByName($CategoryIdData,"checkScriptCounter",1);
-	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+    $ScriptCounterID      = CreateVariableByName($CategoryIdData,"ScriptCounter",1);                    // wir zählen die erfolgreichen Aufrufe von Timer2
+    $checkScriptCounterID = CreateVariableByName($CategoryIdData,"checkScriptCounter",1);               // wir zählen alle Aufrufe von Timer2
+    $ScriptTimerID        = CreateVariableByName($CategoryIdData,"ScriptTimer",3);                      // ein Name für ein Script das vom Timer5 aufgerufen wird
+
+	$archiveHandlerID     = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	/*****************************************************
 	 *
@@ -150,17 +154,20 @@
     $tim3ID = @IPS_GetEventIDByName("EveningCallTimer", $GuthabensteuerungID);
     if ($tim3ID==false) echo "Fehler Timer EveningCallTimer nicht definiert.\n";
 
-    $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
+    $tim2ID = $timerOps->CreateTimerSync("Exectimer",150,$_IPS['SELF']);
+
+    /* $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
     if ($tim2ID==false)
         {
         $tim2ID = IPS_CreateEvent(1);
         IPS_SetParent($tim2ID, $_IPS['SELF']);
         IPS_SetName($tim2ID, "Exectimer");
-        IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      /* alle 150 sec */
-        //IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
-        }
+        IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      // alle 150 sec 
+        //IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  // immer um 02:10 
+        } */
 
     $tim4ID = $timerOps->CreateTimerHour("AufrufMorgens",4,55,$_IPS['SELF']);
+    $tim5ID = $timerOps->CreateTimerSync("Tasktimer",310,$_IPS['SELF']);        // Tasks wie YahooFin ein wenig entkoppeln
 
     $phoneID=$guthabenHandler->getPhoneNumberConfiguration();
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
@@ -181,7 +188,7 @@
  *
  * mehrere TimerEvents. Zwei einmal am Tag (morgens und Abends) und das andere alle 150 Sekunden
  *
- * tim1 ist der Aufruftimer um 2:27 Uhr morgens. Setzt die beiden Counter Register zurück udn startet den Ausführtimer tim2 zu starten
+ * tim1 ist der Aufruftimer um 2:27 Uhr morgens. Setzt die beiden Counter Register zurück und startet den Ausführtimer tim2 zu starten
  *
  * tim2 ist ausgelegt alle 150 Sekunden aufgerufen zu werden bis die Aufgabe erledigt ist
  *      ScriptCounter muss maxcount erreichen
@@ -196,6 +203,8 @@
  *
  * tim4, neu ruft morgens um 4:55 ein paar Funktionen auf
  *      jetzt auch für Selenium Morning Funktionen verwendbar
+ *
+ * tim5, Timer wie tim2, ausgelegt alle 310 Sekunden aufgerufen zu werden, soll yahooFin unterstützen
  *
  *************************************************************/
 
@@ -322,7 +331,72 @@ if ($_IPS['SENDER']=="TimerEvent")
             $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
             IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
             break;
-		default:
+		case $tim5ID:               // Tasktimer alle 310 Sekunden wenn aktiviert
+            $log_Guthabensteuerung->LogNachrichten("Timer5 called from YahooFin.");  
+            // Abfrage nach angeforderter Aktion, Befehl wird so übergeben
+            $startexec=microtime(true);
+            $configTabs = $guthabenHandler->getSeleniumHostsConfig();
+            $reguestedAction=GetValue($ScriptTimerID);
+            switch ($reguestedAction)
+                {
+                case "EASY":
+                    $seleniumEasycharts = new SeleniumEasycharts();
+                    $configTemp["EASY"] = $configTabs["Hosts"]["EASY"];
+                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                    $configTabs = $guthabenHandler->getSeleniumTabsConfig($reguestedAction);
+                    $depotRegister=["RESULT"];
+                    if (isset($configTabs["Depot"]))
+                        {
+                        if (is_array($configTabs["Depot"]))
+                            {
+                            $depotRegister=$configTabs["Depot"];    
+                            }
+                        else $depotRegister=[$configTabs["Depot"]];
+                        }
+                    foreach ($depotRegister as $depot)
+                        {
+                        $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
+                        $lines = explode("\n",$result["Value"]);    
+                        $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
+                        $shares=$seleniumEasycharts->evaluateResult($data);
+                        $depotName=str_replace(" ","",$depot);                      // Blanks weg
+                        if ($depotName != $depot)               
+                            {
+                            $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
+                            $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
+                            }
+                        else
+                            {
+                            $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
+                            }
+                        $seleniumEasycharts->updateResultConfigurationSplit($shares);                // Die wunderschöne split Konfiguration wird hier wieder zunichte gemacht da sie aus der Konfiguration für das Depot , daher aus dem Konfig auslesen       
+                        $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
+                        }
+                    break;
+                case "YAHOOFIN":
+                    $configTemp["YAHOOFIN"] = $configTabs["Hosts"]["YAHOOFIN"];
+                    $configTemp["Logging"]=$log_Guthabensteuerung;
+                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                    // Auswertung
+                    $result=$seleniumOperations->readResult("YAHOOFIN");                  // true Debug   , lest RESULT als Egebnis Variable, wenn zweite Variable ausgefüllt ist es das entsprechende register
+                    $log_Guthabensteuerung->LogNachrichten("Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"]));       
+                    $yahoofin = new SeleniumYahooFin();
+                    $ergebnis = $yahoofin->parseResult($result);                        // eigentlich nur json_decode auf ein array
+                    //echo "Ergebnis: ".json_encode($ergebnis)."  \n";
+                    foreach ($ergebnis as $index => $entry)
+                        {
+                        if (isset($entry["Target"])) $log_Guthabensteuerung->LogNachrichten("$index ".$entry["Short"]."    ".$entry["Target"]);
+                        }
+                    $yahoofin->writeResult($ergebnis,"TargetValue",true);           // echte YahooFin writeresult, sonst nur bei Webfront nur Standard
+                    break;
+                default:
+                    break;
+                }
+            IPS_SetEventActive($tim5ID,false);
+            break;      // Ende Timer5
+		default:                    // kein bekannter Timer
 			break;
 		}
 	}
@@ -342,6 +416,7 @@ if ($_IPS['SENDER']=="WebFront")
     switch ($variable)
         {
         case ($startImacroID):
+            //echo "Taste Macro gedrückt";
             switch ($value)
                 {
                 case $maxcount:			// Alle
@@ -425,44 +500,68 @@ if ($_IPS['SENDER']=="WebFront")
         case $startActionID:
             $startexec=microtime(true);
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
-            if ($value==0) $configTemp["EASY"] = $configTabs["Hosts"]["EASY"];
-            else
+            $reguestedAction=GetValueFormatted($startActionID);
+            SetValue($ScriptTimerID,strtoupper($reguestedAction));
+
+            switch (strtoupper($reguestedAction))
                 {
-                unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
-                $configTemp = $configTabs["Hosts"];
-                } 
-            $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
-            $log_Guthabensteuerung->LogNachrichten("Requested Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden");   
-            /* Auswertung */
-            $configTabs = $guthabenHandler->getSeleniumTabsConfig("EASY");
-            $depotRegister=["RESULT"];
-            if (isset($configTabs["Depot"]))
-                {
-                if (is_array($configTabs["Depot"]))
-                    {
-                    $depotRegister=$configTabs["Depot"];    
-                    }
-                else $depotRegister=[$configTabs["Depot"]];
+                case "EASY":
+                case "YAHOOFIN":
+                    IPS_SetEventActive($tim5ID,true);
+                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\" with Timer5 within next 310 Seconds");
+                    break;
+                default:
+                    $log_Guthabensteuerung->LogNachrichten("Taste Action mit Wert ".GetValueFormatted($startActionID)." gedrückt. kenn ich nicht. Alles abfragen.");                
+                    unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
+                    $configTemp = $configTabs["Hosts"];
+                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                    break;    
                 }
-            foreach ($depotRegister as $depot)
+
+         /* if (strtoupper($reguestedAction) != "YAHOOFIN")             // YAHOOFIN testweise im Timer machen
                 {
-                $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
-                $lines = explode("\n",$result["Value"]);    
-                $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
-                $shares=$seleniumEasycharts->evaluateResult($data);
-                $depotName=str_replace(" ","",$depot);                      // Blanks weg
-                if ($depotName != $depot)               
-                    {
-                    $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
-                    $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
-                    }
-                else
-                    {
-                    $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
-                    }
-                $seleniumEasycharts->updateResultConfigurationSplit($shares);                // Die wunderschöne split Konfiguration wird hier wieder zunichte gemacht da sie aus der Konfiguration für das Depot , daher aus dem Konfig auslesen       
-                $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
                 }
+            // Auswertung 
+            switch (strtoupper($reguestedAction))
+                {
+                case "EASY":
+                    $configTabs = $guthabenHandler->getSeleniumTabsConfig($reguestedAction);
+                    $depotRegister=["RESULT"];
+                    if (isset($configTabs["Depot"]))
+                        {
+                        if (is_array($configTabs["Depot"]))
+                            {
+                            $depotRegister=$configTabs["Depot"];    
+                            }
+                        else $depotRegister=[$configTabs["Depot"]];
+                        }
+                    foreach ($depotRegister as $depot)
+                        {
+                        $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
+                        $lines = explode("\n",$result["Value"]);    
+                        $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
+                        $shares=$seleniumEasycharts->evaluateResult($data);
+                        $depotName=str_replace(" ","",$depot);                      // Blanks weg
+                        if ($depotName != $depot)               
+                            {
+                            $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
+                            $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
+                            }
+                        else
+                            {
+                            $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
+                            }
+                        $seleniumEasycharts->updateResultConfigurationSplit($shares);                // Die wunderschöne split Konfiguration wird hier wieder zunichte gemacht da sie aus der Konfiguration für das Depot , daher aus dem Konfig auslesen       
+                        $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
+                        }
+                    break;
+                case "YAHOOFIN":
+        			IPS_SetEventActive($tim5ID,true);
+                    $log_Guthabensteuerung->LogNachrichten("Start Timer in the next 310 Secoonds.");
+                    break;
+                default:
+                    break;                    
+                }   */
 
             break;
         default:
@@ -526,8 +625,11 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
             //print_R($configTabs);
             unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, durch echte Werte ersetzen
+            unset($configTabs["Hosts"]["EASY"]);                // EASY einmal weglassen
+            unset($configTabs["Hosts"]["LogWien"]);             // LogWien einmal weglassen, wenn alle ist zu langsam
             //print_R($configTabs);
-            $config = array_merge($configTabs["Hosts"],$config);          // array merge ersetzt die entsprechenden keys, der letzte Eintrag überschreibt die vorangehenden
+            //$config = array_merge($configTabs["Hosts"],$config);          // array merge ersetzt die entsprechenden keys, der letzte Eintrag überschreibt die vorangehenden
+            $config = $configTabs["Hosts"];                 //nur YahooFin, keine einzelne Drei Telefonnummer, kein LogWien, kein Easy, Drei braucht aktuell lange
             /******************* Vorbereitung */
             foreach ($config as $host => $entry)
                 {
@@ -554,6 +656,13 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
                         $result=$seleniumOperations->readResult("EASY","Result",true);                  // true Debug
                         //print_R($result);
                         echo "           Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";  */
+                        break;
+                    case "YAHOOFIN":
+                        echo "    $host ".json_encode($entry)."\n";  
+                        $configs = $guthabenHandler->getSeleniumTabsConfig("YAHOOFIN",false);            // true for Debug
+                        $yahoofin = new SeleniumYahooFin(); 
+                        $yahoofin->setConfiguration($configs);                          // alle Symbols oder nur einige wenige
+                        echo "Auswewrtung startet mit ".$yahoofin->getIndexToSymbols(true)."\n";
                         break;
                     default:
                         echo "    $host ".json_encode($entry)."\n";
@@ -602,9 +711,9 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
 
                         break;
                     case "EASY":
-                        $seleniumEasycharts = new SeleniumEasycharts();
-
+                        echo "=======================================================\n"; 
                         echo "Selenium Operations, read Result from EASY:\n";
+                        $seleniumEasycharts = new SeleniumEasycharts();
                         $result=$seleniumOperations->readResult("EASY","Result",true);                  // true Debug
                         //print_R($result);
                         echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
@@ -645,6 +754,28 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
                                 }
                             }                        
 
+                        break;
+                    case "YAHOOFIN":     
+                        echo "=======================================================\n";                                       
+                        echo "Auswertung für YahooFin machen, read Result:\n";
+                        $result=$seleniumOperations->readResult("YAHOOFIN");                  // true Debug   , lest RESULT als Egebnis Variable, wenn zweite Variable ausgefüllt ist es das entsprechende register
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                        //$yahoofin = new SeleniumYahooFin();
+                        $ergebnis = $yahoofin->parseResult($result);                        // eigentlich nur json_decode auf ein array
+                        //echo "Ergebnis: ".json_encode($ergebnis)."  \n";
+                        foreach ($ergebnis as $index => $entry)
+                            {
+                            if (isset($entry["Target"])) echo "$index ".$entry["Short"]."    ".$entry["Target"]."\n";
+                            }
+                        $yahoofin->writeResult($ergebnis,"TargetValue",true);
+
+                        $seleniumEasycharts = new SeleniumEasycharts();
+                        $target = $yahoofin->getResult("TargetValue", false);                //true für Debug
+                        $config=array();
+                        $config["Split"] = $seleniumEasycharts->getEasychartSplitConfiguration("Short");
+                        $result = $yahoofin->getResultHistory("TargetValue", $config, false);                         
+                        $savedEntry = $yahoofin->processResultHistory($result,$target);
+                        //print_R($ergebnis);                        
                         break;
                     default:
 

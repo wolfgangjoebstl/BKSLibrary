@@ -2827,16 +2827,22 @@ function send_status($aktuell, $startexec=0, $debug=false)
         }
 
     /*****************************************************************
-    *
-    * hilfreiche Funktion wird in Stromheizung verwendet
-    * findet einen Variablennamen an verschiedenen Orten
-    *
-    */
+     *
+     * hilfreiche Funktion wird in Stromheizung verwendet
+     * findet einen Variablennamen name an verschiedenen Orten Id, es wird ein GetChildrens auf dieser Kategorie gemacht und der Name abgeglichen
+     *      switchCategoryId        kann array of IDs oder eine Id sein
+     * wenn false wird die 
+     *      groupCategory           geprüft und dann die Programs Kategorie geprüft
+     *      categoryIdPrograms
+     *
+     *
+     */
 
-    function getVariableId($name, $switchCategoryId, $groupCategoryId=false, $categoryIdPrograms=false) 
+    function getVariableId($name, $switchCategoryId, $groupCategoryId=false, $categoryIdPrograms=false,$debug=false) 
         {
         if (is_array($switchCategoryId))
             {
+            if ($debug) echo "getVariableId, check Children for $name in one of these categries ".json_encode($switchCategoryId)."\n";
             foreach ($switchCategoryId as $categoryId)
                 {
                 $childrenIds = IPS_GetChildrenIDs($categoryId);
@@ -2851,16 +2857,19 @@ function send_status($aktuell, $startexec=0, $debug=false)
             }
         elseif ($switchCategoryId !== false)
             {
+            if ($debug) echo "getVariableId, check Children for $name in the category $switchCategoryId :\n    ";
             $childrenIds = IPS_GetChildrenIDs($switchCategoryId);
             foreach ($childrenIds as $childId) 
                 {
+                //if ($debug) echo IPS_GetName($childId)."  ";
                 if (IPS_GetName($childId)==$name) 
                     {
                     return $childId;
                     }
                 }
             }
-        elseif ($groupCategoryId !== false)
+        // Wenn Switch nicht erfolgreich in Griuppe weitersuchen
+        if ($groupCategoryId !== false)
             {
             $childrenIds = IPS_GetChildrenIDs($groupCategoryId);
             foreach ($childrenIds as $childId) 
@@ -2871,7 +2880,9 @@ function send_status($aktuell, $startexec=0, $debug=false)
                     }
                 }
             }
-        elseif ($categoryIdPrograms !== false)
+        
+        // Wenn Switch und Gruppe nicht erfolgreich in Program weitersuchen
+        if ($categoryIdPrograms !== false)
             {
             $childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
             foreach ($childrenIds as $childId) 
@@ -2882,7 +2893,10 @@ function send_status($aktuell, $startexec=0, $debug=false)
                     }
                 }
             }
-        else trigger_error("getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'");
+        // immer noch nichts gefunden
+        //trigger_error("getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'");
+        echo "getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'\n";
+        return (false);
         }
 
 /***************************************************************************************************************************
@@ -2915,12 +2929,14 @@ function send_status($aktuell, $startexec=0, $debug=false)
 class archiveOps
     {
 
-    private $archiveID,$oid;
+    private $archiveID,$ipsOps;
+    private $oid;
     public $result;                 // das Array mit den Werten die verarbeitet werden
 
     function __construct($oid=false)
         {
         $this->archiveID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+        $this->ipsOps = new ipsOps();
 
         $result = AC_GetAggregationVariables($this->archiveID,false);
         $this->aggregationConfig=array();
@@ -3565,7 +3581,7 @@ class archiveOps
         }
 
     /* archiveOps::getValues
-     * parallelfunktion für analyseValues
+     * parallelfunktion für analyseValues, schon etwas weiter entwickelt
      * Get/AnalyseValues,ArchiveOps, Abgrenzung klar, eine kann auch ohne Zeitangabe Werte verarbeiten
      *
      * kann bereits beide Formate, Logged [Value/TimeStamp/Duration] und aggregated [Avg/TimeStamp/Min/Max] , und kann auch ein Array [Value/TimeStamp] verarbeiten
@@ -3669,29 +3685,7 @@ class archiveOps
             }
         else
             {
-            switch (strval($config["Aggregated"]))
-                {
-                case "0":
-                case "hourly":
-                    $aggreg=0;
-                    break;
-                case "1":
-                case "daily":
-                    $aggreg=1;
-                    break;
-                case "2":
-                case "weekly";
-                    $aggreg=2;
-                    break;
-                case "3":
-                case "monthly";
-                    $aggreg=3;
-                    break;                    
-                default:
-                    echo "Warning, do not understand \"".strval($config["Aggregated"])."\", expect hourly/daily/weekly/monthly.\n";
-                    $aggreg=1;
-                    break;
-                }
+            $aggreg=$this->configAggregated($config["Aggregated"]);         // convert String in Config to integer
             $werte   = @AC_GetAggregatedValues($this->archiveID, $oid, $aggreg, $config["StartTime"], $config["EndTime"], 0);             // 0 unlimited  
             $aggType = AC_GetAggregationType($this->archiveID, $oid);
             if ($debug>1) echo "Aggregated is configured with ".$config["Aggregated"]." converted to $aggreg. Aggregation Type ist $aggType\n";
@@ -3740,16 +3734,16 @@ class archiveOps
         //if (isset($config["Split"])) $debug=true; else $debug=false;
 
         // Vorverarbeitung, Analyse der Werte
-        $result = $this->countperIntervalValues($werte,$debug);        // true Debug
-        if ($result===false) return (false);                            // spätestens hier abbrechen, eigentlich schon vorher wenn wir draufkommen dass es kein Array mit historischen Werten gibt
+        $resultIntervals = $this->countperIntervalValues($werte,$debug);        // true Debug
+        if ($resultIntervals===false) return (false);                            // spätestens hier abbrechen, eigentlich schon vorher wenn wir draufkommen dass es kein Array mit historischen Werten gibt
         //print_r($result);
-        if ($result["order"] == "newfirst") 
+        if ($resultIntervals["order"] == "newfirst") 
             {
             if ($debug>1) echo "   --> Reihenfolge, neuerster Wert zuerst, hat niedrigsten Index, andersrum sortieren.\n";
             krsort($werte);             // andersrum sortieren
             }
         $this->cleanupStoreValues($werte,$oid,$config,$debug);          // Werte bereinigen und in this->result[$oid][Values] abpeichern, config übernimmt maxLogsperInterval            
-        $this->calculateSplitOnData($oid,$config,$debug);
+        //$this->calculateSplitOnData($oid,$config,$debug);             // Split wird oben schon mitgemacht
         if ($debug>1) echo "Memorysize after calculateSplitOnData: ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";
         /* maxminCalc macht Max Min und Means für den gesamten Zeitbereich */
         $maxmin=array();         // Speicherplatz zur Verfügung stellen
@@ -3769,6 +3763,7 @@ class archiveOps
 
         /* rollierender Mittelwert */
         $meansRollConfig["TimeStampPos"]="Mid";
+        $meansRollConfig["CalcDirection"]="Backward";           // neuester Wert hat einen Mittelwert
         $meansRoll = new meansRollEvaluate($this->result[$oid]["Values"],$meansRollConfig,($debug>4));                                     // rollierenden Mittelwert berechnen, benötigt das ganze Archiv, Array, false für keine Config, true für Debug
         /* Wertebereich bearbeiten */
         $lateStart=0; 
@@ -3783,7 +3778,8 @@ class archiveOps
             {
             $debugCount=12; $count = count($this->result[$oid]["Values"]);                      // die ersten 12 Werte anzeigen
             if ($debug>3) echo "Jetzt alle Werte einzeln durchgehen, einen Trend erkennen, Debug level $debug, zeige die ersten $debugCount Werte, Werte mit aufsteigenden Zeitstempel sortiert:\n";
-            foreach ($this->result[$oid]["Values"] as $index => $entry)     // jetzt die Werte durchgehen
+            // Werte in this->result der Reihe nach durchgehen
+            foreach ($this->result[$oid]["Values"] as $index => $entry)     // jetzt die Werte durchgehen, Werte sind mit auufsteigenden Zeitstempel sortiert
                 {
                 $logCount++;    
                 $wertAktuell = $statistics->wert($entry);
@@ -3793,7 +3789,8 @@ class archiveOps
                 if ($indexCount >= $lateStart)                          // nur brauchbar wenn in die Vergangenheit der Mittelwert berechnet wird oder es schon zu viele Werte sind
                     {
                     // Trendberechnung verwendet meansRollEvaluate, hat alle Werte als Array bereits übergeben bekommen
-                    $mittelWertMonat = $meansRoll->meansValues($index, 20);                    // aus den nächsten 20 Werten einen Mittelwert berechnen, sollte auch für ein Intervall funktionieren
+
+                    $mittelWertMonat = $meansRoll->meansValues($index, "month");                    // aus den nächsten oder vorigen Monatswerten einen Mittelwert berechnen, sollte auch für ein Intervall funktionieren
                     if ( (isset($mittelWertMonat["error"])) === false)
                         {
                         $this->result[$oid]["MeansRoll"]["Month"][$index] = $mittelWertMonat;            // beide Werte mit Index abspeichern
@@ -3812,7 +3809,7 @@ class archiveOps
                             $mittelWertMonatZuletzt = $mittelWertMonat;
                             }
                         }
-                    $mittelWertWoche = $meansRoll->meansValues($index,"week");                    // aus den nächsten 5 Werten oder einer Woche (which occurs first) einen Mittelwert berechnen
+                    $mittelWertWoche = $meansRoll->meansValues($index,"week");                    // aus den nächsten oder vorigen Wochenwerten einen Mittelwert berechnen
                     if ( (isset($mittelWertWoche["error"])) === false)                          // keinen Fehler in diesem Berechnungszyklus  erkannt
                         {                
                         $this->result[$oid]["MeansRoll"]["Week"][$index]  = $mittelWertWoche;       // es gibt jeden Tage einen Mittelwert der Woche
@@ -3892,19 +3889,19 @@ class archiveOps
                                 }
                             }
                         }
-                    else
+                    else                // Ausgeabe der einfachen Trend für Woche und Monta, Berechnung erfolgt weiter oben
                         {
                         if ( ($debug>4) )           // debug Level sehr hoch ansetzen
                             {
                             echo str_pad($index,6).date("d.m.Y H:i:s",$entry["TimeStamp"])." Aktuell ".nf($wertAktuell,"€",8);
-                            if ( (isset($mittelWertWoche["error"])) === false) 
+                            if ( (isset($mittelWertWoche["error"])) === false)                                                              // kein fehler
                                 {
                                 echo " Mittel Woche ".nf($wertWocheMittel,"€",8)." (".date("d.m.Y H:i:s",$mittelWertWoche["TimeStamp"]).") ";
                                 if ($trendWoche) echo "   ".nf($trendWoche,"%")." ";
                                 else echo "          ";
                                 }
                             else echo "                                             ";
-                            if ( (isset($mittelWertMonat["error"])) === false)  
+                            if ( (isset($mittelWertMonat["error"])) === false)                                                                  // kein fehler
                                 {
                                 echo "Monat ".nf($wertMonatMittel,"€",8)." ,berechnet bis ".date("d.m.Y H:i:s",$mittelWertMonat["startTime"]);
                                 if ($trendMonat) echo "   ".nf($trendMonat,"%")." ";
@@ -4292,8 +4289,38 @@ class archiveOps
         $this->result[$oid]["Info"]=$share;
         }
 
-    /* Werte bereinigen und in result[oid][Values] abpeichern 
-     * das bedeutet result kann mehrere oids, die Originalwerte und die Auswertung übernehmen
+    /* convert config aggregated to value */
+
+    private function configAggregated($aggregated)
+        {
+        switch (strval($aggregated))
+            {
+            case "0":
+            case "hourly":
+                $aggreg=0;
+                break;
+            case "1":
+            case "daily":
+                $aggreg=1;
+                break;
+            case "2":
+            case "weekly";
+                $aggreg=2;
+                break;
+            case "3":
+            case "monthly";
+                $aggreg=3;
+                break;                    
+            default:
+                echo "Warning, do not understand \"".strval($config["Aggregated"])."\", expect hourly/daily/weekly/monthly.\n";
+                $aggreg=1;
+                break;
+            }
+        return ($aggreg);
+        }
+
+    /* cleanupStoreValues, Werte bereinigen und in this->result[oid][Values] abpeichern 
+     * das bedeutet this->result kann mehrere oids, die Originalwerte und die Auswertung übernehmen
      *
      * nur die maxLogsperInterval Anzahl von Werten übernehmen, Wert steht in config
      * die Anzahl der übernommenen Werte wird zurück gemeldet
@@ -4308,13 +4335,39 @@ class archiveOps
 
     private function cleanupStoreValues(&$werte,&$oid,$config,$debug=false)
         {
-        // config check
+        $statistics = new statistics();
+
+        if ($debug && (isset($config["Split"]))) echo "call calculateSplitOnData, Configuration : ".json_encode($config["Split"])."\n";
+        $split=$this->prepareSplit($config,$debug);
+        $count = @count($werte);
+        if ($count && $split)                 // zumindest jeweils ein Eintrag sonst bleibt false
+            {
+            //print_r($split);
+            $i=0; $iMax=10;    
+            for ($i=0;$i<$count;$i++)                   // die Werte einem nach dem anderen durchgehen
+                {
+                $index = $count-$i-1;
+                $timestamp=$werte[$index]["TimeStamp"];
+                foreach ($split as $date => $factor)
+                    {
+                    if ($date>$timestamp) $werte[$index]["Value"] = $werte[$index]["Value"]/$factor; 
+                    }
+                if ($debug>1) 
+                    {
+                    if ($i<$iMax) echo $index." ".date("d.m.Y H:i:s",$timestamp)." ".$werte[$index]["Value"]."\n";
+                    //print_r($entry);
+                    }
+                }
+            }        
+        // config check, support configless mode when config is maxLogsperInterval
         $maxDistance=600;
         if (is_array($config)) 
             {
             $maxLogsperInterval       = $config["maxLogsperInterval"];
             $suppressZero             = $config["SuppressZero"];
             $doDistanceCheck          = $config["maxDistance"];
+            $doInterpolate            = $config["Interpolate"];
+            $deleteSourceonError      = $config["deleteSourceOnError"];
             if (isset($config["OIdtoStore"])) $oid = $config["OIdtoStore"];             // oid wird auch ausserhalb geändert
             }
         else 
@@ -4322,6 +4375,8 @@ class archiveOps
             $maxLogsperInterval = $config;
             $doDistanceCheck=false;
             $suppressZero=true;
+            $doInterpolate=false;
+            $deleteSourceonError=false;
             $config=array();
             }
         if (isset($config["Aggregated"])===false) $config["Aggregated"]=false;
@@ -4330,45 +4385,69 @@ class archiveOps
         // debug orientation
         if ($debug>1)
             {
-            echo "   cleanupStoreValues aufgerufen. Es werden $maxLogsperInterval Werte kopiert.\n";
+            echo "   cleanupStoreValues aufgerufen. Es werden $maxLogsperInterval Werte kopiert. Konfig : ".json_encode($config)."\n";
             if ($config["Aggregated"]) echo "  --> Es handelt sich um aggregierte Werte, nicht viel machen. \n";
             //print_r($config);
             }
         
-        if ($debug>1) echo"    Search for doubles based on TimeStamp:\n";     // dazu neues array result anlegen mit Index Timestamp
+        if ($debug>1) echo"    Search for doubles based on TimeStamp, ignore false values:\n";     // dazu neues array result anlegen mit Index Timestamp
+        $check=array();
         $i=0; $d=0; $displayMax=20; $debug2=false;
         foreach ($werte as $indexArchive => $wert)
             {
             if ($config["Aggregated"]) $wertUsed=$wert["Avg"];
             else $wertUsed=$wert["Value"];
-            if ($debug2)
+            if ($debug2)            // zusätzliches Debug on demand
                 {
                 if ($i==0) print_R($wert);
                 if ($i<$displayMax)  echo str_pad($indexArchive,7)."  ".nf($wertUsed,"kWh")."   ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   \n";
                 }
-            if (isset($result[$wert["TimeStamp"]]["TimeStamp"]))
+            if ( (is_numeric($wertUsed)==false) || ( ($wertUsed==0) && $suppressZero ) ) 
+                {
+                if ( ($d<$displayMax) && $debug2) echo str_pad($indexArchive,7)."  $wertUsed   ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   fehlerhafter Eintrag\n";
+                $deleteIndex[$indexArchive]=$wert["TimeStamp"];
+                $d++;    
+                }               
+            elseif (isset($check[$wert["TimeStamp"]]))
                 {
                 if ( ($d<$displayMax) && $debug2) echo str_pad($indexArchive,7)."  ".nf($wertUsed,"kWh")."   ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   doppelter Eintrag\n";
-                $deleteIndex[$d]["Index"]=$indexArchive;
-                $deleteIndex[$d]["Index"]=$wert["TimeStamp"];
+                $deleteIndex[$indexArchive]=$wert["TimeStamp"];
                 $d++;
                 }
             else
                 {
-                $result[$wert["TimeStamp"]]["Value"]=$wertUsed;
-                $result[$wert["TimeStamp"]]["TimeStamp"]=$wert["TimeStamp"];
+                $check[$wert["TimeStamp"]] = true;    
                 $i++;
                 }
             //if ( (is_float($wert["Value"])) && ($i<$displayMax)) echo "   Typ Float ok";
             //if ($i<$displayMax) echo "\n";
             }
-        if ($debug>1) echo "     --> Zusammenfassung gültig $i und ungültig $d Stück.\n";
+        if ($debug>1) 
+            {
+            echo "     --> Zusammenfassung gültig $i und ungültig $d Stück.\n";
+            if ($d>0) 
+                {
+                echo "                Ungültig sind ";
+                foreach ($deleteIndex as $index => $value) 
+                    {
+                    //echo json_encode($value)."  ";
+                    echo " $index=>".date("d.m.Y H:i:s",$value)."  ";
+                    }
+                echo "\n";
+                }
+            }
 
         // function, go
         $onewarningonly=false;
         $logCount=0; $error=0; $ignore=false;
+        $prevTime=false; $aktTime=false;
         foreach($werte as $index => $wert)              //können aggregierte und geloggte Werte
             {
+            if (isset($wert["TimeStamp"])) 
+                {
+                $aktTime = $this->ipsOps->adjustTimeFormat($wert["TimeStamp"],"Ymd");         // true Debug
+                $aktWert = $statistics->wert($wert);
+                }
             if ($config["Aggregated"])                      // keine aufwendigen Überprüfungen, Aggregierte Werte sind per Default in Ordnung
                 {
                 $this->result[$oid]["Values"][]=$wert;
@@ -4376,10 +4455,10 @@ class archiveOps
                 }
             else                // logging Werte mit TimeStamp und Value, Werte müssen nicht unbedingt numerisch sein, diese Werte dann löschen, wenn konfiguriert auch 0 löschen
                 {
-                if ( (is_numeric($wert['Value'])==false) || ( ($wert['Value']==0) && $suppressZero ) )
+                if (isset($deleteIndex[$index]))
                     {
                     //if ($debug) print_R($wert);
-                    unset ($werte[$index]);
+                    if ($deleteSourceonError) unset ($werte[$index]);
                     $error++; 
                     }
                 else            // gültiger Wert, numerisch, eventuell wenn so konfiguriert auch nicht 0, die anderen ignorieren
@@ -4401,6 +4480,22 @@ class archiveOps
                         }
                     if ($ignore===false)            // wenn alle Tests überstanden den Wert auch übernehmen
                         {
+                        if ($prevTime && $doInterpolate)          // es gibt einen ersten Wert, jetzt den Abstand ermitteln, Wert ist Avg oder Value
+                            {
+                            $duration=($aktTime-$prevTime)/60/60;
+                            $intervals=round($duration/24,0);
+                            $intervalWert=($aktWert-$prevWert)/$intervals;
+                            //echo "$duration Stunden. Wert ".date("d.m.Y H:i:s",$prevTime)." $prevWert   ".date("d.m.Y H:i:s",$aktTime)."   $aktWert  $intervals\n";
+                            for ($i=1;$i<$intervals;$i++) 
+                                {
+                                $estValue["Value"]     = ($prevWert+$intervalWert*$i);
+                                $estValue["TimeStamp"] = $prevTime+($i*24*60*60);
+                                //echo "    ".date("d.m.Y H:i:s",$estValue["TimeStamp"])."    ".$estValue["Value"]."\n";
+                                $this->result[$oid]["Values"][]=$estValue;          // hintereinander schreiben
+                                }
+                            }
+                        $prevTime=$aktTime;
+                        $prevWert=$aktWert;
                         $this->result[$oid]["Values"][]=$wert;          // hintereinander schreiben
                         $logCount++;
                         }
@@ -4424,10 +4519,13 @@ class archiveOps
 
         /* calculateSplitOnData
          * eine Besonderheit von Aktien, es können Splits und Merges auftreten
+         * Funktion arbeitet bereits auf Basis this->result, alternative Funktion für on the fly Daten
          *
          */
         private function calculateSplitOnData($oid,$config,$debug=false)
             {
+            //$debug=true;
+            // check ob genug Daten da sind 
             $count = @count($this->result[$oid]["Values"]);
             //if ($count<40) print_r($this->result[$oid]["Values"]);
             if ($count===false) 
@@ -4438,8 +4536,46 @@ class archiveOps
                     print_r($this->result[$oid]["Values"]);
                     }
                 }
-            else
+            else        // mit den Daten in this->result arbeiten wenn ein Split index config Eintrag vorhanden ist
                 {
+                //if ($debug && (isset($config["Split"]))) echo "calculateSplitOnData, Configuration : ".json_encode($config["Split"])."\n";
+                $split=$this->prepareSplit($config,$debug);
+                if ($split)                 // zumindest ein Eintrag sonst bleibt false
+                    {
+                    //print_r($split);
+                    $i=0; $iMax=10;    
+                    for ($i=0;$i<$count;$i++)                   // die Werte einem nach dem anderen durchgehen
+                        {
+                        $index = $count-$i-1;
+                        $timestamp=$this->result[$oid]["Values"][$index]["TimeStamp"];
+                        foreach ($split as $date => $factor)
+                            {
+                            if ($date>$timestamp) $this->result[$oid]["Values"][$index]["Value"] = $this->result[$oid]["Values"][$index]["Value"]/$factor; 
+                            }
+                        if ($debug>1) 
+                            {
+                            if ($i<$iMax) echo $index." ".date("d.m.Y H:i:s",$timestamp)." ".$this->result[$oid]["Values"][$index]["Value"]."\n";
+                            //print_r($entry);
+                            }
+                        }
+                    }
+                else
+                    {
+                    if ($debug>1) 
+                        {
+                        echo "  --> calculateSplitOnData für $count Werte aufgerufen. kein Split in der Konfiguration.\n";
+                        //print_R($config);
+                        }                    
+                    }
+                }
+            }
+
+        /* prepare Splits */
+
+        private function prepareSplit($config,$debug=false)
+            {
+            //if ($debug && (isset($config["Split"]))) echo "prepareSplit ".json_encode($config["Split"])."\n";
+            $split=false;
                 if ( (isset($config["Split"])) && (is_array($config["Split"])) && (count($config["Split"])>0) )         // es gibt den Index, das Array und auch Eintraege für Splits 
                     {
                     $splitFound=false;
@@ -4454,7 +4590,7 @@ class archiveOps
                         if ($debug) 
                             {
                             echo "calculateSplitOnData, ".date("d.m.Y H:i:s",$datetime)."   ".json_encode($entry)." ";
-                            if ($datetime===false) echo "--> $oid wrong datetime Format of \"$date\".";
+                            if ($datetime===false) echo "--> wrong datetime Format of \"$date\".";
                             echo "\n";
                             }
                         if ($datetime !== false)
@@ -4466,32 +4602,9 @@ class archiveOps
                     if ($splitFound)                 // zumindest ein Eintrag sonst bleibt false
                         {
                         ksort($split);                      //in aufsteigender Reihenfolge
-                        $i=0; $iMax=10;    
-                        for ($i=0;$i<$count;$i++)
-                            {
-                            $index = $count-$i-1;
-                            $timestamp=$this->result[$oid]["Values"][$index]["TimeStamp"];
-                            foreach ($split as $date => $factor)
-                                {
-                                if ($date>$timestamp) $this->result[$oid]["Values"][$index]["Value"] = $this->result[$oid]["Values"][$index]["Value"]/$factor; 
-                                }
-                            if ($debug>1) 
-                                {
-                                if ($i<$iMax) echo $index." ".date("d.m.Y H:i:s",$timestamp)." ".$this->result[$oid]["Values"][$index]["Value"]."\n";
-                                //print_r($entry);
-                                }
-                            }
                         }
                     }
-                else
-                    {
-                    if ($debug>1) 
-                        {
-                        echo "  --> calculateSplitOnData für $count Werte aufgerufen. kein Split in der Konfiguration.\n";
-                        //print_R($config);
-                        }                    
-                    }
-                }
+            return ($split);
             }
 
         /* Anzahl Vorwerte die in einem Intervall vorhanden sind ermitteln 
@@ -4591,11 +4704,19 @@ class archiveOps
         protected $config;
 
         /* einheitliche Konfiguration mit Variablen für die Nutzung in den Statistikfunktionen
-         *      EventLog        true
-         *      DataType        Archive, Aggregated, Logged
-         *      Aggregated      true if dataType is Aggregated, werte false,0,1,2,
-         *      KIfeature       none, besondere Auswertungen machen
-         *      Split           Spli, Änderungen der Skalierung zu einem bestimmten zeitpunkt
+         *      EventLog            true
+         *      DataType            Archive, Aggregated, Logged
+         *          Aggregated      true if dataType is Aggregated, werte false,0,1,2,
+         *      manAggregated       Aggregate, 
+         *                          Format
+         *      KIfeature           none, besondere Auswertungen machen
+         *      Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
+         *      OIdtoStore          eine ander OID verwenden als die echte OID
+         *      returnResult
+         *
+         *      suppresszero
+         *      maxDistance
+         *
          *      StartTime 
          *      EndTime
          *      LogChange
@@ -4633,6 +4754,8 @@ class archiveOps
 
             configfileParser($logInput, $config, ["SuppressZero","SUPPRESSZERO","suppresszero"],"SuppressZero" ,true);
             configFileParser($logInput, $config, ["maxDistance","MAXDISTANCE","maxdistance"],"maxDistance",false);         // default no check for gaps any longer, just warning
+            configFileParser($logInput, $config, ["interpolate","INTERPOLATE","Interpolate"],"Interpolate",false);                                          // Interpolate false, daily, 
+            configFileParser($logInput, $config, ["deleteSourceOnError","DELETESOURCEONERROR","deletesourceonerror"],"deleteSourceOnError",false);              // true in werte unset machen wenn fehler
 
             configfileParser($logInput, $config, ["STARTTIME","StartTime","startTime","starttime" ],"StartTime" ,0);
             configfileParser($logInput, $config, ["ENDTIME","EndTime","endTime","endtime" ],"EndTime" ,0);
@@ -5383,7 +5506,8 @@ class archiveOps
 
 
     /*  meansRollEvaluate, Auswertung von Archive Einträgen, Input ist ein externes array, es wird nur der pointer übergeben
-     *  es gibt auch eine Konfiguration
+     *  es gibt auch eine Konfiguration:
+     *          TimeStampPos    Begin, Mid, End    Default is End
      *
      * vorhandene functions:
      *  __construct
@@ -5399,16 +5523,21 @@ class archiveOps
         protected $input,$config;
         protected $debug;
 
+        /* in der class input werden die Werte gespeichert, ist nur der pointer auf ein externes array 
+         */
+
         function __construct(&$input,$config=false,$debug=false)
             {
             if (is_array($input)===false) return (false);
             $this->input=&$input;
 
             $this-> debug = $debug;
+            //$this-> debug = true;
             /* Config vorbereiten */
-            if ($config ===false)
+            if ($config === false)
                 {
                 $this->config["TimeStampPos"]="End";
+                $this->config["CalcDirection"]="Backward";
                 }
             else $this->config=$config; 
                        
@@ -5418,24 +5547,33 @@ class archiveOps
             }
 
         /* Übergabe wert[value] oder wert[avg] und wert[TimeStamp]
+         * wir brauchen einen timeStamp 
          * previousOne ist rückwärts oder vorwärts möglich, TimeStamp mit betrachten
+         * berechnet einen rollierenden Mittelwert mit countInput Werten
+         *      day, week, month
+         * count ist die maximale Anzahl an Werten die berücksichtigt wird, wir beginnen bei index und zählen nach oben
          *
          */
         function meansValues($index, $countInput)
             {
-            // preparation work
+            // preparation of work
             $debug=$this->debug;
-            if (is_array($this->input)===false) return (false);
-            if (isset($this->input[$index]["TimeStamp"])) $timeStamp = $this->input[$index]["TimeStamp"];
+            if (is_array($this->input)===false) return (false);                                                 //kein Daten array bedeutet Abbruch
+            if (isset($this->input[$index]["TimeStamp"])) $timeStamp = $this->input[$index]["TimeStamp"];       // aktueller TimeStamp entweder false oder mit einem Wert
             else $timeStamp = false; 
-            if (is_numeric($countInput)===false) 
+            if (is_numeric($countInput)===false)                        // countInput festlegen
                 {
                 switch (strtoupper($countInput))    
                     {
-                    case "WEEK":
-                        $count=5;
+                    case "MONTH":
+                        $count=40;                          // mehr Arbeitstage, Count, es wird nach duration abgebrochen
                         //$debug=false;
-                        $duration=(7*24*60*60);
+                        $duration=(30*24*60*60);         // es werden Zeitstempel verglichen, Kalendertage
+                        break;
+                    case "WEEK":
+                        $count=10;                           // mehr Arbeitstage, Count, es wird nach duration abgebrochen
+                        //$debug=false;
+                        $duration=(7*24*60*60);         // es werden Zeitstempel verglichen
                         break;
                     default:
                         break;
@@ -5445,37 +5583,65 @@ class archiveOps
                 {
                 $debug=false;
                 $count=$countInput;
-                $duration=false;
+                $duration=false;                        // es wird nur gezählt
                 }
 
-            /* rollierender Mittelwert , diesen und die nächsten count Werte zusammenzählen */
-            $sumRol=0; $countRol=0; $sumTime=0; $aktTime=false; $startTime = false; $endTime=false; $error=0;
-            for ($i=0;$i<$count;$i++)
+            /* rollierender Mittelwert , diesen und die nächsten count Werte zusammenzählen 
+             * Value/Avg und TimeStamp wird benötigt
+             * startTime ist der erste Wert
+             * wenn kein Wert da ist wird error hochgezählt
+             *
+             */
+            $sumRol=0; $countRol=0; $sumTime=0; $aktTime=false; $value=false; $startTime = false; $endTime=false; $error=0;
+            $prevTime=false; $prevValue=false;
+
+            if ($this->config["CalcDirection"]=="Backward") 
                 {
-                if ($debug) echo "\n ".str_pad("$index+$i=".($index+$i),16)."  ";
-              
-                if (isset($this->input[$index+$i]["Value"])) $value = $this->input[$index+$i]["Value"]; 
-                elseif (isset($this->input[$index+$i]["Avg"])) $value = $this->input[$index+$i]["Avg"];
+                //echo "wir zählen rückwärts.\n";
+                $dir = -1;            // backward
+                }
+            else $dir = 1;                                                        // forward
+            for ($i=0;$i<$count;$i++)           // count ist 5 oder 20
+                {
+                $nextIndex=($index+$dir*$i);                                                    // nächster nach vor oder zurück
+                if ($debug) echo "\n ".str_pad("$index+$dir*$i=".$nextIndex,16)."  ";
+
+                // alten Wert kopieren, neuen Wert einlesen, falsche Werte ignorieren            
+                if ($value) $prevValue=$value;
+                if (isset($this->input[$nextIndex]["Value"])) $value = $this->input[$nextIndex]["Value"]; 
+                elseif (isset($this->input[$nextIndex]["Avg"])) $value = $this->input[$nextIndex]["Avg"];
                 else $value=false;
-                if (isset($this->input[$index+$i]["TimeStamp"])) 
+
+                // Zeitstempel ermitteln
+                if (isset($this->input[$nextIndex]["TimeStamp"])) 
                     {
-                    $aktTime = $this->input[$index+$i]["TimeStamp"];
+                    $prevTime=$aktTime;
+                    $aktTime = $this->input[$nextIndex]["TimeStamp"];
                     $sumTime += $aktTime;
                     if ($debug) echo date("d.m.Y H:i:s",$aktTime)."  ";
+                    if  ($startTime===false)  $startTime=$aktTime;         // Startzeitpunt ermitteln
                     }
                 if ($value)
                     {
-                    if ($debug) echo "->".$this->input[$index+$i]["Value"];             // den Wert
+                    if ($debug) echo "->".$this->input[$nextIndex]["Value"];             // den Wert
                     $sumRol += $value;
                     $countRol++;
                     }
-                else $error++;
-                if  ($startTime===false)  $startTime=$aktTime;         // Startzeitpunt ermitteln
-                if ( ($duration) && (($aktTime-$startTime)>$duration) ) break;            // Dauer bereits überschritte es fehlen Werte
+                else $error++;                  // kein Wert
+                if ( ($duration) && ($aktTime) && ((abs($aktTime-$startTime))>$duration) )           // Abbruch wenn Zeit erreicht wurde
+                    {
+                    /* Interpolieren nur mehr optional
+                    $dif=$value-$prevValue;
+                    $dif=$dif-$dif/($aktTime-$prevTime)*$duration;
+                    $sumRol=$sumRol-$dif;
+                    if ($debug) echo "-> $duration excceed by ".($aktTime-$startTime-$duration)." seconds with Value $value. Last Value $prevValue. Last Time ".date("d.m.Y H:i:s",$prevTime)."  Total Sum Corrected by subtracting $dif.\n";
+                    $aktTime=$startTime+$duration;   */
+                    break;            // Dauer bereits überschritte es fehlen Werte
+                    }
                 }
             if ($countRol>0)
                 {
-                /* Mittelwert */
+                /* Mittelwertberechnung möglich */
                 $ergebnis=array();
                 $ergebnis["Value"] = $sumRol/$countRol;
                 $midTime = $sumTime/$countRol;
@@ -5483,9 +5649,9 @@ class archiveOps
                     {
                     $ergebnis["TimeStamp"]=$midTime;
                     }
-                else $ergebnis["TimeStamp"]=$timeStamp;
-                $ergebnis["startTime"] = $startTime;
-                $ergebnis["endTime"]   = $aktTime;
+                else $ergebnis["TimeStamp"]=$timeStamp;             //Wert der mit Index übergeben wurde
+                $ergebnis["startTime"] = $startTime;                // startTime ist der erste Wert
+                $ergebnis["endTime"]   = $aktTime;                  // aktTime nach countRol Werten oder duration , Wert für sumRol wurde eventuell interpoliert
                 }
             if ($error) $ergebnis["error"]=$error;
             return ($ergebnis);
@@ -5651,6 +5817,8 @@ class archiveOps
  *
  * configWebfront
  * intelliSort              nach einem sub index sortieren
+ * serializeArrayAsPhp
+ * serialize_array
  * emptyCategory            rekursiv
  *
  * trimCommand
@@ -5773,7 +5941,7 @@ class ipsOps
         }
         
 
-    /* Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items
+    /* ipsOps, Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items
      *
      */
 
@@ -6081,7 +6249,7 @@ class ipsOps
         return $text;
         } 
 
-
+    /* serialize array */
 
     function serialize_array(&$array, $root = '$root', $depth = 0)
         {
@@ -6187,6 +6355,26 @@ class ipsOps
     	return ($entry3);
 	    }
 
+
+    /* ipsOps::AdjustTimeFormat , einen zeitstempel anpassen mit datetime format 
+     * format   Ymd         4 Jahr 2 monat 2 Tag, nicht vorkommende Formatierungszeichen werden auf Default gesetzt
+     * Beispiel Ergbnis ist der 1.1.Jahr 00:00 wenn als Format nur Y angegeben wird
+     *
+     * aktuell nur Ymd unterstützt, siehe nächste Routine
+     */
+
+    public function adjustTimeFormat($time,$format,$debug=false)
+        {
+        $string=date($format,$time);
+        $newTime = $this->strtotimeFormat($string,$format,$debug);
+        return ($newTime);
+        }
+
+
+    /* ipsOps::strtotimeFormat aus einem String eine Uhrzeit als time machen, format bestimmt die Anordnung
+     * format   Ymd         4 Jahr 2 monat 2 Tag
+     */
+
     public function strtotimeFormat($string,$format,$debug=false)
         {
         $hour=0;
@@ -6202,6 +6390,9 @@ class ipsOps
                 $month = intval(substr($string,4,2));
                 $day   = intval(substr($string,6,2));
                 break;
+            case "Y":
+                $year  = intval(substr($string,0,4));
+                break;                
             }
         if ($debug) echo "mktime($hour,$minute,$second,$month,$day,$year)\n";
         return (mktime($hour,$minute,$second,$month,$day,$year));
@@ -8080,9 +8271,11 @@ class timerOps
 
         }
 
-	/* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen */
+	/* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
+     * hier die Variante mit Angabe von Stunde und Minute pro Tag
+     */
 
-	public function CreateTimerHour($name,$stunde,$minute,$scriptID)
+	public function CreateTimerHour($name,$stunde,$minute,$scriptID,$debug=false)
 		{
 		/* EventHandler Config regelmaessig bearbeiten */
 			
@@ -8095,17 +8288,22 @@ class timerOps
 			IPS_SetEventCyclic($timID,0,0,0,0,0,0);
 			IPS_SetEventCyclicTimeFrom($timID,$stunde,$minute,0);  /* immer um ss:xx */
 			IPS_SetEventActive($timID,true);
-			echo "   Timer Event ".$name." neu angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
+			if ($debug) echo "   Timer Event ".$name." neu angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
 			}
 		else
 			{
-			echo "   Timer Event ".$name." bereits angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
+			if ($debug) echo "   Timer Event ".$name." bereits angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
 			IPS_SetEventActive($timID,true);
 			}
 		return($timID);
 		}
 
-	public function CreateTimerSync($name,$sekunden,$scriptID)
+    /* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
+     * hier die Variante die alle x Sekunden aufgerufen wird
+     *
+     */
+
+	public function CreateTimerSync($name,$sekunden,$scriptID,$debug=false)
 		{
 		$timID = @IPS_GetEventIDByName($name, $scriptID);
 		if ($timID==false)
@@ -8113,21 +8311,21 @@ class timerOps
 			$timID = IPS_CreateEvent(1);
 			IPS_SetParent($timID, $scriptID);
 			IPS_SetName($timID, $name);
-			IPS_SetEventCyclic($timID,0,1,0,0,1,$sekunden);      /* alle x sec */
+			IPS_SetEventCyclic($timID,0,1,0,0,1,$sekunden);      // alle x sec, kein Datumstyp-täglich, keine Auswertung, Sekunden 
 			//IPS_SetEventActive($tim2ID,true);
-			IPS_SetEventCyclicTimeFrom($timID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
-			echo "   Timer Event ".$name." neu angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
+			IPS_SetEventCyclicTimeFrom($timID,0,2,$sekunden%60);  // damit die Timer hintereinander ausgeführt werden, Sekunden modulo 60
+			if ($debug) echo "   Timer Event ".$name." neu angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
 			}
 		else
 			{
-			echo "   Timer Event ".$name." bereits angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
-			IPS_SetEventCyclicTimeFrom($timID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
+			if ($debug) echo "   Timer Event ".$name." bereits angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
+			IPS_SetEventCyclicTimeFrom($timID,0,2,$sekunden%60);  // damit die Timer hintereinander ausgeführt werden 
 			//IPS_SetEventActive($tim2ID,true);
 			}
 		return($timID);
 		}	
 
-    function setTimerPerMinute($name, $scriptIdActivity, $minutes)
+    function setTimerPerMinute($name, $scriptIdActivity, $minutes,$debug=false)
         {
         $tim4ID = @IPS_GetEventIDByName($name, $scriptIdActivity);
         if ($tim4ID==false)
@@ -8139,11 +8337,11 @@ class timerOps
             IPS_SetEventCyclic($tim4ID,0,1,0,0,2,$minutes);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
             IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
             IPS_SetEventActive($tim4ID,true);
-            echo "   Timer Event $name neu angelegt. Timer $minutes Minuten ist aktiviert.\n";
+            if ($debug) echo "   Timer Event $name neu angelegt. Timer $minutes Minuten ist aktiviert.\n";
             }
         else
             {
-            echo "   Timer Event $name bereits angelegt. Timer $minutes Minuten ist aktiviert.\n";
+            if ($debug) echo "   Timer Event $name bereits angelegt. Timer $minutes Minuten ist aktiviert.\n";
             IPS_SetEventActive($tim4ID,true);
             IPS_SetEventCyclic($tim4ID,0,1,0,0,2,$minutes);      /* Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
             IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
@@ -8151,14 +8349,21 @@ class timerOps
         return ($tim4ID);
         }
 
+    /* Infos über ein Timer Event ausgeben 
+     */
+
     public function getEventData($EreignisID,$debug=false)
         {
         $EreignisInfo = IPS_GetEvent($EreignisID);
         $eventID = $EreignisInfo["EventID"];
         $lastrun=date("d.m.Y H:i:s",$EreignisInfo["LastRun"]);
         $nextrun=date("d.m.Y H:i:s",$EreignisInfo["NextRun"]);
-        echo str_pad("$eventID (".IPS_GetName($eventID).")",32)." Lastrun $lastrun   Nextrun $nextrun  Status ".($EreignisInfo["EventActive"]?"Ein":"Aus")."  \n";
-        if ($debug) print_r($EreignisInfo);
+        echo "$eventID ";
+        if ($debug) $text = "(".IPS_GetName($eventID)."/".IPS_GetName(IPS_GetParent($eventID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($eventID))).")";
+        else $text = "(".IPS_GetName($eventID).")";
+        echo str_pad($text,72);
+        echo " Lastrun $lastrun   Nextrun $nextrun  Status ".($EreignisInfo["EventActive"]?"Ein":"Aus")."  \n";
+        //if ($debug) print_r($EreignisInfo);
 
         }
 
@@ -8456,8 +8661,17 @@ class ComponentHandling
     /***********************************************************************************
     *
     * ComponentHandling::getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
-    * Die Liste kann entweder die HardwareListe oder die DeviceListe aus EvaluateHardware sein, wird automatisch erkannt.
-    * Zusätzlich funktioniert jetzt auch eine MySQL Anbindung
+    * Die Liste kann entweder die HardwareListe oder die DeviceListe aus EvaluateHardware sein, wird automatisch erkannt. Zusätzlich funktioniert jetzt auch eine MySQL Anbindung
+    * 
+    * Es wird aufgerufen wenn Elements ein Array ist entweder
+    *       workOnDeviceList
+    *       workOnHomematicList
+    * sonst beginnt die MySQL Abarbeitung
+    *
+    * Abhängig vom Ausgabeswitch write wird 
+    *       Array       array component mit den einzelnen COIDs und wenn debug echo result
+    *       Install     array install mit den vollständigen Einträgen
+    *       false       text result
     *
     * HardwareListe:
     * $keywords kann ein Eintrag oder ein Array sein
@@ -8513,7 +8727,7 @@ class ComponentHandling
                 if ( (isset($Key["Type"])) && (isset($Key["Instances"])) )
                     {
                     /******* devicelist als Formattierung */  
-                    if ($debug && $once) echo "     ****** devicelist als Formattierung\n";
+                    if ($debug && $once) echo "     ****** devicelist als Formattierung, workOnDeviceList aufrufen.\n";
                     $count++; 
                     $keyName=$this->workOnDeviceList($Key, $keywords,$debug);
                     //if ($debug) echo "       Aufruf workOnDeviceList(".json_encode($Key).", ".json_encode($keywords).",$debug).\n";                       
@@ -8525,12 +8739,28 @@ class ComponentHandling
                     * Hardwareliste ist nach COIDs organisiert
                     */                    
                     //echo " getComponent HardwareList Entry: \n"; print_r($Key); 
-                    if ($debug && $once) echo "     ****** hardwarelist als Formattierung\n";
+                    if ($debug && $once) echo "     ****** hardwarelist als Formattierung, workOnHomematicList aufrufen.\n";
                     $keyName=$this->workOnHomematicList($Key, $keywords,$debug);
                     }           // Ende Hardware Liste durchsuchen
-
+                if (isset($keyName[0]))
+                    {
+                    if ($debug) echo "Mehrere Ergebnisse erkannt.\n";
+                    foreach ($keyName as $index => $entry)
+                        {
+                        if (isset($entry["Name"]))
+                            {
+                            if ($debug) echo "  Gefunden ".$entry["Name"]." : ".json_encode($entry)."\n";
+                            $totalfound=true;
+                            $this->addOnKeyName($entry,$debug);                      // Array entry wird ausgehend von OID,COID,KEY,Name erweitert um 
+                            $component[]=(integer)$entry["COID"];
+                            $install[$entry["Name"]]=$entry;
+                            if ($this->debug) $result .= "  ".str_pad($entry["Name"]."/".$keyword,50)." = ".GetValueIfFormatted($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
+                            }   // ende Found
+                        }
+                    }
                 if (isset($keyName["Name"]))
                     {
+                    if ($debug) echo "Gefunden ".$keyName["Name"]." : ".json_encode($keyName)."\n";
                     $totalfound=true;
                     $this->addOnKeyName($keyName,$debug);                      // Array keyname wird ausgehend von OID,COID,KEY,Name erweitert um 
                     $component[]=(integer)$keyName["COID"];
@@ -8605,16 +8835,18 @@ class ComponentHandling
      *      Key         Eintrag eines Gerätes/device
      *      keywords    etwas wie ["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"]
      *
-     * return Keyname with as much as available information to build that:
+     * return Keyname mit einem oder mehreren Einträgen
+     *   beinhaltet folgende Informationen:
      *              ok ["Name"]
      *              ok ["COID"]=(integer)$coid;
-                    ok ["OID"]=$oid;
-                    ok ["KEY"]=$keyword;
-                    $install[$keyName]["TYP"]=$variabletyp;
-                    $install[$keyName]["INDEX"]=$index;
-                    $install[$keyName]["PROFILE"]=$profile;					 
-                    $install[$keyName]["DETECTMOVEMENT"]=$detectmovement;
-                    $install[$keyName]["INDEXNAMEEXT"]=$indexNameExt;
+     *              ok ["OID"]=$oid;
+     *              ok ["KEY"]=$keyword;
+     *
+     *               $install[$keyName]["TYP"]=$variabletyp;
+     *               $install[$keyName]["INDEX"]=$index;
+     *               $install[$keyName]["PROFILE"]=$profile;					 
+     *               $install[$keyName]["DETECTMOVEMENT"]=$detectmovement;
+     *               $install[$keyName]["INDEXNAMEEXT"]=$indexNameExt;
      */
 
     function workOnDeviceList($Key, $keywords, $debug=false)
@@ -8622,6 +8854,8 @@ class ComponentHandling
         //$debug=false;     
         //if ($debug) echo "workOnDeviceList aufgerufen von getComponent mit den Parametern (".json_encode($Key).", ".json_encode($keywords).",$debug):\n";  
         $keyName=array();
+        $keyNames=array();          // es kann auch mehrere Ergbenisse innerhalb eines Device geben, zuerst beim Durchgangssensor aufgetreten
+
         $once=false;
         $typeChanKey="?"; $typeRegKey="?"; 
         if ( is_array($keywords) )
@@ -8681,14 +8915,29 @@ class ComponentHandling
                     //print_r($Key["Channels"][$index]);
                     //if ($keyName["COID"]==false) echo "COID in $oid (".IPS_GetName($oid).") nicht gefunden, IPS_GetObjectIDByName($varName,$oid)\n";
                     $keyName["Name"]=$instance["Name"];
+                    $keyNames[]=$keyName;
                     //if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
                     } 
                 }                                
             }
+        if (sizeof($keyNames)>1) 
+            {
+            echo "Mehrere Ergebnisse in einer Instanz gefunden: ";
+            foreach ($keyNames as $index => $keyName) 
+                {
+                echo $keyName["Name"]." ";
+                if ( (isset($keyName["KEY"]) === false) || ($keyName["COID"] === false) ) $keyNames[$index]=array();              // ohne gesetztem Key oder nicht gefundenem COID auch nichts gefunden, nachtraeglich korrigieren
+                }
+            echo "\n";
+            return $keyNames;
+            }
         if ( (isset($keyName["KEY"]) === false) || ($keyName["COID"] === false) ) $keyName=array();              // ohne gesetztem Key oder nicht gefundenem COID auch nichts gefunden, nachtraeglich korrigieren
         if ($debug)
             {
-            if (isset($keyName["Name"])) print_r($keyName);
+            if (isset($keyName["Name"])) 
+                {
+                //print_r($keyName);
+                }
             else 
                 {
                 //echo "   workOnDeviceList, Eingabe auf $typeChanKey und $typeRegKey in ".sizeof($Key)." Channels nicht gefunden.\n";
@@ -8893,6 +9142,13 @@ class ComponentHandling
                 $variabletyp=0; 		/* Boolean */					
                 $index="Bewegung";
                 $profile="Motion";
+                break;	
+            case "DIRECTION":                   // Durchgangssensor, testweise gleich wie ein Bewegungserkenner machen
+                $detectmovement="Motion";
+                $variabletyp=0; 		/* Boolean */					
+                $index="Bewegung";
+                $profile="Motion";
+                $update="OnUpdate";                
                 break;	
             case "BRIGHTNESS":                              // selber Component wie Motion
                 $detectmovement="Helligkeit";
@@ -9429,21 +9685,52 @@ class ComponentHandling
  * Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen. 
  * Darstellung von Variablen nur in Kategorien kann einfacher gelöst werden. Da reicht der Link.
  *
- *  __construct             $WebfrontConfigID anlegen it den IDs der vorhandenen Webfronts
+ *  __construct                 $WebfrontConfigID anlegen it den IDs der vorhandenen Webfronts
  *  get_WebfrontConfigID
  *  createLinkinWebfront       fuer Stromheizung
- *  get_WfcStatus           echo der installierten Webfront Koniguratoren, IDs werden in construct angelegt
- *  print_wfc               public für Ausgabe Ergebnis read_wfc
- *  write_wfc               rekursive private für Ausgabe Ergebnis read_wfc
+ *  CreateLinkWithDestination
+ *
+ *  get_WfcStatus               echo der installierten Webfront Koniguratoren, IDs werden in construct angelegt
+ *  print_wfc                   public für Ausgabe Ergebnis read_wfc
+ *  write_wfc                   rekursive private für Ausgabe Ergebnis read_wfc
  *  search_wfc
- *  read_wfc                Webfron Konfig auslesen, die max Tiefe für die Sublevels angeben
- *  installWebfront         die beiden Webfronts anlegen und das Standard Webfront loeschen, WebfrontConfigID als return
- *  easySetupWebfront       Aufbau des Webfronts, Standardroutine
- *  setupWebfront           Aufruf zur Erzeugung des Webfronts, im Array sind die IDs die verlinkt werden sollen bereits gespeichert
+ *  read_wfc                    Webfront Konfig auslesen, die max Tiefe für die Sublevels angeben
+ *
+ *  read_WebfrontConfig
+ *  write_WebfrontConfig
+ *  GetItems
+ *  GetItem
+ *  update_itemListWebfront
+ *  UpdateItems
+ *  UpdateItem
+ *  AddItem
+ *  ReloadAllWebFronts
+ *  GetWFCIdDefault
+ *  exists_WFCItem
+ *  PrepareWFCItemData
+ *  CreateWFCItem
+ *  CreateWFCItemTabPane
+ *  CreateWFCItemSplitPane
+ *  CreateWFCItemCategory
+ *  CreateWFCItemExternalPage
+ *  CreateWFCItemWidget
+ *  UpdateConfiguration
+ *  UpdateParentID
+ *  UpdatePosition
+ *  DeleteWFCItems
+ *  DeleteWFCItem
+ *
+ *  installWebfront             die beiden Webfronts anlegen und das Standard Webfront loeschen, WebfrontConfigID als return
+ *  easySetupWebfront           Aufbau des Webfronts, Standardroutine
+ *  setupWebfront               Aufruf zur Erzeugung des Webfronts, im Array sind die IDs die verlinkt werden sollen bereits gespeichert
  *  setupWebfrontEntry
  *  createSplitPane
  *  createLinks
  *  deletePane
+ *
+ * verwendet Spezialfunktionen wie zum Beispiel CreateWFCItemTabPane aus ISPInstaller.inc.php
+ * diese verwenden wiederum undokumentierte WFC_ Befehle, die abgekündigt werden könnten, zB ab IPS 6.3 mit der Integration von IPS_StudioView
+ *
  *
  ******************************************************************/
 
@@ -9457,6 +9744,9 @@ class WfcHandling
     private $customComponentCategories;                                             // wenn CustomComponents installiert
 
     private $configWF;                                                      // von easySetupWebfront
+
+    private $configWebfront;                                                // interne Configuration eines Webfronts als Array einlesen, dann modifizieren und wieder schreiben
+    private $itemListWebfront;                                              // Zuordnung index 0..x und itemID - das ist der Name
 
     /* legt schon eine Menge Variablen an:
      * die installierten Module
@@ -9543,7 +9833,10 @@ class WfcHandling
         }
 
     /* nur den Link anlegen, nicht soviel Automatik
-     * wird in Stromheizung_Installation verwendet
+     * wird in Stromheizung_Installation verwendet, 
+     * link kann einen :: enthalten, zusätzliche Aktion ist die Zuordnung des vorderen Teils zu einem CustomComponent
+     *
+     *
      */
 
     public function createLinkinWebfront($link,$name,$categoryId,$order)
@@ -9558,6 +9851,7 @@ class WfcHandling
             if ($variableID) 
                 {
                 echo "Link für ein Register, kein Schalter, gefunden $variableID in $groupCat ".(IPS_GetName($groupCat))."\n";
+    			// definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") 
                 CreateLinkByDestination($name, $variableID, $categoryId, $order);
                 }
             else
@@ -9582,6 +9876,33 @@ class WfcHandling
             }
         }
 
+    /* besser als CreateLinkByDestination
+     * bessert Fehler selbstständig aus, kürzt Links auf Links ab
+     *
+     */
+
+    public function CreateLinkWithDestination($name, $variableID, $categoryId, $order)
+        {
+        $createLink=true;
+        $object=IPS_GetObject($variableID);
+        if ($object)
+            {
+            $type = $object["ObjectType"];
+            echo "               Link mit Namen $name aufbauen von Variable $variableID und Typ $type in $categoryId. Einordnen nach $order.\n";
+            switch ($type)         // wenn keine Variable, was einfallen lassen
+                {
+                case 6:         //Link
+                    $createLink=false;          //nicht anzeigen, die einfachste Variante
+                    break;
+                case 2:
+                default:
+                    break;
+                }
+            if ($createLink) CreateLinkByDestination($name, $variableID, $categoryId, $order);
+            }
+        }
+
+
     /* echo der installierten Webfront Konfiguratoren, IDs werden in construct angelegt */
 
     public function get_WfcStatus()
@@ -9604,7 +9925,7 @@ class WfcHandling
         $this->write_wfc($input,"",10);    
         }
 
-    /* rekurisive Funktion, eine WFC Struktur mit einem ident ausgeben */
+    /* rekurisive Funktion, eine WFC Struktur mit einem ident ausgeben, von print_wfc aufgerufen */
 
     private function write_wfc($input,$indent,$level)
 	    {
@@ -9655,8 +9976,8 @@ class WfcHandling
 
     /*****************************************
      * Die Konfiguration eines Webfronts auslesen, sehr hilfreich
-     * Gibt ein Array zurück
-     *
+     * Gibt ein Array $resultWebfront als return Wert zurück
+     * Webfront Configurator Instanzen ermitteln
      *
      *
      *
@@ -9670,17 +9991,152 @@ class WfcHandling
     	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
 	    foreach ($alleInstanzen as $instanz)
 		    {
+            $webfront=IPS_GetName($instanz);             
+
     		$result=IPS_GetInstance($instanz);
 	    	$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
 		    //echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
-    		if (true)	/* false if debug Auslesen der aktuellen detaillierten Einträge pro Webfront Configurator */
-    			{
+    		if (true)	
+                {
+                $resultWebfront[$webfront] = $this->read_wfcByInstance($instanz,$level);
+                }
+            else
+    			{   /* false if debug Auslesen der aktuellen detaillierten Einträge pro Webfront Configurator */
 	    		//echo "    ".IPS_GetConfiguration($instanz)."\n";
 		    	//$config=json_decode(IPS_GetConfiguration($instanz));
 			    //$config->Items = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
     			//print_r($config);
 		
-	    		$ItemList = WFC_GetItems($instanz);
+	    		$ItemList = $this->GetItems($instanz);
+                //print_r($ItemList);
+		    	$wfc_tree=array(); $root="";
+                for ($i=0;$i<5;$i++)        // mehrere Durchläufe
+                    {
+                    $count=0;
+    			    foreach ($ItemList as $entry)
+	    			    {
+    	    			if ($entry["ParentID"] != "")
+	    	    			{
+                            /* Liste der Einträge ist flat es gibt immer einen entry und einen parent */
+		    		    	//echo "   WFC Eintrag:    ".$entry["ParentID"]." (Parent)  ".$entry["ID"]." (Eintrag)\n";
+    			    		$result = $this->search_wfc($wfc_tree,$entry["ParentID"],"");
+	    			    	//echo "  search_wfc: ".$entry["ParentID"]." mit Ergebnis \"".$result."\"  ".substr($result,1,strlen($result)-2)."\n";
+		    			    if ($result == "")
+			    			    {
+                                if ( ($root != "") && ($entry["ParentID"]==$root) ) /* parent not found, unclear if root */
+                                    {
+    					    	    $wfc_tree[$entry["ParentID"]][$entry["ID"]]=array();
+	    					        $wfc_tree[$entry["ParentID"]]["."]=$entry["ParentID"];
+		    				        $wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    			    			    if ($debug) echo "   Root -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                    $count++;
+                                    }
+		    		    		}
+			    		    else
+				    		    {
+    				    		$tree=explode(".",substr($result,1,strlen($result)-2));
+	    				    	if ($tree) 
+		    				    	{
+			    			 	    //print_r($tree); 
+    				    			if ($tree[0]=="")
+	    				    			{
+		    				    		$wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+			    				    	if ($debug) echo "   -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";						
+                                        $count++;
+				    				    }
+    				    			else	
+	    				    			{
+		    				    		//echo "Tiefe : ".sizeof($tree)." \n";
+			    				    	switch (sizeof($tree))
+				    				    	{
+					    				    case 1:
+						    				    $wfc_tree[$tree[0]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    							    			if ($debug) echo "   -> ".$tree[0].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                                $count++;
+	    							    		break;
+		    							    case 2:
+			    							    $wfc_tree[$tree[0]][$tree[1]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    			    							if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                                $count++;
+	    			    						break;
+		    			    				case 3:
+			    			    				$wfc_tree[$tree[0]][$tree[1]][$tree[2]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+				    			    			if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                                $count++;
+					    			    		break;
+						    			    case 4:
+							    			    $wfc_tree[$tree[0]][$tree[1]][$tree[2]][$tree[3]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    								    		if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$tree[3].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                                $count++;
+	    								    	break;
+    	    								default:
+	    	    								echo "Fehler, groessere Tiefe als programmiert.\n";																		
+		    	    						}
+			    	    				}								
+				    	    		}	
+					    	    }						
+        					/* Routine sucht nach ParentID Eintrag, schreibt Struktur mit unter der dieser Eintrag gefunden wurde */
+	        				/*$found="";
+		        			foreach ($wfc_tree as $key => $wfc_entry)
+			        			{
+				        		$skey=$wfc_entry["."]; 
+					        	echo $skey." ".sizeof($wfc_entry)." : ";
+						        foreach ($wfc_entry as $index => $result)
+							        {
+    							    if ($result["."] == $entry["ParentID"]) 
+    	    							{ 
+	    	    						$found=$result["."]; 
+		    	    					$fkey=$skey; 
+			    	    				echo "-> ".$fkey."/".$found." found.\n";break;
+				    	    			}
+					    	    	}
+    					    	}
+    	    				if ($found != "")
+	    	    				{	
+		    	    			//print_r($wfc_tree);
+			    	    		echo "Create : ".$fkey."/".$entry["ParentID"]."/".$entry["ID"]."\n";
+				    	    	$wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]=array();
+					    	    $wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    					    	}
+	    				    */
+    		    			}
+	    		    	else        // Root Eintrag, parent ist leer
+		    		    	{
+                            if ($root=="") 
+                                {
+			    		        if ($debug) echo "WFC Root Eintrag (nicht mehr als einer pro Configurator):    ".$entry["ID"]." (Eintrag)\n";
+                                $root=$entry["ID"];
+                                }
+                            elseif ($root != $entry["ID"]) echo "******* mehrere Root Eintraege !!\n"; 
+                            else {} // alles ok   
+    				    	}
+	    			    }   // ende foreach, alle Konfiguratoren abgeschlossen
+                    //echo "*************".$count."\n";
+                    } //ende for 2x  
+                $resultWebfront[$webfront]=$wfc_tree;
+		    	if ($debug)
+                    {
+                    echo "\n================ WFC Tree ".$webfront."=====\n";	
+			        //print_r($wfc_tree);
+    			    $this->write_wfc($wfc_tree,"",$level);	
+	    		    //echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		    	    /* alle Instanzen dargestellt */
+			        //echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+    			    //print_r($result);
+                    }
+	    		}   // ende debug
+		    }       // ende foreach
+        return ($resultWebfront);    
+    	}   // ende function
+
+    /*
+     */
+
+    public function read_wfcByInstance($instanz,$level,$debug=false)
+        {
+        $ItemList = $this->GetItems($instanz);          // wenn Instanz false wird die interne ItemList genommen
+        if (is_array($ItemList))
+            {
                 //print_r($ItemList);
 		    	$wfc_tree=array(); $root="";
                 for ($i=0;$i<5;$i++)        // mehrere Durchläufe
@@ -9786,8 +10242,7 @@ class WfcHandling
 	    			    }   // ende foreach, alle Konfiguratoren abgeschlossen
                     //echo "*************".$count."\n";
                     } //ende for 2x
-                $webfront=IPS_GetName($instanz);   
-                $resultWebfront[$webfront]=$wfc_tree;
+
 		    	if ($debug)
                     {
                     echo "\n================ WFC Tree ".$webfront."=====\n";	
@@ -9798,10 +10253,476 @@ class WfcHandling
 			        //echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
     			    //print_r($result);
                     }
-	    		}   // ende debug
-		    }       // ende foreach
-        return ($resultWebfront);    
-    	}   // ende function
+	        return($wfc_tree);	
+            }
+        else return (false);
+    	}
+
+    /* ein Abbild der Webfront Konfig schaffen, später modifizieren und dann wieder schreiben
+     */
+    public function read_WebfrontConfig($instanz)
+        {
+        $this->configWebfront = json_decode(IPS_GetConfiguration($instanz),true);
+        $this->update_itemListWebfront();
+        return (true);
+        }
+
+    /* Webfront Konfig schreiben , mit Apply Changes aber ohne reload Webfront
+     */
+    public function write_WebfrontConfig($instanz)
+        {
+        /* double check Configuration 
+         */
+        IPS_SetConfiguration($instanz,json_encode($this->configWebfront));
+        return(IPS_ApplyChanges($instanz)); 
+        }
+
+    /* es gibt jede Menge nicht dokumentierte WFC_ funktionen die vom IPS_Installer aber auch direkt hier aufgerufen werden
+     * schrittweise alle eliminieren, ab IPS 6.3 wird von Symcon umgestellt
+     */
+
+    /* die Webfront Config für die Items ausgeben
+     * instanz : Wert extern, false intern für eine bestimmte Instanz die mit read_WebfrontConfig eingelesen wurde
+     */
+
+    public function GetItems($instanz=false)
+        {
+        //$ItemList = WFC_GetItems($instanz);
+        if ($instanz)        // aus der externen Quelle, direkt aus der Instanz Konfig auslesen
+            {
+            $ItemList = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items,true);
+            }
+        else            // aus dem internen Abbild auslesen
+            {
+            if (isset($this->configWebfront["Items"])) $ItemList = json_decode($this->configWebfront["Items"],true);            
+            else return (false);
+            }
+        return ($ItemList);
+        }
+
+    /* die Webfront Config für ein Item oder wenn false für alle Items ausgeben
+     * die ItemId ist kein Index, daher alle Einträge durchgehen und vergleichen
+     */
+
+     public function GetItem($ItemId=false,$instanz=false)  
+        {
+        $configItems=$this->GetItems($instanz);
+        $nameID=array();
+        if ($ItemId===false) return($configItems);
+        else
+            {
+            foreach ($configItems as $index => $configItem)
+                {
+                //echo "-------$index "; print_R($configItem);
+                $nameID[$configItem["ID"]]=$index;
+                if ($configItem["ID"]==$ItemId) return ($configItem);
+                }
+            }
+        return($nameID);
+        } 
+
+    /* Zuordnung Index und Name in itemID herstellen und in der class speichern
+     */
+
+    private function update_itemListWebfront()
+        {
+        $configItems = json_decode($this->configWebfront["Items"],true); 
+        foreach ($configItems as $index => $configItem)
+            {
+            //echo "-------$index "; print_R($configItem);
+            $nameID[$configItem["ID"]]=$index;
+            }           
+        $this->itemListWebfront=$nameID;
+        }
+
+    /* die interne Webfront Config mit der neuen Items Config überschreiben
+     */
+    public function UpdateItems($configItems)
+        {
+        $this->configWebfront["Items"] = json_encode($configItems);
+        return (true);
+        }
+
+    /* die interne Webfront Config mit der Config für ein Item überschreiben
+     */
+    public function UpdateItem($ItemId,$configItem)
+        {
+        if (isset($this->itemListWebfront[$ItemId])) 
+            {
+            $index=$this->itemListWebfront[$ItemId];
+            $configItems = json_decode($this->configWebfront["Items"],true);
+            echo "   UpdateItem, found $ItemId. Index : $index \n";
+            print_R($configItems[$index]);
+            echo "--------------------\n";
+            $configItems[$index]=$configItem;       // den einen Index austauschen
+            $this->UpdateItems($configItems);           // alles wieder schreiben
+            return (true);
+            }
+        else return (false);
+        }        
+
+    /*Array
+        (
+        [ParentID] => roottp
+        [Visible] => 1
+        [Configuration] => {"title":"","name":"AutoTPU","icon":"Car"}
+        [Position] => 500
+        [ID] => AutoTPU
+        [ClassName] => TabPane
+        )
+     */
+
+    public function AddItem($ItemId, $ClassName, $Configuration, $ParentId)
+        {
+        $configItem=array();
+        $configItem["ParentID"]=$ParentId;
+        $configItem["Visible"]=1;
+        $configItem["Configuration"]=$Configuration;
+        $configItem["Position"]=0;
+        $configItem["ID"]=$ItemId;
+        $configItem["ClassName"]=$ClassName;
+        if (isset($this->itemListWebfront[$ItemId])) return($this->UpdateItem($ItemId,$configItem));
+        else
+            {
+            $configItems = json_decode($this->configWebfront["Items"],true);
+            $configItems[] = $configItem;
+            $this->UpdateItems($configItems);           // alles wieder schreiben
+            return (true);            
+            }
+        return (false);
+        }
+
+    public function DeleteItem($ItemId)
+        {
+        if (isset($this->itemListWebfront[$ItemId])) 
+            {
+            $configItems = json_decode($this->configWebfront["Items"],true);
+            $index = $this->itemListWebfront[$ItemId];
+            echo "DeleteItem $index \n";
+            unset($configItems[$index]);
+            $configItemsNew=array();
+            foreach ($configItems as $configItem) $configItemsNew[] = $configItem;
+            $this->UpdateItems($configItemsNew);           // alles wieder schreiben
+            $this->update_itemListWebfront();
+            return (true);            
+            }
+        return (false);
+        }
+
+	/**
+	 * Lädt alle WebFronts neu
+	 */
+	function ReloadAllWebFronts() {
+		$wfIds = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+		foreach ($wfIds as $wfId) {
+		    WFC_Reload($wfId);
+		}
+	}
+
+    /* Liefert die ID des ersten gefundenen WebFront Konfigurators
+	 *
+	 * Die Funktion gibt die ID des ersten WebFront Konfigurators zurück. Wenn keiner existiert, wird 'false' zurückgegeben.
+	 *
+	 */
+	function GetWFCIdDefault() {
+	    $wfIds = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+		foreach ($wfIds as $wfId) {
+		    return $wfId;
+		}
+		return false;
+	}
+
+	/** Existenz eines WebFront Konfigurator Items überprüfen
+	 *
+	 * Der Befehl überprüft ob ein bestimmtes Item im WebFront Konfigurator existiert
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+	 * @return boolean TRUE wenn das Item existiert anderenfalls FALSE
+	 *
+	 */
+	function exists_WFCItem($ItemId, $WFCId=false) 
+        {
+        $ItemList = $this->GetItems($WFCId);            // wenn WFCId false dann internen Speicher nehmen
+        foreach ($ItemList as $Item) 
+            {
+            if ($Item['ID']==$ItemId) return true;
+            }
+	   return false;
+	}    
+    
+    /* spezielle Formattierung berücksichtigen
+     * für ItemId, ParentId, Title 
+     * Blank mit underscore tauschen, nur für Item und Parent
+     * bei IP Symcon Version 1 und 2 auch noch utf encoden
+     */
+	function PrepareWFCItemData (&$ItemId, &$ParentId, &$Title) {
+		$ItemId   = str_replace(' ','_',$ItemId);
+		$ParentId = str_replace(' ','_',$ParentId);
+		//$ItemId   = str_replace('_','',$ItemId);
+		//$ParentId = str_replace('_','',$ParentId);
+		$version = IPS_GetKernelVersion();
+		$versionArray = explode('.', $version);
+		if ($versionArray[0] < 3) {                         // für sehr alte IP Symcon Versionen
+			$Title    = utf8_encode($Title);
+			$ItemId   = utf8_encode($ItemId);
+			$ParentId = utf8_encode($ParentId);
+		}
+	}
+
+    /* wichtigste Funktion, verwendet allerdings jede Menge proprietären Quatsch
+     * wenn nicht vorhanden mit AddItem beginnen, dann UpdateConfiguration
+     */
+	function CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, $ClassName, $Configuration) 
+        {
+	    if (!$this->exists_WFCItem($ItemId)) {
+		    Debug ("Add WFCItem='$ItemId', Class=$ClassName, Config=$Configuration");
+		    $this->AddItem($ItemId, $ClassName, $Configuration, $ParentId);
+		}
+		$this->UpdateConfiguration($ItemId, $Configuration);
+		$this->UpdateParentID($ItemId, $ParentId);
+		$this->UpdatePosition($ItemId, $Position);
+        }
+
+	/** Anlegen eines TabPanes im WebFront Konfigurator
+	 *
+	 * Der Befehl legt im WebFront Konfigurator ein TabPane mit dem Element Namen $ItemId an
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+	 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
+	 * @param integer $Position Positionswert im Objekt Baum
+	 * @param string $Title Title
+	 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+	 *
+	 */
+	function CreateWFCItemTabPane ($ItemId, $ParentId, $Position, $Title, $Icon) 
+        {
+        echo "CreateWFCItemTabPane $ItemId in $ParentId:\n";
+		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
+		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\"}";
+		$this->CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, 'TabPane', $Configuration);
+	    }
+
+	/** Anlegen eines SplitPanes im WebFront Konfigurator
+	 *
+	 * Der Befehl legt im WebFront Konfigurator ein SplitPane mit dem Element Namen $ItemId an
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+	 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
+	 * @param integer $Position Positionswert im Objekt Baum
+	 * @param string $Title Title
+	 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+	 * @param integer $Alignment Aufteilung der Container (0=horizontal, 1=vertical)
+	 * @param integer $Ratio Größe der Container
+	 * @param integer $RatioTarget Zuordnung der Größenangabe (0=erster Container, 1=zweiter Container)
+	 * @param integer $RatioType Einheit der Größenangabe (0=Percentage, 1=Pixel)
+	 * @param string $ShowBorder Zeige Begrenzungs Linie
+	 *
+	 */
+	function CreateWFCItemSplitPane ($ItemId, $ParentId, $Position, $Title, $Icon="", $Alignment=0 /*0=horizontal, 1=vertical*/, $Ratio=50, $RatioTarget=0 /*0 or 1*/, $RatioType /*0=Percentage, 1=Pixel*/, $ShowBorder='true' /*'true' or 'false'*/) 
+        {
+        echo "CreateWFCItemSplitPane $ItemId in $ParentId:\n";
+		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
+		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\",\"alignmentType\":$Alignment,\"ratio\":$Ratio,\"ratioTarget\":$RatioTarget,\"ratioType\":$RatioType,\"showBorder\":$ShowBorder}";
+		$this->CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, 'SplitPane', $Configuration);
+	    }
+
+	/** Anlegen einer Kategorie im WebFront Konfigurator
+	 *
+	 * Der Befehl legt im WebFront Konfigurator eine Kategorie mit dem Element Namen $ItemId an
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+	 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
+	 * @param integer $Position Positionswert im Objekt Baum
+	 * @param string $Title Title
+	 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+	 * @param integer $BaseId Kategorie ID im logischen Objektbaum
+	 * @param string $BarBottomVisible Sichtbarkeit der Navigations Leiste
+	 * @param integer $BarColums
+	 * @param integer $BarSteps
+	 * @param integer $PercentageSlider
+	 *
+	 */
+	function CreateWFCItemCategory ($ItemId, $ParentId, $Position, $Title, $Icon="", $BaseId /*ID of Category*/, $BarBottomVisible='true' /*'true' or 'false'*/, $BarColums=9, $BarSteps=5, $PercentageSlider='true' /*'true' or 'false'*/ ) 
+        {
+        echo "CreateWFCItemCategory $ItemId in $ParentId:\n";
+		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
+		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\",\"baseID\":$BaseId,\"enumBarColumns\":$BarColums,\"selectorBarSteps\":$BarSteps,\"isBarBottomVisible\":$BarBottomVisible,\"enablePercentageSlider\":$PercentageSlider}";
+		$this->CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, 'Category', $Configuration);
+    	}
+
+	/** Anlegen einer ExternalPage im WebFront Konfigurator
+	 *
+	 * Der Befehl legt im WebFront Konfigurator eine ExternalPage mit dem Element Namen $ItemId an
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+	 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
+	 * @param integer $Position Positionswert im Objekt Baum
+	 * @param string $Title Title
+	 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+	 * @param string $PageUri URL der externen Seite
+	 * @param string $BarBottomVisible Sichtbarkeit der Navigations Leiste
+	 *
+	 */
+	function CreateWFCItemExternalPage ($ItemId, $ParentId, $Position, $Title, $Icon="", $PageUri, $BarBottomVisible='true' /*'true' or 'false'*/) 
+        {
+        echo "CreateWFCItemExternalPage $ItemId in $ParentId:\n";
+		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
+		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\",\"pageUri\":\"$PageUri\",\"isBarBottomVisible\":$BarBottomVisible}";
+		$this->CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, 'ExternalPage', $Configuration);
+	    }
+
+
+	/** Anlegen eines Widget im WebFront Konfigurator
+	 *
+	 * Der Befehl legt im WebFront Konfigurator ein Widget mit dem Element Namen $ItemId an
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+	 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
+	 * @param integer $Position Positionswert im Objekt Baum
+	 * @param string $variableId VariableId, die zur Anzeige im Widget verwendet werden soll
+	 * @param string $scriptId ScriptId, Script das ausgeführt werden soll
+	 *
+	 */
+	function CreateWFCItemWidget ($ItemId, $ParentId, $Position, $variableId, $scriptId) {
+		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
+        $Configuration = '{"variableID":'.$variableId.',"scriptID":'.$scriptId.',"name":"'.$ItemId.'"}';
+		$this->CreateWFCItem ($ItemId, $ParentId, $Position, '', '', 'InfoWidget', $Configuration);
+	}
+
+    /* WFC_UpdateVisibility             $configItem["Visible"]
+     * WFC_UpdatePosition               $configItem["Position"]
+     * WFC_UpdateParentID               $configItem["ParentID"]    
+     * WFC_UpdateConfiguration          $configItem["Configuration"]
+     *        
+     */
+
+    public function UpdateConfiguration($ItemId, $Configuration)
+        {
+        if (isset($this->itemListWebfront[$ItemId])) 
+            {
+            $index=$this->itemListWebfront[$ItemId];
+            $configItems = json_decode($this->configWebfront["Items"],true);
+            echo "   UpdateConfiguration, found $ItemId. Index : $index , new Configuration $Configuration ";
+            if ($configItems[$index]["Configuration"] !== $Configuration)
+                {            
+                print_R($configItems[$index]);
+                echo "--------------------\n";
+                $configItem = $configItems[$index];
+                $configItem["Configuration"]=$Configuration;
+                $configItems[$index]=$configItem;       // den einen Index austauschen
+                $this->UpdateItems($configItems);           // alles wieder schreiben                
+                }
+            else echo "unchanged.\n";                  
+            return (true);
+            }
+        else return (false);
+        }
+
+    public function UpdateParentID($ItemId, $ParentId)
+        {
+        if (isset($this->itemListWebfront[$ItemId])) 
+            {
+            $index=$this->itemListWebfront[$ItemId];
+            $configItems = json_decode($this->configWebfront["Items"],true);
+            echo "   UpdateParentID, found $ItemId. Index : $index , new ParentId $ParentId ";
+            if ($configItems[$index]["ParentID"] !== $ParentId)
+                {
+                print_R($configItems[$index]);
+                echo "--------------------\n";
+                $configItem = $configItems[$index];            
+                $configItem["ParentID"]=$ParentId;
+                $configItems[$index]=$configItem;       // den einen Index austauschen
+                $this->UpdateItems($configItems);           // alles wieder schreiben
+                }
+            else echo "unchanged.\n";                
+            return (true);
+            }
+        else return (false);
+        }
+
+    public function UpdatePosition($ItemId, $Position)
+        {
+        if (isset($this->itemListWebfront[$ItemId])) 
+            {
+            $index=$this->itemListWebfront[$ItemId];
+            $configItems = json_decode($this->configWebfront["Items"],true);
+            echo "   UpdatePosition, found $ItemId. Index : $index , new Position $Position ";
+            if ($configItems[$index]["Position"] !== $Position)
+                {
+                print_R($configItems[$index]);
+                echo "--------------------\n";
+                $configItem = $configItems[$index];            
+                $configItem["Position"]=$Position;
+                $configItems[$index]=$configItem;       // den einen Index austauschen
+                $this->UpdateItems($configItems);           // alles wieder schreiben
+                }
+            else echo "unchanged.\n";
+            return (true);
+            }
+        else return (false);
+        }
+
+    public function UpdateVisibility($ItemId, $Visibility)
+        {
+        if (isset($this->itemListWebfront[$ItemId])) 
+            {
+            $index=$this->itemListWebfront[$ItemId];
+            $configItems = json_decode($this->configWebfront["Items"],true);
+            echo "   UpdateVisibility, found $ItemId. Index : $index , new Visibility $Visibility ";
+            if ( (isset($configItems[$index]["Visibility"])) && ($configItems[$index]["Visibility"] !== $Visibility) )
+                {
+                print_R($configItems[$index]);
+                echo "--------------------\n";
+                $configItem = $configItems[$index];            
+                $configItem["Visibility"]=$Visibility;
+                $configItems[$index]=$configItem;       // den einen Index austauschen
+                $this->UpdateItems($configItems);           // alles wieder schreiben
+                }
+            else echo "unchanged.\n";
+            return (true);
+            }
+        else 
+            {
+            echo "   UpdateVisibility, not found $ItemId.\n";
+            return (false);
+            }
+        }
+        
+	/** Löschen eines kompletten Objektbaumes aus dem WebFront Konfigurator
+	 *
+	 * Der Befehl löscht im WebFront Konfigurator einen Teilbaum durch Angabe des Root Element Namens $ItemId
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Root Element Name im Konfigurator Objekt Baum
+	 *
+	 */
+	function DeleteWFCItems($ItemId) {
+		$ItemList = $this->GetItems();
+		foreach ($ItemList as $Item) {
+			if (strpos($Item['ID'], $ItemId)===0) {
+				$this->DeleteWFCItem($Item['ID']);
+			}
+		}
+	}
+
+	/** Löschen ein Element aus dem WebFront Konfigurator
+	 *
+	 * Der Befehl löscht im WebFront Konfigurator ein Element durch Angabe des Element Namens $ItemId
+	 *
+	 * @param integer $WFCId ID des WebFront Konfigurators
+	 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+	 *
+	 */
+	function DeleteWFCItem($ItemId) {
+		Debug ("Delete WFC Item='$ItemId'");
+		$this->DeleteItem($ItemId);
+	}
 
     /******
      *
@@ -9921,6 +10842,27 @@ class WfcHandling
         return ($WebfrontConfigID);  
         }
 
+    /*
+     *
+     *
+     * Beispiel alternative Struktur ohne Nachrichtenspeicher
+     *   Konnex zu unten ist Tab AmazonEcho, SubTab Auswertung oder Nachrichten, Gruppe ? 
+     *
+        Tab Energiemessung
+            Subtab:    Summe
+                Gruppe:  Wohnung-LBG70
+                    Register:  46646/Wirkenergie
+                    Register:  35207/Wirkleistung
+            Subtab:    Homematic
+                Gruppe:  Arbeitszimmer
+                    Register:  27977/Wirkenergie
+                    Register:  29750/Wirkleistung
+            Subtab:    Zusammenfassung
+                Gruppe:  Energievorschub der letzten Tage
+                    Register:  13234/Zaehlervariablen
+
+     */
+
     /******
      *
      * Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte Teil des WebfrontConfigID übergeben 
@@ -9928,6 +10870,7 @@ class WfcHandling
      * wird mittlerweile in Sprachsteuerung_Installation und customcomponent_installation verwendet
      *
      * Parametrierung ist in $webfront_links
+     * wenn es nur einen ersten Key gibt, dann
      * Keys in Auswertung und wenn gewünscht Nachrichten strukturiert
      *
 	$webfront_links=array(
@@ -9953,35 +10896,85 @@ class WfcHandling
 					),	
 				);      
      *
-     * Dieser Teil der function übernimmt die fehlerabfragen und ermittelt anhand der Struktur des arrays ob 
+     * Dieser Teil der function übernimmt die Fehlerabfragen und ermittelt anhand der Struktur des Arrays ob 
      * TabPaneItem oder TabPaneParent übergben wird 
-     * in der obigen Konfiguration wird TabPaneParent mit AmazonEcho übergeben
+     * in der obigen Konfiguration wird TabPaneParent mit AmazonEcho an setupWebfront und dann gleich an setupWebfrontEntry übergeben
      * wenn auch Nachrichten angelegt wird gibt es einen Splitscreen
      *
      */
 
     public function easySetupWebfront($configWF,$webfront_links, $scope, $debug=false)
         {
-        $active=true;           // for debugging purposes
+        $active=true;           // false for debugging purposes, true to execute
         $status=false;
         $this->configWF=$configWF;                                              /* mitnehmen in die anderen Routinen */
-        if ($debug) echo "easySetupWebfront für Scope \"$scope\" aufgerufen.\n";
+        if ($debug)                             // check, analyze Config
+            {
+            echo "easySetupWebfront für Scope \"$scope\" aufgerufen.\n";
+            if (sizeof($webfront_links)==1) echo "Installation im ".$this->configWF["TabPaneParent"].", nur ein Key ".array_key_first($webfront_links).":\n";
+            else 
+                {
+                echo "Installation im \"".$this->configWF["TabPaneItem"]."|".$this->configWF["TabPaneParent"]."\" mit Tabs : ";
+                foreach ($webfront_links as $key => $entry) echo "$key  ";
+                echo "\n";                    
+                }
+            echo "  Tab ".$configWF["TabPaneName"]."(".$configWF["TabPaneItem"].")\n";
+            foreach ($webfront_links as $Name => $webfront_group)
+                {
+                echo "    Subtab:    ".$Name."\n";
+                foreach ($webfront_group as $Group => $RegisterEntries)
+                    {
+                    switch ($Group)
+                        {
+                        case "ORDER":
+                        case "STYLE":
+                        case "CONFIG":
+                            echo "      Configuration $Group ".json_encode($RegisterEntries)."\n";    
+                            break;
+                        case "Auswertung":
+                        case "Nachrichten":
+                            break;    
+                        default:
+                            break;
+                        }
+                    }	
+                foreach ($webfront_group as $Group => $RegisterEntries)
+                    {
+                    switch ($Group)
+                        {
+                        case "ORDER":
+                        case "STYLE":
+                        case "CONFIG":     
+                            break;
+                        case "Auswertung":
+                        case "Nachrichten": 
+                        default:
+                            echo "      Gruppe:  ".$Group."\n";
+                            foreach ($RegisterEntries as $OID => $Entries)
+                                {
+                                echo "        Register:  ".$OID."/".$Entries["NAME"]."\n";
+                                }
+                            break;
+                        }
+                    }	
+                }
+            }
         if ( !((isset($configWF["Enabled"])) && ($this->configWF["Enabled"]==false)) )   
             {
             if ( (isset($this->configWF["Path"])) )
                 {
                 $categoryId_WebFront         = CreateCategoryPath($this->configWF["Path"]);        
-                if ($active) $status=@EmptyCategory($categoryId_WebFront);
                 if ($debug) 
                     {
                     echo "Webfront für ".IPS_GetName($categoryId_WebFront)." ($categoryId_WebFront) Kategorie im Pfad ".$this->configWF["Path"]." erstellen.\n";
-                    echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
-                    if ($status) echo "   -> erfolgreich.\n";    
+                    echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";  
                     }            
+                if ($active) $status=@EmptyCategory($categoryId_WebFront);
+                if (($debug)  && ($status)) echo "   -> erfolgreich.\n";  
 		        IPS_SetHidden($categoryId_WebFront, true); //Objekt verstecken
                 if ($this->configWF["TabPaneParent"] != "roottp") 
                     {
-                    if ( exists_WFCItem($this->configWF["ConfigId"], $this->configWF["TabPaneParent"]) )   
+                    if ( $this->exists_WFCItem($this->configWF["TabPaneParent"]) )   
                         {                     
                         //print_R($webfront_links);
                         if (sizeof($webfront_links)==1)                 // Unterscheidung ob TabPaneParent oder TabPaneItem genommen wird
@@ -9991,7 +10984,12 @@ class WfcHandling
                             }
                         elseif (sizeof($webfront_links)>1) 
                             {
-                            if ($debug) echo "Installation im \"".$this->configWF["TabPaneItem"]."|".$this->configWF["TabPaneParent"]."\":\n";
+                            if ($debug) 
+                                {
+                                echo "Installation im \"".$this->configWF["TabPaneItem"]."|".$this->configWF["TabPaneParent"]."\" mit Tabs : ";
+                                foreach ($webfront_links as $key => $entry) echo "$key  ";
+                                echo "\n";
+                                }
                             if ($active) $this->setupWebfront($webfront_links,$this->configWF["TabPaneItem"],$categoryId_WebFront, $scope, $debug);
                             }
                         else echo "easySetupWebfront: Fehler, Webfront Konfiguration für Darstellung der Daten leer.\n"; 
@@ -10021,8 +11019,8 @@ class WfcHandling
         $active=true;            
 		if ( isset($this->WebfrontConfigID[$scope]) )
 			{
-	        if ($debug) echo "setupWebfront: mit Parameter aus array in ".$WFC10_TabPaneItem." mit der Katgeorie ".$categoryId_WebFront." in ".$this->configWF["TabPaneParent"]." für den Webfront Configurator ".$scope."\n";
-            if ($active) $this->setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFront,$this->WebfrontConfigID[$scope], $scope, $debug);
+	        if ($debug) echo "setupWebfront: mit Parameter aus array in ".$WFC10_TabPaneItem." mit der Katgeorie ".$categoryId_WebFront." im Parent ".$this->configWF["TabPaneParent"]." für den Webfront Configurator ".$scope."\n";
+            if ($active) $this->setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFront, $scope, $debug);
             }
 		else
 			{	
@@ -10034,17 +11032,17 @@ class WfcHandling
      * erwartet sich einen Index mit Auswertung, entweder in der ersten Ebene oder in der zweiten
      * dann wird createSplitPane aufgerufen und alles erstellt
      *
-     * wenn nur Nachrichten scheitert die Routine, wenn weder Auswertung noch Nachrichten ?
+     * wenn nur Nachrichten scheitert die Routine, wenn weder Auswertung noch Nachrichten dann werden SubTabs angelegt
      *
      */
 
-    public function setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator, $WFC10_ConfigId, $scope, $debug=false)
+    public function setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator, $scope, $debug=false)
         {
-        $active=true;   
+        $active=true;                       // false for debugging purposes, true to execute
         $anzahlGruppen=sizeof($webfront_links);
     	if (isset($this->configWF["TabPaneOrder"])) $order=$this->configWF["TabPaneOrder"];
         else $order=10; 
-        if ( (array_key_exists("Auswertung",$webfront_links)) || (array_key_exists("Nachrichten",$webfront_links)) ) 
+        if ( (array_key_exists("Auswertung",$webfront_links)) || (array_key_exists("Nachrichten",$webfront_links)) )            // Index für Item oder SplitPane bereits in der ersten Ebene
             {
             $tabItem="Default";                
             if ($anzahlGruppen==1)      // kein SplitPane notwendig
@@ -10052,7 +11050,7 @@ class WfcHandling
                 if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung vorhanden. Nur ein Pane erstellen.\n";
                 if ($active)
                     {
-                    CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $tabItem, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
+                    $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $tabItem, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
                     $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab);
                     }
                 }
@@ -10060,16 +11058,22 @@ class WfcHandling
                 {
         	    /* Kein Name für den Pane definiert */
 	    		//echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";    
-    		    if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung vorhanden, Webfront ".$WFC10_ConfigId.", SplitPane erzeugt TabItem \"".$WFC10_TabPaneItem."Item\" in \"".$WFC10_TabPaneItem."\" mit Namen $tabItem.\n";
-    	        if ($active) $this->createSplitPane($WFC10_ConfigId,$webfront_links,$tabItem,$WFC10_TabPaneItem."Item",$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope);
+    		    if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung vorhanden, SplitPane erzeugt TabItem \"".$WFC10_TabPaneItem."Item\" in \"".$WFC10_TabPaneItem."\" mit Namen $tabItem.\n";
+    	        if ($active) $this->createSplitPane($webfront_links,$tabItem,$WFC10_TabPaneItem."Item",$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope);
         	    }
             }
         else
             {
-            if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung noch nicht als Key vorhanden. $anzahlGruppen Untergruppen bilden.\n";
+            if ($debug) 
+                {
+                echo "setupWebfrontEntry, Kategorie Auswertung noch nicht als Key vorhanden. $anzahlGruppen Untergruppen bilden mit den Tabs : ";
+                foreach ($webfront_links as $key => $entry) echo "$key  ";
+                echo "\n";                
+                }
             //if (sizeof($webfront_links)==1) 
             foreach ($webfront_links as $Name => $webfront_group)
                 {
+                // Konfigurationslemente aus der Webfront Gruppe rausbringen
                 if (isset($webfront_group["ORDER"])) 
                     {
                     $order = $webfront_group["ORDER"];
@@ -10080,6 +11084,18 @@ class WfcHandling
                     if ($order>200) $order=10;          // irgendwie zurück setzen, es gibt kein default
                     else $order += 10;   
                     }
+                if (isset($webfront_group["STYLE"])) 
+                    {             
+                    $style=true; 
+                    unset($webfront_group["STYLE"]);      
+                    }
+                else $style=false;
+                if (isset($webfront_group["CONFIG"])) 
+                    {             
+                    $config = $webfront_group["CONFIG"];
+                    unset($webfront_group["CONFIG"]);      
+                    }
+                else $config=false;
                 $anzahlSubGruppen=sizeof($webfront_group);
                 /* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.
                     * Der Name für die Felder wird selbst erfunden.
@@ -10087,32 +11103,43 @@ class WfcHandling
 
                 if ($debug) echo "\n**** setupWebfrontEntry, erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
                 $categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, $order);
-                EmptyCategory($categoryId_WebFrontTab);   
-                if ($debug) echo "Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
-
+                $status = @EmptyCategory($categoryId_WebFrontTab);   
+                if ($debug) 
+                    {
+                    echo "Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
+                    if ($status===false) echo "Info über Fehler, Kategorie $Name nicht vollständig gelöscht.\n";
+                    }
                 $tabItem = $WFC10_TabPaneItem.$Name;				/* Netten eindeutigen Namen berechnen */
-                $this->deletePane($WFC10_ConfigId, $tabItem);              /* Spuren von vormals beseitigen */
+                $this->deletePane($tabItem);              /* Spuren von vormals beseitigen */
 
-                if ( (array_key_exists("Auswertung",$webfront_group)) || (array_key_exists("Nachrichten",$webfront_group)) ) 
+                if ( $config || (array_key_exists("Auswertung",$webfront_group)) || (array_key_exists("Nachrichten",$webfront_group)) )            // Index für Item oder SplitPane bereits in der ersten Ebene
                     {
                     if ($anzahlSubGruppen==1)      // kein SplitPane notwendig
                         {
                         if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden. Nur ein Pane erstellen.\n";
                         if ($active)
                             {
-                            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
+                            $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $Name, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
                             //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, "");     // darunter kommen Untergruppen
                             $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab,false,$debug);
                             }
                         }
                     else
                         {                        
-                        if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden, Webfront ".$WFC10_ConfigId." SplitPane erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." mit Namen $Name\n";
+                        if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden, SplitPane erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." mit Namen $Name\n";
                         $this->configWF["TabPaneOrder"]=$order;     // neue Anordnung des SplitPane, etwas komplizierte Parameter Übergabe
-                        if ($active) $this->createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator",$debug);
+                        if ($active) $this->createSplitPane($webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator",$debug);
                         }
                     }
-                else
+                elseif ($style)     // einfache Darstellung von Variablen
+                    {
+                    if ($debug) echo "\n  **** new Style Visualization in ".$categoryId_WebFrontTab.".\n";
+                    foreach ($webfront_group as $SubName => $webfront_subgroup)
+                        { 
+                        if ($debug) echo "\n         erstelle Sub Kategorie ".$SubName.".\n";
+                        }                    
+                    }            
+                else                // noch mehr Subgruppen, es gibt keine Auswertung/Nachrichten Tabs
                     {
                     foreach ($webfront_group as $SubName => $webfront_subgroup)
                         {                    
@@ -10125,13 +11152,13 @@ class WfcHandling
                             if ($debug) echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
 
                             $tabSubItem = $WFC10_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
-                            $this->deletePane($WFC10_ConfigId, $tabSubItem);              /* Spuren von vormals beseitigen */
+                            $this->deletePane($tabSubItem);              /* Spuren von vormals beseitigen */
 
                             if ($debug) echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
-                            CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
+                            $this->CreateWFCItemTabPane($tabItem, $WFC10_TabPaneItem,  $order, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
 
-                            if ($debug) echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
-                            $this->createSplitPane($WFC10_ConfigId,$webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator",$debug);    
+                            if ($debug) echo "Webfront erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
+                            $this->createSplitPane($webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator",$debug);    
                             }
                         }
                     }    
@@ -10144,11 +11171,11 @@ class WfcHandling
 
     /* Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem*/
 
-    private function createSplitPane($WFC10_ConfigId, $webfront_group, $Name, $tabItem, $WFC10_TabPaneItem,$categoryId_WebFrontSubTab,$scope="Administrator", $debug=false)
+    private function createSplitPane($webfront_group, $Name, $tabItem, $WFC10_TabPaneItem,$categoryId_WebFrontSubTab,$scope="Administrator", $debug=false)
         {
     	if (isset($this->configWF["TabPaneOrder"])) $order=$this->configWF["TabPaneOrder"];
         else $order=10; 
-        if ($debug) echo "  createSplitPane mit Name ".$Name." Als Pane ".$tabItem." in ".$WFC10_TabPaneItem." Order $order im Konfigurator ".$WFC10_ConfigId." verwendet Kategorie ".$categoryId_WebFrontSubTab."\n";
+        if ($debug) echo "  createSplitPane mit Name ".$Name." Als Pane ".$tabItem." in ".$WFC10_TabPaneItem." Order $order im Konfigurator verwendet Kategorie ".$categoryId_WebFrontSubTab."\n";
 
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontSubTab, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontSubTab, 20);
@@ -10168,9 +11195,9 @@ class WfcHandling
             * @param string $ShowBorder Zeige Begrenzungs Linie
             */
         //CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
-        CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,    $order,     $Name,     "", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-        CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
-        CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);            
+        $this->CreateWFCItemSplitPane ($tabItem, $WFC10_TabPaneItem,    $order,     $Name,     "", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+        $this->CreateWFCItemCategory  ($tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+        $this->CreateWFCItemCategory  ($tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);            
 
         //print_r($webfront_group); 
         $this->createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight,$debug);   
@@ -10183,8 +11210,9 @@ class WfcHandling
 
     private function createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
         {
-        if ($debug) echo "    createLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight  \n";
+        //$debug=true;
         if ($categoryIdRight==false) $categoryIdRight=$categoryIdLeft;
+        if ($debug) echo "    createLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight  \n";
 			foreach ($webfront_group as $Group => $webfront_link)
 				{
                 if ($debug) echo "      Gruppe : $Group\n";
@@ -10194,23 +11222,27 @@ class WfcHandling
 			 		 * Auswertung kommt nach links und Nachrichten nach rechts
 			 		 */	
                     if (isset($link["NAME"]) === false) { echo "OID: $OID"; print_r($link); }
-					if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
-                    // Optional auch einzelne Berechtigungen pro Objekt
-                    if ( (($scope=="Administrator") && (((isset($link["ADMINISTRATOR"])) && ($scope=="Administrator") &&  $link["ADMINISTRATOR"]) || ((isset($link["ADMINISTRATOR"])===false)) )) ||
-                                (($scope=="User") && (((isset($link["USER"])) &&  $link["USER"]) || ((isset($link["USER"])===false)) )) || 
-                                    (($scope=="Mobile") && (((isset($link["MOBILE"])) &&  $link["MOBILE"]) || ((isset($link["MOBILE"])===false)) ))  )
-                        {                    
-                        if ($Group=="Auswertung")
-				 		    {
-				 		    if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
-						    CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
+                    if ($OID!="ORDER")
+                        {
+                        if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+                        // Optional auch einzelne Berechtigungen pro Objekt
+                        if ( (($scope=="Administrator") && (((isset($link["ADMINISTRATOR"])) && ($scope=="Administrator") &&  $link["ADMINISTRATOR"]) || ((isset($link["ADMINISTRATOR"])===false)) )) ||
+                                    (($scope=="User") && (((isset($link["USER"])) &&  $link["USER"]) || ((isset($link["USER"])===false)) )) || 
+                                        (($scope=="Mobile") && (((isset($link["MOBILE"])) &&  $link["MOBILE"]) || ((isset($link["MOBILE"])===false)) ))  )
+                            {  
+                            if (isset($link["ORDER"])===false) $link["ORDER"]=10;
+                            if ($Group=="Auswertung")
+                                {
+                                if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
+                                CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
+                                }
+                            else
+                                {
+                                if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
+                                CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  $link["ORDER"]);
+                                }
                             }
-                        else
-                            {
-    				 		if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
-	    					CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  $link["ORDER"]);
-                            }
-						}
+                        }
 					} // ende foreach
                 }  // ende foreach  
 
@@ -10235,18 +11267,21 @@ class WfcHandling
 		CreateWFCItem ($WFCId, $ItemId, $ParentId, $Position, $Title, $Icon, 'TabPane', $Configuration);
 	    }
 
-    public function deletePane($WFC10_ConfigId, $tabItem)
+    /* does not delete Panes as long there is no write command
+     * works on internal config copy now
+     */
+
+    public function deletePane($tabItem)
         {
-			if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
-			 	{
-				echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") löscht TabItem : ".$tabItem."\n";
-				DeleteWFCItems($WFC10_ConfigId, $tabItem);
-				}
-			else
-				{
-				echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") TabItem : ".$tabItem." nicht mehr vorhanden.\n";
-				}	
-			IPS_ApplyChanges ($WFC10_ConfigId);   /* wenn geloescht wurde dann auch uebernehmen, sonst versagt das neue Anlegen ! */
+        if ( $this->exists_WFCItem($tabItem) )
+            {
+            echo "deletePane, Webfront Config löscht TabItem : ".$tabItem."\n";
+            $this->DeleteWFCItems($tabItem);
+            }
+        else
+            {
+            echo "deletePane, Webfront Config TabItem : ".$tabItem." nicht mehr vorhanden.\n";
+            }	
         }
 
     }   // ende class

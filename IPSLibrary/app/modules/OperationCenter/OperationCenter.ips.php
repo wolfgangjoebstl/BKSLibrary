@@ -905,7 +905,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	{
 	switch ($_IPS['EVENT'])
 		{
-		case $tim1ID:        /* einmal am Tag Router auslesen*/
+		case $tim1ID:       // einmal am Tag Router auslesen
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
 			/********************************************************
 			Einmal am Tag: nun den Datenverbrauch über den router auslesen
@@ -996,7 +996,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				} /* Ende foreach */
 			break;
 		
-		case $tim2ID:
+		case $tim2ID:       // Webcam FTP Dateien zusammenraeumen:
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam FTP Dateien zusammenraeumen:");
 			/********************************************************
 		     * nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
@@ -1038,7 +1038,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
 				}
 			break;
-		case $tim3ID:
+		case $tim3ID:       // Routerdaten empfangen, auswerten
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
 
 			/******************************************************************************************
@@ -1082,7 +1082,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			   	}
 			break;
 			
-		case $tim4ID:
+		case $tim4ID:       // SysPingAllDevices
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
 			/********************************************************
 			 *
@@ -1092,7 +1092,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 **********************************************************/
 			$OperationCenter->SysPingAllDevices($log_OperationCenter);
 			break;
-		case $tim5ID:
+		case $tim5ID:       // CyclicUpdate
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CyclicUpdate");
 			/************************************************************************************
 	   	 *
@@ -1101,7 +1101,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *************************************************************************************/
 			CyclicUpdate();
 			break;
-		case $tim6ID:
+		case $tim6ID:       // CopyScriptsTimer
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CopyScriptsTimer");
 			/************************************************************************************
 	   		 *
@@ -1111,7 +1111,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *************************************************************************************/
 			$OperationCenter->CopyScripts();
 			break;
-		case $tim7ID:
+		case $tim7ID:       // FileStatusTimer
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." FileStatusTimer");
 			/************************************************************************************
  			 *
@@ -1135,7 +1135,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));		
 				}			
 			break;
-		case $tim8ID:
+		case $tim8ID:       // FileStatusTimer
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." FileStatusTimer");
 			/************************************************************************************
  			 *
@@ -1145,7 +1145,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *************************************************************************************/
 			$OperationCenter->SystemInfo();
 			break;		
-		case $tim9ID:
+		case $tim9ID:       // Homematic RSSI auslesen
 			/************************************************************************************
  			 *
 			 * Timer Homematic, einmal am Tag
@@ -1171,7 +1171,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		    //$OperationCenter->getHomematicDeviceList();	// wrong reference to Class
             $DeviceManager->getHomematicDeviceList();  		
 			break;		
-		case $tim10ID:
+		case $tim10ID:      // Maintenance
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance");
 			/************************************************************************************
  			 *
@@ -1205,7 +1205,7 @@ if ($_IPS['SENDER']=="TimerEvent")
             $BackupCenter->setBackupStatus("Backup $style, automatically started ".date("d.m.Y H:i:s"));     
 			IPS_SetEventActive($tim11ID,true);	
 			break;		
-		case $tim11ID:
+		case $tim11ID:      // Maintenance Intervall, Logdateien zusammenräumen
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance Intervall, Logdateien zusammenräumen");    // Dbg is less than inf
 			/************************************************************************************
  			 *
@@ -1312,7 +1312,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                 IPS_SetEventActive($tim11ID,false);
                 }
 			break;
-		case $tim12ID:			/* High Speed Polling, alle 10 Sekunden */
+		case $tim12ID:			// High Speed Polling, alle 10 Sekunden
 			foreach ($OperationCenterConfig['ROUTER'] as $router)
 				{
                 if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
@@ -1362,7 +1362,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                     }       // if active
                 }   // foreach
 			break;
-		case $tim13ID:
+		case $tim13ID:          // Maintenance EndofDay Intervall, Backup Dateien zusammenräumen, CleanUp
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance EndofDay Intervall, Backup Dateien zusammenräumen, CleanUp");    // Dbg is less than inf
             /* jeden Abend die Backup Verzeichnisse zusammenräumen */
             $BackupCenter->configBackup(["status" => "cleanup"]);
@@ -1370,10 +1370,10 @@ if ($_IPS['SENDER']=="TimerEvent")
             $BackupCenter->setBackupStatus("Cleanup ".date("d.m.Y H:i:s"));                     
 			IPS_SetEventActive($tim11ID,true);	
             break;
-		case $tim14ID:            
+		case $tim14ID:          // Update Status tbd     
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Update Status");    // Dbg is less than inf
             break;
-		default:
+		default:                // unbekannt
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
 		   break;
 		}

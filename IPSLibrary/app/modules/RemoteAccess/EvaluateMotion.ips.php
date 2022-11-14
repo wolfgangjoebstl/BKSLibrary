@@ -21,6 +21,18 @@
  *
  *	hier für Homematic und FS20 Bewegungsmelder, und die Bewegungsmelder der Cams
  *
+ *  Installation/Konfiguration baut auf die function deviceList auf die von EvaluateHardeare in EvaluateHardware_DeviceList.inc.php gespeichert wurde
+ *  Alternativ dazu werden andere Konfigurationsvarianten wie HomematicList ebenfalls geprüft
+ *
+ *  EvaluateMotion führt installComponentFull für Bewegungsmelder, Helligkeitssesor und Contact aus 'TYPEDEV' => 'TYPE_MOTION'
+ *      "TYPECHAN" => "TYPE_MOTION","REGISTER" => "MOTION"
+ *      "TYPECHAN" => "TYPE_MOTION","REGISTER" => "DIRECTION"
+ *      "TYPECHAN" => "TYPE_MOTION","REGISTER" => "BRIGHTNESS"
+ *      "TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BRIGHTNESS"
+ *      "TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"
+ *
+ * sehr universell, alles verweist auf 'IPSComponentSensor_Motion','IPSModuleSensor_Motion,'
+ *
  */
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -75,7 +87,7 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     if (isset ($installedModules["DetectMovement"])) { 	echo "  Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n";}
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
-        echo "   Modul EvaluateHardware ist installiert.\n"; 
+        echo "  Modul EvaluateHardware ist installiert.\n"; 
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
         IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
         IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
@@ -127,6 +139,7 @@ echo "\n";
         {
         echo "Bewegungsmelder von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "MOTION"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, false);				/* true ist Debug, Bewegungsensoren */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "DIRECTION"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, false);				/* true ist Debug, Bewegungssensoren aller Art */
         //print_r($result);
         echo "---------------------------------------------------------------\n";
         echo "Helligkeitssensoren von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";

@@ -6490,7 +6490,7 @@ class DeviceManagement
     var $HMI_ReportStatusID   = 0;                  /* der HMI_CreateReport wird regelmaessig aufgerufen, diesen auch überwachen. */
 	
 	/**
-	 * @public
+	 * DeviceManagement
 	 *
 	 * Initialisierung des DeviceManagement Class Objektes
      *
@@ -6564,7 +6564,7 @@ class DeviceManagement
 
 
 	/*
-	 * Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion.
+	 * DeviceManagement::HardwareStatus Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion.
 	 *
 	 * Parameter:
 	 * -----------
@@ -7039,14 +7039,14 @@ class DeviceManagement
         return (true);
         }
 
-    /* da die Überprüfung private ist hier dei Ausgabe puvblic machen */
+    /* da die Überprüfung private ist hier die Ausgabe public machen */
 
     public function writeCheckStatus($result)
         {
         $resulttext="";
             foreach ($result as $Key) 
                 {
-                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueIfFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 $resulttext.= "\n";                
                 $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
                 }
@@ -7054,7 +7054,7 @@ class DeviceManagement
         }
 
 	/********************************************************************
-	 *
+	 * DeviceManagement::getHomematicSerialNumberList
 	 * erfasst alle Homematic Geräte anhand der Seriennummer und erstellt eine gemeinsame liste 
      * wird bei construct bereits gestartet als gemeinsames Datenobjekt
 	 *
@@ -7161,7 +7161,7 @@ class DeviceManagement
 		}
 		
 	/********************************************************************
-	 *
+	 * DeviceManagement::getHomematicAddressList
 	 * erfasst alle Homematic Geräte anhand der Hardware Addressen und erstellt eine gemeinsame liste mit dem DeviceTyp aus HM Inventory 
      * wird bei construct bereits gestartet als gemeinsames Datenobjekt
      *
@@ -7301,7 +7301,7 @@ class DeviceManagement
         return ($result);
         } 
 
-    /* updateHmiReport
+    /* DeviceManagement::updateHmiReport
      * private, von updateHomematicAddressList und getHomematicAddressList für jeden Homematic Report aufgerufen
      *
      * das Ergebnisfile ist Children(0). Wenn es leer ist oder kein Array gebildet werden kann wird der Create report aufgerufen.
@@ -7381,7 +7381,7 @@ class DeviceManagement
         }
 
 	/********************************************************************
-	 *
+	 * DeviceManagement::addHomematicSerialList_Typ
 	 * Wenn Debug gib die erfasst Liste aller Homematic Geräte mit der Seriennummer als
 	 * formatierte liste aus 
 	 *
@@ -7437,7 +7437,7 @@ class DeviceManagement
 		}
 
 	/********************************************************************
-	 *
+	 * DeviceManagement::addHomematicSerialList_RSSI
 	 * die Homematic Liste der Seriennummern wird um weitere Informationen erweitert:  RSSI
 	 *
 	 *****************************************************************************/
@@ -7491,7 +7491,7 @@ class DeviceManagement
 		}
 
 	/********************************************************************
-	 *
+	 * DeviceManagement::addHomematicSerialList_DetectMovement
 	 * die Homematic Liste der Seriennummern wird um weitere Informationen erweitert:  Detect Movement
 	 *
 	 *****************************************************************************/
@@ -7620,7 +7620,7 @@ class DeviceManagement
 		}
 	
 	/********************************************************************
-	 *
+	 * DeviceManagement::getHomematicDeviceList
 	 * alle Homematic Geräte erfassen und in einer grossen Tabelle ausgeben
 	 *
 	 *****************************************************************************/
@@ -7832,7 +7832,7 @@ class DeviceManagement
 
 
     /*********************************
-     * 
+     * DeviceManagement::DeviceManagement
      * Homematic Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
      *
      * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
@@ -8128,7 +8128,18 @@ class DeviceManagement
                 $resultType[$i] = "TYPE_METER_HUMIDITY";
                 $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
                 }
+            }
+            /*-------------Durchgangssensor ["CURRENT_PASSAGE_DIRECTION","LAST_PASSAGE_DIRECTION","PASSAGE_COUNTER_OVERFLOW","PASSAGE_COUNTER_VALUE"]-------*/
+        elseif  (array_search("CURRENT_PASSAGE_DIRECTION",$registerNew) !== false)    /* neue HomematicIP Wetterstation  */
+            {
+            $result[0] = "Durchgangsmelder";
+            $result[1]="IP Funk Durchgangsmelder";              // HomematicIP 
 
+            $i=0;                                               // kann auch weitere Funktionen beinhalten
+            $resultType[$i]="TYPE_MOTION";
+            $resultReg[$i]["COUNTER"]="PASSAGE_COUNTER_VALUE";
+            $resultReg[$i]["DIRECTION"]="CURRENT_PASSAGE_DIRECTION";
+            $resultReg[$i]["LAST_DIRECTION"]="LAST_PASSAGE_DIRECTION";
             }                      
         else 
             {
@@ -8235,10 +8246,14 @@ class DeviceManagement
     	}
 
     /*********************************
-     *
+     * DeviceManagement::getHomematicHMDevice
      * gibt für eine Homematic Instanz/Kanal eines Gerätes den Device Typ aus HM Inventory aus
      * Voraussetzung ist das das Homematic Inventory Handler Modul installiert ist. Sonst wird ein leerer String zurückgegeben
-     * Abhängig ob der zweite Parameter default oder 1 ist wird entweder der Standard Homematic Name oder eine deutsprachige Beschreibung ausgegeben.
+     *
+     * Der zweite Parameter definiert den gewünschten Output
+     *      default, false      Standard Homematic Name 
+     *      1                   eine deutsprachige Beschreibung ausgegeben.
+     *      2                   eine Matrix,  Index ist Port, nur Port mit Wert 1 oder größer wird übernommen, 0 generell ignoriert
      *
      ***********************************************/
 	 		
@@ -8273,12 +8288,16 @@ class DeviceManagement
                         $result="Taster 2-fach";
                         $matrix=[0,2,2,1,1,1,1,1];                        
                         break;
-                    
+
+                    case "HmIP-SPDR":                       // Durchgangssensor
+                        $result="Durchgangssensor";
+                        $matrix=[0,1,2,2,1,1];              // 5 Ports und die Durchgangssensoren sind auf 2 und 3                        
+                        break;
+
                     case "HM-Sec-SC":
                     case "HM-Sec-SC-2":
                     case "HMIP-SWDO":
                     case "HmIP-SWDM":                   // magnetischer Sensor
-
                         $result="Tuerkontakt";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -8304,6 +8323,7 @@ class DeviceManagement
                         $result="Wandthermostat";
                         $matrix=[0,2,2,1,1,1,1,1];                        // die Homematic Variante hat zwei Kanäle
                         break;
+
                     case "HMIP-WTH":
                     case "HmIP-WTH-2":
                     case "HmIP-WTH-B":
@@ -8385,8 +8405,9 @@ class DeviceManagement
                     case "HMIP-SLO":
                     case "HmIP-SLO":
                         $result="Helligkeitssensor";
-                        $matrix=$matrix=[0,2,1,1,1,1,1,1];      // Standard Matrix, Infos in Kanal 1
+                        $matrix=[0,2,1,1,1,1,1,1];      // Standard Matrix, Infos in Kanal 1
                         break;                        
+
                     case "-":
                         echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz))." Gerät wurde gelöscht. Bitte auch manuell in IP Symcon loeschen.\n";
                         return(false);          // nicht hier weiter machen

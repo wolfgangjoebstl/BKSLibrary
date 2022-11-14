@@ -512,7 +512,7 @@
 
 		/* zusaetzliches Webfront Tab für Statistik Auswertungen */
 
-        if ($GartensteuerungConfiguration["Configuration"]["Statistics"]=="ENABLED")
+        if (strtoupper($GartensteuerungConfiguration["Configuration"]["Statistics"])=="ENABLED")                //tabItem0
             {
             $categoryIdLeft0  = CreateCategory('Left0',  $categoryId_WebFrontAdministrator, 10);
             $categoryIdRight0 = CreateCategory('Right0', $categoryId_WebFrontAdministrator, 20);
@@ -522,6 +522,24 @@
             CreateLinkByDestination("Regenmengenkalender", $StatistikBox1ID ,    $categoryIdLeft0,  140);
             CreateLinkByDestination("Regendauerkalender", $StatistikBox2ID ,    $categoryIdLeft0,  140);
             CreateLinkByDestination("Regenereignisse", $StatistikBox3ID ,    $categoryIdRight0,  150);
+            }
+
+		/* zusaetzliches Webfront Tab für Auswertungen über die Stromaufnahme der Gartenpumpe */
+
+        if (strtoupper($GartensteuerungConfiguration["Configuration"]["PowerPump"])=="ENABLED")                 //tabItem1
+            {
+            $categoryIdLeft1  = CreateCategory('Left1',  $categoryId_WebFrontAdministrator, 10);
+            $categoryIdRight1 = CreateCategory('Right1', $categoryId_WebFrontAdministrator, 20);
+            CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."1",           $WFC10_TabPaneItem,    100,     "PowerPump",     "Electricity", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."1".'_Left',   $tabItem."1",   10, '', '', $categoryIdLeft1   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."1".'_Right',  $tabItem."1",   20, '', '', $categoryIdRight1  /*BaseId*/, 'false' /*BarBottomVisible*/);
+            if ($GartensteuerungConfiguration["Configuration"]["CheckPower"]!==null) 
+                {
+                echo "Gartenpumpe überprüft durch POWER Register : ".$GartensteuerungConfiguration["Configuration"]["CheckPower"]."\n";
+                $powerID = $GartensteuerungConfiguration["Configuration"]["CheckPower"];
+                CreateLinkByDestination("Leistung Gartenpumpe", $powerID ,    $categoryIdRight1,  150);
+
+                }
             }
 		}
 

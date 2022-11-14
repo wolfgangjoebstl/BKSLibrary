@@ -950,9 +950,13 @@ class HardwareNetatmoWeather extends Hardware
  *
  *
  *      __construct
+ *
+ * die Device Liste deviceList aus der Geräteliste erstellen, Antwort ist ein Geräteeintrag
+ *
  *      getDeviceCheck
  *      getDeviceParameter
  *      getDeviceChannels
+ *      getDeviceInformation
  *      checkConfig
  *
  *
@@ -967,6 +971,9 @@ class HardwareHomematic extends Hardware
 
     private $DeviceManager;                 /* nur ein Objekt in der class */
 	
+    /*
+     */
+
 	public function __construct($debug=false)
 		{
         $this->socketID = "{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}";
@@ -982,11 +989,21 @@ class HardwareHomematic extends Hardware
         parent::__construct($debug);
         }
 
-    /* die Device Liste aus der Geräteliste erstellen 
-     * Antwort ist ein Geräteeintrag
-     */
-
-    /* Homematic, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+    /* HardwareHomematic::getDeviceCheck
+     * Übergabe deviceList und name der Instanz, name besteht aus 2 Teilen mit : getrennt
+     * entry beinhaltet die Configuration unter ["CONFIG"], Configuration ist json encoded
+     * entry beinhaltet auch ["OID"] , check wenn OperationCenter Modul installiert ist
+     *
+     * Rückgabe false wenn
+     *    wenn Name ohne Doppelpunkt
+     *    es gibt eine Adresse mit einem : in der Konfiguration
+     *    kein Port 0 in der Adresse
+     *    wenn OperationCenter Modul installiert ist 
+     *      Matrix Auswertung erfolgreich
+     *      Port muss in Matrix ein Index sein mit Eintrag 1 oder größer
+     *      typedev Auswertung muss auch erfolgreich sein
+     *
+     * Homematic, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
      * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
      *
      * Ein Homematic Device kann aus mehreren Instances bestehen, zuerst prüfen ob aus einer Instanz heraus das Device bereits angelegt wurde
@@ -994,6 +1011,7 @@ class HardwareHomematic extends Hardware
      * In entry gibt es ["CONFIG"]["Address"] mit der Homematic Adresse
      *
      * DeviceList wird nicht abgeändert
+     *
      */
 
     public function getDeviceCheck(&$deviceList, $name, $type, $entry, $debug=false)
@@ -1053,8 +1071,7 @@ class HardwareHomematic extends Hardware
             return (false);
             }
 
-        /* erweiterte Fehlerprüfung */
-
+        /* erweiterte Fehlerprüfung wenn OperationCenter, check Matrix */
         if (isset($this->installedModules["OperationCenter"])) 
             {
             $instanz=$entry["OID"];

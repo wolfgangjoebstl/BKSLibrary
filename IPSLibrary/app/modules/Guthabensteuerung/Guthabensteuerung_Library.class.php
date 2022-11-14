@@ -374,9 +374,11 @@
             return ($result);
             }
 
-        /* aus der Config die Configuration für die Auslesung der Hosts raussuchen */
+        /* aus der Config die Configuration für die Auslesung der Hosts raussuchen 
+         * Select kann all, morning, evening 
+         */
 
-        public function getSeleniumHostsConfig($select="ALL")
+        public function getSeleniumHostsConfig($select="ALL",$debug=false)
             {
             $result = array();
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
@@ -387,6 +389,7 @@
             $configResult=array();
             foreach ($result["Hosts"] as $host => $entry)
                 {
+                if ($debug) echo "check $host\n";
                 $found=false;
                 if (strtoupper($select)=="ALL") $found=true;
                 if ( (isset($entry["CONFIG"])) && (isset($entry["CONFIG"]["ExecTime"])) )
@@ -399,9 +402,11 @@
             return ($configResult);
             }
 
-        /* aus der Config die Configuration für die Auslesung der Tabs raussuchen */
+        /* aus der Config die Configuration für die Auslesung der Tabs raussuchen 
+         * $tabs bestimmt den jeweiligen Host
+         */
 
-        public function getSeleniumTabsConfig($tabs)
+        public function getSeleniumTabsConfig($tabs,$debug=false)
             {
             $result = array();
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);

@@ -500,7 +500,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
         {
         echo "Gartenpumpe überprüft durch POWER Register : ".$GartensteuerungConfiguration["Configuration"]["CheckPower"]."\n";
         $power = GetValue($GartensteuerungConfiguration["Configuration"]["CheckPower"]);
-        if ($power) 
+        if ( ($power) && (isset( $GartensteuerungConfiguration["Configuration"]["KREIS".(string)($Count)])) )           // Leistungswert vorhanden und Kreis muss definiert sein
             {
             echo $GartensteuerungConfiguration["Configuration"]["KREIS".(string)($Count)]."<br>$power kW Pumpleistung\n";
             SetValue($GiessKreisInfoID,$GartensteuerungConfiguration["Configuration"]["KREIS".(string)($Count)]."<br>$power W Pumpleistung");

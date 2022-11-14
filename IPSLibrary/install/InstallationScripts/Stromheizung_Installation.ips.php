@@ -20,7 +20,10 @@
 	 *
 	 * Script um elektrische Heizung nachzusteuern, Fork von IPSLight
      * macht das selbe also Schalten, kann aber auch Temperaturen, also Werte verändern
-	 *
+	 * Installiert das Webfront entsprechend einem Config
+     * für Mobile gibt es eine kurze vereinfachte Variante
+     *
+     *
 	 *
 	 * @file          Stromheizung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -261,7 +264,7 @@ Path=Visualization.Mobile.Stromheizung
 	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
 	if ($Mobile_Enabled==true)
 		{	
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		$Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');
 		$mobile_PathOrder     = $moduleManager->GetConfigValueInt('PathOrder', 'Mobile');
 		$mobile_PathIcon      = $moduleManager->GetConfigValue('PathIcon', 'Mobile');		
 		echo "Mobile \n";
@@ -279,7 +282,7 @@ Path=Visualization.Mobile.Stromheizung
 		}
 		
 	$WFC10_Regenerate     = true;			// das Webfront im Konfigurator neu aufbauen
-	$mobile_Regenerate    = false;			
+	$mobile_Regenerate    = true;			// das mobile Webfront nicht neu aufbauen
 			
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Program Installation
@@ -794,13 +797,13 @@ Path=Visualization.Mobile.Stromheizung
 	
 	echo "\n";
 	echo "=====================================================\n";
-	echo "Webfront Mobile aufbauen in ".$Mobile_Path." :\n";
-	echo "\n";
+	echo "Webfront Mobile aufbauen in ".$Mobile_Path." : Die Kategorie wird ".($mobile_Regenerate?"neu erzeugt":"nur upgedated")."\n";
+	//echo "\n";
 		
 	if ($Mobile_Enabled ) 
 		{
         $MobilePathSegments=explode(".",$Mobile_Path);
-        print_R($MobilePathSegments);
+        //print_R($MobilePathSegments);
         $parent=0;
         $MobilePathOIDs=array(); 
         $oldVisID=false;       
@@ -818,12 +821,12 @@ Path=Visualization.Mobile.Stromheizung
                 $visID=$parent;
                 break;                
                 }
-            echo "$visID.";
+            //echo "$visID.";
             $parent=$visID;
             }
         echo "\n";
         $lastOne=sizeof($MobilePathSegments)-1;
-        echo "Insgesamt ".($lastOne+1)." Segmente im Pfad: ".$MobilePathSegments[$lastOne]."\n";
+        //echo "Insgesamt ".($lastOne+1)." Segmente im Pfad: ".$MobilePathSegments[$lastOne]."\n";
         if ($MobilePathSegments[$lastOne] != "Stromheizung")
             {
             if ($oldVisID===false)
@@ -839,49 +842,72 @@ Path=Visualization.Mobile.Stromheizung
                 }
             else echo "Stromheizung ($oldVisID) ist in $parent nicht mehr vorhanden. Neuer Pfad ist $Mobile_Path.\n";
             }
-        else echo "Aufbau im Standard Pfad.\n";
+        else echo "Aufbau Mobile Webfront erfolgt im Standard Pfad.\n";
         
 		$mobileId  = CreateCategoryPath($Mobile_Path, $mobile_PathOrder, $mobile_PathIcon);
-		if ($mobile_Regenerate) {
-			EmptyCategory($mobileId);
-		}
+		if ($mobile_Regenerate) { 			EmptyCategory($mobileId); 		}
+
+        /* es gibt eine Mobile Webfront Konfigurationsfunction
+         *
+         *
+         */
+
 		$order = 10;
 		foreach (IPSHeat_GetMobileConfiguration() as $roomName=>$roomData) {
-			if (is_array($roomData)) {
+			if (is_array($roomData)) 
+                {
+                echo "create Links for $roomName based on roomData Array ".json_encode($roomData).".\n";
 				$roomId	= CreateCategory($roomName, $mobileId, $order);
-				foreach($roomData as $roomItem) {
+                echo "   create Category $roomName with ID $roomId in $mobileId.\n";
+				foreach($roomData as $roomItem) 
+                    {
+                    echo "  do Room ".json_encode($roomItem)."\n";
 					$order = $order + 10;
 					switch($roomItem[0]) {
 						case IPSHEAT_WFCGROUP:
 						case IPSHEAT_WFCLINKS:
 							$instanceId = $roomId;
-							if ($roomItem[0]==IPSHEAT_WFCGROUP) {
+							if ($roomItem[0]==IPSHEAT_WFCGROUP) 
+                                {
 								$instanceId = CreateDummyInstance ($roomItem[1], $roomId, $order);
-							}
+							    }
 							$links      = explode(',', $roomItem[2]);
 							$names      = $links;
-							if (array_key_exists(3, $roomItem)) {
+							if (array_key_exists(3, $roomItem)) 
+                                {
 								$names = explode(',', $roomItem[3]);
-							}
-							foreach ($links as $idx=>$link) {
+							    }
+							foreach ($links as $idx=>$link) 
+                                {
 								$order = $order + 1;
+                                echo "    create link ".$names[$idx]." in $instanceId\n";
 								CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $instanceId, $order);
-							}
+							    }
 							break;
 						 
 						default:
 							trigger_error('Unknown RoomItem='.$roomItem[0]);
-				   }
-				}
-			} else {
+				       }
+				    }
+			    }
+            else 
+                {
+                echo "create Links based on roomData \"$roomData\".\n";
 				$links = explode(',', $roomData);
-				foreach ($links as $link) {
-					CreateLink($link, getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $mobileId, $order);
-					$order = $order + 10;
-				}
-			}
-		}
-	}
+				foreach ($links as $link) 
+                    {
+                    $variableId=getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms,true);                                            // true Debug
+                    if ($variableId==false) echo "VariableID $link not found to link in $categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms .\n";
+                    else
+                        {
+                        echo "   Create Link $link with Variable $variableId at Kategorie $mobileId and Order $order.\n";
+                        CreateLink($link, $variableId, $mobileId, $order);
+                        }
+                    $order = $order + 10;
+                    }
+                }
+            }
+        }
 
 
 	// ----------------------------------------------------------------------------------------------------------------------------

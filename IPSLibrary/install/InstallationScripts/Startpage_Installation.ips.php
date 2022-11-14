@@ -22,13 +22,13 @@
 	 * @{
 	 *
 	 * Script zur Ansteuerung der Startpage wird hier installiert
-     * wenn Instanz von OpenWeatherData vorhandenist wird auch das Wetter eingebaut
+     * wenn Instanz von OpenWeatherData vorhanden ist, wird auch das Wetter eingebaut
      * notwendig geworden da Wunderground nicht mehr funktioniert
      *
-     * Für duie Startoage wird hier die Visualisiserung aneglegt
+     * Für duie Startpage wird hier die Visualisiserung aneglegt
      *      Visualization.WebFront.Administrator. siehe WFC10 Path in config ini
      *
-     * Für das Wetter Meteogrm wird hier die Visualissierung angelegt:
+     * Für das Wetter Meteogrm wird hier die Visualisierung angelegt:
      *      Visualization.WebFront.Administrator.Weather.OpenWeather
 	 *
 	 *

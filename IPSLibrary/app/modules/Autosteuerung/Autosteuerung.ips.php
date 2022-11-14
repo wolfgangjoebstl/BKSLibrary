@@ -9,7 +9,7 @@
  * Webfront
  * RunScript
  * Variable
- * TimerEvent           Anwesenheitserkennung und -simulation
+ * TimerEvent           2 Timer namens Anwesenheitserkennung und -simulation
  * Execute
  *
  * Timer, regelmaessige Aufrufe
@@ -429,7 +429,8 @@ if ($_IPS['SENDER']=="TimerEvent")
                 $state=$StatusAnwesend;                         // nur für Anzeige im IPSLogger
                 $changesDetected=true;
                 }
-			/* Kurzüberblick als Tabelle machen über Bewegnung in den Räumen */
+
+			// Kurzüberblick als Tabelle machen über Bewegnung in den Räumen 
 			$topology = $operate->getLogicAnwesend();
 			$html=$operate->writeTopologyTable($topology);
 			SetValue($StatusTableMapHtml,$html);
