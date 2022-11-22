@@ -165,6 +165,11 @@
             return($this->dosOps->readdirToArray($this->icondir));
             }
 
+        public function getHighchartsID() : int                                 // integer zurückgeben
+            {
+            return ($this->scriptHighchartsID);
+            }
+
 		/*
 		 * Abstrahierung der Startpage Konfiguration
 		 * Einlesen aus der Datei und Abspeichern in der Class
@@ -493,7 +498,7 @@
          * Die Darstellung sollte soweit möglich responsive sein und konfigurierbar.
          * WidgetsConfig wird transformiert
          *
-         *
+         * verfügbare Widgets sind weiter unten inline gelistet
          *
          */
 
@@ -539,11 +544,11 @@
                          *  Grouptemp               showTempGroupWidget
                          *  Heating                 showHeatingWidget
                          *  Picture                 showPictureWidget
-                         *  Specialregs             showSpecialRegsWidget
+                         *  Specialregs             showSpecialRegsWidget                   Register werden mit Highcharts angezeigt
                          *  Temperature             showTemperatureTable
                          *  empty
                          *  Rainmeter               showRainmeterWidget
-                         *  Charts                  showChartsWidget
+                         *  Charts                  showChartsWidget                        Tabelle mit Börsenkursen
                          *
                          */
                         switch (strtoupper($entry["Type"]))
@@ -2220,7 +2225,7 @@
         /********************
          *
          * Zelle Tabelleneintrag für die Tabelle für die Anzeige von speziellen Registern
-         * Register werden mit Highcharts angezteigt
+         * Register werden mit Highcharts angezeigt
          *
          **************************************/
 

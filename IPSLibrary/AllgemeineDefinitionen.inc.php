@@ -1360,7 +1360,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 					{
 					$phone1ID      = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"],$guthabenid);
 					$phone_Summ_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_Summary",$phone1ID);
-					$guthaben .= "\n    ".GetValue($phone_Summ_ID);
+					if ($phone_Summ_ID) $guthaben .= "\n    ".GetValue($phone_Summ_ID);
 					}
 				}
 			$guthaben .= "\n\n";			
@@ -1376,7 +1376,8 @@ function send_status($aktuell, $startexec=0, $debug=false)
                 $userID   = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_User", $phone1ID);
                 if (strtoupper($TelNummer["STATUS"])=="ACTIVE") 
                     {
-                    $guthaben.="    ".$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
+                    if ($phone1ID) $guthaben.="    ".$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
+                    else echo "Nicht alle Guthaben Variablen gesetzt : $phone1ID $dateID $ldateID $udateID $userID $phone_Summ_ID \n";
                     }
                 //echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
                 }
@@ -9744,6 +9745,7 @@ class WfcHandling
     private $customComponentCategories;                                             // wenn CustomComponents installiert
 
     private $configWF;                                                      // von easySetupWebfront
+    private $configID;                                                      // for Standard Commands
 
     private $configWebfront;                                                // interne Configuration eines Webfronts als Array einlesen, dann modifizieren und wieder schreiben
     private $itemListWebfront;                                              // Zuordnung index 0..x und itemID - das ist der Name
@@ -9755,8 +9757,9 @@ class WfcHandling
      * und als Tabelle alle Webfronts mit dem Namen als ID, kann mit get_WebfrontConfigID abgefragt werden
      * 
      */
-	public function __construct($debug=false)
+	public function __construct($configID=false,$debug=false)
 		{
+        $this->configID=$configID;                                                    //true means we do immediate change in configuration, false means nbatch modus in mirror config
         $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
         $this->installedModules = $moduleManager->GetInstalledModules();
         /*$inst_modules="\nInstallierte Module:\n";
@@ -10267,6 +10270,13 @@ class WfcHandling
         return (true);
         }
 
+    /* Webfront Konfig in schreibbarem zustand auslesen
+     */
+    public function get_WebfrontConfig()
+        {
+        return(json_encode($this->configWebfront));
+        }
+
     /* Webfront Konfig schreiben , mit Apply Changes aber ohne reload Webfront
      */
     public function write_WebfrontConfig($instanz)
@@ -10287,6 +10297,7 @@ class WfcHandling
 
     public function GetItems($instanz=false)
         {
+        if ($this->configID) return(WFC_GetItems($this->configID));                       // interop mode needs instance
         //$ItemList = WFC_GetItems($instanz);
         if ($instanz)        // aus der externen Quelle, direkt aus der Instanz Konfig auslesen
             {
@@ -10376,9 +10387,9 @@ class WfcHandling
         {
         $configItem=array();
         $configItem["ParentID"]=$ParentId;
-        $configItem["Visible"]=1;
+        $configItem["Visible"]=true;                            // boolean
         $configItem["Configuration"]=$Configuration;
-        $configItem["Position"]=0;
+        $configItem["Position"]=(int)0;                         // integer
         $configItem["ID"]=$ItemId;
         $configItem["ClassName"]=$ClassName;
         if (isset($this->itemListWebfront[$ItemId])) return($this->UpdateItem($ItemId,$configItem));
@@ -10444,9 +10455,12 @@ class WfcHandling
 	function exists_WFCItem($ItemId, $WFCId=false) 
         {
         $ItemList = $this->GetItems($WFCId);            // wenn WFCId false dann internen Speicher nehmen
-        foreach ($ItemList as $Item) 
+        if ($ItemList !== false)
             {
-            if ($Item['ID']==$ItemId) return true;
+            foreach ($ItemList as $Item) 
+                {
+                if ($Item['ID']==$ItemId) return true;
+                }
             }
 	   return false;
 	}    
@@ -10475,6 +10489,7 @@ class WfcHandling
      */
 	function CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, $ClassName, $Configuration) 
         {
+        if ($this->configID) return(CreateWFCItem ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon, $ClassName, $Configuration));                       // interop mode needs instance
 	    if (!$this->exists_WFCItem($ItemId)) {
 		    Debug ("Add WFCItem='$ItemId', Class=$ClassName, Config=$Configuration");
 		    $this->AddItem($ItemId, $ClassName, $Configuration, $ParentId);
@@ -10498,6 +10513,7 @@ class WfcHandling
 	 */
 	function CreateWFCItemTabPane ($ItemId, $ParentId, $Position, $Title, $Icon) 
         {
+        if ($this->configID) return(CreateWFCItemTabPane ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon));                       // interop mode needs instance
         echo "CreateWFCItemTabPane $ItemId in $ParentId:\n";
 		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
 		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\"}";
@@ -10523,6 +10539,7 @@ class WfcHandling
 	 */
 	function CreateWFCItemSplitPane ($ItemId, $ParentId, $Position, $Title, $Icon="", $Alignment=0 /*0=horizontal, 1=vertical*/, $Ratio=50, $RatioTarget=0 /*0 or 1*/, $RatioType /*0=Percentage, 1=Pixel*/, $ShowBorder='true' /*'true' or 'false'*/) 
         {
+        if ($this->configID) return(CreateWFCItemSplitPane ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon, $Alignment, $Ratio, $RatioTarget, $RatioType, $ShowBorder));
         echo "CreateWFCItemSplitPane $ItemId in $ParentId:\n";
 		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
 		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\",\"alignmentType\":$Alignment,\"ratio\":$Ratio,\"ratioTarget\":$RatioTarget,\"ratioType\":$RatioType,\"showBorder\":$ShowBorder}";
@@ -10548,6 +10565,7 @@ class WfcHandling
 	 */
 	function CreateWFCItemCategory ($ItemId, $ParentId, $Position, $Title, $Icon="", $BaseId /*ID of Category*/, $BarBottomVisible='true' /*'true' or 'false'*/, $BarColums=9, $BarSteps=5, $PercentageSlider='true' /*'true' or 'false'*/ ) 
         {
+        if ($this->configID) return(CreateWFCItemCategory ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon, $BaseId, $BarBottomVisible, $BarColums, $BarSteps, $PercentageSlider));            
         echo "CreateWFCItemCategory $ItemId in $ParentId:\n";
 		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
 		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\",\"baseID\":$BaseId,\"enumBarColumns\":$BarColums,\"selectorBarSteps\":$BarSteps,\"isBarBottomVisible\":$BarBottomVisible,\"enablePercentageSlider\":$PercentageSlider}";
@@ -10570,6 +10588,7 @@ class WfcHandling
 	 */
 	function CreateWFCItemExternalPage ($ItemId, $ParentId, $Position, $Title, $Icon="", $PageUri, $BarBottomVisible='true' /*'true' or 'false'*/) 
         {
+        if ($this->configID) return(CreateWFCItemExternalPage ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon, $PageUri, $BarBottomVisible)); 
         echo "CreateWFCItemExternalPage $ItemId in $ParentId:\n";
 		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
 		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\",\"pageUri\":\"$PageUri\",\"isBarBottomVisible\":$BarBottomVisible}";
@@ -10590,6 +10609,7 @@ class WfcHandling
 	 *
 	 */
 	function CreateWFCItemWidget ($ItemId, $ParentId, $Position, $variableId, $scriptId) {
+        if ($this->configID) return(CreateWFCItemWidget($this->configID, $ItemId, $ParentId, $Position, $variableId, $scriptId));
 		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
         $Configuration = '{"variableID":'.$variableId.',"scriptID":'.$scriptId.',"name":"'.$ItemId.'"}';
 		$this->CreateWFCItem ($ItemId, $ParentId, $Position, '', '', 'InfoWidget', $Configuration);
@@ -10604,6 +10624,7 @@ class WfcHandling
 
     public function UpdateConfiguration($ItemId, $Configuration)
         {
+        if ($this->configID) return(WFC_UpdateConfiguration($this->configID, $ItemId, $Configuration));
         if (isset($this->itemListWebfront[$ItemId])) 
             {
             $index=$this->itemListWebfront[$ItemId];
@@ -10626,6 +10647,7 @@ class WfcHandling
 
     public function UpdateParentID($ItemId, $ParentId)
         {
+        if ($this->configID) return(WFC_UpdateParentID($this->configID, $ItemId, $ParentId));
         if (isset($this->itemListWebfront[$ItemId])) 
             {
             $index=$this->itemListWebfront[$ItemId];
@@ -10648,21 +10670,24 @@ class WfcHandling
 
     public function UpdatePosition($ItemId, $Position)
         {
+        if ($this->configID) return(WFC_UpdatePosition($this->configID, $ItemId, $Position));            
         if (isset($this->itemListWebfront[$ItemId])) 
             {
             $index=$this->itemListWebfront[$ItemId];
             $configItems = json_decode($this->configWebfront["Items"],true);
             echo "   UpdatePosition, found $ItemId. Index : $index , new Position $Position ";
-            if ($configItems[$index]["Position"] !== $Position)
+            if ($configItems[$index]["Position"] !== (int)$Position)
                 {
-                print_R($configItems[$index]);
-                echo "--------------------\n";
-                $configItem = $configItems[$index];            
-                $configItem["Position"]=$Position;
+                $configItem = $configItems[$index];  
+                //print_R($configItem);
+                var_dump($configItem);   
+                echo "--------------------\n";                       
+                $configItem["Position"]=(int)$Position;
                 $configItems[$index]=$configItem;       // den einen Index austauschen
                 $this->UpdateItems($configItems);           // alles wieder schreiben
                 }
             else echo "unchanged.\n";
+            //var_dump($configItems[$index]); 
             return (true);
             }
         else return (false);
@@ -10670,17 +10695,18 @@ class WfcHandling
 
     public function UpdateVisibility($ItemId, $Visibility)
         {
+        if ($this->configID) return(WFC_UpdateVisibility($this->configID, $ItemId, $Visibility));
         if (isset($this->itemListWebfront[$ItemId])) 
             {
             $index=$this->itemListWebfront[$ItemId];
             $configItems = json_decode($this->configWebfront["Items"],true);
             echo "   UpdateVisibility, found $ItemId. Index : $index , new Visibility $Visibility ";
-            if ( (isset($configItems[$index]["Visibility"])) && ($configItems[$index]["Visibility"] !== $Visibility) )
+            if ( (isset($configItems[$index]["Visibility"])) && ($configItems[$index]["Visibility"] !== (bool)$Visibility) )
                 {
                 print_R($configItems[$index]);
                 echo "--------------------\n";
                 $configItem = $configItems[$index];            
-                $configItem["Visibility"]=$Visibility;
+                $configItem["Visibility"]=(bool)$Visibility;
                 $configItems[$index]=$configItem;       // den einen Index austauschen
                 $this->UpdateItems($configItems);           // alles wieder schreiben
                 }
@@ -10721,6 +10747,7 @@ class WfcHandling
 	 */
 	function DeleteWFCItem($ItemId) {
 		Debug ("Delete WFC Item='$ItemId'");
+        if ($this->configID) return(DeleteWFCItem($this->configID, $ItemId));
 		$this->DeleteItem($ItemId);
 	}
 
@@ -10918,7 +10945,7 @@ class WfcHandling
                 foreach ($webfront_links as $key => $entry) echo "$key  ";
                 echo "\n";                    
                 }
-            echo "  Tab ".$configWF["TabPaneName"]."(".$configWF["TabPaneItem"].")\n";
+            if (isset($configWF["TabPaneName"])) echo "  Tab ".$configWF["TabPaneName"]."(".$configWF["TabPaneItem"].")\n";             // nur ausgeben wenn wirklich definiert wurde
             foreach ($webfront_links as $Name => $webfront_group)
                 {
                 echo "    Subtab:    ".$Name."\n";
@@ -11010,7 +11037,7 @@ class WfcHandling
     /******
      *
      * Aufbau einer Webfront Seite, Aufruf erfolgt von easysetupwebfront
-     *
+     * ruft selbst setupWebfrontEntry auf, macht nur kurzen Plausi check
      *
      */
 
@@ -11029,8 +11056,13 @@ class WfcHandling
 		}
 
     /* anders probieren, nicht den scope übergeben, kann private auch sein, wird nur intern von setupWebfront verwendet 
-     * erwartet sich einen Index mit Auswertung, entweder in der ersten Ebene oder in der zweiten
-     * dann wird createSplitPane aufgerufen und alles erstellt
+     * Parametrierung ist in $webfront_links
+     * erwartet sich einen Index/key mit Auswertung, entweder in der ersten Ebene oder in der zweiten
+     *      wenn nur ein Index wird die Kategorie angelegt und mit createLinks die Variablen Links angelegt
+     *      wenn mehrere Indexe wird createSplitPane aufgerufen und dort alles erstellt
+     *
+     * wenn es nur einen ersten Key gibt der nicht Auswertung oder Nachrichten heisst, dann
+     * wird createSplitPane aufgerufen und alles erstellt
      *
      * wenn nur Nachrichten scheitert die Routine, wenn weder Auswertung noch Nachrichten dann werden SubTabs angelegt
      *
@@ -11044,6 +11076,7 @@ class WfcHandling
         else $order=10; 
         if ( (array_key_exists("Auswertung",$webfront_links)) || (array_key_exists("Nachrichten",$webfront_links)) )            // Index für Item oder SplitPane bereits in der ersten Ebene
             {
+            //$count=getConfig;
             $tabItem="Default";                
             if ($anzahlGruppen==1)      // kein SplitPane notwendig
                 {
@@ -11204,8 +11237,24 @@ class WfcHandling
             
         }
 
-    /* speichere die Links, es gibt zwei Kategorien Left und Right
+    /* createLinks, die eigentliche Routine, speichere die Links, es gibt zwei Kategorien Left und Right, 
+     * Übergabestruktur ist immer noch mit group arrays mit Keys und link arrays mit OID (integer value) und entry arrays mit key OID und arrays NAME, ORDER
+     * wenn Right default oder false ist wird Right mit Left beschrieben, also sind beide gleich
      *
+     *     [Control] => Array  (
+                [Read Meter] => Array  (
+                     [39677] => Array (
+                            [NAME] => ReadMeter ) 
+                            [ORDER] =>                                      optional
+                            [ADMINISTRATOR]  => true  )                     optional
+                [CONFIG] => Array  (
+                     [0]                     => WFCSplitPanel ) 
+                                             => [["WFCSplitPanel","AutoTPAStromheizung","AutoTPA","Stromheizung","Radiator",1,40,0,0,"true"]]                                       
+     *
+     *      Control ist der SubTab, Übergabe erfolgt ab Read Meter ist die Gruppe
+     *      Gruppe sollte Auswertung (rechts) oder Nachrichten (links) heissen, Die linke Gruppe muss nicht automatisch Nachrichten heissen, kann auch etwas anderes sein
+     *      Link wird auf die OID mit dem Namen NAME und der Position ORDER angelegt
+     * 
      */
 
     private function createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
@@ -11213,37 +11262,65 @@ class WfcHandling
         //$debug=true;
         if ($categoryIdRight==false) $categoryIdRight=$categoryIdLeft;
         if ($debug) echo "    createLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight  \n";
+        if (isset($webfront_group["CONFIG"]))   echo "          CONFIG erkannt ".json_encode($webfront_group["CONFIG"])."\n";
 			foreach ($webfront_group as $Group => $webfront_link)
 				{
-                if ($debug) echo "      Gruppe : $Group\n";
-				foreach ($webfront_link as $OID => $link)
-					{
-					/* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
-			 		 * Auswertung kommt nach links und Nachrichten nach rechts
-			 		 */	
-                    if (isset($link["NAME"]) === false) { echo "OID: $OID"; print_r($link); }
-                    if ($OID!="ORDER")
+                if ( ($Group == "CONFIG") || ($Group == "STYLE") || ($Group == "ORDER") )       // SplitPane Konfiguration
+                    {
+
+                    }
+                else
+                    {
+                    if ($debug) echo "      Gruppe : $Group\n";
+                    foreach ($webfront_link as $OID => $link)
                         {
-                        if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
-                        // Optional auch einzelne Berechtigungen pro Objekt
-                        if ( (($scope=="Administrator") && (((isset($link["ADMINISTRATOR"])) && ($scope=="Administrator") &&  $link["ADMINISTRATOR"]) || ((isset($link["ADMINISTRATOR"])===false)) )) ||
-                                    (($scope=="User") && (((isset($link["USER"])) &&  $link["USER"]) || ((isset($link["USER"])===false)) )) || 
-                                        (($scope=="Mobile") && (((isset($link["MOBILE"])) &&  $link["MOBILE"]) || ((isset($link["MOBILE"])===false)) ))  )
-                            {  
-                            if (isset($link["ORDER"])===false) $link["ORDER"]=10;
-                            if ($Group=="Auswertung")
-                                {
-                                if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
-                                CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
-                                }
-                            else
-                                {
-                                if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
-                                CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  $link["ORDER"]);
+                        /* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
+                        * Auswertung kommt nach links und Nachrichten nach rechts
+                        */	
+                        if (isset($link["NAME"]) === false) { echo "OID: $OID"; print_r($link); }
+                        if ($OID!="ORDER")
+                            {
+                            if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+                            // Optional auch einzelne Berechtigungen pro Objekt
+                            if ( (($scope=="Administrator") && (((isset($link["ADMINISTRATOR"])) && ($scope=="Administrator") &&  $link["ADMINISTRATOR"]) || ((isset($link["ADMINISTRATOR"])===false)) )) ||
+                                        (($scope=="User") && (((isset($link["USER"])) &&  $link["USER"]) || ((isset($link["USER"])===false)) )) || 
+                                            (($scope=="Mobile") && (((isset($link["MOBILE"])) &&  $link["MOBILE"]) || ((isset($link["MOBILE"])===false)) ))  )
+                                {  
+                                if (isset($link["ORDER"])===false) $link["ORDER"]=10;
+                                if (isset($link["PANE"])===false) $link["PANE"]=false;
+                                else echo "         Link Pane definiert \n";
+                                if ( ($Group=="Auswertung") ||  ( (isset($link["PANE"])) && ($link["PANE"]) ) )
+                                    {
+                                    if ($link["PANE"])
+                                        {
+                                        $categoryIdGroup  = CreateVariableByName($categoryIdLeft, $Group, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                                        if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf $OID in der linken Category $categoryIdLeft in der Gruppe $categoryIdGroup \n";
+                                        CreateLinkByDestination($link["NAME"], $OID,    $categoryIdGroup,  $link["ORDER"]);                                        
+                                        }
+                                    else
+                                        {
+                                        if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der linken Category ".$categoryIdLeft."\n";
+                                        CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
+                                        }
+                                    }
+                                else
+                                    {
+                                    if ( (isset($link["PANE"])) && ($link["PANE"]==false) )
+                                        {
+                                        $categoryIdGroup  = CreateVariableByName($categoryIdRight, $Group, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                                        if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf $OID in der rechten Category $categoryIdLeft in der Gruppe $categoryIdGroup \n";
+                                        CreateLinkByDestination($link["NAME"], $OID,    $categoryIdGroup,  $link["ORDER"]);                                        
+                                        }
+                                    else
+                                        {
+                                        if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der rechten Category ".$categoryIdRight."\n";
+                                        CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  $link["ORDER"]);
+                                        }
+                                    }
                                 }
                             }
-                        }
-					} // ende foreach
+                        } // ende foreach
+                    }                               // CONFIG ausfiltern
                 }  // ende foreach  
 
         }

@@ -374,6 +374,7 @@
 	if ($WFC10_Enabled==true)
 		{
 		$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+        $WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
 		echo "\nWF10 ";
 		}
 
@@ -440,7 +441,7 @@
         }
      */
 
-    $wfcHandling =  new WfcHandling();
+    $wfcHandling =  new WfcHandling($WFC10_ConfigId);
     /* Workaround wenn im Webfront die Root fehlt */
     $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
 

@@ -385,6 +385,7 @@
                 }
             }
         if ($excessiveLog) print_r($webfront_links);
+        $wfcHandling =  new WfcHandling($WFC10_ConfigId);
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
         }
     else if ($excessiveLog) echo "   Keine Netatmos Modules vorhanden.\n";
@@ -535,6 +536,7 @@
             //print_R($configWF);
             //$wfcHandling->deletePane($configWF["ConfigId"], "roottpBewegung");
             echo "\n\n===================================================================================================\n";
+            $wfcHandling =  new WfcHandling($WFC10_ConfigId);
             $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
             }
         else echo "***Fehler, ".$configWF["TabPaneParent"]." darf nicht roottp sein.\n";
@@ -546,6 +548,7 @@
         {
         $configWF = $configWFront["User"];
         echo "\n\n===================================================================================================\n";
+        $wfcHandling =  new WfcHandling($WFC10User_ConfigId);
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
         } 
 

@@ -1271,6 +1271,7 @@ class OperationCenter
             $PrintHtml.='<tr><td align="right" colspan="3"><font size="-1">last update on '.date("d.m.Y H:i:s").'</font></td></tr>';    
             $PrintHtml.='</table>';    
             SetValue($SysPingTableID,$PrintHtml);
+            return($PrintHtml);
             }
         else return (false);
         }
@@ -1688,9 +1689,11 @@ class OperationCenter
                 case "19041": $Codename="May 2020 Update (20H1)"; break;            
                 case "19042": $Codename="October 2020 Update (20H2)"; break;            
                 case "19043": $Codename="May 2021 Update (21H1)"; break;
-                case "19044": $Codename="December 2021 Update (21H2)"; break;
+                case "19044": $Codename="November 2021 Update (21H2)"; break;
+                case "19045": $Codename="2022 Update (22H2)"; break;
 
                 case "22000": $Codename="Win11 (21H2)"; break;
+                case "22621": $Codename="Win11 2022 Update (22H2)"; break;
                 default: $Codename=$Version[2];break;
                 }			
             }

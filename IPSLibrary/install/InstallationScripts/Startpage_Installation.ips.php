@@ -77,6 +77,9 @@
     IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
 
+    $dosOps = new dosOps();
+	$wfcHandling = new WfcHandling();		// für die Interoperabilität mit den alten WFC Routinen nocheinmal mit der Instanz als Parameter aufrufen
+
 /*******************************
  *
  * Initialisierung für Monitor On/Off Befehle und Bedienung VLC zum Fernsehen. Scripts verwenden wenn im Pfad ein Blank vorkommt.
@@ -89,7 +92,6 @@
     echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
     echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
     echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
-    $dosOps = new dosOps();
     $operatingSystem = $dosOps->getOperatingSystem();
     echo "OperatingSystem ist : $operatingSystem\n";
 	$verzeichnis     = $dosOps->getWorkDirectory();
@@ -133,28 +135,11 @@
 /*******************************
  *
  * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
- *
- ********************************/
-
-	echo "\n";
- 	//read_wfc();
-	
-	echo "\n=============================================\n";
-	$WebfrontConfigID=array();
-	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
-	foreach ($alleInstanzen as $instanz)
-		{
-		$result=IPS_GetInstance($instanz);
-		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
-		}
-
-/*******************************
- *
  * Webfront Konfiguration einlesen
  *
  ********************************/
 
+	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
 	echo "\nWebuser activated : ";
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 	if ($WFC10_Enabled)

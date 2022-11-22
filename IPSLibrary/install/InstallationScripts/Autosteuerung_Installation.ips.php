@@ -146,19 +146,7 @@
 	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
 	echo "Default WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
 	
-	$WebfrontConfigID=array();
-	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
-	foreach ($alleInstanzen as $instanz)
-		{
-		$result=IPS_GetInstance($instanz);
-		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
-		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		/* alle Instanzen dargestellt */
-		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
-		//print_r($result);
-		}
-	echo "\n";
+	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
 
 /*******************************
  *
@@ -920,7 +908,7 @@
     echo "****************Ausgabe Webfront Links               ";    
 	print_r($webfront_links);
 
-    if (true)
+    if (false)
         {
         if ( ($WFC10_Enabled) && (isset($configWFront["Administrator"])) )
             {
@@ -1005,6 +993,7 @@
             $configWF = $configWFront["Administrator"];
             $configWF["TabPaneParent"]=$configWF["TabPaneItem"];          // überschreiben wenn roottp, wir sind jetzt bereits eins drunter, Autosteuerungs Auto wurde bereits angelegt
             echo "\n\n===================================================================================================\n";
+            $wfcHandling =  new WfcHandling($WFC10_ConfigId);
             $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
             } 
 
@@ -1012,6 +1001,7 @@
             {
             $configWF = $configWFront["User"];
             echo "\n\n===================================================================================================\n";
+            $wfcHandling =  new WfcHandling($WFC10User_ConfigId);
             $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
             } 
 

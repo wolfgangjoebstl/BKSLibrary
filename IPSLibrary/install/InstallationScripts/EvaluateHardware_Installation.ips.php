@@ -66,53 +66,10 @@
     $statusEvaluateHardwareID       = CreateVariable("StatusEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $logEvaluateHardwareID          = CreateVariable("LogEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");
 
-	echo "\n";
-	$WebfrontConfigID=array();
-	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
-	foreach ($alleInstanzen as $instanz)
-		{
-		$result=IPS_GetInstance($instanz);
-		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
-		$config=json_decode(IPS_GetConfiguration($instanz));
-		echo "  Remote Access Webfront Password set : (".$config->Password.")\n";
-		echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
-		if (isset($config->RetroID)) echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";		
-		if (false)
-			{
-			$config=json_decode(IPS_GetConfiguration($instanz));
-			$configItems = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
-			print_r($configItems);	
-			}	
-		}	
+    /* check if Administrator and User Webfronts are already available */
 
-	/* check nach weiteren Webfront Konfiguratoren */
-
-	echo "Security and Configuration check.\n";
-	foreach ($WebfrontConfigID as $Key=>$Item)
-		{
-		$config=json_decode(IPS_GetConfiguration($Item));
-		switch ($Key)
-			{
-			case "User":	
-				if ($config->MobileID < 0) 
-					{
-					echo "  ".$Key.": Mobile Access for User not set (".$config->MobileID.").   --> setzen\n";
-					}
-			case "Administrator":
-				if ($config->Password == "") 
-					{
-					echo "  ".$Key.": Remote Access Webfront Password not set.   --> setzen\n";
-					}
-				else	
-					{
-					echo "  OK ".$Key.": Remote Access Webfront Password set : (".$config->Password.")\n";
-					}					
-				break;
-			default:
-				echo "    Zusaetzlichen Webfront Configurator gefunden.  --> loeschen\n";
-			}
-		}	
+    $wfcHandling =  new WfcHandling();
+    $wfcHandling->installWebfront();	
 
 /*******************************
  *
@@ -204,7 +161,7 @@
 
     /* Webfront in SystemTPA, Anzeige Homematic Errror Status und Log */
 
-    $wfcHandling =  new WfcHandling();
+    $wfcHandling =  new WfcHandling($WFC10_ConfigId);                  // gleich für Interop Admin konfigurieren
     $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
 
     $moduleManagerGUI = new IPSModuleManager('IPSModuleManagerGUI',$repository);
@@ -243,7 +200,7 @@
                 "USER"				=> false,
                 "MOBILE"			=> false,
                     ),
-                );	
+                );	           
     $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
 
     /*-------------*/

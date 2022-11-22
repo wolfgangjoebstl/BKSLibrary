@@ -594,6 +594,8 @@
         {
         echo "\n\n===================================================================================================\n";            
         $configWF = $configWFront["Administrator"];
+        $WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+        $wfcHandling = new WfcHandling($WFC10_ConfigId);
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
         }
 
@@ -601,6 +603,7 @@
         {
         echo "\n\n===================================================================================================\n";            
         $configWF = $configWFront["User"];
+        $WFC10User_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10User');        
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
         }
 

@@ -533,7 +533,7 @@
             CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."1",           $WFC10_TabPaneItem,    100,     "PowerPump",     "Electricity", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
             CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."1".'_Left',   $tabItem."1",   10, '', '', $categoryIdLeft1   /*BaseId*/, 'false' /*BarBottomVisible*/);
             CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."1".'_Right',  $tabItem."1",   20, '', '', $categoryIdRight1  /*BaseId*/, 'false' /*BarBottomVisible*/);
-            if ($GartensteuerungConfiguration["Configuration"]["CheckPower"]!==null) 
+            if ( (isset($GartensteuerungConfiguration["Configuration"]["CheckPower"])) && ($GartensteuerungConfiguration["Configuration"]["CheckPower"]!==null) )
                 {
                 echo "Gartenpumpe überprüft durch POWER Register : ".$GartensteuerungConfiguration["Configuration"]["CheckPower"]."\n";
                 $powerID = $GartensteuerungConfiguration["Configuration"]["CheckPower"];
