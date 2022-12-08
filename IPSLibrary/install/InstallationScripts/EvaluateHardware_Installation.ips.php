@@ -69,7 +69,8 @@
     /* check if Administrator and User Webfronts are already available */
 
     $wfcHandling =  new WfcHandling();
-    $wfcHandling->installWebfront();	
+    $wfcHandling->installWebfront();
+    $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();	            // configID für die beiden Webfronts User und Administrator
 
 /*******************************
  *

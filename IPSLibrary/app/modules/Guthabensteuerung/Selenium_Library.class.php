@@ -526,27 +526,31 @@ class SeleniumHandler
 
     /* SeleniumHandler::innerHtml lesen
      * es gibt auf Windows keinen vernünftigen Befehl, es wird immer nur Text gelesen
-     * Abhilfe is über ein gestartetes javascrip die Abfrage zu machen. 
-     * nachdem ich den queryselector noch nicht bedienen kann wird der ganze body abgeholt und zurück geliefert
+     * Abhilfe ist über ein gestartetes javascript die Abfrage zu machen. 
      *
-        $page = $element->getAttribute('innerHTML');                    // funktioniert in php nicht
-        $page = $element->getDomProperty('innerHTML');                // Befehl geht nicht
+     * nachdem ich den queryselector noch nicht bedienen kann wird der ganze body abgeholt und zurück geliefert.
+     * So sollte es funktionieren ?
+     *
         $page = static::$webDriver->executeScript('return document.querySelector(".selector").innerHTML');
         $elements = static::$webDriver->findElements(WebDriverBy::xpath($xpath));
         $page = static::$webDriver->executeScript('return arguments[0].innerHtml',$elements);
         print_r($page);
         $children  = $elements->childNodes();
      *
+     * so gehts leider nicht:
+        $page = $element->getAttribute('innerHTML');                    // funktioniert in php nicht
+        $page = $element->getDomProperty('innerHTML');                // Befehl geht nicht
      */
 
-    function getInnerHtml($displayMode=false,$commandEntry=false)
+    function getInnerHtml()
         {
         $page = static::$webDriver->executeScript('return document.body.innerHTML;');
-        //$this->analyseHtml($page,$displayMode,$commandEntry);
         return ($page);
         }
 
     /* SeleniumHandler::analyseHtml ein html analysieren, ist nur eine Orientierungsfunktion, besser DOM verwenden
+     * es wird zeichenweise analysiert
+     *
      * hier werden die bekannten Search Algorithmen unterstützt
      *
      * false DIV :
@@ -556,22 +560,46 @@ class SeleniumHandler
     function analyseHtml($page,$displayMode=false,$commandEntry=false)
         {
         $pageLength = strlen($page);
-        echo "analyseHtml Size of Input : $pageLength \n";
+        echo "analyseHtml Size of Input : ".nf($pageLength,"Bytes")."\n";
         //echo $page;
+        $lineShow=false;
         if ($commandEntry !== false) $commandDisplay=strtoupper($commandEntry);
         else $commandDisplay="UNKNOWN";
-        $display = $displayMode;
-
-        $pos=false; $ident=0; $end=false; 
-        for ($i = 0; $i < $pageLength; $i++) 
+        if ($displayMode===false) $display = false;
+        elseif (is_array($displayMode))
             {
+
+            }
+        elseif ($displayMode>1)
+            {
+            $display  = false;
+            $lineShow = $displayMode;
+            }
+        else $display = true;
+        $zeile=0; $until=0;
+
+        /* ausgabe i erfolgt auf 0 und dann nicht mehr */
+        $pos=false; $ident=0; $end=false; 
+        for ($i = 0; $i < $pageLength; $i++)                //html parser
+            {
+            if ($i<$until) 
+                {
+                echo htmlentities($page[$i]);           // funktioniert gut < wird in &lt; umgewandelt
+                //echo "$i(".ord($page[$i]).") ";
+                //echo $i.":".$page[$i].".";
+                }
             if ($page[$i]=="<") 
                 {
                 $pos=$i;
                 $ident++;
                 }
-            if (($page[$i]=="/") && $pos) { $ident--; $end=true; }
-            if ((($page[$i]==" ") || ($page[$i]=="\n") || ($page[$i]=="\r") || ($page[$i]==">")) && $pos)
+            if (($page[$i]=="/") && ($pos !== false) ) { $ident--; $end=true; }
+            if (($page[$i]=="\n") || ($page[$i]=="\r")) 
+                {
+                $zeile++;
+                if ($zeile>$lineShow) $display=true;
+                }
+            if ((($page[$i]==" ") || ($page[$i]=="\n") || ($page[$i]=="\r") || ($page[$i]==">")) && ($pos !== false) )           // ein Trennzeichen, pos=0 akzeptieren, pos=false nicht, logischerweise fangt es mit einem  < an
                 {
                 $epos=strpos($page,">",$pos);
                 $command=strtoupper(substr($page,$pos+1,$i-$pos-1));
@@ -584,9 +612,14 @@ class SeleniumHandler
                         //if ($command == "BUTTON")
                             {
                             if ( ($ident<100) && ($ident>0) )  for ($p=0;$p<$ident;$p++) echo " ";
-                            echo substr($page,$pos,$epos-$pos+1);
+                            echo strtoupper($command);
+                            // i steht erst bei dem ersten trennzeichen, epos beim Ende
+                            //echo "check $i $epos ";
+                            if ( ($epos)>($i) ) echo ": ".substr($page,$i,$epos-$i)." ";
+                            //else echo ($epos-$pos+1)."<=".($i-$pos-1);
                             //for ($p=$pos;$p<=$i;$p++) echo ord($page[$p]).".";
-                            echo "  ".strtoupper($command)."\n";
+                            echo "    ($i $pos ".($epos-$pos)." $zeile)\n";
+
                             }
                         }
                     if ($end) {$ident--; $end=false;}
@@ -622,17 +655,22 @@ class SeleniumHandler
         $xPathQuery  = '//div[@*]';
         $filterAttr  = 'style';
         $filterValue ="width: 608px";
+     * resultat sind alle Ergebnisse hintereinander in einem DOM, also arbeitet wie ein Filter
+     *
+     * DomDocument ist das xml/html Objekt mit den passenden Methoden dafür, dom in diesem Fall der Speicher, mit dem auch andere Operationen durchgeführt werden können
      */
 
     function queryFilterHtml($textfeld,$xPathQuery,$filterAttr,$filterValue,$debug=false)
         {
         $innerHTML="";
         if ($debug) echo "---- queryFilterHtml(...,$xPathQuery,$filterAttr,$filterValue)\n";
-        //echo "$textfeld\n";
+        //echo "$textfeld\n";                                                                       // lieber nicht verwenden, wird wahrscheinlich sehr unübersichtlich
 
         //$dom = DOMDocument::loadHTML($textfeld);          // non static forbidden
-        $dom = new DOMDocument; 
-        $dom->loadHTML($textfeld);
+        $dom = new DOMDocument;     
+        libxml_use_internal_errors(true);               // Header, Nav and Section are html5, may cause a warning, so suppress     
+        $dom->loadHTML($textfeld);                  // den Teil der Homepage hineinladen
+        libxml_use_internal_errors(false);
         $xpath = new DOMXpath($dom);
         //echo $dom->saveHTML();
         //echo "-------Auswertungen--------------->\n";
@@ -666,7 +704,12 @@ class SeleniumHandler
         return ($innerHTML);
         }
 
-    /* den Style als Array rausziehen */
+    /* den Style als Array rausziehen 
+     * input ist ein DOM, wahrscheinlich von queryFilterHtml erzeugt
+     * aus der Sammlung von Objekten jetzt die benötigten Einträge rausziehen
+     * jetzt geht es auf die Attribute, sonst wäre ja kein innerhtml notwendig und wir könnten gleich den text verwenden, text hat aber keine xml Namen mehr dabei
+     *
+     */
 
     function extractFilterHtml($textfeld,$xPathQuery,$filterAttr,$debug=false)
         {
@@ -689,7 +732,7 @@ class SeleniumHandler
     /* html code laden , referenziert wird über xpath
      * if am Ende des Funktionsnamen bedeutet, es wird zuerst geschaut ob das Element vorhanden ist
      * wenn nicht führt das zu einem retun mit false
-     * wenn schon wird das Elemnt abgefragt, zuerst wird das innerhtml versucht und wenn nicht dann die Textfelder
+     * wenn schon wird das Element abgefragt, zuerst wird das innerhtml versucht und wenn nicht dann die Textfelder
      *
      */
     function getHtmlIf($xpath,$debug=false)
@@ -2011,6 +2054,327 @@ class SeleniumIiyama extends SeleniumHandler
         }
 
     }           // ende class
+
+/* ORF Fernsehprogramm abfragen
+ *
+ * wenig Stress da kein einloggen notwendig ist, aber die Auswertung der Anzeige der Fernsehprogramme ist schwieriger geworden
+ * runAutomatic fahrt die einzelnen Abfragen durch
+ * der Aufruf erfolgt von automatedQuery , zuerst wird die Instanz erstellt und dann wenn vorhanden die Config gesetzt
+ * runAutomatic geth Schritt für Schritt durch
+ */
+
+class SeleniumORF extends SeleniumHandler
+    {
+    protected $configuration;                 //array mit Datensaetzen
+    private $duetime,$retries;              //für retry timer
+    private $orfName;                               // index für OrfSender
+    protected $debug;
+
+    function __construct($debug=false)
+        {
+        $this->duetime=microtime(true);
+        $this->retries=0;
+        $this->orfName=0;                   //erster Index
+        $this->debug=$debug;
+        parent::__construct();          // nicht vergessen den parent construct auch aufrufen
+        }
+
+    public function runAutomatic($step=0)
+        {
+        $ergebnis=array();
+        echo "runAutomatic SeleniumORF Step $step.\n";
+        switch ($step)
+            {
+            case 0:
+                $this->pressPrivacyButtonIf();
+                break;
+            case 1:
+                /* https://tv.orf.at/all/20210302/filter?cat=Film   nur die Filme abfragen */
+                //$this->goToNavBarItem(1);            // select TV Programm by click
+                //$url="http://tv.orf.at/all/".date("Ymd")."/filter?cat=Film";
+                $url="https://tv.orf.at/program/orf1/index.html";                       // ORF umgestellt auf https
+                $this->goToUrl($url);
+                break;
+            case 2:
+                $result = $this->fetchMoviesfromActualDay(true);            // true get html
+                /*echo "Ergebnis ------------------\n";
+                //echo "$result\n-----------------\n"; 
+                // ungewöhnlich, alle Einträge enden mit \n etwas zusammenfassen
+                $display=explode("\n",$result);
+                foreach ($display as $index=>$item)
+                    {
+                    if (strpos($item,":") == 2) 
+                        {
+                        //echo "   ".strpos($item,":");
+                        echo "\n";          // vielleicht, sehr wahrscheinlich eine Uhrzeit
+                        }
+                    echo $item." ";
+                    //if (fmod($index+3,4)==0) echo "\n";           // leider unregeklmaessige Anzahl Einträge
+                     }   */
+                echo "Step 3. Anhand Config abspeichern und weiter machen, oder aufhören.\n";  
+                if (isset($this->configuration["tv"][$this->orfName]))
+                    {
+                    echo "Configuration found, speichere TV Programm in ".$this->configuration["tv"][$this->orfName]."   Index ist aktuell : ".$this->orfName." .\n"; 
+                    $ergebnis["Name"] = $this->configuration["tv"][$this->orfName]; 
+                    $this->orfName++;                 
+                    } 
+                else $ergebnis["goto"] = 5;
+                $ergebnis["Ergebnis"] = $result;
+                return($ergebnis); 
+                break;
+            case 3:
+                $url="https://tv.orf.at/program/orf2/index.html";                       // ORF umgestellt auf https
+                $this->goToUrl($url);               
+                break; 
+            case 4:
+                $result = $this->fetchMoviesfromActualDay(true);            // true get html
+                /*echo "Ergebnis ------------------\n";
+                //echo "$result\n-----------------\n"; 
+                // ungewöhnlich, alle Einträge enden mit \n etwas zusammenfassen
+                $display=explode("\n",$result);
+                foreach ($display as $index=>$item)
+                    {
+                    if (strpos($item,":") == 2) 
+                        {
+                        //echo "   ".strpos($item,":");
+                        echo "\n";          // vielleicht, sehr wahrscheinlich eine Uhrzeit
+                        }
+                    echo $item." ";
+                    //if (fmod($index+3,4)==0) echo "\n";           // leider unregeklmaessige Anzahl Einträge
+                     }   */
+                if (isset($this->configuration["tv"][$this->orfName]))
+                    {
+                    echo "Configuration found, speichere TV Programm in ".$this->configuration["tv"][$this->orfName]."   Index ist aktuell : ".$this->orfName." .\n"; 
+                    $ergebnis["Name"] = $this->configuration["tv"][$this->orfName]; 
+                    $this->orfName++;                 
+                    } 
+                else $ergebnis["goto"] = 5;
+                $ergebnis["Ergebnis"] = $result;
+                return($ergebnis);                
+                break;
+            case 5:                
+                $url="https://wetter.orf.at/wien/prognose";                       // ORF umgestellt auf https, jetzt noch gleich das Wetter für Wien aufrufen
+                $this->goToUrl($url);               
+                break;
+            case 6:
+                $result = $this->fetchWeatherPrognose(false);            // true get html , false get text               
+                $ergebnis["Ergebnis"] = $result;
+                return($ergebnis);                
+                break;
+            default:
+                return (false);                
+            }
+        }
+
+    public function getSteps()
+        {
+
+
+        }
+
+    /* Steps
+     *
+     * //*[@id="ds-accept"]/span        Button Accept Cookies
+     *
+     */
+
+    function pressPrivacyButtonIf()
+        {        
+        $xpath='//*[@id="ds-accept"]/span';
+        $result = $this->pressButtonIf($xpath);
+        if ($result) echo "pressed PrivacyButton.\n";
+        }     
+
+    function goToUrl($url)
+        {
+        $this->updateUrl($url);
+        }
+
+    /* press link to TV Page, on https://www.orf.at/ press first link Fernsehen, results into https://tv.orf.at/
+     *  //*[@id="ss-networkNavigation"]/li[1]/a         der erste Link ist die TV Programm seite, besser direkte Navigation auf Url
+     */
+
+    function goToNavBarItem($i=1)
+        {
+        "goTo NavBar Item $i \n";
+        $xpath='//*[@id="ss-networkNavigation"]/li['.$i.']/a';
+        $this->pressButtonIf($xpath);             
+        }         
+
+    /* das Filmprogramm runterladen 
+     * //*[@id="content"]/div[1] 
+     * //*[@id="broadcast-list"]/li[2]
+     * //*[@id="broadcast-list"]                        abgeänderte Struktur, liest die Programme und nicht die Navigation
+     */
+
+    function fetchMoviesfromActualDay($style=false,$debug=false)
+        {
+        $xpath='//*[@id="broadcast-list"]';  
+        if ($style) 
+            {
+            $ergebnis = $this->getHtmlIf($xpath);    
+            $page=$this->getInnerHtml();                     
+            //$this->analyseHtml($page,true);                                     // nicht mehr verwendet, Parameter $displayMode,$commandEntry bei displayMode true wird angezeigt, bei false erst ab commandEntry "DIV"
+            /* besser queryFilterHtml verwenden, Eintraege entsprechend https://www.w3schools.com/xml/xpath_syntax.asp erstellen
+             *      nodename	Selects all nodes with the name "nodename"
+             *      /	Selects from the root node
+             *      //	Selects nodes in the document from the current node that match the selection no matter where they are
+             *      .	Selects the current node
+             *      ..	Selects the parent of the current node
+             *      @	Selects attributes
+             *
+             */
+
+            $dom = new DOMDocument;     
+            libxml_use_internal_errors(true);               // Header, Nav and Section are html5, may cause a warning, so suppress     
+            $dom->loadHTML($page);                  // den Teil der Homepage hineinladen
+            libxml_use_internal_errors(false);
+            $xpath = new DOMXpath($dom);
+            $links = $xpath->query('//li[@*]');
+            if ($debug) echo "Insgesamt ".count($links)." Links gefunden für \"'//li[@*]'\"\n";
+
+            $count=0; $maxcount=5;
+
+            $tmp_doc = new DOMDocument();   
+            foreach ($links as $link)                       //ein DomElement nach dem anderen durchgehen
+                {
+                $xmlArray = new App_Convert_XmlToArray();
+                $style = $link->getAttribute('class');
+                if ($style == 'broadcast') 
+                    {
+                    if ($debug) echo "   -> found:  ".$link->nodeName." , ".$link->nodeType." $style\n"; 
+                    $result[$count] = $xmlArray->walkHtml($link,false);
+                    if (($count++)<$maxcount) 
+                        {
+                        //var_dump($link);
+  
+                        if ($debug) print_R($result[($count-1)]);
+                        }
+                    $tmp_doc->appendChild($tmp_doc->importNode($link,true));                 
+                    }
+                }
+            $ergebnis="";
+            $deleteIndex = array("class","xmlns","width","height","viewbox","transform","d");
+            foreach ($result as $index => $entry)
+                {
+                foreach ($deleteIndex as $item)
+                    {
+                    if (isset($entry[$item])) unset($result[$index][$item]);
+                    }
+                //if (isset($entry["broadcast"])) echo $entry["broadcast"]."\n";
+                if (isset($entry["broadcast-date"])) $ergebnis .= $entry["broadcast-date"];
+                if (isset($entry["broadcast-titles"])) $ergebnis .= $entry["broadcast-titles"]."\n";
+                }
+            /* print_R($result);
+
+
+            function dom_dump($obj) 
+                {
+                echo "dom_dump aufgerufen.\n";
+                if ($classname = get_class($obj)) 
+                    {
+                    $retval = "Instance of $classname, node list: \n";
+                    switch (true) 
+                        {
+                        case ($obj instanceof DOMDocument):
+                            $retval .= "XPath: {$obj->getNodePath()}\n".$obj->saveXML($obj);
+                            break;
+                        case ($obj instanceof DOMElement):
+                            $retval .= "XPath: {$obj->getNodePath()}\n".$obj->ownerDocument->saveXML($obj);
+                            break;
+                        case ($obj instanceof DOMAttr):
+                            $retval .= "XPath: {$obj->getNodePath()}\n".$obj->ownerDocument->saveXML($obj);
+                            //$retval .= $obj->ownerDocument->saveXML($obj);
+                            break;
+                        case ($obj instanceof DOMNodeList):
+                            for ($i = 0; $i < $obj->length; $i++) 
+                                {
+                                $retval .= "Item #$i, XPath: {$obj->item($i)->getNodePath()}\n"."{$obj->item($i)->ownerDocument->saveXML($obj->item($i))}\n";
+                                }
+                            break;
+                        default:
+                            return "Instance of unknown class";
+                        }
+                    } 
+                else 
+                    {
+                    return 'no elements...';
+                    }
+                return htmlspecialchars($retval);
+                }
+
+            function getArray($node)
+                {
+                $array = false;
+                echo "getArray nodeName ".$node->nodeName."  ";
+                if ($node->hasAttributes())
+                    {
+                    foreach ($node->attributes as $attr)
+                        {
+                        echo " Attr ".$attr->nodeName." = ".$attr->nodeValue."   ";
+                        $array[$attr->nodeName] = $attr->nodeValue;
+                        }
+                    }
+
+                if ($node->hasChildNodes())
+                    {
+                    if ($node->childNodes->length == 1)
+                        {
+                        $array[$node->firstChild->nodeName] = $node->firstChild->nodeValue;
+                        }
+                    else
+                        {
+                        foreach ($node->childNodes as $childNode)
+                            {
+                            echo "\n childNode ".$childNode->nodeName." :";
+                            if ($childNode->nodeType != XML_TEXT_NODE)
+                                {
+                                $array[$childNode->nodeName][] = getArray($childNode);
+                                }
+                            }
+                        }
+                    }
+                return ($array);
+                }
+
+            foreach ($tmp_doc as $node) 
+                {
+                echo "nodeName ".$node->nodeName."  \n";
+                dom_dump($node);
+                }       
+            $ergebnis = $tmp_doc->saveHTML(); 
+            $array = App_Convert_XmlToArray::XmlToArray($ergebnis);            // input muss string sein
+            print_R($array);        */
+            }
+        else $ergebnis = $this->getTextIf($xpath);
+        if ((strlen($ergebnis))>10) return($ergebnis);            
+        }
+
+    /* das Wetter runterladen 
+     * //*[@id="content"]/div[3]
+     * //*[@id="ss-storyText"]/div
+     */
+
+    function fetchWeatherPrognose($style=false,$debug=false)
+        {
+        echo "Fetch Wetterprognose:\n";
+        //$xpath='//*[@class="fullTextWrapper"]';  
+        $xpath='//*[@id="ss-storyText"]/div';
+        if ($style) 
+            {
+            $ergebnis = $this->getHtmlIf($xpath);    
+            $page=$this->getInnerHtml();                     
+            $this->analyseHtml($page,true);                                     // nicht mehr verwendet, Parameter $displayMode,$commandEntry bei displayMode true wird angezeigt, bei false erst ab commandEntry "DIV"
+            }
+        else $ergebnis = $this->getTextIf($xpath,true);
+        if ((strlen($ergebnis))>10) return($ergebnis);            
+        else echo "noch kein Ergebnis gefunden. Ergebnis ist immer ein String.\n";
+        }
+
+
+    }           // ende class
+
+
 
 /* Bei Easycharts einlogen und die aktuellen Portfolio Kurse auslesen
  * zusaetzliche Funktionen sind
@@ -3614,10 +3978,11 @@ class SeleniumEasycharts extends SeleniumHandler
         $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
         if ((strlen($ergebnis))>10) 
             {
-            $page=$this->getInnerHtml(false,"DIV");
+            $page=$this->getInnerHtml();                     
+            //$this->analyseHtml($page,false,"DIV");                                     // nicht mehr verwendet, Parameter $displayMode,$commandEntry
             $debugVariable=CreateVariableByName($this->getResultCategory(),"Debug",3);
             SetValue($debugVariable,$page);
-            $innerHtml = $this->queryFilterHtml($page,'//div[@*]','style',"width: 608px",$this->debug);
+            $innerHtml = $this->queryFilterHtml($page,'//div[@*]','style',"width: 608px",$this->debug);         //  suche in der aktuellen Position nach div mit beliebigen Attributen
             $ergebnis = $this->extractFilterHtml($innerHtml,'//a[@*]','title',true);             // true für Debug            
             //$this->analyseHtml($page,true);                 // true alles anzeigen
             return($ergebnis);
@@ -3807,6 +4172,7 @@ class SeleniumOperations
 
  
     /* alle Homepages gleichzeitig abfragen 
+     *
      * Index von Configtabs gibt die einzelnen Seiten/Tabs vor
      * mit Url wird der Tab benannt und wieder erkannt, wenn keine Class definiert ist, bleibts auch beim Seitenaufruf
      * sonst wird im Step 0 die class initialisiert
@@ -3819,8 +4185,23 @@ class SeleniumOperations
      *  Init SessionId, WebDriverUrl, Status (webDriverStatusId)
      *  update Handles der einzelnen Webseiten
      *  WebDriver starten mit initHosts
-     *  Schleife bis alle Webseiten schrittweise abgeabrbeitet wurden
+     *  Schleife bis alle Webseiten schrittweise abgearbeitet wurden
      *      -
+     *
+     * Aus dem configTabs wird die Configuration genommen:
+     *  Index (Drei, Orf etc.)
+     *      URL         diese Url wird als erstes aufgerufen, es können danach weitere Urls angesteuert werden, Index wird ignoriert wenn nicht gesetzt
+     *      CLASS       es wird für die Bearbeitung die class genutzt, wenn nicht gesetzt erfolgt nur getHost mit der Url
+     *      TYPE
+     *      CONFIG      wenn gesetzt wird mit dem Inhalt aus der class setConfiguration aufgerufen
+     *  Spezialfall wenn Index Logging ist, das ist eine übergeordnete Konfiguration und kein Host
+     *
+     * Wenn CLASS geesetzt wird wird die class mit new initialisiert, die instanz im Array gespeichert, Parameter ist debug   
+     * runAutomatic wird für jede class mit dem entsprechendem Step aufgerufen, die function liefert ein Ergebnis zurück und ermöglicht ide Steuerung der Statemachine
+     *      false   failed erhöhen
+     *      retry   nächste Instanz, aber hier beim gleichen Step bleiben
+     *      Array, kann mehrere Befehle gleichzeitig, ZB Ergebnis und goTo
+     *
      */
 
     function automatedQuery($webDriverName,$configTabs,$debug=false)
@@ -3971,7 +4352,12 @@ class SeleniumOperations
                                             $this->writeResult($index,$result["Ergebnis"],"Result",false);             //Default Name is Result, writeResult von dieser class aufgerufen, nicht verwechseln, true für Debug
                                             break;                                             
                                         default:
-                                            $this->writeResult($index,$result["Ergebnis"]);             //Default Name is Result                                        
+                                            echo "Result Ergebnis ist definiert ".json_encode($result)."\n";
+                                            if (isset($result["Name"])) 
+                                                {
+                                                $this->writeResult($index,$result["Ergebnis"],$result["Name"]);              // class gibt einen Namen vor
+                                                }
+                                            else $this->writeResult($index,$result["Ergebnis"]);                                                    // Default Name is Result                                        
                                             break;
                                         }
                                     $steps[$index]++;  
@@ -3988,6 +4374,7 @@ class SeleniumOperations
                         $guthabenHandler->setSeleniumHandler($handler,$webDriverName);                     // nur den Selenium Handler im IP Symcon als Variable abspeichern
                         //print_r($handler);
                         }
+                    else echo "Fehler entry Url not set in configuration.\n";
                     $done++;
                     }
                 $step++;

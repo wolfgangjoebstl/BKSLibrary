@@ -556,6 +556,14 @@
 						$OperationCenter->read_routerdata_RT2600AC($routerFastPoll_categoryId, $host, $community, $binary, $debug);	
 						}						
 					break;					
+                case 'RT6600AX':                
+					$OperationCenter->read_routerdata_RT2600AC($router_categoryId, $host, $community, $binary, $debug);
+					$routerFastPoll_categoryId = CreateCategory("SnmpFastPoll",$router_categoryId,1000);       	// Kategorie anlegen
+					if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") )			//  
+						{	
+						$OperationCenter->read_routerdata_RT2600AC($routerFastPoll_categoryId, $host, $community, $binary, $debug);	
+						}						
+					break;					
                 //SetValue($ScriptCounterID,1);
                 //IPS_SetEventActive($tim3ID,true);
                 }

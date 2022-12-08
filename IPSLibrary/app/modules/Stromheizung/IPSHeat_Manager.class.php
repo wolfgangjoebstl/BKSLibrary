@@ -61,6 +61,7 @@
 	 */
 	class IPSHeat_Manager {
 
+        private $ipsOps;           // class ipsOps
 		/**
 		 * @private
 		 * ID Kategorie mit Schalter und Dimmern
@@ -100,7 +101,7 @@
 				$this->lightGroupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
 				$this->lightProgramCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId);
 				}
-			
+			$this->ipsOps = new ipsOps();
 			/* Vorbereitung für ein Sync zwischen IPSHeat und IPSLight, aber nicht zurück */
 		}
 
@@ -445,98 +446,187 @@
 			{
 			if (GetValue($variableId)==$value) 
 				{
-				return;
+                if ($debug) echo "Wert unverändert,  $variableId (".$this->ipsOps->path($variableId).") = ".GetValue($variableId)."\n";
+				//return;               // nur Temperaturwert sollte unverändert sein, nicht der Switch Status
 				}
 			$configName   = $this->GetConfigNameById($variableId);
 			$configLights = IPSHeat_GetHeatConfiguration();
-			
-			$switchId     = IPS_GetVariableIDByName($configName, $this->switchCategoryId);
-			$switchValue  = GetValue($switchId);
-			//$levelId      = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_LEVEL, $this->switchCategoryId);		// dekativiert, wird nicht mehr verwendet
-			//$levelValue   = GetValue($levelId);
-			$tempId      = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_TEMPERATURE, $this->switchCategoryId);
-			$tempValue   = GetValue($tempId);
-			$modeId      = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_MODE, $this->switchCategoryId);
-			$modeValue   = GetValue($modeId);
-			
-			
-			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
-			if ($debug) 
+			if (isset($configLights[$configName])) 
                 {
-                echo "   IPSclass IPSHeat_Manager SetHeat : ".$variableId."  (".IPS_GetName($variableId).")  ".$componentParams." ";
-                if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit vor _construct'.$duration.' Millisekunden.'."\n"; }
-                else echo "\n";                
+                if ($debug) echo "  $configName ".json_encode($configLights)."\n";
+
+                //$switchId = @$lightManager->GetSwitchIdByName($lightName);
+                //$groupId = @$lightManager->GetGroupIdByName($lightName);
+
+                $switchId     = IPS_GetVariableIDByName($configName, $this->switchCategoryId);
+                $switchValue  = GetValue($switchId);
+                //$levelId      = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_LEVEL, $this->switchCategoryId);		// dekativiert, wird nicht mehr verwendet
+                //$levelValue   = GetValue($levelId);
+                $tempId      = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_TEMPERATURE, $this->switchCategoryId);
+                $tempValue   = GetValue($tempId);
+                $modeId      = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_MODE, $this->switchCategoryId);
+                $modeValue   = GetValue($modeId);
+                
+                
+                $componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
+                if ($debug) 
+                    {
+                    echo "   IPSclass IPSHeat_Manager SetHeat : ".$variableId."  (".IPS_GetName($variableId).")  ".$componentParams." ";
+                    if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit vor _construct'.$duration.' Millisekunden.'."\n"; }
+                    else echo "\n";                
+                    }
+                $component       = IPSComponent::CreateObjectByParams($componentParams);
+
+                switch ($variableId)
+                    {
+                    case $tempId:
+                        /* Automatisches Schaltet und Update zwischen Level und State -> aktuell deaktiviert */
+                        //echo "   IPSHeatManager:SetHeat für Temperaturwert aufgerufen.\n";
+                        if (!$switchValue and $value>0) 
+                            {
+                            //SetValue($switchId, true);
+                            } 
+                        else if ($switchValue and $value==0) 
+                            {
+                            //SetValue($switchId, false);
+                            } 
+                        else 
+                            { }
+                        /* Begrenzungen des Temperaturwertes auf vernünftige Werte --> aktiv */
+                        if (GetValue($tempId) > 30) { $value = 30; }
+                        if (GetValue($tempId) < 6)   { $value = 6; }
+                        //SetValue($tempId, $value);		// nicht den Stromheizung data Wert hier setzen, er wird erst mühsam vom wirklichen Gerät synchronisiert
+
+                        if ($debug) 
+                            {					
+                            echo "   IPS class IPSHeat_Manager SetHeat $configName ".($switchValue?'On, Temp='.$tempValue:'Off').". Mode=".GetValue($modeId)." to new Temp=$value with $componentParams.";
+                            //print_r($component);
+                            if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit vor SetLevel'.$duration.' Millisekunden.'."\n"; }
+                            else echo "\n";                
+                            }
+                        IPSLogger_Inf(__file__, 'IPS class IPSHeat_Manager SetHeat '.$configName.' '.($switchValue?'On, Temp='.$tempValue:'Off').' to new Temp='.$value.' with '.$componentParams);
+
+                        if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich
+                            {
+                            $component->SetLevel(GetValue($switchId), $value, $debug);
+                            }
+                        IPSHeat_AfterSwitch($switchId, $switchValue);
+                        break;
+                    case $modeId:
+                        //echo '  Set Heat/Light Mode '.$configName.' '.($switchValue?'On, Level='.$tempValue:'Off').'  '.GetValue($modeId)."\n";
+                        IPSLogger_Inf(__file__, 'Set Heat/Light Mode '.$configName.' '.($switchValue?'On, Level='.$tempValue:'Off').' Mode '.GetValue($modeId).' to new '.$value);
+
+                        //SetValue($modeId, $value);					// nicht den Stromheizung data Wert hier setzen, er wird erst mühsam vom wirklichen Gerät synchronisiert
+                        if (IPSHeat_BeforeSwitch($switchId, $switchValue))			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich 
+                            {
+                            $component->SetMode(GetValue($switchId), $value);	// zweiten Parameter hier austauschen
+                            }
+                        IPSHeat_AfterSwitch($switchId, $switchValue);
+                        break;
+                    case $switchId:			
+                        //echo "   IPSHeatManager:SetHeat für Schalter aufgerufen. Ändere von aktuell ".($switchValue?"Ein":"Aus")." auf ".($value?"Ein, Temp=".GetValue($tempId):"Aus").". Mode = ".GetValue($modeId)."\n";
+                        IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($switchValue?'On, Temp='.GetValue($tempId):'Off').' Mode='.GetValue($modeId));
+                        SetValue($switchId, $value);
+
+                        if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich
+                            {
+                            $component->SetState(GetValue($switchId), GetValue($tempId));
+                            }
+                        IPSHeat_AfterSwitch($switchId, $switchValue);
+                        break;
+                    default:
+                        break;	
+                    }
+                if ($syncGroups)											// Gruppen und Programme synchronisieren immer alle Werte einer switchId 
+                    {
+                    $this->SynchronizeGroupsBySwitch($switchId);            // eine Änderung der Schalterstellung verändert den Status aller Gruppen die den Schalter beinhalten
+                    }
+                if ($syncPrograms) 
+                    {
+                    $this->SynchronizeProgramsBySwitch ($switchId);
+                    }
                 }
-			$component       = IPSComponent::CreateObjectByParams($componentParams);
+            else
+                {
+                $groupId = $variableId;
+                $groupConfig = IPSHeat_GetGroupConfiguration();
+                $groupName   = $this->GetConfigNameById($groupId);			
+                $groupNameLong   = IPS_GetName($groupId);    
+                echo " $groupName ist eine Gruppe, NameLong :  $groupNameLong Config : ".json_encode($groupConfig[$groupName])."  \n";
+                if ($value and !$groupConfig[$groupName][IPSHEAT_ACTIVATABLE]) 
+                    {
+                    if ($groupName == $groupNameLong) IPSLogger_Trc(__file__, "Ignore ".($value?'On':'Off')." forHeatGroup '$groupName' (not allowed)");
+                    else IPSLogger_Trc(__file__, "Ignore ".$value." forHeatGroup '$groupNameLong' (not allowed)");
+                    } 
+                else 
+                    {
+                    $switchId     = IPS_GetVariableIDByName($groupName, $this->groupCategoryId);
+                    $switchValue  = GetValue($switchId);
+                    $tempId      = IPS_GetVariableIDByName($groupName.IPSHEAT_DEVICE_TEMPERATURE, $this->groupCategoryId);
+                    $tempValue   = GetValue($tempId);
+                    $modeId      = IPS_GetVariableIDByName($groupName.IPSHEAT_DEVICE_MODE, $this->groupCategoryId);
+                    $modeValue   = GetValue($modeId);                        
 
-			switch ($variableId)
-				{
-				case $tempId:
-					/* Automatisches Schaltet und Update zwischen Level und State -> aktuell deaktiviert */
-					//echo "   IPSHeatManager:SetHeat für Temperaturwert aufgerufen.\n";
-					if (!$switchValue and $value>0) 
-						{
-						//SetValue($switchId, true);
-			   			} 
-					else if ($switchValue and $value==0) 
-						{
-						//SetValue($switchId, false);
-				   		} 
-					else 
-						{ }
-					/* Begrenzungen des Temperaturwertes auf vernünftige Werte --> aktiv */
-					if (GetValue($tempId) > 30) { $value = 30; }
-					if (GetValue($tempId) < 6)   { $value = 6; }
-					//SetValue($tempId, $value);		// nicht den Stromheizung data Wert hier setzen, er wird erst mühsam vom wirklichen Gerät synchronisiert
+                    switch ($variableId)
+                        {
+                        case $tempId:
+                            /* Automatisches Schaltet und Update zwischen Level und State -> aktuell deaktiviert */
+                            //echo "   IPSHeatManager:SetHeat für Temperaturwert aufgerufen.\n";
+                            if (!$switchValue and $value>0) 
+                                {
+                                //SetValue($switchId, true);
+                                } 
+                            else if ($switchValue and $value==0) 
+                                {
+                                //SetValue($switchId, false);
+                                } 
+                            else 
+                                { }
+                            /* Begrenzungen des Temperaturwertes auf vernünftige Werte --> aktiv */
+                            if (GetValue($tempId) > 30) { $value = 30; }
+                            if (GetValue($tempId) < 6)   { $value = 6; }
+                            //SetValue($tempId, $value);		// nicht den Stromheizung data Wert hier setzen, er wird erst mühsam vom wirklichen Gerät synchronisiert
 
-                    if ($debug) 
-                        {					
-                        echo "   IPS class IPSHeat_Manager SetHeat $configName ".($switchValue?'On, Temp='.$tempValue:'Off').". Mode=".GetValue($modeId)." to new Temp=$value with $componentParams.";
-                        //print_r($component);
-                        if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit vor SetLevel'.$duration.' Millisekunden.'."\n"; }
-                        else echo "\n";                
+                            if ($debug) 
+                                {					
+                                echo "   IPS class IPSHeat_Manager SetHeat $configName ".($switchValue?'On, Temp='.$tempValue:'Off').". Mode=".GetValue($modeId)." to new Temp=$value.";
+                                //print_r($component);
+                                if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit vor SetLevel'.$duration.' Millisekunden.'."\n"; }
+                                else echo "\n";                
+                                }
+                            IPSLogger_Inf(__file__, 'IPS class IPSHeat_Manager SetHeat '.$configName.' '.($switchValue?'On, Temp='.$tempValue:'Off')." to new Temp=$value");
+
+                            SetValue($tempId, $value);
+                            break;
+                        case $modeId:
+                            //echo '  Set Heat/Light Mode '.$configName.' '.($switchValue?'On, Level='.$tempValue:'Off').'  '.GetValue($modeId)."\n";
+                            IPSLogger_Inf(__file__, 'Set Heat/Light Mode '.$configName.' '.($switchValue?'On, Level='.$tempValue:'Off').' Mode '.GetValue($modeId).' to new '.$value);
+
+                            //SetValue($modeId, $value);					// nicht den Stromheizung data Wert hier setzen, er wird erst mühsam vom wirklichen Gerät synchronisiert
+                            if (IPSHeat_BeforeSwitch($switchId, $switchValue))			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich 
+                                {
+                                $component->SetMode(GetValue($switchId), $value);	// zweiten Parameter hier austauschen
+                                }
+                            IPSHeat_AfterSwitch($switchId, $switchValue);
+                            break;
+                        case $switchId:			
+                            //echo "   IPSHeatManager:SetHeat für Schalter aufgerufen. Ändere von aktuell ".($switchValue?"Ein":"Aus")." auf ".($value?"Ein, Temp=".GetValue($tempId):"Aus").". Mode = ".GetValue($modeId)."\n";
+                            IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($switchValue?'On, Temp='.GetValue($tempId):'Off').' Mode='.GetValue($modeId));
+                            SetValue($switchId, $value);
+
+                            if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich
+                                {
+                                $component->SetState(GetValue($switchId), GetValue($tempId));
+                                }
+                            IPSHeat_AfterSwitch($switchId, $switchValue);
+                            break;
+                        default:
+                            break;	
                         }
-					IPSLogger_Inf(__file__, 'IPS class IPSHeat_Manager SetHeat '.$configName.' '.($switchValue?'On, Temp='.$tempValue:'Off').' to new Temp='.$value.' with '.$componentParams);
 
-					if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich
-						{
-						$component->SetLevel(GetValue($switchId), $value, $debug);
-						}
-					IPSHeat_AfterSwitch($switchId, $switchValue);
-					break;
-				case $modeId:
-                    //echo '  Set Heat/Light Mode '.$configName.' '.($switchValue?'On, Level='.$tempValue:'Off').'  '.GetValue($modeId)."\n";
-					IPSLogger_Inf(__file__, 'Set Heat/Light Mode '.$configName.' '.($switchValue?'On, Level='.$tempValue:'Off').' Mode '.GetValue($modeId).' to new '.$value);
 
-					//SetValue($modeId, $value);					// nicht den Stromheizung data Wert hier setzen, er wird erst mühsam vom wirklichen Gerät synchronisiert
-					if (IPSHeat_BeforeSwitch($switchId, $switchValue))			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich 
-						{
-						$component->SetMode(GetValue($switchId), $value);	// zweiten Parameter hier austauschen
-						}
-					IPSHeat_AfterSwitch($switchId, $switchValue);
-					break;
-				case $switchId:			
-					//echo "   IPSHeatManager:SetHeat für Schalter aufgerufen. Ändere von aktuell ".($switchValue?"Ein":"Aus")." auf ".($value?"Ein, Temp=".GetValue($tempId):"Aus").". Mode = ".GetValue($modeId)."\n";
-					IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($switchValue?'On, Temp='.GetValue($tempId):'Off').' Mode='.GetValue($modeId));
-					SetValue($switchId, $value);
-
-					if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich
-						{
-						$component->SetState(GetValue($switchId), GetValue($tempId));
-						}
-					IPSHeat_AfterSwitch($switchId, $switchValue);
-					break;
-				default:
-					break;	
-				}
-			if ($syncGroups)											// Gruppen und Programme synchronisieren immer alle Werte einer switchId 
-				{
-				$this->SynchronizeGroupsBySwitch($switchId);            // eine Änderung der Schalterstellung verändert den Status aller Gruppen die den Schalter beinhalten
-				}
-			if ($syncPrograms) 
-				{
-				$this->SynchronizeProgramsBySwitch ($switchId);
-				}
+                    }                
+                }
             if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit SetHeat '.$duration.' Millisekunden.'."\n"; }
 			}		// ende function
 
@@ -705,7 +795,7 @@
             }
 
 		// ----------------------------------------------------------------------------------------------------------------------------
-		private function GetConfigNameById($switchId) {
+		public function GetConfigNameById($switchId) {
 			$switchName = IPS_GetName($switchId);
 			$switchName = str_replace(IPSHEAT_DEVICE_COLOR,       '', $switchName);
 			$switchName = str_replace(IPSHEAT_DEVICE_LEVEL,       '', $switchName);

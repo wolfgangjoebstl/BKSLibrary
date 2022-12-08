@@ -167,19 +167,19 @@ class AutosteuerungHandler
             if (function_exists("Autosteuerung_Setup")) $configInput = Autosteuerung_Setup();
             else $configInput=array();
 
-            /* vernünftiges Logdirectory aufsetzen */    
+            // vernünftiges Logdirectory aufsetzen , copy from configInput to config     
             configfileParser($configInput, $config, ["LogDirectory" ],"LogDirectory" ,"/Autosteuerung/");  
             $dosOps = new dosOps();
             $systemDir     = $dosOps->getWorkDirectory(); 
             if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
             $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
-            configfileParser($configInput, $config, ["HeatControl" ],"HeatControl" ,null);  
-
-            $configInput=$config;
-            configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["EVENT_IPSHEAT","SwitchName" ],"SwitchName" ,null);  
-            configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Module" ],"Module" ,"IPSHeat");  
-            configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Type" ],"Type" ,"Switch");  
-            configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["AutoFill","Autofill","autofill","AUTOFILL" ],"AutoFill" ,"Aus");          //Default bedeutet Heizung Aus nach einem Update, ReInstall
+            configfileParser($configInput, $configHeatControl, ["HeatControl" ],"HeatControl" ,null);  
+            //print_R($configHeatControl);
+            configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["EVENT_IPSHEAT","SwitchName" ],"SwitchName" ,null);  
+            configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["Module" ],"Module" ,"IPSHeat");  
+            configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["Type" ],"Type" ,"Switch");  
+            configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["AutoFill","Autofill","autofill","AUTOFILL" ],"AutoFill" ,"Aus");          //Default bedeutet Heizung Aus nach einem Update, ReInstall
+            configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["setTemp","settemp","Settemp","SETTEMP","SetTemp" ],"setTemp" ,22);          //Default bedeutet Heizung Aus nach einem Update, ReInstall
             //print_r($config);
             return ($config);
             }
@@ -4433,7 +4433,7 @@ class Autosteuerung
                                         if (isset($MonitorModeConfig["Condition"]))
                                             {
                                             echo "Autosteuerung::ExecuteCommand, function Autosteuerung_MonitorMode existiert, aber auch Condition, nichts tun.\n";
-                            				IPSLogger_Not(__file__, 'Autosteuerung::ExecuteCommand, function Autosteuerung_MonitorMode existiert, aber auch Condition, nichts tun.');
+                            				//IPSLogger_Not(__file__, 'Autosteuerung::ExecuteCommand, function Autosteuerung_MonitorMode existiert, aber auch Condition, nichts tun.');     // zuviele Logs werden ausgegeben
                                             }
                                         else
                                             {
@@ -6851,7 +6851,7 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		}
 
 
-	}
+	}       // ende class
 
 
 

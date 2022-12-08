@@ -140,6 +140,7 @@
  ********************************/
 
 	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
+
 	echo "\nWebuser activated : ";
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 	if ($WFC10_Enabled)
@@ -298,29 +299,33 @@
 		echo "Modul OpenWeatherMap ist installiert.\n";
 		if (sizeof($OWDs)>1) echo "ACHTUNG: Zuviele OpenWeatherMap Instanzen sind installiert !\n";
 
-	    $categoryId_OpenWeather = CreateCategory('OpenWeather',   $CategoryIdData, 2000);
+	    $categoryId_OpenWeather = CreateCategory('OpenWeather',   $CategoryIdData, 2000);           // Kategorie in der data.modules.Startpage
 
+		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		$WFC10_OW_Path=	"Visualization.WebFront.Administrator.Weather.OpenWeather";									
-		$categoryId_OW_WebFront         = CreateCategoryPath($WFC10_OW_Path);
+		$categoryId_OW_WebFront         = CreateCategoryPath($WFC10_OW_Path);                       // Kategorie in der Visualization
 
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
 		$WFC10_OW_TabPaneItem="OpenWeatherTPA";$WFC10_OW_TabItem=""; $WFC10_OW_TabPaneParent="TPWeather"; $WFC10_OW_TabPaneOrder=100; $WFC10_OW_TabPaneName="OpenWeather"; $WFC10_OW_TabPaneIcon="Cloudy";
-		DeleteWFCItems($WFC10_ConfigId, $WFC10_OW_TabPaneItem.$WFC10_OW_TabItem);
+		$wfcHandling->DeleteWFCItems( $WFC10_OW_TabPaneItem.$WFC10_OW_TabItem);           // delete alle panes mit "OpenWeatherTPA"
+
+        /* früher von Weatherforecast angelegt: gibts nicht mehr : TabPaneItem=TPWeather, TabPaneParent=roottp, TabPaneName= , TabPaneOrder=10, TabPaneExclusive=false , TabPaneIcon=Cloud */
+        //$wfcHandling->CreateWFCItemCategory  ($WFC10_OW_TabPaneParent,   "roottp",   10 , "", "Cloud", $categoryId_AdminWebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+        $wfcHandling->DeleteWFCItems($WFC10_OW_TabPaneParent);
+        
 		//CreateWFCItemTabPane      ($WFC10_ConfigId, $WFC10_OW_TabPaneItem, $WFC10_OW_TabPaneParent,  $WFC10_OW_TabPaneOrder, $WFC10_OW_TabPaneName, $WFC10_OW_TabPaneIcon);
 		//CreateWFCItemExternalPage ($WFC10_ConfigId, $WFC10_TabPaneItem.$WFC10_TabItem, $WFC10_TabPaneItem, $WFC10_TabOrder, $WFC10_TabName, $WFC10_TabIcon, "user\/IPSWeatherForcastAT\/Weather.php", 'false' /*BarBottomVisible*/);
 		//CreateWFCItemCategory  ($WFC10_ConfigId, $WFC10_OW_TabPaneItem.$WFC10_OW_TabItem,   $WFC10_OW_TabPaneItem,   $WFC10_OW_TabPaneOrder, '', $WFC10_OW_TabPaneIcon, $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
-		CreateWFCItemCategory  ($WFC10_ConfigId, $WFC10_OW_TabPaneItem,   $WFC10_OW_TabPaneParent,   $WFC10_OW_TabPaneOrder, $WFC10_OW_TabPaneName, $WFC10_OW_TabPaneIcon, $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		
+        /* in TPWeather wieder das Pane OpenWeatherTPA anlegen */
+        $wfcHandling->CreateWFCItemCategory  ( $WFC10_OW_TabPaneItem,  "roottp" ,   $WFC10_OW_TabPaneOrder, "", $WFC10_OW_TabPaneIcon, $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 
 		EmptyCategory($categoryId_OW_WebFront);
-		IPS_SetHidden($categoryId_OW_WebFront, true); 		/* in der normalen Viz Darstellung verstecken */	
+		IPS_SetHidden($categoryId_OW_WebFront, true); 		/* alte Links ausräumen und in der normalen Viz Darstellung verstecken */	
 		//CreateLinkByDestination('Openweather', $categoryId_OpenWeather,    $categoryId_OW_WebFront,  10);
 
-		$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
-		//$modulhandling->printLibraries();
 		echo "\n";
-		$modulhandling->printModules('IPSymconOpenWeatherMap');	
-		$OWDs=$modulhandling->getInstances('OpenWeatherData');
-		echo "\n";
-		$i=1; $find="Zusammenfassung"; $gefunden=false;
+		$i=1; $find="Zusammenfassung"; $gefunden=false;                 // die letzte Variable die das Wort Zusammenfassung enthält übernehmen und einen Link in die neu zusammengeräumte Visualization Kategorie setzen
 		foreach ($OWDs as $OWD)
 			{
 			echo "Instanz $i: ".$OWD."   ".IPS_GetName($OWD)."\n";
@@ -391,6 +396,14 @@
         $variableIdZusammenfassungHtml   = CreateVariable("OpenWeatherZusammenfassung",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe frameborder="0" width="100%" height="530px" scrolling="yes" src="../user/Startpage/Startpage_Openweather.php" </iframe>', 'Graph');
         CreateLinkByDestination('Zusammenfassung', $variableIdZusammenfassungHtml,    $categoryId_OW_WebFront,  20);
 
+            //$wfc=$wfcHandling->read_wfc(1);
+            $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
+            foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+                {
+                echo "\n------$index:\n";
+                $wfcHandling->print_wfc($wfc[$index]);
+                } 
+            $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);
 		}
 
 	// ----------------------------------------------------------------------------------------------------------------------------

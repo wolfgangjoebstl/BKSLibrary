@@ -5,7 +5,7 @@
  * OperationCenter
  *
  * Allerlei betriebliche Abfragen und Wartungsmassnahmen
- *
+ * die Timer sind so gesetzt dass sie teilweise alle 10 Sekunden kommen können, auf Durchlaufzeiten achten
  *
  * RouterAufruftimer
  * RouterExectimer

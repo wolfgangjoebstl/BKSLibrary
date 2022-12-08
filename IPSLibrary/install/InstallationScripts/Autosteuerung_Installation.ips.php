@@ -593,7 +593,7 @@
                 $configuration = $kalender->get_Configuration();
                 //print_r($configuration); 
                 echo "      setAutoFill aufgerufen mit Defaultwert aus Konfiguration    ".$configuration["HeatControl"]["AutoFill"]." \n";        
-                $kalender->setAutoFill($configuration["HeatControl"]["AutoFill"],false,true);           // false kein Shift wenn selber Wertt wie bereits eingestellt, true for D>ebug
+                $kalender->setAutoFill($configuration["HeatControl"]["AutoFill"],false,true);           // false kein Shift wenn selber Wert wie bereits eingestellt, true for Debug
                 echo "      aktuell eingestelltes Profil: ".GetValueIfFormatted($oid)." (".GetValue($oid).")\n";
                 for ($i=-16;$i<0;$i++)
                     {
@@ -603,6 +603,8 @@
                 $kalender->UpdateLinks($kalender->getWochenplanID());                   /* Update Links für Administrator Webfront */
                 $kalender->UpdateLinks($kalender->getCategoryIdTab());		                            /* Upodate Links for Mobility Webfront */
 
+                $tempId=CreateVariable("AutoTemp",2, $inputWoche, 1010, '~Temperature.HM',$scriptIdHeatControl,null,'');         // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''   2..Float
+                SetValue($tempId,$configuration["HeatControl"]["setTemp"]);
 				$categoryId_Schaltbefehle = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Schaltbefehle, 0,'',null,'');
@@ -970,7 +972,7 @@
             /* Neue Tab für untergeordnete Anzeigen wie eben Autosteuerung und andere schaffen */
             echo "\nWebportal Administrator.Autosteuerung Datenstruktur installieren in: ".$configWF["Path"]." \n";
             $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]);
-            EmptyCategory($categoryId_WebFrontAdministrator);
+            $ipsOps->emptyCategory($categoryId_WebFrontAdministrator);
             /* in der normalen Viz Darstellung verstecken */
             IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
 

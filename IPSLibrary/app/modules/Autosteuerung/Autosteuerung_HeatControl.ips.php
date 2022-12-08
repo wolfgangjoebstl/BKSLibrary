@@ -62,8 +62,8 @@
                 print_R($log_ConfigFile);
                 echo "Aktivierte Funktionen (SetSwitches):\n";
                 $AutoSetSwitches = Autosteuerung_SetSwitches();
-                print_r($AutoSetSwitches);
-                $debug=true;
+                print_r($AutoSetSwitches); 
+                $debug=true;                        // es geht mit TimerEvent weiter, kein Break !!!
             case "TimerEvent":
                 $auto = new Autosteuerung();
                 $oid=$kalender->getAutoFillID();
@@ -88,12 +88,18 @@
 
                         if ($configuration["HeatControl"]["SwitchName"] != Null)
                             {
-                            $result = $auto->isitheatday(true);             // true für Debug
+                            $result = $auto->isitheatday($debug);             // true für Debug
                             $conf=array();
                             $conf["TYP"]=$configuration["HeatControl"]["Type"];
                             $conf["MODULE"]=$configuration["HeatControl"]["Module"];
                             $conf["NAME"]=$configuration["HeatControl"]["SwitchName"];
-                            $auto->switchByTypeModule($conf,$result,true);              // true für Debug
+                            $auto->switchByTypeModule($conf,$result,$debug);              // true für Debug
+                            if ($result)
+                                {
+                                $conf["NAME"]=$configuration["HeatControl"]["SwitchName"]."#Temp";
+                                $value = $configuration["HeatControl"]["setTemp"];
+                                $auto->switchByTypeModule($conf,$value,$debug);              // true für Debug
+                                }
                             //print_r($auto->getFunctions());
                             }
                         }
@@ -105,9 +111,8 @@
         }
     else
         {
+        echo "AutoSetSwitches \"Stromheizung\" nicht aktiviert. Siehe Autosteuerung Config.\n";            
         print_r($AutoSetSwitches);
-
-
         }
 /*********************************************************************************************/
 
