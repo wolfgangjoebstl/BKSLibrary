@@ -393,7 +393,7 @@ $cutter=true;
 	/*************************************************************************************************************
      * Links für Webfront identifizieren 
 	 *  Struktur [Tab] [Left, Right] [LINKID] ["NAME"]="Name"
-	 *  umgesetzt auf [AMIS,Homematic, HomematicIP etc] 
+	 *  umgesetzt auf [AMIS,Homematic,Register,Summe] und ein Tab für die Zusammenfassung
 	 *****************************************************************************************************************/
      
 	$webfront_links=array();
@@ -455,7 +455,7 @@ $cutter=true;
 
 		/*********************** Irgendein Register Zähler, wahrscheinlich von Remote Access uebermittelt */
 
-		if (strtoupper($meter["TYPE"])=="REGISTER")
+		if ( (strtoupper($meter["TYPE"])=="REGISTER") || (strtoupper($meter["TYPE"])=="DAILYREAD") || (strtoupper($meter["TYPE"])=="DAILYLPREAD") )
 			{
 			/* Variable ID selbst bestimmen */
 			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -478,12 +478,12 @@ $cutter=true;
 			SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
 			
             // Register
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;	
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;             	
+			$webfront_links["Register"][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
+            $webfront_links["Register"][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
+			$webfront_links["Register"][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
+            $webfront_links["Register"][$meter["NAME"]][$LeistungID]["PANE"]=true;	
+            $webfront_links["Register"][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
+            $webfront_links["Register"][$meter["NAME"]][$chartID]["PANE"]=false;             	
 			}	
 
 		/*********************** aus mehreren Werten eine Berechnung anstellen 
@@ -663,7 +663,8 @@ $cutter=true;
 			if ( isset($meter["STATUS"]) )
 				{
 				if (strtoupper($meter["STATUS"]) != "ACTIVE" ) SetValue($AmisReadMeterID,false);
-				}			
+				}	
+            $webfront_links["Control"]["Read Meter"][$AmisReadMeterID]["NAME"]="ReadAMISMeter";		            // Read Meter ist die Gruppe
 
             // AMIS, Gruppe meter NAME, Wirkenergie, Leistung, Andere Seite Zählervariablen			
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["NAME"]="Wirkenergie";
@@ -742,7 +743,7 @@ $cutter=true;
 
     echo "-----------------------------------------*\n";
 
-	$Meter=$Amis->writeEnergyRegistertoArray($MeterConfig);
+	$Meter=$Amis->writeEnergyRegistertoArray($MeterConfig,true);
 	SetValue($tableID,$Amis->writeEnergyRegisterTabletoString($Meter));
 
     echo "-----------------------------------------*\n";

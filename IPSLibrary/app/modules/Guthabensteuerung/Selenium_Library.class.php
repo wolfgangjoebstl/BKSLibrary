@@ -34,6 +34,11 @@
  *
  * SeleniumDrei sorgt für die individuellen States und SeleniumOperations für die Statemachine
  *
+ * Unterschiedliche herangehensweisen für function runAutomatic
+ *      YahooFin    ConsentWindow, click when avalable
+ *      LogWien     Logout, then Login
+ *      EVN         ConsentWindow, Logout, then Login
+ *
  */
 
 //namespace Facebook\WebDriver;
@@ -55,7 +60,9 @@ require_once(IPS_GetKernelDir().'scripts\vendor\autoload.php');
  * getConfiguration     konfiguration lesen
  * syncHandles
  * isTab
+ * readFailure
  * updateHandles
+ * analyseFailure
  * initHost
  * getHost
  * updateUrl
@@ -63,8 +70,14 @@ require_once(IPS_GetKernelDir().'scripts\vendor\autoload.php');
  * check Url
  * maximize
  * pressButtonIf
+ * pressSubmitIf
  * sendKeysToFormIf
  * getTextIf
+ * getInnerHtml
+ * analyseHtml
+ * DOMinnerHTML
+ * queryFilterHtml
+ * extractFilterHtml
  * getHtmlIf
  * quitHost
  *
@@ -382,6 +395,9 @@ class SeleniumHandler
      * wenn clickable/visible       elementToBeClickable
      * drückt er da darauf den Button
      * webDriver muss bereits angelegt sein 
+     *
+     * false wenn der Button nicht gefunden wird
+     * true wenn er gefunden wurde udn erfolgreich gedrückt ist und wenn es zweimal versucht wurde ....
      */
 
     function pressButtonIf($xpath,$debug=false)
@@ -429,6 +445,71 @@ class SeleniumHandler
 						}
 					}
                 //print_r($element);
+                }
+            }
+        return (false);            
+        }
+
+    /* diffizile Weise Elemente clickbar zu machen, es gibt nicht einfach einen Button sondern ein hinterlagertes script
+     * Beispiel 
+     */
+
+    function pressElementIf($xpath,$debug=false)
+        {        
+        //$element = $webDriver->findElement(WebDriverBy::xpath('/html/body/div[4]/div[2]/div/div/div[2]/div/div/button'));
+        if ($debug) echo "pressElementIf($xpath):\n";
+        //$result=$this->webDriver->findElements(WebDriverBy::xpath($xpath)); print_R($result);
+        $count=count(static::$webDriver->findElements(WebDriverBy::xpath($xpath)));                             // xpath finden oder 
+        if ( $count === 0) {
+            if ($debug) echo "   -->Element to Click not found.\n";
+            }
+        else
+            {
+            if ($count>1) if ($debug) echo "   -->check, found in total $count times.\n";                
+            $element = static::$webDriver->findElement(WebDriverBy::xpath($xpath));
+            //$action = new WebDriverActions(static::$webDriver);
+            if ($element) 
+                {
+                $action = static::$webDriver->action();
+                echo "Element gefunden.\n";
+                //$action->moveToElement($element)->perform();                                                        // mit hinbewegen ???
+                echo "hinbewegen erfolgreich\n";
+                $elements = static::$webDriver->findElements(WebDriverBy::xpath($xpath));
+                static::$webDriver->executeScript('arguments[0].click();',$elements);                               // muss array sein)
+                echo "draufgedrückt \n";
+                return (true);                      // erfolgreich wenn bis hierher
+                /*
+                $this->title[$this->index++]=static::$webDriver->getTitle();
+                $statusEnabled=$element->isEnabled();
+                $statusDisplayed=$element->isDisplayed();
+                if ($debug) echo "Element Status Enabled $statusEnabled Displayed $statusDisplayed\n";
+                if ($statusEnabled)
+					{
+					if ($statusDisplayed)
+						{
+                        //Only Click when it's clickable gonna works
+                        static::$webDriver->wait()->until(
+                            function () use ($element) 
+                                {
+                                try 
+                                    {
+                                    static::$webDriver->executeScript('console.log("clicking");');
+                                    echo "try click\n";
+                                    $element->click();
+                                    }
+                                catch (WebDriverException $e) 
+                                    {
+                                    return false;
+                                    }
+                                static::$webDriver->executeScript('console.log("clickable");');
+                                return true;
+                                }
+                            );
+						if ($debug) print "found xpath , waited and click Button\n";
+						return (true);                                          // nur hier erfolgreich
+						}
+					}
+                //print_r($element); */
                 }
             }
         return (false);            
@@ -783,12 +864,17 @@ class SeleniumHandler
  *      __construct
  *      getResultCategory
  *      setConfiguration
- *      getSymbolsfromConfig
+ *      getSymbolsfromConfig            aus dem Easycharts Configuration File, dem Orderbook die passenden Shortnames für yahoo finance herauslesen
+ *      updateSymbols
+ *      getIndexToSymbols 
  *      addIndexToSymbols
+ *
  *      getErgebnis
  *      parseResult
  *      writeResult
  *      getResult
+ *      getResultHistory
+ *      processResultHistory
  *
  *      runAutomatic
  *      pressConsentButtonIf
@@ -1041,7 +1127,7 @@ class SeleniumYahooFin extends SeleniumHandler
     
         $configGetV=array();
         $configGetV["manAggregate"]  = false;      // sonst tägliche Aggregation mit unerwartetem Ausgang
-        $configGetV["Interpolate"]   = $config["Interpolate"];
+        if (isset($config["Interpolate"])) $configGetV["Interpolate"]   = $config["Interpolate"];
         $parent = IPS_GetObjectIdByName($name,$categoryIdResult);         // kein Identifier, darf in einer Ebene nicht gleich sein
         $childrens = IPS_GetChildrenIDs($parent);
         foreach($childrens as $children)
@@ -1588,6 +1674,397 @@ class SeleniumLogWien extends SeleniumHandler
 
     }
 
+/* 
+ * Bei EVN NetzNÖ einloggen und die aktuellen Zählerstände auslesen
+ * RunAutomatic legt die einzelnen Schritte bis zur Auslesung des täglichen Stromzählerstandes fest
+ * das Ergebnis wird in RESULT gespeichert, eine Auswerteroutine ist aktuell nur extern, sollte aber inbound kommen
+ *
+ *  __construct
+ *  getResultCategory       
+ *  setConfiguration        default, wie im SeleniumHandler
+ *  writeEnergyValue        
+ *
+ *  runAutomatic            Aufruf der einzelnen Steps, Statemachine
+ *      getTextValidLoggedInIf
+ *      getTextValidLogInIf
+ *      enterLoginName
+ *      enterLoginPassword
+ *      enterSliderIf
+ *      clickImageIf
+ *      clickSMLinkIf
+ *      getEnergyValueIf
+ *
+ *
+ */
+
+class SeleniumEVN extends SeleniumHandler
+    {
+    private $configuration;                     //array mit Datensaetzen
+    protected $CategoryIdDataEVN;           // Kategrie als Speicherort
+    private $duetime,$retries;              //für retry timer
+    protected $debug;
+
+    /* Initialisierung der Register die für die Ablaufsteuerung zuständig sind
+     */
+    function __construct($debug=false)
+        {
+        $this->duetime=microtime(true);
+        $this->retries=0;
+        $this->debug=$debug;
+        parent::__construct();
+        $this->CategoryIdDataEVN = IPS_GetObjectIdByName("EVN",$this->CategoryIdData);        
+        }
+
+    function getResultCategory()
+        {
+        return($this->CategoryIdDataEVN);
+        }
+
+    /* im Handler vorhanden, muss überschreiben werden */
+
+    public function setConfiguration($configuration)
+        {
+        $this->configuration = $configuration;
+        }       
+
+    /* **check  Energiewert abspeichern und archivieren
+     *
+     */
+    function writeEnergyValue($value,$name="EnergyCounter")
+        {
+        $componentHandling = new ComponentHandling();           // um Logging mit Historisietrung (Archive) zu setzen
+        $categoryIdResult = $this->getResultCategory();
+        echo "Store the new values, Category LogWien RESULT $categoryIdResult.\n";
+    
+        /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
+        $oid = CreateVariableByName($categoryIdResult,$name,2,'kWh',"",1000);         // kein Identifier, darf in einer Ebene nicht gleich sein
+        $componentHandling->setLogging($oid);
+
+        //$value = "10.962";                            // nur der . wird zum Komma umgerechnet
+        $value = str_replace(",",".",$value);           // Beistrich auf . umrechnen
+        $wert=floatval($value);         // Komma wird nicht richtig interpretiert
+        //echo "Umgewandelt ist $value dann : $wert \n";
+        SetValue($oid,$wert);
+        return($wert);
+        }
+
+    /* parse result register
+     *
+     *
+     */
+    function parseResult($result)
+        {
+        $werte=array();
+        $werte=explode("\n",$result["Value"]);
+        foreach ($werte as $index => $wert)
+            {
+            $werte[$index]=explode(" ",$wert);
+            foreach ($werte[$index] as $column => $entries)
+                {
+                if ($column==0)  
+                    {
+                    $dateObj = DateTimeImmutable::createFromFormat("d.m.Y G:i",$werte[$index][$column]." ".$werte[$index][$column+1]);
+                    //var_dump($dateObj);
+                    if ($dateObj !== false)
+                        {
+                        $werte[$index]["TimeStamp"] = $dateObj->getTimestamp();
+                        //echo date("d.m.Y H:i:s",$werte[$index]["TimeStamp"])."\n";
+                        }
+                    }
+                if ($column==2)  
+                    {
+                    $value = str_replace(",",".",$werte[$index][$column]);
+                    if (is_numeric($value)) $werte[$index]["Value"] = (float)$value;
+                    }
+                }
+            }
+        return($werte);
+        }
+
+    function getKnownData($LeistungID)
+        {
+        $archiveOps = new archiveOps();             
+        $config=array();
+        //$config["DataType"]="Array";
+        $config["Aggregated"]=false;            // tägliche Werte, false geloggte Werte auslesen
+        $config["manAggregate"]=false;            // daily, weeklytägliche Werte, false geloggte Werte auslesen
+        $config["EventLog"]=false;      //kein EventLog analysieren
+        //$config["LogChange"]=["pos"=>0.5,"neg"=>0.5,"time"=>(3600*3)];          // 3 Stunden Intervall für Wetterbeobachtungen, in Prozent auf den Vorwert, rund 5 mBar
+        //$config["StartTime"]=strtotime("1.5.2022"); $config["EndTime"]=0;  
+        //echo "StartTime ".date("d.m.Y H:i:s",$config["StartTime"])." EndTime ".date("d.m.Y H:i:s",$config["EndTime"])." \n";
+        $werteArchived=$archiveOps->getValues($LeistungID,$config,2);                //1,2 für Debug
+        //print_r($werteArchived["Values"]);
+        $timeStampknown=array();
+        foreach ($werteArchived["Values"] as $wert) $timeStampknown[$wert["TimeStamp"]]=$wert["Value"];
+        echo "--------\n";  
+        return ($timeStampknown);
+        }
+
+    function filterNewData($werte,$timeStampknown)
+        {
+        $input=array();
+        $count=0;
+        foreach ($werte as $wert) 
+            {
+            
+            if (isset($wert["TimeStamp"]))          // da kommt noch mehr
+                {
+                if (isset($timeStampknown[$wert["TimeStamp"]])) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat bereits einen Eintrag, überspringen.\n";
+                else
+                    {
+                    $input[$count]["TimeStamp"] = $wert["TimeStamp"];
+                    $input[$count]["Value"] = $wert["Value"];
+                    $count++;
+                    }
+                }
+            }
+        return($input);
+        }
+
+
+
+   /* check Energiewert auslesen vorbereiten, OID holen
+     *
+     */
+    function getEnergyValueId($name="EnergyCounter")
+        {
+        $componentHandling = new ComponentHandling();           // um Logging zu setzen
+        $categoryIdResult = $this->getResultCategory();
+        $oid = IPS_GetObjectIdByName($name,$categoryIdResult);
+        return ($oid);
+        }
+
+
+    /*  Statemachine, der reihe nach EVN NetzNÖ Portal abfragen
+     *      (1) pres privacy button if its there 
+     check if not logged in
+     *      (2) prss LogOn Button
+     *      (3) enter log in name
+     *
+     *
+     *
+     */
+
+    public function runAutomatic($step=0)
+        {
+        echo "runAutomatic SeleniumEVN Step $step.\n";
+        switch ($step)
+            {
+            case 0:
+                echo "--------\n0: check if cookies button, if so press.\n";
+                $status = $this->checkCookiesButtonIf();
+                if ($status) echo "gefunden und gedrückt !\n";
+                break;
+            case 1:
+                echo "--------\n1: check wether already logged in.\n";
+                $result = $this->getTextValidLoggedInIf();
+                if ($result===false) return(["goto" => 3]);  
+                else echo "\nim nächsten Schritt ausloggen.\n";                 // neue Zeile, da noch textausgabe
+                break;
+            case 2:
+                echo "--------\n2: Try to press Abmelden.\n";  
+                $result = $this->goToLinkLogOutIf();                            // etwas schwierig, führt zu Fehlermeldung kann ncicht clicken
+                echo "Ergebnis $result \n";
+                break;
+            case 3:
+                echo "--------\n3: enter log in name wolfgangjoebstl, waltraudjoebstl etc..\n";
+                $result = $this->enterLoginName($this->configuration["Username"]);            
+                if ($result === false) 
+                    {
+                    echo "   --> failed\n";   
+                    //return("retry");                      // nicht abbrechen, vielleicht schon eingelogged                               
+                    }
+                break;
+            case 4:
+                echo "--------\n4: enter log in Password and press Button.\n";            
+                $this->duetime=microtime(true)+4;       // dieses delay wird erst im nächsten Schritt geprüft
+                $result = $this->enterLoginPassword($this->configuration["Password"]);            
+                if ($result === false) // kein Button gefunden oder nicht drückbar
+                    {
+                    echo "   --> failed\n";
+                    //return("retry");                
+                    }
+                break;
+            case 5:
+                echo "--------\n5: wait 4 seconds.\n";              
+                if ($this->debug) echo "continue to wait 4 seconds for first Window";            
+                if (microtime(true)<$this->duetime) 
+                    {
+                    if ($this->debug) echo "\n";
+                    return("retry");                
+                    }            
+                break;            
+            case 6:
+                echo "--------\n6: Goto Smart Meter Webportal, Press Link.\n";             
+                $result = $this->gotoWebportalLinkIf();
+                if ($result === false) 
+                    {
+                    echo "   --> failed, continue nevertheless\n";
+                    return("retry"); 
+                    }
+                break;   
+            case 7:
+                echo "--------\n7: Press Button to Detailed Data.\n";            
+                $result = $this->clickDetailedDataIf();
+                if ($result === false) 
+                    {
+                    echo "   --> failed, press slider again\n";
+                    return("retry");
+                    }
+                break; 
+            case 8:
+                echo "--------\n8: Read Energy Value.\n";             
+                $result = $this->getEnergyValueIf(true);                // true für Debug
+                if ($result===false) return (["goto" => 7]);
+                if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
+                return(["Ergebnis" => $result]);
+                break;            
+            case 9:
+                echo "--------\n9: Try to press Abmelden.\n";  
+                $result = $this->goToLinkLogOutIf();                            // etwas schwierig, führt zu Fehlermeldung kann nicht clicken
+                echo "Ergebnis Abmelden : $result \n";
+                if ($result==false)  return("retry");
+                else return (false);
+                break;  
+            default:
+                return (false);
+            }
+
+        }
+
+    /* check if there is a Cookie Button, if so press
+     * es reicht pressButtonIf($xpath
+     * /html/body/ngb-modal-window/div/div/app-cookie-consent-modal/div[2]/div/div/button[1]
+     * alternative Implementierung mit vorher fragen ob da
+     */
+
+    function checkCookiesButtonIf()
+        {
+        if ($this->debug) echo "CheckCookiesButtonIf ";
+        $xpath='/html/body/ngb-modal-window/div/div/app-cookie-consent-modal/div[2]/div/div/button[1]';
+        //return($this->pressButtonIf($xpath,true));
+        // alternativ mit Abfrage ob der Taster überhaupt da iost
+        $result = $this->getHtmlIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            //print $result;
+            $result = $this->pressButtonIf($xpath,true);                                                      // true debug  
+            } 
+        else echo "Button not pressed.\n";
+        return ($result);
+        }
+
+    /* get text , find out whether being logged in 
+     * if so skip login session
+     * /html/body/app-root/div/app-navbar/div/div/div[2]/div[2]
+     */
+    function getTextValidLoggedInIf()
+        {
+        if ($this->debug) echo "getTextValidLoggedInIf : ";
+        $xpath='/html/body/app-root/div/app-navbar/div/div/div[2]/div[2]';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            print $result;
+            }
+        return ($result);
+        }     
+
+    /* log out
+     * /html/body/app-root/div/app-navbar/div/div/div[2]/div[2]/a[1] 
+     */
+
+    function goToLinkLogOutIf()
+        {
+        if ($this->debug) echo "goToLinkLogOutIf : ";
+        $xpath='/html/body/app-root/div/app-navbar/div/div/div[2]/div[2]/a[1]';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)." : $result\n";
+            $this->pressElementIf($xpath,true);                                                      // true debug , there is catch but still error
+            //$this->pressButtonIf($xpath,true);
+            //$this->pressSubmitIf($xpath,true);                                                      // true debug , error 
+            }
+        return ($result);
+
+        }
+
+    /* login entry username , look for xpath with input
+     * /html/body/app-root/div/div/app-main/div/div[3]/div[1]/app-login/div/div/form/div[1]/label/input
+     * es muss kein Button gedrückt werden
+     * 
+     */
+    function enterLoginName($username)
+        {
+        $xpath = '/html/body/app-root/div/div/app-main/div/div[3]/div[1]/app-login/div/div/form/div[1]/label/input';              // extra Form username
+        $this->sendKeysToFormIf($xpath,$username);
+        /* press Button Weiter 
+         * /html/body/div/main/form/fieldset/section[3]/div[1]/button[1]
+         *
+        $xpath = '/html/body/div/main/form/fieldset/section[3]/div[1]/button[1]';
+        $this->pressButtonIf($xpath,true);         */ 
+        }
+
+    /* login entry password , look for xpath with input
+     * /html/body/app-root/div/div/app-main/div/div[3]/div[1]/app-login/div/div/form/div[2]/label/input
+     * then press button after password entry, look for button
+     * /html/body/app-root/div/div/app-main/div/div[3]/div[1]/app-login/div/div/form/button
+     * 
+     */
+    function enterLoginPassword($password)
+        {
+        $xpath = '/html/body/app-root/div/div/app-main/div/div[3]/div[1]/app-login/div/div/form/div[2]/label/input';              // extra Form password
+        $this->sendKeysToFormIf($xpath,$password);
+        // press Button Weiter 
+        $xpath = '/html/body/app-root/div/div/app-main/div/div[3]/div[1]/app-login/div/div/form/button';
+        return($this->pressButtonIf($xpath,true));          
+        }
+
+    /*
+     * /html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[1]
+     */
+    private function clickDetailedDataIf()
+        {
+        echo "clickDetailedDataIf aufgerufen : \n";
+        $xpath='/html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[1]';
+        $status=$this->pressElementIf($xpath);  
+        echo "Status $status \n";           
+        return ($status);                    
+        }
+
+    /* goto Smart meter App, Press Link for Webportal, look for a
+     * /html/body/app-root/div/div/app-main/div/div[2]/div[1]/div[1]/div[3]/a
+     * goto link
+     */
+
+    private function gotoWebportalLinkIf()
+        {
+        //$xpath='/html/body/app-root/div/div/app-main/div/div[2]/div[1]/div[1]/div[3]/a';
+        //$status=$this->pressButtonIf($xpath);             // der Link ist nicht clickable, führt zu einem Fehler, daher die Url aufrufen  
+        //return ($status);                    
+        $url='https://smartmeter.netz-noe.at/#/verbrauch';
+        return($this->updateUrl($url));
+        }
+
+    /* suche eine Tabelle in einem div
+     * /html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[2]/div
+     * /html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[2]/div/table
+     */
+
+    private function getEnergyValueIf($debug=false)
+        {
+        if ($this->debug) echo "getEnergyValueIf\n";
+        $xpath='/html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[2]/div';
+        $ergebnis = $this->getTextIf($xpath,$this->debug);    
+        if ((strlen($ergebnis))>3) return($ergebnis);
+        else echo "Fehler, keinen Vernünftigen Wert eingelesen: $ergebnis \n";
+        return (false);
+        }
+
+    }
 
 
 /* reading and Writing results to IP Symcon Registers 
@@ -1632,9 +2109,12 @@ class SeleniumDrei extends SeleniumHandler
      * SeleniumOperations calls this function
      *
      * die Startseite wird automatisch über die Url aufgerufen, wenn es noch keine Session gibt, wenn eine Session offen ist, wird dort weitergemacht
-     * (1) Aufruf Startseite www.drei.at
-     * (2) Logout wenn erforderlich
-     * (2) Privacy Button wegclicken
+     * Aufruf Startseite www.drei.at
+     * (0) start waiting 2 seconds
+     * (1) check if waiting time finished
+     * (2) Privacy Butto suchen und drücken, timeout 2 secs ist schon abgelaufen
+     * (3) Logout wenn erforderlich, timeout 4 secs
+     * 
      *
      */
 

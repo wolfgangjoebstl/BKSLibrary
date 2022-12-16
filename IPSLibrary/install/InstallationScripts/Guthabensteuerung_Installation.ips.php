@@ -182,10 +182,17 @@
         {
         // Es gibt Selenium Webdriver, die kann man wieder starten, so wie bei Guthaben StartSelenium,  CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,""
         $pname="SeleniumAktionen";                                         // keine Standardfunktion, da Inhalte Variable
-        $nameID=["Easy","YahooFin"];
+
+        $nameID=["Easy","YahooFin", "EVN"];
         createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
         $actionWebID          = CreateVariableByName($CategoryId_Mode,"StartAction", 1,$pname,"",1000,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
+        $pname="SeleniumGruppen";                                         // keine Standardfunktion, da Inhalte Variable
+        $nameID=["morning","lunchtime", "evening"];
+        createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
+        $actionGroupWebID          = CreateVariableByName($CategoryId_Mode,"StartGroupCall", 1,$pname,"",1010,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
         }
+
     if ($DoInstall)         // siehe weiter oben, lokaler Switch
         {
         /* die Simkartendaten in Archive und Guthaben speichern bzw aus dem Data dorthin verschieben */
@@ -344,29 +351,11 @@
 
 	echo "Guthabensteuerung ScriptID:".$GuthabensteuerungID."\n";
 
-	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $GuthabensteuerungID);
-	if ($tim1ID==false)
-		{
-		echo "Timer Aufruftimer erstellen.\n";
-		$tim1ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim1ID, $GuthabensteuerungID);
-		IPS_SetName($tim1ID, "Aufruftimer");
-		IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
-		IPS_SetEventCyclicTimeFrom($tim1ID,2,rand(1,59),0);  /* immer um 02:xx , nicht selbe Zeit damit keine Zugriffsverletzungen auf der Drei Homepage entstehen */
-		}
-	IPS_SetEventActive($tim1ID,true);
-
-	$tim3ID = @IPS_GetEventIDByName("EveningCallTimer", $GuthabensteuerungID);
-	if ($tim3ID==false)
-		{
-		echo "Timer EveningCallTimer erstellen.\n";
-		$tim3ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim3ID, $GuthabensteuerungID);
-		IPS_SetName($tim3ID, "EveningCallTimer");
-		IPS_SetEventCyclic($tim3ID,2,1,0,0,0,0);
-		IPS_SetEventCyclicTimeFrom($tim3ID,22,rand(1,59),0);  /* immer um 02:xx , nicht selbe Zeit damit keine Zugriffsverletzungen auf der jeweiligen Homepage durch Zugriffe von mehreren Servern entstehen */
-		}
-	IPS_SetEventActive($tim3ID,true);
+	$timer = new timerOps();
+    
+    $tim1ID   = $timer->CreateTimerHour("Aufruftimer",2,rand(1,59),$GuthabensteuerungID);
+    $tim12ID  = $timer->CreateTimerHour("Lunchtimer",13,rand(1,59),$GuthabensteuerungID);
+    $tim3ID   = $timer->CreateTimerHour("EveningCallTimer",22,rand(1,59),$GuthabensteuerungID);
 
 	/* Create Web Pages */
 
@@ -506,6 +495,11 @@
             $statusID           = IPS_GetObjectIdByName("StartAction",$CategoryId_Mode);
             $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StartAction";
             $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=200;
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+
+            $statusID           = IPS_GetObjectIdByName("StartGroupCall",$CategoryId_Mode);
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StartGroupCall";
+            $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=210;
             $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
             }
 

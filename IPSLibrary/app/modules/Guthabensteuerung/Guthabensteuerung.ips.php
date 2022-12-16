@@ -22,7 +22,8 @@
      *
      * soll das verbleibende Guthaben von SIM Karten herausfinden
      * unterschiedliche Strategien, Betriebsarten: Aufruf mit
-     *      iMacro
+     *
+     *      iMacro          leider nur mehr mittels Lizenzzahlung unterstützt, daher Fokus jetzt auf Selenium
      *      Selenium
      *
      * Dieses Script macht alle drei Anwendungsmöglichkeiten
@@ -30,9 +31,9 @@
      *      Webfront
      *      Execute
      *
-     * Der Timer wird immer um 22:16 und um 2:27 aufgerufen. Für die Erfassung der Drei Guthaben gibt es eine Verlängerungsmöglichkeit mit Aufruf alle 150 Sekunden
-     * Bei der Abendabfrage wird der Drei Host definitiv ausgeschlossen. Die Drei Guthabenabfrage funktioniert immer um 2:27.
-     * Am Abend wird nur $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"]... aufgerufen
+     * Der Timer wird um 2:27 aufgerufen und wird ausschliesslich für die Erfassung der Drei Guthaben verwendet. Es gibt es eine Verlängerungsmöglichkeit mit Aufruf alle 150 Sekunden
+     * Bei den anderen Abfrage (Morgen, Abend ...) wird der Drei Host definitiv ausgeschlossen. 
+     * Dann wird nur $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"]... aufgerufen
      * Zusätzlich gibt es einen Tasktimer, der nach dem Start alle 310 Sekundn aktiv wird
      *
      * Aktuell implementiert:  Drei, Easy, LogWien, YahooFin
@@ -53,6 +54,7 @@
 
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(100);                              // kein Abbruch vor dieser Zeit, funktioniert nicht für linux basierte Systeme
+
     $startexec=microtime(true);    
     //echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";         //keine Ausgabe da auch vom Webfront aufgerufen 
 
@@ -135,7 +137,7 @@
     $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     //$testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMacro,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $startActionID      = IPS_GetObjectIdByName("StartAction", $CategoryId_Mode);	
-
+    $startActionGroupID = IPS_GetObjectIdByName("StartGroupCall", $CategoryId_Mode);
 
     $ScriptCounterID      = CreateVariableByName($CategoryIdData,"ScriptCounter",1);                    // wir zählen die erfolgreichen Aufrufe von Timer2
     $checkScriptCounterID = CreateVariableByName($CategoryIdData,"checkScriptCounter",1);               // wir zählen alle Aufrufe von Timer2
@@ -151,6 +153,8 @@
 
     $tim1ID = IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
     if ($tim1ID==false) echo "Fehler Timer Aufruftimer nicht definiert.\n";
+    $tim12ID = IPS_GetEventIDByName("Lunchtimer", $_IPS['SELF']);
+    if ($tim12ID==false) echo "Fehler Timer Lunchtimer nicht definiert.\n";
     $tim3ID = @IPS_GetEventIDByName("EveningCallTimer", $GuthabensteuerungID);
     if ($tim3ID==false) echo "Fehler Timer EveningCallTimer nicht definiert.\n";
 
@@ -188,11 +192,11 @@
  *
  * mehrere TimerEvents. Zwei einmal am Tag (morgens und Abends) und das andere alle 150 Sekunden
  *
- * tim1 ist der Aufruftimer um 2:27 Uhr morgens. Setzt die beiden Counter Register zurück und startet den Ausführtimer tim2 zu starten
+ * tim1 ist der Aufruftimer um 2:27 Uhr morgens. Setzt die beiden Counter Register zurück und startet den Ausführtimer tim2 
  *
  * tim2 ist ausgelegt alle 150 Sekunden aufgerufen zu werden bis die Aufgabe erledigt ist
  *      ScriptCounter muss maxcount erreichen
- *      wenn der Scriptcounter nicht maxcount erreicht wird nach der doppelten Anzahl an versuchen abgebrochen, ein Eintrag ins Nachrichten log erstellt und der Timer deaktiviert
+ *      wenn der Scriptcounter nicht maxcount erreicht wird nach der doppelten Anzahl an Versuchen abgebrochen, ein Eintrag ins Nachrichten log erstellt und der Timer deaktiviert
  *      es wir für alle Rufnummern einzeln die Drei Guthaben abfrage gestartet, entweder als Selenium oder wenn noch funktioniert als imacro
  *      danach wird ParseDreiGuthaben aufgerufen
  *      und bei iMacro geprüft ob die ergebnisdateien jetzt da sind
@@ -208,6 +212,8 @@
  *
  *************************************************************/
 
+$configTabs = false;            // Vereinheitlichen mit einer gemeinsamen Variable
+
 if ($_IPS['SENDER']=="TimerEvent")
 	{
 	//IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
@@ -220,7 +226,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			SetValue($checkScriptCounterID,0);  // mit 0 wieder beginnen, neuer Tag neues Glück
 			SetValue($ScriptCounterID,0);       // mit 0 wieder beginnen, wenn die Abfrage fehlerhaft ist wird dieser Wert nicht inkrementiert    
 			break;
-		case $tim2ID:               // Exectimer alle 150 Sekunden wenn aktivivert
+		case $tim2ID:               // Exectimer alle 150 Sekunden wenn aktivivert, für DREI reserviert
 			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
 			$ScriptCounter=GetValue($ScriptCounterID);
 			$checkScriptCounter=GetValue($checkScriptCounterID);
@@ -259,7 +265,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                      case "SELENIUM":
                         $config["DREI"]["CONFIG"]["Username"]=$phoneID[$ScriptCounter]["Nummer"];          // von 0 bis maxcount-1 durchgehen
                         $config["DREI"]["CONFIG"]["Password"]=$phoneID[$ScriptCounter]["Password"];
-                        $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug      
+                        $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug    für DREI only  
                         $note="Selenium Abfrage war um ".date("d.m.Y H:i:s")." für ".$phoneID[($ScriptCounter)]["Nummer"]."($ScriptCounter/$maxcount,".exectime($startexec)." Sek)";
                         $log_Guthabensteuerung->LogNachrichten($note);
                         SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	                           
@@ -299,37 +305,29 @@ if ($_IPS['SENDER']=="TimerEvent")
 				IPS_SetEventActive($tim2ID,false);
 				}
 			break;
+		case $tim12ID:               // immer zu Mittag um 13:xx, heisst LunchTime
+            switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                {
+                case "SELENIUM":
+                    $configTabs = $guthabenHandler->getSeleniumHostsConfig("lunchtime");              // Filter lunchtime, immer klein geschrieben
+                    break;
+                }
+            break;
 		case $tim3ID:               // immer am späten Abend um 22:16, auch wenn er Evening heisst
             switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                 {
                 case "SELENIUM":
-                    $startexec=microtime(true);
                     $configTabs = $guthabenHandler->getSeleniumHostsConfig("evening");              // Filter evening
-                    unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
-                    $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
-                    echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
-                    echo "--------\n";
-                    $log_Guthabensteuerung->LogNachrichten("Automated Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden"); 
-                    // parse wird gemeinsam mit dem drei Guthaben aufgerufen, wenns nicht klappt gibts einen zweiten versuch um 4:55                     
                     break;
                 }
             break;
 		case $tim4ID:               // immer am frühen morgen um 4:55, macht das Selbe wie am Späten Abend
-            $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
             switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                 {
                 case "SELENIUM":
-                    $startexec=microtime(true);
                     $configTabs = $guthabenHandler->getSeleniumHostsConfig("morning");                              // Filter morning
-                    unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
-                    $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
-                    echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
-                    echo "--------\n";
-                    $log_Guthabensteuerung->LogNachrichten("Automated Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden");                      
                     break;
                 }
-            $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
-            IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
             break;
 		case $tim5ID:               // Tasktimer alle 310 Sekunden wenn aktiviert
             $log_Guthabensteuerung->LogNachrichten("Timer5 called from YahooFin.");  
@@ -391,9 +389,15 @@ if ($_IPS['SENDER']=="TimerEvent")
                         }
                     $yahoofin->writeResult($ergebnis,"TargetValue",true);           // echte YahooFin writeresult, sonst nur bei Webfront nur Standard
                     break;
+                case "morning":
+                case "lunchtime":
+                case "evening":
+                    $configTabs = $guthabenHandler->getSeleniumHostsConfig($reguestedAction);                              // Filter morning
+                    break;
                 default:
                     break;
                 }
+            $configTabs=false;        
             IPS_SetEventActive($tim5ID,false);
             break;      // Ende Timer5
 		default:                    // kein bekannter Timer
@@ -401,11 +405,29 @@ if ($_IPS['SENDER']=="TimerEvent")
 		}
 	}
 
+if ($configTabs)
+    {
+    $startexec=microtime(true);
+    unset($configTabs["Hosts"]["DREI"]);                                                // DREI ist nur default, daher löschen
+    $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
+    echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
+    echo "--------\n";
+    $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
+    IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
+    $log_Guthabensteuerung->LogNachrichten("Automated Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden"); 
+    }
+
+
 /******************************************************
+ *
+ *				Webfront
+ *
+ * es gibt verschiedene Taster die hier zusammengeführt werden.                
+ *
+ *
+ *************************************************************/
 
-				Webfront
-
-*************************************************************/
+$reguestedAction = false;               // Vereinheitlichung der Actions
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -498,20 +520,36 @@ if ($_IPS['SENDER']=="WebFront")
                 }       // end switch
             break;
         case $startActionID:
+            $reguestedAction=GetValueFormatted($startActionID);
+            break;
+        case $startActionGroupID:
+            $reguestedAction=GetValueFormatted($startActionGroupID);
+            break;
+        default:
+            echo "GuthabenSteuerung, unknown ActionID Variable : $variable";
+            break;
+        }            //end switch
+	}           // ende if
+
+
+    if ($reguestedAction)
+        {
             $startexec=microtime(true);
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
-            $reguestedAction=GetValueFormatted($startActionID);
             SetValue($ScriptTimerID,strtoupper($reguestedAction));
-
             switch (strtoupper($reguestedAction))
                 {
+                case "EVN":
                 case "EASY":
                 case "YAHOOFIN":
+                case "MORNING":
+                case "LUNCHTIME":
+                case "EVENING":
                     IPS_SetEventActive($tim5ID,true);
                     $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\" with Timer5 within next 310 Seconds");
                     break;
                 default:
-                    $log_Guthabensteuerung->LogNachrichten("Taste Action mit Wert ".GetValueFormatted($startActionID)." gedrückt. kenn ich nicht. Alles abfragen.");                
+                    $log_Guthabensteuerung->LogNachrichten("Taste Action mit Wert $reguestedAction gedrückt, kenn ich nicht. Alles abfragen.");                
                     unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen
                     $configTemp = $configTabs["Hosts"];
                     $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
@@ -562,13 +600,7 @@ if ($_IPS['SENDER']=="WebFront")
                 default:
                     break;                    
                 }   */
-
-            break;
-        default:
-            echo "GuthabenSteuerung, unknown ActionID Variable : $variable";
-            break;
-        }            //end switch
-	}           // ende if
+        }
 
 /******************************************************
 

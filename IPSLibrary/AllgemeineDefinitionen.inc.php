@@ -8572,7 +8572,7 @@ class fileOps
  *
  * timerOps
  *
- * Timer Routinen von OperationCenter übernommen
+ * Timer Routinen von class timerHandling OperationCenter übernommen
  * ohne fixe Zuordnung der scriptIDs
  * 
  * CreateTimerHour

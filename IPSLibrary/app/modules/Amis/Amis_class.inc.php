@@ -140,6 +140,11 @@
                         configfileParser($config,$result[$index],["WirkenergieID","WIRKENERGIEID","WirkenergieId","Oid","OID","oid"],"WirkenergieID",null);
                         if (isset($result[$index]["WirkenergieID"])===false) echo "Warning, OID must be provided for TYPE DAILYREAD.\n";
                         }
+                    if (strtoupper($result[$index]["TYPE"])=="DAILYLPREAD") 
+                        {
+                        configfileParser($config,$result[$index],["LeistungID","LEISTUNGID","LeistungId","Oid","OID","oid"],"LeistungID",null);
+                        if (isset($result[$index]["LeistungID"])===false) echo "Warning, OID Identifier must be provided for TYPE DAILYREAD.\n";
+                        }
                     if (strtoupper($result[$index]["TYPE"])=="SUMME") 
                         {
                         configfileParser($config,$result[$index],["Calculate","CALCULATE","calculate"],"Calculate",null);
@@ -158,8 +163,9 @@
             return ($this->MeterConfig);
             }
 
-        /* getWirkenergieID aus der Config
-         * in der AMIS data Kategorie gibt es pro meter["Name"] eine Variable, die Variable wird vorausgesetzt, false wennnicht
+        /* getWirkenergieID aus der Config entnehmen
+         *
+         * in der AMIS Data Kategorie gibt es pro meter["Name"] eine Variable, die Variable wird vorausgesetzt, false wennnicht
          * unter dieser Variable gibt es dann auch die Zusammenfassung Periodenwerte
          * die VariableID, also die Datenquelle wird durch die Configuration "WirkenergieID" festgelegt
          * wenn diese nicht vorhanden ist kann abhängig vom Meter "Type"  auch woanders gesucht werden.
@@ -174,7 +180,7 @@
             if (is_array($meter))
                 {
                 $ID = IPS_GetObjectIDByName($meter["NAME"], $this->CategoryIdData);  
-                echo "getWirkenergieID suche nach ".$meter["NAME"]." in ".$this->CategoryIdData."  found as $ID \n";               
+                if ($debug) echo "getWirkenergieID suche nach ".$meter["NAME"]." in ".$this->CategoryIdData."  found as category $ID \n";               
                 $variableID=false;
                 if ($ID)
                     {
@@ -196,6 +202,8 @@
                                 break;
                             case "HOMEMATIC":
                             case "REGISTER":
+                            case "DAILYREAD":
+                            case "DAILYLPREAD":
                             case "SUMME": 
                                 $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
                                 break;
@@ -1513,10 +1521,35 @@
 			return ($style.$outputTabelle);
 			}
 
-		function writeEnergyPeriodesTabletoString($Werte,$html=true,$kwh=true)			/* alle Werte als String ausgeben */
+        /* die einzige Funktion zum Darstellen der 1/7/30/360 Werte
+         * noch um brauchbare Funktionen erweitern, wie sortieren und zusätzliche Spalten, array als Config Item
+         * Erster Parameter Werte bestimmt den Inhalt, Wird mit writeEnergyRegistertoArray erzeugt:
+			$amis=new Amis();
+			$MeterConfig = get_MeterConfiguration();
+			$Meter=$amis->writeEnergyRegistertoArray($MeterConfig,false);         
+         *
+         * Aus Werte wird aktuell nur Name und periodenwerte verwendet
+         *
+         */
+
+		function writeEnergyPeriodesTabletoString($Werte,$config=true,$kwh=true)			/* alle Werte als String ausgeben */
 			{
-			/* Werte zwar uebernhemen, aber für Periodenwerte nicht wirklich notwendig */ 
-			
+			/* Werte zwar uebernehmen, aber für Periodenwerte nicht wirklich notwendig */ 
+
+            $sort="lastChanged";
+            $extend=false;			
+            if (is_array($config))            //Zusatzparameter übergeben
+                {
+                if ( (isset($config["Format"])) && ($config["Format"]=="html") ) $html=true;
+                else $html=false;
+                if ( (isset($config["Unit"])) && ($config["Unit"]=="kwh") ) $kwh=true;
+                else $kwh=false;
+                if (isset($config["Sort"]))  $sort=$config["Sort"];
+                if (isset($config["Extend"])) $extend=true;
+                echo " writeEnergyPeriodesTabletoString mit Config ".json_encode($config)." aufgerufen.\n";
+                }
+			else $html=$config;
+
 			if ($html==true) 
 				{
 				$style="<style> .zeile { font-family:Arial,'Courier New'; font-size: 0.8 em; white-space:pre-wrap;   }
@@ -1554,10 +1587,13 @@
 			 * keine automatische Erfassung des laengsten Eintrages 24,8,8,8,8,8
 			 */
 			$tabwidth=10; 			
-			$zeile0=$startcell."Periodenwerte           ".$endcell.$startcell."   1      ".$endcell
-														 .$endcell.$startcell."   7      ".$endcell
-														 .$endcell.$startcell."  30      ".$endcell
-														 .$endcell.$startcell." 360      ".$endcell;
+			$zeile0 =$startcell."Periodenwerte           ".$endcell;
+            if ($extend) $zeile0 .= $startcell." Type     ".$endcell;
+            $zeile0.=$startcell."   1      ".$endcell;
+			$zeile0.=$startcell."   7      ".$endcell;
+			$zeile0.=$startcell."  30      ".$endcell;
+			$zeile0.=$startcell." 360      ".$endcell;
+            if ($extend) $zeile0 .= $startcell." lastChanged    ".$endcell;                                                                     
 
 			/* ganze Tabelle zusammenbauen, Zähler fürZähler, Zeile 0 übernehmen */
 			
@@ -1571,25 +1607,44 @@
 				}	
 			$outputTabelle.=$startparagraph.$zeile0.$endparagraph;
 			echo "Gesamt Tabelle aufbauen, eine Zeile pro Zähler\n";
+
+            $display=array();
 			for ($line=0;$line<($metercount);$line++)
 				{
-				$outputTabelle.=$startparagraph.$startcell.substr($Werte[$line]["Information"]["NAME"]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
-					
 				$PeriodenwerteID = $Werte[$line]["Information"]["Periodenwerte"];
-				
+                $props = IPS_GetVariable($Werte[$line]["Information"]["Register-OID"]);
+                $display[$line]["lastChanged"] = $props["VariableUpdated"];         // VariableUpdated
+                $display[$line]["lastDay"]      = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzterTag',$PeriodenwerteID));
+				$display[$line]["lastWeek"]     = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte7Tage',$PeriodenwerteID));
+				$display[$line]["lastMonth"]    = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte30Tage',$PeriodenwerteID));
+				$display[$line]["lastYear"]     = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte360Tage',$PeriodenwerteID));
+				$display[$line]["lastDayEuro"]     = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzterTag',$PeriodenwerteID));
+				$display[$line]["lastWeekEuro"]    = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte7Tage',$PeriodenwerteID));
+				$display[$line]["lastMonthEuro"]   = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte30Tage',$PeriodenwerteID));
+				$display[$line]["lastYearEuro"]    = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte360Tage',$PeriodenwerteID));
+                $display[$line]["Information"]["NAME"] = $Werte[$line]["Information"]["NAME"];
+                $display[$line]["Information"]["Type"] = $Werte[$line]["Information"]["Type"];
+				}	
+            $this->ipsOps->intelliSort($display,$sort,SORT_DESC);
+
+			for ($line=0;$line<($metercount);$line++)
+				{
+				$outputTabelle.=$startparagraph.$startcell.substr($display[$line]["Information"]["NAME"]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
 				if ($kwh==true)
 					{
-					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzterTag',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
-					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte7Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
-					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte30Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
-					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte360Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+                    if ($extend) $outputTabelle.=$startcell.str_pad($display[$line]["Information"]["Type"],$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format($display[$line]["lastDay"], 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format($display[$line]["lastWeek"], 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format($display[$line]["lastMonth"], 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format($display[$line]["lastYear"], 2, ",", "" ),$tabwidth).$endcell;
+                    if ($extend) $outputTabelle.=$startcell.str_pad(date("d.m.Y H:i:s",$display[$line]["lastChanged"]),$tabwidth).$endcell;
 					}
 				else
 					{	
-					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzterTag',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
-					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte7Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
-					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte30Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
-					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte360Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format($display[$line]["lastDayEuro"], 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format($display[$line]["lastWeekEuro"], 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format($display[$line]["lastMonthEuro"], 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format($display[$line]["lastYearEuro"], 2, ",", "" ),$tabwidth).$endcell;
 					}
 					
 				$outputTabelle.=$endparagraph; 					
@@ -1703,18 +1758,24 @@
 		 * zweiteilige Funktionalitaet, erst die Energieregister samt Einzelwerten der letzten Tage einsammeln und
 		 * dann in einer zweiten Funktion die Ausgabe als html oder text machen.
 		 * Übergabe	der Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr erfolgt als Array.
+         * Das Array wird aus der MeterConfig erzeugt:  $MeterConfig = get_MeterConfiguration();
+         * die Parameter daraus werden genutzt: TYPE, OID,          
          *
          * die Ausgabe wird Zeilenweise mit index metercount geschrieben
+         *
+         * return Wert Wochentag, Datum, Energiewert, Information { Name, 
+         *    
+         * Aufruf erfolgt in AMIS_Installation     
          *
 		 */
 		
 		function writeEnergyRegistertoArray($MConfig,$debug=false)
 			{
-            // if ($debug) echo "writeEnergyRegistertoArray wurde aufgerufen. MeterConfig einzeln durchgehen und Messwerte für Tabelle ermitteln.\n";
+            if ($debug) echo "writeEnergyRegistertoArray wurde aufgerufen. MeterConfig einzeln durchgehen und Messwerte für Tabelle ermitteln.\n";
             $archiveOps = new archiveOps(); 
 			$zeile=array();
 			$metercount=0;
-			foreach ($MConfig as $meter)
+			foreach ($MConfig as $meter)            // alle Zähler entsprechend Config duchgehen
 				{
 				if ($debug)
 					{
@@ -1723,129 +1784,133 @@
 					}
 				$meterdataID = IPS_GetObjectIdByName($meter["NAME"],$this->CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
 				$EnergieID = $this->getWirkenergieID($meter);    // ID von Wirkenergie bestimmen 
-				switch ( strtoupper($meter["TYPE"]) )                   // Spezialbehandlung für Hoimematic register, RegID bestimmen
-					{	
-					case "HOMEMATIC":
-						if ( isset($meter["OID"]) == true )
-							{
-							$OID  = $meter["OID"];
-							$cids = IPS_GetChildrenIDs($OID);
-							if (sizeof($cids) == 0) 
-								{
-								$OID = IPS_GetParent($OID);
-								$cids = IPS_GetChildrenIDs($OID);
-								}
-							//echo "OID der passenden Homematic Register selbst bestimmen. Wir sind auf ".$OID." (".IPS_GetName($OID).")\n";
-							//print_r($cids);
-							foreach($cids as $cid)
-								{
-		      					$o = IPS_GetObject($cid);
-				      			if($o['ObjectIdent'] != "")
-				         			{
-		         					if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $RegID=$o['ObjectID']; }
-				        			}
-				    			}
-	      					//echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
-							}
-						else
-							{
-							$RegID  = $meter["HM_EnergieID"];
-							}
-						break;		
-					default:
-						$RegID=$EnergieID;
-						break;
-					}					
-					
-				/* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
-				$jetzt=time();
-                if (strtoupper($meter["TYPE"])=="DAILYREAD")        // der Energievorschub wird gespeichert, keine Zählregister, ausserdem 2 tage vom Datum hinten nach
+                if ($EnergieID === false) echo "Error, did not find WirkenergieID of ".json_encode($meter)." Add Type in getWirkenergieID. Ignore this Entry\n";
+                else
                     {
-                    $endtime=$jetzt;                // das ist nur ein Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst
-                    $vorigertag=0;
-                    $vorschub=true;
-                    }
-				else 
-                    {
-                    $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-    				$vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
-                    $vorschub=false;
-                    }
-				$starttime=$endtime-60*60*24*10;
-				//$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
-
-                // Alternative Auswertung
-                $config=array();
-                $config["StartTime"] = $starttime;   // 0 endtime ist now
-                $config["EndTime"]   = $endtime;
-                $valuesAnalysed = $archiveOps->getValues($EnergieID,$config,1);     // Analyse der Archivdaten
-                if (isset($valuesAnalysed["Values"]))
-                    {
-                    $werte=$valuesAnalysed["Values"];
-                    $result=$archiveOps->countperIntervalValues($werte,2);
-                    //print_R($result);
-                    //print_r($valuesAnalysed["Description"]);
-                    }
-                else $werte=false;
-                
-				if ($debug) 
-                    {
-                    echo "~~~~~~~~~~~~~~~~\n";
-                    if ($werte===false) echo "Warnung, keine Zeitreihe möglich.\n";
-                    elseif (is_array($werte)) echo "writeEnergyRegistertoArray, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." mit ".count($werte)." Eintraegen ermittelt, jetzt bearbeiten und speichern :\n";
-                    }
-                if ( ($werte===false) || (is_array($werte)===false) ) $werte=array();
-
-				$zeile[$metercount] = array(
-					"Wochentag" 	=> array($meter["NAME"]), 
-					"Datum" 		=> array("Datum"), 
-					"Energie" 		=> array("Energie"),
-					"Information" 	=> array(
-						"NAME" 			=> $meter["NAME"],
-						"OID"			=> $EnergieID,
-						"Register-OID"	=> $RegID,
-						"Parentname"	=> (IPS_GetName(IPS_GetParent($RegID))),
-						"Unit"			=> "kWh",
-						"Type"			=> strtoupper($meter["TYPE"]),
-						"Periodenwerte" => CreateVariableByName($meterdataID, "Periodenwerte", 3),
-											) 
-										);
-				$laufend=1; $alterWert=0; $initial=true; $count=0;
-				foreach($werte as $wert)            // hier die Tagesaggregation machen
-					{
-					$zeit=$wert['TimeStamp']-60;                // eine Minute in die Vergangenheit 00:00 ist 23:59
-					//echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
-					if (date("d.m.Y", $zeit)!=$vorigertag)          // aktueller Wert hat ein anderes Datum als der vorige Wert
-						{
-						$zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
-						$zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
-                        if ($initial) { $alterWert=$wert['Value']; $initial=false; }
-                        if (strtoupper($meter["TYPE"])=="DAILYREAD")        // Tageswechsel für Vorschubvariabel
-                            {
-                            $datumOfValues=date("d.m",strtoTime("-2 days", strtotime(date("d.m.Y 00:01",$zeit))));      // immer um 1:00 ist Target Time
-    						if ($debug) echo "  DailyRead Werte : ".$datumOfValues." ".nf($wert['Value'],"kWh")."      (".strtoupper($meter["TYPE"]).")\n";
-                            if (isset($zeile[$metercount]["EnergieVS"][$datumOfValues])===false) $zeile[$metercount]["EnergieVS"][$datumOfValues] = number_format($wert['Value'], 3, ",", "" );
-                            else echo "etwas tun.\n";
-                            }
-                        else
-                            {       // Tageswechsel für Zählervariabel
-                            $diff=abs($alterWert-$wert['Value']);
-    						if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".nf($wert['Value'],"kWh")."   ".nf($diff,"kWh")."         (".strtoupper($meter["TYPE"]).")    Wert bearbeitet $count\n";
-                            $zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
-                            if ($laufend>1) 
+                    switch ( strtoupper($meter["TYPE"]) )                   // Spezialbehandlung für Hoimematic register, RegID bestimmen
+                        {	
+                        case "HOMEMATIC":
+                            if ( isset($meter["OID"]) == true )
                                 {
-                                $zeile[$metercount]["EnergieVS"][$altesDatum] = number_format($diff, 2, ",", "" );
+                                $OID  = $meter["OID"];
+                                $cids = IPS_GetChildrenIDs($OID);
+                                if (sizeof($cids) == 0) 
+                                    {
+                                    $OID = IPS_GetParent($OID);
+                                    $cids = IPS_GetChildrenIDs($OID);
+                                    }
+                                //echo "OID der passenden Homematic Register selbst bestimmen. Wir sind auf ".$OID." (".IPS_GetName($OID).")\n";
+                                //print_r($cids);
+                                foreach($cids as $cid)
+                                    {
+                                    $o = IPS_GetObject($cid);
+                                    if($o['ObjectIdent'] != "")
+                                        {
+                                        if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $RegID=$o['ObjectID']; }
+                                        }
+                                    }
+                                //echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
                                 }
+                            else
+                                {
+                                $RegID  = $meter["HM_EnergieID"];
+                                }
+                            break;		
+                        default:
+                            $RegID=$EnergieID;
+                            break;
+                        }					
+                        
+                    /* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
+                    $jetzt=time();
+                    if (strtoupper($meter["TYPE"])=="DAILYREAD")        // der Energievorschub wird gespeichert, keine Zählregister, ausserdem 2 tage vom Datum hinten nach
+                        {
+                        $endtime=$jetzt;                // das ist nur ein Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst
+                        $vorigertag=0;
+                        $vorschub=true;
+                        }
+                    else 
+                        {
+                        $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+                        $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
+                        $vorschub=false;
+                        }
+                    $starttime=$endtime-60*60*24*10;
+                    //$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
+
+                    // Alternative Auswertung
+                    $config=array();
+                    $config["StartTime"] = $starttime;   // 0 endtime ist now
+                    $config["EndTime"]   = $endtime;
+                    $valuesAnalysed = $archiveOps->getValues($EnergieID,$config,1);     // Analyse der Archivdaten
+                    if (isset($valuesAnalysed["Values"]))
+                        {
+                        $werte=$valuesAnalysed["Values"];
+                        $result=$archiveOps->countperIntervalValues($werte,2);
+                        //print_R($result);
+                        //print_r($valuesAnalysed["Description"]);
+                        }
+                    else $werte=false;
+                    
+                    if ($debug) 
+                        {
+                        echo "~~~~~~~~~~~~~~~~\n";
+                        if ($werte===false) echo "Warnung, keine Zeitreihe möglich.\n";
+                        elseif (is_array($werte)) echo "writeEnergyRegistertoArray, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." mit ".count($werte)." Eintraegen ermittelt, jetzt bearbeiten und speichern :\n";
+                        }
+                    if ( ($werte===false) || (is_array($werte)===false) ) $werte=array();
+
+                    $zeile[$metercount] = array(
+                        "Wochentag" 	=> array($meter["NAME"]), 
+                        "Datum" 		=> array("Datum"), 
+                        "Energie" 		=> array("Energie"),
+                        "Information" 	=> array(
+                            "NAME" 			=> $meter["NAME"],
+                            "OID"			=> $EnergieID,
+                            "Register-OID"	=> $RegID,
+                            "Parentname"	=> (IPS_GetName(IPS_GetParent($RegID))),
+                            "Unit"			=> "kWh",
+                            "Type"			=> strtoupper($meter["TYPE"]),
+                            "Periodenwerte" => CreateVariableByName($meterdataID, "Periodenwerte", 3),
+                                                ) 
+                                            );
+                    $laufend=1; $alterWert=0; $initial=true; $count=0;
+                    foreach($werte as $wert)            // hier die Tagesaggregation machen
+                        {
+                        $zeit=$wert['TimeStamp']-60;                // eine Minute in die Vergangenheit 00:00 ist 23:59
+                        //echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
+                        if (date("d.m.Y", $zeit)!=$vorigertag)          // aktueller Wert hat ein anderes Datum als der vorige Wert
+                            {
+                            $zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
+                            $zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
+                            if ($initial) { $alterWert=$wert['Value']; $initial=false; }
+                            if (strtoupper($meter["TYPE"])=="DAILYREAD")        // Tageswechsel für Vorschubvariabel
+                                {
+                                $datumOfValues=date("d.m",strtoTime("-2 days", strtotime(date("d.m.Y 00:01",$zeit))));      // immer um 1:00 ist Target Time
+                                if ($debug) echo "  DailyRead Werte : ".$datumOfValues." ".nf($wert['Value'],"kWh")."      (".strtoupper($meter["TYPE"]).")\n";
+                                if (isset($zeile[$metercount]["EnergieVS"][$datumOfValues])===false) $zeile[$metercount]["EnergieVS"][$datumOfValues] = number_format($wert['Value'], 3, ",", "" );
+                                else echo "etwas tun.\n";
+                                }
+                            else
+                                {       // Tageswechsel für Zählervariabel
+                                $diff=abs($alterWert-$wert['Value']);
+                                if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".nf($wert['Value'],"kWh")."   ".nf($diff,"kWh")."         (".strtoupper($meter["TYPE"]).")    Wert bearbeitet $count\n";
+                                $zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
+                                if ($laufend>1) 
+                                    {
+                                    $zeile[$metercount]["EnergieVS"][$altesDatum] = number_format($diff, 2, ",", "" );
+                                    }
+                                }
+                            $alterWert=$wert['Value'];                            
+                            $altesDatum=date("d.m", $zeit);
+                            $laufend+=1;
+                            $count=0;
+                            //echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
                             }
-                        $alterWert=$wert['Value'];                            
-                        $altesDatum=date("d.m", $zeit);
-						$laufend+=1;
-                        $count=0;
-						//echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
-						}
-					$vorigertag=date("d.m.Y",$zeit);
-                    $count++;
-					}
+                        $vorigertag=date("d.m.Y",$zeit);
+                        $count++;
+                        }
+                    }
 				$metercount+=1;                                     //  nächste Zeile
 				} /* ende foreach Meter Entry */
 			

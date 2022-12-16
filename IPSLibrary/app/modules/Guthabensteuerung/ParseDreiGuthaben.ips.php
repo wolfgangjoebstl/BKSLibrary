@@ -1,6 +1,4 @@
 <?
-
-
 	/*
      * This file is part of the IPSLibrary.
      *
@@ -27,7 +25,7 @@
      * Selenium liest einzelne Datenobjekte aus, speichert diese in einer IP Symcon Variablen zur weiteren Auswertung
      * Diese Programm kann man für zeitversetzte Aufrufe aus dem Webfront ebenfalls verwenden
      *
-     * Bei Selenium wird diese Routine noch eingesetzt aber nicht mehr benötigt, der Aufruf der Funktionen zur Auflösung der Ergebnisse kann sofort erfolgen
+     * Bei Selenium wird diese Routine noch eingesetzt aber nicht mehr benötigt, der Aufruf der Funktionen zur Auflösung der Ergebnisse kann sofort erfolgen -> noch nicht implementiert !!!!
      * wird von Guthabensteuerung Timer früh am Morgen als Script nach der Abfrage der Drei Konten aufgerufen
      * 
      * Ergebnis für alle Hosts in der Konfiguration ermitteln, wenn nicht schon geschehen
@@ -104,6 +102,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
     echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
 
     $ipsOps = new ipsOps();    
+    $archiveOps = new archiveOps();  
 
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
@@ -313,6 +312,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                     {
                                     echo ", last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"]);                    
                                     echo "\n";
+                                    $log_Guthabensteuerung->LogNachrichten("Parse Drei Guthaben ".$entry["Nummer"]." from ".date("d.m.Y H:i:s",$entry["LastUpdated"]).".");  
                                     $result=GetValue($entry["OID"]);
                                     //echo "$result\n";
                                     $lines = explode("\n",$result);
@@ -487,6 +487,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             echo "Selenium Operations, readResult from EASY on $depot:\n";
                             $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
                             echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                            $log_Guthabensteuerung->LogNachrichten("Parse Eayschart Depot $depot Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
                             $lines = explode("\n",$result["Value"]);    
                             $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
                             $shares=$seleniumEasycharts->evaluateResult($data);
@@ -523,6 +524,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         $result=$seleniumOperations->readResult("LogWien","Result",true);                  // true Debug
                         //print_R($result);
                         echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        $log_Guthabensteuerung->LogNachrichten("Parse Log.Wien Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
                         echo "--------\n";
                         //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
                         $seleniumLogWien = new SeleniumLogWien();
@@ -533,9 +535,52 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         echo "parse YahooFin Ergebnis in Result.\n";
                         $result=$seleniumOperations->readResult("YAHOOFIN");                  // true Debug   , lest RESULT als Egebnis Variable, wenn zweite Variable ausgefüllt ist es das entsprechende register
                         echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                        $log_Guthabensteuerung->LogNachrichten("Parse YahooFin Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
                         $yahoofin = new SeleniumYahooFin();
                         $ergebnis = $yahoofin->parseResult($result);                        // eigentlich nur json_decode auf ein array
                         $yahoofin->writeResult($ergebnis,"TargetValue",true);
+                        break;
+                    case "EVN":
+                        echo "EVN ============\n";                    
+                        echo "parse EVN Ergebnis in Result.\n"; 
+                        $LeistungID = false;     
+                        if (isset($entry["CONFIG"]["ResultTarget"]))
+                            {
+                            if (isset($entry["CONFIG"]["ResultTarget"]["OID"])) $LeistungID = $entry["CONFIG"]["ResultTarget"]["OID"];
+                            }
+                        if ($LeistungID === false) 
+                            {
+                            if (isset($installedModules["Amis"])===false) echo "unknown Module.\n";
+                            else    
+                                {
+                                IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+                                IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');  
+                                $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+                                $moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */     
+                                $CategoryIdData     = $moduleManagerAmis->GetModuleCategoryID('data');
+                                $ID = CreateVariableByName($CategoryIdData, "Test-BKS01", 3);           // Name neue Variablen
+                                SetValue($ID,"nur testweise den EVN Smart Meter auslesen und speichern");
+                                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                                }
+                            }
+                        if ($LeistungID)
+                            {
+                            echo "Archivierte Werte erfassen, bearbeiten und speichern in $LeistungID:\n";
+                            $archiveID = $archiveOps->getArchiveID();        
+                            AC_SetLoggingStatus($archiveID,$LeistungID,true);           // eine geloggte Variable machen
+                            echo "Variable mit Archive ist hier : $LeistungID \n";
+                            $result=$seleniumOperations->readResult("EVN","Result",true); 
+                            echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                            $log_Guthabensteuerung->LogNachrichten("Parse EVN Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                            $evn = new SeleniumEVN();
+                            $werte = $evn->parseResult($result); 
+                            $knownTimeStamps = $evn->getKnownData($LeistungID);
+                            $input = $evn->filterNewData($werte,$knownTimeStamps);
+                            echo "Add Logged Values: ".count($input)."\n";
+                            $status=AC_AddLoggedValues($archiveID,$LeistungID,$input);
+                            echo "Erfolgreich : $status \n";
+                            AC_ReAggregateVariable($archiveID,$LeistungID);                    
+                            }
                         break;
                     default:
                         echo (strtoupper($host))."============\n";
