@@ -70,7 +70,6 @@
 	echo "StopIPSWatchDog hat die ScriptID  : ".$scriptIdStopWD." \n";
 	echo "Alive WatchDog hat die ScriptID   : ".$scriptIdAliveWD." \n";
 
-    $dosOps = new dosOps();
     $sysOps = new sysOps();
 
     $systemDir     = $dosOps->getWorkDirectory();       // systemdir festlegen, typisch auf Windows C:/Scripts/
@@ -120,7 +119,11 @@
 	
 	$tim2ID = @IPS_GetEventIDByName("KeepAlive", $scriptIdAliveWD);
 	$tim3ID = @IPS_GetEventIDByName("StartWD", $scriptIdStartWD);
-	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
+	//IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
+    $zeit=time()+60;
+    $stunde=intval(date("H",$zeit),10);             // integer dezimal enkodiern
+    $minute=intval(date("i",$zeit),10);    
+    IPS_SetEventCyclicTimeFrom($tim3ID,$stunde,$minute,0);  // (integer $EreignisID, integer $Stunde, integer $Minute, integer $Sekunde)
 
   	$tim6ID = @IPS_GetEventIDByName("MaintenanceWD", $scriptIdStartWD);         // einmal am Tag 4:12
 

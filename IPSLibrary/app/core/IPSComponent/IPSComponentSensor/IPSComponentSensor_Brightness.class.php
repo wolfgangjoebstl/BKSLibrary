@@ -560,7 +560,11 @@
                             IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
                             }
                         IPS_SetEventCyclic($EreignisID,0,1,0,0,1,$delaytime);      /* konfigurierbar, zB alle 30 Minuten, d.h. 30 Minuten kann man still sitzen bevor keine Bewegung mehr erkannt wird */
-                        IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+                        //IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+                        $zeit=time();
+                        $stunde=intval(date("H",$zeit),10);             // integer dezimal enkodiern
+                        $minute=intval(date("i",$zeit),10);    
+                        IPS_SetEventCyclicTimeFrom($EreignisID,$stunde,$minute,0);  // (integer $EreignisID, integer $Stunde, integer $Minute, integer $Sekunde)
                         IPS_SetEventScript($EreignisID,"if (GetValue(".$this->variable.")==false) { SetValue(".$this->variableDelayLogID.",false); IPS_SetEventActive(".$EreignisID.",false);} \n");
                         IPS_SetEventActive($EreignisID,true);
                         }

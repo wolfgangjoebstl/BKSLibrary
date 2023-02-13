@@ -7,8 +7,13 @@
 	 *
 	 * Script zur Berechnung der Periodenwerte von Energieregistern
      * es werden Werte von AMIS Zählern als auch von Homematic Energiemessungen verwendet.
+     * mittlerweile auch einfache Register und Werte aus einem Smart Meter Webportal
      * welche gibt die AMIS Config vor.
+     *
+     * diese Routine wird nur einmal am Tag um 1:45 aufgerufen, für einen 24 Stundenwert muss ein anderes Script verwendet werden
 	 *
+     * Smart Meter Webportalwerte haben keine Energieregister als Zähler sondern Einzelverbrauchs- oder Leistungsmittelwerte
+     * die Werte am Webportal stehen erst ab Mittag für den Vortag zur Verfügung. Aus Leistungsmittelwerten sind zusätzlich Tageswerte zu ermitteln
 	 *
 	 * @file      
 	 * @author        Wolfgang Joebstl
@@ -36,8 +41,8 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(100);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
 
-$display=false;       /* alle Eintraege auf der Console ausgeben */
-//$display=true;
+$display=false;         // true alle Eintraege auf der Console ausgeben 
+$execute=true;         // false keine on execute Berechnungen
 
 $Amis = new Amis();
 
@@ -82,13 +87,29 @@ foreach ($MeterConfig as $meter)
         $jetzt=time();
 
         $endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));     // mktime(hour,minute,second,month,day,year)
-        $starttime=$endtime-60*60*24*1;
-        echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-        echo "Variable: ".IPS_GetName($variableID)."     ($variableID)\n";
+
+        /* es werden Wirkenergie Werte berücksichtigt. Typ DailyLPRead hat nur Leistungswerte im 15 Min Intervall
+         */
 
         //$ergebnis=summestartende2($starttime, $endtime, true,false,$archiveHandlerID,$variableID,$display);
         //echo "Ergebnis (alt) Wert letzter Tag : ".$ergebnis."kWh \n";
-        $ergebnis=$Amis->summestartende($starttime, $endtime, true,false, $variableID,$display);
+       switch (strtoupper($meter["TYPE"]))
+            {
+            case "DAILYLPREAD":
+                echo "-----aggregate 15min Power Intervall data to Energy\n";
+                $Amis->aggregate15minPower2Energy($meter,true,true);           // true update values false no debug
+                echo "||----\n";
+            case "DAILYREAD":
+                $endtime=$endtime-60*60*24*1;               // Werte erst mit einem Tag Verzögerung erhalten, werden während eines Tages aus dem Smart Meter ausgelesen
+                break;
+            default:
+                break;
+            }
+        echo "summestartende aufrufen für einen Tag, 7 Tage, 30 Tage und 360 Tage. Startdatum ist ".date("d.m.Y H:i:s",$endtime)."\n";
+        $starttime=$endtime-60*60*24*1;
+        echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+        echo "Variable: ".IPS_GetName($variableID)."     ($variableID)\n";
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true,1, $variableID,2);            // statt true eigentlich 0,1,2
         echo "Ergebnis Wert     letzter Tag : ".number_format($ergebnis,3,",",".")."kWh \n";
         SetValue($letzterTagID,$ergebnis);
         SetValue($letzterTagEurID,$ergebnis*GetValue($KostenID));
@@ -96,31 +117,31 @@ foreach ($MeterConfig as $meter)
         $starttime=$endtime-60*60*24*7;
         //$ergebnis=summestartende2($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
         //echo "Ergebnis (alt) Wert letzte 7 Tage : ".$ergebnis."kWh \n";
-        $ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID, true);
-        echo "Ergebnis Wert letzte   7 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true, 7, $variableID, 2);
+        echo "Ergebnis Wert letzte   7 Tage : ".str_pad((number_format($ergebnis,3,",",".")." kWh"),20)."  ".nf($ergebnis/7,"kWh")." pro Tag \n";
         SetValue($letzte7TageID,$ergebnis);
         SetValue($letzte7TageEurID,$ergebnis*GetValue($KostenID));
 
         $starttime=$endtime-60*60*24*30;
         //$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
         //echo "Ergebnis (alt) Wert letzte 30 Tage : ".$ergebnis."kWh \n";
-        $ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID,$display);
-        echo "Ergebnis Wert letzte  30 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true, 30, $variableID,1);
+        echo "Ergebnis Wert letzte  30 Tage : ".str_pad((number_format($ergebnis,3,",",".")." kWh"),20)."  ".nf($ergebnis/30,"kWh")." pro Tag \n";
         SetValue($letzte30TageID,$ergebnis);
         SetValue($letzte30TageEurID,$ergebnis*GetValue($KostenID));
 
         $starttime=$endtime-60*60*24*360;
         //$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
         //echo "Ergebnis letzte 360 Tage von $starttime zu $endtime berechnen:\n";
-        $ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID,$display);
-        echo "Ergebnis Wert letzte 360 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
+        $ergebnis=$Amis->summestartende($starttime, $endtime, true, 360, $variableID,1);
+        echo "Ergebnis Wert letzte 360 Tage : ".str_pad((number_format($ergebnis,3,",",".")."kWh"),20)."  ".nf($ergebnis/360,"kWh")." pro Tag \n";
         SetValue($letzte360TageID,$ergebnis);
         SetValue($letzte360TageEurID,$ergebnis*GetValue($KostenID));
         }
     else echo "VariableID wurde nicht gefunden\n";
    	}
 
-if ($_IPS['SENDER'] == "Execute")
+if ( ($_IPS['SENDER'] == "Execute") && $execute)
 	{
 	echo "-------------------------------------------------------------------------------------------\n";
 	echo "        EXECUTE\n";
@@ -157,139 +178,8 @@ if ($_IPS['SENDER'] == "Execute")
         if ($variableID !== false)
             {
             echo "WirkenergieID $variableID (".$ipsOps->path($variableID).")\n";  	
-            $Amis->getArchiveData($variableID, $starttime, $endtime, "A");  
+            $Amis->getArchiveData($variableID, $starttime, $endtime, "A");                  // nur Ausgabe als echo, wenn überhaupt
             }
-
-        if (false)
-            {
-            $display=true;
-            $delete=false;          // damit werden geloggte Werte gelöscht
-
-            $initial=true;
-            $ergebnis=0;
-            $vorigertag="";
-            $disp_vorigertag="";
-            $neuwert=0;
-
-
-            $vorwert=0;
-            $zaehler=0;
-            //$variableID=44113;
-
-            echo "ArchiveHandler: ".$archiveHandlerID." Variable: $variableID (".$ipsOps->path($variableID).")\n";
-            echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-            
-            $increment=1;
-            //echo "Increment :".$increment."\n";
-            $gepldauer=($endtime-$starttime)/24/60/60;
-            do {
-                /* es könnten mehr als 10.000 Werte sein
-                    Abfrage generisch lassen
-                */
-
-                $werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
-                /* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
-                    Nicht mer als 10.000 Werte ...
-                */
-                //print_r($werte);
-                $anzahl=count($werte);
-                echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
-
-                if (($anzahl == 0) & ($zaehler == 0)) 
-                    {
-                    echo " Keine Werte archiviert. \n";
-                    break;
-                    }   // hartes Ende der Schleife wenn keine Werte vorhanden
-
-                if ($initial)
-                    {
-                    /* allererster Durchlauf */
-                    $ersterwert=$werte['0']['Value'];
-                    $ersterzeit=$werte['0']['TimeStamp'];
-                    }
-
-                if ($anzahl<10000)
-                    {
-                    /* letzter Durchlauf */
-                    $letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
-                    $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
-                    //echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
-                    //     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
-                    }
-
-                $initial=true;
-
-                foreach($werte as $wert)
-                    {
-                    $zeit=$wert['TimeStamp'];
-                    $tag=date("d.m.Y", $zeit);
-                    $aktwert=(float)$wert['Value'];
-
-                    if ($initial)
-                        {
-                        //print_r($wert);
-                        $initial=false;
-                        $vorwert=$aktwert;
-                        echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
-                        }
-                    $vorwertCalc=$vorwert;                    
-                    if (($aktwert>$vorwert) or ($aktwert==0) or ($aktwert<0))
-                        {
-                        if ($delete==true)
-                            {
-                            AC_DeleteVariableData($archiveHandlerID, $variableID, $zeit, $zeit);
-                            }
-                        echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe         : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-                        }
-                    else
-                        {
-                        $vorwert=$aktwert;
-                        }
-                    if ($tag!=$vorigertag)
-                        { /* neuer Tag */
-                        $altwert=$neuwert;
-                        $neuwert=$aktwert;
-                        switch ($increment)
-                            {
-                            case 1:
-                                    $ergebnis=$aktwert;
-                            break;
-                            case 2:
-                                if ($altwert<$neuwert)
-                                    {
-                                        $ergebnis+=($neuwert-$altwert);
-                                        }
-                                    else
-                                    {
-                                        //$ergebnis+=($altwert-$neuwert);
-                                        //$ergebnis=$aktwert;
-                                        }
-                                    break;
-                                case 0:
-                                    $ergebnis+=$aktwert;
-                            break;
-                            default:
-                            }
-                    $vorigertag=$tag;
-                    }
-
-                    if ($display==true)
-                        {
-                        /* jeden Eintrag ausgeben */
-                        //print_r($wert);
-                        if ($vorwertCalc != $aktwert)
-                            {
-                            echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."   ".number_format(($vorwertCalc-$aktwert)*4, 3, ".", "")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-                            }
-                        else echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."         ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-
-                        }
-                    $zaehler+=1;
-                    }
-                    
-                    //$endtime=$zeit;
-                } while (count($werte)==10000);
-            }    // ende if false
 	    }       // ende foreach
 
     // für spezielle Archive ausprobieren

@@ -934,7 +934,7 @@ class AutosteuerungOperator
 
 
     /*
-     * Im Configfile gibt es eine Möglichkeit den gewünschten  Status des Monitors (Ein/Aus) aus einer OR und AND Verknüpfung von Statuswerten zu ermitteln.
+     * Im Configfile gibt es eine Möglichkeit den gewünschten  Status des Monitors (Ein/Aus) aus einer OR und AND Verknüpfung von  Statuswerten zu ermitteln.
      * Das ist die schnellste Art Monitor Ein/Aus zu ermitteln. Wird im Autosteuerungs Handler alle 60 Sekunden aufgerufen.
      *
      *
@@ -3351,11 +3351,11 @@ class Autosteuerung
                     }
                 print_r($result);
                 break;	
-			case "ON#COLOR":
+			case "ON#COLOR":                    
 			case "ON#LEVEL":
-				$result["NAME_EXT"]=strtoupper(substr($befehl[0],strpos($befehl[0],"#"),10));
-				$name_ext="#".ucfirst(strtolower(strtoupper(substr($befehl[0],strpos($befehl[0],"#")+1,10))));
-				$ergebnis=$this->getIdByName($result["NAME"].$name_ext);
+				$result["NAME_EXT"]=strtoupper(substr($befehl[0],strpos($befehl[0],"#"),10));                               // Gemeinschaftsbefehl, hier nur aus dem Befehl rausfinden ob #COLOR oder #LEVEL den Aufruf verursacht hat und NAME_EXT so setzen
+				$name_ext="#".ucfirst(strtolower(strtoupper(substr($befehl[0],strpos($befehl[0],"#")+1,10))));              // Ein Color oder Level daraus machen und den Wert des Registers herausfinden
+				$ergebnis=$this->getIdByName($result["NAME"].$name_ext);                                                    // und auswerten
 				if (isset($ergebnis["ID"]))				
 					{
 					$switchId = $ergebnis["ID"];
@@ -3451,7 +3451,7 @@ class Autosteuerung
 				break;
 			case "OFF#COLOR":
 			case "OFF#LEVEL":
-				$result["NAME_EXT"]=strtoupper(substr($befehl[0],strpos("#",$befehl[0]),10));
+				$result["NAME_EXT"]=strtoupper(substr($befehl[0],strpos("#",$befehl[0]),10));                           // Gemeinschaftsbefehl, hier nur aus dem Befehl rausfinden ob #COLOR oder #LEVEL den Aufruf verursacht hat und NAME_EXT so setzen
 			case "OFF":
 				if ( ($result["STATUS"] == false) || ($result["SOURCE"] == "ONUPDATE") )
 					{			
@@ -3567,7 +3567,7 @@ class Autosteuerung
                 /* eigentlich gleiche Routine, egal ob ADD, CHG or SUB , interessant wäre der Wert Auto bei dem Tageszeitabhängig gesetzt wird */
                 echo "DIM#CHG erkannt. Weiter mit Bearbeitung:\n";
 				$result["DIM#CHG"]=(integer)$befehl[1];
-				$result["NAME_EXT"]="#LEVEL";
+				$result["NAME_EXT"]="#LEVEL";                                   // NAME_EXT manuell setzen, muss nicht Teil von Befehl name:  sein
 				$name_ext="#Level";
 				$ergebnis=$this->getIdByName($result["NAME"].$name_ext);        // wenn vorhanden gibt Routine ID, TYP und MODULE zurück
 				if (isset($ergebnis["ID"]))				
@@ -3581,7 +3581,7 @@ class Autosteuerung
                 break;    
 			case "DIM#ADD":			
 				$result["DIM#ADD"]=(integer)$befehl[1];             // DIM#ADD wird nicht weiter verwendet,alle Berechnungen gleich hier duchführen
-				$result["NAME_EXT"]="#LEVEL";
+				$result["NAME_EXT"]="#LEVEL";                                           // NAME_EXT manuell setzen, muss nicht Teil von Befehl name:  sein
 				$name_ext="#Level";
 				$ergebnis=$this->getIdByName($result["NAME"].$name_ext);
 				if (isset($ergebnis["ID"]))				
@@ -3594,7 +3594,7 @@ class Autosteuerung
 				break;					
 			case "DIM#SUB":			
 				$result["DIM#SUB"]=(integer)$befehl[1];
-				$result["NAME_EXT"]="#LEVEL";
+				$result["NAME_EXT"]="#LEVEL";                                       // NAME_EXT manuell setzen, muss nicht Teil von Befehl name:  sein
 				$name_ext="#Level";
 				$ergebnis=$this->getIdByName($result["NAME"].$name_ext);
 				if (isset($ergebnis["ID"]))				
@@ -3612,47 +3612,13 @@ class Autosteuerung
 				$result["ENVEL"]=(integer)$befehl[1];
 				break;
 			case "LEVEL":
-				$this->evalCom_LEVEL($befehl,$result);
+				$this->evalCom_LEVEL($befehl,$result);      // erzeugt result[LEVEL], Befehl vergleichbar mit ON#LEVEL:95, aber ohne ON, OFF Auswertung
 				break;
 			case "MONITOR":
-                $result["MODULE"]="Internal";
-				$monitor=strtoupper($befehl[1]);
-				if ($monitor=="STATUS")
-					{
-					if ($result["STATUS"]==true)
-						{
-						$result["MONITOR"]="ON";
-						}
-					else
-						{
-						$result["MONITOR"]="OFF";
-						}
-					}
-				else
-					{
-					$result["MONITOR"]=$monitor;
-					}
+				$this->evalCom_MONITOR($befehl,$result);    // erzeugt result[MONITOR]
 				break;
 			case "MUTE":
-                $result["MODULE"]="Internal";
-				$mute=strtoupper($befehl[1]);
-				if ($mute=="STATUS")
-					{
-					if ($result["STATUS"]==true)
-						{
-						$mute="ON";
-						$result["MUTE"]=$mute;
-						}
-					else
-						{
-						$mute="OFF";
-						$result["MUTE"]=$mute;
-						}
-					}
-				else
-					{
-					$result["MUTE"]=$mute;
-					}
+				$this->evalCom_MUTE($befehl,$result);    // erzeugt result[MUTE]
 				break;
 			case "IFOR":
             case "ORIF":	
@@ -4054,7 +4020,7 @@ class Autosteuerung
 
     /******************
      *
-     *
+     * Versuch den Parser übersichtlicher zu gstalten, es wird immer Befehl und result bearbeitet
      *
      **************************************/
 
@@ -4064,14 +4030,100 @@ class Autosteuerung
 		
 		}
 
+    /* Befehl MUTE
+     * MUTE:status, den Wert der übergeben wird als wert für $result[MUTE] übernehmen
+     * sonst den Wert schreiben, also MUTE:on
+     */
+
+   	private function evalCom_MUTE(&$befehl,&$result)
+		{
+        $result["MODULE"]="Internal";
+        $mute=strtoupper($befehl[1]);
+        if ($mute=="STATUS")
+            {
+            if ($result["STATUS"]==true)
+                {
+                $mute="ON";
+                $result["MUTE"]=$mute;
+                }
+            else
+                {
+                $mute="OFF";
+                $result["MUTE"]=$mute;
+                }
+            }
+        else
+            {
+            $result["MUTE"]=$mute;
+            }
+        }
+
+    /* Befehl MONITOR
+     * MONITOR:status, den Wert der übergeben wird als wert für $result[MONITOR] übernehmen
+     * sonst den Wert schreiben, also MONITOR:on
+     */
+
+   	private function evalCom_MONITOR(&$befehl,&$result)
+		{
+        $result["MODULE"]="Internal";
+        $monitor=strtoupper($befehl[1]);
+        if ($monitor=="STATUS")
+            {
+            if ($result["STATUS"]==true)
+                {
+                $result["MONITOR"]="ON";
+                }
+            else
+                {
+                $result["MONITOR"]="OFF";
+                }
+            }
+        else
+            {
+            $result["MONITOR"]=$monitor;
+            }
+        }
+
+    /* Befehl wurde bislang noch nicht für Autosteuerung verarbeitet, es geht um die Verarbeitung von Werten statt Statusinformationen
+     * Bei Alexa kommen die Werte rein und müssen dann weitergegeben werden, es wird result[LEVEL] gesetzt
+     * LEVEL:5 oder LEVEL:VALUE, 
+     * es gibt noch keine Konvertierung
+     */
+
 	private function evalCom_LEVEL(&$befehl,&$result)
 		{
 		$Befehl1=trim(strtoupper($befehl[1]));
+        echo "evalCom_LEVEL $Befehl1 \n";
 		switch ($Befehl1)
 			{
 			case "VALUE":
 				$result["LEVEL"]=(integer)$result["STATUS"];
 				break;
+            case "PPM":
+                echo "    PPM, Es wird der Wert \"".$result["STATUS"]."\" von ".$result["SOURCEID"]." übergeben.\n";
+                $value=$result["STATUS"];
+                $result["NAME_EXT"]="#COLOR";                                   // NAME_EXT manuell setzen, muss nicht Teil von Befehl name:  sein
+                $result["ON"]="TRUE";                                           // sonst wird nichts gemacht
+                if ($value<=1000) $color=$this->getColor("green");               // ppm Definition von Netatmo.CO2
+                if ($value>1000) $color=$this->getColor("yellow");
+                if ($value>1250) $color=$this->getColor("orange");
+                if ($value>1300) $color=$this->getColor("red");
+				$result["VALUE_ON"]=($color["red"]*256+$color["green"])*256+$color["blue"];
+                $result["LEVEL"]=(integer)$result["STATUS"];
+                break;
+            case "BRIGHTNESS":
+                echo "    BRIGHTNESS, Es wird der Wert \"".$result["STATUS"]."\" von ".$result["SOURCEID"]." übergeben.\n";  
+                $value=$result["STATUS"];
+                $result["NAME_EXT"]="#LEVEL";                                   // NAME_EXT manuell setzen, muss nicht Teil von Befehl name:  sein
+                $result["ON"]="TRUE";                                           // sonst wird nichts gemacht
+                if ($value<=5) $level=2;
+                if ($value>5) $level=5;
+                if ($value>10) $level=15;
+                if ($value>20) $level=40;
+                if ($value>25) $level=100;
+				$result["VALUE_ON"]=$level;
+                $result["LEVEL"]=(integer)$result["STATUS"];
+                break;         
 			default:
 				$result["LEVEL"]=(integer)$befehl[1];
 				break;
@@ -4144,10 +4196,27 @@ class Autosteuerung
 
 
 	/***************************************
-	 * of Autosteuerung
-	 *  HeatControl, Stromheizung erfordert Regelfunktionen, die können entweder auf Switch oder Level gehen. 
-	 *
-	 *  Derzeit Switch implementiert
+	 * ControlSwitchLevel of Autosteuerung
+	 * HeatControl, Stromheizung erfordert Regelfunktionen, die können entweder auf Switch oder Level gehen. 
+	 * übernimmt result und benötigt daraus zumindestens:
+     *      NAME
+     *      MODE        COOL oder default HEAT, setzt $ControlModeHeat
+     *      THRESHOLD   default 1, setzt $treshold
+     *      NOFROST     default 6, setzt $nofrost
+     *      SETPOINT    Sollwert $setTemp versucht $actTemp aus STATUS dort hin zu bringen, ohne diesen Wert keine regelfunktion
+     *      STATUS      aktuelle Temperatur
+     *      ON
+     *      OFF
+     *      VALUE
+     *      SWITCH      die IF Funktion, if:heatday, wenn true wird nach Sollwert geheizt, sonst nur nach Nofrost Steuerung/Absicherung
+     *
+     *
+	 *  Derzeit Switch implementiert.
+     *
+     *  Liefert Status der aktuellen Berechnungen und Überlegungen als Ergebnis in COMMENT, dieser String wird auch gelogged
+     *  Name, aktuelle gemessene Temperatur, Sollwert, Nofrost Wert, Threshold (geht nach unten), IF:OFF/ON als Zustand von SWITCH, Vnow ON/OFF als Zustand von VALUE, 
+     *  die Reglerfunktion zwischen |    |
+     *  und das Ergebinis mit neuem SWITCH, und den Wert von result[OFF]=false oder result[ON]=true
 	 *
 	 *******************************************************/
 
@@ -4155,8 +4224,9 @@ class Autosteuerung
 	public function ControlSwitchLevel(array &$result,$simulate=false, $debug=false)
 		{
 		/* Defaultwerte bestimmen, festlegen */
-		$ergebnis="";
-        if (isset($result["NAME"]) ) $ergebnis.=$result["NAME"]." ";  
+		$ergebnis=""; $ergebnisText=""; 
+        $comment=false;         // nur COMMENT setzen wenn dieser Schalter true ist, nicht alle Ausgaben im Log machen um die Übersichtlichkeit zu verbessern
+        if (isset($result["NAME"]) ) { $ergebnis.=$result["NAME"]." ";   $ergebnisText.=$result["NAME"]." ";  }
         $ergebnisLang="ControlSwitchLevel ";
 		$ControlModeHeat=true;	/* Regler fuer Heizen ist Default */
 		$threshold=1;
@@ -4181,6 +4251,7 @@ class Autosteuerung
 						
 			//IPSLogger_Dbg(__file__, 'Function ControlSwitchLevel Aufruf mit Wert: '.json_encode($result));
 			$ergebnis .= "T ".number_format($actTemp,2)." SP ".$setTemp." NF ".$nofrost." T ".$threshold." IF:".($result["SWITCH"]?"ON":"OFF")." Vnow:".($result["VALUE"]?"ON":"OFF");
+            $ergebnisText .= ", aktuelle Temperatur ".number_format($actTemp,2);
 			if (isset($result["ON"]) == true) $ergebnis .= " ON: ".$result["ON"];
 			if (isset($result["OFF"]) == true) $ergebnis .= " OFF ".$result["OFF"];
 			
@@ -4201,6 +4272,8 @@ class Autosteuerung
 							{
 							/* Ist Temperatur über Sollwert gestiegen und heizt noch, SWITCH ist true, es wird ausgeschaltet daher ist der Wert OFF false */
 							$ergebnis .=" |H1:T>SP| ";
+                            $ergebnisText .= "Heizung ausschalten, Temperatur größer als Solltemperatur $setTemp °C.";
+                            $comment=true;                            
 							$result["SWITCH"]=true;
 							unset($result["ON"]);
 							$result["OFF"]="FALSE";
@@ -4212,7 +4285,9 @@ class Autosteuerung
 						if ( $actTemp < ($setTemp-$treshold) ) 
 							{
                             /* Ist Temperatur unter (Sollwert-Threshold) gefallen und es wird nicht geheizt, SWITCH ist true, es wird eingeschaltet daher ist der Wert ON true */
-							$ergebnis .=" |H0:T<(SP-T)| ";							
+							$ergebnis .=" |H0:T<(SP-T)| ";
+                            $ergebnisText .= "Heizung einschalten, Temperatur um $threshold °C kleiner als Solltemperatur $setTemp °C.";
+                            $comment=true;                            							
 							$result["SWITCH"]=true;
 							unset($result["OFF"]);
 							$result["ON"]="TRUE";
@@ -4268,7 +4343,7 @@ class Autosteuerung
 			else	
 				{
                 /* keine Temperaturregelung aktiviert, zB durch Wochenprogramm, aber nofrost Funktion trotzdem machen 
-                 * es muss auch sichergestellt werden das eventuell noch eingeschaltte Heizkörper ausgeschaltet werden 
+                 * es muss auch sichergestellt werden das eventuell noch eingeschaltete Heizkörper ausgeschaltet werden 
                  */
 				if ($ControlModeHeat==true)
 					{                    
@@ -4279,6 +4354,8 @@ class Autosteuerung
 							{
 							/* Ist Temperatur über NOFROST gestiegen und heizt noch, SWITCH ist true, es wird ausgeschaltet daher ist der Wert OFF false */
 							$ergebnis .=" |H1:T>NF| ";
+                            $ergebnisText .= "Nofrost aktiv: Heizung ausschalten, Temperatur größer als Nofrost Temperatur $nofrost °C.";
+                            $comment=true;
 							$result["SWITCH"]=true;
 							unset($result["ON"]);
 							$result["OFF"]="FALSE";
@@ -4291,6 +4368,8 @@ class Autosteuerung
 							{
                             /* Ist Temperatur unter (NOFROST-Threshold) gefallen und es wird nicht geheizt, SWITCH ist true, es wird eingeschaltet daher ist der Wert ON true */
 							$ergebnis .=" |H0:T<(NF-T)| ";							
+                            $ergebnisText .= "Nofrost aktiv: Heizung einschalten, Temperatur um $threshold °C kleiner als Nofrost Temperatur $nofrost °C.";
+                            $comment=true;
 							$result["SWITCH"]=true;
 							unset($result["OFF"]);
 							$result["ON"]="TRUE";
@@ -4326,7 +4405,9 @@ class Autosteuerung
 			}		
 			
 		//echo $ergebnis."\n";
-		$result["COMMENT"]=$ergebnis;			
+		//$result["COMMENT"]=$ergebnis;	
+        if ($comment) $result["COMMENT"]=$ergebnisText;
+        else $result["COMMENT"]="";         // Länge größer 4 führt erst zu einer Anzeige 	
 		return ($result);	
 		}
 
@@ -7023,12 +7104,12 @@ function GutenMorgenWecker($params,$status,$variableID,$simulate=false,$wertOpt=
  *  Statusbefehle
  *
  *  egal ob bei einer variablenänderung oder bei einem Update werden verschiedene Befehle die im Parameterfeld stehen abgearbeitet
- *  Aufruf mit Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=false)
+ *  Aufruf mit Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$debug=false)
  *      params, die Konfiguration, der Befehl
  *      status, Wert des Events mit dem diese Routine aufgerufen wurde
  *      variableID, die ID der Variable die den Wert Status hält
  *      simulate, true wenn nur zu SImulationzwecken der Compiler geprüft wird
- *      wertOpt (neu), Zusatzparameter neben  Status, Zb Aufruf mit Status+Nolog oder Status+Nolog+Bounces
+ *      wertOptInput (neu), Zusatzparameter neben  Status, Zb Aufruf mit Status+Nolog oder Status+Nolog+Bounces
  *      debug, Zusatzinfos bei simulate oder wenn direkt aufgerufen wird
  *
  * 	in Autosteurung, Autosteuerung_GetEventConfiguration() steht die Konfiguration. Aufgrund einer Variablenänderung
@@ -7074,7 +7155,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$de
 	{
 	global $speak_config;
 
-    //if ($debug) echo "Aufruf status+$wertOpt\n";
+    if ($debug) echo "Aufruf status+$wertOptInput\n";
     $control=array();           // hier sind die Zusatzelemente gespeichert
 
     $auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
@@ -7364,14 +7445,17 @@ function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
 		echo "Ergebnis EvaluateCommand ".$entry." : ".json_encode($command[$entry])."\n";
 		$auto->ControlSwitchLevel($command[$entry],$simulate);	
 		
-		if ($simulate) echo $command[$entry]["COMMENT"]."\n";
-		else 
-			{
-			if (strlen($command[$entry]["COMMENT"])>4) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
-			if (strlen($command[$entry]["COMMENT"])>104) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],100));
-			}
-		//if (strlen($command[$entry]["COMMENT"])>4) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
-		//if (strlen($command[$entry]["COMMENT"])>140) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],140));	
+        if (isset($command[$entry]["COMMENT"]))         // wenn keine Schaltbefehler getätigt werden keinen Logeintrag machen, wird dadurch übrsichtlicher
+            {
+            if ($simulate) echo $command[$entry]["COMMENT"]."\n";
+            else 
+                {
+                if (strlen($command[$entry]["COMMENT"])>4) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
+                if (strlen($command[$entry]["COMMENT"])>104) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],100));
+                }
+            //if (strlen($command[$entry]["COMMENT"])>4) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
+            //if (strlen($command[$entry]["COMMENT"])>140) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],140));	
+            }
 
 		//$log_Autosteuerung->LogNachrichten('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').'.$result);
 					
@@ -7423,12 +7507,15 @@ function Alexa($params,$status,$request,$simulate=false,$wertOpt="")
 		echo "Ergebnis EvaluateCommand ".$entry." : ".json_encode($command[$entry])."\n";
 		$auto->ControlSwitchLevel($command[$entry],$simulate,$debug);	
 		
-		if ($simulate) echo "Bislang erhaltene Kommentare : ".$command[$entry]["COMMENT"]."\n";
-		else 
-			{
-			if (strlen($command[$entry]["COMMENT"])>4) $nachrichtenVent->LogNachrichten("Com: ".substr($command[$entry]["COMMENT"],0,100));
-			if (strlen($command[$entry]["COMMENT"])>104) $nachrichtenVent->LogNachrichten("Com: ".substr($command[$entry]["COMMENT"],100));
-			}
+        if (isset($command[$entry]["COMMENT"]))         // wenn keine Schaltbefehle getätigt werden keinen Logeintrag machen, wird dadurch übersichtlicher
+            {
+            if ($simulate) echo "Bislang erhaltene Kommentare : ".$command[$entry]["COMMENT"]."\n";
+            else 
+                {
+                if (strlen($command[$entry]["COMMENT"])>4) $nachrichtenVent->LogNachrichten("Com: ".substr($command[$entry]["COMMENT"],0,100));
+                if (strlen($command[$entry]["COMMENT"])>104) $nachrichtenVent->LogNachrichten("Com: ".substr($command[$entry]["COMMENT"],100));
+                }
+            }
 
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);          // für Alexa
 		

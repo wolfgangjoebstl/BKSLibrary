@@ -42,8 +42,11 @@
       *         eventLogEvaluate    extends statistics
       *         meansRollEvaluate   extends statistics
       *         maxminCalc          extends statistics
-      * chartOps                Chartdarstellung rund um die Highcharts Funktionen
-      * ipsOps
+      * App_Convert_XmlToArray
+      * ipsCharts               Chartdarstellung rund um die Highcharts Funktionen
+      * ipsTables               Darstellung von html basierten Tabellen
+      * chartOps                
+      * ipsOps                  Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
       * dosOps
       * sysOps
       * fileOps
@@ -236,8 +239,17 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                     $sysOps = new sysOps();
                     $result = $sysOps->getNiceFileSize($value);         // getNiceFileSize
                     break;
+                case "DATE":
+                    if (is_numeric($value)) $result = date("d.m.Y",$value);
+                    else $result = $value;
+                    break; 
+                case "USD":
+                case "EUR":
+                    $result = number_format($value, 2, ",",".")." $unit";           // wie unten, aber vielleicht kommt noch etwas
+                    break;
                 default:
                     if (gettype($value)=="boolean") $result = ($value?"true":"false"); 
+                    elseif (gettype($value)=="string") $result = $value;
                     else $result = number_format($value, 2, ",",".")." $unit";           // unit wahrscheinlich empty oder ein Wert den wir nicht kennnen
                     break;
                 }
@@ -2232,7 +2244,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
     /******************************************************
     *
-    * Summestartende,
+    * Summestartende, depreciated, has moved to amis and with similar function to ArchiveOps class
     *
     * Gemeinschaftsfunktion, fuer die manuelle Aggregation von historisierten Daten
     *
@@ -2241,7 +2253,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
     *
     * Routine scheiter bei Ende Sommerzeit, hier wird als Strtzeit -30 Tage eine Stunde zu wenig berechnet 
     *
-    ******************************************************************************************/
+    *****************************************************************************************
 
     function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
         {
@@ -2255,10 +2267,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
         $increment=(integer)$increment_var;
             
         do {
-            /* es könnten mehr als 10.000 Werte sein
-                Abfrage generisch lassen
-            */
-            
+            // es könnten mehr als 10.000 Werte sein,                 Abfrage generisch lassen
             // Eintraege für GetAggregated integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit
             $aggWerte = AC_GetAggregatedValues ( $archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
             $aggAnzahl=count($aggWerte);
@@ -2267,7 +2276,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
                 {
                 if (((time()-$entry["MinTime"])/60/60/24)>1) 
                     {
-                    /* keine halben Tage ausgeben */
+                    // keine halben Tage ausgeben 
                     $aktwert=(float)$entry["Avg"];
                     if ($display) echo "     ".date("D d.m.Y H:i:s",$entry["TimeStamp"])."      ".$aktwert."\n";
                     switch ($increment)
@@ -2276,7 +2285,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
                         case 2:
                             echo "*************Fehler.\n";
                             break;
-                        case 1:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+                        case 1:        // Statuswert, daher kompletten Bereich zusammenzählen 
                             $ergebnis+=$aktwert;
                             break;
                         default:
@@ -2296,7 +2305,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
         return $ergebnis;
         }
 
-    /* alte Funktion, als Referenz */
+    // alte Funktion, als Referenz
 
     function summestartende2($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
         {
@@ -2311,29 +2320,24 @@ function send_status($aktuell, $startexec=0, $debug=false)
         //echo "Increment :".$increment."\n";
         $gepldauer=($endtime-$starttime)/24/60/60;
         do {
-            /* es könnten mehr als 10.000 Werte sein
-                Abfrage generisch lassen
-            */
+            // es könnten mehr als 10.000 Werte sein,  Abfrage generisch lassen
             $werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
-            /* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
-                Nicht mer als 10.000 Werte ...
-            */
+            // Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten, nicht mer als 10.000 Werte ...
             //print_r($werte);
             $anzahl=count($werte);
             //echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
 
             if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
 
-            if ($initial)
+            if ($initial)           // allererster Durchlauf 
                 {
-                /* allererster Durchlauf */
                 $ersterwert=$werte['0']['Value'];
                 $ersterzeit=$werte['0']['TimeStamp'];
                 }
 
             if ($anzahl<10000)
                 {
-                /* letzter Durchlauf */
+                // letzter Durchlauf 
                 $letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
                 $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
                 //echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
@@ -2356,7 +2360,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
                 $aktwert=(float)$wert['Value'];
 
                 if ($tag!=$vorigertag)
-                    { /* neuer Tag */
+                    { // neuer Tag 
                     $altwert=$neuwert;
                     $neuwert=$aktwert;
                     switch ($increment)
@@ -2375,7 +2379,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
                                 //$ergebnis=$aktwert;
                                 }
                             break;
-                        case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+                        case 0:        // Statuswert, daher kompletten Bereich zusammenzählen 
                             $ergebnis+=$aktwert;
                             break;
                         default:
@@ -2384,13 +2388,13 @@ function send_status($aktuell, $startexec=0, $debug=false)
                     }
                 else
                     {
-                    /* neu eingeführt, Bei Statuswert muessen alle Werte agreggiert werden */
+                    // neu eingeführt, Bei Statuswert muessen alle Werte agreggiert werden 
                     switch ($increment)
                         {
                         case 1:
                         case 2:
                             break;
-                        case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+                        case 0:        // Statuswert, daher kompletten Bereich zusammenzählen
                             $ergebnis+=$aktwert;
                             break;
                     default:
@@ -2399,7 +2403,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
                 if ($display==true)
                     {
-                    /* jeden Eintrag ausgeben */
+                    // jeden Eintrag ausgeben 
                     //print_r($wert);
                     if ($gepldauer>100)
                         {
@@ -2448,7 +2452,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
         default:
         }
         return $ergebnis;
-        }
+        }           */
 
     /******************************************************************/
 
@@ -2981,13 +2985,28 @@ class archiveOps
         return($this->aggregationConfig["RecordCount"]);
         }
 
-    /* archiveOps, getStatus in einer lesbaren Zeile den Status aus der Archive Config einer Variable ausgeben */
+    /* archiveOps, getStatus in einer lesbaren Zeile den Status aus der Archive Config einer oder aller Variablen ausgeben 
+     */
 
     public function getStatus($oid=false)
         {
         if ($oid===false)
             {
-            $result = "Anzahl: ".$this->aggregationConfig["RecordCount"]." Erster Wert: ".date("d.m.Y H:i:s",$this->aggregationConfig["FirstTime"])." Letzter Wert: ".date("d.m.Y H:i:s",$this->aggregationConfig["LastTime"])."\n";
+            $noExist=0;
+            foreach ($this->aggregationConfig as $index => $config)
+                {
+                $oid = $config["VariableID"];
+                if (IPS_VariableExists($oid)) $name=IPS_GetName($oid);
+                else 
+                    {
+                    $name = "!does not exist";
+                    $noExist++;
+                    }
+                echo str_pad($index,6)."$oid $name \n";
+                }
+            $index++;
+            $result = "Archive: Insgesamt $index Einträge, davon haben $noExist Einträge keinen Objektnamen mehr.\n";                
+            //$result = "Anzahl: ".$this->aggregationConfig["RecordCount"]." Erster Wert: ".date("d.m.Y H:i:s",$this->aggregationConfig["FirstTime"])." Letzter Wert: ".date("d.m.Y H:i:s",$this->aggregationConfig["LastTime"])."\n";
             return ($result);
             }
         else
@@ -3103,20 +3122,21 @@ class archiveOps
         // einfache Routine
         //foreach ($werte as $wert) echo "   ".date ("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";     
 
-        // schönere Routine für echo Tabelle mit einem Wert, mit Avg oder Value      
+        // schönere Routine für echo Tabelle mit einem Wert, mit Avg oder Value, kein Defaultwert als Parameter, es wird eine Tabelle übergeben    
         if (is_array($werte))
             {
+            if ($debug) echo "showValues mit einem Array als Input aufgerufen:\n";
             $timeStamp2=false; $timeStamp1=false;
             foreach ($werte as $wert) 
                 {
-                if (isset($wert["Avg"]))
+                if (isset($wert["Avg"]))                // aggregierte Werte
                     {
                     //print_R($wert);
                     $timeStamp=$wert["TimeStamp"];
                     $value=$wert["Avg"];
                     echo "   ".date("d.m.Y H:i:s",$timeStamp)."   Avg ".str_pad($value,20)."  Min ".$wert["Min"]." ".date("d.m.Y H:i:s",$wert["MinTime"])."  Max".$wert["Max"]." ".date("d.m.Y H:i:s",$wert["MaxTime"])."   \n";   
                     }
-                else
+                else                                    // geloggte Werte
                     {
                     // Richtung bestimmen
                     $timeStamp=$wert["TimeStamp"];
@@ -3141,6 +3161,7 @@ class archiveOps
         //Darstellung des Result Speicher aus dem archive, das sind dann mehrere oids, synchronisiseren des Zeitstempels und eventuell anpassen erforderlich
         if ($werte===false)
             {
+            if ($debug) echo "showValues mit den intern gespeicherten Daten als Input aufgerufen:\n";                
             // tabelle schreiben timestamp oid value
             $oids=array();
             foreach ($this->result as $oid => $result) 
@@ -3263,6 +3284,53 @@ class archiveOps
             $resultShow["add"]=$valuesAdd;
             }
         return ($resultShow);
+        }
+
+    /* nach einem historischen Wert mit einem bestimmten Zeitstempel suchen
+     * die Werte am besten von showValues übernehmen, dann sind sie bereits bereinigt
+     *
+     */
+
+    function lookforValues($werte=false,$lookTimeStamp,$debug=false)
+        {
+        $tabelle=array();           // Ausgabe der Ergebnisse aus dem Speicher
+        if (is_array($werte))
+            {
+            foreach ($werte as $wert) 
+                {
+                if (isset($wert["TimeStamp"]))
+                    {
+                    //print_R($wert);
+                    $timeStamp=$wert["TimeStamp"];
+                    if ($lookTimeStamp===$timeStamp) return($wert);
+                    }
+                }
+            }
+        elseif ($werte===false)         //Darstellung des Result Speicher aus dem archive, das sind dann mehrere oids, synchronisiseren des Zeitstempels und eventuell anpassen erforderlich
+            {
+            // tabelle schreiben timestamp oid value
+            $oids=array();
+            foreach ($this->result as $oid => $result) 
+                {
+                //echo "Datenspeicher $oid ".IPS_getName($oid)."\n";            oid muss nicht immer einen Namen haben
+                echo "Datenspeicher $oid \n";
+                if (isset($oids[$oid])) $oids[$oid]++;
+                else $oids[$oid]=0;
+                foreach ($result as $function => $entries)    
+                    {
+                    if ($function=="Values")
+                        {
+                        //print_r($entries);
+                        foreach ($entries as $index => $entry) 
+                            {
+                            $timestamp=$entry["TimeStamp"];
+                            if ($lookTimeStamp===$timeStamp) $tabelle[$oid]=$entry;
+                            }   
+                        }
+                    }
+                }
+            }
+        return ($tabelle);
         }
 
     /* es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
@@ -3603,7 +3671,7 @@ class archiveOps
      *
      * Es können Konfigurationen anstelle des logs Parameter übergeben werden, Werden mit setConfiguration ermittelt und bearbeitet, Einstellmöglichkeiten siehe unten 
      *  
-     * Es gibt einen Umweg über Werte, dieses array wird zuerst erstellt und erst wenn die Vorbereitung fertig gestellt sind in this->result[oid][Values][]werte umgeschriebn
+     * Es gibt einen Umweg über Werte, dieses array wird zuerst erstellt und erst wenn die Vorbereitung fertig gestellt sind in this->result[oid][Values][]werte umgeschrieben
      * das führt zu einem höheren Speicherverbrauch. lässt sich aber nicht einfach umstellen
      *
      * Werte mit Archive haben möglicherweise keinen 0 Wert sondern die Dauer gibt an wann der Wert nicht mehr da ist. Es wird 0 angenommen und der Wert ergänzt.
@@ -3652,8 +3720,9 @@ class archiveOps
      * Über die $logs kann eine Konfiguration mitgegeben werden
      *
      *
-     *  DataType            Array
-     *  Aggregated          true, hourly, daily, weekly, monthly
+     *  DataType            Archive , Array
+     *  Aggregated          true, hourly, daily, weekly, monthly  nutzt eingebaute Funktion von IP Symcon, liefert Array Min, Max, Avg und Timestamp/Duration dazu
+     *  manAggregate        wenn Aggregated false werden die geloggten Werte ausgelesen und dann manuell Aggregiert, siehe getArchivedValues
      *  returnResult        wenn Wert ist DESCRIPTION dann nur den Index Description ausgeben
      *
      */
@@ -3698,7 +3767,7 @@ class archiveOps
             $aggreg=$this->configAggregated($config["Aggregated"]);         // convert String in Config to integer
             $werte   = @AC_GetAggregatedValues($this->archiveID, $oid, $aggreg, $config["StartTime"], $config["EndTime"], 0);             // 0 unlimited  
             $aggType = AC_GetAggregationType($this->archiveID, $oid);
-            if ($debug>1) echo "Aggregated is configured with ".$config["Aggregated"]." converted to $aggreg. Aggregation Type ist $aggType\n";
+            if ($debug>1) echo "    Aggregated is configured with ".$config["Aggregated"]." converted to $aggreg. Aggregation Type ist $aggType\n";
             }
         if ($werte === false)             
             {
@@ -3709,13 +3778,15 @@ class archiveOps
             {
             if ($debug>2) 
                 {
-                echo "   getValues extended debug: $debug\n";
+                echo "    getValues extended debug: $debug\n";
                 //print_r($werte);
                 if (is_array($werte))
                     {
-                    if  ($config["DataType"]=="Array") echo "Historie:\n";
-                    else echo "Historie des Wertes $oid (".IPS_GetName($oid).") mit aktuellem Wert ".GetValue($oid)." Anzahl  ".count($werte)."  ".($config["Aggregated"]?"Aggregated":"Logged")."\n";
+                    if  ($config["DataType"]=="Array") echo "    --> Historie:\n";
+                    else echo "    --> Historie des Wertes $oid (".IPS_GetName($oid).") mit aktuellem Wert ".GetValue($oid)." Anzahl  ".count($werte)."  ".($config["Aggregated"]?"Aggregated":"Logged")."\n";
                     $this->showValues($werte);
+                    print_r($werte);
+                    echo "    <--\n";
                     }
                 }
             elseif ($debug>1)  echo "    getValues normal debug\n";
@@ -4402,6 +4473,7 @@ class archiveOps
         
         if ($debug>1) echo"    Search for doubles based on TimeStamp, ignore false values:\n";     // dazu neues array result anlegen mit Index Timestamp
         $check=array();
+        unset ($this->result[$oid]);                        //cleanup, alte Werte sollen nicht bestehen bleiben
         $i=0; $d=0; $displayMax=20; $debug2=false;
         foreach ($werte as $indexArchive => $wert)
             {
@@ -4708,126 +4780,126 @@ class archiveOps
  *
  */
 
-    class statistics
+class statistics
+    {
+
+    protected $config;
+
+    /* einheitliche Konfiguration mit Variablen für die Nutzung in den Statistikfunktionen
+        *      EventLog            true
+        *      DataType            Archive, Aggregated, Logged
+        *          Aggregated      true if dataType is Aggregated, werte false,0,1,2,
+        *      manAggregate        Aggregate, 
+        *                          Format
+        *      KIfeature           none, besondere Auswertungen machen
+        *      Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
+        *      OIdtoStore          eine ander OID verwenden als die echte OID
+        *      returnResult
+        *
+        *      suppresszero
+        *      maxDistance
+        *
+        *      StartTime 
+        *      EndTime
+        *      LogChange
+        *
+        */
+
+    public function setConfiguration($logs,$debug=false)
         {
 
-        protected $config;
+        /* Wertebereich festlegen */
+        $config = array();
 
-        /* einheitliche Konfiguration mit Variablen für die Nutzung in den Statistikfunktionen
-         *      EventLog            true
-         *      DataType            Archive, Aggregated, Logged
-         *          Aggregated      true if dataType is Aggregated, werte false,0,1,2,
-         *      manAggregated       Aggregate, 
-         *                          Format
-         *      KIfeature           none, besondere Auswertungen machen
-         *      Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
-         *      OIdtoStore          eine ander OID verwenden als die echte OID
-         *      returnResult
-         *
-         *      suppresszero
-         *      maxDistance
-         *
-         *      StartTime 
-         *      EndTime
-         *      LogChange
-         *
-         */
+        if (is_array($logs)) { $logInput = $logs; $logs=0; }
+        else $logInput=array();
 
-        public function setConfiguration($logs,$debug=false)
+        // parse configuration, logInput ist der Input und config der angepasste Output
+        configfileParser($logInput, $config, ["EVENTLOG","EventLog","eventLog" ],"EventLog" ,true); 
+        configfileParser($logInput, $config, ["DataType","DATATYPE","datatype" ],"DataType" ,"Archive");
+        if ($config["DataType"] == "Logged") $config["Aggregated"]=false;
+        else configfileParser($logInput, $config, ["Aggregated","AGGREGATED","aggregated" ],"Aggregated" ,false); 
+
+        configFileParser($logInput, $config1, ["manAggregate","MANAGGREGATE","managgregate"],"manAggregate",false);         // false, anderer Wert default daily , array [aggregate=daily,format=>standard]
+        if (is_array($config1["manAggregate"]))
+            { 
+            configFileParser($config1["manAggregate"], $config["manAggregate"], ["Aggregate","aggregate","AGGREGATE"],"Aggregate","daily");
+            configFileParser($config1["manAggregate"], $config["manAggregate"], ["Format","format","FORMAT"],"Format","standard");
+            }
+        else $config["manAggregate"] = $config1["manAggregate"];
+
+        configfileParser($logInput, $config, ["KIFeature","KIFEATURE","kifeature","KIfeature" ],"KIfeature" ,"none");
+        configfileParser($logInput, $config, ["Split","SPLIT","split"],"Split" ,null);
+        configfileParser($logInput, $config, ["OIdtoStore","OIDTOSTORE","oidtostore"],"OIdtoStore",null);
+
+        configFileParser($logInput, $config, ["returnResult","RETURNRESULT","returnresult","ReturnResult"],"returnResult",false);   // Description
+
+        configfileParser($logInput, $config, ["SuppressZero","SUPPRESSZERO","suppresszero"],"SuppressZero" ,true);
+        configFileParser($logInput, $config, ["maxDistance","MAXDISTANCE","maxdistance"],"maxDistance",false);         // default no check for gaps any longer, just warning
+        configFileParser($logInput, $config, ["interpolate","INTERPOLATE","Interpolate"],"Interpolate",false);                                          // Interpolate false, daily, 
+        configFileParser($logInput, $config, ["deleteSourceOnError","DELETESOURCEONERROR","deletesourceonerror"],"deleteSourceOnError",false);              // true in werte unset machen wenn fehler
+
+        configfileParser($logInput, $config, ["STARTTIME","StartTime","startTime","starttime" ],"StartTime" ,0);
+        configfileParser($logInput, $config, ["ENDTIME","EndTime","endTime","endtime" ],"EndTime" ,0);
+        configfileParser($logInput, $config, ["LOGCHANGE","LogChange","logChange","logchange" ],"LogChange" ,["pos"=>5,"neg"=>5]);      // in Prozent auf den Vorwert
+
+        if ($logs>1) 
             {
-
-            /* Wertebereich festlegen */
-            $config = array();
-
-            if (is_array($logs)) { $logInput = $logs; $logs=0; }
-            else $logInput=array();
-
-            // parse configuration, logInput ist der Input und config der angepasste Output
-            configfileParser($logInput, $config, ["EVENTLOG","EventLog","eventLog" ],"EventLog" ,true); 
-            configfileParser($logInput, $config, ["DataType","DATATYPE","datatype" ],"DataType" ,"Archive");
-            if ($config["DataType"] == "Logged") $config["Aggregated"]=false;
-            else configfileParser($logInput, $config, ["Aggregated","AGGREGATED","aggregated" ],"Aggregated" ,false); 
-
-            configFileParser($logInput, $config1, ["manAggregate","MANAGGREGATE","managgregate"],"manAggregate",false);         // false, anderer Wert default daily , array [aggregate=daily,format=>standard]
-            if (is_array($config1["manAggregate"]))
-                { 
-                configFileParser($config1["manAggregate"], $config["manAggregate"], ["Aggregate","aggregate","AGGREGATE"],"Aggregate","daily");
-                configFileParser($config1["manAggregate"], $config["manAggregate"], ["Format","format","FORMAT"],"Format","standard");
-                }
-            else $config["manAggregate"] = $config1["manAggregate"];
-
-            configfileParser($logInput, $config, ["KIFeature","KIFEATURE","kifeature","KIfeature" ],"KIfeature" ,"none");
-            configfileParser($logInput, $config, ["Split","SPLIT","split"],"Split" ,null);
-            configfileParser($logInput, $config, ["OIdtoStore","OIDTOSTORE","oidtostore"],"OIdtoStore",null);
-
-            configFileParser($logInput, $config, ["returnResult","RETURNRESULT","returnresult","ReturnResult"],"returnResult",false);   // Description
-
-            configfileParser($logInput, $config, ["SuppressZero","SUPPRESSZERO","suppresszero"],"SuppressZero" ,true);
-            configFileParser($logInput, $config, ["maxDistance","MAXDISTANCE","maxdistance"],"maxDistance",false);         // default no check for gaps any longer, just warning
-            configFileParser($logInput, $config, ["interpolate","INTERPOLATE","Interpolate"],"Interpolate",false);                                          // Interpolate false, daily, 
-            configFileParser($logInput, $config, ["deleteSourceOnError","DELETESOURCEONERROR","deletesourceonerror"],"deleteSourceOnError",false);              // true in werte unset machen wenn fehler
-
-            configfileParser($logInput, $config, ["STARTTIME","StartTime","startTime","starttime" ],"StartTime" ,0);
-            configfileParser($logInput, $config, ["ENDTIME","EndTime","endTime","endtime" ],"EndTime" ,0);
-            configfileParser($logInput, $config, ["LOGCHANGE","LogChange","logChange","logchange" ],"LogChange" ,["pos"=>5,"neg"=>5]);      // in Prozent auf den Vorwert
-
-            if ($logs>1) 
-                {
-                $logs=round($logs/2)*2;              // zumindest die geforderte Anzahl an Logwerten anzeigen
-                $maxLogsperInterval = $logs+$logs/2;
-                if ($debug) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, $maxLogsperInterval Werte werden verarbeitet\n";
-                }
-            else 
-                {
-                $logs=10;
-                $maxLogsperInterval=1;                  // ein Wert reicht aus, max wäre 10
-                if (($debug) && (is_array($logs) === false) ) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, alle vorhandenen Werte werden verarbeitet\n";
-                }
-
-            //print_r($config);
-            $config["Logs"] = $logs;
-            $config["maxLogsperInterval"] = $maxLogsperInterval;
-            
-            $this->config = $config;
-            return($config);
+            $logs=round($logs/2)*2;              // zumindest die geforderte Anzahl an Logwerten anzeigen
+            $maxLogsperInterval = $logs+$logs/2;
+            if ($debug) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, $maxLogsperInterval Werte werden verarbeitet\n";
+            }
+        else 
+            {
+            $logs=10;
+            $maxLogsperInterval=1;                  // ein Wert reicht aus, max wäre 10
+            if (($debug) && (is_array($logs) === false) ) echo "    analyseValues für $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") aufgerufen, alle vorhandenen Werte werden verarbeitet\n";
             }
 
-        public function wert($input)
-            {
-            $value=false;
-            if (isset($input["Avg"]))   $value = $input["Avg"];
-            if (isset($input["Value"])) $value = $input["Value"]; 
-            return($value);
-            }
+        //print_r($config);
+        $config["Logs"] = $logs;
+        $config["maxLogsperInterval"] = $maxLogsperInterval;
+        
+        $this->config = $config;
+        return($config);
+        }
 
-        }       // ende class statistics
+    public function wert($input)
+        {
+        $value=false;
+        if (isset($input["Avg"]))   $value = $input["Avg"];
+        if (isset($input["Value"])) $value = $input["Value"]; 
+        return($value);
+        }
+
+    }       // ende class statistics
 
 
-    /*  Berechnung von Mittelwerten, Summen und Max/Min, die Ausgaben und Berechnungsgrundlagen erfolgen in einen gemeinsamen Speicher
-     *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
-     *
-     *  beim Construct wird der Name unter dem die Berechnung gespeichert werden soll und die Anzahl der Werte die berücksichtigt werden soll gespeichert
-     *  wenn ich 11 Werte angebe wird auf 10 zurückgerundet
-     *  auch wenn in result bereits Werte gespeichert sind werden die Werte extra mit addValue übergeben
-     *  Ergebnis steht zB in result[full] wenn name full ist. Es können mehrere Mittelwert gleichzeitig berechnet werden
-     *
-     * für die Berechnung werden folgende Werte angelegt
-     *      Count, Count1, Count2, CountFull
-     *      Sum, Sum1, Sum2 
-     * das bedeutet wir haben entweder zwei oder einen mittelwert
-     *
-     * Sonderfall ist Full mit logs=false
-     *
-     *  __construct
-     *  addValue
-     *  checkMinMax
-     *  calculate
-     *  extrapolate
-     *
-     *
-     *
-     *
-     */
+/*  Berechnung von Mittelwerten, Summen und Max/Min, die Ausgaben und Berechnungsgrundlagen erfolgen in einen gemeinsamen Speicher
+    *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
+    *
+    *  beim Construct wird der Name unter dem die Berechnung gespeichert werden soll und die Anzahl der Werte die berücksichtigt werden soll gespeichert
+    *  wenn ich 11 Werte angebe wird auf 10 zurückgerundet
+    *  auch wenn in result bereits Werte gespeichert sind werden die Werte extra mit addValue übergeben
+    *  Ergebnis steht zB in result[full] wenn name full ist. Es können mehrere Mittelwert gleichzeitig berechnet werden
+    *
+    * für die Berechnung werden folgende Werte angelegt
+    *      Count, Count1, Count2, CountFull
+    *      Sum, Sum1, Sum2 
+    * das bedeutet wir haben entweder zwei oder einen mittelwert
+    *
+    * Sonderfall ist Full mit logs=false
+    *
+    *  __construct
+    *  addValue
+    *  checkMinMax
+    *  calculate
+    *  extrapolate
+    *
+    *
+    *
+    *
+    */
 
 class meansCalc extends statistics
     {
@@ -5515,19 +5587,19 @@ class eventLogEvaluate extends statistics
     }
 
 
-    /*  meansRollEvaluate, Auswertung von Archive Einträgen, Input ist ein externes array, es wird nur der pointer übergeben
-     *  es gibt auch eine Konfiguration:
-     *          TimeStampPos    Begin, Mid, End    Default is End
-     *
-     * vorhandene functions:
-     *  __construct
-     *  meansValues
-     *
-     *
-     */
+/*  meansRollEvaluate, Auswertung von Archive Einträgen, Input ist ein externes array, es wird nur der pointer übergeben
+    *  es gibt auch eine Konfiguration:
+    *          TimeStampPos    Begin, Mid, End    Default is End
+    *
+    * vorhandene functions:
+    *  __construct
+    *  meansValues
+    *
+    *
+    */
 
-    class meansRollEvaluate extends statistics
-        {
+class meansRollEvaluate extends statistics
+    {
         
         protected $name;
         protected $input,$config;
@@ -5670,30 +5742,30 @@ class eventLogEvaluate extends statistics
         }
 
 
-    /*  Auswertung von Archive Einträgen, Als speicher für das Ergebns wird ein externes array benutzt, es wird nur der pointer übergeben
-     *  Immer überprüfen ob alles in Ordnung ist, damit nicht irgendwo ein Speicher überschrieben wird
-     *  addValue kann alle drei Formate, nur den Wert, mit TimeStamp oder mit Max/Min Aggregated
-     *  Ergebnis ist ein array mit Value/Timestamp. 
-     *  Aktuell verwendet in GetValues. 
-     *
-     *  Berechnet folgende Werte:
-     *      Max
-     *      Min
-     *      Means
-     *
-     *  Konfiguration:  aktuell keine
-     *  Vorwerte:       verfügt über keien Vorwerte, wird immer mit aktuellem Wert aufgerufen
-     *
-     *  __construct
-     *  addValue
-     *  calculate
-     *  youngest
-     *  print
-     *
-     */
+/*  Auswertung von Archive Einträgen, Als speicher für das Ergebns wird ein externes array benutzt, es wird nur der pointer übergeben
+    *  Immer überprüfen ob alles in Ordnung ist, damit nicht irgendwo ein Speicher überschrieben wird
+    *  addValue kann alle drei Formate, nur den Wert, mit TimeStamp oder mit Max/Min Aggregated
+    *  Ergebnis ist ein array mit Value/Timestamp. 
+    *  Aktuell verwendet in GetValues. 
+    *
+    *  Berechnet folgende Werte:
+    *      Max
+    *      Min
+    *      Means
+    *
+    *  Konfiguration:  aktuell keine
+    *  Vorwerte:       verfügt über keien Vorwerte, wird immer mit aktuellem Wert aufgerufen
+    *
+    *  __construct
+    *  addValue
+    *  calculate
+    *  youngest
+    *  print
+    *
+    */
 
-    class maxminCalc extends statistics
-        {
+class maxminCalc extends statistics
+    {
         
         protected $name;
         protected $result;
@@ -5964,12 +6036,188 @@ class App_Convert_XmlToArray
         }
 
     }       // end of class
+/**************************************************************************************************************************
+ *
+ * ipsTables, Zusammenfassung von Funktionen rund um die Darstellung von Tables mit html
+ * Tabellen und auch andere Elemente werden als Tabellen dargestellt. Die Darstellung der Inhalten von arrays vereinheitlichen
+ *
+ *      __construct
+ *      createTable
+ *      
+ */
+
+class ipsTables
+    {
+    
+    var $config = array();          // config, auch Teil der Class
+
+    function __construct($cfg=false)                    // config bei create class, danach mit setConfiguration oder erst mit der Funktion übergeben,  
+        {
+        $this->config = $this->setConfiguration($cfg);                  // es wird die class config geändert
+        }
+
+    /* check/set Configuration
+     *
+     */
+
+    public function setConfiguration($cfg,$debug=false)
+        {
+        $config = array();
+
+        if (is_array($cfg)) $cfgInput = $cfg;
+        else $cfgInput=array();                             // false oder anderer scalarer Wert
+
+        // parse configuration, logInput ist der Input und config der angepasste Output
+        configfileParser($cfgInput, $config, ["SORT","Sort","sort" ],"sort" ,false);                // nicht sortieren
+        configfileParser($cfgInput, $config, ["HTML","Html","html" ],"html" ,false);                // nicht sortieren
+
+        return($config);
+        }
+
+
+    /* showTable
+     * inputData ist das Array, display die Darstellung und Formatierung, config Zusatzkonfigurationen, debug für zusätzliche echos
+     *
+     */
+
+
+    function showTable($inputData,$display=false,$config=false, $debug=false)
+        {
+        //if ($debug) echo "showTable:\n";
+        $ipsOps = new ipsOps();
+        if ($display===false) $display=array();
+
+        if (is_array($config)) $config = $this->setConfiguration($config);
+        else $config = $this->config;
+
+        //print_R($inputData);
+        $ipsOps->intelliSort($inputData, $config["sort"],SORT_ASC,$debug);                   // $sort=SORT_ASC
+        $html=$config["html"];
+
+        if (is_array($display))
+            {
+            if ($debug)  echo "showTable Detail of Columns ".json_encode($display)."\n";
+            $rows=false; $rowNum=0;
+            foreach ($inputData as $name => $item)
+                {
+                //echo "    ($name==$rowNum)   ";             //wir erwarten uns eine geordneten Index mit 0,1,2,3,4
+                if ($name==$rowNum) 
+                    {
+                    $rowNum++;
+                    }
+                else 
+                    {
+                    //echo "ungleich";
+                    }
+                if ($rows===false) 
+                    {
+                    $rows=1;
+                    if (sizeof($display)==0)
+                        {
+                        if ($debug) echo "alle Spalten anzeigen :";
+                        foreach ($item as $index => $entry) 
+                            {
+                            if ($debug)echo " $index ";
+                            $display[$index]="";
+                            }
+                        }
+                    }
+                else $rows++;
+                if ($debug) echo "\n";
+                }
+            if ($rows)          // multi array, nicht nur eine zeile, ein Array mit header darstellen
+                {
+                if ($debug) echo "    ".$rows." Reihen erkannt.\n"; 
+                $displayWidth=array(); 
+                $displayOutput=array();
+                $line=0;
+                foreach ($inputData as $row => $inputLine)
+                    {
+                    //print_R($inputLine);
+                    if ($row==0)
+                        {
+                        $col=0;
+                        foreach ($display as $name => $item)
+                            {
+                            $displayWidth[$col]=strlen($name)+2;
+                            $displayOutput[$line][$col]=$name;
+                            $col++;
+                            //echo str_pad($name,$displayWidth[$name]);
+                            }
+                        $line++;
+                        //echo "\n";
+                        }
+                    $col=0;
+                    //print_r($display);
+                    foreach ($display as $name => $item)
+                        {
+                        if ($item=="<currency>") $item=$inputLine["currency"];
+                        if (isset($inputLine[$name])) 
+                            {
+                            $displayOutput[$line][$col] = nf($inputLine[$name],$item)." ";
+                            //echo ".".$inputLine[$name]."($name)";
+                            }
+                        else $displayOutput[$line][$col] = "";
+                        $width=strlen($displayOutput[$line][$col]);
+                        if ($width>$displayWidth[$col]) $displayWidth[$col] = $width;
+                        $col++;
+                        //echo str_pad(nf($inputLine[$name],$item)." ",$displayWidth[$name]);
+                        }
+                    $line++;
+                    //echo "\n";  
+                    }
+                //print_R($displayOutput);
+                if ($html)
+                    {
+                    echo '<table>';
+                    foreach ($displayOutput as $line => $row)
+                        {
+                        echo '<tr>';
+                        foreach ($row as $col => $item)
+                            {
+                            echo '<td>';
+                            echo str_pad($item,$displayWidth[$col]);
+                            echo '</td>';
+                            }
+                        echo '</tr>';
+                        }
+                    echo '</table>';
+                    }
+                else
+                    {
+                    if ($debug) echo "Ausgabe als echo:\n";
+                    foreach ($displayOutput as $line => $row)
+                        {
+                        //echo "|";
+                        foreach ($row as $col => $item)
+                            {
+                            echo "|";
+                            echo str_pad($item,$displayWidth[$col]);
+                            }
+                        echo "\n";
+                        }
+                    }
+                }
+            else
+                {
+
+                }  
+            }
+        else
+            {
+            echo "No display, scalar Parameter for display received\n";
+            }
+        }
+
+    }       // ende class ipsTable
 
 /**************************************************************************************************************************
  *
  * ipsCharts, Zusammenfassung von Funktionen rund um die Darstellung von Charts mit Highchart
  *
- *
+ *      __construct
+ *      createChart
+ *      
  */
 
 class ipsCharts
@@ -6141,6 +6389,9 @@ class ipsCharts
  * emptyCategory            rekursiv
  *
  * trimCommand
+ *
+ * adjustTimeFormat
+ * strtotimeFormat
  *
  ******************************************************/
 
@@ -6488,21 +6739,33 @@ class ipsOps
      * zuerst alle Zeilen und Spalten durchgehen, es wird ein neues Array mit der Spalte als Key und seinem Wert angelegt, das heisst pro zeile ein Wert
      * array_multisort nimmt das sortArray mit dem orderby Key als Input für den Sortierungsalgorythmus und sortiert ensprechend das inputArray
      * als Returnwert wird üblicherweise das inputArray verwendet, return sortArray nur als Hilfestellung
+     *
+     * es muss ein zweidimensionales array mit Zeilen und Spalten sein
+     *
      */
 
-    function intelliSort(&$inputArray, $orderby, $sort=SORT_ASC)
+    function intelliSort(&$inputArray, $orderby, $sort=SORT_ASC, $debug=false)
         {
         $sortArray = array(); 
-        foreach($inputArray as $entry)
-            { 
-            foreach($entry as $key=>$value)
-                { 
-                if(!isset($sortArray[$key])) $sortArray[$key] = array();  
-                $sortArray[$key][] = $value; 
+        if ($sort === false) $sort=SORT_ASC;
+        if ($orderby === false) return (false);
+        if (is_array($inputArray))
+            {
+            if ($debug) echo "intellisort: ".sizeof($inputArray)." Zeilen. Order by $orderby. Sort $sort.\n";
+            foreach($inputArray as $entry)
+                {
+                if ((is_array($entry))===false) return false; 
+                if ($debug) echo "   ".sizeof($entry)." Spalten\n";
+                foreach($entry as $key=>$value)
+                    { 
+                    if(!isset($sortArray[$key])) $sortArray[$key] = array();  
+                    $sortArray[$key][] = $value; 
+                    } 
                 } 
-            } 
-        array_multisort($sortArray[$orderby],$sort,$inputArray); 
-        return($sortArray);
+            array_multisort($sortArray[$orderby],$sort,$inputArray); 
+            return($sortArray);
+            }
+        else return false;
         }
 
     /* ipsOps, array serialize 
@@ -6679,15 +6942,17 @@ class ipsOps
 
     /* ipsOps::AdjustTimeFormat , einen zeitstempel anpassen mit datetime format 
      * format   Ymd         4 Jahr 2 monat 2 Tag, nicht vorkommende Formatierungszeichen werden auf Default gesetzt
-     * Beispiel Ergbnis ist der 1.1.Jahr 00:00 wenn als Format nur Y angegeben wird
+     * Beispiel Ergebnis ist der TimeStamp für
+     *    1.1.Jahr 00:00 wenn als Format nur Y angegeben wird
+     *    Day.Month.Year 00:00 wenn als Format Ymd angegeben wird
      *
-     * aktuell nur Ymd unterstützt, siehe nächste Routine
+     * aktuell nur Ymd und Y unterstützt, siehe nächste Routine
      */
 
     public function adjustTimeFormat($time,$format,$debug=false)
         {
-        $string=date($format,$time);
-        $newTime = $this->strtotimeFormat($string,$format,$debug);
+        $string=date($format,$time);                                                // eine Zeitstempel formatieren, zB Ymd  20231203 für den 3.Dezember 2023
+        $newTime = $this->strtotimeFormat($string,$format,$debug);                  // und dann wieder zu einem Zeitstempel machen
         return ($newTime);
         }
 
@@ -6706,10 +6971,20 @@ class ipsOps
         $year=1970;
         switch ($format)
             {
+            case "YmdH":
+                $year  = intval(substr($string,0,4));
+                $month = intval(substr($string,4,2));
+                $day   = intval(substr($string,6,2));
+                $hour  = intval(substr($string,8,2));
+                break;
             case "Ymd":
                 $year  = intval(substr($string,0,4));
                 $month = intval(substr($string,4,2));
                 $day   = intval(substr($string,6,2));
+                break;
+            case "Ym":
+                $year  = intval(substr($string,0,4));
+                $month = intval(substr($string,4,2));
                 break;
             case "Y":
                 $year  = intval(substr($string,0,4));
@@ -7356,6 +7631,7 @@ class sysOps
  *
  * getWorkDirectory     Windows ist es C:/scripts/
  * fileAvailable        eine Datei in einem Verzeichnis suchen, auch mit Wildcards
+ * dirAvailable         ein Verzeichnis in einem oder mehreren Verzeichnissen finden
  * mkdirtree
  * readdirToArray       ein Verzeichnis samt Unterverzeichnisse einlesen und als Array zurückgeben
  * readdirtoStat        nur statistische Informationen über das Verzeichnis zurückmelden
@@ -7463,6 +7739,10 @@ class dosOps
         if ($pos1===0) return("UNIX");          // nur Linux hat das / am Anfang
         else return("WINDOWS");
         }
+
+    /* anhand der Logging Konfiguration herausfinden welches Betriebssystem
+     *
+     */
 
     public function getOperatingSystem()
         {
@@ -7588,6 +7868,43 @@ class dosOps
         return $status;
         }
 
+    /* dirAvailable
+     *
+     * ein Verzeichnis in einem Verzeichnis suchen
+     * liefert status true und false zurück
+     *
+     */    
+
+    function dirAvailable($filename,$verzeichnisse,$debug=false)
+        {
+        $status=false;
+        if ((is_array($verzeichnisse))===false) $verzeichnisse[]=$verzeichnisse;
+        foreach ($verzeichnisse as $verzeichnis)
+            {
+            $verzeichnis = $this->correctDirName($verzeichnis);
+            if ($debug) echo "dirAvailable: wir suchen nach einem Verzeichnis \"".$filename."\" in $verzeichnis.\n";
+            if ( is_dir ( $verzeichnis ))
+                {
+                if ( $handle = opendir($verzeichnis) )
+                    {
+                    while (($file = readdir($handle)) !== false)
+                        {
+                        //$stat     = stat( $verzeichnis.$file );         // alle Infos zusammen https://www.php.net/manual/de/function.stat.php
+                        //if ($debug) print_R($stat);
+                        $dateityp = @filetype( $verzeichnis.$file );            // seit Win11 gibt es neue Fileformate die noch nicht unterstützt werden
+                        if ($dateityp == "dir")
+                            {
+                            if ($file == $filename)  $status=$verzeichnis;
+                            else echo $file."\n";
+                            }
+                        elseif ( ($dateityp===false) && $debug) echo "dirAvailable:Fehler bei filetype, check \"$verzeichnis$file\".\n";
+                        } /* Ende while */
+                    closedir($handle);
+                    } /* end if dir */
+                }/* ende if isdir */
+            }   // ende foreach
+        return $status;
+        }
 
     /*****************************************************************
     * 
@@ -7829,10 +8146,13 @@ class dosOps
 	   		}
 		}
 
-    /* echo über dei Struktur eines Directories ausgeben
+    /* echo über die Struktur eines Directories ausgeben
+     * verwendet readdirToArray aus dieser class
+     * wenn dirstat true dann werden alle Verzeichnisse rekursiv ausgelesen, braucht sehr lange
+     *
      */
 
-    public function writeDirStat($verzeichnis)
+    public function writeDirStat($verzeichnis, $dirstat=false)
         {
         $verzeichnis = $this->correctDirName($verzeichnis);
         echo "Verzeichnis : $verzeichnis \n";            
@@ -7840,17 +8160,22 @@ class dosOps
         foreach ($files as $file)
             {
             echo "  ".str_pad($file,56)." ";
-            $dateityp=filetype( $verzeichnis.$file );
+            $dateityp=@filetype( $verzeichnis.$file );                                          // warnings und Fehlermeldungen unterdrücken
+            if ($dateityp===false) $dateityp="Warning received";
             //if (is_dir($verzeichnis.$file)) echo "  dir";  else echo "  file";
             echo str_pad($dateityp,12);
             if ($dateityp == "dir")
                 {
-                $dirSize=$this->readdirtoStat($verzeichnis.$file,true);       // true rekursiv
-                echo " mit insgesamt ".str_pad($dirSize["files"],10, " ", STR_PAD_LEFT)." gespeicherten Dateien.";                                    
+                if ($dirstat)
+                    {
+                    $dirSize=$this->readdirtoStat($verzeichnis.$file,true);       // true rekursiv
+                    echo " mit insgesamt ".str_pad($dirSize["files"],10, " ", STR_PAD_LEFT)." gespeicherten Dateien.";                                    
+                    }
                 } 
             if ($dateityp == "file")
                 {
                 echo nf(filesize($verzeichnis.$file),"Byte",12);                // left padding
+                echo "      ".date("d.m.Y H:i:s",filemtime($verzeichnis.$file));
                 }
             echo "\n";
 
@@ -8194,13 +8519,26 @@ class fileOps
         return($index);
         }
 
-    /* ein csv File einlesen und als array übergeben. Das Array ist ein Parameter, bearbeitet als Pointer
+    /* ein csv File einlesen und als array in result übergeben. Das Array ist der erste Parameter, bearbeitet als Pointer
+     * die erste Zeile ist immer ein Index, entweder wird der Index übernommen oder durch einen eigenen ersetzt
+     * verwendet php funktion fgetcsv mit seperator ;
      *
      * Parameter
      *      result      das Array mit Zeilen und Spalten, erster key sind die Zeilen, zweiter key sind die Spalten
-     *      key         Index für die Tabelle, wenn nicht blank
-     *      index       ein array mit Spaltenbezeichnungen, wenn leer wird die erste Zeile verwendet
+     *      key         Index für die Tabelle, wenn nicht blank, wenn ein array dann ist es die Konfiguration
+     *      index       ein array mit Spaltenbezeichnungen, wenn leer wird die erste Zeile verwendet, die Einträge werden getrimmt, Spalten die nicht übernommen werden sollen sind mit Indexwert false
      *      filter      welche Spalten sollen uebernommen werden
+     *
+     * Configuration
+     *      Key     Key mit optional untergeordneten Parametern
+     *                  Merge
+     *                  From
+     *      Result
+     *      Format  umformatieren mit untergeordneten Parametern   
+     *
+     * für die Bearbeitung der Daten werden data und index Spalte für Spalte durchgegangen
+     * und in dataentries Spalte für Spalte mit dem neuen Index gespeichert, Spalten die nicht übernommen werden sollen sind mit Indexwert false
+     * es können zwei Spalten für Date und Time zu einem Unixtimestamp gemerged werden
      *
      */
 
@@ -8210,7 +8548,7 @@ class fileOps
         $merge=false;
         if (is_array($key)) 
             { 
-            $config=$this->readFileCsvParseConfig($key,$debug);
+            $config=$this->readFileCsvParseConfig($key,$debug);             // gibt bei Debug die Konfiguration aus
             if (is_array($config["Key"]))
                 {
                 if ( (isset($config["Key"]["Merge"])) && (isset($config["Key"]["From"])) && (is_array($config["Key"]["From"])) ) $merge=true;
@@ -8218,6 +8556,7 @@ class fileOps
                 }
             else $key=$config["Key"]; 
             }
+        else $config = $this->readFileCsvParseConfig([],$debug);               // Defaultwerte ausprobieren
 
         // continue
         $error=0; $errorMax=20;     /* nicht mehr als 20 Fehler/Info Meldungen ausgeben */
@@ -8261,7 +8600,7 @@ class fileOps
                     $num = count($data);                            // wieviel Spalten werden eingelesen, num
                     if ( ($firstline) && ($row==1) )                // in der ersten Reihe sind die Spaltenbezeichnungen
                         {
-                        if ($debug) echo "   Erste Zeile als Index einlesen.\n";
+                        if ($debug) echo "   Erste Zeile als Index einlesen. Key löschen.\n";
                         for ($i=0;($i<$num);$i++)                   // erste Zeile Spalten einlesen
                             {
                             $spaltenBez=trim($data[$i]);
@@ -8287,9 +8626,15 @@ class fileOps
                         }
                     elseif ($row==1) 
                         {
+                        $i=0;
+                        foreach ($index as $key2) 
+                            {
+                            if ($key2 == $key) $keyIndex=$i;                  // key Index finden, mehr nicht
+                            elseif ($key2 !== false) $i++;                  // Index der nicht übernommen wird auch nicht berücksichtigen    !! Merge fehlt noch hier
+                            }
                         if ($debug) 
                             {
-                            echo "   Erste Zeile vom Index übernehmen.\n";                                
+                            echo "   Erste Zeile vom Index übernehmen. Key nicht löschen. Key Index ist $keyIndex.\n";                                
                             print_r($index);            // Index ist vorgegeben, Felder die übersprungen werden sollen mit false markieren
                             }
                         }
@@ -8359,7 +8704,7 @@ class fileOps
                                         {
                                         if (isset($dataEntries[$keyComp])) 
                                             {
-                                            if ( ($debug) && ($error++ < $errorMax) )echo "Formatänderung auf format.\n";
+                                            if ( ($debug) && ($error++ < $errorMax) ) echo "Formatänderung $keyComp auf $format.\n";
                                             switch (strtoupper($format))
                                                 {
                                                 case "FLOAT":
@@ -8369,14 +8714,21 @@ class fileOps
                                                         $dataEntries[$keyComp]=floatval($value);         // Komma wird nicht richtig interpretiert
                                                         }
                                                     break;
+                                                case "STRTOTIME":
+                                                    if (is_string($dataEntries[$keyComp]))
+                                                        {
+                                                        if ($debug) $dataEntries[$keyComp."_orig"]=$dataEntries[$keyComp];              // für Debugzwecke auch das Originaldatum abspeichern
+                                                        $dataEntries[$keyComp]=strtotime($dataEntries[$keyComp]);         // auf Unix Timestamp ändern
 
+                                                        }
+                                                    break;
                                                 }
                                             }    
                                         }
                                     }
                                 }
                             // dann abhängig von key speichern
-                            if ( ($key=="") || ($keyIndex===false) )        // kein Key definiert oder gefunden 
+                            if ( ($key=="") || ($keyIndex===false) )        // kein Key definiert oder keyindex gefunden, key1 wird aus der aktuellen Zeilenanzahl berechnet, kexindex wird nur ermittelt wenn keine neue Indexierung erfolgt
                                 {
                                 $result[$key1]=$dataEntries;
                                 if ($row < $rowMax) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
@@ -8386,9 +8738,15 @@ class fileOps
                                 /* wenn ein key definiert wurde, kann überprüft werden ob der Eintrag bereits vorhanden ist 
                                  * wird für in memory merge verwendet. Der Merge könnte auch nachträglich erfolgen. Benötigt aber mehr Speicher.
                                  * beides implementieren.
+                                 *
+                                 * wenn es einen key gibt und der im Index gefunden wurde sind wir hier
                                  */
-
-                                if ($keyIndex<9999) $key1=$data[$keyIndex]; 
+                                if ($row < $rowMax) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                if ($keyIndex<9999) 
+                                    {
+                                    //$key1=$data[$keyIndex];             //key1 richtig berechnen ist kein 0..n Index, keyindex wird 9999 wen ein Merge erfolgt ist
+                                    $key1=$dataEntries[$index[$keyIndex]];
+                                    }
                                 else $key1=$timeStamp;
                                 if (isset($result[$key1])) 
                                     {
@@ -8405,7 +8763,7 @@ class fileOps
                                     }
                                 else 
                                     {
-                                    $result[$key1]=$dataEntries;
+                                    $result[$key1]=$dataEntries;                        
                                     //if ($error2++ < $errorMax) print_r($dataEntries);
                                     }
                                 }
@@ -8426,7 +8784,11 @@ class fileOps
         }  // ende function
 
     /* check und parse die Komfiguration für readFileCsv
-     *
+     *      Key     Key mit optional untergeordneten Parametern
+     *                  Merge
+     *                  From
+     *      Result
+     *      Format
      */
 
     private function readFileCsvParseConfig($key,$debug=false)
@@ -8808,7 +9170,7 @@ class timerOps
  *
  * errorAusgabe
  *
- * 
+ * nicht verwendet
  *
  * 
  *
@@ -10834,7 +11196,7 @@ class WfcHandling
 	function CreateWFCItemTabPane ($ItemId, $ParentId, $Position, $Title, $Icon) 
         {
         if ($this->configID) return(CreateWFCItemTabPane ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon));                       // interop mode needs instance
-        echo "CreateWFCItemTabPane $ItemId in $ParentId:\n";
+        echo "CreateWFCItemTabPane $ItemId in $ParentId on Position $Position with Title $Title and Icon $Icon:\n";
 		$this->PrepareWFCItemData ($ItemId, $ParentId, $Title);
 		$Configuration = "{\"title\":\"$Title\",\"name\":\"$ItemId\",\"icon\":\"$Icon\"}";
 		$this->CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, 'TabPane', $Configuration);
@@ -10988,6 +11350,8 @@ class WfcHandling
         else return (false);
         }
 
+    /* Update Position schwierig wenn das Element egerade erzeugt wurde, da die Item ID noch nicht in der internen Config ist */
+
     public function UpdatePosition($ItemId, $Position)
         {
         if ($this->configID) return(WFC_UpdatePosition($this->configID, $ItemId, $Position));            
@@ -11010,7 +11374,11 @@ class WfcHandling
             //var_dump($configItems[$index]); 
             return (true);
             }
-        else return (false);
+        else 
+            {
+            echo "   UpdatePosition, not found $ItemId .\n";
+            return (false);
+            }
         }
 
     public function UpdateVisibility($ItemId, $Visibility)

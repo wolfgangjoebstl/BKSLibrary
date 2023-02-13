@@ -72,6 +72,7 @@ $cutter=true;
 		$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
 		}
 
+ 	$installedModules = $moduleManager->GetInstalledModules();
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
@@ -89,6 +90,20 @@ $cutter=true;
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+
+    if (isset($installedModules["Stromheizung"])==true)
+	    {
+	    IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
+	    IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
+    	}
+    else
+	    {
+    	// Confguration Property Definition
+	    define ('IPSHEAT_WFCSPLITPANEL',		'WFCSplitPanel');
+    	define ('IPSHEAT_WFCCATEGORY',			'WFCCategory');
+	    define ('IPSHEAT_WFCGROUP',			'WFCGroup');
+	    define ('IPSHEAT_WFCLINKS',			'WFCLinks');
+	    }
 
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
@@ -163,67 +178,6 @@ $cutter=true;
 		{
 		$WFC10User_ConfigId       = $WebfrontConfigID["User"];        
         }    
-
-    if (false)
-        {
-        echo "\nWebuser activated : ";
-        $WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
-        if ($WFC10_Enabled)
-            {
-            $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];			
-            $WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-            $WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
-            $WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
-            $WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
-            $WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
-            $WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
-            $WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
-            $WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
-            $WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
-            $WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
-            echo "WF10 Administrator\n";
-            echo "  Path          : ".$WFC10_Path."\n";
-            echo "  ConfigID      : ".$WFC10_ConfigId."\n";
-            echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
-            echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
-            echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
-            echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
-            echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
-            echo "  TabItem       : ".$WFC10_TabItem."\n";
-            echo "  TabName       : ".$WFC10_TabName."\n";
-            echo "  TabIcon       : ".$WFC10_TabIcon."\n";
-            echo "  TabOrder      : ".$WFC10_TabOrder."\n";		
-            }
-
-        $WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
-        if ($WFC10User_Enabled)
-            {
-            $WFC10User_ConfigId       = $WebfrontConfigID["User"];	
-            $WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-            $WFC10User_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10User');
-            $WFC10User_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10User');
-            $WFC10User_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10User');
-            $WFC10User_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10User');
-            $WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10User');
-            $WFC10User_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10User');
-            $WFC10User_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10User');
-            $WFC10User_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10User');
-            $WFC10User_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10User');
-            echo "WF10 User \n";
-            echo "  Path          : ".$WFC10User_Path."\n";
-            echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
-            echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
-            echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
-            echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
-            echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
-            echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
-            echo "  TabItem       : ".$WFC10User_TabItem."\n";
-            echo "  TabName       : ".$WFC10User_TabName."\n";
-            echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
-            echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
-            }
-        }
-
 
 	if ($Mobile_Enabled==true)
 	   	{
@@ -420,263 +374,258 @@ $cutter=true;
 		*
 		*************************************************/
 		
-		/***********************Homematic Zähler */
+        switch (strtoupper($meter["TYPE"]))
+            {
+            case "HOMEMATIC":               		/***********************Homematic Zähler */
+                /* Variable ID selbst bestimmen */
+                $variableID = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
+                AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
+                AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
+                IPS_ApplyChanges($archiveHandlerID);
+                
+                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($LeistungID,'~Power');
+                AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
+                AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
+                IPS_ApplyChanges($archiveHandlerID);
+                
+                $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2,'kWh');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
+            
+                $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
+
+                SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
+
+                // Homematic
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;              		
+            	break;
+		    case "REGISTER":       /*********************** Irgendein Register Zähler, wahrscheinlich von Remote Access uebermittelt */
+            case "DAILYREAD":
+            case "DAILYLPREAD":
+                /* Variable ID selbst bestimmen */
+                $variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
+                AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
+                if (strtoupper($meter["TYPE"])=="REGISTER") AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
+                else AC_SetAggregationType($archiveHandlerID,$variableID,0);                                            /* Registerwert aus dem Smart Meter Webportal */
+                IPS_ApplyChanges($archiveHandlerID);
+                
+                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($LeistungID,'~Power');
+                AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
+                AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
+                IPS_ApplyChanges($archiveHandlerID);
+                
+                $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
+
+                //$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
+            
+                SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
+                
+                // Register
+                $webfront_links["Register"][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
+                $webfront_links["Register"][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
+                $webfront_links["Register"][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
+                $webfront_links["Register"][$meter["NAME"]][$LeistungID]["PANE"]=true;	
+                $webfront_links["Register"][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
+                $webfront_links["Register"][$meter["NAME"]][$chartID]["PANE"]=false;             	
+                break;
+		    case "SUMME":                /*********************** aus mehreren Werten eine Berechnung anstellen 
+                                        * links die Werte Wirkenergie und Leistung pro Gruppe meter Name
+                                        * rechts das passende chart
+                                        */
+                /* Variable ID selbst bestimmen */
+                $variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
+                AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
+                AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
+                IPS_ApplyChanges($archiveHandlerID);
+                
+                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2, '~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($LeistungID,'~Power');
+                AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
+                AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
+                IPS_ApplyChanges($archiveHandlerID);
+
+                $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
+                
+                //$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
+            
+                SetValue($MeterReadID,true);  // wenn Werte parametriert, dann auch regelmaessig auslesen 
+
+                // SUMME Gruppe Meter Name, Links Wirkenergie, Wirkleistung
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;                        			
+                break;
+			
+		    case "AMIS":                /************************** und ein AMIS Zähler mit dem auslesen über die serielle Schnittstelle 
+                                        *
+                                        */	
+                /* zuerst einmal klären wie die Daten denn reinkommen, seriell USB oder über Bluetooth, Zerlegung selbst oder ueber Cutter */
+                $scriptIdAMIS   = IPS_GetScriptIDByName('AmisCutter', $CategoryIdApp);
+                echo "Meter Type AMIS:\n";
+                echo "   Script ID für Register Variable :".$scriptIdAMIS."\n";
+
+                if ($meter["PORT"] == "Bluetooth")
+                    {
+                    echo "  Port is Bluetooth.\n";
+                    $PortConfig=array($meter["COMPORT"],"115200","8","1","None");
+                    $result=$Amis->configurePort($identifier." Bluetooth COM",$PortConfig);
+                    if ( $result == false) 
+                        { 
+                        $result = $Amis->configurePort($identifier." Bluetooth COM",$PortConfig);     // noch einmal probieren
+                        echo " Noch einmal probiert.\n";
+                        }	
+                    $SerialComPortID = @IPS_GetInstanceIDByName($identifier." Bluetooth COM", 0);
+                    //echo "\nCom Port : ".$com_Port." PortID: ".$SerialComPortID."\n";				
+                    if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }
+                    else 
+                        {	
+                        SPRT_SendText($SerialComPortID ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
+                        }
+                    }
+                if ($meter["PORT"] == "Serial")
+                    {
+                    echo "  Port is Serial.\n";
+                    $PortConfig=array($meter["COMPORT"],"300","7","1","Even");
+                    $result=$Amis->configurePort($identifier." Serial Port",$PortConfig);
+                    if ( $result == false) 
+                        { 
+                        $result = $Amis->configurePort($identifier." Serial Port",$PortConfig);     // noch einmal probieren
+                        echo " Serial Port Configure fehlerhaft. Noch einmal probiert. Ergebnis $result.\n";
+                        }	
+                    $SerialComPortID = IPS_GetInstanceIDByName($identifier." Serial Port", 0);
+                    if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }
+                    else 
+                        {	
+                        SPRT_SetDTR($SerialComPortID, true);   /* Wichtig sonst wird der Lesekopf nicht versorgt */
+                        }
+                    }
+                
+                if ($cutter == true)
+                    {
+                    $CutterID = @IPS_GetInstanceIDByName($identifier." Cutter", 0);
+                    if(!IPS_InstanceExists($CutterID))
+                        {
+                        echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\"erstellen !\n";
+                        $CutterID = IPS_CreateInstance("{AC6C6E74-C797-40B3-BA82-F135D941D1A2}"); // Cutter anlegen
+                        IPS_SetName($CutterID, $identifier." Cutter");
+                        IPS_SetProperty($CutterID,"LeftCutChar",chr(02));
+                        IPS_SetProperty($CutterID,"RightCutChar",chr(03));
+                        IPS_ConnectInstance($CutterID, $SerialComPortID);										
+                        IPS_ApplyChanges($CutterID);					
+                        }
+                    else
+                        {
+                        echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\" existiert bereits !\n";
+                        if ($SerialComPortID>0)
+                            {
+                            @IPS_DisconnectInstance($CutterID);
+                            IPS_ConnectInstance($CutterID, $SerialComPortID);
+                            }					
+                        $config=IPS_GetConfiguration($CutterID);
+                        echo "    ".$config."\n";					
+                        }
+                    $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$CutterID);
+                    if(!IPS_InstanceExists($regVarID))
+                        {
+                        $regVarID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}"); // Registervariable anlegen
+                        IPS_SetName($regVarID, "AMIS RegisterVariable");
+                        IPS_SetParent($regVarID, $CutterID);
+                        RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
+                        IPS_ConnectInstance($regVarID, $CutterID);
+                        IPS_ApplyChanges($regVarID);
+                        }	
+                    else
+                        {
+                        echo "\nAMIS RegisterVariable mit Namen \"".$regVarID."\" existiert bereits !\n";
+                        @IPS_DisconnectInstance($regVarID);					
+                        IPS_ConnectInstance($regVarID, $CutterID);				
+                        }														
+                    }
+                else
+                    {
+                    $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$SerialComPortID);
+                    if(!IPS_InstanceExists($regVarID))
+                        {
+                        $regVarID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}"); // Registervariable anlegen
+                        IPS_SetName($regVarID, "AMIS RegisterVariable");
+                        IPS_SetParent($regVarID, $SerialComPortID);
+                        RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
+                        IPS_ConnectInstance($regVarID, $SerialComPortID);
+                        IPS_ApplyChanges($regVarID);
+                        }				
+                    }								
+                
+                /* dann erst die Struktur zum Abspeichern anlegen */
+                $AmisID = CreateVariableByName($ID, "AMIS", 3);
+                //$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0, 0, "Zaehlt");   /* 0 Boolean 1 Integer 2 Float 3 String */
+                $AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0, "Zaehlt");   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                $AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
+
+                $ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1,'~UnixTimestamp');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                //IPS_SetVariableCustomProfile($ReceiveTimeID,'~UnixTimestamp');
+                $SendTimeID = CreateVariableByName($AmisID, "SendTime", 1,'~UnixTimestamp');   /* 0 Boolean 1 Integer 2 Float 3 String */	
+                //IPS_SetVariableCustomProfile($SendTimeID,'~UnixTimestamp');					
+
+                // Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
+                $AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);
+                $AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);
+                
+                $wirkenergie1_ID = CreateVariableByName($AmisID,'Wirkenergie', 2,'~Electricity');
+                //IPS_SetVariableCustomProfile($wirkenergie1_ID,'~Electricity');
+                AC_SetLoggingStatus($archiveHandlerID,$wirkenergie1_ID,true);
+                AC_SetAggregationType($archiveHandlerID,$wirkenergie1_ID,1);
+                IPS_ApplyChanges($archiveHandlerID);
+
+                $aktuelleLeistungID = CreateVariableByName($AmisID, "Wirkleistung", 2,'~Power');
+                //IPS_SetVariableCustomProfile($aktuelleLeistungID,'~Power');
+                AC_SetLoggingStatus($archiveHandlerID,$aktuelleLeistungID,true);
+                AC_SetAggregationType($archiveHandlerID,$aktuelleLeistungID,0);
+                IPS_ApplyChanges($archiveHandlerID);
+
+                $chartID = CreateVariableByName($AmisID, "Chart", 3,'~HTMLBox');
+
+                // Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
+                $zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+                $variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2,'~Electricity');
+                //IPS_SetVariableCustomProfile($variableID,'~Electricity');			
+
+                SetValue($AmisReadMeterID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
+                if ( isset($meter["STATUS"]) )
+                    {
+                    if (strtoupper($meter["STATUS"]) != "ACTIVE" ) SetValue($AmisReadMeterID,false);
+                    }	
+                $webfront_links["Control"]["Read Meter"][$AmisReadMeterID]["NAME"]="ReadAMISMeter";		            // Read Meter ist die Gruppe
+
+                // AMIS, Gruppe meter NAME, Wirkenergie, Leistung, Andere Seite Zählervariablen			
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["NAME"]="Wirkenergie";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["PANE"]=true;						
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$aktuelleLeistungID]["NAME"]="Wirkleistung";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$aktuelleLeistungID]["PANE"]=true;						
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$zaehlerid]["NAME"]="Zaehlervariablen";						
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$zaehlerid]["PANE"]=false;	
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;					
+                break;
+            default:
+                break;
+			}
 		
-		if (strtoupper($meter["TYPE"])=="HOMEMATIC")
-			{
-			/* Variable ID selbst bestimmen */
-			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($variableID,'~Electricity');
-			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
-			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
-			IPS_ApplyChanges($archiveHandlerID);
-			
-			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($LeistungID,'~Power');
-			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
-			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
-			IPS_ApplyChanges($archiveHandlerID);
-			
-			$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2,'kWh');   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
-	      
-            $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
-
-			SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
-
-            // Homematic
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;              		
-			}
-
-		/*********************** Irgendein Register Zähler, wahrscheinlich von Remote Access uebermittelt */
-
-		if ( (strtoupper($meter["TYPE"])=="REGISTER") || (strtoupper($meter["TYPE"])=="DAILYREAD") || (strtoupper($meter["TYPE"])=="DAILYLPREAD") )
-			{
-			/* Variable ID selbst bestimmen */
-			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($variableID,'~Electricity');
-			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
-			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
-			IPS_ApplyChanges($archiveHandlerID);
-			
-			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($LeistungID,'~Power');
-			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
-			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
-			IPS_ApplyChanges($archiveHandlerID);
-			
-            $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
-
-			//$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
-	      
-			SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
-			
-            // Register
-			$webfront_links["Register"][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
-            $webfront_links["Register"][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
-			$webfront_links["Register"][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
-            $webfront_links["Register"][$meter["NAME"]][$LeistungID]["PANE"]=true;	
-            $webfront_links["Register"][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-            $webfront_links["Register"][$meter["NAME"]][$chartID]["PANE"]=false;             	
-			}	
-
-		/*********************** aus mehreren Werten eine Berechnung anstellen 
-         * links die Werte Wirkenergie und Leistung pro Gruppe meter Name
-         * rechts das passende chart
-         */
-			
-		if (strtoupper($meter["TYPE"])=="SUMME")
-			{
-			/* Variable ID selbst bestimmen */
-			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($variableID,'~Electricity');
-			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
-			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
-			IPS_ApplyChanges($archiveHandlerID);
-			
-			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2, '~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($LeistungID,'~Power');
-			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
-			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
-			IPS_ApplyChanges($archiveHandlerID);
-
-            $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
-			
-			//$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
-	      
-			SetValue($MeterReadID,true);  // wenn Werte parametriert, dann auch regelmaessig auslesen 
-
-			// SUMME Gruppe Meter Name, Links Wirkenergie, Wirkleistung
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;                        			
-			}				
-			
-		/************************** und ein AMIS Zähler mit dem auslesen über die serielle Schnittstelle 
-         *
-         */	
-											
-		if (strtoupper($meter["TYPE"])=="AMIS")
-			{
-			/* zuerst einmal klären wie die Daten denn reinkommen, seriell USB oder über Bluetooth, Zerlegung selbst oder ueber Cutter */
-			$scriptIdAMIS   = IPS_GetScriptIDByName('AmisCutter', $CategoryIdApp);
-            echo "Meter Type AMIS:\n";
-			echo "   Script ID für Register Variable :".$scriptIdAMIS."\n";
-
-			if ($meter["PORT"] == "Bluetooth")
-				{
-                echo "  Port is Bluetooth.\n";
-				$PortConfig=array($meter["COMPORT"],"115200","8","1","None");
-				$result=$Amis->configurePort($identifier." Bluetooth COM",$PortConfig);
-				if ( $result == false) 
-					{ 
-					$result = $Amis->configurePort($identifier." Bluetooth COM",$PortConfig);     // noch einmal probieren
-					echo " Noch einmal probiert.\n";
-					}	
-				$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Bluetooth COM", 0);
-				//echo "\nCom Port : ".$com_Port." PortID: ".$SerialComPortID."\n";				
-				if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }
-				else 
-					{	
-					SPRT_SendText($SerialComPortID ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
-					}
-				}
-			if ($meter["PORT"] == "Serial")
-				{
-                echo "  Port is Serial.\n";
-				$PortConfig=array($meter["COMPORT"],"300","7","1","Even");
-				$result=$Amis->configurePort($identifier." Serial Port",$PortConfig);
-				if ( $result == false) 
-					{ 
-					$result = $Amis->configurePort($identifier." Serial Port",$PortConfig);     // noch einmal probieren
-					echo " Serial Port Configure fehlerhaft. Noch einmal probiert. Ergebnis $result.\n";
-					}	
-				$SerialComPortID = IPS_GetInstanceIDByName($identifier." Serial Port", 0);
-				if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }
-				else 
-					{	
-					SPRT_SetDTR($SerialComPortID, true);   /* Wichtig sonst wird der Lesekopf nicht versorgt */
-					}
-				}
-			
-			if ($cutter == true)
-				{
-				$CutterID = @IPS_GetInstanceIDByName($identifier." Cutter", 0);
-				if(!IPS_InstanceExists($CutterID))
-					{
-					echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\"erstellen !\n";
-					$CutterID = IPS_CreateInstance("{AC6C6E74-C797-40B3-BA82-F135D941D1A2}"); // Cutter anlegen
-					IPS_SetName($CutterID, $identifier." Cutter");
-					IPS_SetProperty($CutterID,"LeftCutChar",chr(02));
-					IPS_SetProperty($CutterID,"RightCutChar",chr(03));
-					IPS_ConnectInstance($CutterID, $SerialComPortID);										
-					IPS_ApplyChanges($CutterID);					
-					}
-				else
-					{
-					echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\" existiert bereits !\n";
-					if ($SerialComPortID>0)
-						{
-						@IPS_DisconnectInstance($CutterID);
-						IPS_ConnectInstance($CutterID, $SerialComPortID);
-						}					
-					$config=IPS_GetConfiguration($CutterID);
-					echo "    ".$config."\n";					
-					}
-				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$CutterID);
-				if(!IPS_InstanceExists($regVarID))
-				 	{
-					$regVarID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}"); // Registervariable anlegen
-					IPS_SetName($regVarID, "AMIS RegisterVariable");
-					IPS_SetParent($regVarID, $CutterID);
-	 				RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
-					IPS_ConnectInstance($regVarID, $CutterID);
-					IPS_ApplyChanges($regVarID);
-	   				}	
-				else
-					{
-					echo "\nAMIS RegisterVariable mit Namen \"".$regVarID."\" existiert bereits !\n";
-					@IPS_DisconnectInstance($regVarID);					
-					IPS_ConnectInstance($regVarID, $CutterID);				
-					}														
-				}
-			else
-				{
-				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$SerialComPortID);
-				if(!IPS_InstanceExists($regVarID))
-				 	{
-					$regVarID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}"); // Registervariable anlegen
-					IPS_SetName($regVarID, "AMIS RegisterVariable");
-					IPS_SetParent($regVarID, $SerialComPortID);
-					RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
-					IPS_ConnectInstance($regVarID, $SerialComPortID);
-					IPS_ApplyChanges($regVarID);
-					}				
-				}								
-			
-			/* dann erst die Struktur zum Abspeichern anlegen */
-			$AmisID = CreateVariableByName($ID, "AMIS", 3);
-			//$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0, 0, "Zaehlt");   /* 0 Boolean 1 Integer 2 Float 3 String */
-			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0, "Zaehlt");   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
-
-			$ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1,'~UnixTimestamp');   /* 0 Boolean 1 Integer 2 Float 3 String */
-			//IPS_SetVariableCustomProfile($ReceiveTimeID,'~UnixTimestamp');
-			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1,'~UnixTimestamp');   /* 0 Boolean 1 Integer 2 Float 3 String */	
-			//IPS_SetVariableCustomProfile($SendTimeID,'~UnixTimestamp');					
-
-			// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
-			$AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);
-			$AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);
-			
-			$wirkenergie1_ID = CreateVariableByName($AmisID,'Wirkenergie', 2,'~Electricity');
-			//IPS_SetVariableCustomProfile($wirkenergie1_ID,'~Electricity');
-			AC_SetLoggingStatus($archiveHandlerID,$wirkenergie1_ID,true);
-			AC_SetAggregationType($archiveHandlerID,$wirkenergie1_ID,1);
-			IPS_ApplyChanges($archiveHandlerID);
-
-			$aktuelleLeistungID = CreateVariableByName($AmisID, "Wirkleistung", 2,'~Power');
-			//IPS_SetVariableCustomProfile($aktuelleLeistungID,'~Power');
-			AC_SetLoggingStatus($archiveHandlerID,$aktuelleLeistungID,true);
-			AC_SetAggregationType($archiveHandlerID,$aktuelleLeistungID,0);
-			IPS_ApplyChanges($archiveHandlerID);
-
-            $chartID = CreateVariableByName($AmisID, "Chart", 3,'~HTMLBox');
-
-			// Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
-			$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-			$variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2,'~Electricity');
-			//IPS_SetVariableCustomProfile($variableID,'~Electricity');			
-
-			SetValue($AmisReadMeterID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
-			if ( isset($meter["STATUS"]) )
-				{
-				if (strtoupper($meter["STATUS"]) != "ACTIVE" ) SetValue($AmisReadMeterID,false);
-				}	
-            $webfront_links["Control"]["Read Meter"][$AmisReadMeterID]["NAME"]="ReadAMISMeter";		            // Read Meter ist die Gruppe
-
-            // AMIS, Gruppe meter NAME, Wirkenergie, Leistung, Andere Seite Zählervariablen			
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["NAME"]="Wirkenergie";
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["PANE"]=true;						
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$aktuelleLeistungID]["NAME"]="Wirkleistung";
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$aktuelleLeistungID]["PANE"]=true;						
-			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$zaehlerid]["NAME"]="Zaehlervariablen";						
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$zaehlerid]["PANE"]=false;	
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-            $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;					
-			}
-		print_r($meter);
+        print_r($meter);
 
         $webfront_links["Control"]["Read Meter"][$MeterReadID]["NAME"]="ReadMeter";
 			//CreateLinkByDestination("Read Meter", $MeterReadID,    $categoryIdLeft,  0);

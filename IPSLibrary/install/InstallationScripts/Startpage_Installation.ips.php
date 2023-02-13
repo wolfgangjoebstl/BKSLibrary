@@ -25,13 +25,20 @@
      * wenn Instanz von OpenWeatherData vorhanden ist, wird auch das Wetter eingebaut
      * notwendig geworden da Wunderground nicht mehr funktioniert
      *
-     * Für duie Startpage wird hier die Visualisiserung aneglegt
+     * Für die Startpage wird hier die Visualisiserung aneglegt
      *      Visualization.WebFront.Administrator. siehe WFC10 Path in config ini
      *
-     * Für das Wetter Meteogrm wird hier die Visualisierung angelegt:
+     * Für das Wetter Meteogram wird hier die Visualisierung angelegt:
      *      Visualization.WebFront.Administrator.Weather.OpenWeather
 	 *
-	 *
+	 * Startet waehrend der Installation auch die beiden scripts
+     *      	IPS_RunScript($scriptIdStartpage);              Startpage_copyfiles
+     *	        IPS_RunScript($scriptIdStartpageWrite);         Startpage_schreiben
+     *
+     *
+     *
+     *
+     *
 	 * @file          Startpage_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
@@ -44,7 +51,6 @@
  *
  ********************************/
 	 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';

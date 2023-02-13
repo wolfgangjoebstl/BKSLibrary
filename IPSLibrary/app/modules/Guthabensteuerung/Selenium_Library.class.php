@@ -1682,7 +1682,9 @@ class SeleniumLogWien extends SeleniumHandler
  *  __construct
  *  getResultCategory       
  *  setConfiguration        default, wie im SeleniumHandler
- *  writeEnergyValue        
+ *  writeEnergyValue 
+ *  parseResult
+ *       
  *
  *  runAutomatic            Aufruf der einzelnen Steps, Statemachine
  *      getTextValidLoggedInIf
@@ -1748,8 +1750,16 @@ class SeleniumEVN extends SeleniumHandler
         return($wert);
         }
 
-    /* parse result register
+    /* parse result register to werte
+     * zuerst den String in ein Array mit einem Eintrag pro Zeile aufteilen
+     * dann jede Zeile in durch blank getrennte Einträge als Spalten aufteilen
+     * Spalte 0 ist die Zeit und Spalte 2 ist der Wert
+     * Zeit wird TimeStamp, Wert wird Value (Komma durch Punkt ersetzen damit Wandlung auf einen Floatwert funktioniert)
      *
+     * Ablauf in etwas so:
+     *      $werte = $evn->parseResult($result); 
+     *      $knownTimeStamps = $evn->getKnownData($LeistungID);
+     *      $input = $evn->filterNewData($werte,$knownTimeStamps);
      *
      */
     function parseResult($result)
@@ -1781,6 +1791,11 @@ class SeleniumEVN extends SeleniumHandler
         return($werte);
         }
 
+    /* Leistungswerte aus dem Archive holen, 
+     * aktuell keine zeitliche Beschränkung
+     * damit Vergleich funktionieren kann anders anordnen, Index ist TimeStamp als Integer 
+     */
+
     function getKnownData($LeistungID)
         {
         $archiveOps = new archiveOps();             
@@ -1795,10 +1810,14 @@ class SeleniumEVN extends SeleniumHandler
         $werteArchived=$archiveOps->getValues($LeistungID,$config,2);                //1,2 für Debug
         //print_r($werteArchived["Values"]);
         $timeStampknown=array();
-        foreach ($werteArchived["Values"] as $wert) $timeStampknown[$wert["TimeStamp"]]=$wert["Value"];
+        if ((isset($werteArchived["Values"])) && (count($werteArchived["Values"])>0)) foreach ($werteArchived["Values"] as $wert) $timeStampknown[$wert["TimeStamp"]]=$wert["Value"];
         echo "--------\n";  
         return ($timeStampknown);
         }
+
+    /* Werte vergleichen zwischen Array 1 und 2
+     *
+     */
 
     function filterNewData($werte,$timeStampknown)
         {
@@ -2957,7 +2976,7 @@ class SeleniumEasycharts extends SeleniumHandler
         return ($orderbook);
         }
     
-    /* get_EasychartSharesConfiguration() fokussiert sich auf die anderen Aktien die nicht inmeinem Depot warenund die die in meinem Besitzu sind und liefert zusätzliche Informatzionen : Split
+    /* get_EasychartSharesConfiguration() fokussiert sich auf die anderen Aktien die nicht in meinem Depot warenund die die in meinem Besitzu sind und liefert zusätzliche Informatzionen : Split
      * d.h. weitere Konfiguration, hier stehen alle Splits drinnen, aber kann auch mehr Information sein
      */
 
@@ -4854,7 +4873,7 @@ class SeleniumOperations
                         $guthabenHandler->setSeleniumHandler($handler,$webDriverName);                     // nur den Selenium Handler im IP Symcon als Variable abspeichern
                         //print_r($handler);
                         }
-                    else echo "Fehler entry Url not set in configuration.\n";
+                    else echo "Fehler entry Url not set in configuration.".json_encode($entry)."\n";
                     $done++;
                     }
                 $step++;

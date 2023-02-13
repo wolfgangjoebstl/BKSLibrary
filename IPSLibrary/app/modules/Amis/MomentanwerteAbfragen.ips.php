@@ -106,7 +106,9 @@ if ($_IPS['SENDER']=="TimerEvent")          // alle 60 Sekunden
 			
 			/**********
 			 *
-			 * für jeden Timeslot alle Zähler durchgehen, also ganze Meter Config abarbeiten
+			 * für jeden Timeslot alle Zähler durchgehen, also ganze Meter Config abarbeiten, 
+             * bitte beachten:
+             * das serielle AMIS Interface mit 300 baud ist sehr langsam, damit können nicht zuviele register zur selben Zeit abgefragt werden
 			 *
 			 ****************************/
 			 
@@ -175,9 +177,10 @@ if ($_IPS['SENDER']=="TimerEvent")          // alle 60 Sekunden
 	
 if ($_IPS['SENDER']=="Execute")
 	{
+    echo "===========================================================\n";
     echo "Execute aufgerufen:\n";        
     echo "Amis::MomentwerteAbfragen Ausgabe der Konfiguration:\n";    
-    print_r($MeterConfig);
+    print_r($MeterConfig);                                                      // meter config von AMIS class ausgelesen
 
 	echo "********************************************CONFIG**************************************************************\n\n";
 
@@ -240,7 +243,7 @@ if ($_IPS['SENDER']=="Execute")
 
 	echo "\n********************************************VALUES**************************************************************\n\n";
 	//$homematic=$amis->writeEnergyHomematics($MeterConfig);  // alle Homematic Register schreiben, verwirrt die 15 minütige Erfassung, daher nicht mehr verwendet
-    echo $amis->writeEnergyRegistertoString($MeterConfig,true,true);            // output asl html (true) und mit debug (true)
+    echo $amis->writeEnergyRegistertoString($MeterConfig,true,true);            // output asl html (true) und mit debug (true) aber ebenfalls nur für die Homematic Register
 	}
 
 

@@ -292,7 +292,8 @@ if ($_IPS['SENDER'] == "Execute")
     echo "\n";
     echo "----------------------------------------------------\n";
 	echo "--------Execute aufgerufen -------------------------\n";
-    echo "----------------------------------------------------\n";    
+    echo "----------------------------------------------------\n"; 
+    echo "\n";   
     //echo "Data OID der AMIS Zusammenfassung : ".$amis->getAMISDataOids()."\n\n";
     $meterValues=$amis->writeEnergyRegistertoArray($MeterConfig, true);
     //print_R($meterValues);
@@ -431,8 +432,12 @@ if ($_IPS['SENDER'] == "Execute")
     
     printMeterTopology($meterTopology,$meterValues);
 
+    echo "\n";
     echo "=====================================================\n";
     echo "Archivierte Werte bearbeiten:\n";
+    echo "=====================================================\n";
+    echo "\n";
+
     $archiveOps = new archiveOps(); 
     $archiveID = $archiveOps->getArchiveID();
 

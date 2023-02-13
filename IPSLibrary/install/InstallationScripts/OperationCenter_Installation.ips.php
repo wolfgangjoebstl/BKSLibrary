@@ -112,6 +112,7 @@
 	
 	$dosOps = new dosOps();
     $ipsOps = new ipsOps();
+    $wfcHandling = new WfcHandling();		// für die Interoperabilität mit den alten WFC Routinen nocheinmal mit der Instanz als Parameter aufrufen
 
     $systemDir     = $dosOps->getWorkDirectory(); 
     $opSystem      = $dosOps->getOperatingSystem();
@@ -187,7 +188,9 @@
 	 *
 	 *************************************************************/    
 
-    $configWFront=$ipsOps->configWebfront($moduleManager);          // Webfron Configuration vom OperationCenter
+    $configWFront     = $ipsOps->configWebfront($moduleManager);          // nue Art der Webfront ini Konfiguration einlesen, das Ini File auslesen und als Array zur verfügung stellen, es wird nur der modulManager benötigt 
+    $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();           // Webfront Configuration Admintrtor ConfigID, User etc.
+    //print_r($WebfrontConfigID);
 
     /* komplizierte Version : */
 
@@ -648,7 +651,8 @@
 	$ExternalIP				= CreateVariableByName($categoryId_SystemInfo, "ExternalIP", 3, "", "", 100); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	$UptimeID				= CreateVariableByName($categoryId_SystemInfo, "IPS_UpTime", 3, "", "", 200); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	$VersionID				= CreateVariableByName($categoryId_SystemInfo, "IPS_Version", 3, "", "", 210); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-	$MemoryID				= CreateVariableByName($categoryId_SystemInfo, "Memory", 3, "", "", 50); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$javaVersionID   		= CreateVariableByName($categoryId_SystemInfo, "Java_Version", 3, "", "", 210); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+    $MemoryID				= CreateVariableByName($categoryId_SystemInfo, "Memory", 3, "", "", 50); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	
 	/* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
     $ipTableHtml      		= CreateVariable("TabelleGeraeteImNetzwerk", 3,  $categoryId_SystemInfo, 500 , '~HTMLBox',null,null,""); // ipTable am Schluss anlegen
@@ -1005,7 +1009,7 @@
 	 *
 	*************************************************************/
 
-	echo "===========================================\n";
+	echo "=====================================================================\n";
 	echo "Homematic RSSI Variablen für stromversorgte Homematic Devices anlegen.\n";
 
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
@@ -1035,6 +1039,7 @@
         {     
         $homematic=HomematicList();
         $seriennumernliste=array();
+        echo "Auf Basis der HomaticList eine Seriennummer basierte Liste machen:\n";
         foreach ($homematic as $instance => $entry)
             {
             $adresse=explode(":",$entry["Adresse"])[0];
@@ -1048,7 +1053,9 @@
                 else $seriennumernliste[$adresse]["Device"]="              ";
                 $seriennumernliste[$adresse]["Channel"]=explode(":",$entry["Adresse"])[1];
                 if ($entry["Protocol"]=="Funk") $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSRF;
-                else $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSWI;
+                elseif ($entry["Protocol"]=="Funk") $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSWI;
+                else $seriennumernliste[$adresse]["Protocol"]=$entry["Protocol"]; 
+                echo "  ".str_pad($adresse,20).str_pad($entry["Name"],50).str_pad($seriennumernliste[$adresse]["Type"],20).str_pad($seriennumernliste[$adresse]["Device"],30).str_pad($seriennumernliste[$adresse]["Channel"],20).str_pad($entry["Protocol"],20)."\n";
                 }		
             }
         echo "Es gibt ".sizeof($seriennumernliste)." Seriennummern also Homematic Geräte in der Liste. Die ohne Type Parameter oder HM_TYPE_BUTTON rausnehmen:\n";	
@@ -1075,7 +1082,7 @@
         foreach ($seriennumernliste as $zeile)
             {
             //echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  \n";
-            echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";
+            echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20).str_pad($zeile["Channel"],20).str_pad($zeile["Protocol"],20)." \n";
             $name=explode(":",$zeile["Name"])[0];
             $homematicConfiguration[$name][]=$zeile["Adresse"];
             $homematicConfiguration[$name][]=$zeile["Channel"];
@@ -1086,10 +1093,10 @@
         $i=0;
         foreach ($homematicConfiguration as $component=>$componentData) 
             {
-            $propertyAddress  = $componentData[0];
-            $propertyChannel  = $componentData[1];
-            $propertyProtocol = $componentData[2];
-            $propertyType     = $componentData[3];
+            $propertyAddress  = $componentData[0];      // Adresse
+            $propertyChannel  = $componentData[1];      // Channel  
+            $propertyProtocol = $componentData[2];      // Protocol
+            $propertyType     = $componentData[3];      // Type
             $propertyName     = $component;
             
             /* für jedes gerät aus der Liste alle Homematic module durchsuchen */
@@ -1105,7 +1112,7 @@
                     $install=false;
                     }
                 }
-            if ($install==true)		/* kein Device gefunden */
+            if ($install==true)		/* kein Device gefunden, daher installieren */
                 {
                 echo "*******Fehler, HomaticModule '$propertyName' muss komplett neu installiert werden.\n";
                 $moduleManager->LogHandler()->Log("Create NEW HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol");
@@ -1390,7 +1397,7 @@
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
     echo "\n===================================================================================\n";
-    echo "Webfront Installation:\n";
+    echo "Webfront Installation für den Systatus Monitor (Doctorbag):\n";
 	$resultStream=array();
     if ($sumTableHtmlID !== false) 
         {
@@ -1450,6 +1457,8 @@
                 }
             }	
         } 
+
+    /***********************************************************************************/
 
 	if ($WFC10_Enabled)
 		{
@@ -1844,6 +1853,12 @@
      *
      * eigenes OperationCenter Webfront aufbauen, Default Icon Arztkoffer
      * es funktioniert noch nicht so dass die Funktion in AllgemeineDateien gespeichert und verwendet wird
+     * legt 5 Kategorien in der Sub-Kategorie an: SystemNachrichten.SysPingErreichbarkeit,SystemInfo,RightUp,RightDn
+     * benötigt werden  
+     *      $configWF["Path"]           Kategorie OperationCenter 
+     *      $configWF["TabItem"]        Subkategorie SystemStatus
+     *      $configWF["ConfigId"]       Webfront Config ID
+     *      $configWF["TabPaneItem"]    OperationCenterTPA
      *
      * Tab mit 5 Fenster links gross und 4fach im Quadrat
      *           $resultStream[0]["Stream"]["OID"]   für Fenster Links oben
@@ -1858,10 +1873,14 @@
     function installWebfrontMon($configWF,$resultStream, $emptyWebfrontRoot=false)
         {
         if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
-            {            
+            {
+            $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+            $wfcHandling->read_WebfrontConfig($configWF["ConfigId"]);         // register Webfront Confígurator ID  
+
+
             $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
             
-            echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
+            echo "installWebfrontMon,Path ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
             echo "----------------------------------------------------------------------------------------------------------------------------------\n";
 
             if ($emptyWebfrontRoot)         // für OperationCenter zB nicht loeschen, es gibt noch andere sub-Webfronts
@@ -1871,7 +1890,7 @@
                 if ($status) echo "   -> erfolgreich.\n";
                 IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
                 }
-
+            else echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt wird nicht gelöscht.\n";
             echo "Create Sub-Category ".$configWF["TabItem"]." in ".IPS_GetName($categoryId_WebFront)." and empty it.\n";
             $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
             IPS_SetHidden($categoryId_WebFrontMonitor, true);                                                      // nicht im OperationCenter anzeigen, eigener Tab
@@ -1886,7 +1905,7 @@
             $categoryIdRightDn    = CreateCategory('RightDn',      $categoryId_WebFrontMonitor, 0);             
 
             /*                                                    
-             *    Monitor, TabpaneItem (Tab Arztkoffer im Admin Root)
+             *    TabpaneItem (Tab Arztkoffer im Admin Root, OperationCenterTPA)
              *        Splitpane, TabItem, vertical 30%    (Tab Monitorstecker unter Arztkofer)
              *             Category TabItem_Ovw
              *             Splitpane TabItem_Show, vertical 50%
@@ -1899,23 +1918,43 @@
              *
              */
             print_r($configWF);
+            echo "Create Webfront TabPane ".$configWF["TabPaneItem"]." , ".$configWF["TabPaneParent"]." , ".$configWF["TabPaneOrder"]." , ".$configWF["TabPaneName"]." , ".$configWF["TabPaneIcon"]."\n";
+            /*
             DeleteWFCItems($configWF["ConfigId"], $configWF["TabPaneItem"]);		// Einzel Tab loeschen
-            CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // OperationCenter Tabpane
-            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 /*Vertical*/, 30 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]."_Ovw");     //left
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]."_Show");
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]."_Left");        // middle
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]."Up_Left");        // right
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]."Dn_Left");        // right
+            */
 
-            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdLeft /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
-            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            //CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // OperationCenter Tabpane
+            $wfcHandling->CreateWFCItemTabPane($configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // OperationCenter Tabpane
+            echo "Create Webfront SplitPane ".$configWF["TabItem"]." , ".$configWF["TabPaneItem"]." , ". ($configWF["TabOrder"]+200)." , Monitor ,".$configWF["TabIcon"]."\n";
+            //CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 /*Vertical*/, 30 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
+            $wfcHandling->CreateWFCItemSplitPane ($configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 /*Vertical*/, 30 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
+            
+            //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdLeft /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+            //CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Show", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            //CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 35 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);            
+            $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdLeft /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+            $wfcHandling->CreateWFCItemSplitPane ($configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Show", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            $wfcHandling->CreateWFCItemSplitPane ($configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 35 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);            
 
-            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Show", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
-            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 35 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
             //CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Right", $configWF["TabItem"]."_Show", 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
             //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Right", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
             //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Right', $configWF["TabItem"]."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);  
         
-            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
-            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
 
-            if ($resultStream !== false) 
+
+            if ($resultStream !== false)        
                 {
                 $resultStream[0]["Stream"]["Link"]=$categoryIdLeftUp;
                 $resultStream[1]["Stream"]["Link"]=$categoryIdRightUp;
@@ -1923,12 +1962,13 @@
                 $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;        // wird nicht mehr verwendet, trotzdem drinnen lassen sonst ist die Struktur zerstört
                 $resultStream[4]["Stream"]["Link"]=$categoryIdLeft;             // das ist das klassische sysping
                 $count=sizeof($resultStream);           // spaetestens jetzt sind es immer 5 Eintraege
-                print_r($resultStream);
+                echo "Jetzt diese Kategorien zuordnen: ".json_encode($resultStream)."\n";
+                //print_r($resultStream);               // Name, OID, Link
                 for ($i=0;$i<$count;$i++) 
                     {
                     if (isset($resultStream[$i]["Stream"]["Name"]))
                         {
-                        CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);
+                        CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);        // Name, OID und Parent für Link
                         if (isset($resultStream[$i]["Data"]))
                             { 
                             foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $resultStream[$i]["Stream"]["Link"], 1000+$i*10);
@@ -1936,15 +1976,15 @@
                         }
                     }
                 }	
+            
+            $wfcHandling->write_WebfrontConfig($configWF["ConfigId"]);
             } // Config vollstaendig			
         }    
 
-    /*******************************************************************
-     *
-     *
-     *
-     *
-     **********************************/
+    /* Create HomaticModule Instance with Name Address, Channel, Protocol
+     * Teil des Aufrufs bei dem Homematic RSSI Variablen für stromversorgte Homematic Devices angelegt werden
+     * Routine prüft alle Homematic Instanzen ob die gefoderte Adresse bereits vergeben ist
+     */
 
 	function CreateHomematicInstance($moduleManager, $Address, $Channel, $Name, $ParentId, $Protocol='BidCos-RF') 
         {
@@ -1958,20 +1998,30 @@
 				return $HomematicModuleId;
 			    }
 		    }
-        echo "CreateHomematicInstance: Create HomaticModule Instabce with '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol\n";
+        echo "CreateHomematicInstance: Create HomaticModule Instance with '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol";
 		$moduleManager->LogHandler()->Log("Create HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol");
 		$HomematicModuleId = IPS_CreateInstance("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
 		IPS_SetParent($HomematicModuleId, $ParentId);
+        echo ",OID=$HomematicModuleId ,Parent OID=$ParentId";
 		IPS_SetName($HomematicModuleId, $Name);
 		HM_SetAddress($HomematicModuleId, $Address.':'.$Channel);
 		if ($Protocol == 'BidCos-RF') 
 			{
-			$Protocol = 0; echo "Funk";
+			$Protocol = 0; echo "  -> Funk";
 			}
-		else 
+		elseif ($Protocol == 'BidCos-WI')           // es gibt auch IP basierte Datenübertragung
 			{
-			$Protocol = 1; echo "Draht";
+			$Protocol = 1; echo "  -> Draht";
 			}
+        elseif ($Protocol == 'IP')           // es gibt auch IP basierte Datenübertragung
+			{
+            $Protocol = 2; echo "  -> IP";    
+            }
+        else 
+            {
+            $Protocol = 3; echo "  -> unknown";
+            }
+        echo "\n";
 		HM_SetProtocol($HomematicModuleId, $Protocol);
 		HM_SetEmulateStatus($HomematicModuleId, true);
 		// Apply Changes

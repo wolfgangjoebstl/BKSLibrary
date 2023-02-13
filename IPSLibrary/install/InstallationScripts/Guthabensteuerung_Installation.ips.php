@@ -24,6 +24,9 @@
 	 * Installationsroutine, Eigenes Tab im SystemTP für Selenium Status
      * Selenium Funktion wird hier immer mehr ausgeweitet
      *
+     * Allgemeine Funktion Money mit dem Dollarzeichen
+     * Darstellung von Guthaben, aktuellem Depotwert, Analyseergebnisse von Yahoo Finance API
+     *
 	 *
 	 * @file          Guthabensteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -37,7 +40,6 @@
  *
  *******************************************************************/
 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");    
 
@@ -46,7 +48,8 @@
     $dosOps->setMaxScriptTime(400); 
 	$startexec=microtime(true);
 
-	//$repository = 'https://10.0.1.6/user/repository/';
+    $DoInstall=true; 
+
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
@@ -58,24 +61,27 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	//echo "\nKernelversion : ".IPS_GetKernelVersion();
-	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	//echo "\nIPS Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	//echo " ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	//echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Guthabensteuerung');
-	//echo "\nGuthabensteuerung Version : ".$ergebnis;
+	$ergebnis1=$moduleManager->VersionHandler()->GetScriptVersion();
+	$ergebnis2=$moduleManager->VersionHandler()->GetModuleState();
+	$ergebnis3=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+	$ergebnis4=$moduleManager->VersionHandler()->GetVersion('Guthabensteuerung');
+
+    $systemDir     = $dosOps->getWorkDirectory(); 
 
  	$installedModules = $moduleManager->GetInstalledModules();
-	$inst_modules="\nInstallierte Module:\n";
+	$inst_modules="Installierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
-	//echo $inst_modules;
 	
+	echo "Kernelversion : ".IPS_GetKernelVersion()."\n";
+	echo "IPS Version : ".$ergebnis." ".$ergebnis2."\n";
+	echo "IPSModulManager Version : ".$ergebnis3."\n";
+    echo "Guthabensteuerung Version : ".$ergebnis4."\n";        
+	echo $inst_modules;
+    echo "systemdir : ".$systemDir."\n";
+
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -83,7 +89,6 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-    $dosOps = new dosOps();
     $ipsOps = new ipsOps();    
 	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
 
@@ -101,17 +106,15 @@
     /* ScriptIDs finden für Timer */
 	$ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$CategoryIdApp);
 	$GuthabensteuerungID=IPS_GetScriptIDByName('Guthabensteuerung',$CategoryIdApp);
-
+	echo "Guthabensteuerung ScriptID:".$GuthabensteuerungID."\n";
+    
     /* Kategorien anlegen, je nach Betriebsart, 
      * default ist none, dann wird nichts ausser dem Nachrichtenverlauf angelegt und gemacht 
      */
 
     $categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 20);
     $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 1000);
-
-    $dosOps = new dosOps();    
-    $systemDir     = $dosOps->getWorkDirectory(); 
-
+  
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 	$categoryId_Nachrichten     = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 100);
@@ -120,15 +123,12 @@
 
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
-
-    $DoInstall=true; $seleniumWeb=false;
-
+    
+    $seleniumWeb=false;
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
         case "IMACRO":
-																								 
             $CategoryId_Mode          = CreateCategory('iMacro',          $CategoryIdData, 90);
-																								  
             $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_iMode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             $testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMode,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             break;
@@ -312,7 +312,6 @@
         AC_SetAggregationType($archiveHandlerID,$phone_Load_ID,0);
         IPS_ApplyChanges($archiveHandlerID);
 
-
         $pname="GuthabenKonto";                                         // keine Statndardfunktion, da Inhalte Variable
         $nameID=array();
         for ($i=0;$i<$maxcount;$i++)
@@ -349,7 +348,7 @@
 	 *
 	 ******************************************************************/
 
-	echo "Guthabensteuerung ScriptID:".$GuthabensteuerungID."\n";
+
 
 	$timer = new timerOps();
     

@@ -77,6 +77,7 @@
         }
     $variableIdHTML  = CreateVariable("Uebersicht",    3 /*String*/, $CategoryIdData, 40, '~HTMLBox', null,null,"");
     $AstroLinkID     = CreateVariable("htmlAstroTable",3           , $CategoryIdData,100, "~HTMLBox", null,null,"");
+    $mobileContentID = CreateVariable("htmlMobileTable",3          , $CategoryIdData,0,"~HTMLBox",null,null,"");                    // Bottomline für Mobile Webfront
 
     $switchScreenID    = IPS_GetVariableIDByName("SwitchScreen",$CategoryIdData);
     $switchSubScreenID = IPS_GetVariableIDByName("SwitchSubScreen",$CategoryIdData);  
@@ -194,7 +195,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 
     if ($debug) echo "Aufruf StartpageWrite in Startpage Class Library.\n";
     SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,$debug));
-
+    SetValue($mobileContentID,  $startpage->bottomTableLines());                                                        // Mobile Webfron Statuszeile/tabelle
 
     /**************************************** PROGRAM EXECUTE *********************************************************/
 

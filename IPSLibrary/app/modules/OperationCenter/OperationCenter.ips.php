@@ -19,9 +19,9 @@
  * Reserved
  * Maintenance			Starte Maintennance Funktionen 
  * MoveLogFiles			Maintenance Funktion: für Move Log Files 
- *
- *
- *
+ * HighSpeedUpdate      alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP
+ * CleanUpEndofDay      CleanUp für Backup starten, sollte alte Backups loeschen
+ * UpdateStatus
  * 
  *
  ***********************************************************/
@@ -1313,6 +1313,11 @@ if ($_IPS['SENDER']=="TimerEvent")
                 }
 			break;
 		case $tim12ID:			// High Speed Polling, alle 10 Sekunden
+            /* benötigt ein fehlendes STATUS oder ein STATUS mit ACTIVE und ein READMODE mit SNMP
+             * im data gibt es ein Kategorie mit Router_RouterName, und eine Variable SnmpFastPoll
+             * wenn nicht ebenfalls Bearbeitung abbrechen, unter der Variable SnmpFastPoll gibt es zwei Variablen ifTable, SNMP Fast Poll
+             * wenn die Variablen nicht vorhanden sind oder SNMP Fast Poll nicht auf true steht Abbruch
+             */
 			foreach ($OperationCenterConfig['ROUTER'] as $router)
 				{
                 if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
@@ -1351,6 +1356,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 							        case 'RT2600AC':
 										echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
 										$OperationCenter->read_routerdata_RT2600AC($fastPollId, $host, $community, $binary, $debug, true);		// nur abarbeiten wenn SNMP Library installiert ist
+			                            break;
+							        case 'RT6600AX':
+										echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
+										$OperationCenter->read_routerdata_RT6600AX($fastPollId, $host, $community, $binary, $debug, true);		// nur abarbeiten wenn SNMP Library installiert ist
 			                            break;
 									default:
 										echo "   Kein Eintrag für \"".$router['NAME']."\" gefunden. Typ \"".strtoupper($router["TYP"])."\" nicht erkannt.\n";

@@ -26,7 +26,7 @@
 /*********************************************************************************************
  *
  *
- * letzte Version 29.04.2021
+ * letzte Version 6.02.2023
  *
  * diese Klassen werden hier behandelt:
  *
@@ -110,7 +110,8 @@
 class OperationCenter
 	{
 
-    protected $dosOps;                        /* verwendete andere Klassen */
+    protected $dosOps;                        // verwendete andere Klassen 
+    protected $ipsTables;                   // verwendete andere Klassen
     protected $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
     private $debug;                 // zusaetzliche hilfreiche Debugs
 
@@ -141,7 +142,8 @@ class OperationCenter
         $this->debug=$debug;
 		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 
-        $this->dosOps = new dosOps();     // create classes used in this class
+        $this->dosOps = new dosOps();                   // create classes used in this class
+        $this->ipsTables = new ipsTables();             // create classes used in this class, standard creation of tables
         $this->systemDir     = $this->dosOps->getWorkDirectory();
         if ($debug && false)                                                        //false nicht ausgeben
             {
@@ -193,6 +195,11 @@ class OperationCenter
 		
     /****************************************************************************************************************/
 
+    /* Setup Konfiguration schreiben
+     * dazu OperationCenter_SetUp() aus dem Config File OperationCenter_Configuration.inc.php einlesen
+     *
+     *
+     */
 
     public function setSetup()
         {
@@ -228,6 +235,13 @@ class OperationCenter
                 configfileParser($configInput["Synology"], $config["Cloud"], ["Directory"],"Directory",false); 
                 configfileParser($configInput["Synology"], $config["Cloud"], ["StatusDirectory"],"StatusDirectory",false); 
                 configfileParser($configInput["Synology"], $config["Cloud"], ["StatusMaxFileCount"],"StatusMaxFileCount",100); 
+
+                // Alternative, sich die entsprechenden Verzeichnisse selbst zusammenbauen
+                configfileParser($configInput["Synology"], $config["Cloud"], ["SynologyCloudDirectory","CloudDirectory","clouddirectory"],"CloudDirectory",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["Scripts"],"Scripts",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["Executes"],"Executes",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["Status"],"Status",false); 
+
                 break;
             }
 
@@ -1524,7 +1538,12 @@ class OperationCenter
 	/**
 	 * @public
 	 *
-	 * liest systeminfo aus und speichert die relevanten Daten als Register
+	 * liest systeminfo als IP Execute vom PC aus und speichert die relevanten Daten als Register
+     * verwendet renameIndex um aus einer Zahl einen Arrayindex zu machen
+     *
+     * versucht mit whatismyIp Adress die eigen IP Adresse rauszubekommen
+     * analysiert zusätzlich einige Verzeichnisse
+     *
 	 *
 	 */
 	 function SystemInfo($debug=false)
@@ -1541,6 +1560,8 @@ class OperationCenter
 		$UptimeID			= IPS_GetObjectIdByName("IPS_UpTime", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		$VersionID			= IPS_GetObjectIdByName("IPS_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		
+        $VersionJavaID		= IPS_GetObjectIdByName("Java_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+
         /* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
 
         $ipTableHtml        = IPS_GetObjectIdByName("TabelleGeraeteImNetzwerk", $this->categoryId_SysInfo);     // ipTable am Schluss anlegen
@@ -1553,48 +1574,80 @@ class OperationCenter
 		$PrintSI="";
 		$PrintLines="";		
 		
-        /* exec Funktion von der Art wie IP Symcom gestartet wird abhängig, nur möglich wenn als System gestartet wurde */
-		// exec('systeminfo',$catch);   // ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden 
-        $resultSystemInfo=IPS_EXECUTE("systeminfo","", true, true);
-        //echo $resultSystemInfo;
-        $catch=explode("\x0A",$resultSystemInfo);             //zeilenweise als array speichern
-        print_R($catch);
+        /* exec Funktion von der Art wie IP Symcom gestartet wird abhängig, nur möglich wenn als System gestartet wurde 
+         */
+        $opSys     =  $this->dosOps->evaluateOperatingSystem();
+        echo "Operating System evaluated from IP Symcon Kerneldir : $opSys.\n";
+        if ($opSys == "WINDOWS")
+            {
+            // exec('systeminfo',$catch);   // ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden 
+            $resultSystemInfo=IPS_EXECUTE("systeminfo","", true, true);
+            //echo $resultSystemInfo;
+            $catch=explode("\x0A",$resultSystemInfo);             //zeilenweise als array speichern
+            print_R($catch);
 
-		foreach($catch as $line)
-			{
-			if (strlen($line)>2)
-				{
-				//echo "  | ".$line."\n<br>";
-				$PrintLines.=$line."\n";
-				if (substr($line,0,1)!=" ")
-					{
-					/* Ueberschrift */
-					$pos1=strpos($line,":");
-					$VarName=trim(substr($line,0,$pos1));
-					$VarField=trim(substr($line,$pos1+1));
-					$result[1]="";$result[2]="";$result[3]="";
-					$result=explode(":",$line);
-					$results[$this->renameIndex($result[0])]=trim($result[1]);
-					
-					for ($i=2; $i<sizeof($result); $i++) { $results[$this->renameIndex($result[0])].=":".trim($result[$i]);  }
-					$results2[$VarName]=$VarField;
-					$PrintSI.="\n".$line;
-					}
-				else
-					{
-					/* Fortsetzung der Parameter Ausgabe, zurückgegeben wird results */
-					$PrintSI.=" ".trim($line);
-					$results[$this->renameIndex($result[0])].=" ".trim($line);
-					$results2[$VarName].=" ".trim($line);
-					}
-				}  /* ende strlen */
-			}
-		if ($debug) echo "Ausgabe direkt:\n".$PrintLines."\n";		
+            foreach($catch as $line)
+                {
+                if (strlen($line)>2)
+                    {
+                    //echo "  | ".$line."\n<br>";
+                    $PrintLines.=$line."\n";
+                    if (substr($line,0,1)!=" ")
+                        {
+                        /* Ueberschrift */
+                        $pos1=strpos($line,":");
+                        $VarName=trim(substr($line,0,$pos1));
+                        $VarField=trim(substr($line,$pos1+1));
+                        $result[1]="";$result[2]="";$result[3]="";
+                        $result=explode(":",$line);
+                        $results[$this->renameIndex($result[0])]=trim($result[1]);
+                        
+                        for ($i=2; $i<sizeof($result); $i++) { $results[$this->renameIndex($result[0])].=":".trim($result[$i]);  }
+                        $results2[$VarName]=$VarField;
+                        $PrintSI.="\n".$line;
+                        }
+                    else
+                        {
+                        /* Fortsetzung der Parameter Ausgabe, zurückgegeben wird results */
+                        $PrintSI.=" ".trim($line);
+                        $results[$this->renameIndex($result[0])].=" ".trim($line);
+                        $results2[$VarName].=" ".trim($line);
+                        }
+                    }  /* ende strlen */
+                }
+            if ($debug) echo "Ausgabe direkt:\n".$PrintLines."\n";		
+
+            /* auch Java ist in einem Windowsverzeichnis versteckt, nach Verzeichnis suchen */
+            $dirs = ['C:/Program Files','C:/Program Files (x86)'];
+
+            echo "Look for Java:\n";
+            $found = $this->dosOps->dirAvailable('Java',$dirs,false);         // true mit Debug
+            if ($found) 
+                {
+                echo "Java verzeichnis hier gefunden : $found.\n";
+                //$this->dosOps->writeDirStat($found.'Java');               // Java Version herausfinden
+                $result = $this->dosOps->readdirToArray($found.'Java');
+                //print_R($result);                                     // alle Unterverzeichnisse finden
+                $javaVersion=false;
+                foreach ($result as $entry) 
+                    {
+                    if ($javaVersion==false) $javaVersion=$entry;
+                    else echo "more Java Versions are available. Here $entry\n";
+                    }
+                echo "Java version : $javaVersion.\n";                
+                $results["Java_Version"]=$javaVersion;
+                SetValue($VersionJavaID,$javaVersion);
+                }
+
+            }
 
 		//print_r($results);
 		//print_r($results2);
 		//echo $PrintSI;
 		
+        /* eigene IP Adresse herausfinden
+         */
+
 		//$IPAdresse=$this->whatismyIPaddress2();
 		//$results["ExterneIP"]=$IPAdresse;
 		$IPAdresse=$this->whatismyIPaddress1()[0]["IP"];
@@ -1615,7 +1668,7 @@ class OperationCenter
 		SetValue($VersionID,$ServerVersion);
 		SetValue($MemoryID,$results["Verfuegbarer physischer Speicher"]." von ".$results["Gesamter physischer Speicher"]." verfuegbar. ".$results["Virtueller Arbeitsspeicher"]." Virtualisiert.");
 
-        /* ipTable noch zusaetlich beschreiben */
+        /* MAC ipTable noch zusaetzlich beschreiben */
 
         $macTable=$this->get_macipdnsTable();
 
@@ -1669,6 +1722,7 @@ class OperationCenter
 		$HostnameID   		= CreateVariableByName($this->categoryId_SysInfo, "Hostname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		$SystemNameID		= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
 		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+        $VersionJavaID		= IPS_GetObjectIdByName("Java_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		$Version=explode(".",getValue($SystemVersionID));
 		//print_r($Version);
         if (isset($Version[2]))         // Windows System
@@ -1720,6 +1774,7 @@ class OperationCenter
         $PrintHtml .= '<tr><td>External IP Adresse</td><td>'.GetValue($ExternalIP).'</td><td></tr>';
         $PrintHtml .= '<tr><td>IPS Uptime</td><td>'.GetValue($UptimeID).'</td><td></tr>';
         $PrintHtml .= '<tr><td>IPS Version</td><td>'.GetValue($VersionID).'</td><td></tr>';
+        $PrintHtml .= '<tr><td>Java Version</td><td>'.GetValue($VersionJavaID).'</td><td></tr>';
         $PrintHtml.='</table>';            
         
 		if ($html) return ($PrintHtml);
@@ -2523,7 +2578,29 @@ class OperationCenter
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.15", "wlan0_ifOutOctets", "Counter32");
         $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
 		}
-		
+
+    /* der neueste Synology Router
+     *
+     *
+     */
+
+	function read_routerdata_RT6600AX($router_categoryId, $host, $community, $binary, $debug=false, $useSnmpLib=false)
+		{
+		/* Interface Nummer 4,6,15   4 ist der Uplink, 6 ist eth2 und Lankabel steckt auf Ethernet LAN Port 1 */
+        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug, $useSnmpLib);
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");		// Uplink, WAN Port
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");		// Uplink, WAN Port 2, Ethernet
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.6", "eth2_ifInOctets", "Counter32");		// Ethernet
+
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.6", "eth2_ifOutOctets", "Counter32");
+
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.15", "wlan0_ifInOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.15", "wlan0_ifOutOctets", "Counter32");
+        $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
+		}
+
 	/*
 	 *  Routerdaten MBRN3000 direct aus dem Router auslesen,
 	 *

@@ -106,7 +106,7 @@
 			/* standardize configuration */
 			
 			$this->dosOps = new dosOps();                                           // wird überall verwendet
-			$this->configuration=$this->setStartpageConfiguration($debug);
+			$this->setStartpageConfiguration(false,$debug);
 			
 			/* get Directories */
 
@@ -175,15 +175,18 @@
 		 * Einlesen aus der Datei und Abspeichern in der Class
 		 */
 
-		function setStartpageConfiguration($debug=false)
+		function setStartpageConfiguration($config=false,$debug=false)
 	        {
-            $config=array(); $configInput=array();
+            $configInput=array();
             $systemDir     = $this->dosOps->getWorkDirectory(); 
 
             if ((function_exists("startpage_configuration"))===false) IPSUtils_Include ("Startpage_Configuration.inc.php","IPSLibrary::config::modules::Startpage");				
             if (function_exists("startpage_configuration"))  $configInput = startpage_configuration();
             else echo "*************Fehler, Startpage Konfig File nicht included oder Funktion startpage_configuration() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
 
+            if (($config !== false) && (is_array($config))) $configInput=$config;       // Config Overwrite, Testfunktion für externe Werte
+
+            $config=array();
             if ($debug) 
                 {
                 echo "setStartpageConfiguration aufgerufen. Eingelesene Konfiguration:";
@@ -239,6 +242,7 @@
                 print_R($config);
                 echo "==============================\n";
                 }
+            $this->configuration=$config;                
 	        return ($config);
 	        }
 
@@ -2550,10 +2554,10 @@
          * OID wird evaluiert, es wird daraus wieder eine config ausgegeben
          *
          * Zusatzfunktionen
-         *      Aggregate       MEANS,MAX,MIN
+         *      Aggregate       MEANS,MAX,MIN aus mehreren Werte in einem Array
          *      Property        nette Darstellung wann letzte Änderung erfolgt ist
          *      Type
-         *      Integrate
+         *      Integrate       aus einem Wert mit archivierten Werten, kein Aggregate konfiguriert
          *
          * die Zusatzfunktionen vorbereiten und weiter an displayValue
          *
@@ -2561,6 +2565,7 @@
 
         function evaluateEntry($tableEntry, $altText=false, $debug=false)
             {
+            if ($debug) echo "      evaluateEntry aufgerufen für ".json_encode($tableEntry).".\n";
             /* check ob eine oder mehrere OIDs angegeben wurden */
             $typeOfObject="STANDARD";
             $wert="";
@@ -2653,7 +2658,14 @@
                         }
                     if ( ($config["Aggregate"] === false) || ($result==false) )            // kein Aggregate or Display failed
                         {                                
-                        // Unterschied ob mehrere Werte dargestellt oder vorher zusammengefasst werden sollen
+                        /* Unterschied ob mehrere Werte dargestellt oder vorher zusammengefasst werden sollen
+                         * hier kein Aggregate, aber es können ein oder mehrere Werte sein
+                         * hier wird behandelt
+                         *      Property
+                         *      Type
+                         *      Integrate
+                         *      Show
+                         */
                         foreach ($oidArray as $oid)         // die Werte der Reihe nach durchgehen, jeder Wert hat einen eigenen Eintrag innerhalb der TAbelle
                             {
                             $archiveID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -2695,14 +2707,33 @@
                             $value = GetValue($oid);
                             if ($config["Integrate"]>59)       // nur Werte ab einer Minute integrieren
                                 {
+                                /* Integrate mit einem Wert, es können aber auch mehrere Archive sein
+                                 * wir lesen aus dem Archive die Zeitspanne in Sekunden zwischen der Jetztzeit und der Integrate Zeitspanne in Sekunden
+                                 * nix machen wenn kein Archive oder keine Werte in der Zeitspanne ausgegeben werden
+                                 * Bearbeitung erfolgt anhand von TYPE
+                                 *  Standard
+                                 *  Raincounter
+                                 *  Amis
+                                 */
                                 $endtime=time();
                                 $starttime=$endtime-$config["Integrate"];   // die Werte entsprechend dem angegebenen Zeitraum laden
                                 $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
                                 if ( ($werteLog===false) || (sizeof($werteLog)==0) ) ;        // $oid bleibt unverändert
                                 else
                                     {
-                                    switch ($typeOfObject)
+                                    switch (strtoupper($typeOfObject))
                                         {
+                                        case "AMIS":
+                                            if ($debug) echo "     Integrate ".sizeof($werteLog)." Values from last ".$config["Integrate"]." seconds for Type $typeOfObject. \n";
+                                            IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');                                        
+                                            $amis = new Amis();  
+                                            $data=$amis->getArchiveData($oid, $starttime, $endtime, $config["Unit"], true); 
+                                            if (isset($data["24h"]))
+                                                {
+                                                $value=$data["24h"]["Value"];
+                                                $config["Unit"] .= "h";
+                                                }
+                                            break;
                                         case "STANDARD":
                                             $count=0; $sum=0; $max=0; $min=0;
                                             foreach ($werteLog as $eintrag)
@@ -3693,6 +3724,8 @@
          * die Bottom Table Line ist am unteren Ende des Bild und Wetter Bildschirms angesiedelt
          * Darstellung vereinheitlicht mit this->evaluateEntry,  für Config dort schauen 
          * nur wenn evaluateEntry erfolgreich, wird ein Eintrag geschrieben
+         *
+         *      bottomTableLines.evaluateEntry
          *
          * es wird eine eigene Tabellenzeile aufgebaut, die Zellen von darüber werden zusammengefasst und eine neue Tabelle in einer Zeile aufgebaut
          * Input pro Eintrag ist immer die Objekt OID, diese kann ein oder mehrere Werte sein, wird immer als array bearbeitet

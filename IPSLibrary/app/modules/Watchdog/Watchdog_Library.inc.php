@@ -223,8 +223,8 @@ class watchDogAutoStart
             {
             if ( ($this->dosOps->fileAvailable($this->configuration["Software"]["Selenium"]["Execute"],$this->configuration["Software"]["Selenium"]["Directory"])) == false )
                 {
-                echo "Keine Installation von Java Selenium vorhanden.\n";
-                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von Java Selenium vorhanden");
+                echo "Keine Installation von Java Selenium vorhanden, check for ".$this->configuration["Software"]["Selenium"]["Directory"].$this->configuration["Software"]["Selenium"]["Execute"]."\n";
+                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von Java Selenium vorhanden, check for ".$this->configuration["Software"]["Selenium"]["Directory"].$this->configuration["Software"]["Selenium"]["Execute"]);
                 $processStart["selenium"]="Off";
                 }
             }
@@ -237,14 +237,14 @@ class watchDogAutoStart
             {
             if ( ($this->dosOps->fileAvailable("vmplayer.exe",$this->configuration["Software"]["VMware"]["Directory"])) == false )
                 {
-                echo "Keine Installation von VMware vorhanden.\n";
-                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von VMWare vorhanden");
+                echo "Keine Installation von VMware vorhanden, check ".$this->configuration["Software"]["VMware"]["Directory"]."vmplayer.exe.\n";
+                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von VMWare vorhanden, check ".$this->configuration["Software"]["VMware"]["Directory"]."vmplayer.exe");
                 $processStart["vmplayer"]="Off";
                 }
             if ( ($this->dosOps->fileAvailable("*.vmx",$this->configuration["Software"]["VMware"]["DirFiles"])) == false )
                 {
                 echo "Keine Images für VMPlayer in ".$this->configuration["Software"]["VMware"]["DirFiles"]." vorhanden.\n";
-                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von Java Selenium vorhanden");
+                IPSLogger_Err(__file__, "watchDogAutoStart::checkAutostartProgram: Keine Installation von VMWare Player Images vorhanden, check here for vmx file ".$this->configuration["Software"]["VMware"]["DirFiles"]);
                 $processStart["vmplayer"]="Off";
                 }
             }

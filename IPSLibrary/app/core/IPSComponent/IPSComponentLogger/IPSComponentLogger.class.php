@@ -1286,6 +1286,7 @@ class Logging
                         $NachrichtenID=$this->do_init_contact($variable, $variablename,$value,$debug);
                         break;
                     case "BRIGHTNESS":
+                        IPSLogger_Not(__file__, "Logging::do_init_brightness,getfromDatabase ".$this->variableTypeReg);
                         $this->Type=1;  // Brightness ist Integer
                         $NachrichtenID=$this->do_init_brightness($variable, $variablename,$value,$debug);
                         break;
@@ -1530,8 +1531,10 @@ class Logging
                 if ($this->storeTableID)
                     {
                     $messages = json_decode(GetValue($this->storeTableID),true);
-                    if (isset($messages[time()])) $messages[(time()+1)]=$message;                                                 //nur eine Nachricht pro Sekunde, kleiner Workaround
-                    else $messages[time()]=$message;                                                 
+                    $latestTime=time();
+                    foreach ($messages as $timeStamp => $entry) if ($timeStamp>$latestTime) $latestTime=$timeStamp; 
+                    if (isset($messages[$latestTime])) $messages[($latestTime+1)]=$message;                                                 //nur eine Nachricht pro Sekunde, kleiner Workaround
+                    else $messages[$latestTime]=$message;                                                 
                     krsort($messages);
                     if (count($messages)>50)
                         {

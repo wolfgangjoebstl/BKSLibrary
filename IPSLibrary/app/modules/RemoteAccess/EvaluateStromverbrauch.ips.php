@@ -21,6 +21,15 @@
  *
  * Stromverbrauch Variablen am Remote Server anlegen, kommen vom AMIS Modul
  *
+ *  data.modules.Amis.BKS01.AMIS.Zählervariablen
+ *
+ * zuerst die Erreichbarkeit der konfigurierten Server prüfen, dann für die AMIS Register ein Pendant auf den remote Servern alegen
+ * dazu wird auf den remoteservern folgende Struktur aufgebaut
+ *
+ *  Visualization.Webfront.Administrator.RemoteAccess.BKS01 oder BKS01-VIS.Stromverbrauch
+ *
+ * Besonders die Stromverbrauchsregister werden auf der Startpage visualisiert, manuell den Konnex herstellen
+ *
  */
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");

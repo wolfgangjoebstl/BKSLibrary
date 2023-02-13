@@ -12,14 +12,29 @@
  * Basisifunktion ist die verwendung von registerSNMPObject und update.
  * Immer zuerst Klasse anlegen, dann SNMP Variablen registrieren und am Schluss update aufrufen
  *
- * _construct
- * createVariableProfil
+ *  _construct
+ *  createVariableProfil
  *
- * registerSNMPObj
- * update
- * getSNMPType
- * getSNMPObject
- * 
+ *  registerSNMPObj
+ *  update
+ *  getSNMPType
+ *  getSNMPObject
+ *  walkSNMP
+ *  walkSNMPresult
+ *  searchArray
+ *  walkSNMPcsv
+ *  getifTable
+ *  printifTable
+ *  print_snmpobj
+ *
+ *  CapacityRater
+ *  SpeedRater
+ *  TimeRater
+ *  convertCapacity
+ *  convertTemperature
+ *  convertFanSpeed
+ *  convertSmartStatus
+ *
  */
 
 class SNMP_OperationCenter
@@ -252,20 +267,20 @@ class SNMP_OperationCenter
 	            }
 
 
-         //Verknüpfe Variablenprofil mit neu erstellter Variable
-        if($convertType == "CapacityMB")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityMB");
-        if($convertType == "CapacityGB")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityGB");
-        if($convertType == "CapacityTB") 	      	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityTB");
-        if($convertType == "Temperature")      	   IPS_SetVariableCustomProfile($ips_var, "SNMP_Temperature");
-        if($convertType == "FanSpeed")            	IPS_SetVariableCustomProfile($ips_var, "SNMP_FanSpeed");
-        if($convertType == "SmartStatus")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_SmartStatus");
-        }
+            //Verknüpfe Variablenprofil mit neu erstellter Variable
+            if($convertType == "CapacityMB")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityMB");
+            if($convertType == "CapacityGB")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityGB");
+            if($convertType == "CapacityTB") 	      	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityTB");
+            if($convertType == "Temperature")      	   IPS_SetVariableCustomProfile($ips_var, "SNMP_Temperature");
+            if($convertType == "FanSpeed")            	IPS_SetVariableCustomProfile($ips_var, "SNMP_FanSpeed");
+            if($convertType == "SmartStatus")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_SmartStatus");
+            }
 
-    $count = count($this->snmpobj);
-    array_push($this->snmpobj, new SNMPObj($oid, $desc, $convertType, $ips_var));
-    $count = count($this->snmpobj);
-    if($this->debug) echo "New SNMPObj (".$oid."/".$convertType.") registered, now monitoring '$count' snmp variables\n";
-    }
+        $count = count($this->snmpobj);
+        array_push($this->snmpobj, new SNMPObj($oid, $desc, $convertType, $ips_var));
+        $count = count($this->snmpobj);
+        if($this->debug) echo "New SNMPObj (".$oid."/".$convertType.") registered, now monitoring '$count' snmp variables\n";
+        }
 
 	/*
 	 * startet eine Abfrage am SNMP Server und aktualisiert die IPS-Variablen der registrierten SNMP Objekte
@@ -612,7 +627,7 @@ class SNMP_OperationCenter
 
 	/* Ergebnisse des lastwalk als array ausgeben */
 
-	 function walkSNMPresult($filter=array())
+	function walkSNMPresult($filter=array())
 	 	{
 	 	$size=sizeof($filter);
 	 	//echo "Es sind ".($size/2)." Filter aktiviert.\n";
@@ -636,6 +651,9 @@ class SNMP_OperationCenter
 		   }
 	 	}
 
+    /* von walkSNMPResult aufgerufen
+     *
+     */
 	private function searchArray($result,$oid,$filter)
 	   {
 	   $result1=array();
@@ -859,6 +877,10 @@ class SNMP_OperationCenter
 		return ($str);	
 		}
 
+    /* Ausgabe der ifTable
+     * bearbeitet lastTable aus der Klasse
+     */
+
 	function printifTable($filter="")
 		{
 		if ($filter=="")
@@ -897,6 +919,9 @@ class SNMP_OperationCenter
 			return ($result);	
 			}	
 		}
+
+    /*
+     */
 
 	function print_snmpobj()
 		{

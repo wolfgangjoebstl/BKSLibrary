@@ -60,7 +60,7 @@
      *  getArchiveDataMax
      *  do_register
      *  do_calculate
-     *  summestartende
+     *  summestartende                      1/7/360 Summen erstellen
      *
      *
      ********************************************************************/
@@ -113,6 +113,7 @@
                 echo "Energy Cost is ".($cost*100)." €cent.\n";
                 }
             $result=array();
+            if ((function_exists("get_MeterConfiguration"))===false) IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');            
             // die Disabled Meters rausnehmen
             foreach (get_MeterConfiguration() as $index => $config)
                 {
@@ -130,6 +131,13 @@
                     configfileParser($config,$result[$index],["Order","ORDER","order"],"ORDER","Main");
                     configfileParser($config,$result[$index],["costkWh","COSTKWH","costkwh","Costkwh","CostKwh"],"costkWh",$cost);
                     configfileParser($config,$result[$index],["VariableName","VARIABLENAME","nariablename","Variablename"],"VariableName",null);
+                    if (strtoupper($result[$index]["TYPE"])=="AMIS") 
+                        {
+                        configfileParser($config,$result[$index],["Port","PORT","port"],"PORT",null);                                   // default null, produziert einen Fehler wenn nicht vorhanden
+                        configfileParser($config,$result[$index],["ComPort","Comport","COMPORT","comport"],"COMPORT",null);           // produziert einen Fehler wenn nicht vorhanden
+                        configfileParser($config,$result[$index],["Calculate","CALCULATE","calculate"],"CALCULATE",null);           // produziert einen Fehler wenn nicht vorhanden
+                        configfileParser($config,$result[$index],["Register","REGISTER","register"],"REGISTER",null);           // produziert einen Fehler wenn nicht vorhanden
+                        }
                     if (strtoupper($result[$index]["TYPE"])=="HOMEMATIC") 
                         {
                         configfileParser($config,$result[$index],["Oid","OID","oid"],"OID",null);
@@ -1787,9 +1795,11 @@
                 if ($EnergieID === false) echo "Error, did not find WirkenergieID of ".json_encode($meter)." Add Type in getWirkenergieID. Ignore this Entry\n";
                 else
                     {
-                    switch ( strtoupper($meter["TYPE"]) )                   // Spezialbehandlung für Hoimematic register, RegID bestimmen
+                    /* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
+                    $jetzt=time();                        
+                    switch ( strtoupper($meter["TYPE"]) )                   
                         {	
-                        case "HOMEMATIC":
+                        case "HOMEMATIC":                                       // Spezialbehandlung für Homematic register, RegID bestimmen
                             if ( isset($meter["OID"]) == true )
                                 {
                                 $OID  = $meter["OID"];
@@ -1815,26 +1825,31 @@
                                 {
                                 $RegID  = $meter["HM_EnergieID"];
                                 }
-                            break;		
+                            $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+                            $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
+                            $vorschub=false;                                   
+                            break;
+                        case "DAILYLPREAD":	
+                            echo "Type ".$meter["TYPE"]." : Energy register with Energychange is here $EnergieID , there is no counter.\n";
+                            $RegID=$EnergieID;	
+                            $endtime=$jetzt;                // das ist nur ein Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst
+                            $vorigertag=0;
+                            $vorschub=true;                                        
+                            break;
+                        case "DAILYREAD":	
+                            echo "Type ".$meter["TYPE"]." : Energy register with Energychange is here $EnergieID , there is no counter.\n";
+                            $RegID=$EnergieID;	
+                            $endtime=$jetzt;                // das ist nur ein Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst
+                            $vorigertag=0;
+                            $vorschub=true;                                        
+                            break;
                         default:
                             $RegID=$EnergieID;
+                            $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+                            $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
+                            $vorschub=false;                            
                             break;
                         }					
-                        
-                    /* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
-                    $jetzt=time();
-                    if (strtoupper($meter["TYPE"])=="DAILYREAD")        // der Energievorschub wird gespeichert, keine Zählregister, ausserdem 2 tage vom Datum hinten nach
-                        {
-                        $endtime=$jetzt;                // das ist nur ein Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst
-                        $vorigertag=0;
-                        $vorschub=true;
-                        }
-                    else 
-                        {
-                        $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-                        $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
-                        $vorschub=false;
-                        }
                     $starttime=$endtime-60*60*24*10;
                     //$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
 
@@ -1884,9 +1899,9 @@
                             $zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
                             $zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
                             if ($initial) { $alterWert=$wert['Value']; $initial=false; }
-                            if (strtoupper($meter["TYPE"])=="DAILYREAD")        // Tageswechsel für Vorschubvariabel
+                            if ($vorschub)        // Tageswechsel für Vorschubvariabel
                                 {
-                                $datumOfValues=date("d.m",strtoTime("-2 days", strtotime(date("d.m.Y 00:01",$zeit))));      // immer um 1:00 ist Target Time
+                                $datumOfValues=date("d.m",strtoTime("-0 days", strtotime(date("d.m.Y 00:01",$zeit))));      // immer um 1:00 ist Target Time
                                 if ($debug) echo "  DailyRead Werte : ".$datumOfValues." ".nf($wert['Value'],"kWh")."      (".strtoupper($meter["TYPE"]).")\n";
                                 if (isset($zeile[$metercount]["EnergieVS"][$datumOfValues])===false) $zeile[$metercount]["EnergieVS"][$datumOfValues] = number_format($wert['Value'], 3, ",", "" );
                                 else echo "etwas tun.\n";
@@ -1921,11 +1936,12 @@
          * weitestgehend als generische Routine geschrieben
          *
          * type unterscheidet "" für Energie das sind Zählwerte, "A" zB für Messwerte
-         * display aktovoert zusätzliche Anzeigen und 
+         * display aktiviert zusätzliche Anzeigen und 
          * delete macht eine Bereinigung von falschen Werten
+         *
          */
 
-        function getArchiveData($variableID, $starttime, $endtime, $type="",$display=false,$deleteCheck="")
+        function getArchiveData($variableID, $starttime, $endtime, $type="",$display=false,$deleteCheck="",$debug=false)
             {
             $object = @IPS_GetObject($variableID);
             if ($object === false) 
@@ -1950,12 +1966,22 @@
             $zaehler=0;
             //$variableID=44113;               
             //echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
-            if ($type == "") echo "getArchiveData: Werte Variable: ".IPS_GetName($variableID)."/".IPS_GetName(IPS_GetParent($variableID))." von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-            else echo "getArchiveData: Werte Variable: ".IPS_GetName($variableID)."/".IPS_GetName(IPS_GetParent($variableID))." mit Typ $type von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-            
+            if ($debug)
+                {
+                if ($type == "") echo "getArchiveData: Werte Variable: ".IPS_GetName($variableID)."/".IPS_GetName(IPS_GetParent($variableID))." von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+                else echo "getArchiveData: Werte Variable: ".IPS_GetName($variableID)."/".IPS_GetName(IPS_GetParent($variableID))." mit Typ $type von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+                }            
+            else $display=false;            // kein debug, kein display
+
             $increment=1;
             //echo "Increment :".$increment."\n";
-            $gepldauer=($endtime-$starttime)/24/60/60;
+            $gepldauer=($endtime-$starttime)/24/60/60;          // Zeit in Tagen
+
+            $energyCalc=0;              // Wert in kWh
+
+            $time24h=$endtime-(24*60*60);                       // Zeitstempel vor 24 Stunden, solange Zeit größer Differenz schreiben
+            $value24h=false;
+
             do {
                 /* es könnten mehr als 10.000 Werte sein, Abfrage generisch lassen     
                  * Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten, nicht mer als 10.000 Werte ...
@@ -1964,16 +1990,16 @@
                 //print_r($werte);
                 $anzahl=count($werte);
 
-                if (($anzahl == 0) & ($zaehler == 0)) 
+                if (($anzahl == 0) & ($zaehler == 0))       // aktuelle Anzahl Einträge im Archiv und Anzahl der vorigen 10.000er Ergebnisse
                     {
-                    echo " Fehler, Variable: ".IPS_GetName($variableID)." hat keine Werte archiviert. \n";
+                    echo "getArchiveData: Fehler, Variable: ".IPS_GetName($variableID)." hat keine Werte zwischen ".date("d.m.Y H:i:s",$endtime)." und ".date("d.m.Y H:i:s",$starttime)." archiviert. \n";
                     break;
                     }   // hartes Ende der Schleife wenn keine Werte vorhanden
 
                 if ($initial)
                     {
                     /* allererster Durchlauf */
-                    echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
+                    if ($debug) echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
                     $ersterwert=$werte['0']['Value'];
                     $ersterzeit=$werte['0']['TimeStamp'];
                     }
@@ -1988,6 +2014,17 @@
                     }
 
                 //$initial=true;
+
+                /* zeit, aktwert mit aktuellem Wert beschreiben, aktuellen tag rausfiltern
+                 * wenn Energiewert, unplausible Werte wie 0, kleiner 0, großer Wert früher als kleiner Wert wenn delete gesetzt ist auch löschen
+                 * Tageswechsel wird erkannt, es wird der Stringwert für das Datum verglichen
+                 * abhängig von increment gibt es verschiedene Betriebsarten
+                 *
+                 * Auswertungen machen
+                 *
+                 * 24 Stundenwert
+                 *
+                 */
 
                 foreach($werte as $wert)
                     {
@@ -2012,20 +2049,25 @@
                                 AC_DeleteVariableData($this->archiveHandlerID, $variableID, $zeit, $zeit);
                                 $reaggregate=true;
                                 }
-                            echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe         : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                            if ($debug) echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe         : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
                             }
                         else
                             {
                             $vorwert=$aktwert;
                             $vorzeit=$zeit;
                             }
-                        if ($tag!=$vorigertag)
+                        if ( ($time24h>$zeit) && ($value24h==false) )           // wenn das erste Mal der 24 Stunden Zeitstempel unterschritten wird
+                            {
+                            $value24h=$ersterwert-$aktwert;
+                            }
+                        else $energyCalc = $ersterwert-$aktwert;            // Total Energie
+                        if ($tag!=$vorigertag)          // beim ersten Mal schlägt der Check gleich an, da vorigertag "" ist
                             { /* neuer Tag */
                             $altwert=$neuwert;
                             $neuwert=$aktwert;
                             switch ($increment)
                                 {
-                                case 1:
+                                case 1:                                     // unterschiedliche Betriebsarten, normaler Zähler für Energie
                                     $ergebnis=$aktwert;
                                     break;
                                 case 2:
@@ -2047,7 +2089,9 @@
                             $vorigertag=$tag;
                             }
                         }
-                    if ($type=="")
+
+
+                    if ($type=="")          // Energie(zaehl)werte
                         {
                         /* jeden Eintrag ausgeben, aktwert und zeit sind die Werte aus dem Archiv */
                         //print_r($wert);
@@ -2060,9 +2104,12 @@
                                 $leistung = ($vorwertCalc-$aktwert)*$multiplikator;
                                 if ( ($display==true) || ($multiplikator < (3.9)) || ($multiplikator > (4.1)) ) 
                                     {
-                                    echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . nf($aktwert,"kWh")."   ".nf($leistung, "kW")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-                                    if ( ($multiplikator < (1)) || ($multiplikator > (6)) ) echo "        ==>   Leistungsberechnung, Zeitdauer ".nf($intervall,"s")." ".nf($multiplikator,1)." \n";
-                                    elseif ( ($multiplikator < (3.9)) || ($multiplikator > (4.1)) ) echo "              Leistungsberechnung, Zeitdauer ".nf($intervall,"s")." ".nf($multiplikator,1)." \n";
+                                    if ($debug)
+                                        {
+                                        echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . nf($aktwert,"kWh")."   ".nf($leistung, "kW")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                                        if ( ($multiplikator < (1)) || ($multiplikator > (6)) ) echo "        ==>   Leistungsberechnung, Zeitdauer ".nf($intervall,"s")." ".nf($multiplikator,1)." \n";
+                                        elseif ( ($multiplikator < (3.9)) || ($multiplikator > (4.1)) ) echo "              Leistungsberechnung, Zeitdauer ".nf($intervall,"s")." ".nf($multiplikator,1)." \n";
+                                        }
                                     }
                                 }
                             }
@@ -2071,7 +2118,7 @@
                             if  ($display==true) echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . nf($aktwert, "kWh")."         ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
                             }
                         }
-                    else
+                    else                // Leistungswerte
                         {
                         /* jeden Eintrag ausgeben */
                         $invalid = false;
@@ -2079,11 +2126,14 @@
                             {
                             case "W":               // Plausiprüfung für Leistung, gröer 10kW ist unwahrscheinlich 
                                 if (($aktwert > (10000)) or ($aktwert==0) or ($aktwert<0)) $invalid = true;      // unplausible Werte bei Leistungsmessung rausfiltern
+                                $powerCalc=$aktwert/1000;
                                 break;
                             case "KW":               // Plausiprüfung für Leistung, gröer 10kW ist unwahrscheinlich 
                                 if (($aktwert > (10)) or ($aktwert==0) or ($aktwert<0)) $invalid = true;      // unplausible Werte bei Leistungsmessung rausfiltern
+                                $powerCalc=$aktwert;
                                 break;
                             default:
+                                $powerCalc=$aktwert;                            
                                 break;
                             }
                         if ($invalid)
@@ -2093,21 +2143,49 @@
                                 AC_DeleteVariableData($this->archiveHandlerID, $variableID, $zeit, $zeit);
                                 $reaggregate=true;
                                 }
-                            echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." nicht plausibel ". PHP_EOL;
+                            if ($debug) echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." nicht plausibel ". PHP_EOL;
                             }
-                        elseif ($display==true) echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")." $type\n";
+                        else                // gültiger leistungswert
+                            {
+                            $energyCalc += $powerCalc*($vorzeit-$zeit)/60/60;           //15min Werte sind nur ein viertel der Energie
+                            if ( ($time24h>$zeit) && ($value24h==false) )           // wenn das erste Mal der 24 Stunden Zeitstempel unterschritten wird
+                                {
+                                $value24h=$energyCalc;
+                                }
+                            if ($display==true) echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")." $type ".number_format($energyCalc, 3, ".", "")."\n";
+                            $vorwert=$aktwert;
+                            $vorzeit=$zeit;
+                            }
                         }
 
                     $zaehler+=1;
                     }
                         //$endtime=$zeit;
                 } while (count($werte)==10000);
+                
+            if ($zaehler==0) return (false);            //keine Werte vorhanden
+            
             if ($delete && $reaggregate) 
                 {
                 echo "Delete of one value means re aggregate the archive.\n";
                 $result = @AC_ReAggregateVariable($this->archiveHandlerID, $variableID);
                 if ($result===false) echo " Error, take pace, re aggragation takes allready place.\n";
                 }
+            $result=array();
+            if ($value24h)
+                {
+                if ($debug) echo "24h Wert geschrieben, Wert erfasst am/um ".date("d.m.Y H:i:s",$time24h)."\n";
+                $result["24h"]["Value"]=$value24h;
+                $result["24h"]["TimeStamp"]=$time24h;
+                }
+            else
+                {
+                if ($debug) echo "letzter Wert geschrieben, Wert erfasst am/um ".date("d.m.Y H:i:s",$zeit)."\n";
+                $result["24h"]["Value"]=$energyCalc;
+                $result["24h"]["TimeStamp"]=$zeit;
+                }
+
+            return ($result);
             }
 
 		
@@ -2190,6 +2268,139 @@
             return ($maxwert);
             }
 
+        /* aggregate Power to Energy
+         * read $meter["LeistungID"] ist der Input, wird manuell auf Tageswerte umgerechnet
+         * und mit getWirkenergieID($meter) verglichen
+         * 
+         */
+
+        function aggregate15minPower2Energy($meter,$update=false,$debug=false)
+            {
+            //$update=false;      //Testbetrieb überschreiben    
+            if (strtoupper($meter["TYPE"])=="DAILYLPREAD")
+                {
+                if ($debug) echo "aggregate15minPower2Energy, Werte von DailyLPRead ".$meter["NAME"]." 15 Min Werte in Tageswerte umrechnen. Es gibt eine Aggregate Funktion.\n";
+                $archiveOps = new archiveOps(); 
+                $archiveID = $archiveOps->getArchiveID(); 
+                $ipsOps = new ipsOps();
+                // Inputwerte einsammeln und manuell aggregierte Tageswerte ermitteln und in Variable ergebnis speichern
+                if (isset($meter["LeistungID"]) ) 
+                    {
+                    $oid = $meter["LeistungID"];
+                    if ($debug) echo "   Leistungs Register $oid ".$ipsOps->path($oid)." mit Wert ".nf(GetValue($oid),"W")." ist bekannt.\n";
+                    $config=array();
+                    $config["Aggregated"]   = false;                      // false oder daily : Aggregation auf Tageswerte, erstellt von IP Symcon, funktioniert nicht mit Leistungswerten
+                    $config["manAggregate"] = "daily";
+                    $config["StartTime"]    = strtotime("-60days");
+
+                    $ergebnis = $archiveOps->getValues($oid,$config,$debug);          // Debug Level true,1,2,3 
+                    if ($debug) 
+                        {
+                        echo "   Archivierte Werte bearbeiten:\n";                    
+                        $archiveOps->showValues($ergebnis["Values"],[],$debug); 
+                        }
+                    //print_R($ergebnis["Values"]);             // array mit TimeStamp und Value
+                    $timestamp = strtotime("-1days");           // genau einen Tag zurück
+                    $timestamp = $ipsOps->adjustTimeFormat($timestamp,"Ymd");
+                    //print_R($archiveOps->lookforValues($ergebnis["Values"],$timestamp));
+                    $filtered = $archiveOps->lookforValues($ergebnis["Values"],$timestamp);
+                    if ($debug)
+                        {
+                        if ($filtered) echo "   Gestern : ".date("d.m.Y H:i:s",$timestamp)." war der aggregierte Tageswert : ".$filtered["Value"]." kWh\n";
+                        else echo "   Gestern : ".date("d.m.Y H:i:s",$timestamp)." wurde kein aggregierter Tageswert ermittelt.\n";
+                        }
+                    }
+                // Leistung fertig, was ist mit der Wirkenergie
+                unset($config["manAggregate"]);
+                $variableID = $this->getWirkenergieID($meter); 
+                if ($debug)
+                    {
+                    echo "   --------------------------------\n";
+                    echo "   Zielregister Wirkenergie $variableID (".$ipsOps->path($variableID).") auch noch anschauen:\n";          // wie bei parsedreiguthaben EVN getKnownData
+                    }
+                $ergebnisEnergie = $archiveOps->getValues($variableID,$config,$debug);      // warum erst manual Aggregate, false debug Level
+                //$ergebnisEnergie = $archiveOps->getValues($oid,$config,2);      // warum erst manual Aggregate
+                //print_r($ergebnisEnergie["Values"]);
+                if ($debug)
+                    {
+                    echo "--------------------------------\n";                
+                    $archiveOps->showValues($ergebnisEnergie["Values"],[],$debug);                //true für Debug
+                    }
+                // berechnete tagesenergiewerte nach Zeitstempel indexieren, doppelte Werte zum löschen markieren    
+                $timeStampknown=array();
+                $deleteIndex=array(); $d=0;
+                if ((isset($ergebnisEnergie["Values"])) && (count($ergebnisEnergie["Values"])>0)) 
+                    {
+                    foreach ($ergebnisEnergie["Values"] as $wert) 
+                        {
+                        // es können mehrere Werte an einem tag sein, doppelte Werte rausfinden, Timestamp auf 00:00 des Tages stellen  
+                        $timeStamp=strtotime(date("d.m.Y",$wert["TimeStamp"]));
+                        if (isset($timeStampknown[$timeStamp]))
+                            {
+                            echo "Zeitstempel ".date("d.m.Y H:i:s",$timeStamp)." mit Wert ".$timeStampknown[$timeStamp]." soll mit Zeitstempel ".date("d.m.Y H:i:s",$wert["TimeStamp"])." mit Wert ".$wert["Value"]." überschrieben werden. Hier löschen.\n";   
+                            $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
+                            $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
+                            $d++;
+                            }  
+                        else $timeStampknown[$timeStamp]=$wert["Value"];
+                        }
+                    }
+                // die Ergebniswerte für die Energie nach timestamps indexieren und mit Ergebnis (also den aggregierten tageswerten) vergleichen
+                $input=array();
+                $count=0;
+                foreach ($ergebnis["Values"] as $wert) 
+                    {
+                    if (isset($wert["TimeStamp"]))          // da kommt noch mehr
+                        {
+                        if (isset($timeStampknown[$wert["TimeStamp"]])) 
+                            {
+                            if ($timeStampknown[$wert["TimeStamp"]] != $wert["Value"]) echo "Werte bei timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])."ungleich:  ".$timeStampknown[$wert["TimeStamp"]]."  ".$wert["Value"]." \n";
+                            //if ($debug) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat bereits einen Eintrag ".$wert["Value"]." , überspringen.\n";
+                            }
+                        else
+                            {
+                            if ($debug) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat noch keinen Eintrag ".$wert["Value"]." einfügen.\n";
+                            $input[$count]["TimeStamp"] = $wert["TimeStamp"];
+                            $input[$count]["Value"] = $wert["Value"];
+                            $count++;
+                            }
+                        }
+                    }
+                //print_r($input);
+                $delete=count($deleteIndex);
+                $i=0; $start=false; $displayMax=20;
+
+                echo "Delete Logged Values: $delete from archived Energy Daily Values in $variableID. No Counter.\n";
+                if ($update && $delete) 
+                    {    
+                    foreach ($deleteIndex as $indexDel => $entry)
+                        {
+                        /*    
+                        if ($i++<$displayMax) echo "$indexDel Delete Archive entries ".date("d.m.Y H:i:s",$entry["Index"]).", which is between ".($entry["Index"]-1)." und ".($entry["Index"]+1)."\n";
+                        If ($start===false) $start=$entry["Index"];
+                        $end=$entry["Index"];
+                        // AC_DeleteVariableData (integer $InstanzID, integer $VariablenID, integer $Startzeit, integer $Endzeit)
+                        if ($i>2000) break;  */
+                        AC_DeleteVariableData ($archiveID, $variableID,$entry["EndTime"],$entry["StartTime"]);          // $start>$end
+                        }
+                    }
+                else
+                    {
+                    echo "   No double entries.\n";
+                    }
+                $add=count($input);
+                echo "Add Logged Values: $add to archived Energy Daily Values in $variableID. No Counter.\n";
+                if ($update && $add)
+                    {
+                    $archiveID = $archiveOps->getArchiveID();
+                    $status=AC_AddLoggedValues($archiveID,$variableID,$input);
+                    //echo "Erfolgreich : $status \n";
+                    }
+                if ($delete || $add) AC_ReAggregateVariable($archiveID,$variableID);    
+                }
+            else echo "aggregate15minPower2Energy: wrong Type ".strtoupper($meter["TYPE"])." shall be DAILYLPREAD.\n";
+            } 
+
     /******************************************************************************************************************/
 
         /*
@@ -2259,26 +2470,29 @@
         *
         * Gemeinschaftsfunktion, fuer die manuelle Aggregation von historisierten Daten, vergleiche Versionen in Allgemeinedefinitionen und archive class
         *
-        * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, false ohne Hochrechnung
-        * Parameter increment_var muss immer 1 sein.
+        * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, 
+        * estimate   false ohne Hochrechnung, abgelöst durch count
+        * count      false, oder anzahl der maximal berücksichtigten Werte für die Summe
+        * Parameter  increment_var muss immer 1 sein.
         *
-        *
+        * Verwendet aggregated Archive data. Abhängig vom Archiveparameter Counter oder Register werden die Summen berechnet. Ergebnis sind aber immer Einzelwerte
         * Es werden bereits täglich aggregierte Werte aus dem Archive ausgelesen, es sollte Standard oder Zähler beim Archiv richtig gesetzt sein
         *
         * Routine fehlerhaft bei Ende Sommerzeit, hier wird als Startzeit -30 Tage eine Stunde zu wenig berechnet 
         *
         ******************************************************************************************/
 
-        function summestartende($starttime, $endtime, $increment_var, $estimate, $variableID, $display=false )
+        function summestartende($starttime, $endtime, $increment_var, $count, $variableID, $debug=false )
             {
-            if ($display)
+            if ($debug)
                 {
-                echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
-                echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";                    
+                echo "Aufruf summestartende: Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+                echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";                   
                 }
             $zaehler=0;
             $ergebnis=0;
             $increment=(integer)$increment_var;
+            $countAct=0;
                 
             do {
                 /* es könnten mehr als 10.000 Werte sein
@@ -2289,7 +2503,7 @@
                 $aggWerte = @AC_GetAggregatedValues ( $this->archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
                 if ($aggWerte === false) 
                     {
-                    echo "Variable $variableID ".IPS_GetName($variableID)." neu aggregieren. Dauert etwas.\n";
+                    echo "  Fehler, Variable $variableID ".IPS_GetName($variableID)." neu aggregieren. Dauert etwas.\n";
                     AC_ReAggregateVariable ($this->archiveHandlerID, $variableID);              // Reperaturversuch                 
                     $aggWerte = AC_GetAggregatedValues ( $this->archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
                     throw new Exception("AC_GetAggregatedValues, Fehler beim Aggregieren - wird automatisch repariert.");
@@ -2298,19 +2512,23 @@
                 //print_r($aggWerte);
                 foreach ($aggWerte as $entry)
                     {
-                    if (((time()-$entry["MinTime"])/60/60/24)>1) 
+                    if (((time()-$entry["MinTime"])/60/60/24)>1)            // keine halben Tage ausgeben, aktuelle Zeit minus mehr als 24 Stunden zum Start, vom 18.1. 11:00 auf den 17.1. 00:00
                         {
-                        /* keine halben Tage ausgeben */
                         $aktwert=(float)$entry["Avg"];
-                        if ($display) echo "     ".date("D d.m.Y H:i:s",$entry["TimeStamp"])."      ".$aktwert."\n";
+                        if ($debug>1) echo "     ".date("D d.m.Y H:i:s",$entry["TimeStamp"])."      ".$aktwert."\n";
                         switch ($increment)
                             {
                             case 0:
                             case 2:
                                 echo "*************Fehler.\n";
                                 break;
-                            case 1:        /* Statuswert, daher kompletten Bereich zusammenzählen */
-                                $ergebnis+=$aktwert;
+                            case 1:        // Statuswert, daher kompletten Bereich zusammenzählen
+                                $countAct++;                // auf 1 nach dem ersten Wert
+                                if ($count)                 // wenn Count ungleich 0 wird verglichen, sonst unbeschränkt addiert
+                                    {
+                                    if ($countAct<=$count) $ergebnis+=$aktwert;
+                                    }
+                                else $ergebnis+=$aktwert;
                                 break;
                             default:
                             }
@@ -2325,7 +2543,7 @@
                 $zaehler+=1;
                     
                 } while (count($aggWerte)==10000);		
-            if ($display) echo "   Variable: ".IPS_GetName($variableID)." mit ".$aggAnzahl." Tageswerten und ".$ergebnis." als Ergebnis.\n";
+            if ($debug) echo "   Variable: ".IPS_GetName($variableID)." mit ".$aggAnzahl." Tageswerten, davon berücksichtigt $count und ".$ergebnis." als aggregiertes Ergebnis.\n";
             return $ergebnis;
             }
 

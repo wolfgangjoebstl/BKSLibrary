@@ -1,27 +1,27 @@
 <?
 function GuthabensteuerungList() { return array(
-"Phone_CL_Change" => array(
-         "OID" => 22337, 
-         "Name" => "Phone_CL_Change", 
+"Phone_Cost" => array(
+         "OID" => 17479, 
+         "Name" => "Phone_Cost", 
          "Typ" => 2, 
          "Order" => "500", 
+             	),
+"StartImacro" => array(
+         "OID" => 14828, 
+         "Name" => "StartImacro", 
+         "Typ" => 1, 
+         "Order" => "501", 
+             	),
+"StatusWebread" => array(
+         "OID" => 43116, 
+         "Name" => "StatusWebread", 
+         "Typ" => 3, 
+         "Order" => "502", 
              	),
 "Phone_Load" => array(
          "OID" => 15501, 
          "Name" => "Phone_Load", 
          "Typ" => 2, 
-         "Order" => "501", 
-             	),
-"Phone_Cost" => array(
-         "OID" => 17479, 
-         "Name" => "Phone_Cost", 
-         "Typ" => 2, 
-         "Order" => "502", 
-             	),
-"ScriptCounter" => array(
-         "OID" => 40928, 
-         "Name" => "ScriptCounter", 
-         "Typ" => 1, 
          "Order" => "503", 
              	),
 "ScriptTimer" => array(
@@ -30,21 +30,21 @@ function GuthabensteuerungList() { return array(
          "Typ" => 3, 
          "Order" => "504", 
              	),
-"StatusWebread" => array(
-         "OID" => 43116, 
-         "Name" => "StatusWebread", 
-         "Typ" => 3, 
+"Phone_CL_Change" => array(
+         "OID" => 22337, 
+         "Name" => "Phone_CL_Change", 
+         "Typ" => 2, 
          "Order" => "505", 
-             	),
-"StartImacro" => array(
-         "OID" => 14828, 
-         "Name" => "StartImacro", 
-         "Typ" => 1, 
-         "Order" => "506", 
              	),
 "checkScriptCounter" => array(
          "OID" => 31530, 
          "Name" => "checkScriptCounter", 
+         "Typ" => 1, 
+         "Order" => "506", 
+             	),
+"ScriptCounter" => array(
+         "OID" => 40928, 
+         "Name" => "ScriptCounter", 
          "Typ" => 1, 
          "Order" => "507", 
              	),
