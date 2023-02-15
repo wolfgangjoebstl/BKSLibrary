@@ -97,7 +97,8 @@ foreach ($MeterConfig as $meter)
             {
             case "DAILYLPREAD":
                 echo "-----aggregate 15min Power Intervall data to Energy\n";
-                $Amis->aggregate15minPower2Energy($meter,true,true);           // true update values false no debug
+                $config = ["StartTime" => strtotime("-120days"),"Update" => true];            // die letzten 120 Tage nachbearbeiten    
+                $Amis->aggregate15minPower2Energy($meter,$config,true);           // true update values false no debug
                 echo "||----\n";
             case "DAILYREAD":
                 $endtime=$endtime-60*60*24*1;               // Werte erst mit einem Tag Verzögerung erhalten, werden während eines Tages aus dem Smart Meter ausgelesen

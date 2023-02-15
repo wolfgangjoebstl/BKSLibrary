@@ -1824,28 +1824,13 @@ class SeleniumEVN extends SeleniumHandler
         }
 
     /* Werte vergleichen zwischen Array 1 und 2
-     *
+     * wenn Timestamp eines Wertes in werte bereits in timeStampknown vorhanden ist nicht als neu identifizieren
      */
 
     function filterNewData($werte,$timeStampknown)
         {
-        $input=array();
-        $count=0;
-        foreach ($werte as $wert) 
-            {
-            
-            if (isset($wert["TimeStamp"]))          // da kommt noch mehr
-                {
-                if (isset($timeStampknown[$wert["TimeStamp"]])) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat bereits einen Eintrag, überspringen.\n";
-                else
-                    {
-                    $input[$count]["TimeStamp"] = $wert["TimeStamp"];
-                    $input[$count]["Value"] = $wert["Value"];
-                    $count++;
-                    }
-                }
-            }
-        return($input);
+        $archiveOps = new archiveOps(); 
+        return ($archiveOps->filterNewData($werte,$timeStampknown));
         }
 
 

@@ -28,6 +28,7 @@
      *
      *  getWirkenergieID            Wirkenergie Spiegelregister mit dem Namen Wirkenergie in der Kategorie des jeweiligen Objektes
      *  getZaehlervariablenID       beliebiges Register aus den Zaehlervariablen der jeweiligen Kategorie heraussuchen, nur für AMIS aktuell
+     *  getRegisterIDbyConfig
      *  getRegisterID               aus der MeterConfig oder mit einem Namen die ID herausfinden
      *  getWirkleistungID           speziell für Wirkleistung, siehe auch getWirkenergieID
      *  getHomematicRegistersfromOID   Homematic Instance OID übergeben, schauen ob childrens enthalten sind und die richtigen register POWER, ENERGY_COUNTER herausholen
@@ -58,6 +59,7 @@
      *  writeEnergyRegistertoArray          in BerechnePeriodenwerte
      *  getArchiveData
      *  getArchiveDataMax
+     *  aggregate15minPower2Energy          aus Lastprofilen Tageswerte machen
      *  do_register
      *  do_calculate
      *  summestartende                      1/7/360 Summen erstellen
@@ -242,7 +244,7 @@
 
         /* selbe function wie oben nur anderer Name */
 
-        function getRegisterIDbyConfig($meter,$identifier,$debug=false)
+        public function getRegisterIDbyConfig($meter,$identifier,$debug=false)
             {
             $LeistungID=false;                
             switch (strtoupper($meter["TYPE"]))
@@ -2285,6 +2287,25 @@
 
         function aggregate15minPower2Energy($meter,$update=false,$debug=false)
             {
+            if (is_array($update))
+                {
+                $config=array();
+                configfileParser($update,$config,["Update","UPDATE","update"],"Update",false);          //Update Function
+                configfileParser($update,$config,["StartTime","Starttime","STARTTIME","starttime"],"StartTime",strtotime("-60days"));
+
+                // wichtige Werte vorerst überschreiben
+                $update=true;  
+                $config["Aggregated"]   = false;                      // false oder daily : Aggregation auf Tageswerte, erstellt von IP Symcon, funktioniert nicht mit Leistungswerten
+                $config["manAggregate"] = "daily";                      
+                }
+            else
+                {
+                $config=array();
+                $config["Aggregated"]   = false;                      // false oder daily : Aggregation auf Tageswerte, erstellt von IP Symcon, funktioniert nicht mit Leistungswerten
+                $config["manAggregate"] = "daily";
+                $config["StartTime"]    = strtotime("-60days");            // die letzten 120 Tage nachbearbeiten   
+                $config["Update"]       = $update;
+                }
             //$update=false;      //Testbetrieb überschreiben    
             if (strtoupper($meter["TYPE"])=="DAILYLPREAD")
                 {
@@ -2297,11 +2318,6 @@
                     {
                     $oid = $meter["LeistungID"];
                     if ($debug) echo "   Leistungs Register $oid ".$ipsOps->path($oid)." mit Wert ".nf(GetValue($oid),"W")." ist bekannt.\n";
-                    $config=array();
-                    $config["Aggregated"]   = false;                      // false oder daily : Aggregation auf Tageswerte, erstellt von IP Symcon, funktioniert nicht mit Leistungswerten
-                    $config["manAggregate"] = "daily";
-                    $config["StartTime"]    = strtotime("-60days");
-
                     $ergebnis = $archiveOps->getValues($oid,$config,$debug);          // Debug Level true,1,2,3 
                     if ($debug) 
                         {
@@ -2363,7 +2379,13 @@
                         {
                         if (isset($timeStampknown[$wert["TimeStamp"]])) 
                             {
-                            if ($timeStampknown[$wert["TimeStamp"]] != $wert["Value"]) echo "Werte bei timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])."ungleich:  ".$timeStampknown[$wert["TimeStamp"]]."  ".$wert["Value"]." \n";
+                            if ($timeStampknown[$wert["TimeStamp"]] != $wert["Value"]) 
+                                {
+                                echo "Werte bei timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])."ungleich:  ".$timeStampknown[$wert["TimeStamp"]]."  ".$wert["Value"]." \n";
+                                $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
+                                $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
+                                $d++;                                
+                                }
                             //if ($debug) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat bereits einen Eintrag ".$wert["Value"]." , überspringen.\n";
                             }
                         else
@@ -2380,7 +2402,7 @@
                 $i=0; $start=false; $displayMax=20;
 
                 echo "Delete Logged Values: $delete from archived Energy Daily Values in $variableID. No Counter.\n";
-                if ($update && $delete) 
+                if ($config["Update"] && $delete) 
                     {    
                     foreach ($deleteIndex as $indexDel => $entry)
                         {
@@ -2399,7 +2421,7 @@
                     }
                 $add=count($input);
                 echo "Add Logged Values: $add to archived Energy Daily Values in $variableID. No Counter.\n";
-                if ($update && $add)
+                if ($config["Update"] && $add)
                     {
                     $archiveID = $archiveOps->getArchiveID();
                     $status=AC_AddLoggedValues($archiveID,$variableID,$input);

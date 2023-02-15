@@ -4758,81 +4758,92 @@ class archiveOps
         else return (false);
         }
 
+    /* Werte vergleichen zwischen Array 1 und 2
+     * wenn Timestamp eines Wertes in werte bereits in timeStampknown vorhanden ist nicht als neu identifizieren
+     */
+
+    function filterNewData($werte,$timeStampknown)
+        {
+        $inputAdd=array();
+        $inputChg=array();
+        $countAdd=0; $countChg=0;
+        foreach ($werte as $wert) 
+            {
+            if (isset($wert["TimeStamp"]))          // da kommt noch mehr
+                {
+                if (isset($timeStampknown[$wert["TimeStamp"]])) 
+                    {
+                    if ($wert["Value"] != $timeStampknown[$wert["TimeStamp"]]) 
+                        {
+                        if ($countChg<10)
+                            {
+                            echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat einen Eintrag unterschiedlich zum Archive : ";
+                            echo $wert["Value"]." != ".$timeStampknown[$wert["TimeStamp"]]."\n";
+                            }
+                        $inputChg[$countChg]["TimeStamp"] = $wert["TimeStamp"];
+                        $inputChg[$countChg]["Value"] = $wert["Value"];
+                        $countChg++;
+                        }
+                    }
+                else
+                    {
+                    $inputAdd[$countAdd]["TimeStamp"] = $wert["TimeStamp"];
+                    $inputAdd[$countAdd]["Value"] = $wert["Value"];
+                    $countAdd++;
+                    }
+                }
+            }
+        $input=array();
+        echo "Es wurde $countAdd neue Werte und $countChg geänderte Werte gefunden.\n";
+        $input["Add"]=$inputAdd;
+        $input["Chg"]=$inputChg;
+        return($input);
+        }
+
     /* add Values to archive oid from csv file
      *
      */
 
-    function addValuesfromCsv($file,$oid,$config)
+    function addValuesfromCsv($file,$oid,$config,$debug=true)
         {
+        $debug1=false;          // debug readFileCsv
         echo "Werte aus dem Archiv für OID : $oid auslesen.\n";
         echo "Aggregation Status für diesen Wert : ".(AC_GetAggregationType($this->archiveID, $oid)?"Zähler":"Standard")."\n";            // bedingung ? erfüllt : nicht erfüllt; 
         echo "Archivierte Werte bearbeiten:\n";
 
         $werte = $this->getArchivedValues($oid,$config,2);            // 2 für debug
-        echo "Insgesamt ".count($werte)." Werte ausgelesen.\n";
+        echo "Insgesamt ".count($werte)." Werte aus dem Archive ausgelesen.\n";
         $target=array();
         foreach ($werte as $wert) $target[$wert["TimeStamp"]]=$wert["Value"];
-        $this->showValues($werte,$config);
+        //$this->showValues($werte,$config);
 
-        $debug=true;
+        $fileOps = new fileOps($file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
         //$index=[];                            // erste Zeile als Index übernehmen
         //$index=["Date","Time","Value"];         // Date und Time werden gemerged
         $index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
         $result=array();                                                        // Ergebnis
-        $fileOps = new fileOps($file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
-        $index = $fileOps->readFileCsvFirstline(false,true);
-        print_R($index);
         // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
-        $status = $fileOps->readFileCsv($result,$config,$index,[],$debug);                  // Archive als Input, status liefert zu wenig Informationen
-        echo "Insgesamt ".count($result)." Werte ausgelesen.\n";
-        //print_R($result);
-        /*
-        print_R($result);
-            [1669935600] => Array
-                (
-                [DateTime_orig] => 02.12.2022 00:00          // oder wenn konvertiert
-                [DateTime] => 1669935600
-                [Value] => 13,244
-                [Estimate] => 
-                [Dummy] => 
-                )
-        */
-        //print_R($werte);
-        $write=array();
-        $i=0; $j=0; $debug=true;
-        foreach ($result as $index=>$entry)
+        $status = $fileOps->readFileCsv($result,$config,$index,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
+        echo "Insgesamt ".count($result)." Werte aus der Datei $file ausgelesen.\n";
+
+        $input = $this->filterNewData($result,$target);
+        
+        //$this->showValues($write,$config);
+
+        $countAdd = count($input["Add"]);
+        echo "Add Logged Values: ".$countAdd."\n";
+        $count=0;
+        foreach ($input["Add"] as $entry)          // Anzahl neuer Werte schreiben vorerst limitieren
             {
-            if ($debug) 
-                {
-                if ($j++<20) echo "---$index   ".date("d.m.Y H:i:s",$index)."    ".$entry["Value"]."\n";
-                //print_R($entry);
-                }
-            if (isset($target[$index]))
-                {
-                if ($target[$index] != $entry["Value"]) echo "Wert ungleich.\n";
-                }
-            else
-                {
-                $write[$i]["TimeStamp"] = $entry["DateTime"];
-                $write[$i]["Value"]     = $entry["Value"];
-                $i++;
-                }
+            $writeInput[]=$entry;
+            if ($count++>999) break;
             }
-        //print_r($write);
-        $this->showValues($write,$config);
-
-        /*
-        $files=$dosOps->readdirToStat($verzeichnis);
-        echo "-----------\n";
-        $dosOps->writeDirStat($verzeichnis);                    // Ausgabe eines Verzeichnis
-        $files=$dosOps->readdirToArray($inputDir);
-        print_r($files);
-        echo "-----------\n";    */
-
-
-        echo "Add Logged Values: ".count($write)."\n";
-        //$status=AC_AddLoggedValues ($archiveID, $oid, $write);
-        echo "Erfolgreich : $status \n";
+        if ( ($debug==false) && ($count) ) 
+            {
+            $status=AC_AddLoggedValues ($this->archiveID, $oid, $writeInput);
+            echo "Erfolgreich : $status \n";
+            }
+        else echo "Debug Mode oder count $count, no add to archive.\n";
         }
 
 
@@ -7885,8 +7896,9 @@ class dosOps
      *
      */
 
-    function findfiles($files,$filename)
+    function findfiles($files,$filename,$debug=false)
         {
+        $filesToRead=false;            
         if (trim($filename)=="*") 
             {
             echo "alle Dateien nehmen.\n";
@@ -8868,7 +8880,7 @@ class fileOps
                             if ( ($key=="") || ($keyIndex===false) )        // kein Key definiert oder keyindex gefunden, key1 wird aus der aktuellen Zeilenanzahl berechnet, kexindex wird nur ermittelt wenn keine neue Indexierung erfolgt
                                 {
                                 $result[$key1]=$dataEntries;
-                                if ($row < $rowMax) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                if ($row < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
                                 }
                             else 
                                 {
@@ -8878,7 +8890,7 @@ class fileOps
                                  *
                                  * wenn es einen key gibt und der im Index gefunden wurde sind wir hier
                                  */
-                                if ($row < $rowMax) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                if ($row < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
                                 if ($keyIndex<9999) 
                                     {
                                     //$key1=$data[$keyIndex];             //key1 richtig berechnen ist kein 0..n Index, keyindex wird 9999 wen ein Merge erfolgt ist

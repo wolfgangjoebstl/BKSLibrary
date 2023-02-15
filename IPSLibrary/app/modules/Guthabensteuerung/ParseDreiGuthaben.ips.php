@@ -280,19 +280,23 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             }
                         if ($LeistungID)
                             {
-                            echo "Archivierte Werte erfassen, bearbeiten und speichern in $LeistungID:\n";
-                            $archiveID = $archiveOps->getArchiveID();        
-                            AC_SetLoggingStatus($archiveID,$LeistungID,true);           // eine geloggte Variable machen
-                            echo "Variable mit Archive ist hier : $LeistungID \n";
+                            echo "Archivierte Werte erfassen, bearbeiten und speichern in $LeistungID (".$ipsOps->path($LeistungID).") :\n";
+                            $archiveID = $archiveOps->getArchiveID();   
+                            if (AC_GetLoggingStatus($archiveID, $LeistungID)==false) 
+                                {
+                                echo "Werte wird noch nicht im Archive gelogged. Jetzt als Logging konfigurieren. \n";
+                                AC_SetLoggingStatus($archiveID,$LeistungID,true);           // eine geloggte Variable machen
+                                }
+                            //echo "Variable mit Archive ist hier : $LeistungID \n";
                             $result=$seleniumOperations->readResult("EVN","Result",true); 
-                            echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                            echo "Letztes Update  von Selenium  am ".date("d.m.Y H:i:s",$result["LastChanged"])." erfolgt.\n";       
                             $log_Guthabensteuerung->LogNachrichten("Parse EVN Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
                             $evn = new SeleniumEVN();
                             $werte = $evn->parseResult($result); 
                             $knownTimeStamps = $evn->getKnownData($LeistungID);
                             $input = $evn->filterNewData($werte,$knownTimeStamps);
-                            echo "Add Logged Values: ".count($input)."\n";
-                            $status=AC_AddLoggedValues($archiveID,$LeistungID,$input);
+                            echo "Add Logged Values: ".count($input["Add"])."\n";
+                            $status=AC_AddLoggedValues($archiveID,$LeistungID,$input["Add"]);
                             echo "Erfolgreich : $status \n";
                             AC_ReAggregateVariable($archiveID,$LeistungID);                    
                             }
@@ -620,6 +624,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         case "EVN":
                         case "LOGWIEN":
                             echo "=========================$host=============================================\n";
+                            $go=true;
                             // target oid suchen 
                             switch (strtoupper($host))
                                 {
@@ -632,6 +637,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                     break;
                                 default:
                                     echo "    Warning, dont know Modul $host.\n";
+                                    $go=false;
                                     break;
                                 }
                             $categoryID = $seleniumOperations->getCategory();                                
@@ -677,6 +683,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                 $filename=$entry["INPUTCSV"]["InputFile"];
                                 echo "Input Filename is $filename.\n";
                                 $filesToRead = $dosOps->findfiles($files,$filename);
+                                if ($filesToRead==false) $go=false;
                                 }
                             else $go=false;         // nicht weitermachen wenn diser Input Parameter fehlt                    
                             if ($go) 
@@ -686,8 +693,9 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                     {
                                     echo "===========================================\n";
                                     echo "Read csv File $file in Directory $inputDir:\n";
-                                    $archiveOps->addValuesfromCsv($inputDir.$file,$oid,$entry["INPUTCSV"]);             // add values to archive from csv, works for logWien and EVN data according to config above
+                                    $archiveOps->addValuesfromCsv($inputDir.$file,$oid,$entry["INPUTCSV"],true);             // false means add to archive, add values to archive from csv, works for logWien and EVN data according to config above
                                     }
+                                AC_ReAggregateVariable($archiveID,$oid);                                     
                                 }
 
                             break;
