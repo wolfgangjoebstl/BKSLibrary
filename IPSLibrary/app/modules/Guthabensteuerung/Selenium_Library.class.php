@@ -26,6 +26,7 @@
  *
  *      SeleniumYahooFin    extends SeleniumHandler, de.finance.yahoo.com Abfrage
  *      SeleniumLogWien
+ *      SeleniumEVN         Smart Meter reading from Niederösterreich Netz Portal 
  *      SeleniumDrei
  *      SeleniumIiyama
  *      SeleniumEasycharts
@@ -174,19 +175,23 @@ class SeleniumHandler
     function updateHandles($handle, $debug=false)
         {
         if ($debug) echo "updateHandles, with basic check of validity: $handle\n";
-        $input=json_decode($handle);            // handle:  index => entry   Beispiel ORF => CDwindow-342C42117187FA5E15E8A961F380A715
-        foreach ($input as $index => $entry)
+        $input=json_decode($handle,true);            // handle:  index => entry   Beispiel ORF => CDwindow-342C42117187FA5E15E8A961F380A715 , decode erzeugt ein array oder false
+        if (is_array($input))
             {
-            if (strlen($entry)>20)      // Enträge für handle kleiner 20 Zeichen ignorieren
+            foreach ($input as $index => $entry)
                 {
-                if ((isset($this->handle[$entry])) && ($this->handle[$entry] != $index) ) 
+                if (strlen($entry)>20)      // Enträge für handle kleiner 20 Zeichen ignorieren
                     {
-                    if ($debug) echo "update of $entry needed with $index former was ".$this->handle[$entry].".\n";
-                    $this->handle[$entry]=$index;
+                    if ((isset($this->handle[$entry])) && ($this->handle[$entry] != $index) ) 
+                        {
+                        if ($debug) echo "update of $entry needed with $index former was ".$this->handle[$entry].".\n";
+                        $this->handle[$entry]=$index;
+                        }
+                    else $this->handle[$entry]=$index;
                     }
-                else $this->handle[$entry]=$index;
                 }
             }
+        else echo "Fehler, Handle \"$handle\" ist kein json array. \n";            
         if ($debug) 
             {
             print_R($this->handle);
@@ -1684,9 +1689,12 @@ class SeleniumLogWien extends SeleniumHandler
  *  setConfiguration        default, wie im SeleniumHandler
  *  writeEnergyValue 
  *  parseResult
- *       
+ *  getKnownData  
+ *  filterNewData  
+ *  getEnergyValueId    
  *
  *  runAutomatic            Aufruf der einzelnen Steps, Statemachine
+ *      checkCookiesButtonIf
  *      getTextValidLoggedInIf
  *      getTextValidLogInIf
  *      enterLoginName

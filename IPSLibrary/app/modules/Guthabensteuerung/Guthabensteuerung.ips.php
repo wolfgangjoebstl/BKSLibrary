@@ -330,11 +330,11 @@ if ($_IPS['SENDER']=="TimerEvent")
                 }
             break;
 		case $tim5ID:               // Tasktimer alle 310 Sekunden wenn aktiviert
-            $log_Guthabensteuerung->LogNachrichten("Timer5 called from YahooFin.");  
             // Abfrage nach angeforderter Aktion, Befehl wird so übergeben
             $startexec=microtime(true);
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
             $reguestedAction=GetValue($ScriptTimerID);
+            $log_Guthabensteuerung->LogNachrichten("Timer5 called from Webfront. Requested Action $reguestedAction.");  
             switch ($reguestedAction)
                 {
                 case "EASY":
@@ -392,6 +392,9 @@ if ($_IPS['SENDER']=="TimerEvent")
                 case "morning":
                 case "lunchtime":
                 case "evening":
+                case "MORNING":
+                case "LUNCHTIME":
+                case "EVENING":
                     $configTabs = $guthabenHandler->getSeleniumHostsConfig($reguestedAction);                              // Filter morning
                     break;
                 default:

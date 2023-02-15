@@ -150,8 +150,13 @@
                         }
                     if (strtoupper($result[$index]["TYPE"])=="DAILYLPREAD") 
                         {
-                        configfileParser($config,$result[$index],["LeistungID","LEISTUNGID","LeistungId","Oid","OID","oid"],"LeistungID",null);
-                        if (isset($result[$index]["LeistungID"])===false) echo "Warning, OID Identifier must be provided for TYPE DAILYREAD.\n";
+                        $oid=null;
+                        if (isset($result[$index]["LeistungID"])===false) 
+                            {
+                            echo "Warning, OID Identifier must be provided for TYPE DAILYREAD.\n";
+                            $oid=$this->getWirkleistungID($config,$this->debug);
+                            }
+                        configfileParser($config,$result[$index],["LeistungID","LEISTUNGID","LeistungId","Oid","OID","oid"],"LeistungID",$oid);
                         }
                     if (strtoupper($result[$index]["TYPE"])=="SUMME") 
                         {
@@ -230,23 +235,42 @@
 
         /* beliebiges Register aus den Zaehlervariablen heraussuchen */
 
-        public function getZaehlervariablenID($meter, $name)
+        public function getZaehlervariablenID($meter, $identifier,$debug=false)
             {
-            $ID = IPS_GetObjectIDByName($meter["NAME"], $this->CategoryIdData,);                  
-            $variableID=false;
+			return ($this->getRegisterIDbyConfig($meter,$identifier,$debug));
+            }
+
+        /* selbe function wie oben nur anderer Name */
+
+        function getRegisterIDbyConfig($meter,$identifier,$debug=false)
+            {
+            $LeistungID=false;                
             switch (strtoupper($meter["TYPE"]))
                 {
+                case "DAILYLPREAD":
+                case "HOMEMATIC":
+                    $ID = IPS_GetObjectIdByName($meter["NAME"], $this->CategoryIdData);   // ID der Kategorie                        
+                    $LeistungID = @IPS_GetObjectIdByName($identifier,$ID);   // nur eine Wirkleistung gespeichert
+                    if ($LeistungID && $debug) echo "   --> Ergebnis $LeistungID in $ID\n";                           
+                    break;
+                case "DAILYREAD":
+                    if ($identifier=="Wirkenergie") $LeistungID=$meter["WirkenergieID"];
+                    print_R($meter);  
+                    break;
                 case "AMIS":
                     $AmisID = IPS_GetObjectIDByName( "AMIS", $ID);
                     //echo "AmisID $AmisID (".$this->ipsOps->path($AmisID).")\n"; 
                     $zaehlervarID = IPS_GetObjectIDByName ( 'Zaehlervariablen' , $AmisID );
                     //echo "ZaehlervariablenID $zaehlervarID (".$this->ipsOps->path($zaehlervarID).")\n"; 
-                    $variableID = IPS_GetObjectIDByName ( $name , $zaehlervarID );
+                    $LeistungID = IPS_GetObjectIDByName ( $identifier , $zaehlervarID );
                     //echo "variableID $variableID (".$this->ipsOps->path($variableID).")\n"; 
+                    break;
                 default:
-                    break;	
-                }        
-			return ($variableID);
+                    echo "Warnung, Match aber kein Eintrag für den Typ ".$meter["TYPE"]."\n";  
+                    print_R($meter);  
+                    break;
+                }
+            return ($LeistungID);
             }
 
         /* Homematic IDs ausgeben, etwas besser abstrahieren
@@ -259,12 +283,13 @@
             $LeistungID=false;
             if (is_array($meter))           // aus der MeterConfig
                 {
-                if ($debug) echo "getRegisterID mit Parameter Array eines Zählers aufgerufen.\n";                    
-			    if (strtoupper($meter["TYPE"])=="HOMEMATIC")
+                if ($debug) 
                     {
-                    $ID = IPS_GetObjectIdByName($meter["NAME"], $this->CategoryIdData);   // ID der Kategorie                        
-           		    $LeistungID = @IPS_GetObjectIdByName($identifier,$ID);   // nur eine Wirkleistung gespeichert
+                    echo "getRegisterID mit Parameter Array eines Zählers aufgerufen, look for ";
+                    if (isset($meter["Name"])) echo "\"".$meter["Name"]."\" with ";
+                    echo "Identifier $identifier\n";                     
                     }
+                $LeistungID=$this->getRegisterIDbyConfig($meter,$identifier,$debug);  
                 }
             else
                 {
@@ -274,24 +299,8 @@
                     {
                     if ($debug) echo "   checking \"".$meterEntry["NAME"]."\" mit Type ".$meterEntry["TYPE"]."\n";
                     if ($meterEntry["NAME"]==$meter)
-                        { 
-                        if (strtoupper($meterEntry["TYPE"])=="HOMEMATIC") 
-                            {
-                            $ID = IPS_GetObjectIdByName($meterEntry["NAME"], $this->CategoryIdData);   // ID der Kategorie                        
-                            $LeistungID = @IPS_GetObjectIdByName($identifier,$ID);   // nur eine Wirkleistung gespeichert 
-                            if ($LeistungID && $debug) echo "   --> Ergebnis $LeistungID in $ID\n";                           
-                            }
-                        elseif (strtoupper($meterEntry["TYPE"])=="DAILYREAD")
-                            {
-                            if ($identifier=="Wirkenergie") $LeistungID=$meterEntry["WirkenergieID"];
-                            print_R($meterEntry);  
-                            
-                            } 
-                        else
-                            {
-                            echo "Warnung, Match aber kein Eintrag für den Typ ".$meterEntry["TYPE"]."\n";  
-                            print_R($meterEntry);  
-                            }
+                        {
+                        $LeistungID=$this->getRegisterIDbyConfig($meter,$identifier,$debug); 
                         }
                     }
                 }

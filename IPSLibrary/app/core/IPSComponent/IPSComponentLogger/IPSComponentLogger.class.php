@@ -1530,7 +1530,10 @@ class Logging
                 {
                 if ($this->storeTableID)
                     {
-                    $messages = json_decode(GetValue($this->storeTableID),true);
+                    $table=GetValue($this->storeTableID);
+                    if ($table=="") $messages=array();                      // empty at start, detect and clear array
+                    else $messages = json_decode($table,true);
+                    //$messages = json_decode(GetValue($this->storeTableID),true);
                     $latestTime=time();
                     foreach ($messages as $timeStamp => $entry) if ($timeStamp>$latestTime) $latestTime=$timeStamp; 
                     if (isset($messages[$latestTime])) $messages[($latestTime+1)]=$message;                                                 //nur eine Nachricht pro Sekunde, kleiner Workaround

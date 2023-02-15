@@ -503,6 +503,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
         echo "Timer 2 showCamCaptureFiles und showCamSnapshots ausführen:\n\n";
         if (isset ($OperationCenterConfig['CAM']))
             {
+            $count=0;
             foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)             /* das sind die Capture Dateien, die häufen sich natürlich wenn mehr Bewegung ist */
                 {
                 if (isset ($cam_config['FTPFOLDER']))         
@@ -518,19 +519,19 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
                 }
 
 
-				/* Die Snapshots der IPS Cam Kameras auf einen Bildschirm bringen, kann auch Modul Webcamera übernehmen */	
-				//$OperationCenter->copyCamSnapshots();
-                if (isset ($installedModules["WebCamera"]))
-                    {
-                    $webCamera = new webCamera();       // eigene class starten
-                    $camConfig = $webCamera->getStillPicsConfiguration();
+            /* Die Snapshots der IPS Cam Kameras auf einen Bildschirm bringen, kann auch Modul Webcamera übernehmen */	
+            //$OperationCenter->copyCamSnapshots();
+            if (isset ($installedModules["WebCamera"]))
+                {
+                $webCamera = new webCamera();       // eigene class starten
+                $camConfig = $webCamera->getStillPicsConfiguration();
 
-                    /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
-                    echo "   --> Show CamCapture files:\n";
-                    $OperationCenter->showCamCaptureFiles($camConfig,true);  
-                    echo "   --> Show CamSnapshots files:\n";
-                    $OperationCenter->showCamSnapshots($camConfig,true);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
-                    }
+                /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
+                echo "   --> Show CamCapture files:\n";
+                $OperationCenter->showCamCaptureFiles($camConfig,true);  
+                echo "   --> Show CamSnapshots files:\n";
+                $OperationCenter->showCamSnapshots($camConfig,true);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
+                }
 				} /* Ende isset */        
 
 	/********************************************************

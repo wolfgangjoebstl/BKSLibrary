@@ -44,7 +44,7 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 $display=false;         // true alle Eintraege auf der Console ausgeben 
 $execute=true;         // false keine on execute Berechnungen
 
-$Amis = new Amis();
+$Amis = new Amis();         // true globales Debug
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 

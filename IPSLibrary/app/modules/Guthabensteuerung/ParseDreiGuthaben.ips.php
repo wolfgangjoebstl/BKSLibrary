@@ -30,6 +30,9 @@
      * 
      * Ergebnis für alle Hosts in der Konfiguration ermitteln, wenn nicht schon geschehen
      *
+     * Input from CSV Files. It is also possible to provide data from csv Files
+     *
+     *
      *
 	 * @author        Wolfgang Joebstl
 	 * @version
@@ -49,7 +52,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
  *************************************************************/
 
     $startexec=microtime(true);   
-    $execute=false;                     // Execute extra code when called manually
+    $execute=true;                     // Execute extra code when called manually
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager))
@@ -127,33 +130,10 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
             echo "Verzeichnis für Macros     : ".$GuthabenAllgConfig["MacroDirectory"]."\n";
             echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
             /* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
+            $ausgeben=false; $ergebnisse=false; $speichern=false;
 
-
-            if ($execute && ($_IPS['SENDER']=="Execute"))
-                {
-                /* Logging Einstellungen zum Debuggen */
-                
-                //$ausgeben=true; $ergebnisse=true; $speichern=true;				// Debug
-                //$ausgeben=false; $ergebnisse=false; $speichern=false;				// Operation
-                $ausgeben=true; $ergebnisse=true; $speichern=false;
-                }
-            else
-                {	
-                $ausgeben=false; $ergebnisse=false; $speichern=false;
-                }
-
-            /******************************************************
-            *
-            *                        RUN iMACRO
-            *
-            * Parse textfiles, die von iMacro generiert wurden
-            *				
-            *
-            *************************************************************/
-
-
+            /* RUN iMACRO, Parse textfiles, die von iMacro generiert wurden     */
             $ergebnis="";
-
             foreach ($GuthabenConfig as $TelNummer)
                 {
                 //print_r($TelNummer);
@@ -170,16 +150,183 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                     {
                     }	
                 }
+            break;
+        case "SELENIUM":
+            echo "Guthabensteuerung OperatingMode ist SELENIUM:\n";
+            $ergebnis="";
+            $guthabenHandler->updateConfiguration(true,true,true);                     // $ausgeben,$ergebnisse,$speichern          gespeichert wird aber eh immer
+            //print_R($phoneID);
+            $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
 
-            /******************************************************
-            *
-            *              Execute
-            *
-            *************************************************************/
-
-            if ($execute && ($_IPS['SENDER']=="Execute"))
+            foreach ($config as $host => $entry)
                 {
-                echo "========================================================\n";
+                echo "======================================================================";
+                switch (strtoupper($host))
+                    {
+                    case "DREI":
+                        echo "DREI ============\n";
+                        foreach ($phoneID as $entry)
+                            {
+                            echo "--------------------------------------------------\n   ".$entry["Nummer"]."    : ";
+                            if (isset($entry["OID"])) 
+                                {
+                                echo "register (".$entry["OID"].") available";
+                                if (isset($entry["LastUpdated"])) 
+                                    {
+                                    echo ", last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"]);                    
+                                    echo "\n";
+                                    $log_Guthabensteuerung->LogNachrichten("Parse Drei Guthaben ".$entry["Nummer"]." from ".date("d.m.Y H:i:s",$entry["LastUpdated"]).".");  
+                                    $result=GetValue($entry["OID"]);
+                                    //echo "$result\n";
+                                    $lines = explode("\n",$result);
+                                    $ergebnis1=$guthabenHandler->parsetxtfile($entry["Nummer"],$lines,false,"array",true);          // true für Debug                    
+                                    }
+                                else echo "\n";
+                                }
+                            else echo "\n";
+                            }
+                        print_R($ergebnis);
+                        echo "Berechnung Guthaben ist abgeschlossen.\n";
+                        break;
+                    case "EASY":
+                        echo "EASY ============\n";
+                        $seleniumEasycharts = new SeleniumEasycharts();
+                        echo "Konfiguration von EASY gesucht:\n";
+                        $depotRegister = $seleniumEasycharts->getDebotBooksfromConfig($guthabenHandler->getSeleniumTabsConfig("EASY"));                 //  Auswertung
+                        foreach ($depotRegister as $depot)
+                            {
+                            echo "Depot ausgewählt: $depot  \n";
+                            echo "--------------------------------\n";
+                            echo "Selenium Operations, readResult from EASY on $depot:\n";
+                            $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
+                            echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                            $log_Guthabensteuerung->LogNachrichten("Parse Eayschart Depot $depot Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                            $lines = explode("\n",$result["Value"]);    
+                            $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
+                            $shares=$seleniumEasycharts->evaluateResult($data);
+                            $depotName=str_replace(" ","",$depot);                      // Blanks weg
+                            if ($depotName != $depot)               
+                                {
+                                echo "--------\n";
+                                $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
+                                $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
+                                }
+                            else
+                                {
+                                $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
+                                }
+                            $seleniumEasycharts->updateResultConfigurationSplit($shares);                           // es kann sein dass es Splits für Aktien gibt
+                            $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
+                            }
+                        // Split in allen Depots eintragen, immer machen, es könnte sich ja etwas geändert haben
+                        $allDepotRegisters=$seleniumEasycharts->showDepotConfigurations(false,false);           // true für Debug
+                        foreach ($allDepotRegisters as $result)       // es können auch mehrere sein
+                            {
+                            if (isset($result["Depot"]))
+                                {
+                                $shares = $seleniumEasycharts->getResultConfiguration($result["Depot"]["Name"]);
+                                $seleniumEasycharts->updateResultConfigurationSplit($shares);                           // es kann sein dass es Splits für Aktien gibt
+                                $seleniumEasycharts->writeResultConfiguration($shares,$result["Depot"]["Name"]);
+                                }
+                            }
+                        echo "Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden.\n";          
+                        break;
+                    case "LOGWIEN":
+                        echo "LOGWIEN ============\n";                    
+                        echo "parse LogWien Ergebnis in Result.\n";
+                        $result=$seleniumOperations->readResult("LogWien","Result",true);                  // true Debug
+                        //print_R($result);
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        $log_Guthabensteuerung->LogNachrichten("Parse Log.Wien Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                        echo "--------\n";
+                        //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
+                        $seleniumLogWien = new SeleniumLogWien();
+                        $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");
+                        break;
+                    case "YAHOOFIN":
+                        echo "YAHOOFIN ============\n";                    
+                        echo "parse YahooFin Ergebnis in Result.\n";
+                        $result=$seleniumOperations->readResult("YAHOOFIN");                  // true Debug   , lest RESULT als Egebnis Variable, wenn zweite Variable ausgefüllt ist es das entsprechende register
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                        $log_Guthabensteuerung->LogNachrichten("Parse YahooFin Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                        $yahoofin = new SeleniumYahooFin();
+                        $ergebnis = $yahoofin->parseResult($result);                        // eigentlich nur json_decode auf ein array
+                        $yahoofin->writeResult($ergebnis,"TargetValue",true);
+                        break;
+                    case "EVN":
+                        echo "EVN ============\n";                    
+                        echo "parse EVN Ergebnis in Result.\n"; 
+                        $LeistungID = false;     
+                        if (isset($entry["CONFIG"]["ResultTarget"]))
+                            {
+                            if (isset($entry["CONFIG"]["ResultTarget"]["OID"])) $LeistungID = $entry["CONFIG"]["ResultTarget"]["OID"];
+                            }
+                        if ($LeistungID === false) 
+                            {
+                            if (isset($installedModules["Amis"])===false) echo "unknown Module.\n";
+                            else    
+                                {
+                                /********************** noch nicht richtig implmentiert, sucht nicht sondern definiert Test-BKS01 */
+
+                                IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+                                IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');  
+                                $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+                                $moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */     
+                                $CategoryIdData     = $moduleManagerAmis->GetModuleCategoryID('data');
+                                $ID = CreateVariableByName($CategoryIdData, "Test-BKS01", 3);           // Name neue Variablen
+                                SetValue($ID,"nur testweise den EVN Smart Meter auslesen und speichern");
+                                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                                }
+                            }
+                        if ($LeistungID)
+                            {
+                            echo "Archivierte Werte erfassen, bearbeiten und speichern in $LeistungID:\n";
+                            $archiveID = $archiveOps->getArchiveID();        
+                            AC_SetLoggingStatus($archiveID,$LeistungID,true);           // eine geloggte Variable machen
+                            echo "Variable mit Archive ist hier : $LeistungID \n";
+                            $result=$seleniumOperations->readResult("EVN","Result",true); 
+                            echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                            $log_Guthabensteuerung->LogNachrichten("Parse EVN Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                            $evn = new SeleniumEVN();
+                            $werte = $evn->parseResult($result); 
+                            $knownTimeStamps = $evn->getKnownData($LeistungID);
+                            $input = $evn->filterNewData($werte,$knownTimeStamps);
+                            echo "Add Logged Values: ".count($input)."\n";
+                            $status=AC_AddLoggedValues($archiveID,$LeistungID,$input);
+                            echo "Erfolgreich : $status \n";
+                            AC_ReAggregateVariable($archiveID,$LeistungID);                    
+                            }
+                        break;
+                    default:
+                        echo (strtoupper($host))."============\n";
+
+                        break;    
+                        
+                    }           // ende switch
+                }           // ende foreach
+            break;
+        default:
+            break;        
+        }
+
+
+/******************************************************
+*
+*              Execute
+*
+*************************************************************/
+
+    if ($execute && ($_IPS['SENDER']=="Execute"))
+        {
+        switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+            {  
+            case "IMACRO":
+                echo "Guthabensteuerung OperatingMode ist IMACRO:\n";
+                echo "Verzeichnis für Macros     : ".$GuthabenAllgConfig["MacroDirectory"]."\n";
+                echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
+                /* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
+                $ausgeben=true; $ergebnisse=true; $speichern=false;
+                echo "======================================IMACRO EXECUTE==================\n";
                 echo "Execute, Script ParseDreiGuthaben wird ausgeführt:\n\n";
                 echo "  Ausgabe Ergebnis parsetxtfile :\n";
                 echo "  -------------------------------\n";
@@ -285,47 +432,43 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             }
                         }
                     }
+                break;
+            case "SELENIUM":
+                echo "Guthabensteuerung OperatingMode ist SELENIUM:\n";
+                $ergebnis="";
+                $guthabenHandler->updateConfiguration(true,true,true);                     // $ausgeben,$ergebnisse,$speichern          gespeichert wird aber eh immer
+                //print_R($phoneID);
+                $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
 
-                }
-            break;
-        case "SELENIUM":
-            echo "Guthabensteuerung OperatingMode ist SELENIUM:\n";
-            $ergebnis="";
-            $guthabenHandler->updateConfiguration(true,true,true);                     // $ausgeben,$ergebnisse,$speichern          gespeichert wird aber eh immer
-            //print_R($phoneID);
-            $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
-
-            foreach ($config as $host => $entry)
-                {
-                echo "======================================================================";
-                switch (strtoupper($host))
+                foreach ($config as $host => $entry)
                     {
-                    case "DREI":
-                        echo "DREI ============\n";
-                        foreach ($phoneID as $entry)
-                            {
-                            echo "--------------------------------------------------\n   ".$entry["Nummer"]."    : ";
-                            if (isset($entry["OID"])) 
+                    echo "=================================================SELENIUM EXECUTE =====================";
+                    switch (strtoupper($host))
+                        {
+                        case "DREI":
+                            echo "DREI ============\n";
+                            foreach ($phoneID as $entry)
                                 {
-                                echo "register (".$entry["OID"].") available";
-                                if (isset($entry["LastUpdated"])) 
+                                echo "--------------------------------------------------\n   ".$entry["Nummer"]."    : ";
+                                if (isset($entry["OID"])) 
                                     {
-                                    echo ", last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"]);                    
-                                    echo "\n";
-                                    $log_Guthabensteuerung->LogNachrichten("Parse Drei Guthaben ".$entry["Nummer"]." from ".date("d.m.Y H:i:s",$entry["LastUpdated"]).".");  
-                                    $result=GetValue($entry["OID"]);
-                                    //echo "$result\n";
-                                    $lines = explode("\n",$result);
-                                    $ergebnis1=$guthabenHandler->parsetxtfile($entry["Nummer"],$lines,false,"array",true);          // true für Debug                    
+                                    echo "register (".$entry["OID"].") available";
+                                    if (isset($entry["LastUpdated"])) 
+                                        {
+                                        echo ", last update was ".date("d.m.Y H:i:s",$entry["LastUpdated"]);                    
+                                        echo "\n";
+                                        $log_Guthabensteuerung->LogNachrichten("Parse Drei Guthaben ".$entry["Nummer"]." from ".date("d.m.Y H:i:s",$entry["LastUpdated"]).".");  
+                                        $result=GetValue($entry["OID"]);
+                                        //echo "$result\n";
+                                        $lines = explode("\n",$result);
+                                        $ergebnis1=$guthabenHandler->parsetxtfile($entry["Nummer"],$lines,false,"array",true);          // true für Debug                    
+                                        }
+                                    else echo "\n";
                                     }
                                 else echo "\n";
                                 }
-                            else echo "\n";
-                            }
-                        print_R($ergebnis);
+                            print_R($ergebnis);
 
-                        if ($execute && ($_IPS['SENDER']=="Execute"))
-                            {
                             //print_r($GuthabenConfig);
                             echo "Alle Aktiven Simkarten neu parsen, Input sind die Dateien:\n";
                             foreach ($GuthabenConfig as $TelNummer)
@@ -472,127 +615,94 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                     }
 
                                 }       // ende if false
-                            }           // ende if execute
-                        echo "Berechnung Guthaben ist abgeschlossen.\n";
-                        break;
-                    case "EASY":
-                        echo "EASY ============\n";
-                        $seleniumEasycharts = new SeleniumEasycharts();
-                        echo "Konfiguration von EASY gesucht:\n";
-                        $depotRegister = $seleniumEasycharts->getDebotBooksfromConfig($guthabenHandler->getSeleniumTabsConfig("EASY"));                 //  Auswertung
-                        foreach ($depotRegister as $depot)
-                            {
-                            echo "Depot ausgewählt: $depot  \n";
-                            echo "--------------------------------\n";
-                            echo "Selenium Operations, readResult from EASY on $depot:\n";
-                            $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
-                            echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
-                            $log_Guthabensteuerung->LogNachrichten("Parse Eayschart Depot $depot Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
-                            $lines = explode("\n",$result["Value"]);    
-                            $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
-                            $shares=$seleniumEasycharts->evaluateResult($data);
-                            $depotName=str_replace(" ","",$depot);                      // Blanks weg
-                            if ($depotName != $depot)               
+                            echo "Berechnung Guthaben ist abgeschlossen.\n";
+                            break;
+                        case "EVN":
+                        case "LOGWIEN":
+                            echo "=========================$host=============================================\n";
+                            // target oid suchen 
+                            switch (strtoupper($host))
                                 {
-                                echo "--------\n";
-                                $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
-                                $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
+                                case "LOGWIEN":
+                                    $seleniumModul = new SeleniumLogWien();
+                                    $file="intervalle-20220807-105513.csv";
+                                    break;
+                                case "EVN":
+                                    $seleniumModul = new SeleniumEvn();       
+                                    break;
+                                default:
+                                    echo "    Warning, dont know Modul $host.\n";
+                                    break;
                                 }
-                            else
+                            $categoryID = $seleniumOperations->getCategory();                                
+                            $targetCategory=$seleniumModul->getResultCategory();
+                            echo "Kategorie für Selenium Modul $host $categoryID : $targetCategory\n";
+                            echo "mit folgenden Ergebnisregistern:\n";
+                            $result=IPS_GetChildrenIDs($targetCategory);
+                            foreach ($result as $index => $childID) echo "  $index  $childID (".IPS_GetName($childID).") \n";
+                            if (isset($entry["CONFIG"]["ResultTarget"]["OID"]))
                                 {
-                                $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
+                                $oid = $entry["CONFIG"]["ResultTarget"]["OID"];
+                                echo "Use same target for Input csv data as Selenium uses : $oid und Name ".IPS_GetName($oid).".\n";
                                 }
-                            $seleniumEasycharts->updateResultConfigurationSplit($shares);                           // es kann sein dass es Splits für Aktien gibt
-                            $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
-                            }
-                        // Split in allen Depots eintragen, immer machen, es könnte sich ja etwas geändert haben
-                        $allDepotRegisters=$seleniumEasycharts->showDepotConfigurations(false,false);           // true für Debug
-                        foreach ($allDepotRegisters as $result)       // es können auch mehrere sein
-                            {
-                            if (isset($result["Depot"]))
+                            elseif (isset($entry["INPUTCSV"]["Target"]["Name"]))
                                 {
-                                $shares = $seleniumEasycharts->getResultConfiguration($result["Depot"]["Name"]);
-                                $seleniumEasycharts->updateResultConfigurationSplit($shares);                           // es kann sein dass es Splits für Aktien gibt
-                                $seleniumEasycharts->writeResultConfiguration($shares,$result["Depot"]["Name"]);
+                                $targetName = $entry["INPUTCSV"]["Target"]["Name"];
+                                echo "Create/get the new register, Modul $modul mit Category $categoryIdResult und Register Name $targetName.\n";
+                                /*function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) */
+                                $oid = CreateVariableByName($targetCategory,$targetName,2,'kWh',"",1100);         // kein Identifier, darf in einer Ebene nicht gleich sein
+                                $componentHandling->setLogging($oid);                                                   // Archive setzen
+                                echo "Use the Register mit OID $oid und Name ".IPS_GetName($oid).".\n";
                                 }
-                            }
-                        echo "Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden.\n";          
-                        break;
-                    case "LOGWIEN":
-                        echo "LOGWIEN ============\n";                    
-                        echo "parse LogWien Ergebnis in Result.\n";
-                        $result=$seleniumOperations->readResult("LogWien","Result",true);                  // true Debug
-                        //print_R($result);
-                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
-                        $log_Guthabensteuerung->LogNachrichten("Parse Log.Wien Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
-                        echo "--------\n";
-                        //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
-                        $seleniumLogWien = new SeleniumLogWien();
-                        $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");
-                        break;
-                    case "YAHOOFIN":
-                        echo "YAHOOFIN ============\n";                    
-                        echo "parse YahooFin Ergebnis in Result.\n";
-                        $result=$seleniumOperations->readResult("YAHOOFIN");                  // true Debug   , lest RESULT als Egebnis Variable, wenn zweite Variable ausgefüllt ist es das entsprechende register
-                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
-                        $log_Guthabensteuerung->LogNachrichten("Parse YahooFin Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
-                        $yahoofin = new SeleniumYahooFin();
-                        $ergebnis = $yahoofin->parseResult($result);                        // eigentlich nur json_decode auf ein array
-                        $yahoofin->writeResult($ergebnis,"TargetValue",true);
-                        break;
-                    case "EVN":
-                        echo "EVN ============\n";                    
-                        echo "parse EVN Ergebnis in Result.\n"; 
-                        $LeistungID = false;     
-                        if (isset($entry["CONFIG"]["ResultTarget"]))
-                            {
-                            if (isset($entry["CONFIG"]["ResultTarget"]["OID"])) $LeistungID = $entry["CONFIG"]["ResultTarget"]["OID"];
-                            }
-                        if ($LeistungID === false) 
-                            {
-                            if (isset($installedModules["Amis"])===false) echo "unknown Module.\n";
-                            else    
+                            elseif (isset($entry["INPUTCSV"]["Target"]["OID"]))
                                 {
-                                IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-                                IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');  
-                                $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-                                $moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */     
-                                $CategoryIdData     = $moduleManagerAmis->GetModuleCategoryID('data');
-                                $ID = CreateVariableByName($CategoryIdData, "Test-BKS01", 3);           // Name neue Variablen
-                                SetValue($ID,"nur testweise den EVN Smart Meter auslesen und speichern");
-                                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-                                }
-                            }
-                        if ($LeistungID)
-                            {
-                            echo "Archivierte Werte erfassen, bearbeiten und speichern in $LeistungID:\n";
-                            $archiveID = $archiveOps->getArchiveID();        
-                            AC_SetLoggingStatus($archiveID,$LeistungID,true);           // eine geloggte Variable machen
-                            echo "Variable mit Archive ist hier : $LeistungID \n";
-                            $result=$seleniumOperations->readResult("EVN","Result",true); 
-                            echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
-                            $log_Guthabensteuerung->LogNachrichten("Parse EVN Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
-                            $evn = new SeleniumEVN();
-                            $werte = $evn->parseResult($result); 
-                            $knownTimeStamps = $evn->getKnownData($LeistungID);
-                            $input = $evn->filterNewData($werte,$knownTimeStamps);
-                            echo "Add Logged Values: ".count($input)."\n";
-                            $status=AC_AddLoggedValues($archiveID,$LeistungID,$input);
-                            echo "Erfolgreich : $status \n";
-                            AC_ReAggregateVariable($archiveID,$LeistungID);                    
-                            }
-                        break;
-                    default:
-                        echo (strtoupper($host))."============\n";
+                                $oid=$entry["INPUTCSV"]["OID"];
+                                echo "Get and use the Register mit OID $oid und Name ".IPS_GetName($oid).".\n";
+                                } 
+                            else $go=false;         // nicht weitermachen wenn diser Input Parameter fgehlt                        
 
-                        break;    
-                        
-                    }           // ende switch
-                }           // ende foreach
-            break;
-        default:
-            break;        
+                            //Input Verzeichnis suchen 
+                            if (isset($entry["INPUTCSV"]["InputDir"]))
+                                {
+                                $inputDir=$entry["INPUTCSV"]["InputDir"];
+                                $verzeichnis=$dosOps->getWorkDirectory();
+                                $inputDir=$dosOps->correctDirName($verzeichnis.$inputDir);          // richtiges Abschlusszeichen / oder \
+                                echo "Look for Input files in Input Directory $inputDir:\n";
+                                $dosOps->writeDirStat($inputDir);                    // Ausgabe eines Verzeichnis   
+                                $files=$dosOps->readdirToArray($inputDir);                                      
+                                }
+                            else $go=false;         // nicht weitermachen wenn diser Input Parameter fehlt                    
+                            if (isset($entry["INPUTCSV"]["InputFile"]))
+                                {
+                                $filename=$entry["INPUTCSV"]["InputFile"];
+                                echo "Input Filename is $filename.\n";
+                                $filesToRead = $dosOps->findfiles($files,$filename);
+                                }
+                            else $go=false;         // nicht weitermachen wenn diser Input Parameter fehlt                    
+                            if ($go) 
+                                {
+
+                                foreach ($filesToRead as $file)
+                                    {
+                                    echo "===========================================\n";
+                                    echo "Read csv File $file in Directory $inputDir:\n";
+                                    $archiveOps->addValuesfromCsv($inputDir.$file,$oid,$entry["INPUTCSV"]);             // add values to archive from csv, works for logWien and EVN data according to config above
+                                    }
+                                }
+
+                            break;
+
+                        default:
+                            echo (strtoupper($host))."============\n";
+
+                            break;    
+                            
+                        }           // ende switch
+                    }           // ende foreach
+                break;
+            default:
+                break;        
+            }
         }
-
 
 ?>

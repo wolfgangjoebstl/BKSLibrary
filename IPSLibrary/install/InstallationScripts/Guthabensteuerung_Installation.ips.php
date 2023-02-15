@@ -76,7 +76,7 @@
 		}
 	
 	echo "Kernelversion : ".IPS_GetKernelVersion()."\n";
-	echo "IPS Version : ".$ergebnis." ".$ergebnis2."\n";
+	echo "IPS Version : ".$ergebnis1." ".$ergebnis2."\n";
 	echo "IPSModulManager Version : ".$ergebnis3."\n";
     echo "Guthabensteuerung Version : ".$ergebnis4."\n";        
 	echo $inst_modules;

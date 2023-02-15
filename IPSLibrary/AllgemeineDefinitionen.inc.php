@@ -4758,6 +4758,84 @@ class archiveOps
         else return (false);
         }
 
+    /* add Values to archive oid from csv file
+     *
+     */
+
+    function addValuesfromCsv($file,$oid,$config)
+        {
+        echo "Werte aus dem Archiv für OID : $oid auslesen.\n";
+        echo "Aggregation Status für diesen Wert : ".(AC_GetAggregationType($this->archiveID, $oid)?"Zähler":"Standard")."\n";            // bedingung ? erfüllt : nicht erfüllt; 
+        echo "Archivierte Werte bearbeiten:\n";
+
+        $werte = $this->getArchivedValues($oid,$config,2);            // 2 für debug
+        echo "Insgesamt ".count($werte)." Werte ausgelesen.\n";
+        $target=array();
+        foreach ($werte as $wert) $target[$wert["TimeStamp"]]=$wert["Value"];
+        $this->showValues($werte,$config);
+
+        $debug=true;
+        //$index=[];                            // erste Zeile als Index übernehmen
+        //$index=["Date","Time","Value"];         // Date und Time werden gemerged
+        $index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
+        $result=array();                                                        // Ergebnis
+        $fileOps = new fileOps($file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
+        $index = $fileOps->readFileCsvFirstline(false,true);
+        print_R($index);
+        // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
+        $status = $fileOps->readFileCsv($result,$config,$index,[],$debug);                  // Archive als Input, status liefert zu wenig Informationen
+        echo "Insgesamt ".count($result)." Werte ausgelesen.\n";
+        //print_R($result);
+        /*
+        print_R($result);
+            [1669935600] => Array
+                (
+                [DateTime_orig] => 02.12.2022 00:00          // oder wenn konvertiert
+                [DateTime] => 1669935600
+                [Value] => 13,244
+                [Estimate] => 
+                [Dummy] => 
+                )
+        */
+        //print_R($werte);
+        $write=array();
+        $i=0; $j=0; $debug=true;
+        foreach ($result as $index=>$entry)
+            {
+            if ($debug) 
+                {
+                if ($j++<20) echo "---$index   ".date("d.m.Y H:i:s",$index)."    ".$entry["Value"]."\n";
+                //print_R($entry);
+                }
+            if (isset($target[$index]))
+                {
+                if ($target[$index] != $entry["Value"]) echo "Wert ungleich.\n";
+                }
+            else
+                {
+                $write[$i]["TimeStamp"] = $entry["DateTime"];
+                $write[$i]["Value"]     = $entry["Value"];
+                $i++;
+                }
+            }
+        //print_r($write);
+        $this->showValues($write,$config);
+
+        /*
+        $files=$dosOps->readdirToStat($verzeichnis);
+        echo "-----------\n";
+        $dosOps->writeDirStat($verzeichnis);                    // Ausgabe eines Verzeichnis
+        $files=$dosOps->readdirToArray($inputDir);
+        print_r($files);
+        echo "-----------\n";    */
+
+
+        echo "Add Logged Values: ".count($write)."\n";
+        //$status=AC_AddLoggedValues ($archiveID, $oid, $write);
+        echo "Erfolgreich : $status \n";
+        }
+
+
 
     }   // ende class archiveOps
 
@@ -7803,6 +7881,65 @@ class dosOps
         else return (true);
         }
 
+    /* wie fileavailable, aber hier aus einem array die Dateien herausfiltern
+     *
+     */
+
+    function findfiles($files,$filename)
+        {
+        if (trim($filename)=="*") 
+            {
+            echo "alle Dateien nehmen.\n";
+            $filesToRead=$files;
+            print_R($files);                                 
+            }
+        else
+            {
+            $pos=strpos($filename,"*.");
+            if ( $pos === false )
+                {
+                if ($debug) echo "fileAvailable: wir suchen nach dem Filenamen \"".$filename."\"\n";
+                $detName=true;
+                $detExt=false;
+                }
+            else
+                {
+                $filename=substr($filename,$pos+1,20);
+                if ($debug) echo "fileAvailable: wir suchen nach der Extension \"*".$filename."\"\n";
+                $detExt=true;
+                }
+            foreach ($files as $file)
+                {                            
+                if ($detExt == false)
+                    {
+                    /* Wir suchen einen Filenamen */
+                    if ($file == $filename)
+                        {
+                        $status=true;
+                        $filesToRead[]=$file;
+                        }
+                    //echo $file."\n";
+                    }
+                else
+                    {
+                    /* Wir suchen eine Extension */
+                    //echo $file."\n";
+                    $pos = strpos($file,$filename);
+                    if ( ($pos > 0 ) )
+                        {
+                        $len = strlen($file)-strlen($filename)-$pos;
+                        //echo "Filename \"".$file."\" gefunden. Laenge Extension : ".$len." ".$pos."\n";
+                        if ( $len == 0 ) 
+                            {
+                            $status=true; 
+                            $filesToRead[]=$file;                                            
+                            }
+                        }
+                    } 
+                }    
+            }                       
+        return ($filesToRead);
+        }
 
     /* fileAvailable
      *
