@@ -2809,7 +2809,7 @@
                 {
                 if (isset($item['TimeStamp']) && !isset($item['x']))
                 {
-                    $item['x'] = "@" . PopulateDate($item['TimeStamp'], $Serie) . "@";
+                    $item['x'] = "@" . $this->PopulateDate($item['TimeStamp'], $Serie) . "@";
                     unset($item['TimeStamp']);
                 }
                 if (isset($item['Value']) && !isset($item['y']))
@@ -2818,7 +2818,7 @@
                     unset($item['Value']);
                 }
                 if (isset($item['y']))
-                        $item['y'] = PopulateValue($item['y'], $Serie);
+                        $item['y'] = $this->PopulateValue($item['y'], $Serie);
 
                 $result[] = $item;
             }

@@ -4124,6 +4124,23 @@ class Autosteuerung
 				$result["VALUE_ON"]=$level;
                 $result["LEVEL"]=(integer)$result["STATUS"];
                 break;         
+            case "ILLUMINATION":
+                echo "    ILLUMINATION, Es wird der Wert \"".$result["STATUS"]."\" von ".$result["SOURCEID"]." übergeben.\n";  
+                $value=$result["STATUS"];
+                $result["NAME_EXT"]="#LEVEL";                                   // NAME_EXT manuell setzen, muss nicht Teil von Befehl name:  sein
+                $result["ON"]="TRUE";                                           // sonst wird nichts gemacht
+                if ($value<=4) $level=1;                    // beide Werte Messwert und Stellwert sind quadratisch, Anpassung überlegt
+                if ($value>4) $level=2;
+                if ($value>16) $level=4;
+                if ($value>64) $level=7;
+                if ($value>256) $level=13;
+                if ($value>1024) $level=16;
+                if ($value>2048) $level=32;
+                if ($value>4096) $level=64;
+                if ($value>8032) $level=100;
+				$result["VALUE_ON"]=$level;
+                $result["LEVEL"]=(integer)$result["STATUS"];
+                break;         
 			default:
 				$result["LEVEL"]=(integer)$befehl[1];
 				break;
@@ -4462,6 +4479,14 @@ class Autosteuerung
 
 		/* hier wird zwischen IPS Modulen der alten Generation und direkt implementierten Modulen geschaltet.
 		 * IPS Module der neuen Generation werden unter Default bearbeitet
+         *  Internal    Monitor on/off, läuft am Ende weiter duch zu
+         *  IPSHeat,IPSLight
+         *  Selenium
+         *  SamsungTV
+         *  EchoRemote
+         *  leer
+         *  default mit weiteren Modulbezeichnungen
+         *
 		 */
 		switch ($result["MODULE"])
 			{
@@ -4553,8 +4578,12 @@ class Autosteuerung
 
 			/******
 			 *
-			 *  hier wird zuerst geschaltet
-			 *
+			 *  hier wird zuerst geschaltet, wir erwarten uns in result entweder OID oder NAME, wenn name auch eventuell NAME_EXT für Level und Color
+			 *  wenn die OID angegeben wurde geht es sehr einfach, sonst
+             *  wenn der NAME angegeben wurde rausfinden ob es ein SWITCH, GROUP oder PROGRAM ist
+			 *  es wird die OID ebenfalls ermittelt
+             *  dann switchObject aufrufen
+             *
 			 *****************/
 			case "IPSHeat":     // Heat wird in switchObject anders behandeln als Light
 			case "IPSLight":

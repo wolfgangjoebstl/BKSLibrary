@@ -28,7 +28,7 @@
      *
      * Dieses Script macht alle drei Anwendungsmöglichkeiten
      *      Timer
-     *      Webfront
+     *      Webfront, Tastendruck
      *      Execute
      *
      * Der Timer wird um 2:27 aufgerufen und wird ausschliesslich für die Erfassung der Drei Guthaben verwendet. Es gibt es eine Verlängerungsmöglichkeit mit Aufruf alle 150 Sekunden
@@ -55,6 +55,7 @@
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(100);                              // kein Abbruch vor dieser Zeit, funktioniert nicht für linux basierte Systeme
 
+    $doQuery=false;                             // Abfrage mit Selenium Host starten
     $startexec=microtime(true);    
     //echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";         //keine Ausgabe da auch vom Webfront aufgerufen 
 
@@ -134,10 +135,21 @@
             echo "Guthaben Mode \"".$GuthabenAllgConfig["OperatingMode"]."\" not supported.\n";
             break;
         }
+
+    // Wenn Selenium Webfront aufgebaut wird
     $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     //$testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMacro,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $startActionID      = IPS_GetObjectIdByName("StartAction", $CategoryId_Mode);	
     $startActionGroupID = IPS_GetObjectIdByName("StartGroupCall", $CategoryId_Mode);
+
+    // Wenn YahooApi aufgebaut wird
+    $CategoryId_Finance  = IPS_GetObjectIdByName('Finance',$CategoryIdData);                    // Kategorie, wenn Kategorie nicht gefunden wird ist diese Variable und alle abhängigen davon danach false 
+   
+    $updateApiTableID    = @IPS_GetObjectIdByName("Update",$CategoryId_Finance);           // button 
+    $calculateApiTableID = @IPS_GetObjectIdByName("Calculate",$CategoryId_Finance);           // button
+    $sortApiTableID      = @IPS_GetObjectIdByName("Sort",$CategoryId_Finance);           // button 
+
+    $financeTableID       =   @IPS_GetVariableIDByName("YahooFinanceTable", $CategoryId_Finance);		// wenn false nicht gefunden
 
     $ScriptCounterID      = CreateVariableByName($CategoryIdData,"ScriptCounter",1);                    // wir zählen die erfolgreichen Aufrufe von Timer2
     $checkScriptCounterID = CreateVariableByName($CategoryIdData,"checkScriptCounter",1);               // wir zählen alle Aufrufe von Timer2
@@ -389,6 +401,21 @@ if ($_IPS['SENDER']=="TimerEvent")
                         }
                     $yahoofin->writeResult($ergebnis,"TargetValue",true);           // echte YahooFin writeresult, sonst nur bei Webfront nur Standard
                     break;
+                case "LOGWIEN":
+                    $configTemp["LOGWIEN"] = $configTabs["Hosts"]["LogWien"];
+                    $configTemp["Logging"]=$log_Guthabensteuerung;
+                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                    // Auswertung
+                    $result=$seleniumOperations->readResult("LogWien","Result",true);                  // true Debug
+                    //print_R($result);
+                    echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                    $log_Guthabensteuerung->LogNachrichten("Parse Log.Wien Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                    echo "--------\n";
+                    //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
+                    $seleniumLogWien = new SeleniumLogWien();
+                    $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");                    
+                    break;                    
                 case "morning":
                 case "lunchtime":
                 case "evening":
@@ -430,7 +457,8 @@ if ($configTabs)
  *
  *************************************************************/
 
-$reguestedAction = false;               // Vereinheitlichung der Actions
+$reguestedAction    = false;               // Vereinheitlichung der Actions
+$reguestedActionApi = false;               // Vereinheitlichung der Actions
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -438,100 +466,106 @@ if ($_IPS['SENDER']=="WebFront")
 
 	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 	$value=$_IPS['VALUE']; $variable=$_IPS['VARIABLE'];
-    switch ($variable)
+    if ($variable)
         {
-        case ($startImacroID):
-            //echo "Taste Macro gedrückt";
-            switch ($value)
-                {
-                case $maxcount:			// Alle
-                    IPS_SetEventActive($tim2ID,true);
-                    SetValue($ScriptCounterID,0);
-                    SetValue($statusReadID,"Abfrage für Alle um ".date("d.m.Y H:i:s")." gestartet.");			// Beim Erstaufruf Html Log loeschen.					
-                    //echo "Ja Alle";
-                    break;
-                case ($maxcount+1):		// Test, Sepzialroutine, sozusagen On Demand
-                    switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
-                        {    
-                        case "IMACRO":
-                            $handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_test.iim","w");
-                            fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
-                            fwrite($handle2,'TAB T=1'."\n");
-                            fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
-                            fwrite($handle2,'SET !EXTRACT NULL'."\n");
-                            fwrite($handle2,'SET !VAR0 '.$phoneID[6]["Nummer"]."\n");
-                            fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
-                            if (false)
-                                {
-                                //fwrite($handle2,'URL GOTO=http://www.drei.at/'."\n");
-                                fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$phoneID[0]["Nummer"]."\n");
-                                fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$phoneID[0]["Password"]."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
-                                fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
-                                fwrite($handle2,'\'Ausloggen'."\n");
-                                fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMainPage.do'."\n");
-                                fwrite($handle2,'TAG POS=2 TYPE=A ATTR=TXT:Kundenzone'."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:logout'."\n");
-                                fwrite($handle2,'TAB CLOSE'."\n");					
-                                }
-                            else
-                                {
-                                fwrite($handle2,'URL GOTO=https://service.upc.at/myupc/portal/mobile'."\n");
-                                //fwrite($handle2,'URL GOTO=https://service.upc.at/login/?TAM_OP=login&USERNAME=unauthenticated&ERROR_CODE=0x00000000&URL=%2Fmyupc%2Fportal%2Fmobile&REFERER=&OLDSESSION='."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ACTION:/pkmslogin.form ATTR=ID:username CONTENT=wolfgangjoebstl@yahoo.com'."\n");
-                                fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ACTION:/pkmslogin.form ATTR=ID:password CONTENT=##cloudG06##'."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:lbl_login_signin'."\n");
-                                fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:MYUPC_child.logout_dsLoggedInAs'."\n");
-                                fwrite($handle2,'TAG POS=1 TYPE=STRONG ATTR=TXT:Abmelden'."\n");						
-                                fwrite($handle2,'TAB CLOSE'."\n");							
-                                }	
-                            
-                            fclose($handle2);
-                            IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_test.iim", false, false, -1);
-                            break;
-                        case "SELENIUM":
-                            break;
-                        default:
-                            break;	
-                        }
-                    break;			// ende case maxcount
-                default:
-                    switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
-                        {    
-                        case "IMACRO":                
-                            //echo "ImacroAufruf von ".$phoneID[$value]["Nummer"]." mit Index ".$value.".\n";
-                            IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$value]["Nummer"].".iim", false, false, -1);
-                            break;
-                        case "SELENIUM":
-                            SetValue($statusReadID,"Selenium Read started on ".date("d.m.Y H:i:s").". Nummer ist ".$phoneID[$value]["Nummer"]." ($value).\n");
-                            //echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
-                            $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
-                            $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"];
-                            $seleniumOperations = new SeleniumOperations();            
-                            $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug         
+        switch ($variable)
+            {
+            case ($startImacroID):
+                //echo "Taste Macro gedrückt";
+                switch ($value)
+                    {
+                    case $maxcount:			// Alle
+                        IPS_SetEventActive($tim2ID,true);
+                        SetValue($ScriptCounterID,0);
+                        SetValue($statusReadID,"Abfrage für Alle um ".date("d.m.Y H:i:s")." gestartet.");			// Beim Erstaufruf Html Log loeschen.					
+                        //echo "Ja Alle";
+                        break;
+                    case ($maxcount+1):		// Test, Sepzialroutine, sozusagen On Demand
+                        switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                            {    
+                            case "IMACRO":
+                                $handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_test.iim","w");
+                                fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
+                                fwrite($handle2,'TAB T=1'."\n");
+                                fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
+                                fwrite($handle2,'SET !EXTRACT NULL'."\n");
+                                fwrite($handle2,'SET !VAR0 '.$phoneID[6]["Nummer"]."\n");
+                                fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
+                                if (false)
+                                    {
+                                    //fwrite($handle2,'URL GOTO=http://www.drei.at/'."\n");
+                                    fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$phoneID[0]["Nummer"]."\n");
+                                    fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$phoneID[0]["Password"]."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
+                                    fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+                                    fwrite($handle2,'\'Ausloggen'."\n");
+                                    fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMainPage.do'."\n");
+                                    fwrite($handle2,'TAG POS=2 TYPE=A ATTR=TXT:Kundenzone'."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:logout'."\n");
+                                    fwrite($handle2,'TAB CLOSE'."\n");					
+                                    }
+                                else
+                                    {
+                                    fwrite($handle2,'URL GOTO=https://service.upc.at/myupc/portal/mobile'."\n");
+                                    //fwrite($handle2,'URL GOTO=https://service.upc.at/login/?TAM_OP=login&USERNAME=unauthenticated&ERROR_CODE=0x00000000&URL=%2Fmyupc%2Fportal%2Fmobile&REFERER=&OLDSESSION='."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ACTION:/pkmslogin.form ATTR=ID:username CONTENT=wolfgangjoebstl@yahoo.com'."\n");
+                                    fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ACTION:/pkmslogin.form ATTR=ID:password CONTENT=##cloudG06##'."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:lbl_login_signin'."\n");
+                                    fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:MYUPC_child.logout_dsLoggedInAs'."\n");
+                                    fwrite($handle2,'TAG POS=1 TYPE=STRONG ATTR=TXT:Abmelden'."\n");						
+                                    fwrite($handle2,'TAB CLOSE'."\n");							
+                                    }	
+                                
+                                fclose($handle2);
+                                IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_test.iim", false, false, -1);
+                                break;
+                            case "SELENIUM":
+                                break;
+                            default:
+                                break;	
+                            }
+                        break;			// ende case maxcount
+                    default:
+                        switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                            {    
+                            case "IMACRO":                
+                                //echo "ImacroAufruf von ".$phoneID[$value]["Nummer"]." mit Index ".$value.".\n";
+                                IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$value]["Nummer"].".iim", false, false, -1);
+                                break;
+                            case "SELENIUM":
+                                SetValue($statusReadID,"Selenium Read started on ".date("d.m.Y H:i:s").". Nummer ist ".$phoneID[$value]["Nummer"]." ($value).\n");
+                                //echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
+                                $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
+                                $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"];
+                                $seleniumOperations = new SeleniumOperations();            
+                                $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug         
 
-                            break;
-                        default:
-                            break;
-                        }
-                    break;	
-                }       // end switch
-            break;
-        case $startActionID:
-            $reguestedAction=GetValueFormatted($startActionID);
-            break;
-        case $startActionGroupID:
-            $reguestedAction=GetValueFormatted($startActionGroupID);
-            break;
-        default:
-            echo "GuthabenSteuerung, unknown ActionID Variable : $variable";
-            break;
-        }            //end switch
+                                break;
+                            default:
+                                break;
+                            }
+                        break;	
+                    }       // end switch
+                break;
+            case $startActionID:                                                // ein bestimmter Einzel Aufruf aus Hosts für Selenium
+                $reguestedAction=GetValueFormatted($startActionID);
+                break;
+            case $startActionGroupID:                                           // ein bestimmter Gruppen Aufruf aus Hosts für Selenium
+                $reguestedAction=GetValueFormatted($startActionGroupID);
+                break;
+            case $updateApiTableID:
+                $reguestedActionApi=GetValueFormatted($updateApiTableID);              // Update
+                break;
+            default:
+                echo "GuthabenSteuerung, unknown ActionID Variable : $variable";
+                break;
+            }            //end switch
+        }
 	}           // ende if
 
 
@@ -545,6 +579,7 @@ if ($_IPS['SENDER']=="WebFront")
                 case "EVN":
                 case "EASY":
                 case "YAHOOFIN":
+                case "LOGWIEN":
                 case "MORNING":
                 case "LUNCHTIME":
                 case "EVENING":
@@ -603,6 +638,135 @@ if ($_IPS['SENDER']=="WebFront")
                 default:
                     break;                    
                 }   */
+        }
+
+    if ($reguestedActionApi)
+        {
+        switch ($reguestedActionApi)
+            {
+            case "Update":
+                $log_Guthabensteuerung->LogNachrichten("Manually requested Api Query for \"$reguestedActionApi\" .");
+                $ipsTables = new ipsTables();
+                $yahooApi  = new yahooApi();
+                $yahoofin = new SeleniumYahooFin();
+                //$data = $yahoofin->getSymbolsfromConfig();
+
+                $seleniumEasycharts = new SeleniumEasycharts();
+                $depotbook=$seleniumEasycharts->createDepotBookfromOrderBook();         // actualDepot, Angabe Subdepot möglich
+                $actualDepotShorts=array(); $actualDepot=array();
+                foreach ($depotbook as $item) 
+                    {
+                    $actualDepotShorts[]=$item["Short"];                    // welche Ticker sollen angezeigt werden, das sind die die ich nachkaufen oder verkaufen sollte
+                    $actualDepot[$item["Short"]]=$item;                         // indexiert das Depotbook actualDepot nach Tickersymbolen (anstelle von Aktien Index)
+                    }
+                $data = $actualDepotShorts;                             // definiert nach welchen Tickersymbolen gesucht werden soll
+
+                $modules = [
+                    'assetProfile', 'balanceSheetHistory', 'balanceSheetHistoryQuarterly', 'calendarEvents',
+                    'cashflowStatementHistory', 'cashflowStatementHistoryQuarterly', 'defaultKeyStatistics', 'earnings',
+                    'earningsHistory', 'earningsTrend', 'financialData', 'fundOwnership', 'incomeStatementHistory',
+                    'incomeStatementHistoryQuarterly', 'indexTrend', 'industryTrend', 'insiderHolders', 'insiderTransactions',
+                    'institutionOwnership', 'majorDirectHolders', 'majorHoldersBreakdown', 'netSharePurchaseActivity', 'price', 'quoteType',
+                    'recommendationTrend', 'secFilings', 'sectorTrend', 'summaryDetail', 'summaryProfile', 'symbol', 'upgradeDowngradeHistory',
+                    'fundProfile', 'topHoldings', 'fundPerformance'];
+                $modul = ["incomeStatementHistoryQuarterly","summaryDetail","assetProfile","incomeStatementHistory","price"];
+                $config = ["preProcess" => true];
+                $result = $yahooApi->getDataYahooApi($data,$modul,$config,false);            // false, kein Debug, von yahoo die Daten der Module abholen
+                
+                $inputDataPrice = $yahooApi->extractPrice($result,false);                         // true für Debug
+                // Marktpreis aktuell mit den Kosten/Stueck aus dem Depot verschneiden, es gibt Kosten und Preis
+                $inputDataPortfolio=array(); $row=0;          
+                foreach ($inputDataPrice as $rowInput => $entry)
+                    {
+                    if (isset($entry["Ticker"]))
+                        {
+                        $inputDataPortfolio[$row]=$entry;
+                        if (isset($actualDepot[$entry["Ticker"]]["Kosten"])) $inputDataPortfolio[$row]["cost"]=(float)$actualDepot[$entry["Ticker"]]["Kosten"];
+                        if (isset($actualDepot[$entry["Ticker"]]["Stueck"])) $inputDataPortfolio[$row]["price"]=(float)$actualDepot[$entry["Ticker"]]["Stueck"]*$entry["regularMarketPrice"];
+                        $row++;
+                        }
+                    }
+
+                $inputDataIncome = $yahooApi->extractIncomeStatementHistory($result,false);                         // true für Debug, Jahreswerte, letzte 4 Jahre
+
+                $inputDataHistory = $yahooApi->extractIncomeStatementHistoryQuarterly($result);                    // letztes Jahr, quartalswerte
+                $calc = [
+                                "totalRevenue"                  => "",
+                                "costOfRevenue"                 => "",
+                                "grossProfit"                   => "",
+                                "interestExpense"               => "",
+                                "netIncome"                     => "",
+                            ];
+                $inputDataWork = $yahooApi->calcAddColumnsOfHistoryQuarterly($inputDataHistory,$calc);
+                $inputDataMerged = $yahooApi->combineTablesOfHistory($inputDataWork,$inputDataIncome);      //Combine added Quarterlys and yearly Statements
+                $inputDataRevenue=$yahooApi->copyLatestEndDateOfHistory($inputDataMerged);                          // copy as long as we have the youngest entry
+
+                // summary Detail 
+                $inputData = $yahooApi->extractSummaryDetail($result);   
+                $configTransform = array(                                                         // for information only, not ready
+                        "shortName"             => "add from inputDataPriceTicker", 
+                        "regularMarketTime"    => "add from inputDataPriceTicker",
+                        "regularMarketPrice"    => "add from inputDataPriceTicker",
+                                // calc
+                        "regularChange"         => "round 2Komma (inputData.regularMarketPrice/inputData.previousClose-1)*100",
+                        "outstandingMShares"    => "round -3Komma (inputDataPriceTicker.marketCap/inputDataPriceTicker.regularMarketPrice",
+                                // price compare to 52week borders, 0 = 10% below low , 1 = 10% above high, marketprice is percentage 1,1*high=100%,0.9*low=0%, marketprice is percentage of price*high*1,1/low*0,9
+                                //$reallyLow=$inputData[$row]["fiftyTwoWeekLow"]*0.9;
+                                //$rangeLowHigh=($inputData[$row]["fiftyTwoWeekHigh"]*1.1)-$reallyLow;
+                        "priceto52weekRange"    => "(inputData.regularMarketPrice-reallyLow)/rangeLowHigh",           // add to rate
+                        "rangeToPrice"         => "(rangeLowHigh/inputData.regularMarketPrice",
+                        );           // add to rate
+                $yahooApi->addTransformColumnsfromtables($inputData,$inputDataPrice,$inputDataRevenue);         // result in inputData
+                $configRating = array(
+                        "priceToSalesTrailing12Months" => "ratePriceToSalesTrailing12Months",
+                        "forwardPE"                    => "rateforwardPE",
+                        "rangeToPrice"                 => "rateVolatility",            // Scale Max=1 Min=0, 0,5 is Means
+                    );
+                $yahooApi->doRatingOfTables($inputData,$configRating);
+
+                $config["sort"]="rate";
+                $config["header"]=true;
+                $config["html"]='html';
+
+                $displayInput = [
+                                "Ticker"                        => "",
+                                "shortName"                     => "",
+                                "regularMarketTime"             => ["header"=>"regular Market Time","format"=>"DateTime"],
+                                "regularMarketPrice"            => ["header"=>"regular Market Price","format"=>"<currency>","compare"=>"<previousClose>"],
+                                "regularChange"                 => ["header"=>"regular Change Day","format"=>"%"],
+                                "previousClose"                 => "<currency>",                // sucht sich Feld currency und übernimmt Wert
+                                "open"                          => "<currency>",
+                                "dayLow"                        => "<currency>",
+                                "dayHigh"                       => "<currency>",
+                                "priceToSalesTrailing12Months"  => ["header"=>"price To Sales Trailing 12Months","format"=>""],
+                                "rate"                          => "",                  // mühsam errechnet
+                                "forwardPE"                     => "",
+                                "trailingPE"                    => "",
+                                "fiftyDayAverage"               => ["header"=>"Average 50days","format"=>""],
+                                "twoHundredDayAverage"          => ["header"=>"Average 200days","format"=>""],
+                                "fiftyTwoWeekLow"               => ["header"=>"Low 52weeks","format"=>"<currency>"],
+                                "fiftyTwoWeekHigh"              => ["header"=>"High 52weeks","format"=>"<currency>"],
+                                "exDividendDate"                => "Date",
+                                "dividendRate"                  => "",
+                                "totalRevenue"                  => "<currency>",
+                                "marketCap"                     => "<currency>",
+                                "outstandingMShares"            => "",   
+                            ]; 
+                $display=array();                                       // leere Einträge gibt es nicht mehr, es muss zumindest format stehen
+                foreach ($displayInput as $index=>$entry)
+                    {
+                    if (is_array($entry)) $display[$index] = $entry;
+                    else
+                        {
+                        $display[$index]["format"] = $entry;
+                        }    
+                    }                               
+                $result = $ipsTables->showTable($inputData, $display,$config,false);     // true für debug
+                SetValue($financeTableID,$result);
+                break;
+            default:
+                break;        
+            }
         }
 
 /******************************************************
@@ -704,10 +868,11 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
                         break;    
                     }    
                 }
+
             /*************************** Abfrage über Selenium aus dem Internet, hier gehts los*/
             echo "============================================================================\n";            
             $seleniumOperations = new SeleniumOperations();                             // macht nichts, erst mit automated query gehts los
-            $seleniumOperations->automatedQuery($webDriverName,$config,true);          // true debug, config für Drei und Easy      
+            if ($doQuery) $seleniumOperations->automatedQuery($webDriverName,$config,true);          // true debug, config für Drei und Easy      
 
             /***************************** Auswertung */
             $hosts="";

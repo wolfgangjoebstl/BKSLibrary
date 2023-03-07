@@ -110,7 +110,7 @@
 class OperationCenter
 	{
 
-    protected $dosOps;                        // verwendete andere Klassen 
+    protected $dosOps,$sysOps;                        // verwendete andere Klassen 
     protected $ipsTables;                   // verwendete andere Klassen
     protected $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
     private $debug;                 // zusaetzliche hilfreiche Debugs
@@ -143,6 +143,7 @@ class OperationCenter
 		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 
         $this->dosOps = new dosOps();                   // create classes used in this class
+        $this->sysOps = new sysOps();                   // create classes used in this class
         $this->ipsTables = new ipsTables();             // create classes used in this class, standard creation of tables
         $this->systemDir     = $this->dosOps->getWorkDirectory();
         if ($debug && false)                                                        //false nicht ausgeben
@@ -1577,11 +1578,12 @@ class OperationCenter
         /* exec Funktion von der Art wie IP Symcom gestartet wird abhängig, nur möglich wenn als System gestartet wurde 
          */
         $opSys     =  $this->dosOps->evaluateOperatingSystem();
-        echo "Operating System evaluated from IP Symcon Kerneldir : $opSys.\n";
+        echo "Operating System evaluated out of IP Symcon Kerneldir : $opSys.\n";
         if ($opSys == "WINDOWS")
             {
             // exec('systeminfo',$catch);   // ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden 
-            $resultSystemInfo=IPS_EXECUTE("systeminfo","", true, true);
+            //$resultSystemInfo=IPS_EXECUTE("systeminfo","", true, true);
+            $resultSystemInfo=$this->sysOps->ExecuteUserCommand("systeminfo","", true, true);           // gleicher Aufruf für alle
             //echo $resultSystemInfo;
             $catch=explode("\x0A",$resultSystemInfo);             //zeilenweise als array speichern
             print_R($catch);
@@ -1660,13 +1662,16 @@ class OperationCenter
 		$ServerVersion=IPS_GetKernelVersion();
 		$results["IPS_Version"]=$ServerVersion;
 		
-		SetValue($HostnameID,$results["Hostname"]);
-		SetValue($SystemNameID,$results["Betriebssystemname"]);
-		SetValue($SystemVersionID,trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," "))));
-		SetValue($HotfixID,trim(substr($results["Hotfix(es)"],0,strpos($results["Hotfix(es)"]," "))));
-		SetValue($UptimeID,$ServerUptime);
-		SetValue($VersionID,$ServerVersion);
-		SetValue($MemoryID,$results["Verfuegbarer physischer Speicher"]." von ".$results["Gesamter physischer Speicher"]." verfuegbar. ".$results["Virtueller Arbeitsspeicher"]." Virtualisiert.");
+		if (isset($results["Hostname"])) 
+            {
+            SetValue($HostnameID,$results["Hostname"]);
+		    SetValue($SystemNameID,$results["Betriebssystemname"]);
+		    SetValue($SystemVersionID,trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," "))));
+		    SetValue($HotfixID,trim(substr($results["Hotfix(es)"],0,strpos($results["Hotfix(es)"]," "))));
+    		SetValue($MemoryID,$results["Verfuegbarer physischer Speicher"]." von ".$results["Gesamter physischer Speicher"]." verfuegbar. ".$results["Virtueller Arbeitsspeicher"]." Virtualisiert.");
+            }
+        SetValue($UptimeID,$ServerUptime);
+        SetValue($VersionID,$ServerVersion);
 
         /* MAC ipTable noch zusaetzlich beschreiben */
 
@@ -6537,7 +6542,7 @@ class LogFileHandler extends OperationCenter
  * getHomematicType
  * HomematicDeviceType
  * getHomematicDeviceType
- * getHomematicHMDevice
+ * getHomematicHMDevice         hier neue Geräte anlegen, damit sie erkannt werden
  * getFS20Type
  * getFS20DeviceType
  *
@@ -8385,12 +8390,14 @@ class DeviceManagement
                     case "HMIP-eTRV":
                     case "HmIP-eTRV-B":
                     case "HmIP-eTRV-2":
+                    case "HmIP-eTRV-B-2 R4M":           // Stellmotor Heizung, neueste Variante, schräges Display
                     case "HM-CC-RT-DN":
                         $result="Stellmotor";
                         $matrix=[0,2,1,1,2,1,1,1];                        
                         break;
 
                     case "HmIP-SMI":
+                    case "HmIP-SMI55-2":                // Einbaurahmen Bewegungsmelder, MOTION; ILLUMINATION, MOTION_DETECTION und ein paar mehr
                     case "HM-Sec-MDIR":
                     case "HM-Sec-MDIR-2":
                     case "HM-Sen-MDIR-O-2":  

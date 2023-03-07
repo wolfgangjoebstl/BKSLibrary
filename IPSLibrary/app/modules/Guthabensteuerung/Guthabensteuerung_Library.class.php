@@ -19,7 +19,11 @@
 	 
     /*
      * Klasse GuthabenHandler
+     * Klasse yahooApi
      *
+     */
+
+    /* Klasse GuthabenHandler
      * sammelt alle Routinen für die Verwaltung von prepaid Guthaben
      * es ist noch nicht gelungen die Webseiten ohne iMacro auszulesen, deshalb wird mit einer alten Mozilla Firefox Version (47)
      * und iMacro (ebenfalls alt) weiterhin der Inhalt der Seiten gespeichert und nachträglich analysiert
@@ -28,7 +32,7 @@
      *  getCategoryIdData                   GuthabenSteuerung data Kategorie übergeben
      *  getCategoryIdSelenium               Selenium GuthabenSteuerung data Kategorie übergeben
      *  getConfiguration
-     *  setConfiguration
+     *  setConfiguration                    die gesamte Konfiguration einlesen und eventuell anpassen, prüfen und bearbeiten
      *  updateConfiguration
      *  getContractsConfiguration
      *  getPhoneNumberConfiguration
@@ -54,7 +58,10 @@
 		private $configuration = array();				// die angepasste, standardisierte Konfiguration
 		private $CategoryIdData, $CategoryIdApp, $CategoryIdSelenium;			// die passenden Kategorien
         private $CategoryIdData_Guthaben, $CategoryIdData_GuthabenArchive;			// noch ein paar passenden Kategorien, für die Speicherung der Daten
-		
+		private $wfcHandling,$dosOps;                           // external classes made by inside
+
+        private $repository;                            // einheitlicher Ort dafür, gesetzt bei construct
+
         /**
 		 * @public
 		 *
@@ -63,7 +70,10 @@
 		 */
 		public function __construct($ausgeben=false,$ergebnisse=false,$speichern=false)
 			{
-			/* standardize configuration */
+            $this->wfcHandling = new wfcHandling();
+            $this->dosOps        = new dosOps();
+        
+        	/* standardize configuration */
 			$this->configuration = $this->setConfiguration($ausgeben,$ergebnisse,$speichern);       // Übergabe von drei Control Flags
 
             
@@ -71,9 +81,9 @@
 
 			/* get Directories */
 
-			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+			$this->repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-			$moduleManager = new IPSModuleManager('GuthabenSteuerung',$repository);
+			$moduleManager = new IPSModuleManager('GuthabenSteuerung',$this->repository);
 
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
@@ -140,11 +150,10 @@
                 $configInput=get_GuthabenAllgemeinConfig();
                 /* Web result Directory */
                 configfileParser($configInput, $config, ["WebResultDirectory","Webresultdirectory","webresultdirectory" ],"WebResultDirectory" ,"/Guthaben/"); 
-                $dosOps = new dosOps();
-               	$systemDir     = $dosOps->getWorkDirectory(); 
+               	$systemDir     = $this->dosOps->getWorkDirectory(); 
                 if (strpos($config["WebResultDirectory"],"C:/Scripts/")===0) $config["WebResultDirectory"]=substr($config["WebResultDirectory"],10);      // Workaround für C:/Scripts"
-                $config["WebResultDirectory"] = $dosOps->correctDirName($systemDir.$config["WebResultDirectory"]);
-                $dosOps->mkdirtree($config["WebResultDirectory"]);
+                $config["WebResultDirectory"] = $this->dosOps->correctDirName($systemDir.$config["WebResultDirectory"]);
+                $this->dosOps->mkdirtree($config["WebResultDirectory"]);
                 /* Operating Mode : kein Eintrag bedeutet iMacroDefault, sonst iMacro (veraltet) oder Selenium */
                 configfileParser($configInput, $config, ["OPERATINGMODE","OperatingMode","Operatingmode","operatingmode" ],"OperatingMode" ,"iMacroDefault");  
                 if ( (strtoupper($config["OperatingMode"]))=="IMACRODEFAULT") 
@@ -164,6 +173,7 @@
                     configfileParser($configSelenium["Selenium"], $config["Selenium"], ["WEBDRIVER","WebDriver","Webdriver","webdriver" ],"WebDriver" , 'http://10.0.0.34:4444/wd/hub');
 
                     configfileParser($configSelenium["Selenium"], $config["Selenium"], ["HOSTS","Hosts","Host","hosts" ],"Hosts" , null);
+                    configfileParser($configSelenium["Selenium"], $config["Selenium"], ["WebfrontPane","webfrontpane","Webfrontpane","webfrontpane" ],"WebfrontPane" , "Selenium");
                     //print_r($config);
                     }
                 elseif  ( (strtoupper($config["OperatingMode"]))=="IMACRO")
@@ -174,13 +184,45 @@
                     }
                 elseif  ( (strtoupper($config["OperatingMode"]))=="NONE")
                     {
-
-
-
                     }
-
                 else echo "ERROR GuthabenHandler::setConfiguration, Do not know the Operating Mode ".$config["OperatingMode"]."\n";
-                }
+
+                /* API Handler */
+                configfileParser($configInput, $configApi, ["Api","API","api" ],"Api" , null);
+                if (isset($configApi["Api"]))
+                    {
+                    configfileParser($configApi["Api"], $config["Api"], ["WebfrontPane","webfrontpane","Webfrontpane","webfrontpane" ],"WebfrontPane" , null);  
+                    configfileParser($configApi["Api"], $config["Api"], ["YahooApi","yahooapi","YAHOOAPI" ],"YahooApi" , null);
+                    }
+                /* Webfront Konfiguration kontrollieren und ergänzen */
+                $WebfrontConfigID = $this->wfcHandling->get_WebfrontConfigID(); 
+                configfileParser($configInput, $configWf, ["Webfront","WEBFRONT","webfront" ],"Webfront" ,false); 
+                if (isset($configWf["Webfront"]))
+                    {
+                    foreach ($configWf["Webfront"] as $name => $configEntry )
+                        {
+                        if (isset($WebfrontConfigID[$name])===false) unset($configWf["Webfront"][$name]);
+                        else 
+                            {
+                            $configWfEntry=array();
+                            foreach ($configEntry as $item => $configSubEntry)
+                                {    
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["Enabled","ENABLED","enabled"],"Enabled" ,false); 
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["Path","PATH","path"],"Path" ,null); 
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["ParentModule","PARENTMODULE","parentmodule","Parentmodule"],"ParentModule" ,null); 
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["TabPaneItem","TABPANEITEM","tabpaneitem"],"TabPaneItem" ,null); 
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["TabItem","TABITEM","tabitem"],"TabItem" ,null); 
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["TabPaneOrder","TABPANEORDER","tabpaneorder"],"TabPaneOrder" ,null); 
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["TabPaneIcon"],"TabPaneIcon","");
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["TabPaneParent"],"TabPaneParent",null);
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["TabPaneName"],"TabPaneName","");
+                                configfileParser($configEntry[$item], $configWfEntry[$item], ["configID","ConfigID","configid","ConfigId" ],"ConfigId" ,$WebfrontConfigID[$name]); 
+                                }
+                            $config["Webfront"][$name]=$configWfEntry;
+                            }   
+                        }
+                    }
+                }           // get GuthabenAllg
 
             $configuration["CONFIG"]    = $config;
 
@@ -198,6 +240,40 @@
             $this->configuration["EXECUTE"]["ERGEBNISSE"]=$ergebnisse;
             $this->configuration["EXECUTE"]["SPEICHERN"]=$speichern; 
             return($this->configuration);
+            }
+
+        /* die optionalen Webfronts für Selenium und Money sind jetzt konfigurierbar
+        */
+        public function getWebfrontsConfiguration($tabPane,$debug=false)
+            {
+            $webfrontConfig=false;
+            $GuthabenAllgConfig=$this->configuration["CONFIG"];
+            $ipsOps = new ipsOps();
+            if ($debug) print_r($GuthabenAllgConfig);
+            // WebfrontConfig für Selenium
+            if (isset($GuthabenAllgConfig[$tabPane]["WebfrontPane"]))
+                {
+                $webfrontPane = $GuthabenAllgConfig[$tabPane]["WebfrontPane"];
+                if ($debug) echo "WebfrontPane für Selenium : $webfrontPane\n";
+                if (isset($GuthabenAllgConfig["Webfront"]["Administrator"][$webfrontPane]))
+                    {
+                    $webfrontConfig=$GuthabenAllgConfig["Webfront"]["Administrator"][$webfrontPane];
+                    if ($webfrontConfig["Enabled"]==1)
+                        {
+                        if (isset($webfrontConfig["ParentModule"]))   
+                            {
+                            if ($debug) echo "Parent Module ".$webfrontConfig["ParentModule"]." berücksichtigen.\n";
+                            $moduleManagerGUI = new IPSModuleManager($webfrontConfig["ParentModule"],$this->repository);
+                            $configWFrontGUI=$ipsOps->configWebfront($moduleManagerGUI,false);     // wenn true mit debug Funktion  
+                            $tabPaneParent=$configWFrontGUI["Administrator"]["TabPaneItem"];
+                            if ($debug) echo "  Selenium Module Überblick im Administrator Webfront $tabPaneParent abspeichern.\n";
+                            $webfrontConfig["TabPaneParent"]=$tabPaneParent;
+                            }
+                        if ($debug) print_R($webfrontConfig);
+                        }
+                    }
+                }
+            return($webfrontConfig);
             }
 
         /* nur die SIM Karten Informationen ausgeben, zusaetztlich
@@ -447,49 +523,49 @@
                 }
             }
 
-   /* wird von Execute verwendet, ermittelt die Dateien im Download Verzeichnis und gibt diese als Text und
-    * als Array aus
-    */
+        /* wird von Execute verwendet, ermittelt die Dateien im Download Verzeichnis und gibt diese als Text und
+         * als Array aus
+         */
 
-    function readDownloadDirectory($verzeichnis=false)
-        {
-        if ($verzeichnis===false) $verzeichnis=$GuthabenAllgConfig["DownloadDirectory"];        
-        $dir=array(); $count=0; 
-        // Test, ob ein Verzeichnis angegeben wurde
-        if ( is_dir ( $verzeichnis ) )
+        function readDownloadDirectory($verzeichnis=false)
             {
-            // öffnen des Verzeichnisses
-            if ( $handle = opendir($verzeichnis) )
+            if ($verzeichnis===false) $verzeichnis=$GuthabenAllgConfig["DownloadDirectory"];        
+            $dir=array(); $count=0; 
+            // Test, ob ein Verzeichnis angegeben wurde
+            if ( is_dir ( $verzeichnis ) )
                 {
-                /* einlesen der Verzeichnisses	*/
-                while ((($file = readdir($handle)) !== false) )
+                // öffnen des Verzeichnisses
+                if ( $handle = opendir($verzeichnis) )
                     {
-                    if ($file!="." and $file != "..")
-                        {	/* kein Directoryverweis (. oder ..), würde zu einer Fehlermeldung bei filetype führen */
-                        //echo "Bearbeite ".$verzeichnis.$file."\n";
-                        $dateityp=filetype( $verzeichnis.$file );
-                        if ($dateityp == "file")			// alternativ dir für Verzeichnis
-                            {
-                            //echo "   Erfasse Verzeichnis ".$verzeichnis.$file."\n";
-                            $dir[$count]["Name"]=$verzeichnis.$file;
-                            $dir[$count++]["Date"]=date ("d.m.Y H:i:s.", filemtime($verzeichnis.$file));
-                            }
-                        }	
-                    //echo "    ".$file."    ".$dateityp."\n";
-                    } /* Ende while */
-                //echo "   Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
-                closedir($handle);
-                } /* end if dir */
-            }/* ende if isdir */
-        else
-            {
-            echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
-            }	
-        //print_r($dir);
-        echo "Dateien im Download Verzeichnis.\n";
-        foreach ($dir as $entry) echo "   ".$entry["Name"]."  zuletzt geändert am ".$entry["Date"]."\n";
-        return ($dir);
-        }
+                    /* einlesen der Verzeichnisses	*/
+                    while ((($file = readdir($handle)) !== false) )
+                        {
+                        if ($file!="." and $file != "..")
+                            {	/* kein Directoryverweis (. oder ..), würde zu einer Fehlermeldung bei filetype führen */
+                            //echo "Bearbeite ".$verzeichnis.$file."\n";
+                            $dateityp=filetype( $verzeichnis.$file );
+                            if ($dateityp == "file")			// alternativ dir für Verzeichnis
+                                {
+                                //echo "   Erfasse Verzeichnis ".$verzeichnis.$file."\n";
+                                $dir[$count]["Name"]=$verzeichnis.$file;
+                                $dir[$count++]["Date"]=date ("d.m.Y H:i:s.", filemtime($verzeichnis.$file));
+                                }
+                            }	
+                        //echo "    ".$file."    ".$dateityp."\n";
+                        } /* Ende while */
+                    //echo "   Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
+                    closedir($handle);
+                    } /* end if dir */
+                }/* ende if isdir */
+            else
+                {
+                echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+                }	
+            //print_r($dir);
+            echo "Dateien im Download Verzeichnis.\n";
+            foreach ($dir as $entry) echo "   ".$entry["Name"]."  zuletzt geändert am ".$entry["Date"]."\n";
+            return ($dir);
+            }
 
         /******************************************************************************/
 
@@ -1327,6 +1403,536 @@
 
         }   // Ende class Guthabenhandler
 
+    /* class API von YahooFinance
+     *  __construct
+     *  extractModule                               allgemeine Funktion
+     *  extractIncomeStatementHistory
+     *  extractIncomeStatementHistoryQuarterly
+     *  extractPrice
+     *  extractSummaryDetail
+     *
+     *  getDataYahooApi
+     *
+     *  calcAddColumnsOfHistoryQuarterly
+     *
+     */
+
+    class yahooApi
+        {
+
+        /* construct class yahooApi 
+         */
+        function __construct()
+            {
+            $displayAvail=array();
+            }
+
+        /* general extract
+         * Daten die von getDataYahooApi vom Modul parameter modul kommen herausnehmen
+         * das bedeutet im result array gibt es einen Index mit dem ticker und dann ein Index mit dem jeweiligen Modul
+         * alle Indexe in dem Modul werden gespeichert
+         * pro Ticker wird eine Zeile erstellt, eine Spalte heisst dann Ticker
+         */
+
+        function extractModule($result,$modul,$debug=false)
+            {
+            if ($debug) echo "extractModule $modul :\n";
+            $inputData=array();
+            $indexRow=0;
+            foreach ($result as $ticker => $item)
+                {
+                if ($debug) echo "   Ticker ".str_pad($ticker,10)." :   ";
+                foreach ($item[$modul] as $index => $entry)
+                    {
+                    if ($debug) echo " $index ";
+
+                    $inputData[$indexRow][$index] = $entry;
+                    //$displayAvail[$modul][$indexSub]=true;                    
+                    }
+                $inputData[$indexRow]["Ticker"] = $ticker;
+                $indexRow++;                        
+                if ($debug) echo "\n";
+                }
+            return ($inputData);
+            }
+
+        /* extractIncomeStatementHistory, Daten die von getDataYahooApi vom Modul incomeStatementHistory kommen herausnehmen
+         * das bedeutet im result array gibt es einen Index mit dem ticker und dann ein Index mit dem jeweiligen Modul
+         * die Auswertung funktioniert so dass alle Indexe des Moduls durchgegangen werden und auch die Subindexe wenn ein array
+         * hier gibt es noch ein unterarray da es historische Werte der letzten 4 Jahre sind
+         * pro Ticker wird eine Zeile erstellt, eine Spalte heisst dann Ticker
+         *
+         */
+
+        function extractIncomeStatementHistory($result,$debug=false)
+            {
+            if ($debug) echo "extractIncomeStatementHistory :\n";
+            $inputData=array();
+            $indexRow=0;
+            foreach ($result as $ticker => $item)
+                {
+
+                //$inputData[$indexRow] = $item["summaryDetail"];               // wir brauchen eine Zeile zumindest
+                //print_r($item["incomeStatementHistory"]);
+                if (isset($item["incomeStatementHistory"]["incomeStatementHistory"]))
+                    {
+                    if ($debug) echo "   Ticker ".str_pad($ticker,10)." :   ";
+                    foreach ($item["incomeStatementHistory"]["incomeStatementHistory"] as $index => $entry)
+                        {
+                        if ($debug) echo " $index \n";
+                        //print_R($entry);
+                        foreach ($entry as $indexSub => $entrySub)
+                            {
+                            if (is_array($entrySub))
+                                {
+                                if (isset($entrySub["raw"]))
+                                    {
+                                    $inputData[$indexRow][$indexSub] = $entrySub["raw"];
+                                    $displayAvail["incomeStatementHistory"][$indexSub]="raw";
+                                    }
+                                else $inputData[$indexRow][$indexSub] = "";
+                                }
+                            else 
+                                {
+                                $inputData[$indexRow][$indexSub] = $entrySub;
+                                $displayAvail["incomeStatementHistory"][$indexSub]=true;
+                                }
+                            }
+                        $inputData[$indexRow]["Ticker"] = $ticker;
+                        $indexRow++;                        
+                        }                        
+                    if ($debug) echo "\n";
+                    }
+                }
+            return ($inputData);
+            } 
+
+
+        /* extractIncomeStatementHistoryQuarterly, Daten die von getDataYahooApi vom Modul incomeStatementHistoryQuarterly kommen herausnehmen
+         * das bedeutet im result array gibt es einen Index mit dem ticker und dann ein Index mit dem jeweiligen Modul
+         * die Auswertung funktioniert so dass alle Indexe des Moduls durchgegangen werden und auch die Subindexe wenn ein array
+         * hier gibt es noch ein unterarray da es historische Werte sind
+         * pro Ticker wird eine Zeile erstellt, eine Spalte heisst dann Ticker
+         *
+         */
+
+        function extractIncomeStatementHistoryQuarterly($result,$debug=false)
+            {
+            if ($debug) echo "extractIncomeStatementHistoryQuarterly :\n";
+            $inputData=array();
+            $indexRow=0;
+            foreach ($result as $ticker => $item)
+                {
+                if (isset($item["incomeStatementHistoryQuarterly"]))
+                    {
+                    if ($debug) echo "   Ticker ".str_pad($ticker,10)." :   ";
+                    //$inputData[$indexRow] = $item["summaryDetail"];               // wir brauchen eine Zeile zumindest
+                    //print_r($item["incomeStatementHistoryQuarterly"]);
+                    foreach ($item["incomeStatementHistoryQuarterly"] as $index => $entry)
+                        {
+                        if ($debug) echo " $index \n";
+                        //print_R($entry);
+                        foreach ($entry as $indexSub => $entrySub)
+                            {
+                            if (is_array($entrySub))
+                                {
+                                if (isset($entrySub["raw"]))
+                                    {
+                                    $inputData[$indexRow][$indexSub] = $entrySub["raw"];
+                                    $displayAvail["incomeStatementHistoryQuarterly"][$indexSub]="raw";
+                                    }
+                                else $inputData[$indexRow][$indexSub] = "";
+                                }
+                            else 
+                                {
+                                $inputData[$indexRow][$indexSub] = $entrySub;
+                                $displayAvail["incomeStatementHistoryQuarterly"][$indexSub]=true;
+                                }
+                            }
+                        $inputData[$indexRow]["Ticker"] = $ticker;
+                        $indexRow++;                        
+                        }                        
+                    if ($debug) echo "\n";
+                    }
+                }
+            return ($inputData);
+            } 
+
+
+        /* extractPrice, Daten die von getDataYahooApi vom Modul price kommen herausnehmen
+        * aus dem json_encoded array die relevanten Daten als array herauskopieren
+        * Jeder Ticker, Aktienname Short bekommt eine Zeile
+        */
+
+        function extractPrice($result,$debug=false)
+            {
+            if ($debug) echo "extractPrice :\n";
+            $inputData=array();
+            $indexRow=0;
+            foreach ($result as $ticker => $item)
+                {
+                if ($debug) echo "   Ticker ".str_pad($ticker,10)." :   ";
+                //$inputData[$indexRow] = $item["summaryDetail"];               // wir brauchen eine Zeile zumindest
+                foreach ($item["price"] as $index => $entry)
+                    {
+                    if ($debug) echo " $index ";
+                    if (is_array($entry))
+                        {
+                        if (isset($entry["raw"]))
+                            {
+                            $inputData[$indexRow][$index] = $entry["raw"];
+                            $displayAvail[$index]="raw";
+                            }
+                        else $inputData[$indexRow][$index] = "";
+                        }
+                    else 
+                        {
+                        $inputData[$indexRow][$index] = $entry;
+                        $displayAvail["summaryDetail"][$index]=true;
+                        }
+                    }                        
+                if ($debug) echo "\n";
+                $inputData[$indexRow]["Ticker"] = $ticker;
+                $indexRow++;
+                }
+            return ($inputData);
+            }
+
+        /* extractSummaryDetail, Daten die von getDataYahooApi vom Modul summaryDetail kommen herausnehmen
+        * aus dem json_encoded array die relevanten Daten als array herauskopieren
+        * Jeder Ticker, Aktienname Short bekommt eine Zeile
+        */
+
+        function extractSummaryDetail($result,$debug=false)
+            {
+            if ($debug) echo "extractSummaryDetail :\n";
+            $inputData=array();
+            $indexRow=0;
+            foreach ($result as $ticker => $item)
+                {
+                if (isset($item["summaryDetail"]))
+                    {
+                    if ($debug) echo "   Ticker ".str_pad($ticker,10)." :   ";
+                    //$inputData[$indexRow] = $item["summaryDetail"];               // wir brauchen eine Zeile zumindest
+                    foreach ($item["summaryDetail"] as $index => $entry)
+                        {
+                        if ($debug) echo " $index ";
+                        if (is_array($entry))
+                            {
+                            if (isset($entry["raw"]))
+                                {
+                                $inputData[$indexRow][$index] = $entry["raw"];
+                                $displayAvail[$index]="raw";
+                                }
+                            else $inputData[$indexRow][$index] = "";
+                            }
+                        else 
+                            {
+                            $inputData[$indexRow][$index] = $entry;
+                            $displayAvail["summaryDetail"][$index]=true;
+                            }
+                        }                        
+                    if ($debug) echo "\n";
+                    $inputData[$indexRow]["Ticker"] = $ticker;
+                    $indexRow++;
+                    }
+                }
+            return ($inputData);
+            }
+
+        /* die Daten von der Yahoo Api holen
+         *
+            $modules = [
+                'assetProfile', 'balanceSheetHistory', 'balanceSheetHistoryQuarterly', 'calendarEvents',
+                'cashflowStatementHistory', 'cashflowStatementHistoryQuarterly', 'defaultKeyStatistics', 'earnings',
+                'earningsHistory', 'earningsTrend', 'financialData', 'fundOwnership', 'incomeStatementHistory',
+                'incomeStatementHistoryQuarterly', 'indexTrend', 'industryTrend', 'insiderHolders', 'insiderTransactions',
+                'institutionOwnership', 'majorDirectHolders', 'majorHoldersBreakdown', 'netSharePurchaseActivity', 'price', 'quoteType',
+                'recommendationTrend', 'secFilings', 'sectorTrend', 'summaryDetail', 'summaryProfile', 'symbol', 'upgradeDowngradeHistory',
+                'fundProfile', 'topHoldings', 'fundPerformance'];
+        */
+
+
+        function getDataYahooApi($data,$modul,$config=false,$debug=false)
+            {
+            $result=array();
+            if ($config === false) $config=array();
+            if (isset($config["preProcess"])) $preProc=$config["preProcess"];
+            else $preProc=false;
+            if ((is_array($modul))===false) $modul = [ $modul ];
+            $modules="";
+            $first=true;
+            foreach ($modul as $entry)
+                {
+                if ($first) 
+                    {
+                    $modules .= $entry;
+                    $first=false;
+                    }
+                else $modules .= '%2C'.$entry;
+                }
+            if ($debug>1) echo "----Debug-----$modules\n";
+            $initOnce=true;
+            foreach ($data as $ticker) 
+                {
+                //$url = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/$ticker?modules=defaultKeyStatistics%2CassetProfile%2CtopHoldings%2CfundPerformance%2CfundProfile%2CesgScores&ssl=true";
+                $url = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/$ticker?modules=".$modules; 
+                //$url = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/$ticker?modules=financialData";
+                if ($debug) echo "getDataYahooApi, get Data from Yahoos Url $url \n";
+                $dataReceived = json_decode(file_get_contents($url), true); 
+                //print_r($dataReceived["quoteSummary"]["result"][0]["summaryDetail"]);
+                //print_r($dataReceived);
+                if ($initOnce)
+                    {
+                    if ($debug>1) echo "The following information has been requested and received:\n";
+                    $i=0;
+                    foreach ($dataReceived["quoteSummary"]["result"][0] as $index => $entry)
+                        {
+                        if ($debug>1) echo "$i   ".$index."\n";
+                        $i++;
+                        }
+                    $initOnce=false;
+                    }
+                if ($preProc)
+                    {
+                    if ($debug>1) echo "We do preprocessing of received data:\n";
+                    foreach ($modul as $entry) 
+                        {
+                        if ($debug>1) echo "    Modul $entry\n";
+                        switch ($entry)
+                            {
+                            case "summaryDetail": 
+                                if (isset($dataReceived["quoteSummary"]["result"][0]["summaryDetail"]))
+                                     { 
+                                    if ($debug>1) echo "      found index :";
+                                    foreach ($dataReceived["quoteSummary"]["result"][0]["summaryDetail"] as $index => $item)
+                                        {
+                                        if ($debug>1) echo " $index ";
+                                        if (isset($item["raw"])) $result[$ticker][$entry][$index] = $item["raw"];
+                                        else $result[$ticker][$entry][$index] = $item;    
+                                        }                        
+                                    if ($debug>1) echo "\n";
+                                     }
+                                else echo "summaryDetail, Warning, not available for $ticker.\n";
+                                break;
+                            case "incomeStatementHistoryQuarterly":
+                                if (isset($dataReceived["quoteSummary"]["result"][0]["incomeStatementHistoryQuarterly"]))
+                                    {
+                                    foreach ($dataReceived["quoteSummary"]["result"][0]["incomeStatementHistoryQuarterly"]["incomeStatementHistory"] as $index => $item)
+                                        {
+                                        if ($debug>1) echo "      found index : $index : ";
+                                        foreach ($dataReceived["quoteSummary"]["result"][0]["incomeStatementHistoryQuarterly"]["incomeStatementHistory"][$index] as $indexSub => $itemSub)
+                                            {
+                                            if ($debug>1) echo " $indexSub ";
+                                            if (isset($itemSub["raw"])) $result[$ticker][$entry][$index][$indexSub] = $itemSub["raw"];
+                                            else $result[$ticker][$entry][$index][$indexSub] = $itemSub;    
+                                            }                        
+                                        if ($debug>1) echo "\n";
+                                        }                        
+                                    }
+                                else echo "incomeStatementHistoryQuarterly, Warning, not available for $ticker.\n";
+                                //$result[$ticker][$entry]=$dataReceived["quoteSummary"]["result"][0][$entry]["incomeStatementHistory"];                              
+                                break;
+                            default:
+                                if (isset($dataReceived["quoteSummary"]["result"][0][$entry]))
+                                    {
+                                    if ($debug)  echo "      found index :"; 
+                                    foreach ($dataReceived["quoteSummary"]["result"][0][$entry] as $index => $item)
+                                        {
+                                        if ($debug) echo " $index ";
+                                        }
+                                    if ($debug) echo "\n";                                    
+                                    $result[$ticker][$entry]=$dataReceived["quoteSummary"]["result"][0][$entry];
+                                    }
+                                else echo "$entry, Warning, not available for $ticker.\n";
+                                break;
+                            }
+                        }
+                    }
+                else $result[$ticker]=$dataReceived["quoteSummary"]["result"][0];
+                }
+            return($result);
+            }
+
+       /* addColumns, $inputDataHistory wie $calc
+        * gleiche Werte in Spalten zusammenzählen
+        * Ticker muss gleich sein, ist Index des Ergebnis, 
+        * plausi: in endDate wird das letzte Datum eines Ergebnisses gespeichert, in countCalc die Anzahl der summierten Werte von totalRevenue
+        */
+
+        public function calcAddColumnsOfHistoryQuarterly($inputDataHistory,$calc)
+            {
+            $inputDataWork=array();           
+            foreach ($inputDataHistory as $rowInput => $entry)
+                {
+                if (isset($entry["Ticker"]))
+                    {
+                    $row=$entry["Ticker"];         // Zeile mit Tickersymbol als Key
+                    $date=$entry["endDate"];
+                    //echo "$row:".date("d.m.Y",$date)." ";
+                    if (isset($inputDataWork[$row]["endDate"]))
+                        {
+                        if ($inputDataWork[$row]["endDate"]<$date) $inputDataWork[$row]["endDate"] = $date;            // jedes mal schauen ob es ein späteres Datum gibt
+                        }
+                    else $inputDataWork[$row]["endDate"] = $date;
+                    //echo date("d.m.Y",$inputDataWork[$row]["endDate"])." ";
+
+                    foreach ($calc as $key => $rule)
+                        {
+                        if (isset($entry[$key]))            // config aus keys
+                            {
+                            if ($key=="totalRevenue") 
+                                { 
+                                if ($entry[$key]>0) 
+                                    {
+                                    if (isset($inputDataWork[$row]["countCalc"])) $inputDataWork[$row]["countCalc"]++;
+                                    else $inputDataWork[$row]["countCalc"]=1;
+                                    } 
+                                }
+                            if (isset($inputDataWork[$row][$key])) 
+                                {
+                                $inputDataWork[$row][$key] += $entry[$key];
+                                }
+                            else
+                                {
+                                $inputDataWork[$row]["Ticker"] = $entry["Ticker"];
+                                $inputDataWork[$row][$key] = $entry[$key];
+                                }
+                            }
+                        }
+                    } 
+                }
+            return ($inputDataWork);
+            }
+
+        /* Combine added Quarterlys and yearly Statements
+        *
+        */
+        function combineTablesOfHistory($inputDataWork,$inputDataIncome)      
+            {
+            $inputDataMerged=array(); $row=0;                             // aggregierte Quartalswerte hinzufügen
+            foreach ($inputDataWork as $ticker => $entry)
+                {
+                if ( (isset($entry["countCalc"])) && ($entry["countCalc"]>3) ) 
+                    {
+                    $inputDataMerged[$row]=$entry;
+                    $row++;
+                    }
+                } 
+            foreach ($inputDataIncome as $ticker => $entry)
+                {
+                $inputDataMerged[$row]=$entry;
+                $row++;
+                }
+            return($inputDataMerged);
+            }
+
+    
+        /* generate inputDataRevenue from inputDataMerged
+         * overwrite entries as long we have a younger higher value in time)
+         */
+        function copyLatestEndDateOfHistory($inputDataMerged)
+            {
+            $inputDataRevenue=array();
+            foreach ($inputDataMerged as $row => $entry)
+                {
+                //echo "Zeile $row : ";
+                $ticker=$entry["Ticker"];
+                $date=$entry["endDate"];
+                if (isset($inputDataRevenue[$ticker])) 
+                    {
+                    if ($inputDataRevenue[$ticker]["endDate"]<$date) $inputDataRevenue[$ticker]=$entry;
+                    }
+                else $inputDataRevenue[$ticker]=$entry;
+                }
+            return ($inputDataRevenue);
+            }
+
+        /* add inputDataRevenue.ticker.totalRevenue to inputData.row , add inputDataPrice.row.shortName,regularMarketTime,regularMarketPrice based on Ticker */
+        function addTransformColumnsfromtables(&$inputData,$inputDataPrice,$inputDataRevenue,$config=false)
+            {
+            $inputDataPriceTicker=array();
+            foreach ($inputDataPrice as $rowInput => $entry) $inputDataPriceTicker[$entry["Ticker"]]=$entry; 
+
+            // add inputDataRevenue.ticker.totalRevenue to inputData.row , add inputDataPrice.ticker.shortName,regularMarketTime,regularMarketPrice 
+            foreach ($inputData as $row => $entry)              // die arrays die angehängt werden, müssen auf ticker indexieren
+                {
+                $ticker=$entry["Ticker"];
+                if (isset($inputDataRevenue[$ticker])) $inputData[$row]["totalRevenue"]=$inputDataRevenue[$ticker]["totalRevenue"]; 
+                if (isset($inputDataPriceTicker[$ticker]))   
+                    {
+                    // add
+                    $inputData[$row]["shortName"]=$inputDataPriceTicker[$ticker]["shortName"]; 
+                    $inputData[$row]["regularMarketTime"]=$inputDataPriceTicker[$ticker]["regularMarketTime"];
+                    $inputData[$row]["regularMarketPrice"]=$inputDataPriceTicker[$ticker]["regularMarketPrice"];
+                    // calc
+                    $inputData[$row]["regularChange"]=round(($inputData[$row]["regularMarketPrice"]/$inputData[$row]["previousClose"]-1),3);            // *100 in der Formatierung
+                    $inputData[$row]["outstandingMShares"]=round(($inputDataPriceTicker[$ticker]["marketCap"]/$inputDataPriceTicker[$ticker]["regularMarketPrice"]/1000),0)/1000;
+                    // price compare to 52week borders, 0 = 10% below low , 1 = 10% above high, marketprice is percentage 1,1*high=100%,0.9*low=0%, marketprice is percentage of price*high*1,1/low*0,9
+                    $reallyLow=$inputData[$row]["fiftyTwoWeekLow"]*0.9;
+                    $rangeLowHigh=($inputData[$row]["fiftyTwoWeekHigh"]*1.1)-$reallyLow;
+                    $inputData[$row]["priceto52weekRange"]=($inputData[$row]["regularMarketPrice"]-$reallyLow)/$rangeLowHigh;           // add to rate
+                    $inputData[$row]["rangeToPrice"]=($rangeLowHigh/$inputData[$row]["regularMarketPrice"]);           // add to rate
+                    // range compared to price, small is 1 and big is 0
+                    }
+                } 
+            }
+
+        /* Spaltenweise Auswertungen, Statistik, inputData
+        * 
+        */
+        function doRatingOfTables(&$inputData,$configRating)
+            {
+            //echo "doRatingOfTables, Statistics:\n";
+            $statistics = new statistics();        
+            //$config = $statistics->setConfiguration($configInput);        // Konfiguration setzen
+
+
+            $maxmin=array();         // Speicherplatz Ergebnis zur Verfügung stellen
+            $maxminClass=array();         // Speicherplatz Berechnung zur Verfügung stellen
+
+            foreach ($configRating as $key=>$resultkey)
+                {
+                $maxminClass[$key]   = new maxminCalc($maxmin,$key);       	                        // Instanz hat variablen Namen
+                }
+
+            foreach ($inputData as $row => $entry)              // zeilenweise durchgehen, Statistik anwenden
+                {
+                foreach ($configRating as $key=>$resultkey)
+                    {
+                    $maxminClass[$key]->addValue($entry[$key]);      // kann auch skalare Werte
+                    }
+                }
+            foreach ($configRating as $key=>$resultkey)
+                {
+                $maxminClass[$key]->calculate(); 
+                }
+            //print_R($maxmin);
+            //--------------------------
+            $this->rating($inputData,$configRating,$maxminClass);
+
+            foreach ($inputData as $row => $entry)              // die arrays die angehängt werden, müssen auf ticker indexieren
+                {
+                $inputData[$row]["rate"]=0.3*$inputData[$row]["ratePriceToSalesTrailing12Months"]+0.4*$inputData[$row]["rateforwardPE"]+0.3*$inputData[$row]["rateVolatility"];
+                }
+            }
+
+        function rating(&$inputData,$keys,$maxminClass)
+            {
+            if (is_array($keys)===false) return false;
+            foreach ($keys as $key=>$resultkey)
+                {
+                foreach ($inputData as $row => $entry)              // zeilenweise durchgehen, Statistik anwenden, wenn max 1, wenn min 0
+                    {
+                    $ergebnis =         $maxminClass[$key]->rating($entry[$key]); 
+                    $inputData[$row][$resultkey]=$ergebnis;
+                    }
+                }
+            }
+
+
+
+        }       // ende class yahooApi
 
 
 ?>

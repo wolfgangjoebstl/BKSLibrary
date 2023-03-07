@@ -197,7 +197,9 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
      *  kWh
      *  kW
      *  W
-     *  Byte
+     *  Byte, Bytes
+     *  USD,EUR
+     *  Date, Time, DateTime
      *
      * second parameter formats width with pads alignment left
      */
@@ -205,7 +207,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
     function nf($value,$unit="",$pad=0)
         {
         $result=false;
-        if (is_integer($unit)) $result = number_format($value, $unit, ",",".");
+        if (is_integer($unit)) $result = number_format($value, $unit, ",",".");         // unit ist die Anzahl an Nachkommastellen
         else
             {
             switch (strtoupper($unit))
@@ -243,9 +245,20 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                     if (is_numeric($value)) $result = date("d.m.Y",$value);
                     else $result = $value;
                     break; 
+                case "DATETIME":
+                    if (is_numeric($value)) $result = date("d.m.Y H:i:s",$value);
+                    else $result = $value;
+                    break;    
+                case "TIME":
+                    if (is_numeric($value)) $result = date("H:i:s",$value);
+                    else $result = $value;
+                    break;                                      
                 case "USD":
                 case "EUR":
                     $result = number_format($value, 2, ",",".")." $unit";           // wie unten, aber vielleicht kommt noch etwas
+                    break;
+                case "%":
+                    $result = number_format($value*100, 2, ",",".")."%";           // wie unten, aber vielleicht kommt noch etwas
                     break;
                 default:
                     if (gettype($value)=="boolean") $result = ($value?"true":"false"); 
@@ -334,6 +347,31 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
         else echo "Aktions Profil ".$pname." überarbeitet.\n";		
         }
 
+    /* SpezialProfile für Action Aufrufe aus dem Webfront 
+     *  pname ist der Name des Button, der Link auf den Button sollte dann "" sein oder der Button Teil des Webfronts
+     * die Farbe wird optional übergeben
+     *
+     */
+
+    function createButtonProfileByName($pname,$color=0x235643)
+        {
+        $create=false;
+        $button=$pname;
+        $pname .="Profil";
+        if (IPS_VariableProfileExists($pname) == false)
+            {
+            //Var-Profil existiert noch nicht, neu erstellen
+            IPS_CreateVariableProfile($pname, 1);                           // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
+            IPS_SetVariableProfileDigits($pname, 0);                        // PName, Nachkommastellen
+            $create=true;
+            }
+        // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
+        IPS_SetVariableProfileValues($pname, 0, 0, 0);      //PName, Minimal, Maximal, Schrittweite muss 0 sein für einen Button
+        IPS_SetVariableProfileAssociation($pname, 0, $button, "", $color); //P-Name, Value, Assotiation, Icon, Color=grau
+        if ($create) echo "Button $button mit Aktions Profil ".$pname." erstellt.\n";
+        else echo "Button $button mit Aktions Profil ".$pname." überarbeitet.\n";	
+        return $pname;	
+        }
 
     /* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
     * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
@@ -1955,7 +1993,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
 
     /*****************************************************************
-    *
+    * Formtiert den Wert Value wie die Formatierung von oid
     *
     ************************************************************************/
 
@@ -3863,7 +3901,7 @@ class archiveOps
             foreach ($this->result[$oid]["Values"] as $index => $entry)     // jetzt die Werte durchgehen, Werte sind mit auufsteigenden Zeitstempel sortiert
                 {
                 $logCount++;    
-                $wertAktuell = $statistics->wert($entry);
+                $wertAktuell = $statistics->wert($entry);               // nur umrechnen, statistics ist die übergeordnete class
 
                 $maxminFull->addValue($entry);
                 $eventLogAll->addValueAsIndex($index);                  // Vorwert, änderungs Analyse 
@@ -4726,9 +4764,11 @@ class archiveOps
             elseif ($werte[$letzter]['TimeStamp']>=$startmonth) $scale="months";
             elseif ($werte[$letzter]['TimeStamp']>=$startyear) $scale="years";
             $duration = abs($werte[$erster]['TimeStamp'] - $werte[$letzter]['TimeStamp']);
-            $span = $duration/$count;
+            if ($count>1) $span = $duration/($count-1);               // ein Anfangswert muss abgezogen werden
+            else $span = $duration;
             $result["count"]=$count;
             $result["span"]=$span;
+            //echo "countperIntervalValues, Span is ".nf($span,"s")."\n";
             if ($letzter == ($count-1)) $result["index"]="index";
             else $result["index"]="time";
             /* Archive speichert mit 0 den neuesten Wert, also erster 0, letzter count-1,
@@ -4749,7 +4789,7 @@ class archiveOps
                 //echo "   countperIntervalValues, Ergebnis ist $count Werte logged per $scale. ";
                 //echo "Erster  : ".date("H:i:s d.m.Y",$werte[$erster]['TimeStamp'])."  ";
                 //echo "Letzter : ".date("H:i:s d.m.Y",$werte[$letzter]['TimeStamp'])."  ";
-                echo "$count Werte im Scale $scale verfügbar. Werte von ".date("d.m.Y H:i:s",$anfang)." bis ".date("d.m.Y H:i:s",$ende)." Span durchschnittlich ".nf($span,"s")."\n";
+                echo "$count Werte im Scale $scale verfügbar. Erster Werte am ".date("d.m.Y H:i:s",$anfang)." bis ".date("d.m.Y H:i:s",$ende)." Span durchschnittlich ".nf($span,"s")."\n";
                 if ($debug>1) echo "     Info, Timestamp Value mit Key: $erster : ".date("d.m.Y H:i:s",$termin1)." Wert ".$werte[$erster]['Value']." und $letzter : ".date("d.m.Y H:i:s",$termin2)." Wert ".$werte[$letzter]['Value']."\n";
                 //echo "\n";
                 }
@@ -4758,36 +4798,43 @@ class archiveOps
         else return (false);
         }
 
+
     /* Werte vergleichen zwischen Array 1 und 2
      * wenn Timestamp eines Wertes in werte bereits in timeStampknown vorhanden ist nicht als neu identifizieren
+     * array wert ist Input und wird mit array timeStampknown verglichen
+     * array wert kann unterschiedlichen Namen für den timeStamp haben, dritter Parameter
      */
 
-    function filterNewData($werte,$timeStampknown)
+    function filterNewData($werte,$timeStampknown,$timeStamp="TimeStamp")
         {
         $inputAdd=array();
         $inputChg=array();
         $countAdd=0; $countChg=0;
+        echo "filterNewData, vergleiche ".count($werte)." neue Daten mit ".count($timeStampknown)." vorhandenen Daten.\n";
+        $count=0;
         foreach ($werte as $wert) 
             {
-            if (isset($wert["TimeStamp"]))          // da kommt noch mehr
+            //if ($count++==0) print_R($wert);
+            if (isset($wert[$timeStamp]))          // da kommt noch mehr
                 {
-                if (isset($timeStampknown[$wert["TimeStamp"]])) 
+                //echo ".";
+                if (isset($timeStampknown[$wert[$timeStamp]])) 
                     {
-                    if ($wert["Value"] != $timeStampknown[$wert["TimeStamp"]]) 
+                    if ($wert["Value"] != $timeStampknown[$wert[$timeStamp]]) 
                         {
                         if ($countChg<10)
                             {
-                            echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat einen Eintrag unterschiedlich zum Archive : ";
-                            echo $wert["Value"]." != ".$timeStampknown[$wert["TimeStamp"]]."\n";
+                            echo "Wert mit Timestamp ".$wert[$timeStamp]." hat einen Eintrag unterschiedlich zum Archive : ";
+                            echo $wert["Value"]." != ".$timeStampknown[$wert[$timeStamp]]."\n";
                             }
-                        $inputChg[$countChg]["TimeStamp"] = $wert["TimeStamp"];
+                        $inputChg[$countChg]["TimeStamp"] = $wert[$timeStamp];
                         $inputChg[$countChg]["Value"] = $wert["Value"];
                         $countChg++;
                         }
                     }
                 else
                     {
-                    $inputAdd[$countAdd]["TimeStamp"] = $wert["TimeStamp"];
+                    $inputAdd[$countAdd]["TimeStamp"] = $wert[$timeStamp];
                     $inputAdd[$countAdd]["Value"] = $wert["Value"];
                     $countAdd++;
                     }
@@ -4801,14 +4848,28 @@ class archiveOps
         }
 
     /* add Values to archive oid from csv file
+     * used for 15min and daily power values imported manually from Smart Meter Portals
+     * Input is config, following format is expected here and at readFileCsv called in here
+     *
+     *
      *
      */
 
-    function addValuesfromCsv($file,$oid,$config,$debug=true)
+    function addValuesfromCsv($file,$oid,$configInput,$debug=true)
         {
-        $debug1=false;          // debug readFileCsv
-        echo "Werte aus dem Archiv für OID : $oid auslesen.\n";
+
+        //parse config file, done twice, also in readFileCsv
+        $config=array();
+        configfileParser($configInput, $config, ["INDEX","Index","index" ],"Index" ,[]); 
+        configfileParser($configInput, $config, ["KEY","Key","key" ],"Key" ,null); 
+        configfileParser($configInput, $config, ["FORMAT","Format","format" ],"Format" ,null); 
+        configfileParser($configInput, $config, ["RESULT","Result","result" ],"Result" ,"All");
+
+        //$debug1=false;          // debug readFileCsv
+        $debug1=$debug;
+        echo "addValuesfromCsv, target für csv Werte ist OID : $oid. Werte aus dem Archiv auslesen. Config is ".json_encode($config)."\n";
         echo "Aggregation Status für diesen Wert : ".(AC_GetAggregationType($this->archiveID, $oid)?"Zähler":"Standard")."\n";            // bedingung ? erfüllt : nicht erfüllt; 
+        echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
         echo "Archivierte Werte bearbeiten:\n";
 
         $werte = $this->getArchivedValues($oid,$config,2);            // 2 für debug
@@ -4820,11 +4881,14 @@ class archiveOps
         $fileOps = new fileOps($file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
         //$index=[];                            // erste Zeile als Index übernehmen
         //$index=["Date","Time","Value"];         // Date und Time werden gemerged
-        $index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
+        //if (isset($config$index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
+        //$index=["DateTime","Value","Estimate","Dummy"];
+        $index=$config["Index"];
         $result=array();                                                        // Ergebnis
-        // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
+        if ($debug) echo "readFileCsv mit Config ".json_encode($config)." und Index ".json_encode($index)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
         $status = $fileOps->readFileCsv($result,$config,$index,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
         echo "Insgesamt ".count($result)." Werte aus der Datei $file ausgelesen.\n";
+        echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
 
         $input = $this->filterNewData($result,$target);
         
@@ -4840,6 +4904,9 @@ class archiveOps
             }
         if ( ($debug==false) && ($count) ) 
             {
+            //print_R($writeInput);
+            //foreach ($writeInput as $row => $entry) echo $row."  ".date("d.m.Y H:i:s",$entry["TimeStamp"])."  ".nf($entry["Value"],"kWh")."\n";
+            $status=false;
             $status=AC_AddLoggedValues ($this->archiveID, $oid, $writeInput);
             echo "Erfolgreich : $status \n";
             }
@@ -4965,7 +5032,8 @@ class statistics
 
 
 /*  Berechnung von Mittelwerten, Summen und Max/Min, die Ausgaben und Berechnungsgrundlagen erfolgen in einen gemeinsamen Speicher
-    *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
+ *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
+ *  verarbeitet Werte mit Zeitstempel und Value, nicht aggregiert mit Avg oder Skalare ohne Zeitstempel
     *
     *  beim Construct wird der Name unter dem die Berechnung gespeichert werden soll und die Anzahl der Werte die berücksichtigt werden soll gespeichert
     *  wenn ich 11 Werte angebe wird auf 10 zurückgerundet
@@ -4980,7 +5048,7 @@ class statistics
     * Sonderfall ist Full mit logs=false
     *
     *  __construct
-    *  addValue
+    *  addValue         einen Wert übergeben
     *  checkMinMax
     *  calculate
     *  extrapolate
@@ -5017,14 +5085,18 @@ class meansCalc extends statistics
         if ($logs) $logs=round($logs/2)*2;                             // zumindest die geforderte Anzahl an Logwerten anzeigen, Wert soll durch 2 dividierbar sein
         $this->result[$name]["CountFull"]=$logs;
 
+        $this->result[$name]["First"]=false;
+        $this->result[$name]["Last"]=false;
+
         $this->name=$name;
         return (true);
         }
 
     /* Übergabe wert[value] und wert[TimeStamp] oder wert
-        * alle Werte die hier übergeben werden, werden in sum addiert
-        *
-        * Spezialfunktion mit logs bzw countFull
+     * alle Werte die hier übergeben werden, werden in sum addiert
+     * und an checkMinMax übergeben
+     *
+     * Spezialfunktion mit logs bzw countFull
         * zählt nur bis CountFull/2 in Sum1 dann in Sum2
         *
         * Zwei Funktionen mit Value/TimeStamp oder ohne
@@ -5053,12 +5125,12 @@ class meansCalc extends statistics
                         $this->sumTime2 += $wertInput["TimeStamp"];
                         $this->count2++;                                
                         }    
-                    $this->checkMinMax($wertInput);         // Min/Max nur über den Bereich bis CountFull (logs)
+                    $this->checkMinMax($wertInput);         // Min/Max nur über den Bereich bis CountFull (logs), übergibt Wert und Zeitstempel
                     }
                 }
             else            // wenn 0/false alle Werte mitnehmen, keine Teilsummen bilden
                 {   
-                $this->checkMinMax($wertInput);                 // Min/Max über den ganzen Bereich
+                $this->checkMinMax($wertInput);                 // Min/Max über den ganzen Bereich, übergibt Wert und Zeitstempel
                 }
 
             }
@@ -5088,46 +5160,90 @@ class meansCalc extends statistics
                 $this->checkMinMax($wertInput);    // Min/Max über den ganzen Bereich
                 }
             }
-        $this->result[$this->name]["Count"]++;                
+        $this->result[$this->name]["Count"]++; 
+        $this->checkFirstLast($wertInput);               
         return (true);
         }
 
     /* check Min Max 
-        * kommt mehrmals in der Abfrage vor, deshalb eine private function
-        */
+     * kommt mehrmals in der Abfrage vor, deshalb eine private function
+     */
 
     private function checkMinMax($wertInput)
         {
-        if (isset($this->result[$this->name]['Max']))  
+        if (isset($wertInput["Value"]))
             {
-            if ($wertInput["Value"]>$this->result[$this->name]['Max'])  
+            if (isset($this->result[$this->name]['Max']))  
+                {
+                if ($wertInput["Value"]>$this->result[$this->name]['Max'])  
+                    {
+                    $this->result[$this->name]['Max'] = $wertInput["Value"];
+                    $this->result[$this->name]['MaxEntry']["Value"]     = $wertInput["Value"];
+                    $this->result[$this->name]['MaxEntry']["TimeStamp"] = $wertInput["TimeStamp"];
+                    }
+                }
+            else 
                 {
                 $this->result[$this->name]['Max'] = $wertInput["Value"];
                 $this->result[$this->name]['MaxEntry']["Value"]     = $wertInput["Value"];
                 $this->result[$this->name]['MaxEntry']["TimeStamp"] = $wertInput["TimeStamp"];
                 }
-            }
-        else 
-            {
-            $this->result[$this->name]['Max'] = $wertInput["Value"];
-            $this->result[$this->name]['MaxEntry']["Value"]     = $wertInput["Value"];
-            $this->result[$this->name]['MaxEntry']["TimeStamp"] = $wertInput["TimeStamp"];
-            }
-        if (isset($this->result[$this->name]['Min']))  
-            {
-            if ($wertInput["Value"]<$this->result[$this->name]['Min'])  
+            if (isset($this->result[$this->name]['Min']))  
+                {
+                if ($wertInput["Value"]<$this->result[$this->name]['Min'])  
+                    {
+                    $this->result[$this->name]['Min'] = $wertInput["Value"];
+                    $this->result[$this->name]['MinEntry']["Value"]     = $wertInput["Value"];
+                    $this->result[$this->name]['MinEntry']["TimeStamp"] = $wertInput["TimeStamp"];                    
+                    }
+                }
+            else 
                 {
                 $this->result[$this->name]['Min'] = $wertInput["Value"];
                 $this->result[$this->name]['MinEntry']["Value"]     = $wertInput["Value"];
-                $this->result[$this->name]['MinEntry']["TimeStamp"] = $wertInput["TimeStamp"];                    
+                $this->result[$this->name]['MinEntry']["TimeStamp"] = $wertInput["TimeStamp"];                 
                 }
             }
-        else 
+        else
             {
-            $this->result[$this->name]['Min'] = $wertInput["Value"];
-            $this->result[$this->name]['MinEntry']["Value"]     = $wertInput["Value"];
-            $this->result[$this->name]['MinEntry']["TimeStamp"] = $wertInput["TimeStamp"];                 
+            if (isset($this->result[$this->name]['Max']))  
+                {
+                if ($wertInput>$this->result[$this->name]['Max'])  
+                    {
+                    $this->result[$this->name]['Max'] = $wertInput;
+                    }
+                }
+            else 
+                {
+                $this->result[$this->name]['Max'] = $wertInput;
+                }
+            if (isset($this->result[$this->name]['Min']))  
+                {
+                if ($wertInput["Value"]<$this->result[$this->name]['Min'])  
+                    {
+                    $this->result[$this->name]['Min'] = $wertInput;
+                    }
+                }
+            else 
+                {
+                $this->result[$this->name]['Min'] = $wertInput;
+                }
             }
+        }
+
+    /* check First Last 
+     * kommt mehrmals in der Abfrage vor, deshalb eine private function
+     */
+
+    private function checkFirstLast($wertInput)
+        {
+        if (isset($wertInput["TimeStamp"]))
+            {
+            if ($wertInput["TimeStamp"] == 0) echo "+";
+            if ( ($this->result[$this->name]['First'] === false) || ($this->result[$this->name]['First']>$wertInput["TimeStamp"]) ) $this->result[$this->name]['First'] = $wertInput["TimeStamp"];
+            if ( ($this->result[$this->name]['Last'] === false)  || ($this->result[$this->name]['Last'] <$wertInput["TimeStamp"]) ) $this->result[$this->name]['Last']  = $wertInput["TimeStamp"];
+            }
+        else echo ".";
         }
 
     /* für Mittelwert gut geeignet, wenn alles summiert ist am Ende dividieren */
@@ -5186,6 +5302,14 @@ class meansCalc extends statistics
             {
             $this->result["Result"][$this->name]['Max'] = $this->result[$this->name]['Max'];
             $this->result["Result"][$this->name]['Min'] = $this->result[$this->name]['Min'];
+            }
+
+        if ( (isset($this->result[$this->name]['First'])) && (isset($this->result[$this->name]['Last'])) )
+            {
+            $this->result["Result"][$this->name]['First'] = $this->result[$this->name]['First'];
+            $this->result["Result"][$this->name]['Last']  = $this->result[$this->name]['Last'];
+            if ( (isset($this->result[$this->name]["Count"])) && ($this->result[$this->name]["Count"]>0) ) $span = ($this->result["Result"][$this->name]['Last']-$this->result["Result"][$this->name]['First'])/($this->result[$this->name]["Count"]);
+            //echo "caculate aufgerufen. ".date("d.m.Y H:i:s",$this->result["Result"][$this->name]['First'])." bis ".date("d.m.Y H:i:s",$this->result["Result"][$this->name]['Last'])."\n";
             }
 
         return (true);
@@ -5860,6 +5984,7 @@ class maxminCalc extends statistics
         protected $result;
         protected $maxValue=false, $maxTime=false, $minValue=false, $minTime=false;                                 // Max/Min Berechnung
         protected $youngest=array();                                                                            // jüngster Wert, mit höchstem Zeitstempel
+        protected $oldest=array();                                                                            // ältester Wert, mit niedrigstem Zeitstempel
         protected $sum=0, $sumTime=false, $count=0;                                                                                       // Mittelwert Berechnung
         protected $sum1=0,$sum2=0,$sumTime1=false,$sumTime2=false,$count1=0,$count2=0;                          //
 
@@ -5871,6 +5996,8 @@ class maxminCalc extends statistics
             if ($debug) echo "maxminCalc für $name aufgerufen.\n";
             $this->youngest["TimeStamp"] = 0;
             $this->youngest["Value"]     = 0;
+            $this->oldest["TimeStamp"] = false;
+            $this->oldest["Value"]     = 0;            
             $this->name=$name;
             return (true);
             }
@@ -5878,15 +6005,16 @@ class maxminCalc extends statistics
         /* Übergabe wert[value] und wert[TimeStamp]
          *
          */
-        function addValue($wert)
+        function addValue($wertInput)
             {
             //echo ".";
             if (is_array($this->result)===false) return (false);
-            if (is_array($wert)===false)                                        // Wert ist nur Wert, es gibt keinen Zeitstempel
+            if (is_array($wertInput)===false)                                        // Wert ist nur Wert, es gibt keinen Zeitstempel
                 {
-                $wert["Value"]=$wert;
+                $wert["Value"]=$wertInput;
                 $wert["TimeStamp"]=false;
                 }
+            else $wert=$wertInput;
             if (isset($wert["Max"]))                                            // aggregated Archive Avg
                 {
                 if ( ($this->maxValue===false) || ($this->maxValue<$wert["Max"]) )
@@ -5933,8 +6061,39 @@ class maxminCalc extends statistics
                 else                        $this->youngest["Value"]     = $wert['Value'];   
                 }
 
+            if ( ($this->oldest["TimeStamp"]===false) || ($wert["TimeStamp"]<$this->oldest["TimeStamp"]) )         // bei false nicht der Fall, für alle anderen passt es
+                {
+                $this->oldest["TimeStamp"] = $wert['TimeStamp'];
+                if (isset($wert["Avg"]))    $this->oldest["Value"]     = $wert['Avg'];                // Aggregierte Werte auch behandeln
+                else                        $this->oldest["Value"]     = $wert['Value'];   
+                }
+
             $this->count++;
             }
+
+        function rating($wert)
+            {
+            $base  = $this->result[$this->name]["Max"]["Value"];       // steht für 0, bsp 22              Schlechteste Berwetung
+            $high  = $this->result[$this->name]["Min"]["Value"];       // steht für 1, bsp 0.2             Bestwertung
+            $means = $this->result[$this->name]["Means"]["Value"];        // steht für 0,5 , bsp 4
+            $rateBase=$means-$base;                         // -18
+            $rateHigh=$high-$means;                         // -3.8   negativ weil umgekehrt, grosse Werte nicht die Beste Bewertung haben
+            $rate=$high-$base;
+            if ($high>$base)                                    // gross ist eins und klein ist 0
+                {
+                if ($wert>=$means) $ergebnis = abs(($wert-$means)/$rateHigh/2)+0.5;
+                else $ergebnis = 0.5-abs(($means-$wert)/$rateBase/2); 
+                }
+            else                                                // gross ist 0 und klein ist 1, Max-Min ist negativ
+                {
+                if ($wert<$means) $ergebnis = abs(($wert-$means)/$rateHigh/2)+0.5;                        // bsp 0.2    1..0 => 1..0.5
+                else $ergebnis = 0.5-abs(($means-$wert)/$rateBase/2);             // rating ist >0.5              // bsp 22   1   4  0 
+                }
+            $ergebnis2 = abs(($wert-$base)/$rate);            // base ist 0 
+            return($ergebnis);
+
+            }
+
 
         /* für Mittelwert gut geeignet, wenn alles summiert ist am Ende dividieren 
          * für Max, Min nur das Array schreiben
@@ -5952,6 +6111,10 @@ class maxminCalc extends statistics
                 $this->result[$this->name]["Means"]["TimeStamp"] = $this->sumTime/$this->count;
                 }
             else  $this->result[$this->name]["Means"]["Value"]     = $this->sum/$this->count;
+            if ( ($this->oldest["TimeStamp"]) && (($this->count-1)>0) )
+                {
+                $this->result[$this->name]["Span"] = ($this->youngest["TimeStamp"]-$this->oldest["TimeStamp"])/($this->count-1);
+                }
             return (true);
             }    
 
@@ -5960,6 +6123,10 @@ class maxminCalc extends statistics
             $this->result[$this->name]["Youngest"] = $this->youngest; 
             }
 
+        function oldest()
+            {
+            $this->result[$this->name]["Oldest"] = $this->oldest; 
+            }
 
         function print()
             {
@@ -6158,14 +6325,58 @@ class ipsTables
 
         // parse configuration, logInput ist der Input und config der angepasste Output
         configfileParser($cfgInput, $config, ["SORT","Sort","sort" ],"sort" ,false);                // nicht sortieren
-        configfileParser($cfgInput, $config, ["HTML","Html","html" ],"html" ,false);                // nicht sortieren
+        configfileParser($cfgInput, $config, ["HTML","Html","html" ],"html" ,false);                // textdarstellung
+        configfileParser($cfgInput, $config, ["HEADER","Headser","header" ],"header" ,false);                // bei html eine headerrow formatieren
 
         return($config);
         }
 
+    /* Ausgabe ein array mit der Auflistung der Indexe, also aller verfügbaren Spalten
+     */ 
+
+    function getColumnsName($inputData,$debug=false)
+        {
+        $display=array();
+        $rows=false; $rowNum=0;
+        foreach ($inputData as $name => $item)          // name ist die Zeilenbezeichnung
+            {
+            //echo "    ($name==$rowNum)   ";             //wir erwarten uns eine geordneten Index mit 0,1,2,3,4
+            if ($name==$rowNum) 
+                {
+                $rowNum++;
+                }
+            else 
+                {
+                //echo "ungleich";
+                }
+            if ($rows===false) 
+                {
+                $rows=1;
+                foreach ($item as $index => $entry) 
+                    {
+                    if ($debug) echo " $index ";
+                    $display[$index]="";
+                    }
+                }
+            else $rows++;
+            if ($debug) echo "\n";
+            }
+        return ($display);
+        }
 
     /* showTable
      * inputData ist das Array, display die Darstellung und Formatierung, config Zusatzkonfigurationen, debug für zusätzliche echos
+     * display und config können weg gelassen werden, dann werden defaultwerte für die einzelnen Spalten angenommen
+     *
+     * display Einstellungen, ein index pro Spalte, wenn false/default wird ein leeres array erstellt und dieses mit den bestehenden Spalten Keys befüllt
+     *  empty
+     *  header
+     *  format  dieser Eintrag wird 1:1 an nf weitergeleitet
+     *
+     * config Einstellungen
+     *  sort
+     *  html
+     *  header
      *
      */
 
@@ -6173,8 +6384,10 @@ class ipsTables
     function showTable($inputData,$display=false,$config=false, $debug=false)
         {
         //if ($debug) echo "showTable:\n";
+        $text="";
         $ipsOps = new ipsOps();
         if ($display===false) $display=array();
+        if (sizeof($display)==0) $display = $this->getColumnsName($inputData,$debug);           // ein leeres display abändern dass alle Spalten angezeigt werden
 
         if (is_array($config)) $config = $this->setConfiguration($config);
         else $config = $this->config;
@@ -6198,19 +6411,7 @@ class ipsTables
                     {
                     //echo "ungleich";
                     }
-                if ($rows===false) 
-                    {
-                    $rows=1;
-                    if (sizeof($display)==0)
-                        {
-                        if ($debug) echo "alle Spalten anzeigen :";
-                        foreach ($item as $index => $entry) 
-                            {
-                            if ($debug)echo " $index ";
-                            $display[$index]="";
-                            }
-                        }
-                    }
+                if ($rows===false) $rows=1;
                 else $rows++;
                 if ($debug) echo "\n";
                 }
@@ -6223,13 +6424,14 @@ class ipsTables
                 foreach ($inputData as $row => $inputLine)
                     {
                     //print_R($inputLine);
-                    if ($row==0)
+                    if ($row==0)                                                // die erste Zeile ist der Header der Tabelle
                         {
                         $col=0;
-                        foreach ($display as $name => $item)
+                        foreach ($display as $name => $itemBox)
                             {
                             $displayWidth[$col]=strlen($name)+2;
-                            $displayOutput[$line][$col]=$name;
+                            if ( (is_array($itemBox)) && (isset($itemBox["header"])) ) $displayOutput[$line][$col]=$itemBox["header"];
+                            else $displayOutput[$line][$col]=$name;
                             $col++;
                             //echo str_pad($name,$displayWidth[$name]);
                             }
@@ -6238,12 +6440,14 @@ class ipsTables
                         }
                     $col=0;
                     //print_r($display);
-                    foreach ($display as $name => $item)
+                    foreach ($display as $name => $itemBox)                    // die anderen Zeilen werden entsprechend display vorverarbeitet
                         {
-                        if ($item=="<currency>") $item=$inputLine["currency"];
-                        if (isset($inputLine[$name])) 
+                        if (is_array($itemBox)) $item=$itemBox["format"];
+                        else $item=$itemBox;
+                        if ((isset($inputLine["currency"])) && ($item=="<currency>")) $item=$inputLine["currency"];              // die Währung wird sich aus der gleichen tabelle aus einer anderen Spalte geholt
+                        if (isset($inputLine[$name]))                                       // schauen ob es diese Zele auch wirklich gibt, sonst leer ausgeben
                             {
-                            $displayOutput[$line][$col] = nf($inputLine[$name],$item)." ";
+                            $displayOutput[$line][$col] = nf($inputLine[$name],$item)." ";              //nf übernimmt die Formatierung
                             //echo ".".$inputLine[$name]."($name)";
                             }
                         else $displayOutput[$line][$col] = "";
@@ -6256,23 +6460,67 @@ class ipsTables
                     //echo "\n";  
                     }
                 //print_R($displayOutput);
-                if ($html)
+
+                if ($html)              // Textausgabe als html Tabelle, displayOutput ist die bereits vorverarbeitete Quelle der Ausgabe
                     {
-                    echo '<table>';
+                    $size=-1;                   //responsive
+                    $id="easycharts-api";
+                    $wert=""; 
+                    $wert="<style>";
+                    $wert.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
+                    if ($size==0) $wert.='font-size: 100%; width: 100%;';
+                    elseif ($size==-1) $wert.='font-size:50%vw; max-width: 900px ';        // responsive font size
+                    else $wert.='font-size: 150%; width: 100%;';
+                    $wert.='color:black; border-collapse: collapse;  }';
+                    //$wert .= '<font size="1" face="Courier New" >';
+                    $wert.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+                    $wert.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
+                    $wert.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
+                    $wert.='#'.$id.' tr:hover {background-color: #ddd;}';
+                    $wert.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
+                    $wert.="</style>";
+                    $text .= '<div id="'.$id.'">';
+                    $wert .= '<table>';
+                    $text .= $wert;
+                    if (false)
+                        {                        
+                        $text .= '<style>';
+                        $text .= 'table.quicky { border:solid 5px #006CFF; margin:0px; padding:0px; border-spacing:0px; border-collapse:collapse; line-height:22px; font-size:13px;'; 
+                        $text .= ' font-family:Arial, Verdana, Tahoma, Helvetica, sans-serif; font-weight:400; text-decoration:none; color:#0018ff; white-space:pre-wrap; }';
+                        $text .= 'table.quicky th { padding: 2px; background-color:#98dcff; border:solid 2px #006CFF; }';
+                        $text .= 'table.quicky td { padding: 2px; border:solid 1px #006CFF; }';
+                        $text .= 'table.custom_class tr { margin:0; padding:4px; }';
+                        $text .= '.quicky.green {border:solid green; color:green;}';
+                        $text .= '';
+                        $text .= '</style>';
+                        $text .= '<div class="quicky">';
+                        $text .= '<table>';
+                        }
                     foreach ($displayOutput as $line => $row)
                         {
-                        echo '<tr>';
+                        $text .= '<tr>';
                         foreach ($row as $col => $item)
                             {
-                            echo '<td>';
-                            echo str_pad($item,$displayWidth[$col]);
-                            echo '</td>';
+                            if ( ($config["header"]) && ($line==0) )
+                                {
+                                $text .= '<th>';
+                                $text .= $item;
+                                $text .= '</th>'; 
+                                }
+                            else 
+                                {
+                                $text .= '<td>';
+                                $text .= $item;
+                                $text .= '</td>';
+                                }
                             }
-                        echo '</tr>';
+                        $text .= '</tr>';
                         }
-                    echo '</table>';
+                    $text .= '</table>';
+                    $text .= '</div>';
+                    if ($debug) echo $text;
                     }
-                else
+                else            // Textausgabe als echo
                     {
                     if ($debug) echo "Ausgabe als echo:\n";
                     foreach ($displayOutput as $line => $row)
@@ -6296,6 +6544,7 @@ class ipsTables
             {
             echo "No display, scalar Parameter for display received\n";
             }
+        return ($text);
         }
 
     }       // ende class ipsTable
@@ -6303,6 +6552,9 @@ class ipsTables
 /**************************************************************************************************************************
  *
  * ipsCharts, Zusammenfassung von Funktionen rund um die Darstellung von Charts mit Highchart
+ * verwendet die class Highcharts, zusätzliche Abstrahierung, ähnlich wie die Widgets in Startpage
+ * und das script IPSHighchart
+ * baut schon eine nette Tabelle rund um das Chart
  *
  *      __construct
  *      createChart
@@ -6323,6 +6575,7 @@ class ipsCharts
         }
 
     /* createChart 
+     * Highcharts class übernimmt die config Daten
      */
 
     public function createChart($chartID,$specialConf,$debug=false)
@@ -6405,6 +6658,172 @@ class ipsCharts
                         //$serie['Id'] = 28664 ;
                         $CfgDaten['series'][] = $serie;
                         }
+                    $highCharts = new HighCharts();
+                    $CfgDaten    = $highCharts->CheckCfgDaten($CfgDaten);
+                    $sConfig     = $highCharts->CreateConfigString($CfgDaten);
+                    $tmpFilename = $highCharts->CreateConfigFile($sConfig, "WidgetGraph_$indexChart");
+                    if ($tmpFilename != "")
+                        {
+                        if ($debug) echo "Ausgabe Highcharts:\n";
+                        $chartType = $CfgDaten['Ips']['ChartType'];
+                        $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
+                        $callBy="CfgFile";
+                        if (is_array($config["Size"]))          // Defaultwert
+                            {
+                            $wert .= '<td>';                                
+                            $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " ."width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";                        
+                            }
+                        elseif (strpos($config["Size"],"x")) 
+                            {
+                            $multiplier=(integer)substr($config["Size"],0,strpos($config["Size"],"x"));
+                            $widthInteger=$CfgDaten['HighChart']['Height']*$multiplier;
+                            // Height wird wirklich so übernommen, nur mehr 316px hoch
+                            $width=$widthInteger."px";
+                            //echo "Neue Width ist jetzt ".$CfgDaten['HighChart']['Height']."*$multiplier=$width.\n";
+                            //$height='700px';                            
+                            $wert .= '<td style="width:'.$width.'px;height:'.$height.'px;background-color:#3f1f1f">';           // width:100%;height:500px; funktioniert nicht, ist zu schmal
+                            //$width="100%";
+                            //$width="auto"; 
+                            //$height="auto";
+                            //$height="100%"; 
+
+
+                            $wert .= '<iframe style="width:'.$width.';height:'.$height.'"'." src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy=".$tmpFilename."' height='".$height."' frameborder='0' scrolling='no'></iframe>";                        
+                            //$wert .= '<iframe style="height:'.$height.'"'." src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy=".$tmpFilename."' frameborder='0' scrolling='no'></iframe>";                        
+                            //$wert .= '<iframe'." src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy=".$tmpFilename."'></iframe>";                        
+                            }
+                        else 
+                            {
+                            //print_R($config["Size"]);
+                            $wert .= '<td???>';                                
+                            $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " ."width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";                        
+                            }
+                        
+                        //$wert .= $tmpFilename;
+                        }
+                    $wert .= "</td>";
+                    }
+                }
+            $wert .= "</tr></table>";
+
+        return ($wert);
+        }
+
+
+    /* createChartfrom Array 
+     * Highcharts class übernimmt die config Daten
+     * Darstellung in einem Table,string zur darstellung als return, 
+     * benötigt die scriptHighchartsID und einen Index unter dem der Graph als Datei abgespeichert wird
+     *
+     *  data wird aus dem array übernommen, werte alle
+     *      Value
+     *      TimeStamp
+     *
+     * specialConf
+     *      indexChart                      Name des Charts 
+     *          Duration
+     *          Style
+     *          backgroundColor
+     *          step
+     *          unit
+     *          OID
+     *              Index                   mehrere Kurven in einem Plot
+     *          Name        
+     *              Index                   parallel mit gleichem Index ein passender Name dazu
+     */
+
+    public function createChartFromArray($chartID,$specialConf,&$result,$debug=false)
+        {
+            $wert = "";
+            $wert .= "<table><tr>";
+            if ($this->scriptHighchartsID>100)      // ohne Script gehts nicht */
+                {
+                foreach ($specialConf as $indexChart => $config)
+                    {
+                    if ($debug) echo "showSpecialRegsWidget: Highcharts Ausgabe von $indexChart (".json_encode($config).") : \n"; 
+
+                    $endTime=time();
+                    $startTime=$endTime-$config["Duration"];     /* drei Tage ist Default */
+                    $chart_style=$config["Style"];            // line spline area gauge            gauge benötigt eine andere Formatierung
+
+                    // Create Chart with Config File
+                    // IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");               // ohne class, needs Charts
+                    IPSUtils_Include ('Report_class.php', 					'IPSLibrary::app::modules::Report');
+
+                    $CfgDaten=array();
+                    //$CfgDaten['HighChartScriptId']= IPS_GetScriptIDByName("HC", $_IPS['SELF'])
+                    //$CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
+                    $CfgDaten["HighChartScriptId"]  = $this->scriptHighchartsID;                  // ID des Highcharts Scripts          *******************************
+
+                    $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                    $CfgDaten['ContentVarableId']   = $chartID;                                                                                   //****************************                          
+                    $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
+                    $CfgDaten['StartTime']          = $startTime;
+                    $CfgDaten['EndTime']            = $endTime;
+
+                    $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
+                    $CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
+                    $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
+
+                    // Abmessungen des erzeugten Charts
+                    $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
+                    $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
+                    
+                    $CfgDaten['title']['text']      = "";                           // weglassen braucht zuviel Platz
+                    //$CfgDaten['subtitle']['text']   = "great subtitle";         // hioer steht der Zeitraum, default als Datum zu Datum Angabe
+                    $CfgDaten['subtitle']['text']   = "Zeitraum ".nf($config["Duration"],"s");         // hier steht nmormalerweise der Zeitraum, default als Datum zu Datum Angabe
+                    
+                    //$CfgDaten["PlotType"]= "Gauge"; 
+                    $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+                    $CfgDaten['plotOptions']['area']['stacking']     =	 'normal';
+
+                    if ($config["Aggregate"]) $CfgDaten['AggregatedValues']['HourValues']     = 0; 
+                    //if ($config["Step"]) $CfgDaten['plotOptions'][$chart_style]['step']     =	 $config["Step"];               // false oder left , in dieser Highcharts Version noch nicht unterstützt
+
+                    $CfgDaten['plotOptions']['series']['connectNulls'] = true;                      // normalerweise sind Nullen unterbrochene Linien, es wird nicht zwischen null und 0 unterschieden
+                    $CfgDaten['plotOptions']['series']['cursor'] = "pointer";
+
+                    /* floating legend
+                    $CfgDaten['legend']['floating']      = true;                   
+                    $CfgDaten['legend']['align']         = 'left';
+                    $CfgDaten['legend']['verticalAlign'] = 'top';
+                    $CfgDaten['legend']['x']             = 100;
+                    $CfgDaten['legend']['y']             = 70;  */
+
+                    $CfgDaten['tooltip']['enabled']             = true;
+                    $CfgDaten['tooltip']['crosshairs']             = [true, true];                  // um sicherzugehen dass es ein mouseover gibt
+                    //$CfgDaten['tooltip']['shared']             = true;                        // nur für Tablets, braucht update
+
+                    $CfgDaten['chart']['type']      = $chart_style;                                     // neue Art der definition
+                    $CfgDaten['chart']['backgroundColor']   = $config["backgroundColor"];                // helles Gelb ist Default
+
+                    /*foreach($config["OID"] as $index => $oid)
+                        {
+                        $serie = array();
+                        $serie['type']                  = $chart_style;                 // muss enthalten sein
+                        if ($config["Step"]) $serie['step'] = $config["Step"];                // false oder left
+
+                        // wenn Werte für die Serie aus der geloggten Variable kommen : 
+                        if (isset($config["Name"][$index])) $serie['name'] = $config["Name"][$index];
+                        else $serie['name'] = $config["Name"][0];
+                        //$serie['marker']['enabled'] = false;                  // keine Marker
+                        $serie['Unit'] = $config["Unit"];                            // sieht man wenn man auf die Linie geht
+                        $serie['Id'] = $oid;
+                        //$serie['Id'] = 28664 ;
+                        $CfgDaten['series'][] = $serie;
+                        }*/
+                    
+                    $scale=1;
+                    $serie['Unit'] = $config["Unit"]; 
+                    $serie['type']      = 'line';
+                    $serie['step']      = 'right';
+                    foreach ($result as $entry)
+                        {
+                        //if ($scale==0) $scale=100/$entry["Value"];
+                        if ($debug) echo "      ".date("d.m H:i:s",$entry["TimeStamp"])."  ".round($entry["Value"]*$scale,0)."\n";
+                        $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => (float)(round(($entry["Value"]*$scale),0))];
+                        }
+                    $CfgDaten['series'][] = $serie;
                     $highCharts = new HighCharts();
                     $CfgDaten    = $highCharts->CheckCfgDaten($CfgDaten);
                     $sConfig     = $highCharts->CreateConfigString($CfgDaten);
@@ -6830,6 +7249,7 @@ class ipsOps
      * als Returnwert wird üblicherweise das inputArray verwendet, return sortArray nur als Hilfestellung
      *
      * es muss ein zweidimensionales array mit Zeilen und Spalten sein
+     * zuerst die Zeilen udn die Spalten durchgehen udn ein Array mit den sortierenden Elementen anlegen
      *
      */
 
@@ -6851,7 +7271,7 @@ class ipsOps
                     $sortArray[$key][] = $value; 
                     } 
                 } 
-            array_multisort($sortArray[$orderby],$sort,$inputArray); 
+            array_multisort($sortArray[$orderby],$sort,$inputArray);        // inputArray basierend auf sortArray.orderby sortieren, wird Teil von sortArray
             return($sortArray);
             }
         else return false;
@@ -7113,20 +7533,21 @@ class sysOps
 
     public function ExecuteUserCommand($command,$path,$show=false,$wait=false,$session=-1)
         {
-				try
+            $result=@IPS_ExecuteEx($command, $path, $show, $wait, $session); 
+            if ($result===false) 
+                {
+                try
                     {
-                    $result=@IPS_ExecuteEx($command, $path, $show, $wait, $session); 
-                    if ($result===false) 
-                        {
-                        echo "Ergebnis IPS_ExecuteEx $result \n";  
-        				$result=IPS_Execute($command, $path, $show, $wait);   
-                        echo "Ergebnis IPS_Execute $result \n";  
-                        }
+                    $result=@IPS_Execute($command, $path, $show, $wait);   
                     }
                 catch (Exception $e) 
                     { 
                     echo "Catch Exception, Fehler bei $e.\n";
                     }
+                echo "Ergebnis IPS_Execute $result \n";  
+                }
+            else echo "Ergebnis IPS_ExecuteEx $result \n"; 
+        return ($result);                                    
         }
 
     /*****************************************************************
@@ -8706,6 +9127,11 @@ class fileOps
             else $key=$config["Key"]; 
             }
         else $config = $this->readFileCsvParseConfig([],$debug);               // Defaultwerte ausprobieren
+        if ($debug) 
+            {
+            echo "readFileCsv, adjusted input config is ".json_encode($config)."\n";
+            echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  
+            }
 
         // continue
         $error=0; $errorMax=20;     /* nicht mehr als 20 Fehler/Info Meldungen ausgeben */
@@ -8720,7 +9146,7 @@ class fileOps
             {
             if ($debug)
                 {
-                echo "readFileCsv : Use First Line for defining Columns of the Table.";
+                echo "readFileCsv : No index given, use first Line for defining Columns of the Table.";
                 if ($key!="") echo " Use column $key as Index for Table.";
                 echo "\n";
                 }
@@ -8731,7 +9157,7 @@ class fileOps
             $firstline=false;
             if ($debug)
                 {
-                echo "readFileCsv: ".$this->fileName.". Use this array ".json_encode($index)." for defining Index for array of result.";
+                echo "readFileCsv: ".$this->fileName.". Index given, use this array ".json_encode($index)." for defining Index for array of result.";
                 if ($key!="") echo " Use column $key as Index for Table.";
                 echo "\n";                
                 //print_r($index);
@@ -8743,10 +9169,11 @@ class fileOps
             {
             if ( (($handle = @fopen($this->fileName, "r")) !== false) )
                 {
-                $row=1;
+                $row=1; $rowShow=1;
                 while (($data = fgetcsv($handle, 0, ";")) !== false) 
                     {
                     $num = count($data);                            // wieviel Spalten werden eingelesen, num
+                    if (($row % 100) ==0) echo "$row : Size Result ".count($result)." Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  // Speicherbedarf steigt mit dem Lesen der Datan
                     if ( ($firstline) && ($row==1) )                // in der ersten Reihe sind die Spaltenbezeichnungen
                         {
                         if ($debug) echo "   Erste Zeile als Index einlesen. Key löschen.\n";
@@ -8783,8 +9210,12 @@ class fileOps
                             }
                         if ($debug) 
                             {
-                            echo "   Erste Zeile vom Index übernehmen. Key nicht löschen. Key Index ist $keyIndex.\n";                                
-                            print_r($index);            // Index ist vorgegeben, Felder die übersprungen werden sollen mit false markieren
+                            echo "   Erste Zeile gefunden, aber nicht verwenden: ";
+                            for ($i=0;($i<$num);$i++)                   // erste Zeile Spalten aus data bearbeiten
+                                {
+                                echo trim($data[$i]).",";
+                                }
+                            echo "   Sondern vom Index übernehmen. Key nicht löschen. Key Index ist $keyIndex. ".json_encode($index)."\n";    // Index ist vorgegeben, Felder die übersprungen werden sollen mit false markieren                                      
                             }
                         }
                     else    /* alle anderen Zeilen hier einlesen */
@@ -8794,8 +9225,8 @@ class fileOps
                             {
                             if ( ($debug) && (($error1++)<$errorMax1) )
                                 {
-                                echo "Error, not same amount of columns.\n";
-                                print_r($data);
+                                echo "$row Warning, not same amount of columns. $num Columns found. ".count($data)." columns expected.\n";
+                                //print_r($data);
                                 }
                             }                            
                         if ($num >= (count($index)) )    
@@ -8879,8 +9310,12 @@ class fileOps
                             // dann abhängig von key speichern
                             if ( ($key=="") || ($keyIndex===false) )        // kein Key definiert oder keyindex gefunden, key1 wird aus der aktuellen Zeilenanzahl berechnet, kexindex wird nur ermittelt wenn keine neue Indexierung erfolgt
                                 {
-                                $result[$key1]=$dataEntries;
-                                if ($row < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                if ($dataEntries["Value"]!="") 
+                                    {
+                                    $result[$key1]=$dataEntries;
+                                    if ($rowShow < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                    $rowShow++;
+                                    }
                                 }
                             else 
                                 {
@@ -8890,7 +9325,7 @@ class fileOps
                                  *
                                  * wenn es einen key gibt und der im Index gefunden wurde sind wir hier
                                  */
-                                if ($row < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+
                                 if ($keyIndex<9999) 
                                     {
                                     //$key1=$data[$keyIndex];             //key1 richtig berechnen ist kein 0..n Index, keyindex wird 9999 wen ein Merge erfolgt ist
@@ -8912,7 +9347,13 @@ class fileOps
                                     }
                                 else 
                                     {
-                                    $result[$key1]=$dataEntries;                        
+                                    if ($dataEntries["Value"]!="") 
+                                        {                                        
+                                        if ($rowShow < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                        $result[$key1]=$dataEntries;   
+                                        $rowShow++;
+                                        }
+
                                     //if ($error2++ < $errorMax) print_r($dataEntries);
                                     }
                                 }
@@ -8923,12 +9364,12 @@ class fileOps
                     $row++;                    
                     }
                 fclose($handle);
-                if ($debug) echo "Input File hat $row Zeilen und $num Spalten. ".sizeof($index)." davon uebernommen.\n";
+                if ($debug) echo "Input File hat $row Zeilen und $num Spalten. ".sizeof($index)." Spalten davon uebernommen.\n";
                 }           // ende File korrekt geöffnet
             else $ergebis=false;                
             }           // ende if param error check
         else $ergebis=false;
-        if ($ergebnis) return ($this->findColumnsLines($result));
+        if ($ergebnis) return ($this->findColumnsLines($result));           // columns und lines übergeben, nicht das result, führt zu Speicherverschwendung
         else return($ergebnis);
         }  // ende function
 
@@ -9043,7 +9484,8 @@ class fileOps
             {
             if ( ($row++<$rowMax) && $debug )
                 {
-                echo $key.":\n"; print_r($resultBackupDirs[$key]);
+                echo $key.":\n"; 
+                //print_r($resultBackupDirs[$key]);
                 }
             $lines[$key]=true;
             foreach ($line as $column => $entry)
@@ -9051,7 +9493,7 @@ class fileOps
                 $columns[$column]=$column;
                 } 
             }
-        //echo "Insgesamt ".sizeof($lines)." Zeilen und ".sizeof($columns)." Spalten erkannt: \n";
+        if ($debug) echo "Insgesamt ".sizeof($lines)." Zeilen und ".sizeof($columns)." Spalten erkannt: \n";
         $columns = ["Filename" => "Filename"] + $columns;
         //print_r($columns);
         $result["columns"]=$columns;
@@ -10528,8 +10970,8 @@ class ComponentHandling
  *  search_wfc
  *  read_wfc                    Webfront Konfig auslesen, die max Tiefe für die Sublevels angeben
  *
- *  read_WebfrontConfig
- *  write_WebfrontConfig
+ *  read_WebfrontConfig         IPS_GetConfiguration und update internal memory of class
+ *  write_WebfrontConfig        IPS_SetConfiguration from internal memory und IPS_ApplyChanges
  *  GetItems
  *  GetItem
  *  update_itemListWebfront
@@ -10577,6 +11019,7 @@ class WfcHandling
 
     private $configWF;                                                      // von easySetupWebfront
     private $configID;                                                      // for Standard Commands
+    private $paneConfig;                                                    // interner Parameter zum Beispiel für das Aufsetzen von SplitPanes                        
 
     private $configWebfront;                                                // interne Configuration eines Webfronts als Array einlesen, dann modifizieren und wieder schreiben
     private $itemListWebfront;                                              // Zuordnung index 0..x und itemID - das ist der Name
@@ -10704,7 +11147,8 @@ class WfcHandling
             $variableID = getVariableId($link,[$this->categoryIdSwitches,$this->categoryIdGroups,$this->categoryIdPrograms]);
             if ($variableID) 
                 {
-                CreateLinkByDestination($name, $variableID, $categoryId, $order);
+                //CreateLinkByDestination($name, $variableID, $categoryId, $order);
+                $this->CreateLinkWithDestination($name, $variableID, $categoryId, $order);
                 }
             else echo "****Fehler, Variable $link kein Switch, Group oder Program.\n";
             }
@@ -10759,7 +11203,9 @@ class WfcHandling
         $this->write_wfc($input,"",10);    
         }
 
-    /* rekurisive Funktion, eine WFC Struktur mit einem ident ausgeben, von print_wfc aufgerufen */
+    /* rekursive Funktion, eine WFC Struktur mit einem ident ausgeben, von print_wfc aufgerufen 
+     * durch den rekursiven Aufruf wird ident immer um drei blanks länger
+     */
 
     private function write_wfc($input,$indent,$level)
 	    {
@@ -10963,7 +11409,7 @@ class WfcHandling
         return ($resultWebfront);    
     	}   // ende function
 
-    /*
+    /*  wenn instanz false dann nimmt er den internen Speicher
      */
 
     public function read_wfcByInstance($instanz,$level,$debug=false)
@@ -11728,6 +12174,7 @@ class WfcHandling
      */
 
     /******
+     * Verwendung in Amis, Autosteuerung, CustomComponent, Guthabensteuerung
      *
      * Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte Teil des WebfrontConfigID übergeben 
      * ruft setupWebfrontEntry mit der richtigen Webfront ConfigID und dem Namen des Webfronts (Administrator/User)
@@ -11765,6 +12212,10 @@ class WfcHandling
      * in der obigen Konfiguration wird TabPaneParent mit AmazonEcho an setupWebfront und dann gleich an setupWebfrontEntry übergeben
      * wenn auch Nachrichten angelegt wird gibt es einen Splitscreen
      *
+     * erster Parameter ist configWF, die WebfrontConfig wird auch als class config gespeichert
+     *      TabPaneParent       wenn nur ein key übergeben wird erfolgt die Installation im Parent, allerdings nicht in roottp
+     *      Enabled             darf nicht false sein
+     *      Path                muss vorhandens ein
      */
 
     public function easySetupWebfront($configWF,$webfront_links, $scope, $debug=false)
@@ -11785,23 +12236,19 @@ class WfcHandling
             if (isset($configWF["TabPaneName"])) echo "  Tab ".$configWF["TabPaneName"]."(".$configWF["TabPaneItem"].")\n";             // nur ausgeben wenn wirklich definiert wurde
             foreach ($webfront_links as $Name => $webfront_group)
                 {
-                echo "    Subtab:    ".$Name."\n";
-                foreach ($webfront_group as $Group => $RegisterEntries)
+                switch ($Name)
                     {
-                    switch ($Group)
-                        {
-                        case "ORDER":
-                        case "STYLE":
-                        case "CONFIG":
-                            echo "      Configuration $Group ".json_encode($RegisterEntries)."\n";    
-                            break;
-                        case "Auswertung":
-                        case "Nachrichten":
-                            break;    
-                        default:
-                            break;
-                        }
-                    }	
+                    case "ORDER":
+                    case "STYLE":
+                    case "CONFIG":
+                        echo "      Configuration $Group ".json_encode($RegisterEntries)."\n";    
+                        break;
+                    case "Auswertung":
+                    case "Nachrichten":
+                    default:
+                        echo "    Subtab:    ".$Name."\n";
+                        break;
+                    }
                 foreach ($webfront_group as $Group => $RegisterEntries)
                     {
                     switch ($Group)
@@ -11813,10 +12260,13 @@ class WfcHandling
                         case "Auswertung":
                         case "Nachrichten": 
                         default:
-                            echo "      Gruppe:  ".$Group."\n";
-                            foreach ($RegisterEntries as $OID => $Entries)
+                            if (is_array($RegisterEntries))
                                 {
-                                echo "        Register:  ".$OID."/".$Entries["NAME"]."\n";
+                                echo "      Gruppe:  ".$Group."\n";
+                                foreach ($RegisterEntries as $OID => $Entries)
+                                    {
+                                    echo "        Register:  ".$OID."/".$Entries["NAME"]."\n";
+                                    }
                                 }
                             break;
                         }
@@ -11872,7 +12322,7 @@ class WfcHandling
         }                           // ende function
 
     /******
-     *
+     * Verwendung intern und von sprachsteuerung Install
      * Aufbau einer Webfront Seite, Aufruf erfolgt von easysetupwebfront
      * ruft selbst setupWebfrontEntry auf, macht nur kurzen Plausi check
      *
@@ -11892,16 +12342,26 @@ class WfcHandling
 			}
 		}
 
-    /* anders probieren, nicht den scope übergeben, kann private auch sein, wird nur intern von setupWebfront verwendet 
+    /* setupWebfrontEntry, intern
+     * anders probieren, nicht den scope übergeben, kann private auch sein, wird nur intern von setupWebfront verwendet 
+     *
      * Parametrierung ist in $webfront_links
      * erwartet sich einen Index/key mit Auswertung, entweder in der ersten Ebene oder in der zweiten
      *      wenn nur ein Index wird die Kategorie angelegt und mit createLinks die Variablen Links angelegt
-     *      wenn mehrere Indexe wird createSplitPane aufgerufen und dort alles erstellt
+     *      wenn mehrere Indexe gibt, wird createSplitPane aufgerufen und dort alles erstellt
      *
-     * wenn es nur einen ersten Key gibt der nicht Auswertung oder Nachrichten heisst, dann
-     * wird createSplitPane aufgerufen und alles erstellt
+     * im Detail noch einmal:
+     *  wenn es nur einen ersten Key gibt der nicht Auswertung oder Nachrichten heisst, dann wird createSplitPane aufgerufen und dort alles erstellt
+     *  wenn es nur einen ersten Key gibt der Auswertung heisst werden die Links gleich hier erstellt
+     *  wenn nur Nachrichten scheitert die Routine, wenn weder Auswertung noch Nachrichten dann werden SubTabs angelegt
+     *  wenn es mehrere Keys gibt, wovon einer Auswertung oder Nachrichten heisst, dann wird createSplitPane aufgerufen und dort alles erstellt
      *
-     * wenn nur Nachrichten scheitert die Routine, wenn weder Auswertung noch Nachrichten dann werden SubTabs angelegt
+     * Die neue Implementierung geht dann so: es gibt keinen Key mit Auswertung oder Nachrichten, aber einen oder mehrere keys
+     *  für jeden Key wird eine Kategorie erstellt, es gibt Zusatzinformationen unter dem Key, mit dem Subkey
+     *      ORDER   es wird die order angepasst
+     *      CONFIG  set von Konfigurationsdaten, der subkey muss nicht mehr Auswertung oder Nachrichten heissen, es werden ein oder zwei Tabs erstellt
+     *      STYLE   andere Bearbeitung, es muss nur der key da sein
+     *  dann ist wieder entscheidend wieviele sub keys vorhanden sind oder ob eine config vorliegt
      *
      */
 
@@ -11921,7 +12381,7 @@ class WfcHandling
                 if ($active)
                     {
                     $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $tabItem, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
-                    $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab);
+                    $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab);     // FALSCH !!!
                     }
                 }
             else
@@ -11936,103 +12396,116 @@ class WfcHandling
             {
             if ($debug) 
                 {
-                echo "setupWebfrontEntry, Kategorie Auswertung noch nicht als Key vorhanden. $anzahlGruppen Untergruppen bilden mit den Tabs : ";
-                foreach ($webfront_links as $key => $entry) echo "$key  ";
+                echo "setupWebfrontEntry, Kategorie Auswertung oder Nachrichten nicht als Key vorhanden. Untergruppen bilden mit den folgenden Tabs : ";
+                foreach ($webfront_links as $key => $entry) if ( ($key != "STYLE") && ($key != "ORDER") && ($key != "CONFIG") ) echo "$key  ";
                 echo "\n";                
                 }
             //if (sizeof($webfront_links)==1) 
             foreach ($webfront_links as $Name => $webfront_group)
                 {
-                // Konfigurationslemente aus der Webfront Gruppe rausbringen
-                if (isset($webfront_group["ORDER"])) 
+                if ($Name=="CONFIG")
                     {
-                    $order = $webfront_group["ORDER"];
-                    unset($webfront_group["ORDER"]);
+
                     }
-                else 
+                else    
                     {
-                    if ($order>200) $order=10;          // irgendwie zurück setzen, es gibt kein default
-                    else $order += 10;   
-                    }
-                if (isset($webfront_group["STYLE"])) 
-                    {             
-                    $style=true; 
-                    unset($webfront_group["STYLE"]);      
-                    }
-                else $style=false;
-                if (isset($webfront_group["CONFIG"])) 
-                    {             
-                    $config = $webfront_group["CONFIG"];
-                    unset($webfront_group["CONFIG"]);      
-                    }
-                else $config=false;
-                $anzahlSubGruppen=sizeof($webfront_group);
-                /* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.
+                    // Konfigurationslemente aus der Webfront Gruppe rausbringen
+                    if (isset($webfront_group["ORDER"])) 
+                        {
+                        $order = $webfront_group["ORDER"];
+                        unset($webfront_group["ORDER"]);
+                        }
+                    else 
+                        {
+                        if ($order>200) $order=10;          // irgendwie zurück setzen, es gibt kein default
+                        else $order += 10;   
+                        }
+                    if (isset($webfront_group["STYLE"])) 
+                        {             
+                        $style=true; 
+                        unset($webfront_group["STYLE"]);      
+                        }
+                    else $style=false;
+                    if (isset($webfront_group["CONFIG"])) 
+                        {  
+                        //echo "Tab $Name Config Information Detected.\n";           
+                        $config = $webfront_group["CONFIG"];
+                        //unset($webfront_group["CONFIG"]);      
+                        }
+                    else $config=false;
+                    $anzahlSubGruppen=sizeof($webfront_group);
+
+                    /* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.
                     * Der Name für die Felder wird selbst erfunden.
                     */
 
-                if ($debug) echo "\n**** setupWebfrontEntry, erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
-                $categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, $order);
-                $status = @EmptyCategory($categoryId_WebFrontTab);   
-                if ($debug) 
-                    {
-                    echo "Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
-                    if ($status===false) echo "Info über Fehler, Kategorie $Name nicht vollständig gelöscht.\n";
-                    }
-                $tabItem = $WFC10_TabPaneItem.$Name;				/* Netten eindeutigen Namen berechnen */
-                $this->deletePane($tabItem);              /* Spuren von vormals beseitigen */
-
-                if ( $config || (array_key_exists("Auswertung",$webfront_group)) || (array_key_exists("Nachrichten",$webfront_group)) )            // Index für Item oder SplitPane bereits in der ersten Ebene
-                    {
-                    if ($anzahlSubGruppen==1)      // kein SplitPane notwendig
+                    if ($debug) echo "***erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
+                    $categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, $order);
+                    $status = @EmptyCategory($categoryId_WebFrontTab);   
+                    if ($debug) 
                         {
-                        if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden. Nur ein Pane erstellen.\n";
-                        if ($active)
+                        echo "      Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
+                        if ($status===false) echo "       Info über Fehler von Function EmptyCategory: Kategorie $Name nicht vollständig gelöscht.\n";
+                        }
+                    $tabItem = $WFC10_TabPaneItem.$Name;				/* Netten eindeutigen Namen berechnen */
+                    echo "Delete Panes starting with $tabItem.\n";
+                    $this->deletePane($tabItem);              /* Spuren von vormals beseitigen */
+
+                    $this->paneConfig=$config;
+                    if ($config !==false ) echo "Configuration detected in Tab $Name: ".json_encode($config)."\n";
+
+                    if ( ($config !==false ) || (array_key_exists("Auswertung",$webfront_group)) || (array_key_exists("Nachrichten",$webfront_group)) )            // Index für Item oder SplitPane bereits in der ersten Ebene
+                        {
+                        if ($anzahlSubGruppen==1)      // kein SplitPane notwendig
                             {
-                            $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $Name, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
-                            //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, "");     // darunter kommen Untergruppen
-                            $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab,false,$debug);
+                            if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden oder Config. Nur ein Pane erstellen.\n";
+                            if ($active)
+                                {
+                                $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $Name, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
+                                //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, "");     // darunter kommen Untergruppen
+                                $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab,false,$debug);
+                                }
+                            }
+                        else
+                            {                        
+                            if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden oder Config, SplitPane erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." mit Namen $Name\n";
+                            $this->configWF["TabPaneOrder"]=$order;     // neue Anordnung des SplitPane, etwas komplizierte Parameter Übergabe
+                            if ($active) $this->createSplitPane($webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator",$debug);
                             }
                         }
-                    else
-                        {                        
-                        if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden, SplitPane erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." mit Namen $Name\n";
-                        $this->configWF["TabPaneOrder"]=$order;     // neue Anordnung des SplitPane, etwas komplizierte Parameter Übergabe
-                        if ($active) $this->createSplitPane($webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator",$debug);
-                        }
-                    }
-                elseif ($style)     // einfache Darstellung von Variablen
-                    {
-                    if ($debug) echo "\n  **** new Style Visualization in ".$categoryId_WebFrontTab.".\n";
-                    foreach ($webfront_group as $SubName => $webfront_subgroup)
-                        { 
-                        if ($debug) echo "\n         erstelle Sub Kategorie ".$SubName.".\n";
-                        }                    
-                    }            
-                else                // noch mehr Subgruppen, es gibt keine Auswertung/Nachrichten Tabs
-                    {
-                    foreach ($webfront_group as $SubName => $webfront_subgroup)
-                        {                    
-                        /* noch eine Zwischenebene an Tabs einführen */
-                        if ($debug) echo "\n  **** iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
-                        if ($active)
-                            {
-                            $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
-                            EmptyCategory($categoryId_WebFrontSubTab);   
-                            if ($debug) echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
+                    elseif ($style)     // einfache Darstellung von Variablen
+                        {
+                        if ($debug) echo "\n  **** new Style Visualization in ".$categoryId_WebFrontTab.".\n";
+                        foreach ($webfront_group as $SubName => $webfront_subgroup)
+                            { 
+                            if ($debug) echo "\n         erstelle Sub Kategorie ".$SubName.".\n";
+                            }                    
+                        }            
+                    else                // noch mehr Subgruppen, es gibt keine Auswertung/Nachrichten Tabs
+                        {
+                        foreach ($webfront_group as $SubName => $webfront_subgroup)
+                            {                    
+                            /* noch eine Zwischenebene an Tabs einführen */
+                            if ($debug) echo "******erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
+                            if ($active)
+                                {
+                                $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
+                                EmptyCategory($categoryId_WebFrontSubTab);   
+                                if ($debug) echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
 
-                            $tabSubItem = $WFC10_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
-                            $this->deletePane($tabSubItem);              /* Spuren von vormals beseitigen */
+                                $tabSubItem = $WFC10_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
+                                $this->deletePane($tabSubItem);              /* Spuren von vormals beseitigen */
 
-                            if ($debug) echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
-                            $this->CreateWFCItemTabPane($tabItem, $WFC10_TabPaneItem,  $order, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
+                                if ($debug) echo "   ***Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem.". Der Name im Titel ist $Name.\n";
+                                $this->CreateWFCItemTabPane($tabItem, $WFC10_TabPaneItem,  $order, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste, oder in der zweiten Zeile den Subtab Namen */
 
-                            if ($debug) echo "Webfront erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
-                            $this->createSplitPane($webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator",$debug);    
+                                if ($debug) echo "   ***SplitPane erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
+                                $this->createSplitPane($webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator",$debug);    
+                                }
                             }
-                        }
-                    }    
-                $order += 10;	
+                        }    
+                    $order += 10;	
+                    }                   // ende korrekter Name für TabPane
                 }  // ende foreach
             }       
 		}
@@ -12051,7 +12524,7 @@ class WfcHandling
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontSubTab, 20);
 		if ($debug) echo "  Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n"; 
 
-        if ($debug) echo "   **** Splitpane $tabItem erzeugen in $WFC10_TabPaneItem:\n";
+        if ($debug) echo "   **** Splitpane mit Namen $WFC10_TabPaneItem erzeugen als $tabItem in Wfc:\n";
         /* @param integer $WFCId ID des WebFront Konfigurators
             * @param string $ItemId Element Name im Konfigurator Objekt Baum
             * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
@@ -12064,8 +12537,13 @@ class WfcHandling
             * @param integer $RatioType Einheit der Größenangabe (0=Percentage, 1=Pixel)
             * @param string $ShowBorder Zeige Begrenzungs Linie
             */
+        $width=40;
+        if ($this->paneConfig !== false) 
+            {
+            if (isset($this->paneConfig["width"])) { $width=$this->paneConfig["width"]; echo "Width is $width.\n"; }
+            }
         //CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
-        $this->CreateWFCItemSplitPane ($tabItem, $WFC10_TabPaneItem,    $order,     $Name,     "", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+        $this->CreateWFCItemSplitPane ($tabItem, $WFC10_TabPaneItem,    $order,     $Name,     "", 1 /*Vertical*/, $width, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
         $this->CreateWFCItemCategory  ($tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
         $this->CreateWFCItemCategory  ($tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);            
 
@@ -12097,18 +12575,27 @@ class WfcHandling
     private function createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
         {
         //$debug=true;
+        $config=array();
         if ($categoryIdRight==false) $categoryIdRight=$categoryIdLeft;
-        if ($debug) echo "    createLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight  \n";
-        if (isset($webfront_group["CONFIG"]))   echo "          CONFIG erkannt ".json_encode($webfront_group["CONFIG"])."\n";
+        if ($debug) echo "    createLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight .".json_encode($webfront_group)." \n";
+
+        /* Konfiguration, wenn übermittelt, berücksichtigen */
+        if (isset($webfront_group["CONFIG"])) 
+            {
+            echo "          CONFIG erkannt ".json_encode($webfront_group["CONFIG"])."\n";
+            $config=$webfront_group["CONFIG"];          // ORDER, RIGHT
+            }
+        if (isset($config["right"])==false) $config["right"]="AUSWERTUNG";
+
 			foreach ($webfront_group as $Group => $webfront_link)
 				{
                 if ( ($Group == "CONFIG") || ($Group == "STYLE") || ($Group == "ORDER") )       // SplitPane Konfiguration
                     {
-
+                    //echo "Konfiguration für createLinks erkannt: ".json_encode($webfront_link)."\n";   // wird bereits oben abgearbeitet
                     }
                 else
                     {
-                    if ($debug) echo "      Gruppe : $Group\n";
+                    if ($debug) echo "     ***** Gruppe : $Group bearbeiten. Zu erstellende Links suchen.\n";
                     foreach ($webfront_link as $OID => $link)
                         {
                         /* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
@@ -12117,7 +12604,7 @@ class WfcHandling
                         if (isset($link["NAME"]) === false) { echo "OID: $OID"; print_r($link); }
                         if ($OID!="ORDER")
                             {
-                            if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+                            if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."  (".json_encode($link).")\n";
                             // Optional auch einzelne Berechtigungen pro Objekt
                             if ( (($scope=="Administrator") && (((isset($link["ADMINISTRATOR"])) && ($scope=="Administrator") &&  $link["ADMINISTRATOR"]) || ((isset($link["ADMINISTRATOR"])===false)) )) ||
                                         (($scope=="User") && (((isset($link["USER"])) &&  $link["USER"]) || ((isset($link["USER"])===false)) )) || 
@@ -12126,9 +12613,12 @@ class WfcHandling
                                 if (isset($link["ORDER"])===false) $link["ORDER"]=10;
                                 if (isset($link["PANE"])===false) $link["PANE"]=false;
                                 else echo "         Link Pane definiert \n";
-                                if ( ($Group=="Auswertung") ||  ( (isset($link["PANE"])) && ($link["PANE"]) ) )
+                                echo $Group."==".$config["right"]."?\n";
+                                //if ( ($Group=="Auswertung") || ($Group==$config["right"]) || ( (isset($link["PANE"])) && ($link["PANE"]) ) )
+                                if ( ($Group=="Auswertung") || ($Group==$config["right"])  )
                                     {
-                                    if ($link["PANE"])
+                                    //if ($link["PANE"])
+                                    if ( (isset($link["PANE"])) && ($link["PANE"]) )
                                         {
                                         $categoryIdGroup  = CreateVariableByName($categoryIdLeft, $Group, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
                                         if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf $OID in der linken Category $categoryIdLeft in der Gruppe $categoryIdGroup \n";
@@ -12136,13 +12626,15 @@ class WfcHandling
                                         }
                                     else
                                         {
+                                        
                                         if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der linken Category ".$categoryIdLeft."\n";
                                         CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
                                         }
                                     }
                                 else
                                     {
-                                    if ( (isset($link["PANE"])) && ($link["PANE"]==false) )
+                                    //if ( (isset($link["PANE"])) && ($link["PANE"]==false) )
+                                    if ( (isset($link["PANE"])) && ($link["PANE"]) )
                                         {
                                         $categoryIdGroup  = CreateVariableByName($categoryIdRight, $Group, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
                                         if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf $OID in der rechten Category $categoryIdLeft in der Gruppe $categoryIdGroup \n";

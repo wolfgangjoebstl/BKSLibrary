@@ -49,6 +49,7 @@
 	$startexec=microtime(true);
 
     $DoInstall=true; 
+    $DoDelete=false;                    // Alle Webfronts beginnend mit Money löschen
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -124,6 +125,22 @@
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
     
+    /* YahooApi und vielleicht auch andere, die Variablen initialisisern */
+    if (isset($GuthabenAllgConfig["Api"]))
+        {
+        $CategoryId_Finance     = CreateCategoryByName($CategoryIdData,'Finance',200);           // sucht oder legt an,($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        $financeTableID         = CreateVariableByName($CategoryId_Finance,"YahooFinanceTable", 3, "~HTMLBox",false, 10);		// CreateVariable ($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        $depotTableID           = CreateVariableByName($CategoryId_Finance,"DepotTable", 3, "~HTMLBox",false, 20);		// CreateVariable ($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        $depotGraphID           = CreateVariableByName($CategoryId_Finance,"DepotGraph", 3, "~HTMLBox",false, 30);		// CreateVariable ($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
+        $profilName=createButtonProfileByName("Update");
+        $updateApiTableID          = CreateVariableByName($CategoryId_Finance,"Update", 1,$profilName,"",10,$GuthabensteuerungID);           // button profile is Integer
+        $profilName=createButtonProfileByName("Calculate");
+        $calculateApiTableID          = CreateVariableByName($CategoryId_Finance,"Calculate", 1,$profilName,"",20,$GuthabensteuerungID);           // button profile is Integer
+        $profilName=createButtonProfileByName("Sort");
+        $sortApiTableID          = CreateVariableByName($CategoryId_Finance,"Sort", 1,$profilName,"",30,$GuthabensteuerungID);           // button profile is Integer
+        }
+
     $seleniumWeb=false;
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
@@ -183,7 +200,11 @@
         // Es gibt Selenium Webdriver, die kann man wieder starten, so wie bei Guthaben StartSelenium,  CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,""
         $pname="SeleniumAktionen";                                         // keine Standardfunktion, da Inhalte Variable
 
-        $nameID=["Easy","YahooFin", "EVN"];
+        $configTabs = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+        $nameID=array();
+        foreach ($configTabs as $tab => $config) $nameID[]=$tab;
+        //$nameID=["Easy","YahooFin", "EVN"];
+
         createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
         $actionWebID          = CreateVariableByName($CategoryId_Mode,"StartAction", 1,$pname,"",1000,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
@@ -429,14 +450,25 @@
         }
      */
 
-    $wfcHandling =  new WfcHandling($WFC10_ConfigId);
+    //$wfcHandling =  new WfcHandling($WFC10_ConfigId);
+    $wfcHandling =  new WfcHandling();                                  // neue Verarbeitung, flexibler beim Update von CategoryID
     /* Workaround wenn im Webfront die Root fehlt */
     $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
 
     if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
         {
+        // actualDepot is created from order book
+        $seleniumEasycharts = new SeleniumEasycharts();
+        $orderbook=$seleniumEasycharts->getEasychartOrderConfiguration();
+        if (count($orderbook)>0)
+            {
+            $depotbook=$seleniumEasycharts->createDepotBookfromOrderBook();
+            $seleniumEasycharts->updateResultConfigurationSplit($depotbook);    
+            $seleniumEasycharts->writeResultConfiguration($depotbook,"actualDepot");          //    freigeben wenn orderbook upgedated wurde        
+            }
+            
         /* wird auch für die nächste Abfrage benötigt 
-        * zuerst aus dem ModulManager die Konfig von IPSModuleManagerGUI abrufen */
+        * zuerst aus dem ModulManager die Konfig von IPSModuleManagerGUI abrufen 
         $moduleManagerGUI = new IPSModuleManager('IPSModuleManagerGUI',$repository);
         $configWFrontGUI=$ipsOps->configWebfront($moduleManagerGUI,false);     // wenn true mit debug Funktion
         $tabPaneParent="roottp";                        // Default Wert
@@ -448,77 +480,179 @@
             echo "  Selenium Module Überblick im Administrator Webfront $tabPaneParent abspeichern.\n";
             //print_r($configWFrontGUI["Administrator"]);   
 
-            /* es gibt kein Module mit Selenium ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
+            // es gibt kein Module mit Selenium ini Dateien, daher etwas improvisieren und fixe Namen nehmen 
             $configWF["Enabled"]=true;
             $configWF["Path"]="Visualization.WebFront.Administrator.Selenium";
             $configWF["ConfigId"]=$WebfrontConfigID["Administrator"];              
             $configWF["TabPaneParent"]=$tabPaneParent;
             $configWF["TabPaneItem"]="Selenium"; 
             $configWF["TabPaneOrder"]=1010;                                          
-            }
+            } */
 
-        /* Selenium Stationen auswerten */
-        $webfront_links=array();
-        $webfront_links["Selenium"]["Auswertung"]=array();
-        $webfront_links["Selenium"]["Nachrichten"] = array(
-            $NachrichtenInputID => array(
-                    "NAME"				=> "Nachrichten",
-                    "ORDER"				=> 10,
-                    "ADMINISTRATOR" 	=> true,
-                    "USER"				=> false,
-                    "MOBILE"			=> false,
-                        ),
-                    );	
-        if (isset($GuthabenAllgConfig["Selenium"]["WebDrivers"])) 
+        $configWF=$guthabenHandler->getWebfrontsConfiguration("Selenium");
+        if ($configWF)
             {
-            $order=100;
-            foreach ($GuthabenAllgConfig["Selenium"]["WebDrivers"] as $category => $entry)
+            echo "Selenium Webfront augestalten, Dateien sind in Kategorie $CategoryId_Mode:\n";
+            /* Selenium Stationen auswerten */
+            $webfront_links=array(
+                        "Selenium" => array(
+                            "Auswertung" => array(),
+                            "Nachrichten" => array(),
+                            // kein Config wenn eh schon Auswertung und Nachrichten vorhanden
+                                ),
+                        // kein Config damit ein Tabpane entsteht
+                );
+            $webfront_links["Selenium"]["Nachrichten"] = array(
+                $NachrichtenInputID => array(
+                        "NAME"				=> "Nachrichten",
+                        "ORDER"				=> 10,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),
+                        );	
+            if (isset($GuthabenAllgConfig["Selenium"]["WebDrivers"])) 
                 {
-                $categoryId_WebDriver        = CreateCategory($category,        $CategoryId_Mode, $pos);                    
-                $statusID           = IPS_GetObjectIdByName("StatusWebDriver".$category,$categoryId_WebDriver);
-                $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StatusWebDriver".$category;
-                $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=$order;
-                $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
-                $order=$order+10;
+                $order=100;
+                foreach ($GuthabenAllgConfig["Selenium"]["WebDrivers"] as $category => $entry)
+                    {
+                    $categoryId_WebDriver        = CreateCategory($category,        $CategoryId_Mode, $pos);                    
+                    $statusID           = IPS_GetObjectIdByName("StatusWebDriver".$category,$categoryId_WebDriver);
+                    echo "      Untergruppe StatusWebDriver".$category." :  $statusID in $categoryId_WebDriver\n";  
+                    $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StatusWebDriver".$category;
+                    $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=$order;
+                    $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+                    $order=$order+10;
+                    }
                 }
+            if (isset($GuthabenAllgConfig["Selenium"]["WebDriver"])) 
+                {
+                echo "     StatusWebDriverDefault    $statusID\n";
+                $statusID           = IPS_GetObjectIdByName("StatusWebDriverDefault",$CategoryId_Mode);
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StatusWebDriverDefault";
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=90;
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+                }
+            if ($seleniumWeb)
+                {
+                $statusID           = IPS_GetObjectIdByName("StartAction",$CategoryId_Mode);
+                echo "     StatusWebDriverDefault   $statusID\n";
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StartAction";
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=200;
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+                $statusID           = IPS_GetObjectIdByName("StartGroupCall",$CategoryId_Mode);
+                echo "     StartGroupCall   $statusID\n";
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StartGroupCall";
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=210;
+                $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+                }
+
+
+            echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";
+            $webDrivers=$guthabenHandler->getSeleniumWebDrivers();   
+            print_R($webDrivers);
+            
+            $configSelenium = $guthabenHandler->getSeleniumWebDriverConfig();
+            $webDriverUrl   = $configSelenium["WebDriver"];
+            echo "Default Web Driver Url : $webDriverUrl\n";
+            
+            /* WebDriver starten */
+            $seleniumHandler = new SeleniumHandler();           // Selenium Test Handler, false deaktiviere Ansteuerung von webdriver für Testzwecke vollstaendig
+            $result = $seleniumHandler->initHost($webDriverUrl,$configSelenium["Browser"]);          // ersult sind der Return wert von syncHandles
+            if ($result === false) echo "---------\n".$seleniumHandler->readFailure()."\n---------------------\n";
+            else echo "Selenium Webdriver ordnungsgemaess gestartet.\n";
+
+            $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, kein interop mode, ist in der Kopie der Config in der class
+
+            if ($DoDelete)          // alles was mit Money anfängt löschen
+                {
+                echo "Delete Panes starting with ".$configWF["TabPaneItem"]."\n";
+                $wfcHandling->deletePane($configWF["TabPaneItem"]);              /* alle Spuren von vormals beseitigen */
+                }
+            //print_R($webfront_links);
+
+            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+            $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);                    // funktioniert, Ergebnis der Änderungen wird abgespeichert
+            echo "Webfront Selenium successfull installed.\n";
             }
-        if (isset($GuthabenAllgConfig["Selenium"]["WebDriver"])) 
+
+        $configWF=$guthabenHandler->getWebfrontsConfiguration("Api",false);            // true für Debug
+        print_R($configWF); 
+        if ($configWF)
             {
-            $statusID           = IPS_GetObjectIdByName("StatusWebDriverDefault",$CategoryId_Mode);
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StatusWebDriverDefault";
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=90;
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
+            $webfront_links=array(
+                            "Finance" => array(
+                                "Left" => array(),
+                                "Right" => array(),
+                                "CONFIG" => array(
+                                            "right" => "Right",
+                                            "left" => "Left",
+                                            "width" => 10,
+                                                ), 
+                                    ),
+                            "CONFIG" => array(
+
+                            ),                // sonst wird Finance ein Category Pane und kein wie gewollt Splitpane
+                    );
+
+            $webfront_links["Finance"]["Right"][$updateApiTableID]["NAME"]=" ";
+            $webfront_links["Finance"]["Right"][$updateApiTableID]["ORDER"]=200;
+            $webfront_links["Finance"]["Right"][$updateApiTableID]["ADMINISTRATOR"]=true;
+
+            $webfront_links["Finance"]["Right"][$calculateApiTableID]["NAME"]=" ";
+            $webfront_links["Finance"]["Right"][$calculateApiTableID]["ORDER"]=210;
+            $webfront_links["Finance"]["Right"][$calculateApiTableID]["ADMINISTRATOR"]=true;
+
+            $webfront_links["Finance"]["Right"][$sortApiTableID]["NAME"]=" ";
+            $webfront_links["Finance"]["Right"][$sortApiTableID]["ORDER"]=220;
+            $webfront_links["Finance"]["Right"][$sortApiTableID]["ADMINISTRATOR"]=true;
+
+            $webfront_links["Finance"]["Left"][$financeTableID]["NAME"]="FinanceTable";
+            $webfront_links["Finance"]["Left"][$financeTableID]["ORDER"]=200;
+            $webfront_links["Finance"]["Left"][$financeTableID]["ADMINISTRATOR"]=true;
+
+            $webfront_links["Finance"]["Left"][$depotTableID]["NAME"]="DepotTable";
+            $webfront_links["Finance"]["Left"][$depotTableID]["ORDER"]=220;
+            $webfront_links["Finance"]["Left"][$depotTableID]["ADMINISTRATOR"]=true;
+
+            $webfront_links["Finance"]["Left"][$depotGraphID]["NAME"]="DepotGraph";
+            $webfront_links["Finance"]["Left"][$depotGraphID]["ORDER"]=240;
+            $webfront_links["Finance"]["Left"][$depotGraphID]["ADMINISTRATOR"]=true;
+
+
+            $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, kein interop mode, ist in der Kopie der Config in der class
+            $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
+            foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+                {
+                echo "\n------$index:\n";
+                $wfcHandling->print_wfc($wfc[$index]);
+                }  
+
+            if ($DoDelete)          // alles was mit Money anfängt löschen
+                {
+                echo "Delete Panes starting with ".$configWF["TabPaneItem"]."\n";
+                $wfcHandling->deletePane($configWF["TabPaneItem"]);              /* alle Spuren von vormals beseitigen */
+                }
+
+            // in roottp selber installieren
+            $wfcHandling->CreateWFCItemTabPane($configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);
+            $configWF["TabPaneParent"]=$configWF["TabPaneItem"];          // überschreiben wenn roottp, wir sind jetzt bereits eins drunter  
+            $configWF["TabPaneItem"] = $configWF["TabItem"];
+
+            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+
+            if (false)          // comment to view structure of webfront
+                {
+                $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
+                foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+                    {
+                    echo "\n------$index:\n";
+                    $wfcHandling->print_wfc($wfc[$index]);
+                    }        
+                }
+            $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);                    // funktioniert, Ergebnis der Änderungen wird abgespeichert
+            echo "Webfront Api Money successfull installed.\n";
             }
-        if ($seleniumWeb)
-            {
-            $statusID           = IPS_GetObjectIdByName("StartAction",$CategoryId_Mode);
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StartAction";
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=200;
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
-
-            $statusID           = IPS_GetObjectIdByName("StartGroupCall",$CategoryId_Mode);
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["NAME"]="StartGroupCall";
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=210;
-            $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
-            }
-
-
-        echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";
-        $webDrivers=$guthabenHandler->getSeleniumWebDrivers();   
-        print_R($webDrivers);
-        
-        $configSelenium = $guthabenHandler->getSeleniumWebDriverConfig();
-        $webDriverUrl   = $configSelenium["WebDriver"];
-        echo "Default Web Driver Url : $webDriverUrl\n";
-        
-        /* WebDriver starten */
-        $seleniumHandler = new SeleniumHandler();           // Selenium Test Handler, false deaktiviere Ansteuerung von webdriver für Testzwecke vollstaendig
-        $result = $seleniumHandler->initHost($webDriverUrl,$configSelenium["Browser"]);          // ersult sind der Return wert von syncHandles
-        if ($result === false) echo "---------\n".$seleniumHandler->readFailure()."\n---------------------\n";
-        else echo "Selenium Webdriver ordnungsgemaess gestartet.\n";
-
-        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
-
         }
 
 

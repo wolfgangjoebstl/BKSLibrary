@@ -1513,15 +1513,25 @@ class SeleniumLogWien extends SeleniumHandler
                     }
                 break;  
             case 6:
-                echo "--------\n6: Goto Smart Meter Portal.\n";             
+                echo "--------\n6: Goto Smart Meter Portal.\n";   
+                $this->duetime=microtime(true)+4;       // dieses delay wird erst im nächsten Schritt geprüft          
                 $result = $this->clickSMLinkIf();
                 if ($result === false) 
                     {
                     echo "   --> failed, continue nevertheless\n";
                     }
-                break;  
+                break; 
             case 7:
-                echo "--------\n7: Read Energy Value.\n";             
+                echo "--------\n7: wait 4 seconds until Smart Meter Portal has loaded.\n";              
+                if ($this->debug) echo "continue to wait 4 seconds for first Window";            
+                if (microtime(true)<$this->duetime) 
+                    {
+                    if ($this->debug) echo "\n";
+                    return("retry");                
+                    }            
+                break;                  
+            case 8:
+                echo "--------\n8: Read Energy Value.\n";             
                 $result = $this->getEnergyValueIf(true);                // true für Debug
                 if ($result===false) return ("retry");
                 if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
@@ -1627,16 +1637,26 @@ class SeleniumLogWien extends SeleniumHandler
     function enterLoginPassword($password)
         {
         /*  /html/body/div/main/form/fieldset/section[2]/div[3]/c-textfield/input
+         *  /html/body/div/main/form/fieldset/section[2]/c-textfield[2]/input
          */
-        $xpath = '/html/body/div/main/form/fieldset/section[2]/div[3]/c-textfield/input';              // extra Form username+password
-        $this->sendKeysToFormIf($xpath,$password);
+        $xpath = '/html/body/div/main/form/fieldset/section[2]/c-textfield[2]/input';
+        if (($this->sendKeysToFormIf($xpath,$password))===false)
+            {
+            $xpath = '/html/body/div/main/form/fieldset/section[2]/div[3]/c-textfield/input';              // extra Form username+password, older version
+            $this->sendKeysToFormIf($xpath,$password);
+            }
+
         /* press Button Weiter 
          * /html/body/div/main/form/fieldset/section[3]/div[1]/button[2]
+         * 
          */
-        $xpath = '/html/body/div/main/form/fieldset/section[3]/div[1]/button[2]';
+        $xpath = '/html/body/div/main/form/fieldset/section[3]/div[1]/button[2]';           // Button ist gleicg geblieben
         $this->pressButtonIf($xpath,true);          
         }
-
+    /* was war das, hier die richtige Applikation aussuchen, ist jetzt eine Jumppage ohne schöne Bilder, hjüpft auf 6, clickSMLinkIf
+     *
+     * /html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[1]/button[2]
+     */
     private function enterSliderIf()
         {
         $xpath='/html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[1]/button[2]';
@@ -1656,12 +1676,18 @@ class SeleniumLogWien extends SeleniumHandler
     /* goto Smart meter App
      *
      * /html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/a
+     * /html/body/app-root/app-start/div/app-startpage-loggedin/main/div/div[2]/div[1]/app-recently-used/div/div/div/div[1]/div[2]/ul/li[1]/ul/li/a
      */
 
     private function clickSMLinkIf()
         {
-        $xpath='/html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/a';
-        $status=$this->pressButtonIf($xpath);             
+        $xpath1='/html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/a';
+        $xpath2='/html/body/app-root/app-start/div/app-startpage-loggedin/main/div/div[2]/div[1]/app-recently-used/div/div/div/div[1]/div[2]/ul/li[1]/ul/li/a';
+        $status=$this->pressButtonIf($xpath1); 
+        if ($status===false)            // alternativen Link probieren, Web Layout wurde gestrafft
+            {
+            $status=$this->pressButtonIf($xpath2); // das dauert aber jetzt zum Laden
+            }
         return ($status);                    
         }
 
@@ -2969,7 +2995,7 @@ class SeleniumEasycharts extends SeleniumHandler
         return ($orderbook);
         }
     
-    /* get_EasychartSharesConfiguration() fokussiert sich auf die anderen Aktien die nicht in meinem Depot warenund die die in meinem Besitzu sind und liefert zusätzliche Informatzionen : Split
+    /* get_EasychartSharesConfiguration() fokussiert sich auf die anderen Aktien die nicht in meinem Depot waren und die die in meinem Besitz sind und liefert zusätzliche Informationen : Split
      * d.h. weitere Konfiguration, hier stehen alle Splits drinnen, aber kann auch mehr Information sein
      */
 
@@ -3392,8 +3418,10 @@ class SeleniumEasycharts extends SeleniumHandler
         }
 
     /* Easycharts speichert die Konfiguration des Musterdepots
-     * die Konfiguration für ein Musterdepot wieder abrufen
+     * als ein json in einer Variablen die mit Config beginnt
+     * die Konfiguration für ein Musterdepot wieder abrufen und etwas anpassen, index ist der index
      *
+     * Bei Änderungen die Konfiguration mit writeResultConfiguration wieder speichern
      */
 
     function getResultConfiguration($nameDepot="MusterDepot")
@@ -3407,7 +3435,12 @@ class SeleniumEasycharts extends SeleniumHandler
         if ($oid===false)
             {
             $categoryIdResult = $this->getResultCategory();
-            $oid = IPS_GetObjectIdByName("Config".$nameDepot,$categoryIdResult);            // entweder den Namen suchen
+            $oid = @IPS_GetObjectIdByName("Config".$nameDepot,$categoryIdResult);            // entweder den Namen suchen
+            if ($oid===false)
+                {
+                echo "Config".$nameDepot." in $categoryIdResult nicht gefunden.\n";    
+                return (false);
+                }
             }
         //echo "getResultConfiguration from $oid \n";
         $shares = json_decode(GetValue($oid),true);                   // anspeichern als array
@@ -3465,6 +3498,8 @@ class SeleniumEasycharts extends SeleniumHandler
                     {
                     $configShares[$index]["Name"]=$share["Name"];
                     }
+                if (isset($share["OID"])) $configShares[$index]["OID"]=$share["OID"];
+                if (isset($share["Currency"])) $configShares[$index]["Currency"]=$share["Currency"];
                 }
             }
         return($configShares); 
@@ -4049,6 +4084,7 @@ class SeleniumEasycharts extends SeleniumHandler
      * Structure is index date with entries pcs and price
      * Result is amount of pcs and cost/price
      *
+     * Achtung, berücksichtigt keinen Split, das muss vorher darüberlaufen
      */
 
     public function calcOrderBook($orderbook,$debug=false)
@@ -4073,7 +4109,72 @@ class SeleniumEasycharts extends SeleniumHandler
         return(["pcs"=>$pcs,"cost"=>$cost]);
         }
 
-    /* Depotbook create from Orderbook
+    /* createDepotBookfromOrderBook, Depotbook create from Orderbook
+     * createDepotBook macht etwas ähnliches, benötigt aber aktuelle Kurswerte, hier geht es mit createJointConfiguration
+     * verwendet calcOrderbook um die Summe cost und pcs zu bekommen und nicht die Kosten und Stück aus der Depot konfiguration
+     * berücksichtigt auch Splits
+     */
+
+    public function createDepotBookfromOrderBook($debug=false)
+        {
+        $ipsOps = new ipsOps();            
+        if ($debug) echo "Verarbeitung des Orderbooks aus dem Guthabenhandler für das Depotregister \"actualDepot\" (easycharts):\n";
+        $shares = $this->createJointConfiguration();
+        //print_r($shares);
+        $orderbook=$this->getEasychartConfiguration();
+        foreach ($orderbook as $id => $book)
+            {
+            // Split Bearbeitung anfangen
+            if (isset($shares[$id]["Split"])) 
+                { 
+                if ($debug)  echo "  Split   : ".json_encode($shares[$id]["Split"])."\n";
+                //print_R($book);
+                foreach ($book["Orders"] as $dateOrder => $order)
+                    {
+                    $orderTime=$ipsOps->strtotimeFormat($dateOrder,"Ymd",false);
+                    foreach ($shares[$id]["Split"] as $dateSplit => $split)
+                        {
+                        $splitTime=$ipsOps->strtotimeFormat($dateSplit,"Ymd",false);
+                        if ($splitTime>$orderTime) 
+                            {  
+                            $book["Orders"][$dateOrder]["pcs"] = $order["pcs"] * $split["Split"];
+                            $book["Orders"][$dateOrder]["price"] = $order["price"] / $split["Split"];
+                            }
+                        elseif ($debug) echo " $splitTime > $orderTime nicht eingetroffen\n";
+                        }
+                    //print_r($resultShares[$index]["Order"]);
+                    }
+                }
+            $result=$this->calcOrderBook($book);            // für jede Aktie
+            if ($debug) echo str_pad($id,15).str_pad($result["pcs"],7);
+            if ($result["pcs"]>0) 
+                {
+                if (isset($shares[$id]["Name"])) 
+                    {
+                    $depotbook[$id]["Name"]=$shares[$id]["Name"];      // funktioniert nicht wenn neue Aktien dazukommen
+                    if ($debug) echo str_pad($shares[$id]["Name"],25);
+                    }
+                elseif ($debug)  echo str_pad("   do not find ",25);
+                $kursKauf=$result["cost"]/$result["pcs"];
+                if ($debug)echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT).str_pad(nf($result["cost"],"€"),14, " ", STR_PAD_LEFT);      
+                $depotbook[$id]["Stueck"] = $result["pcs"];
+                $depotbook[$id]["Kosten"] = $result["cost"];
+                $depotbook[$id]["ID"]=$id;
+                if (isset($shares[$id]["Currency"])) $depotbook[$id]["Currency"] = $shares[$id]["Currency"];
+                if (isset($shares[$id]["Short"])) $depotbook[$id]["Short"] = $shares[$id]["Short"];
+                if (isset($shares[$id]["OID"])) $depotbook[$id]["OID"]=$shares[$id]["OID"];      // funktioniert nicht wenn neue Aktien dazukommen
+                elseif ($debug) echo "   do not find ";
+                }
+            if ($debug) echo "\n";
+            }
+        return ($depotbook);  
+        }
+
+    /* createDepotBook, ***************depriciated*************
+     *
+     * use createDepotBookfromOrderBook and evaluateDepotBook instead
+     *
+     * Depotbook create from Orderbook and evaluate
      * verwendet calcOrderbook um die Summe cost und pcs zu bekommen und nicht die Kosten und Stück aus der Depot konfiguration
      *
      */
@@ -4083,6 +4184,8 @@ class SeleniumEasycharts extends SeleniumHandler
         $spend=0; $actual=0;
         if ($debug)
             {
+            echo "createDepotBook form orderbook use resultshares for actual value:\n";
+            echo "Erklärung, nimmt die Kauf und Verkaufswerte aus dem orderbook und vergleicht die Kosten mit dem aktuellen Wert.\n";
             echo "\n";
             echo str_pad("",105)."|           Geld         Geld Acc         Wert         Gewinn\n";
             }
@@ -4165,11 +4268,11 @@ class SeleniumEasycharts extends SeleniumHandler
         if ($debug)
             {
             echo "\n";
-            echo "evaluateDepotBook:\n";
+            echo "evaluateDepotBook, es gibt ".count($depotbook)." Einträge:\n";
             }
         $countMax=false;
 
-        /* die Depotwerte zu jedem Zeitpunkt berechnen, Grundgerüst anlegen udn vorhandene Werte auswerten */
+        /* die Depotwerte zu jedem Zeitpunkt berechnen, Grundgerüst anlegen und vorhandene Werte auswerten */
         echo "Grundgeruest anlegen:\n";
         $valuebook=array();
         $failures=array();
@@ -4211,28 +4314,39 @@ class SeleniumEasycharts extends SeleniumHandler
         $countMax=36;
         //echo "\n";
 
+        /* Tabelle Darstellung in depotTable damit auch als html angezeigt werden kann
+         * Werte vom depotbook werden nur übernommen wenne s einen Kurs in resultshares gibt
+         */
         echo "Tabelle berechnen:\n";
         $knownValues=array();
+        $depotTable=array();
         if ($debug) echo str_pad("",130)."|           Geld         Geld Acc         Wert         Wert Acc\n";
+        $row=0;
         foreach ($depotbook as $id => $book)
             {
             $latest=0; $kursKauf=0;
             if (isset($resultShares[$id]))              // wenn nicht mehr im actualDepot keine Ausgabe
                 {
-                if ($debug)
+                $depotTable[$row]["ID"]=$id;
+                if ($debug)echo str_pad($id,15);
+                if (isset($resultShares[$id]["Info"]["Name"]))  
                     {
-                    echo str_pad($id,15);
-                    if (isset($resultShares[$id]["Info"]["Name"]))  
+                    $depotTable[$row]["Name"]=$resultShares[$id]["Info"]["Name"];   
+                    if ($debug)
                         {
                         echo str_pad($resultShares[$id]["Info"]["Name"],50);
                         echo str_pad($resultShares[$id]["Description"]["Count"],6, " ", STR_PAD_LEFT)." ";
                         }
-                    else  echo str_pad("",57);
                     }
+                elseif ($debug)  echo str_pad("",57);
+                    
                 //print_R($book);
                 if ($book["Stueck"]>0)                // unwahrscheinlich, dass keine Stueck hier vorkommen
                     {
                     $kursKauf=$book["Kosten"]/$book["Stueck"];
+                    $depotTable[$row]["priceBuy"]=$kursKauf;
+                    $depotTable[$row]["cost"]=$book["Kosten"];
+                    $depotTable[$row]["pcs"]=$book["Stueck"];
                     if ($debug) echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT);        
                     if (isset($resultShares[$id]["Info"]["Name"])) $depotbook[$id]["Name"]=$resultShares[$id]["Info"]["Name"];
                     }
@@ -4249,6 +4363,11 @@ class SeleniumEasycharts extends SeleniumHandler
                     if ($book["Stueck"] != 0) $actual += $latest*$book["Stueck"];
                     if ( ($kursKauf>0) && ($latest>0) ) 
                         {
+                        //$depotTable[$row]["priceActual"]=["Value"=>$latest,"TimeStamp"=>$resultShares[$id]["Description"]["Latest"]["TimeStamp"]];
+                        $depotTable[$row]["priceActualValue"]=$latest;
+                        $depotTable[$row]["priceActualTimeStamp"]=$resultShares[$id]["Description"]["Latest"]["TimeStamp"];
+                        $depotTable[$row]["change"]=($latest/$kursKauf-1);
+                        $depotTable[$row]["value"]=$latest*$book["Stueck"];
                         echo "->";
                         echo str_pad(nf($latest,"€"),16, " ", STR_PAD_LEFT)." (".date("d.m.Y H:i:s",$resultShares[$id]["Description"]["Latest"]["TimeStamp"]).") ";
                         echo "  ".str_pad(nf(($latest/$kursKauf-1)*100,"%"),10, " ", STR_PAD_LEFT);
@@ -4270,7 +4389,7 @@ class SeleniumEasycharts extends SeleniumHandler
                 //$actual[$i]["TimeStamp"] = $resultShares[$index]["Values"][$i]["TimeStamp"];
                         }
                     }
-
+                $row++;
                 }
             else echo "evaluateDepotBook, Fehler Eintrag in Depotbook aber nicht in resultshares.\n";
             }
@@ -4280,34 +4399,51 @@ class SeleniumEasycharts extends SeleniumHandler
             }
 
         /* wir fangen mit dem ältesten Datum an und arbeiten uns in die Gegenwart, 
-         * dazu gehen wir das Depotbook durch und schauen ob es einen Eintrag in Resultshares gibt 
+         * dazu gehen wir das Depotbook durch und schauen ob es einen Eintrag in Resultshares gibt
+         * eigentlich wird valuebook genommen, das wurde vorher aus resultshares erzeugt, hat Index YYmmdd 
+         * ab und zu fehlen Einträge, diese sollten vorher vervollständigt werden, hier werden bereits bekannte werte als knownValues geführt
+         * knownValues sind die latestWerte ausser sie wurden berits einmal erkannt
          */  
+        echo "Deoptbook Wert zeitlicher Verlauf:\n";
+        echo "Index      ";
+        foreach ($depotbook as $id => $book)
+            {
+            if ($book["Stueck"]>0)  echo str_pad($book["Name"],22);                
+            }
+        echo "\n";
         $once=false;            // false, keinen Verlauf ausgeben
         foreach ($resultValues as $indexTimeDay => $entry)
             {
+            echo $indexTimeDay."   ";
             foreach ($depotbook as $id => $book)
                 {
                 if ($book["Stueck"]>0) 
                     {
                     if (isset($valuebook[$id]["Values"][$indexTimeDay]))              // wenn nicht mehr im actualDepot oder im depotbook keine Stück erfolgt keine Ausgabe 
                         {
+                        //echo str_pad($book["Name"],22);
                         if ($once) { print_R($valuebook[$id]["Values"]); $once=false; }
-                        $resultValues[$indexTimeDay]["Value"] += $valuebook[$id]["Values"][$indexTimeDay]["Value"]*$book["Stueck"];
+                        $wert = $valuebook[$id]["Values"][$indexTimeDay]["Value"]*$book["Stueck"];
+                        $resultValues[$indexTimeDay]["Value"] += $wert;
                         $knownValues[$id]=$valuebook[$id]["Values"][$indexTimeDay];
                         }
                     else
                         {
-                        $resultValues[$indexTimeDay]["Value"] += $knownValues[$id]["Value"]*$book["Stueck"];
+                        //echo str_pad("",22);
+                        $wert=$knownValues[$id]["Value"]*$book["Stueck"];
+                        $resultValues[$indexTimeDay]["Value"] += $wert;;
                         if (isset($failure[$indexTimeDay]["ID"]["Missing"])) $failure[$indexTimeDay]["ID"]["Missing"] .= " ".$id;
                         else $failure[$indexTimeDay]["ID"]["Missing"] = $id;                        
                         }
+                    echo str_pad(nf($wert,""),22);
                     }
                 }
-  
+            echo nf($resultValues[$indexTimeDay]["Value"],"")."\n";
             }
         ksort($failure);
-        print_R($failure);
+        //if ($debug) print_R($failure);
         $depotbook["Value"]=$resultValues;
+        $depotbook["Table"]=$depotTable;
         return(true);
         }
 

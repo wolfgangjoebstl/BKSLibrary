@@ -327,7 +327,8 @@
                     echo "selenium.exe wird neu gestartet.\n";
                     IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
                     writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
-                    IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
+                    //IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
+                    $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_Selenium.bat","", true, true,-1);
                     $processStart["selenium"] == "Off";
                     SetValue($ProcessStartID,json_encode($processStart));
                     }
@@ -371,7 +372,8 @@
                             else $logtext="Autostart (Firefox) ".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"];
         					IPSLogger_Inf(__file__, "Autostart: $logtext.");                            
 							writeLogEvent($logtext);
-							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_firefox.bat","", true, false,-1);
+							//IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_firefox.bat","", true, false,-1);
+                            $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_firefox.bat","",true,false,-1);                
 							}
 						if ($processStart["Chrome"] == "On")
 							{
@@ -383,7 +385,8 @@
                             else $logtext="Autostart (Chrome) ".$config["Software"]["Chrome"]["Directory"]."chrome.exe ".$config["Software"]["Chrome"]["Url"];
         					IPSLogger_Inf(__file__, "Autostart: $logtext.");                            
 							writeLogEvent($logtext);
-							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_chrome.bat","", true, false,-1);
+							//IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_chrome.bat","", true, false,-1);
+                            $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_chrome.bat","",true,false,-1);                
 							}                            
 						SetValue($ScriptCounterID,$counter+1);
 						break;
@@ -393,8 +396,8 @@
 						    {
 							echo "SOAP Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
 					   	    /* Soap ausschalten */
-							//IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
-							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_soap.bat","",true,false,-1);  // kill wird schon von startsoap mitgemacht
+							//IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_soap.bat","",true,false,-1);  // kill wird schon von startsoap mitgemacht
+                            $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_soap.bat","",true,false,-1);                
         					IPSLogger_Inf(__file__, "Autostart: (SOAP)).");                            
 							writeLogEvent("Autostart (SOAP)");
 							}
@@ -406,8 +409,10 @@
 					   	    {
 							echo "Itunes Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
 				   		    /* iTunes ausschalten */
-							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
-							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_iTunes.bat","",true,false,-1);  // C:\Program Files\iTunes
+							//IPS_ExecuteEx($verzeichnis.$unterverzeichnis."kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
+							//IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_iTunes.bat","",true,false,-1);  // C:\Program Files\iTunes
+                            $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."kill_itunes.bat","",true,false,-1);                
+                            $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_iTunes.bat","",true,false,-1);                
                             IPSLogger_Inf(__file__, "Autostart: (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
 							writeLogEvent("Autostart (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
 							}
@@ -418,7 +423,8 @@
 						   {
 							writeLogEvent("Autostart (VMPlayer) ".'\"'.$config["Software"]["VMware"]["Directory"].'vmplayer.exe\" \"'.$config["Software"]["VMware"]["DirFiles"].$config["Software"]["VMware"]["FileName"].'\"');
 							IPSLogger_Inf(__file__, "Autostart: VMWare Player wird gestartet");
-							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_VMWare.bat","",true,false,-1);
+							//IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_VMWare.bat","",true,false,-1);
+                            $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_VMWare.bat","",true,false,-1);                
 							}
 						else
 						   {
@@ -432,7 +438,8 @@
 							echo "selenium.exe wird neu gestartet.\n";
 							IPSLogger_Inf(__file__, "Autostart: Selenium wird gestartet");
 							writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
-							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
+							//IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
+                            $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);                
 							}
 						else
 							{

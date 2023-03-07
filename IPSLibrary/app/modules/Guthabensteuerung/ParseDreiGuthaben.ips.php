@@ -624,13 +624,16 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         case "EVN":
                         case "LOGWIEN":
                             echo "=========================$host=============================================\n";
+                            echo "Automatic InputCsv for $host, read csv Files from Directory:\n";
+                            $archiveID = $archiveOps->getArchiveID();   
+                            ini_set('memory_limit', '128M');                        // können grosse Dateien werden
+                            echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
                             $go=true;
                             // target oid suchen 
                             switch (strtoupper($host))
                                 {
                                 case "LOGWIEN":
                                     $seleniumModul = new SeleniumLogWien();
-                                    $file="intervalle-20220807-105513.csv";
                                     break;
                                 case "EVN":
                                     $seleniumModul = new SeleniumEvn();       
@@ -642,10 +645,10 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                 }
                             $categoryID = $seleniumOperations->getCategory();                                
                             $targetCategory=$seleniumModul->getResultCategory();
-                            echo "Kategorie für Selenium Modul $host $categoryID : $targetCategory\n";
-                            echo "mit folgenden Ergebnisregistern:\n";
+                            echo "  Kategorie für Selenium Modul $host $categoryID : $targetCategory\n";
+                            echo "  mit folgenden Ergebnisregistern:\n";
                             $result=IPS_GetChildrenIDs($targetCategory);
-                            foreach ($result as $index => $childID) echo "  $index  $childID (".IPS_GetName($childID).") \n";
+                            foreach ($result as $index => $childID) echo "      $index  $childID (".IPS_GetName($childID).") \n";
                             if (isset($entry["CONFIG"]["ResultTarget"]["OID"]))
                                 {
                                 $oid = $entry["CONFIG"]["ResultTarget"]["OID"];
@@ -662,8 +665,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                 }
                             elseif (isset($entry["INPUTCSV"]["Target"]["OID"]))
                                 {
-                                $oid=$entry["INPUTCSV"]["OID"];
-                                echo "Get and use the Register mit OID $oid und Name ".IPS_GetName($oid).".\n";
+                                $oid=$entry["INPUTCSV"]["Target"]["OID"];
+                                echo "Get and use the Register mit OID $oid und Name ".IPS_GetName($oid).". Probably not stored in ResultTarget Area.\n";
                                 } 
                             else $go=false;         // nicht weitermachen wenn diser Input Parameter fgehlt                        
 
@@ -681,9 +684,10 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             if (isset($entry["INPUTCSV"]["InputFile"]))
                                 {
                                 $filename=$entry["INPUTCSV"]["InputFile"];
-                                echo "Input Filename is $filename.\n";
+                                echo "Input Filename is $filename.";
                                 $filesToRead = $dosOps->findfiles($files,$filename);
                                 if ($filesToRead==false) $go=false;
+                                echo "\n";
                                 }
                             else $go=false;         // nicht weitermachen wenn diser Input Parameter fehlt                    
                             if ($go) 
@@ -693,10 +697,11 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                     {
                                     echo "===========================================\n";
                                     echo "Read csv File $file in Directory $inputDir:\n";
-                                    $archiveOps->addValuesfromCsv($inputDir.$file,$oid,$entry["INPUTCSV"],true);             // false means add to archive, add values to archive from csv, works for logWien and EVN data according to config above
+                                    $archiveOps->addValuesfromCsv($inputDir.$file,$oid,$entry["INPUTCSV"],false);             // false means add to archive, add values to archive from csv, works for logWien and EVN data according to config above
                                     }
                                 AC_ReAggregateVariable($archiveID,$oid);                                     
                                 }
+                            else echo "No reason found to import csv files.\n";
 
                             break;
 

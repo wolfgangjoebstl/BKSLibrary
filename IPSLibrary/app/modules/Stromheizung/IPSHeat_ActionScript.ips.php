@@ -24,18 +24,14 @@
 	 * @version
 	 *  Version 2.50.1, 26.07.2012<br/>
 	 *
-	 * IPSHeat ActionScript 
-	 *
+	 * IPSHeat ActionScript , aufgerufen wenn
+     *      Execute         nix machen
+     *      Webfront        IPSHeat_SetValue,IPSHeat_SetGroup,IPSHeat_SetProgram
+	 *      VoiceControl    zusätzlich zu Webfront LogNachrichten("Alexa/VoiceControl
+     *
 	 */
 
-	//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 	IPSUtils_Include ('IPSHeat.inc.php', 'IPSLibrary::app::modules::Stromheizung');
-
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_AlexaClass.inc.php");
-
 	IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ('Autosteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Autosteuerung');
     IPSUtils_Include ('Autosteuerung_Class.inc.php', 'IPSLibrary::app::modules::Autosteuerung');
@@ -108,7 +104,7 @@ $register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
 				IPSHeat_SetValue($variableId, $value);
 				break;
 			case 'Groups':
-				$nachrichten->LogNachrichten("Alexa/VoiceControl : Group ".IPS_GetName($variableId)." (".$variableId.")   ".$_IPS['VALUE']." .");
+				$nachrichten->LogNachrichten("Alexa/VoiceControl : Group ".IPS_GetName($variableId)." (".$variableId.")   ".GetValueIfFormattedEx($variableId,$_IPS['VALUE'])." .");
 				IPSHeat_SetGroup($variableId, $value);
 				break;
 			case 'Programs':

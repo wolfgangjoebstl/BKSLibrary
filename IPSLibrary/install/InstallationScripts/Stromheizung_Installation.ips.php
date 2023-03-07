@@ -43,8 +43,7 @@
 	 *
 	 **************************************************************/
 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');    
+	IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');    
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -281,7 +280,7 @@ Path=Visualization.Mobile.Stromheizung
 		echo "  Path          : ".$Retro_Path."\n";		
 		}
 		
-	$WFC10_Regenerate     = true;			// das Webfront im Konfigurator neu aufbauen
+	$WFC10_Regenerate     = false;			// das Webfront im Konfigurator neu aufbauen
 	$mobile_Regenerate    = true;			// das mobile Webfront nicht neu aufbauen
 			
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -649,7 +648,7 @@ Path=Visualization.Mobile.Stromheizung
 	 *  $WFC10_Enabled       Webfront aufbauen
      *  $WFC10_Path          das ist die Kategorie wo die Links reinkommen, beginnt bei Visualization.Webfront oder Visualization.Mobile
      *                       in der ini steht zumindesten Administrator.Stromheizung
-     *  $WFC10_Regenerate    Kategorie $WFC10_Path komplett löschen
+     *  $WFC10_Regenerate    Kategorie $WFC10_Path komplett löschen, kann hier auf Zeile 285 ein/ausgeschaltet werden
      *  $WFC10_ConfigId      so kann man das WFC ansprechen Administrator/User etc.
      *  $WFC10_TabPaneItem   interner Name für das Webfront, nur in der WFC vorhanden
      *  $WFC10_TabPaneParent aso. Parameters to setup a TabPane
@@ -673,6 +672,7 @@ Path=Visualization.Mobile.Stromheizung
 			DeleteWFCItems($WFC10_ConfigId, $WFC10_TabPaneItem);				// HeatTPA
 			//DeleteWFCItems($WFC10_ConfigId, 'Light_TP');		/* eventuell alte Installationen von IPS_light wegraeumen */
 			}
+        echo "Tab Pane mit HeatTPA machen : CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon)\n";    
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);   // Tab Pane mit HeatTPA machen
 
         /* $webFrontConfig is an array with setup of tabpane
@@ -697,10 +697,12 @@ Path=Visualization.Mobile.Stromheizung
 				switch($WFCItem[0]) 
 					{
 					case IPSHEAT_WFCSPLITPANEL:
+						echo "CreateWFCItemSplitPane ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2] ,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9])\n";
 						CreateWFCItemSplitPane ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
 						break;
 					case IPSHEAT_WFCCATEGORY:
 						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+						echo "CreateWFCItemCategory ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2],$order, $WFCItem[3],$WFCItem[4], $categoryId, false)\n";
 						CreateWFCItemCategory ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
 						break;
 					case IPSHEAT_WFCGROUP:

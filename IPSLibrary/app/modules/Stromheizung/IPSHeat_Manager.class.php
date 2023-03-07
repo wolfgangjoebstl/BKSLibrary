@@ -80,6 +80,7 @@
 		 * ID Kategorie mit Programmen
 		 */
 		private $programCategoryId,$lightProgramCategoryId;
+        private $configuration;                                         // configuration
 
 		/**
 		 * @public
@@ -102,8 +103,19 @@
 				$this->lightProgramCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId);
 				}
 			$this->ipsOps = new ipsOps();
+            $this->configuration["donotupdateSwitch"]=false;
+
 			/* Vorbereitung für ein Sync zwischen IPSHeat und IPSLight, aber nicht zurück */
 		}
+
+        /* Configuration Handling einführen
+         *
+         */
+        public function setConfiguration($state)
+            {
+            $this->configuration["donotupdateSwitch"]=$state;
+            }
+
 
 		/**
 		 * @public
@@ -215,7 +227,7 @@
 							$this->SetSwitch($variableId, $value, true, true, $debug);
 							break;
 						case IPSHEAT_TYPE_DIMMER:
-							if ($debug) echo "IPS_HeatManager SetValue Type Dimmer SetDimmer; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
+							if ($debug) echo "IPS_HeatManager SetValue Type Dimmer SetDimmer($variableId (".IPS_GetName($variableId)."),$value)\n";
 							$this->SetDimmer($variableId, $value);
 							break;
 						case IPSHEAT_TYPE_RGB:
@@ -291,9 +303,11 @@
 		 * @param bool $value Neuer Wert der Variable
 		 */
 		public function SetDimmer($variableId, $value, $syncGroups=true, $syncPrograms=true) {
-			if (GetValue($variableId)==$value) {
+			if (GetValue($variableId)==$value) 
+                {
 				return;
-			}
+			    }
+            // Rückrechnen switchID und LevelID mit den aktuellen Werten von Switch und Level
 			$configName   = $this->GetConfigNameById($variableId);
 			$configLights = IPSHeat_GetHeatConfiguration();
 			$switchId     = IPS_GetVariableIDByName($configName, $this->switchCategoryId);
@@ -304,20 +318,30 @@
 			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
 			$component       = IPSComponent::CreateObjectByParams($componentParams);
 
-			if ($variableId==$levelId) {
-			   if (!$switchValue and $value>0) {
-				   SetValue($switchId, true);
-			   } else if ($switchValue and $value==0) {
-				   SetValue($switchId, false);
-			   } else {
-			   }
-			   if (GetValue($levelId) > 100) { $value = 100; }
+            // Auto On/off wenn Level gesetzt wird
+			if ($variableId==$levelId)                              // es wird nur der Level gesetzt
+                {
+			    if (!$switchValue and $value>0) 
+                    {
+				    if ($this->configuration["donotupdateSwitch"]==false) SetValue($switchId, true);                      // Wenn Level größer Null auch gleichzeitig einschalten
+			        } 
+                elseif ($switchValue and $value==0)                 // wenn eingeschaltet und der Level ist 0 ausschalten
+                    {
+				    if ($this->configuration["donotupdateSwitch"]==false) SetValue($switchId, false);
+			        } 
+                else 
+                    {
+			        }
+			    if (GetValue($levelId) > 100) { $value = 100; }     // level begrenzen 0 bis 100
 				if (GetValue($levelId) < 0)   { $value = 0; }
-			} else {
-			   if ($value and $levelValue==0) {
-			      SetValue($levelId, 15);
-			   }
-			}
+			    } 
+            else                                                    // es wird der Schalter gesetzt
+                {
+			    if ($value and $levelValue==0) 
+                    {
+			        SetValue($levelId, 15);         // Wenn ein und Level aktuell auf 0 auf 15% setzen
+			        }
+			    }
 			SetValue($variableId, $value);
 
 			$switchValue  = GetValue($switchId);
@@ -1022,14 +1046,15 @@
 							/* die ganze Konfiguration durchgehen. Aber nicht alle haben zB #Level */
 							$switchId      = IPS_GetVariableIDByName($switchName.$NameExt, $this->switchCategoryId);
 							$switchInGroup = array_key_exists($groupName, array_flip(explode(',', $deviceData[IPSHEAT_GROUPS])));
-							//if ($switchInGroup) echo "   ".$switchName.$NameExt."   ".IPS_GetName($switchId)." = ".GetValue($switchId)." Sollwert : ".$groupState."\n";
+							if ($switchInGroup) echo "         ".$switchName.$NameExt."   ".IPS_GetName($switchId)." = ".GetValue($switchId)." Sollwert : ".$groupState."\n";
 							if ($switchInGroup and GetValue($switchId)<>$groupState) 
 								{
 								IPSLogger_Trc(__file__, "SetAllSwitchesByGroup: Set Heat ".$switchName.$NameExt."=".$groupState." for Group '".$groupName."'");
 								if ($debug) 
                                     {
-                                    echo "       SetAllSwitchesByGroup: Set Heat ".$switchName.$NameExt."=".$groupState." for Group '".$groupName."'\n";
-                                    echo "       SetAllSwitchesByGroup: Set Heat $switchName=".($groupState?'On':'Off')." for Group $groupName .";
+                                    //echo "       SetAllSwitchesByGroup: Set Heat ".$switchName.$NameExt."=".$groupState." for Group '".$groupName."'\n";
+                                    //echo "       SetAllSwitchesByGroup: Set Heat $switchName=".($groupState?'On':'Off')." for Group $groupName .";
+                                    echo "                    SetValue($switchId, $groupState,...) ";
                                     if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit aktuell: '.$duration.' Millisekunden.'."\n"; }
                                     else echo "\n";
                                     }

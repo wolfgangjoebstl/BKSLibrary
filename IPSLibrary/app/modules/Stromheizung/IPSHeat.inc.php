@@ -26,7 +26,27 @@
 	 *  Version 2.50.1, 26.07.2012<br/>
 	 *
 	 * IPSLight API
-	 *
+     *
+     * Vom Webfront aufgerufen
+     *      IPSHeat_SetValue
+     *      IPSHeat_SetGroup
+     *      IPSHeat_SetProgram
+     *
+     * Liste aller Funktionen
+     *      IPSHeat_SetValue
+     *      IPSHeat_SetSwitch
+	 *      IPSHeat_ToggleSwitch
+     *      IPSHeat_SetDimmerAbs
+     *      IPSHeat_SetDimmerRel
+     *      IPSHeat_SetGroup
+     *      IPSHeat_ToggleGroup
+     *      IPSHeat_SetProgram
+     *      IPSHeat_SetProgramNext
+     *      IPSHeat_SetSwitchByName
+     *      IPSHeat_ToggleSwitchByName
+     *
+     *
+     *
 	 */
 
 	IPSUtils_Include ("IPSLogger.inc.php",                  "IPSLibrary::app::core::IPSLogger");
@@ -189,8 +209,9 @@
 	 */
 	function IPSHeat_SetGroupByName($groupName, $value, $debug=false) {
 		$lightManager = new IPSHeat_Manager();
+        $lightManager->setConfiguration(true);                      // ["donotupdateSwitch"]==false schaltet bei level Änderung auch gleich ein/aus
 		$groupId = $lightManager->GetGroupIdByName($groupName);
-        if ($debug) echo "Aufruf von SetGroup mit $groupId und $value.\n";
+        if ($debug) echo "IPSHeat_SetGroupByName, Aufruf von SetGroup mit $groupId und $value.\n";
         $syncGroups=true; $syncPrograms=true;
 		$lightManager->SetGroup($groupId, $value, $syncGroups, $syncPrograms, $debug);
 	}

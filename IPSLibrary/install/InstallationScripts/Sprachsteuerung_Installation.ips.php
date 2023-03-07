@@ -23,7 +23,10 @@
 	 *
      *  lokal über einen IP Symcon Mediaplayer ausgegeben wird
      *  remote über einen IP Symcon Mediaplayer eines anderen Servers 
-     *  über eine Alexa Instanz
+     *  über eine Alexa Instanz EchoIO (wenn vorhanden, da aktuell nicht mehr verfügbar)
+     *  Echo Remote Control II
+     *  AWS Polly, Durchsage
+     *  
      *
      * legt in SystemTP ein eigenes Tab an um Infos zu geben was gerade gesprochen wird. Wenn Silent Mode ein ist erfolgt keine Ausgabe.
      * mit den Alexas kann auch ein Radiosender von TuneIn abgespielt werden, Modul EchoControl ist erforderlich
@@ -108,9 +111,13 @@
 		$OperationCenter=new OperationCenter($subnet);		
 		echo "Modul OperationCenter ist installiert, Systeminfo auslesen:\n";
 		$results=$OperationCenter->SystemInfo();
-		$result=trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," ")));
-		$Version=explode(".",$result)[2];
-		echo "Win10 Betriebssystemversion : ".$Version."\n\n";
+        if (isset($results["Betriebssystemversion"]))
+            {
+            $result=trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," ")));
+            print_R($result);
+            $Version=explode(".",$result)[2];
+            echo "Win10 Betriebssystemversion : ".$Version."\n\n";
+            }
 		}
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");

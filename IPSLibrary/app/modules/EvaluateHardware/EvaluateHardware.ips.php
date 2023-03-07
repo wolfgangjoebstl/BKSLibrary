@@ -643,6 +643,7 @@ IPS_SetEventActive($tim1ID,true);
         echo "Jetzt noch einmal den ganzen DetectDevice Event table sortieren, damit Raumeintraege schneller gehen :\n";
         $configuration=$DetectDeviceHandler->Get_EventConfigurationAuto();
         echo "    Nachdem die Config ausgelesen wurde, die Events sortieren.\n";
+        //print_R($configuration);
         $configurationNew=$DetectDeviceHandler->sortEventList($configuration);
         echo "    Und wieder in der Config abspeichern.\n";
         $DetectDeviceHandler->StoreEventConfiguration($configurationNew);
