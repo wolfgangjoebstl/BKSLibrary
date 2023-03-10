@@ -76,6 +76,8 @@
         private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
         private $debug;                 // zusaetzliche hilfreiche Debugs
 
+        public $result;                 // Array mit aktuellen zusätzlichen Ergebnissen
+
         private $ipsOps,$dosOps;
 		
 		/**
@@ -99,6 +101,7 @@
             $this->systemDir     = $this->dosOps->getWorkDirectory();
 
 			$this->MeterConfig = $this->setMeterConfig();
+            $this->result=array();                                        // init Ergebnis Variable result
 			}
 
         /* aus der offiziellen Config die deaktivierten Zähler herausfiltern, kommen gar nicht soweit
@@ -247,7 +250,7 @@
 
         public function getRegisterIDbyConfig($meter,$identifier,$debug=false)
             {
-            echo "getRegisterIDbyConfig(".json_encode($meter).", $identifier\n";                
+            if ($debug) echo "getRegisterIDbyConfig(".json_encode($meter).", $identifier\n";                
             $LeistungID=false;                
             switch (strtoupper($meter["TYPE"]))
                 {
@@ -260,7 +263,7 @@
                     break;
                 case "DAILYREAD":
                     if ($identifier=="Wirkenergie") $LeistungID=$meter["WirkenergieID"];
-                    print_R($meter);  
+                    //print_R($meter);  
                     break;
                 case "AMIS":
                     $AmisID = IPS_GetObjectIDByName( "AMIS", $ID);
@@ -272,7 +275,7 @@
                     break;
                 default:
                     echo "Warnung, Match aber kein Eintrag für den Typ ".$meter["TYPE"]."\n";  
-                    print_R($meter);  
+                    //print_R($meter);  
                     break;
                 }
             return ($LeistungID);
@@ -2293,51 +2296,80 @@
             return ($maxwert);
             }
 
-        /* aggregate Power to Energy
+        /* check Config für aggregate15minPower2Energy
+         *
+         */
+        function setConfigAggregate15min($configInput,$meter)
+            {
+            $config=array();
+            configfileParser($configInput,$config,["Update","UPDATE","update"],"Update",false);          //Update Function
+            configfileParser($configInput,$config,["StartTime","Starttime","STARTTIME","starttime"],"StartTime",strtotime("-60days"));  
+            configfileParser($configInput,$config,["Aggregated","AGGREGATED","aggregated"],"Aggregated",false); 
+            configfileParser($configInput,$config,["manAggregate","MANAGGREGATE","managgregate","ManAggregate"],"manAggregate","daily"); 
+            $inputId=false;
+            if ( (strtoupper($meter["TYPE"])=="DAILYLPREAD") && (isset($meter["LeistungID"])) )
+                {
+                $inputId = $meter["LeistungID"];
+                }
+            configfileParser($configInput,$config,["InputID","INPUTID","inputid","InputId"],"InputID",$inputId); 
+            $outputId=false;
+            if ( (strtoupper($meter["TYPE"])=="DAILYLPREAD") && (isset($meter["WirkenergieID"])) )
+                {
+                $outputId = $meter["WirkenergieID"];
+                }
+            configfileParser($configInput,$config,["OutputID","OUTPUTID","outputid","OutputId"],"OutputID",$outputId);             
+            configfileParser($configInput,$config,["OutputCounterID","OUTPUTCOUNTERID","outputcounterid","OutputcounterId"],"OutputCounterID",false);
+            return ($config);              
+            }
+
+        /* aggregate 15min Power Werte to EnergyDaily Wert
+         * funktioniert nur wenn meter.TYPE auf DAILYLPREAD steht
          * read $meter["LeistungID"] ist der Input, wird manuell auf Tageswerte umgerechnet
          * und mit getWirkenergieID($meter) verglichen
-         * 
+         *
+         * config Parameter:
+         *      Update
+         *      StartTime
+         *      Aggregated
+         *      manAggregate
+         *      InputID                 Eingabe OID, wenn nicht angegeben, dann aus der Config nehmen
+         *      OutputID                Ausgabe OID, wenn nicht angegeben, dann aus der Config nehmen
          */
 
         function aggregate15minPower2Energy($meter,$update=false,$debug=false)
             {
+            $debug1=$debug;
             if (is_array($update))
                 {
-                $config=array();
-                configfileParser($update,$config,["Update","UPDATE","update"],"Update",false);          //Update Function
-                configfileParser($update,$config,["StartTime","Starttime","STARTTIME","starttime"],"StartTime",strtotime("-60days"));
-
-                // wichtige Werte vorerst überschreiben
-                $update=true;  
-                $config["Aggregated"]   = false;                      // false oder daily : Aggregation auf Tageswerte, erstellt von IP Symcon, funktioniert nicht mit Leistungswerten
-                $config["manAggregate"] = "daily";                      
+                $config=$this->setConfigAggregate15min($update,$meter);
+                $update=$config["Update"];  
                 }
-            else
+            else            // keine Config mitgegeben
                 {
-                $config=array();
-                $config["Aggregated"]   = false;                      // false oder daily : Aggregation auf Tageswerte, erstellt von IP Symcon, funktioniert nicht mit Leistungswerten
-                $config["manAggregate"] = "daily";
-                $config["StartTime"]    = strtotime("-60days");            // die letzten 120 Tage nachbearbeiten   
-                $config["Update"]       = $update;
+                $configInput =["Update" => $update];                    
+                $config=$this->setConfigAggregate15min($configInput,$meter);
                 }
+
+            if ($debug) echo "aggregate15minPower2Energy, mit Config ".json_encode($config)." aufgerufen.\n";
             //$update=false;      //Testbetrieb überschreiben    
+
             if (strtoupper($meter["TYPE"])=="DAILYLPREAD")
                 {
-                if ($debug) echo "aggregate15minPower2Energy, Werte von DailyLPRead ".$meter["NAME"]." 15 Min Werte in Tageswerte umrechnen. Es gibt eine Aggregate Funktion.\n";
+                if ($debug) echo "   Werte von DailyLPRead ".$meter["NAME"]." 15 Min Werte in Tageswerte umrechnen. Es gibt eine Aggregate Funktion.\n";
                 $archiveOps = new archiveOps(); 
                 $archiveID = $archiveOps->getArchiveID(); 
                 $ipsOps = new ipsOps();
                 // Inputwerte einsammeln und manuell aggregierte Tageswerte ermitteln und in Variable ergebnis speichern
-                if (isset($meter["LeistungID"]) ) 
+                if ($config["InputID"]) 
                     {
-                    $oid = $meter["LeistungID"];
+                    $oid = $config["InputID"];
                     if ($debug) echo "   Leistungs Register $oid ".$ipsOps->path($oid)." mit Wert ".nf(GetValue($oid),"W")." ist bekannt.\n";
-                    $ergebnis = $archiveOps->getValues($oid,$config,$debug);          // Debug Level true,1,2,3 
+                    $ergebnis = $archiveOps->getValues($oid,$config,$debug1);          // Debug Level true,1,2,3 
                     if ($ergebnis===false) $ergebnis=["Values" => [],];                 // wenn empty, dann eine Annahme mit einem leeren Array machen
                     if ($debug) 
                         {
-                        echo "   Archivierte Werte bearbeiten:\n";                    
-                        $archiveOps->showValues($ergebnis["Values"],[],$debug); 
+                        echo "   Archivierte Werte bearbeiten, show ".count($ergebnis["Values"]).":\n";                    
+                        //$archiveOps->showValues($ergebnis["Values"],[],$debug); 
                         }
                     //print_R($ergebnis["Values"]);             // array mit TimeStamp und Value
                     $timestamp = strtotime("-1days");           // genau einen Tag zurück
@@ -2350,112 +2382,250 @@
                         else echo "   Gestern : ".date("d.m.Y H:i:s",$timestamp)." wurde kein aggregierter Tageswert ermittelt.\n";
                         }
                     }
-                // Leistung fertig, was ist mit der Wirkenergie
-                unset($config["manAggregate"]);
-                $variableID = $this->getWirkenergieID($meter); 
-                if ($debug)
+                else echo "Warning, meter LeistungID not known, no calculations executed.\n";
+                if ($config["OutputID"]) 
                     {
-                    echo "   --------------------------------\n";
-                    echo "   Zielregister Wirkenergie $variableID (".$ipsOps->path($variableID).") auch noch anschauen:\n";          // wie bei parsedreiguthaben EVN getKnownData
-                    }
-                $ergebnisEnergie = $archiveOps->getValues($variableID,$config,$debug);      // warum erst manual Aggregate, false debug Level
-                if ($ergebnisEnergie===false) $ergebnisEnergie=["Values" => [],];
-                //$ergebnisEnergie = $archiveOps->getValues($oid,$config,2);      // warum erst manual Aggregate
-                //print_r($ergebnisEnergie["Values"]);
-                if ($debug)
-                    {
-                    echo "--------------------------------\n";                
-                    $archiveOps->showValues($ergebnisEnergie["Values"],[],$debug);                //true für Debug
-                    }
-                // berechnete tagesenergiewerte nach Zeitstempel indexieren, doppelte Werte zum löschen markieren    
-                $timeStampknown=array();
-                $deleteIndex=array(); $d=0;
-                if ((isset($ergebnisEnergie["Values"])) && (count($ergebnisEnergie["Values"])>0)) 
-                    {
-                    foreach ($ergebnisEnergie["Values"] as $wert) 
-                        {  
-                        $timeStamp=strtotime(date("d.m.Y",$wert["TimeStamp"]));
-                        if ($timeStamp != $wert["TimeStamp"])                           // im Archive müssen alle Werte auf 00:00 stehen
-                            {
-                            echo "falscher Timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])." im Archive.\n";
-                            $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
-                            $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
-                            $d++;
-                            }                        
-                        if (isset($timeStampknown[$timeStamp]))  // es können mehrere Werte an einem tag sein, doppelte Werte rausfinden, Timestamp auf 00:00 des Tages stellen
-                            {
-                            echo "Zeitstempel ".date("d.m.Y H:i:s",$timeStamp)." mit Wert ".$timeStampknown[$timeStamp]." soll mit Zeitstempel ".date("d.m.Y H:i:s",$wert["TimeStamp"])." mit Wert ".$wert["Value"]." überschrieben werden. Hier löschen.\n";   
-                            $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
-                            $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
-                            $d++;
-                            }  
-                        else $timeStampknown[$timeStamp]=$wert["Value"];
-                        }
-                    }
-                // die Ergebniswerte für die Energie nach timestamps indexieren und mit Ergebnis (also den aggregierten tageswerten) vergleichen
-                $input=array();
-                $count=0;
-                if ((isset($ergebnis["Values"])) && (count($ergebnis["Values"])>0)) 
-                    {  
-                    foreach ($ergebnis["Values"] as $wert) 
+                    // Leistung fertig, was ist mit der Wirkenergie
+                    unset($config["manAggregate"]);
+                    //$variableID = $this->getWirkenergieID($meter); 
+                    $variableID = $config["OutputID"];                          // Ein Energie Register mit tageswerten, kein Counter
+                    if ($debug)
                         {
-                        if (isset($wert["TimeStamp"]))          // da kommt noch mehr
+                        echo "   --------------------------------\n";
+                        echo "   Zielregister, Tageswerte Wirkenergie $variableID (".$ipsOps->path($variableID).") auch noch anschauen:\n";          // wie bei parsedreiguthaben EVN getKnownData
+                        }
+                    $ergebnisEnergie = $archiveOps->getValues($variableID,$config,$debug);      // warum erst manual Aggregate, false debug Level
+                    if ($ergebnisEnergie===false) $ergebnisEnergie=["Values" => [],];
+                    //$ergebnisEnergie = $archiveOps->getValues($oid,$config,2);      // warum erst manual Aggregate
+                    //print_r($ergebnisEnergie["Values"]);
+                    if ($debug)
+                        {
+                        echo "--------------------------------\n";                
+                        $archiveOps->showValues($ergebnisEnergie["Values"],[],$debug);                //true für Debug
+                        }
+                    $timeStampknown=array();
+                    $deleteIndex = $this->cleanupValuesOnEnergyDaily($timeStampknown, $ergebnisEnergie["Values"]);           // berechnete Tagesenergiewerte nach Zeitstempel indexieren, doppelte Werte zum löschen markieren    
+                    /* $deleteIndex=array(); $d=0;
+                    if ((isset($ergebnisEnergie["Values"])) && (count($ergebnisEnergie["Values"])>0)) 
+                        {
+                        foreach ($ergebnisEnergie["Values"] as $wert) 
+                            {  
+                            $timeStamp=strtotime(date("d.m.Y",$wert["TimeStamp"]));
+                            if ($timeStamp != $wert["TimeStamp"])                           // im Archive müssen alle Werte auf 00:00 stehen
+                                {
+                                echo "falscher Timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])." im Archive. Wird gelöscht muss ".date("d.m.Y H:i:s",$timeStamp)."\n";
+                                $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
+                                $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
+                                $d++;
+                                }                        
+                            if (isset($timeStampknown[$timeStamp]))  // es können mehrere Werte an einem tag sein, doppelte Werte rausfinden, Timestamp auf 00:00 des Tages stellen
+                                {
+                                echo "Zeitstempel ".date("d.m.Y H:i:s",$timeStamp)." mit Wert ".$timeStampknown[$timeStamp]." soll mit Zeitstempel ".date("d.m.Y H:i:s",$wert["TimeStamp"])." mit Wert ".$wert["Value"]." überschrieben werden. Hier löschen.\n";   
+                                $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
+                                $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
+                                $d++;
+                                }  
+                            else $timeStampknown[$timeStamp]=$wert["Value"];
+                            }
+                        } */
+                    // die Ergebniswerte für die Energie nach timestamps indexieren und mit Ergebnis (also den aggregierten tageswerten) vergleichen
+                    $d=count($deleteIndex);
+                    $input=array();
+                    $count=0;
+                    if ((isset($ergebnis["Values"])) && (count($ergebnis["Values"])>0)) 
+                        {  
+                        foreach ($ergebnis["Values"] as $wert) 
                             {
-                            if (isset($timeStampknown[$wert["TimeStamp"]])) 
+                            if (isset($wert["TimeStamp"]))          // da kommt noch mehr
                                 {
-                                if ($timeStampknown[$wert["TimeStamp"]] != $wert["Value"]) 
+                                if (isset($timeStampknown[$wert["TimeStamp"]])) 
                                     {
-                                    echo "Werte bei timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])."ungleich:  ".$timeStampknown[$wert["TimeStamp"]]."  ".$wert["Value"]." \n";
-                                    $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
-                                    $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
-                                    $d++;                                
+                                    if (round($timeStampknown[$wert["TimeStamp"]],3) != round($wert["Value"],3)) 
+                                        {
+                                        echo "Werte bei timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])." ungleich:  \"".$timeStampknown[$wert["TimeStamp"]]."\" != \"".$wert["Value"]."\" \n";
+                                        //var_dump($timeStampknown[$wert["TimeStamp"]]); var_dump($wert["Value"]);
+                                        $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
+                                        $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
+                                        $d++;                                
+                                        }
+                                    //if ($debug) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat bereits einen Eintrag ".$wert["Value"]." , überspringen.\n";
                                     }
-                                //if ($debug) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat bereits einen Eintrag ".$wert["Value"]." , überspringen.\n";
-                                }
-                            else
-                                {
-                                if ($debug) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat noch keinen Eintrag ".$wert["Value"]." einfügen.\n";
-                                $input[$count]["TimeStamp"] = $wert["TimeStamp"];
-                                $input[$count]["Value"] = $wert["Value"];
-                                $count++;
+                                else
+                                    {
+                                    if ($debug) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat noch keinen Eintrag ".$wert["Value"]." einfügen.\n";
+                                    $input[$count]["TimeStamp"] = $wert["TimeStamp"];
+                                    $input[$count]["Value"] = $wert["Value"];
+                                    $count++;
+                                    }
                                 }
                             }
                         }
-                    }
-                //print_r($input);
-                $delete=count($deleteIndex);
-                $i=0; $start=false; $displayMax=20;
+                    //print_r($input);
+                    $delete=count($deleteIndex);
+                    $i=0; $start=false; $displayMax=20;
 
-                echo "Delete Logged Values: $delete from archived Energy Daily Values in $variableID. No Counter.\n";
-                if ($config["Update"] && $delete) 
-                    {    
-                    foreach ($deleteIndex as $indexDel => $entry)
-                        {
-                        /*    
-                        if ($i++<$displayMax) echo "$indexDel Delete Archive entries ".date("d.m.Y H:i:s",$entry["Index"]).", which is between ".($entry["Index"]-1)." und ".($entry["Index"]+1)."\n";
-                        If ($start===false) $start=$entry["Index"];
-                        $end=$entry["Index"];
-                        // AC_DeleteVariableData (integer $InstanzID, integer $VariablenID, integer $Startzeit, integer $Endzeit)
-                        if ($i>2000) break;  */
-                        AC_DeleteVariableData ($archiveID, $variableID,$entry["EndTime"],$entry["StartTime"]);          // $start>$end
+                    echo "Delete Logged Values: $delete from archived Energy Daily Values in $variableID. No Counter.\n";
+                    if ($config["Update"] && $delete) 
+                        {    
+                        foreach ($deleteIndex as $indexDel => $entry)
+                            {
+                            /*    
+                            if ($i++<$displayMax) echo "$indexDel Delete Archive entries ".date("d.m.Y H:i:s",$entry["Index"]).", which is between ".($entry["Index"]-1)." und ".($entry["Index"]+1)."\n";
+                            If ($start===false) $start=$entry["Index"];
+                            $end=$entry["Index"];
+                            // AC_DeleteVariableData (integer $InstanzID, integer $VariablenID, integer $Startzeit, integer $Endzeit)
+                            if ($i>2000) break;  */
+                            AC_DeleteVariableData ($archiveID, $variableID,$entry["EndTime"],$entry["StartTime"]);          // $start>$end
+                            }
                         }
+                    else
+                        {
+                        echo "   No double entries.\n";
+                        }
+                    $add=count($input);
+                    echo "Add Logged Values: $add to archived Energy Daily Values in $variableID. No Counter.\n";
+                    if ($config["Update"] && $add)
+                        {
+                        $archiveID = $archiveOps->getArchiveID();
+                        $status=AC_AddLoggedValues($archiveID,$variableID,$input);
+                        //echo "Erfolgreich : $status \n";
+                        }
+                    if ($delete || $add) AC_ReAggregateVariable($archiveID,$variableID);    
                     }
-                else
+                else echo "no OutputID defined in config. Set Parameter OutputID accordingly.\n";
+                if ($config["OutputCounterID"])             // Tagesenergiezähler
                     {
-                    echo "   No double entries.\n";
+                    $variableID=$config["OutputCounterID"];
+                    echo "OutputCounterID found, $variableID ".$ipsOps->path($variableID)." mit Wert ".nf(GetValue($variableID),"kWh")." ist bekannt.\n";
+                    if (AC_GetAggregationType($archiveID,$variableID) == 1)
+                        {
+                        // schauen was es so gibt
+                        $timeStampknown=array();
+                        $ergebnisEnergieZaehler = $archiveOps->getValues($variableID,$config,$debug);      // warum erst manual Aggregate, false debug Level
+                        if ($ergebnisEnergieZaehler===false) 
+                            {
+                            $ergebnisEnergieZaehler=["Values" => [],];
+                            $startNewValue=9000;
+                            echo "No data found, start with $startValue kWh.\n";
+                            $first=0; $last=0;
+                            }
+                        else
+                            {
+                            if ($debug)
+                                {
+                                echo "--------------------------------\n";                
+                                $archiveOps->showValues($ergebnisEnergieZaehler["Values"],[],$debug);                //true für Debug
+                                }
+                            $deleteIndex = $this->cleanupValuesOnEnergyDaily($timeStampknown, $ergebnisEnergieZaehler["Values"]);           // berechnete Tagesenergiewerte nach Zeitstempel indexieren, doppelte Werte zum löschen markieren    
+                            ksort($timeStampknown);
+                            //print_R($timeStampknown); 
+                            $first=array_key_first($timeStampknown);
+                            $last=array_key_last($timeStampknown);
+                            $startNewValue=$timeStampknown[$last];
+                            echo "Daten sortiert nach timestamp von $first to $last .\n";
+                            }
+                        if ((isset($ergebnis["Values"])) && (count($ergebnis["Values"])>0)) 
+                            {  
+                            echo "Zaehlregister mit Tageswerten erzeugen.\n";
+                            $deleteIndex=array();
+                            $input=array();
+                            $add=0; $delete=count($deleteIndex);
+                            $countValue=0;$startValue=0;
+                            foreach ($ergebnis["Values"] as $index=>$wert) 
+                                {
+                                if (isset($wert["TimeStamp"]))         
+                                    {
+                                    $countValue+=$wert["Value"];
+                                    $ergebnis["Values"][$index]["Register"]=$countValue;
+                                    echo date("d.m.Y H:i:s",$wert["TimeStamp"])."   ".str_pad($wert["Value"],12)."    ".str_pad($countValue+$startValue,15)."   ";
+                                    if (isset($timeStampknown[$wert["TimeStamp"]])) 
+                                        {
+                                        //echo "found";
+                                        if ( (round($timeStampknown[$wert["TimeStamp"]],3) != round($countValue+$startValue,3)) && ($startValue==0) ) // adjust
+                                            {
+                                            $startValue=$timeStampknown[$wert["TimeStamp"]]-$countValue;
+                                            $startTimeStamp=$wert["TimeStamp"];
+                                            echo "adjusted ";
+                                            }
+                                        if  (round($timeStampknown[$wert["TimeStamp"]],3) != round($countValue+$startValue,3))  // check after adjust
+                                            {
+                                            echo "Werte bei timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])." ungleich:  \"".$timeStampknown[$wert["TimeStamp"]]."\" != \"".$countValue."\" ";
+                                            //var_dump($timeStampknown[$wert["TimeStamp"]]); var_dump($wert["Value"]);
+                                            $deleteIndex[$delete]["StartTime"]=$wert["TimeStamp"];
+                                            $deleteIndex[$delete]["EndTime"]  =$wert["TimeStamp"];
+                                            $delete++;                                
+                                            }
+                                        //if ($debug) echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat bereits einen Eintrag ".$wert["Value"]." , überspringen.\n";
+                                        }
+                                    else
+                                        {
+                                        if ($startValue==0)
+                                            {
+                                            if ($wert["TimeStamp"]>$last) $startValue=$startNewValue;
+                                            else 
+                                                {
+                                                echo "Warning, did not consider that , break\n";
+                                                return (false);
+                                                }
+                                            }
+                                        echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat noch keinen Eintrag $countValue einfügen.";
+                                        $input[$add]["TimeStamp"] = $wert["TimeStamp"];
+                                        $input[$add]["Value"] = $countValue;                            // relativ, finally it is plus startValue
+                                        $add++;
+                                        }
+                                    echo "\n";
+                                    }
+
+                                }
+                            if ($config["Update"] && $add)
+                                {
+                                foreach ($input as $index => $entry) $input[$index]["Value"]+=$startValue;
+                                echo "Add Logged Values: $add to archived Energy Daily Values in $variableID.\n";
+                                $archiveID = $archiveOps->getArchiveID();
+                                //$status=AC_AddLoggedValues($archiveID,$variableID,$input);
+                                //echo "Erfolgreich : $status \n";
+                                }
+                            if ($delete || $add) AC_ReAggregateVariable($archiveID,$variableID);                                    
+                            }
+                        }
+                    else "Aggregation Type ist kein Zähler.\n";
                     }
-                $add=count($input);
-                echo "Add Logged Values: $add to archived Energy Daily Values in $variableID. No Counter.\n";
-                if ($config["Update"] && $add)
-                    {
-                    $archiveID = $archiveOps->getArchiveID();
-                    $status=AC_AddLoggedValues($archiveID,$variableID,$input);
-                    //echo "Erfolgreich : $status \n";
-                    }
-                if ($delete || $add) AC_ReAggregateVariable($archiveID,$variableID);    
                 }
             else echo "aggregate15minPower2Energy: wrong Type ".strtoupper($meter["TYPE"])." shall be DAILYLPREAD.\n";
             } 
+
+        /* cleanupValuesOnEnergyDaily
+         * berechnete Tagesenergiewerte nach Zeitstempel indexieren, doppelte Werte zum löschen markieren
+         * liefert eine Tabelle TimeStampKnown mit Index Zeitstemple 
+         */
+        private function cleanupValuesOnEnergyDaily(&$timeStampknown, $ergebnisEnergie)
+            { 
+
+                    $deleteIndex=array(); $d=0;
+                    if ((isset($ergebnisEnergie)) && (count($ergebnisEnergie)>0)) 
+                        {
+                        foreach ($ergebnisEnergie as $wert) 
+                            {  
+                            $timeStamp=strtotime(date("d.m.Y",$wert["TimeStamp"]));
+                            if ($timeStamp != $wert["TimeStamp"])                           // im Archive müssen alle Werte auf 00:00 stehen
+                                {
+                                echo "falscher Timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])." mit Wert ".$wert["Value"]." im Archive. Wird gelöscht muss ".date("d.m.Y H:i:s",$timeStamp)." sein.\n";
+                                $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
+                                $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
+                                $d++;
+                                }                        
+                            if (isset($timeStampknown[$timeStamp]))  // es können mehrere Werte an einem tag sein, doppelte Werte rausfinden, Timestamp auf 00:00 des Tages stellen
+                                {
+                                echo "Zeitstempel ".date("d.m.Y H:i:s",$timeStamp)." mit Wert ".$timeStampknown[$timeStamp]." soll mit Zeitstempel ".date("d.m.Y H:i:s",$wert["TimeStamp"])." mit Wert ".$wert["Value"]." überschrieben werden. Hier löschen.\n";   
+                                $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
+                                $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
+                                $d++;
+                                }  
+                            else $timeStampknown[$timeStamp]=$wert["Value"];
+                            }
+                        }
+            return ($deleteIndex);
+            }
 
     /******************************************************************************************************************/
 
@@ -2526,7 +2696,7 @@
         *
         * Gemeinschaftsfunktion, fuer die manuelle Aggregation von historisierten Daten, vergleiche Versionen in Allgemeinedefinitionen und archive class
         *
-        * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, 
+        * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, Anzahl der Werte, Variable OID, Debug
         * estimate   false ohne Hochrechnung, abgelöst durch count
         * count      false, oder anzahl der maximal berücksichtigten Werte für die Summe
         * Parameter  increment_var muss immer 1 sein.
@@ -2547,7 +2717,7 @@
                 }
             $zaehler=0;
             $ergebnis=0;
-            $increment=(integer)$increment_var;
+            $increment=(integer)$increment_var;         // Art der Berechnung 0,1,2
             $countAct=0;
                 
             do {
@@ -2600,9 +2770,22 @@
                     
                 } while (count($aggWerte)==10000);		
             if ($debug) echo "   Variable: ".IPS_GetName($variableID)." mit ".$aggAnzahl." Tageswerten, davon berücksichtigt $count und ".$ergebnis." als aggregiertes Ergebnis.\n";
+            $this->result["Function"]="summestartende";
+            $this->result["Count"]=$count;
+            $this->result["DailyValues"]=$aggAnzahl;
+            $this->result["VariableID"]=$variableID;
             return $ergebnis;
             }
 
+        /* zusätzliche Ergebnisse der berechnungen übermitteln, implementiert für
+         *      summestartende
+         *
+         *
+         */
+        public function getFunctionResult()
+            {
+            return ($this->result);
+            }
 			
 		}  // ende class
 

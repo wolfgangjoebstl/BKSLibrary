@@ -412,8 +412,8 @@ $cutter=true;
                 $variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
                 //IPS_SetVariableCustomProfile($variableID,'~Electricity');
                 AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
-                if (strtoupper($meter["TYPE"])=="REGISTER") AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
-                else AC_SetAggregationType($archiveHandlerID,$variableID,0);                                            /* Registerwert aus dem Smart Meter Webportal */
+                AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
+                // AC_SetAggregationType($archiveHandlerID,$variableID,0);                                            /* Registerwert aus dem Smart Meter Webportal muss in Guthaben stehen */
                 IPS_ApplyChanges($archiveHandlerID);
                 
                 $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */

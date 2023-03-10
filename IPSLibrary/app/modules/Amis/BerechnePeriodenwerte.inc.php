@@ -10,10 +10,18 @@
      * mittlerweile auch einfache Register und Werte aus einem Smart Meter Webportal
      * welche gibt die AMIS Config vor.
      *
-     * diese Routine wird nur einmal am Tag um 1:45 aufgerufen, für einen 24 Stundenwert muss ein anderes Script verwendet werden
+     * diese Routine wird nur einmal am Tag um 1:45 aufgerufen, für einen 15min aktuellen 24 Stundenwert muss ein anderes Script verwendet werden
+     * berechnet Tages, Wochen, Monats und Jahreswert, gibt die Datenqualität an
+     * dafür verwendet summstartende, debug Tiefe kann man am Anfang setzen
+     *
+     *
+     * Homematic und Co haben Energiezählregister mit aufsteigenden Werten, Speicherung im Archiv als Zähler. Das hat Einfluss auf die Aggregation bei der Visualisierung
 	 *
      * Smart Meter Webportalwerte haben keine Energieregister als Zähler sondern Einzelverbrauchs- oder Leistungsmittelwerte
      * die Werte am Webportal stehen erst ab Mittag für den Vortag zur Verfügung. Aus Leistungsmittelwerten sind zusätzlich Tageswerte zu ermitteln
+     *
+     * Zusätzlich gibt es die Möglichkeit csv Dateien einzulesen, abhängig vom Format aus unterschiedlichen Source Verzeichnissen
+     * Diese 15min Werte kann man in einen Counter umwandeln, erfordert aber einen Ausgangswert, sicherstellen das zumindest der älteste Zählerwert eingetragen ist
 	 *
 	 * @file      
 	 * @author        Wolfgang Joebstl
@@ -50,19 +58,20 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
     $MeterConfig = $Amis->getMeterConfig();
 
+    $debug=false; // kein SummestartEnde Debug, Wert kann sein: false, true/1,2,3 ...
     $Tag=1;
     $Monat=1;
     $Jahr=2011;
     //$variableID=30163;
 
     $ipsOps = new ipsOps();
-
+    $debug2=$debug;         //debug diese Funktion
     foreach ($MeterConfig as $meter)
         {
         echo"-------------------------------------------------------------\n";
         $ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-        echo "Create Variableset for : ".$meter["NAME"]." vom Typ ".$meter["TYPE"]." in $ID (".$ipsOps->path($ID).")\n";   
-        $variableID = $Amis->getWirkenergieID($meter); 
+        echo "Create Variableset for : ".$meter["NAME"]." vom Typ ".$meter["TYPE"]." in Kategorie $ID (".$ipsOps->path($ID).")\n";   
+        $variableID = $Amis->getWirkenergieID($meter);                      // sucht das register das Wirkenergie heisst
         if ($variableID)
             {
             $PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
@@ -93,7 +102,7 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
             //$ergebnis=summestartende2($starttime, $endtime, true,false,$archiveHandlerID,$variableID,$display);
             //echo "Ergebnis (alt) Wert letzter Tag : ".$ergebnis."kWh \n";
-        switch (strtoupper($meter["TYPE"]))
+            switch (strtoupper($meter["TYPE"]))
                 {
                 case "DAILYLPREAD":
                     echo "-----aggregate 15min Power Intervall data to Energy\n";
@@ -110,32 +119,36 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
             $starttime=$endtime-60*60*24*1;
             echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
             echo "Variable: ".IPS_GetName($variableID)."     ($variableID)\n";
-            $ergebnis=$Amis->summestartende($starttime, $endtime, true,1, $variableID,2);            // statt true eigentlich 0,1,2
-            echo "Ergebnis Wert     letzter Tag : ".number_format($ergebnis,3,",",".")."kWh \n";
+            $ergebnis=$Amis->summestartende($starttime, $endtime, true,1, $variableID,$debug2);            // statt true eigentlich 0,1,2
+            $result=$Amis->getFunctionResult();
+            echo "Ergebnis Wert     letzter Tag : ".str_pad(number_format($ergebnis,3,",",".")."kWh",45)."  ".$result["Count"]." Werte vor Aggregation auf Tageswerte berücksichtigt, ".$result["DailyValues"]." Tageswerte erzeugt. \n";
             SetValue($letzterTagID,$ergebnis);
             SetValue($letzterTagEurID,$ergebnis*GetValue($KostenID));
 
             $starttime=$endtime-60*60*24*7;
             //$ergebnis=summestartende2($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
             //echo "Ergebnis (alt) Wert letzte 7 Tage : ".$ergebnis."kWh \n";
-            $ergebnis=$Amis->summestartende($starttime, $endtime, true, 7, $variableID, 2);
-            echo "Ergebnis Wert letzte   7 Tage : ".str_pad((number_format($ergebnis,3,",",".")." kWh"),20)."  ".nf($ergebnis/7,"kWh")." pro Tag \n";
+            $ergebnis=$Amis->summestartende($starttime, $endtime, true, 7, $variableID, $debug2);
+            $result=$Amis->getFunctionResult();
+            echo "Ergebnis Wert letzte   7 Tage : ".str_pad((number_format($ergebnis,3,",",".")." kWh"),20)."  ".str_pad(nf($ergebnis/7,"kWh")." pro Tag",25).$result["Count"]." Werte vor Aggregation auf Tageswerte berücksichtigt, ".$result["DailyValues"]." Tageswerte erzeugt.\n";
             SetValue($letzte7TageID,$ergebnis);
             SetValue($letzte7TageEurID,$ergebnis*GetValue($KostenID));
 
             $starttime=$endtime-60*60*24*30;
             //$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
             //echo "Ergebnis (alt) Wert letzte 30 Tage : ".$ergebnis."kWh \n";
-            $ergebnis=$Amis->summestartende($starttime, $endtime, true, 30, $variableID,1);
-            echo "Ergebnis Wert letzte  30 Tage : ".str_pad((number_format($ergebnis,3,",",".")." kWh"),20)."  ".nf($ergebnis/30,"kWh")." pro Tag \n";
+            $ergebnis=$Amis->summestartende($starttime, $endtime, true, 30, $variableID,$debug2);
+            $result=$Amis->getFunctionResult();
+            echo "Ergebnis Wert letzte  30 Tage : ".str_pad((number_format($ergebnis,3,",",".")." kWh"),20)."  ".str_pad(nf($ergebnis/30,"kWh")." pro Tag",25).$result["Count"]." Werte vor Aggregation auf Tageswerte berücksichtigt, ".$result["DailyValues"]." Tageswerte erzeugt.\n";
             SetValue($letzte30TageID,$ergebnis);
             SetValue($letzte30TageEurID,$ergebnis*GetValue($KostenID));
 
             $starttime=$endtime-60*60*24*360;
             //$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
             //echo "Ergebnis letzte 360 Tage von $starttime zu $endtime berechnen:\n";
-            $ergebnis=$Amis->summestartende($starttime, $endtime, true, 360, $variableID,1);
-            echo "Ergebnis Wert letzte 360 Tage : ".str_pad((number_format($ergebnis,3,",",".")."kWh"),20)."  ".nf($ergebnis/360,"kWh")." pro Tag \n";
+            $ergebnis=$Amis->summestartende($starttime, $endtime, true, 360, $variableID,$debug2);
+            $result=$Amis->getFunctionResult();
+            echo "Ergebnis Wert letzte 360 Tage : ".str_pad((number_format($ergebnis,3,",",".")."kWh"),20)."  ".str_pad(nf($ergebnis/360,"kWh")." pro Tag",25).$result["Count"]." Werte vor Aggregation auf Tageswerte berücksichtigt, ".$result["DailyValues"]." Tageswerte erzeugt.\n";
             SetValue($letzte360TageID,$ergebnis);
             SetValue($letzte360TageEurID,$ergebnis*GetValue($KostenID));
             }
@@ -144,6 +157,7 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
     if ( ($_IPS['SENDER'] == "Execute") && $execute)
         {
+        echo "\n\n\n";
         echo "-------------------------------------------------------------------------------------------\n";
         echo "        EXECUTE\n";
         echo "-------------------------------------------------------------------------------------------\n";
@@ -170,14 +184,41 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
             $ID = IPS_GetObjectIdByName($meter["NAME"],$CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
             echo "Get Variableset for : ".$meter["NAME"]." vom Typ ".$meter["TYPE"]." in $ID (".$ipsOps->path($ID).")\n";   
             $variableID = $Amis->getWirkenergieID($meter); 
-            $Amis->getArchiveData($variableID, $starttime, $endtime);                   // schneller Check ob Werte der letzten 24 Stunden da sind
+            $Amis->getArchiveData($variableID, $starttime, $endtime);                   // schneller Check ob Werte für Wirkenergie in den letzten 24 Stunden da sind, endtime ist jetzt und starttime minus duration
 
-            $variableID = $Amis->getZaehlervariablenID($meter, "Strom L1"); 
+            $variableID = $Amis->getZaehlervariablenID($meter, "Strom L1");             // Pseudocheck für Strom L1 only, ist sowieso im normalfall false
             if ($variableID !== false)
                 {
                 echo "WirkenergieID $variableID (".$ipsOps->path($variableID).")\n";  	
                 $Amis->getArchiveData($variableID, $starttime, $endtime, "A");                  // nur Ausgabe als echo, wenn überhaupt
                 }
+  
+            switch (strtoupper($meter["TYPE"]))
+                {
+                case "DAILYLPREAD":
+                case "DAILYREAD":
+                    $meter["TYPE"]="DAILYLPREAD";                           // fake dailyread, es gibt zwar nur Tageswerte, change meter Type to Update from 15min Values
+                    if (isset($meter["LeistungID"])===false) 
+                        {
+                        $inputID=$Amis->getWirkleistungID($meter,true);                //true for Debug
+                        echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYREAD of ".$meter["NAME"].". Found one by searching: $inputID\n";
+                        } 
+                    else $inputID=$meter["LeistungID"];
+                    ini_set('memory_limit', '128M');                        // können grosse Dateien werden, default sind 32MB
+                    echo "Update/Verify Daily values for : ".$meter["NAME"]." \n"; 
+                    echo "-----aggregate 15min Power Intervall data to align with Energy and Energy Counter Register:\n";
+                    $config = [ "StartTime"         => strtotime("-400days"),
+                                "Update"            => true,
+                                "InputId"           => $inputID,
+                                "OutputID"          => $Amis->getWirkenergieID($meter),
+                                "OutputCounterID"   => IPS_GetVariableIDByName("Wirkenergie", $ID),
+                                ];            // die letzten 120 Tage nachbearbeiten    
+                    $Amis->aggregate15minPower2Energy($meter,$config,true);           // true or config to update values false no debug
+                    echo "||----\n";
+                    break;
+                default:
+                    break;
+                }                
             }       // ende foreach
 
         // für spezielle Archive ausprobieren

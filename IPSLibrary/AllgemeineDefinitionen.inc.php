@@ -3163,6 +3163,11 @@ class archiveOps
         // schönere Routine für echo Tabelle mit einem Wert, mit Avg oder Value, kein Defaultwert als Parameter, es wird eine Tabelle übergeben    
         if (is_array($werte))
             {
+            if (count($werte)>1000)
+                {
+                echo "more than 1000 lines to show, break.\n";
+                return (false);
+                }
             if ($debug) echo "showValues mit einem Array als Input aufgerufen:\n";
             $timeStamp2=false; $timeStamp1=false;
             foreach ($werte as $wert) 
@@ -4869,7 +4874,7 @@ class archiveOps
         $debug1=$debug;
         echo "addValuesfromCsv, target für csv Werte ist OID : $oid. Werte aus dem Archiv auslesen. Config is ".json_encode($config)."\n";
         echo "Aggregation Status für diesen Wert : ".(AC_GetAggregationType($this->archiveID, $oid)?"Zähler":"Standard")."\n";            // bedingung ? erfüllt : nicht erfüllt; 
-        echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
+        if ($debug1) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
         echo "Archivierte Werte bearbeiten:\n";
 
         $werte = $this->getArchivedValues($oid,$config,2);            // 2 für debug
@@ -4888,7 +4893,7 @@ class archiveOps
         if ($debug) echo "readFileCsv mit Config ".json_encode($config)." und Index ".json_encode($index)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
         $status = $fileOps->readFileCsv($result,$config,$index,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
         echo "Insgesamt ".count($result)." Werte aus der Datei $file ausgelesen.\n";
-        echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
+        if ($debug1) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
 
         $input = $this->filterNewData($result,$target);
         
@@ -4899,8 +4904,9 @@ class archiveOps
         $count=0;
         foreach ($input["Add"] as $entry)          // Anzahl neuer Werte schreiben vorerst limitieren
             {
-            $writeInput[]=$entry;
-            if ($count++>999) break;
+            if ($count > ($countAdd-3001)) $writeInput[]=$entry;
+            $count++;
+            //if ($count++>999) break;
             }
         if ( ($debug==false) && ($count) ) 
             {
@@ -4908,7 +4914,8 @@ class archiveOps
             //foreach ($writeInput as $row => $entry) echo $row."  ".date("d.m.Y H:i:s",$entry["TimeStamp"])."  ".nf($entry["Value"],"kWh")."\n";
             $status=false;
             $status=AC_AddLoggedValues ($this->archiveID, $oid, $writeInput);
-            echo "Erfolgreich : $status \n";
+            echo "Erfolgreich : $status . ".count($writeInput)." Werte hinzugefügt.\n";
+            echo " Zeitraum von ".date("d.m.Y",$writeInput[array_key_first($writeInput)]["TimeStamp"])." bis ".date("d.m.Y",$writeInput[array_key_last($writeInput)]["TimeStamp"])." \n";
             }
         else echo "Debug Mode oder count $count, no add to archive.\n";
         }
@@ -9173,7 +9180,7 @@ class fileOps
                 while (($data = fgetcsv($handle, 0, ";")) !== false) 
                     {
                     $num = count($data);                            // wieviel Spalten werden eingelesen, num
-                    if (($row % 100) ==0) echo "$row : Size Result ".count($result)." Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  // Speicherbedarf steigt mit dem Lesen der Datan
+                    if ( (($row % 100) ==0) && ($debug) ) echo "$row : Size Result ".count($result)." Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  // Speicherbedarf steigt mit dem Lesen der Datan
                     if ( ($firstline) && ($row==1) )                // in der ersten Reihe sind die Spaltenbezeichnungen
                         {
                         if ($debug) echo "   Erste Zeile als Index einlesen. Key löschen.\n";
