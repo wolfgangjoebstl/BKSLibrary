@@ -73,13 +73,13 @@
 	$inst_modules="Installierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
-		$inst_modules.=str_pad($name,20)." ".$modules."\n";
+		$inst_modules.="   ".str_pad($name,37)." ".$modules."\n";
 		}
 	
-	echo "Kernelversion : ".IPS_GetKernelVersion()."\n";
-	echo "IPS Version : ".$ergebnis1." ".$ergebnis2."\n";
-	echo "IPSModulManager Version : ".$ergebnis3."\n";
-    echo "Guthabensteuerung Version : ".$ergebnis4."\n";        
+	echo str_pad("Kernelversion : ",40).IPS_GetKernelVersion()."\n";
+	echo str_pad("IPS Version : ",40).$ergebnis1." ".$ergebnis2."\n";
+	echo str_pad("IPSModulManager Version : ",40).$ergebnis3."\n";
+    echo str_pad("Guthabensteuerung Version : ",40).$ergebnis4."\n";        
 	echo $inst_modules;
     echo "systemdir : ".$systemDir."\n";
 
@@ -179,8 +179,40 @@
                 $statusID           = CreateVariable("StatusWebDriverDefault", 3, $CategoryId_Mode,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                 SetValue($statusID,"updated");
                 }
+            if (isset($installedModules["Watchdog"]))
+                {
+                echo "Watchdog Module ist installiert, zusätzliche Auswertungen machen.\n";
+                IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
+                IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
+
+                $watchDog = new watchDogAutoStart();
+                $config = $watchDog->getConfiguration();
+
+                echo "\n";
+                $processes    = $watchDog->getActiveProcesses();
+                $processStart = $watchDog->checkAutostartProgram($processes);
+                echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
+                print_r($processStart);
+                $SeleniumOnID           = CreateVariable("SeleniumRunning", 3, $CategoryId_Mode,110,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
+                if (isset($processStart["selenium"])) 
+                    {
+                    if ($processStart["selenium"]=="off") SetValue($SeleniumOnID,"Active");
+                    else SetValue($SeleniumOnID,"Idle");
+                    }
+                }
+            else $SeleniumOnID=false;
             $categoryDreiID = $seleniumOperations->getCategory("DREI");                
-            echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";                 
+            echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";  
+            if (isset($installedModules["OperationCenter"]))
+                {
+                echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
+                $subnet="10.255.255.255";                               // dont know no longer why
+                $OperationCenter=new OperationCenter($subnet);
+                $OperationCenterSetup = $OperationCenter->getSetup();                       // die Verzeichnisse
+                $cloudDir=$dosOps->correctDirName($OperationCenterSetup["Cloud"]["CloudDirectory"]);
+                $execDir=$dosOps->correctDirName($cloudDir.$OperationCenterSetup["Cloud"]["Executes"]);         // alle chromedriver für die interne Verteilung)
+
+                }                        
             break;
         case "NONE":
             $DoInstall=false;
@@ -546,8 +578,13 @@
                 $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=210;
                 $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
                 }
-
-
+            if ($SeleniumOnID)
+                {
+                echo "     Selenium Process active : ".GetValue($SeleniumOnID)."\n";
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumOnID]["NAME"]="Selenium Process Active";
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumOnID]["ORDER"]=10;
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumOnID]["ADMINISTRATOR"]=true;
+                }
             echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";
             $webDrivers=$guthabenHandler->getSeleniumWebDrivers();   
             print_R($webDrivers);

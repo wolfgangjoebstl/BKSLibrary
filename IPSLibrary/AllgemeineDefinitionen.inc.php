@@ -7538,7 +7538,7 @@ class sysOps
      *
      */
 
-    public function ExecuteUserCommand($command,$path,$show=false,$wait=false,$session=-1)
+    public function ExecuteUserCommand($command,$path,$show=false,$wait=false,$session=-1,$debug=false)
         {
             $result=@IPS_ExecuteEx($command, $path, $show, $wait, $session); 
             if ($result===false) 
@@ -7551,9 +7551,9 @@ class sysOps
                     { 
                     echo "Catch Exception, Fehler bei $e.\n";
                     }
-                echo "Ergebnis IPS_Execute $result \n";  
+                if ($debug) echo "Ergebnis IPS_Execute $result \n";  
                 }
-            else echo "Ergebnis IPS_ExecuteEx $result \n"; 
+            else if ($debug) echo "Ergebnis IPS_ExecuteEx $result \n"; 
         return ($result);                                    
         }
 
@@ -7576,7 +7576,7 @@ class sysOps
                 {
                 $handle4=fopen($filename,"r");
                 $i=0;
-                echo "getProcessList, die aktuell gestarteten Programme werden aus der Datei $filename erfasst.\n";
+                if ($debug) echo "getProcessList, die aktuell gestarteten Programme werden aus der Datei $filename erfasst.\n";
                 while (($line=fgets($handle4)) !== false) 
                     {
                     $line=mb_convert_encoding($line,"UTF-8","UTF-16");
@@ -7585,13 +7585,13 @@ class sysOps
                     if ($i++>10000) break;
                     }
                 fclose($handle4);
-                echo "    -> $i Zeilen eingelsen.\n";
+                if ($debug)  echo "    -> $i Zeilen eingelesen.\n";
                 }
-            else echo "getProcessList, die aktuell gestarteten Programme können NICHT aus der Datei $filename erfasst werden.\n";
+            else if ($debug) echo "getProcessList, die aktuell gestarteten Programme können NICHT aus der Datei $filename erfasst werden.\n";
             }
         else    
             {
-            echo "getProcessList, die aktuell gestarteten Dienste werden erfasst.\n";
+            if ($debug) echo "getProcessList, die aktuell gestarteten Dienste werden erfasst.\n";
             $result=IPS_EXECUTE("c:/windows/system32/wbem/wmic.exe","process list", true, true);
             }
 
@@ -7690,7 +7690,7 @@ class sysOps
                 {
                 $handle4=fopen($filename,"r");
                 $i=0;
-                echo "getTaskList, die aktuell gestarteten Programme werden aus der Datei $filename erfasst.\n";
+                if ($debug) echo "getTaskList, die aktuell gestarteten Programme werden aus der Datei $filename erfasst.\n";
                 while (($line=fgets($handle4)) !== false) 
                     {
                     if ($debug) echo "$i | ".strlen($line)." | $line\n";
@@ -7699,11 +7699,11 @@ class sysOps
                     }
                 fclose($handle4);
                 }
-            else echo "getTaskList, die aktuell gestarteten Programme können NICHT aus der Datei $filename erfasst werden.\n";
+            else if ($debug) echo "getTaskList, die aktuell gestarteten Programme können NICHT aus der Datei $filename erfasst werden.\n";
             }
         else    
             {
-            echo "getTaskList, die aktuell gestarteten Programme werden erfasst.\n";
+            if ($debug) echo "getTaskList, die aktuell gestarteten Programme werden erfasst.\n";
             $result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","", true, true);
             }
         //echo $result;
@@ -7789,11 +7789,11 @@ class sysOps
             if (file_exists($filename))
                 {            
                 $handle4=fopen($filename,"r");
-                echo "Java Processe die aktiv sind : \n";
+                if ($debug) echo "Java Processe die aktiv sind : \n";
                 $javas=array();
                 while (($result=fgets($handle4)) !== false) 
                     {
-                    echo $result;
+                    if ($debug) echo $result;
                     $java=explode(" ",$result);
                     $javas[$java[0]]=trim($java[1]);
                     }
@@ -7812,22 +7812,26 @@ class sysOps
      */
 
 
-    public function getProcessListFull($filename=array())
+    public function getProcessListFull($filename=array(),$debug=false)
         {
-        print_R($filename);
+        if ($debug) 
+            {
+            echo "Aufruf getProcessListFull:\n";
+            print_R($filename);
+            }
         $tasklist=array(); $process=array(); $javas=array();
         if (isset($filename["Tasklist"])) 
             {
             if ($filename["Tasklist"] !== false) $tasklist = $this->getTaskList($filename["Tasklist"]);
             }
         else $tasklist = $this->getTaskList($filename["Tasklist"]);
-        echo "Tasklist ".sizeof($tasklist)." Zeilen gefunden.\n";
+        if ($debug) echo "Tasklist ".sizeof($tasklist)." Zeilen gefunden.\n";
         if (isset($filename["Processlist"])) 
             {
             if ($filename["Processlist"] !== false) $process = $this->getProcessList($filename["Processlist"]);        
             }
         else $process = $this->getProcessList();
-        echo "Processlist ".sizeof($process)." Zeilen gefunden.\n";
+        if ($debug) echo "Processlist ".sizeof($process)." Zeilen gefunden.\n";
         if ( (isset($filename["Javalist"])) && ($filename["Javalist"] !== false) ) $javas = $this->getJavaList($filename["Javalist"]);
 
         $processes = array_merge($tasklist,$process,$javas);            
@@ -7859,7 +7863,7 @@ class sysOps
         $init=true;
         if (sizeof($processesFound)>0)
             {
-            echo "checkprocess für ".sizeof($processesFound)." Prozesse aufgerufen:\n";                
+            if ($debug) echo "checkprocess für ".sizeof($processesFound)." Prozesse aufgerufen:\n";                
             foreach ($processesFound as $process)
                 {
                 foreach ($processStart as $key => &$start)
@@ -7870,7 +7874,7 @@ class sysOps
                     if ( ($processEach==$key) || (strtoupper($processEach)==strtoupper($key)) )
                         {
                         $start="Off";
-                        echo "   $process, start=off.\n"; 
+                        if ($debug) echo "   $process, start=off.\n"; 
                         }
                     }
                 $init=false;                    
@@ -8146,17 +8150,27 @@ class sysOps
  *
  * verschiedene Routinen im Zusammenhang mit File Operationen
  *
- * getWorkDirectory     Windows ist es C:/scripts/
- * fileAvailable        eine Datei in einem Verzeichnis suchen, auch mit Wildcards
- * dirAvailable         ein Verzeichnis in einem oder mehreren Verzeichnissen finden
- * mkdirtree
- * readdirToArray       ein Verzeichnis samt Unterverzeichnisse einlesen und als Array zurückgeben
- * readdirtoStat        nur statistische Informationen über das Verzeichnis zurückmelden
- * dirToArray           verwendet für das rekursive aufrufen
- * correctDirName
- * rrmdir               ein Verzeichnis rekursiv loeschen
- * readFile             eine Datei ausgeben
- *
+ *  getWorkDirectory            Windows ist es C:/scripts/
+ *  replaceWorkDirectory        not implemented
+ *  getUserDirectory
+ *  evaluateOperatingSystem
+ *  getOperatingSystem          anhand der Logging Konfiguration herausfinden welches Betriebssystem
+ *  setMaxScriptTime
+ *  fileIntegrity               überprüfen ob das File den php Koventionen entspricht
+ *  findfiles                   wie fileavailable, aber hier aus einem array die Dateien herausfiltern
+ *  fileAvailable               eine Datei in einem Verzeichnis suchen, auch mit Wildcards
+ *  dirAvailable                ein Verzeichnis in einem oder mehreren Verzeichnissen finden
+ *  mkdirtree
+ *  latestChange
+ *  readdirToArray              ein Verzeichnis samt Unterverzeichnisse einlesen und als Array zurückgeben
+ *  dirToArray                  verwendet für das rekursive aufrufen
+ *  readdirtoStat               nur statistische Informationen über das Verzeichnis zurückmelden
+ *  dirToStat                   verwendet für das rekursive aufrufen
+ *  writeDirStat
+ *  correctDirName
+ *  rrmdir                      ein Verzeichnis rekursiv loeschen
+ *  readFile                    eine Datei ausgeben
+ *  deleteFile
  *
  *
  *
@@ -8199,6 +8213,8 @@ class dosOps
         return($verzeichnis);
         }
 
+    /* not implemented now
+     */
     public function replaceWorkDirectory()
         {
 
@@ -8206,7 +8222,6 @@ class dosOps
 
     /* noch ein typisches Verzeichnis, das des Users
      */
-
     public function getUserDirectory()
         {
         IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	                
@@ -8247,7 +8262,6 @@ class dosOps
         // MacOS
         /Library/Application Support/Symcon/
      */
-
     public function evaluateOperatingSystem()           // eigene Routine, sonst gibt es einen Kreisläufer bei Logging
         {
         $directory=IPS_GetKernelDir();
@@ -8260,7 +8274,6 @@ class dosOps
     /* anhand der Logging Konfiguration herausfinden welches Betriebssystem
      *
      */
-
     public function getOperatingSystem()
         {
         IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	                
@@ -8283,7 +8296,6 @@ class dosOps
 
     /* ini_set funktioniert bei Linux Systemen scheinbar nicht mehr, daher hier zentralisiseren
      */
-
     public function setMaxScriptTime($time)
         {
         if ($this->evaluateOperatingSystem()=="WINDOWS")
@@ -8295,8 +8307,6 @@ class dosOps
     /*
      * überprüfen ob das File den php Koventionen entspricht
      */
-
-
     function fileIntegrity($fullDir,$fileName)
         {
         $dir = $this->readdirToArray($fullDir);
@@ -8321,9 +8331,9 @@ class dosOps
         }
 
     /* wie fileavailable, aber hier aus einem array die Dateien herausfiltern
+     * kann Wildcards *, *.
      *
      */
-
     function findfiles($files,$filename,$debug=false)
         {
         $filesToRead=false;            
@@ -8387,7 +8397,6 @@ class dosOps
      * liefert status true und false zurück
      *
      */    
-
     function fileAvailable($filename,$verzeichnis,$debug=false)
         {
         $status=false;
@@ -8451,7 +8460,6 @@ class dosOps
      * liefert status true und false zurück
      *
      */    
-
     function dirAvailable($filename,$verzeichnisse,$debug=false)
         {
         $status=false;
@@ -8488,7 +8496,6 @@ class dosOps
     * Einen Verzeichnisbaum erstellen. Routine scheitert wenn es bereits eine Datei gibt, die genauso wie das Verzeichnis heisst. Dafür einen Abbruchzähler vorsehen.
     *
     **/
-
     function mkdirtree($directory,$debug=false)
         {
         $directory = str_replace('\\','/',$directory);
@@ -8533,7 +8540,6 @@ class dosOps
 	/* letzte Änderung in einem Verzeichnis finden 
      * dazu nocheinmal das gesamte Verzeichnis auslesen, geht aber nicht rekursiv
      */
-
     function latestChange($dir, $recursive=false)
         {
         //echo "LatestChange: mit $dir aufgerufen.\n";
@@ -8563,7 +8569,6 @@ class dosOps
      *      newest      interressante Funktion, die Dateinamen/Verzeichnisse verkehrt herum sortieren, wenn -n dann nur die ersten n übernehmen, also mit den ältesten Datum
      *                  Achtung damit wird auch die erste Verzeichnisstrukturebene umbenannt und heisst nur mehr 0...x oder 0..n
 	 */
-	
 	public function readdirToArray($dir,$recursive=false,$newest=0,$debug=false)
 		{
 	   	$result = array();
@@ -8615,7 +8620,6 @@ class dosOps
 		}		
 
 	/* Routine fürs rekursive aufrufen in readdirtoarray */
-	
 	private function dirToArray($dir)
 		{
 	   	$result = array();
@@ -8644,7 +8648,6 @@ class dosOps
      * wenn recursive true ist werden auch alle Unterverzeichnisse analysiert
 	 *
 	 */
-	
 	public function readdirToStat($dir,$recursive=false)
 		{
 	   	$result = array();
@@ -8693,7 +8696,6 @@ class dosOps
 		}		
 
 	/* Routine fürs rekursive aufrufen in readdirtoStat */
-	
 	private function dirToStat($dir, &$stat, $recursive)
 		{
 	   	$result = array();
@@ -8728,7 +8730,6 @@ class dosOps
      * wenn dirstat true dann werden alle Verzeichnisse rekursiv ausgelesen, braucht sehr lange
      *
      */
-
     public function writeDirStat($verzeichnis, $dirstat=false)
         {
         $verzeichnis = $this->correctDirName($verzeichnis);
@@ -8837,7 +8838,17 @@ class dosOps
         return($result);
         }
  
+   /* eine Datei kopieren 
+    * fileName ist Filename samt Quellverzeichnis, targetDir ist das Zielverzeichnis ohne Filename
+    */
 
+    function moveFile($fileName,$targetDir)
+        {
+        $result=false;
+        $dirAvailable=$this->readdirToStat($targetDir);
+        if ( (file_exists($fileName)) && ($dirAvailable) ) $result=copy($fileName,$targetDir); 
+        return($result);
+        }
 
     }       // ende class
 

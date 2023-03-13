@@ -73,6 +73,8 @@
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Startpage');
 	echo "\nStartpage       Version : ".$ergebnis;
+
+    $installedModules = $moduleManager->GetInstalledModules();
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -411,6 +413,36 @@
                 } 
             $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);
 		}
+
+    /* Initialissierung für ORF Wetter
+     *
+     */
+
+    if (isset($installedModules["Guthabensteuerung"]))
+        {
+
+        IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+        IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+
+        echo "Guthabensteuerung installiert.\n";
+
+        $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
+        $GuthabenAllgConfig     = $guthabenHandler->getGuthabenConfiguration();                              //get_GuthabenAllgemeinConfig();
+
+        //print_R($GuthabenAllgConfig);
+        if ( ($GuthabenAllgConfig["OperatingMode"]=="Selenium") && (isset($GuthabenAllgConfig["Selenium"]["Hosts"]["ORF"])) )
+            {
+            echo "ORF Wetter und Fernsehprogramm werden eingelesen:\n";
+            $categoryId_OrfWeather = CreateCategory('OrfWeather',   $CategoryIdData, 2200); 
+            $variableIdOrfText   = CreateVariable("OrfWeatherReportHTML",   3 /*String*/,  $categoryId_OrfWeather, 1010, '~HTMLBox');        
+
+            CreateLinkByDestination('ORF Wetter', $variableIdOrfText,    $categoryId_OW_WebFront,  19);
+
+
+            }
+
+        }
+
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation

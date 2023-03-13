@@ -2947,7 +2947,7 @@ class SeleniumEasycharts extends SeleniumHandler
         $this->retries=0;
         $this->debug=$debug;
         parent::__construct();
-        $this->CategoryIdDataEasy = IPS_GetObjectIdByName("EASY",$this->CategoryIdData);
+        $this->CategoryIdDataEasy = @IPS_GetObjectIdByName("EASY",$this->CategoryIdData);           // wenn kein Easy da gibt es halt false in der Category
         }
 
     /* Kapselung der internen Daten und Konfigurationen */

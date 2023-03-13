@@ -196,8 +196,8 @@
                     }
                 /* Webfront Konfiguration kontrollieren und ergänzen */
                 $WebfrontConfigID = $this->wfcHandling->get_WebfrontConfigID(); 
-                configfileParser($configInput, $configWf, ["Webfront","WEBFRONT","webfront" ],"Webfront" ,false); 
-                if (isset($configWf["Webfront"]))
+                configfileParser($configInput, $configWf, ["Webfront","WEBFRONT","webfront" ],"Webfront" ,[]); 
+                if (count($configWf["Webfront"])>0)
                     {
                     foreach ($configWf["Webfront"] as $name => $configEntry )
                         {

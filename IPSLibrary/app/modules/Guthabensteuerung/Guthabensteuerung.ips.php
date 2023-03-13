@@ -100,6 +100,7 @@
     */
     $categoryId_Guthaben        = $CategoryIdData;
 
+    /* Vorbereitungen abhängig von der Betriebsart */
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
         case "IMACRO":
@@ -127,6 +128,22 @@
                                             ),
                         );
             $webDriverName=false;
+            if (isset($installedModules["Watchdog"]))
+                {
+                IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
+                IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
+                $watchDog = new watchDogAutoStart();
+                $processes    = $watchDog->getActiveProcesses();
+                $processStart = $watchDog->checkAutostartProgram($processes);
+                $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
+                if (isset($processStart["selenium"])) 
+                    {
+                    $date=date("d.m.Y H:i:s");
+                    if ($processStart["selenium"]=="off") SetValue($SeleniumOnID,"Active since $date");
+                    else SetValue($SeleniumOnID,"Idle since $date");
+                    }
+                }
+            else $SeleniumOnID=false;
             break;
         case "NONE":
             $DoInstall=false;
@@ -143,14 +160,17 @@
     $startActionGroupID = IPS_GetObjectIdByName("StartGroupCall", $CategoryId_Mode);
 
     // Wenn YahooApi aufgebaut wird
-    $CategoryId_Finance  = IPS_GetObjectIdByName('Finance',$CategoryIdData);                    // Kategorie, wenn Kategorie nicht gefunden wird ist diese Variable und alle abhängigen davon danach false 
-   
-    $updateApiTableID    = @IPS_GetObjectIdByName("Update",$CategoryId_Finance);           // button 
-    $calculateApiTableID = @IPS_GetObjectIdByName("Calculate",$CategoryId_Finance);           // button
-    $sortApiTableID      = @IPS_GetObjectIdByName("Sort",$CategoryId_Finance);           // button 
+    if (isset($GuthabenAllgConfig["Api"]))
+        {
+        $CategoryId_Finance  = IPS_GetObjectIdByName('Finance',$CategoryIdData);                    // Kategorie, wenn Kategorie nicht gefunden wird ist diese Variable und alle abhängigen davon danach false 
+    
+        $updateApiTableID    = @IPS_GetObjectIdByName("Update",$CategoryId_Finance);           // button 
+        $calculateApiTableID = @IPS_GetObjectIdByName("Calculate",$CategoryId_Finance);           // button
+        $sortApiTableID      = @IPS_GetObjectIdByName("Sort",$CategoryId_Finance);           // button 
 
-    $financeTableID       =   @IPS_GetVariableIDByName("YahooFinanceTable", $CategoryId_Finance);		// wenn false nicht gefunden
-
+        $financeTableID       =   @IPS_GetVariableIDByName("YahooFinanceTable", $CategoryId_Finance);		// wenn false nicht gefunden
+        }
+        
     $ScriptCounterID      = CreateVariableByName($CategoryIdData,"ScriptCounter",1);                    // wir zählen die erfolgreichen Aufrufe von Timer2
     $checkScriptCounterID = CreateVariableByName($CategoryIdData,"checkScriptCounter",1);               // wir zählen alle Aufrufe von Timer2
     $ScriptTimerID        = CreateVariableByName($CategoryIdData,"ScriptTimer",3);                      // ein Name für ein Script das vom Timer5 aufgerufen wird
@@ -586,6 +606,31 @@ if ($_IPS['SENDER']=="WebFront")
                     IPS_SetEventActive($tim5ID,true);
                     $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\" with Timer5 within next 310 Seconds");
                     break;
+                case "ORF":             // gleich Abfragen
+                    $configTemp["ORF"] = $configTabs["Hosts"]["ORF"];
+                    $configTemp["Logging"]=$log_Guthabensteuerung;
+                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                    // Auswertung
+                    $result=$seleniumOperations->readResult("ORF","Result");  
+                        if (isset($installedModules["Startpage"]))
+                            {
+                            IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+                            IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+                            IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');                                
+                            $moduleManagerSP    = new IPSModuleManager('Startpage',$repository);
+                            $CategoryIdDataSP   = $moduleManagerSP->GetModuleCategoryID('data');
+                            $categoryId_OrfWeather = IPS_GetObjectIDByName('OrfWeather',$CategoryIdDataSP); 
+                            $variableIdOrfText   = IPS_GetObjectIDByName("OrfWeatherReportHTML",$categoryId_OrfWeather);        
+                            $text="<div>".$result["Value"]."<br>ORF Update from ".date("d.m.Y H:i",$result["LastChanged"])."</div>";
+                            $text = str_replace("\n","<br>",$text);
+                            SetValue($variableIdOrfText,$text); 
+                            }
+
+
+
+                    //echo $result;
+                    break; 
                 default:
                     $log_Guthabensteuerung->LogNachrichten("Taste Action mit Wert $reguestedAction gedrückt, kenn ich nicht. Alles abfragen.");                
                     unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, daher löschen

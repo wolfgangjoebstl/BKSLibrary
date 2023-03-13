@@ -301,6 +301,26 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             AC_ReAggregateVariable($archiveID,$LeistungID);                    
                             }
                         break;
+                    case "ORF":
+                        echo "ORF ============\n";                    
+                        echo "parse ORF Ergebnis in Result.\n"; 
+                        print_R($installedModules);
+                        if (isset($installedModules["Startpage"]))
+                            {
+                            IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+                            IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+                            IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');                                
+                            $moduleManagerSP    = new IPSModuleManager('Startpage',$repository);
+                            $CategoryIdDataSP   = $moduleManagerSP->GetModuleCategoryID('data');
+                            $categoryId_OrfWeather = IPS_GetObjectIDByName('OrfWeather',$CategoryIdDataSP); 
+                            $variableIdOrfText   = IPS_GetObjectIDByName("OrfWeatherReportHTML",$categoryId_OrfWeather);        
+                            $result=$seleniumOperations->readResult("ORF","Result");    
+                            //print_r($result);
+                            $text="<div>".$result["Value"]."<br>ORF Update from ".date("d.m.Y H:i",$result["LastChanged"])."</div>";
+                            $text = str_replace("\n","<br>",$text);
+                            SetValue($variableIdOrfText,$text); 
+                            }
+                        break;                        
                     default:
                         echo (strtoupper($host))."============\n";
 

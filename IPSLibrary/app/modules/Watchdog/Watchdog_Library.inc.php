@@ -169,7 +169,7 @@ class watchDogAutoStart
         $dosOps->deleteFile($verzeichnis.$unterverzeichnis."tasklist.txt");      // nur einen Eintrag pro Datei
         $dosOps->deleteFile($verzeichnis.$unterverzeichnis."processlist.txt");      // nur einen Eintrag pro Datei
 
-        echo "Aufruf script $verzeichnis$unterverzeichnis"."read_username.bat.\n";
+        if ($debug) echo "Aufruf script $verzeichnis$unterverzeichnis"."read_username.bat.\n";
         $handle1=fopen($verzeichnis.$unterverzeichnis."read_username.bat","r");
         /*while (($result=fgets($handle1)) !== false) 
             {
@@ -182,10 +182,9 @@ class watchDogAutoStart
         //IPS_ExecuteEx($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);  /* warten dass fertig, sonst wird alter Wert ausgelesen, aufpassen kann länger dauern */
 
         $handle3=fopen($verzeichnis.$unterverzeichnis."username.txt","r");
-        echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);
+        if ($debug) echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);
         fclose($handle3);
 
-        echo "Aufruf getProcessListFull:\n";
         $file=array();
         $file["Tasklist"] = $verzeichnis.$unterverzeichnis."tasklist.txt";
         $file["Processlist"] = $verzeichnis.$unterverzeichnis."processlist.txt";
