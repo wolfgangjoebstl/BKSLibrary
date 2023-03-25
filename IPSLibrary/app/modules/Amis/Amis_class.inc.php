@@ -2319,6 +2319,7 @@
                 }
             configfileParser($configInput,$config,["OutputID","OUTPUTID","outputid","OutputId"],"OutputID",$outputId);             
             configfileParser($configInput,$config,["OutputCounterID","OUTPUTCOUNTERID","outputcounterid","OutputcounterId"],"OutputCounterID",false);
+            configfileParser($configInput,$config,["InputValue","INPUTVALUE","inputvalue","inputValue"],"InputValue",0);
             return ($config);              
             }
 
@@ -2334,6 +2335,7 @@
          *      manAggregate
          *      InputID                 Eingabe OID, wenn nicht angegeben, dann aus der Config nehmen
          *      OutputID                Ausgabe OID, wenn nicht angegeben, dann aus der Config nehmen
+         *      OutputCounterID         Ausgabe OID für einen Zählwert
          */
 
         function aggregate15minPower2Energy($meter,$update=false,$debug=false)
@@ -2502,11 +2504,11 @@
                         // schauen was es so gibt
                         $timeStampknown=array();
                         $ergebnisEnergieZaehler = $archiveOps->getValues($variableID,$config,$debug);      // warum erst manual Aggregate, false debug Level
-                        if ($ergebnisEnergieZaehler===false) 
+                        if ($ergebnisEnergieZaehler===false)            // keine Energiewerte vorhanden
                             {
                             $ergebnisEnergieZaehler=["Values" => [],];
-                            $startNewValue=9000;
-                            echo "No data found, start with $startValue kWh.\n";
+                            $startNewValue=$config["InputValue"];                           // parametrierbar, wenn leeres Array
+                            echo "No data found, start with $startNewValue kWh.\n";
                             $first=0; $last=0;
                             }
                         else
@@ -2522,7 +2524,7 @@
                             $first=array_key_first($timeStampknown);
                             $last=array_key_last($timeStampknown);
                             $startNewValue=$timeStampknown[$last];
-                            echo "Daten sortiert nach timestamp von $first to $last .\n";
+                            echo "Daten sortiert nach timestamp von $first to $last, start with $startNewValue kWh.\n";
                             }
                         if ((isset($ergebnis["Values"])) && (count($ergebnis["Values"])>0)) 
                             {  
@@ -2537,7 +2539,7 @@
                                     {
                                     $countValue+=$wert["Value"];
                                     $ergebnis["Values"][$index]["Register"]=$countValue;
-                                    echo date("d.m.Y H:i:s",$wert["TimeStamp"])."   ".str_pad($wert["Value"],12)."    ".str_pad($countValue+$startValue,15)."   ";
+                                    echo "Input Daily Power ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   ".str_pad($wert["Value"],12)."    ".str_pad($countValue+$startValue,15)."   ";
                                     if (isset($timeStampknown[$wert["TimeStamp"]])) 
                                         {
                                         //echo "found";
@@ -2561,11 +2563,13 @@
                                         {
                                         if ($startValue==0)
                                             {
-                                            if ($wert["TimeStamp"]>$last) $startValue=$startNewValue;
+                                            if ($wert["TimeStamp"]>$last) $startValue=$startNewValue;           // startnewvalue ist jetzt der letzte Wert im target register counter
                                             else 
                                                 {
                                                 echo "Warning, did not consider that , break\n";
-                                                return (false);
+                                                echo $wert["TimeStamp"]." <= ".date("d.m.Y H:i:s",$last)." \n";
+                                                                                                
+                                                //return (false);
                                                 }
                                             }
                                         echo "Wert mit Timestamp ".$wert["TimeStamp"]." hat noch keinen Eintrag $countValue einfügen.";
@@ -2577,14 +2581,42 @@
                                     }
 
                                 }
+                            if ($config["Update"] && $delete) 
+                                {    
+                                echo "Delete Values Item by item :";
+                                foreach ($deleteIndex as $indexDel => $entry)
+                                    {
+                                    echo ".";
+                                    AC_DeleteVariableData ($archiveID, $variableID,$entry["EndTime"],$entry["StartTime"]);          // $start>$end
+                                    }
+                                echo "\n";                                    
+                                }
+                            elseif ($delete)            // just talk, dont do
+                                {
+                                echo "Delete $delete Values planned, but not executed.\n";
+                                }   
+                            else                                
+                                {
+                                echo "   No double entries.\n";
+                                }
                             if ($config["Update"] && $add)
                                 {
-                                foreach ($input as $index => $entry) $input[$index]["Value"]+=$startValue;
+                                foreach ($input as $index => $entry)
+                                    {
+                                    if ( ($first===false) || ($first>$input[$index]["TimeStamp"]) ) $first=$input[$index]["TimeStamp"];
+                                    if ( ($last===false) || ($last<$input[$index]["TimeStamp"]) ) $last=$input[$index]["TimeStamp"];
+                                    $input[$index]["Value"]+=$startValue;
+                                    echo "add ".date("d.m.Y H:i",$input[$index]["TimeStamp"])." ".$input[$index]["Value"]."\n";
+                                    }
                                 echo "Add Logged Values: $add to archived Energy Daily Values in $variableID.\n";
                                 $archiveID = $archiveOps->getArchiveID();
-                                //$status=AC_AddLoggedValues($archiveID,$variableID,$input);
-                                //echo "Erfolgreich : $status \n";
+                                $status=AC_AddLoggedValues($archiveID,$variableID,$input);
+                                echo "Erfolgreich : $status \n";
                                 }
+                            elseif ($add)            // just talk, dont do
+                                {
+                                echo "Add $add Values planned, but not executed.\n";
+                                }                                   
                             if ($delete || $add) AC_ReAggregateVariable($archiveID,$variableID);                                    
                             }
                         }
@@ -2596,17 +2628,20 @@
 
         /* cleanupValuesOnEnergyDaily
          * berechnete Tagesenergiewerte nach Zeitstempel indexieren, doppelte Werte zum löschen markieren
-         * liefert eine Tabelle TimeStampKnown mit Index Zeitstemple 
+         * liefert eine Tabelle TimeStampKnown mit Index Zeitstempel und alle Werte die gelöscht werden sollen als return
+         * Zusatzparameter increment, Werte sollen von einem Zähler kommen, das heisst sie steigen an 
          */
-        private function cleanupValuesOnEnergyDaily(&$timeStampknown, $ergebnisEnergie)
+        private function cleanupValuesOnEnergyDaily(&$timeStampknown, $ergebnisEnergie,$increment=0, $debug=false)
             { 
-
+            if ($debug) echo "cleanupValuesOnEnergyDaily  ".count($ergebnisEnergie)." Werte bearbeiten. Typ ist ".($increment?"Zähler":"Messwerte")."\n";
                     $deleteIndex=array(); $d=0;
+                    $lastTimeStamp=false;               // Vergleichswerte aufbauen
+                    $lastValue=0;  
                     if ((isset($ergebnisEnergie)) && (count($ergebnisEnergie)>0)) 
                         {
                         foreach ($ergebnisEnergie as $wert) 
                             {  
-                            $timeStamp=strtotime(date("d.m.Y",$wert["TimeStamp"]));
+                            $timeStamp=strtotime(date("d.m.Y",$wert["TimeStamp"]));         // nur ein Wert pro Tag 
                             if ($timeStamp != $wert["TimeStamp"])                           // im Archive müssen alle Werte auf 00:00 stehen
                                 {
                                 echo "falscher Timestamp ".date("d.m.Y H:i:s",$wert["TimeStamp"])." mit Wert ".$wert["Value"]." im Archive. Wird gelöscht muss ".date("d.m.Y H:i:s",$timeStamp)." sein.\n";
@@ -2621,7 +2656,27 @@
                                 $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
                                 $d++;
                                 }  
-                            else $timeStampknown[$timeStamp]=$wert["Value"];
+                            else                // noch kein Eintrag bei den Targetwerten im Archiv
+                                {
+                                if ($lastTimeStamp===false) 
+                                    {
+                                    $lastTimeStamp=$timeStamp; 
+                                    $lastValue=$wert["Value"]; 
+                                    $timeStampknown[$timeStamp]=$wert["Value"];
+                                    }
+                                else
+                                    {
+                                    if ($lastTimeStamp>$timeStamp) echo "Timestamps do not increment\n";
+                                    elseif ( ($increment) && ($lastValue > $wert["Value"]) )
+                                        {
+                                        echo "Zeitstempel ".date("d.m.Y H:i:s",$timeStamp)." Werte do not increase, no counter.($lastValue > ".$wert["Value"].") \n";
+                                        $deleteIndex[$d]["StartTime"]=$wert["TimeStamp"];
+                                        $deleteIndex[$d]["EndTime"]  =$wert["TimeStamp"];
+                                        $d++;
+                                        }
+                                    else $timeStampknown[$timeStamp]=$wert["Value"];
+                                    }
+                                }
                             }
                         }
             return ($deleteIndex);

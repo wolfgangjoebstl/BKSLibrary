@@ -6516,38 +6516,47 @@ class LogFileHandler extends OperationCenter
  * DeviceManagement
  * ================ 
  *
- * __construct          
- *      HMIs aus dem HomeMatic Inventory Handler
- *      HomematicAddressesList 
- *      HomematicSerialNumberList
+ *      __construct          
+ *          HMIs aus dem HomeMatic Inventory Handler
+ *          HomematicAddressesList 
+ *          HomematicSerialNumberList
  *
- * HardwareStatus                       Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion.
+ *      HardwareStatus                      Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion.
+ *      checkVariableChanged                einheitliche Überprüfung ob schon länger keine Änderung mehr war
+ *      writeCheckStatus
+ *      get_ActionButton                     Standardfunktion für die Activities aus dem Webfront, ale Action Buttons in einer function
+ *
  * Verwenden gemeinsames Array $HomematicSerialNumberList:
- * getHomematicSerialNumberList		erfasst alle Homematic Geräte anhand der Seriennumme und erstellt eine gemeinsame liste die mit anderen Funktionen erweiterbar ist
- * get_ActionButton                     Standardfunktion für die Activities aus dem Webfront
- * getHomematicAddressList
+ *      getHomematicSerialNumberList		erfasst alle Homematic Geräte anhand der Seriennumme und erstellt eine gemeinsame liste die mit anderen Funktionen erweiterbar ist
+ *      getHomematicAddressList
  *
- * addHomematicSerialList_Typ		die Homematic Liste wird um weitere Informationen erweitert:  Typ
- * addHomematicSerialList_RSSI
- * addHomematicSerialList_DetectMovement
+ *      updateHomematicAddressList
+ *      updateHmiReport
  *
- * writeHomematicSerialNumberList	Ausgabe der Liste
- * tableHomematicSerialNumberList
+ *      addHomematicSerialList_Typ		die Homematic Liste wird um weitere Informationen erweitert:  Typ
+ *      addHomematicSerialList_RSSI
+ *      addHomematicSerialList_DetectMovement
+ *
+ *      writeHomematicSerialNumberList	Ausgabe der Liste
+ *      tableHomematicSerialNumberList
  *
  *                      "Type"    = $DeviceManager->getHomematicType($instanz);           wird für Homematic IPS Light benötigt 
  *                      "Device"  = $DeviceManager->getHomematicDeviceType($instanz);     wird für CustomComponents verwendet, gibt als echo auch den Typ aus 
  *                      "HMDevice"= $DeviceManager->getHomematicHMDevice($instanz);
  *
- * getHomematicDeviceList
- * getHomematicType
- * HomematicDeviceType
- * getHomematicDeviceType
- * getHomematicHMDevice         hier neue Geräte anlegen, damit sie erkannt werden
- * getFS20Type
- * getFS20DeviceType
+ *      getHomematicDeviceList
+ *      getHomematicType
+ *      HomematicDeviceType
+ *      getHomematicDeviceType
+ *      getHomematicHMDevice         hier neue Geräte anlegen, damit sie erkannt werden
  *
- * HomematicFehlermeldungen
- * getHomematicDeviceList
+ * DeviceManagement_FS20
+ *      getFS20Type
+ *      getFS20DeviceType
+ *
+ * DeviceManagement_Homematic
+ *      HomematicFehlermeldungen
+ *      updateHomematicErrorLog
  *
  *
  **************************************************************************************************************************/
@@ -6658,11 +6667,13 @@ class DeviceManagement
 	 *
 	 */
 
-	function HardwareStatus($text=false)
+	function HardwareStatus($text=false,$debug=false)
 		{
+        if ($debug) echo "HardwareStatus($text,..) aufgerufen:\n";
+        $resultTable=array();
 		$resultarray=array(); $index=0;
 		$resulttext="";
-        $oldstyle=false;
+        $oldstyle=false;                        // alte Auswertungsart, depriciated
 		//print_r($this->installedModules);
 		if (isset($this->installedModules["EvaluateHardware"])==true)
 			{
@@ -6671,7 +6682,7 @@ class DeviceManagement
 			//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
             IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
             $componentHandling=new ComponentHandling();
-            echo "Geräte mit getComponent suchen, geht jetzt mit HarwdareList und DeviceList.\n";
+            if ($debug) echo "Geräte mit getComponent suchen, geht jetzt mit HarwdareList und DeviceList.\n";
             //$result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],"Install");
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
             $count=(sizeof($result));				
@@ -6684,7 +6695,7 @@ class DeviceManagement
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 //echo "   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
                 $resulttext.= "\n"; 
-                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                $result = $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
                 /*if ((time()-IPS_GetVariable($Key["COID"])["VariableChanged"])>(60*60*24*2)) 
                     {  
                     $result[$index]["Name"]=$Key["Name"];
@@ -6693,6 +6704,14 @@ class DeviceManagement
                     $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
                     $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');             
                     }*/
+                $resultTable[$Key["COID"]]=array(
+                        "Type"          => "Temperature",
+                        "Name"          => $Key["Name"],
+                        "Value"         => GetValueFormatted($Key["COID"]),
+                        "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
+                        "Reach"       => $result,
+                        );
+                //print_R($Key);
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_HUMIDITY","REGISTER" => "HUMIDITY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -6702,7 +6721,14 @@ class DeviceManagement
                 {
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueIfFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 $resulttext.= "\n";                
-                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                $result=$this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                $resultTable[$Key["COID"]]=array(
+                        "Type"          => "Humidity",
+                        "Name"          => $Key["Name"],
+                        "Value"         => GetValueFormatted($Key["COID"]),
+                        "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
+                        "Reach"       => $result,
+                        );
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BRIGHTNESS"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -6713,7 +6739,14 @@ class DeviceManagement
                 {
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueIfFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 $resulttext.= "\n";                
-                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                $result=$this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                $resultTable[$Key["COID"]]=array(
+                        "Type"          => "Brightness",
+                        "Name"          => $Key["Name"],
+                        "Value"         => GetValueFormatted($Key["COID"]),
+                        "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
+                        "Reach"       => $result,
+                        );
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "MOTION"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -6723,6 +6756,14 @@ class DeviceManagement
                 {
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 $resulttext.= "\n";                
+                $result=$this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                $resultTable[$Key["COID"]]=array(
+                        "Type"          => "Motion",
+                        "Name"          => $Key["Name"],
+                        "Value"         => GetValueFormatted($Key["COID"]),
+                        "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
+                        "Reach"       => $result,
+                        );
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -6731,7 +6772,16 @@ class DeviceManagement
             foreach ($result as $Key) 
                 {
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
-                $resulttext.= "\n";                
+                $resulttext.= "\n";        
+                $result=$this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                $resultTable[$Key["COID"]]=array(
+                        "Type"          => "Contact",
+                        "Name"          => $Key["Name"],
+                        "Value"         => GetValueFormatted($Key["COID"]),
+                        "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
+                        "Reach"       => $result,
+                        );
+
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_POWER","REGISTER" => "ENERGY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -6741,7 +6791,15 @@ class DeviceManagement
                 {
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 $resulttext.= "\n";                
-                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                $result=$this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben, schreibt Nachrichten in Operation Log                
+                $resultTable[$Key["COID"]]=array(
+                        "Type"          => "Energy",
+                        "Name"          => $Key["Name"],
+                        "Value"         => GetValueFormatted($Key["COID"]),
+                        "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
+                        "Reach"       => $result,
+                        );
+
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_THERMOSTAT","REGISTER" => "SET_TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -7103,7 +7161,8 @@ class DeviceManagement
                     }
                 }               // oldStyle HardwareStatus
 			}
-		
+        //print_r($resulttext);
+		if ($text==="array") return($resultTable);                  // normaler Vergleich geht nicht da $text auch boolean sein kann und dann der vergleich als Boolean geführt wird
 		if ($text==true) return($resulttext); 
 		else return($resultarray);
 		}
@@ -7133,10 +7192,125 @@ class DeviceManagement
                 {
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueIfFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 $resulttext.= "\n";                
-                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                //$this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
                 }
         return ($resulttext);
         }
+	
+	/*
+	 * showHardwareStatus Statusinfo von Hardware als Table ausgeben
+	 *
+	 */
+
+	function showHardwareStatus($hwStatus,$filter=false,$debug=false)
+		{
+        if ($debug) echo "showHardwareStatus aufgerufen.\n";
+        if ( ($filter !== false) && (is_array($filter)===false) )
+            {
+            $filter = array( "Type" => $filter,);
+            }
+        $html = '';  
+        $html.='<style>';             
+        $html.='.statyHm table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+        $html.='.statyHm table    {table-layout: fixed; width: 100%; }';
+        //$html.='.statyHm td:nth-child(1) { width: 60%; }';                        // fixe breiten, sehr hilfreich
+        //$html.='.statyHm td:nth-child(2) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(3) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(4) { width: 10%; }';
+        $html.='</style>';        
+        $html.='<table class="statyHm">'; 
+        foreach ($hwStatus as $coid => $entry)
+            {
+            if ( ($filter===false) || ($this->filterOnArray($entry,$filter)) )
+                {
+                if ($debug) echo "$coid ".json_encode($entry)."  \n";
+                $html .= '<tr>';
+                $html .= '<td>'.$entry["Name"].'</td>';
+                $html .= '<td>'.$entry["Value"].'</td>';
+                $html .= '<td>'.date("d.m.Y H:i",$entry["LastChanged"]).'</td>';
+                $html .= '<td>'.$entry["Reach"].'</td>';
+                $html .= '</tr>';    
+                }
+            }
+        $html .= '</table>';
+        return ($html);
+        }
+
+	/*
+	 * countHardwareStatus vorab rausfinden ob es Werte giubt bevor eine Tabelle erzeugt wird
+	 *
+	 */
+	function countHardwareStatus($hwStatus,$filter=false,$debug=false)
+		{
+        if ($debug) echo "countHardwareStatus aufgerufen.\n";
+        if ( ($filter !== false) && (is_array($filter)===false) )
+            {
+            $filter = array( "Type" => $filter,);
+            }
+        $count=0;
+        foreach ($hwStatus as $coid => $entry)
+            {
+            if ( ($filter===false) || ($this->filterOnArray($entry,$filter)) ) $count++;
+            }
+        return ($count);
+        }
+
+	/*
+	 * filter auf verschiedene Spalten der Tabelle, es geht AND oder OR Verknüpfung
+	 *
+	 */
+    private function filterOnArray($entry,$filter)    
+        {
+        $result=false;
+        if (isset($filter["Operation"])) $operation=strtoupper($filter["Operation"]);
+        else $operation="AND";
+        if ($operation=="AND") $resultSub = true;    
+        else $resultSub=false;
+        foreach ($filter as $key => $value)
+            {
+            if ((isset($entry[$key])) && ($value !== null))
+                {
+                echo "Filter $key ".$entry[$key]."===$value  "; 
+                if ($entry[$key]===$value) 
+                    {
+                    echo "$operation OK  ";
+                    $result=true;
+                    if ( ($operation=="AND") && $resultSub) $resultSub = true;    
+                    else $resultSub = false;
+                    echo $resultSub;
+                    }
+                else $resultSub = false;
+                }
+            }
+        echo "\n";
+        return ($result && $resultSub);
+        }
+
+	/*
+	 * Zusammenfassung aller ActionButtons in dieser Klasse
+	 *
+	 */
+	 
+	function get_ActionButton()
+		{
+		$countHMI = sizeof($this->HMIs);
+		//echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
+	    $ActionButton=array();
+		if ($countHMI>0)
+	        {
+			$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+			foreach ($this->HMIs as $HMI)
+	            {
+				$CategoryIdHomematicCCU=IPS_GetCategoryIdByName("HomematicInventory_".$HMI,$CategoryIdHomematicInventory);
+	            $SortInventoryId = IPS_GetVariableIdByName("Sortieren",$CategoryIdHomematicCCU);
+	   			$HomematicInventoryId = IPS_GetVariableIdByName(IPS_GetName($HMI),$CategoryIdHomematicCCU);
+	
+	            $ActionButton[$SortInventoryId]["DeviceManagement"]["HMI"]=$HMI;
+	            $ActionButton[$SortInventoryId]["DeviceManagement"]["HtmlBox"]=$HomematicInventoryId;
+	            }            
+	        }
+		return($ActionButton);
+		}
 
 	/********************************************************************
 	 * DeviceManagement::getHomematicSerialNumberList
@@ -7218,33 +7392,7 @@ class DeviceManagement
 		$this->HomematicSerialNumberList=$serienNummer;
 		return ($serienNummer);
 		}
-	
-	/*
-	 * Zusammenfassung aller ActionButtons in dieser Klasse
-	 *
-	 */
-	 
-	function get_ActionButton()
-		{
-		$countHMI = sizeof($this->HMIs);
-		//echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
-	    $ActionButton=array();
-		if ($countHMI>0)
-	        {
-			$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
-			foreach ($this->HMIs as $HMI)
-	            {
-				$CategoryIdHomematicCCU=IPS_GetCategoryIdByName("HomematicInventory_".$HMI,$CategoryIdHomematicInventory);
-	            $SortInventoryId = IPS_GetVariableIdByName("Sortieren",$CategoryIdHomematicCCU);
-	   			$HomematicInventoryId = IPS_GetVariableIdByName(IPS_GetName($HMI),$CategoryIdHomematicCCU);
-	
-	            $ActionButton[$SortInventoryId]["DeviceManagement"]["HMI"]=$HMI;
-	            $ActionButton[$SortInventoryId]["DeviceManagement"]["HtmlBox"]=$HomematicInventoryId;
-	            }            
-	        }
-		return($ActionButton);
-		}
-		
+
 	/********************************************************************
 	 * DeviceManagement::getHomematicAddressList
 	 * erfasst alle Homematic Geräte anhand der Hardware Addressen und erstellt eine gemeinsame liste mit dem DeviceTyp aus HM Inventory 
@@ -7281,7 +7429,7 @@ class DeviceManagement
                         }
 
                     }
-/*				$configHMI=IPS_GetConfiguration($HMI);
+        /*		$configHMI=IPS_GetConfiguration($HMI);
 				if ($debug)             // no information available in configuration wether creation of report as variable is activated
 					{
 					echo "\n-----------------------------------\n";
@@ -8514,6 +8662,13 @@ class DeviceManagement
             }
 		}	
 
+
+    } /* ende class DeviceManagement */
+
+class DeviceManagement_FS20 extends DeviceManagement
+	{
+
+
     /*****************************************************
     *
     * HM_TYPE für FS20, FS20EX oder FHT Instanz feststellen
@@ -8740,6 +8895,12 @@ class DeviceManagement
 
 
 
+    } /* ende class DeviceManagement_FS20 */
+
+class DeviceManagement_Homematic extends DeviceManagement
+	{
+
+
     /*****************************************************************
     *
     * den Status der HomematicCCU auslesen, alle Fehlermeldungen
@@ -8759,6 +8920,7 @@ class DeviceManagement
             }
 		$alleHM_Errors="\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n";
         $arrHM_Errors=array();
+        $arrHM2_Errors=array();
 		$texte = Array(
 		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
 		    "LOWBAT" => "Batterieladezustand gering",
@@ -8791,6 +8953,7 @@ class DeviceManagement
                     if ($debug) echo "               Homematic Socket ID ".$id." / ".IPS_GetName($id)."   -> im IO Socket Homematic Funk nicht aktiviert.\n";
 					$alleHM_Errors.="\nHomematic Socket ID ".$id." / ".IPS_GetName($id)."   -> Port nicht aktiviert.\n";
                     $arrHM_Errors[$id]["ErrorMessage"]="Homematic Socket ID ".$id." / ".IPS_GetName($id)."   -> Port nicht aktiviert.";
+                    $arrHM2_Errors[$id]["ErrorMessage"]="Homematic Socket ID ".$id." / ".IPS_GetName($id)."   -> Port nicht aktiviert.";
 					}
 				else
 				    {
@@ -8807,6 +8970,7 @@ class DeviceManagement
                         if ($HM_Status["InstanceStatus"] != 102) echo "    Instanz $id nicht aktiv.\n";
                         print_r($HM_Config);
                         $arrHM_Errors[$id]["ErrorMessage"]="Verbindung zur CCU $id fehlgeschlagen";
+                        $arrHM2_Errors[$id]["ErrorMessage"]="Verbindung zur CCU $id fehlgeschlagen";
 					    }
 					if ($msgs != Null)
 						{
@@ -8815,16 +8979,19 @@ class DeviceManagement
 							//echo "Keine Servicemeldungen!\n";
 					   	    $alleHM_Errors.="OK, keine Servicemeldungen!\n";
 							}
+                        //else echo "Insgesamt sind es ".sizeof($msgs)." Servicemeldungen auf $ccu_name.\n";
                         //print_r($msgs);
 						foreach($msgs as $msg)
 						    {
 				   		    if(array_key_exists($msg['Message'], $texte))
 								{
       					  	    $text = $msg['Address']."   ".$texte[$msg['Message']]."(".$msg['Value'].")";
+                                $text2 = $texte[$msg['Message']];    
 		   					    }
 							else
 								{
 	      	  				    $text = $msg['Address']."   ".$msg['Message']."(".$msg['Value'].")";
+                                $text2 = $msg['Message'];    
 			        			}
 						    $HMID = GetInstanceIDFromHMID($msg['Address']);
 					    	if(IPS_InstanceExists($HMID))
@@ -8838,16 +9005,254 @@ class DeviceManagement
 			  				//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
 						  	$alleHM_Errors.="  NACHRICHT : ".str_pad($name,60)."  $text \n";
                             $arrHM_Errors[$HMID]["ErrorMessage"]="$name $text";
-							}
+                            $arrHM2_Errors[$HMID]["ErrorMessage"][]=$text2;
+                            $arrHM2_Errors[$HMID]["Address"]=$msg['Address'];							
+                            $arrHM2_Errors[$HMID]["Location"]=$name;							
+                            $arrHM2_Errors[$HMID]["CCU"]=$ccu_name;							
+                            }
 						}
 					}
 				}
 			}
-		if ($mode) return($arrHM_Errors);
+		if ($mode=="Array") return($arrHM2_Errors);
+		elseif ($mode) return($arrHM_Errors);
         else return($alleHM_Errors);
     	}
 
-    } /* ende class DeviceManagement */
+    /* showHomematicFehlermeldungen, Ausgabe Fehler Status als html für Webfront
+     * Umgestellt auf neues Format mit detaillierteren Ergebnissen, mehr Spalten
+     */
+
+    function showHomematicFehlermeldungen($arrHM_Errors,$debug=false)
+	    {
+        if ($debug) echo "showHomematicFehlermeldungen aufgerufen.\n";
+        $html = '';  
+        $html.='<style>';             
+        $html.='.statyHm table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+        $html.='.statyHm table    {table-layout: fixed; width: 100%; }';
+        //$html.='.statyHm td:nth-child(1) { width: 60%; }';                        // fixe breiten, sehr hilfreich
+        //$html.='.statyHm td:nth-child(2) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(3) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(4) { width: 10%; }';
+        $html.='</style>';        
+        $html.='<table class="statyHm">';              
+        foreach ($arrHM_Errors as $oid=>$entry) 
+            {
+            if ( (isset($entry["ErrorMessage"])) && (is_array($entry["ErrorMessage"])===false) )
+                {
+                unset($arrHM_Errors[$oid]["ErrorMessage"]);
+                $arrHM_Errors[$oid]["ErrorMessage"][]=$entry["ErrorMessage"];                  // wird nur eine Zeile werden
+                }
+            }
+        foreach ($arrHM_Errors as $oid=>$entry) 
+            {
+            if ($debug) echo "$oid ".json_encode($entry)."  \n";
+            //print_r($entry);
+            $html .= '<tr>';
+            if (isset($entry["CCU"])) $html .= '<td>'.$entry["CCU"].'</td>';
+            if (isset($entry["Address"])) $html .= '<td>'.$entry["Address"].'</td>';
+            if (isset($entry["Location"])) 
+                {
+                $location = $entry["Location"];
+                $name=$location; $dir="";
+                $posSlash=strrpos($location,'/');
+                $posBackSlash=strrpos($location,'\\');
+                if ($posSlash !== false)  
+                    {
+                    //echo $posSlash;
+                    $name=substr($location,$posSlash+1);
+                    $dir=substr($location,0,$posSlash+1);
+                    }
+                elseif ($posBackSlash !== false)  
+                    {
+                    //echo $posBackSlash;
+                    $name=substr($location,$posBackSlash+1);
+                    $dir=substr($location,0,$posBackSlash+1);
+                    }
+                $html .= '<td>'.$dir.'<br>'.$name.'</td>';
+                }
+            $html .= '<td>';
+            $text="";
+            foreach ($entry["ErrorMessage"] as $num => $message) 
+                {
+                $html .= $message.'<br>';
+                $text .= $message."   ";
+                }
+            if ($debug) echo $text."\n";
+            $html .= '</td></tr>';               
+            }
+        $html .= '</table>';
+        return($html);
+        }
+
+    /* showHomematicFehlermeldungenLog, Ausgabe Fehler Log als html für Webfront
+     *
+     */
+
+    function showHomematicFehlermeldungenLog($storedError_Log,$debug=false)
+	    {
+        if ($debug) echo "showHomematicFehlermeldungenLog aufgerufen.\n";
+        $html = '';  
+        $html.='<style>';             
+        $html.='.statyHm table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+        $html.='.statyHm table    {table-layout: fixed; width: 100%; }';
+        //$html.='.statyHm td:nth-child(1) { width: 60%; }';                        // fixe breiten, sehr hilfreich
+        //$html.='.statyHm td:nth-child(2) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(3) { width: 15%; }';
+        //$html.='.statyHm td:nth-child(4) { width: 10%; }';
+        $html.='</style>';        
+        $html.='<table class="statyHm">'; 
+        foreach ($storedError_Log as $oid=>$entry) 
+            {
+            if ( (isset($entry["Message"])) && (is_array($entry["Message"])===false) ) 
+                {
+                unset($storedError_Log[$oid]["Message"]);
+                $storedError_Log[$oid]["Message"][]=$entry["Message"];                  // wird nur eine Zeile werden
+                }
+            }        
+        foreach ($storedError_Log as $date => $entry)
+            {
+            if ($debug) echo "$date ".json_encode($entry)."  \n";
+            $html .= '<tr>';
+            $text="";
+            $text .= $date."    ".$entry["State"]."   ";
+            if (isset($entry["DateTime"])) $html .= '<td>'.date("d.m.Y H:i",$entry["DateTime"]).'</td>';
+            else $html .= '<td>'.$date.'</td>';
+            $html .= '<td>'.$entry["State"].'</td>';
+            if (isset($entry["CCU"])) $html .= '<td>'.$entry["CCU"].'</td>';
+            else $html .= '<td></td>';
+            if (isset($entry["Address"])) $html .= '<td>'.$entry["Address"].'</td>';
+            else $html .= '<td></td>';
+            if (isset($entry["Location"])) 
+                {
+                $location = $entry["Location"];
+                $name=$location; $dir="";
+                $posSlash=strrpos($location,'/');
+                $posBackSlash=strrpos($location,'\\');
+                if ($posSlash !== false)  
+                    {
+                    //echo $posSlash;
+                    $name=substr($location,$posSlash+1);
+                    $dir=substr($location,0,$posSlash+1);
+                    }
+                elseif ($posBackSlash !== false)  
+                    {
+                    //echo $posBackSlash;
+                    $name=substr($location,$posBackSlash+1);
+                    $dir=substr($location,0,$posBackSlash+1);
+                    }
+                $html .= '<td>'.$dir.'<br>'.$name.'</td>';
+                }
+            else $html .= '<td></td>';
+            $html .= '<td>';
+            foreach ($entry["Message"] as $num => $message) 
+                {
+                $text .= $message."   ";
+                $html .= $message.'<br>';
+                }
+            if ($debug) echo $text."\n";
+            $html .= '</td>';       
+            $html .= '</tr>';    
+            }
+        $html .= '</table>';
+        return ($html);
+        }
+
+    /*
+    *
+    * $filename ist eiugentlich immer auf 'EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware'
+    */
+
+    public function updateHomematicErrorLog($filename,$arrHM_Errors)
+        {
+        $dosOps = new dosOps();               
+        $ipsOps = new ipsOps();
+        if ($dosOps->fileAvailable($filename))
+            {
+            include $filename;
+            //IPSUtils_Include ('EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // deviceList
+            }
+        else "File $filename wird neu angelegt.\n";      
+        $storedHM_Errors=array(); $storedError_Log=array();
+        if (function_exists("get_DeviceErrorStatus")) $storedHM_Errors = get_DeviceErrorStatus();           // aus dem file nehmen, sind dort definiert, das ist der aktuelle Status
+        if (function_exists("get_DeviceErrorLog")) $storedError_Log = get_DeviceErrorLog();                 // aus dem file nehmen, sind dort definiert, das ist das aktuelle Log mit Add und Delete
+
+        $newHM_Errors = array();
+        $today = time();
+
+        echo "Unterschied zu den gespeicherten Homematic Fehlermeldungen, insgesamt ".sizeof($storedHM_Errors).":\n";
+        //print_R($storedHM_Errors);        
+        foreach ($arrHM_Errors as $oid=>$entry)
+            {
+            if (isset($storedHM_Errors[$oid]))          // war vorher auch schon da
+                {
+                if ($storedHM_Errors[$oid]["ErrorMessage"]==$arrHM_Errors[$oid]["ErrorMessage"]) unset($storedHM_Errors[$oid]);
+                } 
+            else
+                {
+                $newHM_Errors[$oid] = $arrHM_Errors[$oid];      // kommt neu hinzu
+                }
+            }
+
+        $i=0; 
+        //$storedError_Log=array();
+        echo "Diese Meldungen sind weggefallen, insgesamt ".sizeof($storedHM_Errors).":\n";
+        print_R($storedHM_Errors);
+        foreach ($storedHM_Errors as $oid=>$entry)
+            {
+            $dateTime = date("YmdHis",($today+$i));
+            $storedError_Log[$dateTime]["OID"]=$oid;
+            $storedError_Log[$dateTime]["Message"]=$entry["ErrorMessage"];
+            if (isset($entry["CCU"]))       $storedError_Log[$dateTime]["CCU"]=$entry["CCU"];
+            if (isset($entry["Address"]))   $storedError_Log[$dateTime]["Address"]=$entry["Address"];
+            if (isset($entry["Location"]))  $storedError_Log[$dateTime]["Location"]=$entry["Location"];
+            $storedError_Log[$dateTime]["State"]="DELETE";
+            $storedError_Log[$dateTime]["DateTime"]=$today;
+            $i++;
+            }
+        echo "Diese Meldungen sind neu dazugekommen, insgesamt ".sizeof($newHM_Errors).":\n";
+        print_R($newHM_Errors);
+        foreach ($newHM_Errors as $oid=>$entry)
+            {
+            $dateTime = date("YmdHis",($today+$i));              // wie ein zeitbasierter Index, für die Zeit der Erfassung in die Spalte schauen  
+            $storedError_Log[$dateTime]["OID"]=$oid;
+            $storedError_Log[$dateTime]["Message"]=$entry["ErrorMessage"];
+            if (isset($entry["CCU"]))       $storedError_Log[$dateTime]["CCU"]=$entry["CCU"];
+            if (isset($entry["Address"]))   $storedError_Log[$dateTime]["Address"]=$entry["Address"];
+            if (isset($entry["Location"]))  $storedError_Log[$dateTime]["Location"]=$entry["Location"];
+            $storedError_Log[$dateTime]["State"]="ADD";
+            $storedError_Log[$dateTime]["DateTime"]=$today;
+            $i++;
+            }  
+        //print_R($storedError_Log);   
+
+        $statusDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
+        $statusDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
+        $statusDevices     .= " *  \n";
+        $statusDevices     .= " * Please do not edit, file will be overwritten on a regular base.     \n";
+        $statusDevices     .= " *  \n";
+        $statusDevices     .= " */    \n\n";
+        $statusDevices .= "function get_DeviceErrorStatus() { return ";
+        $ipsOps->serializeArrayAsPhp($arrHM_Errors, $statusDevices);        // gateway array in das include File schreiben
+        $statusDevices .= ';}'."\n\n";        
+        $statusDevices .= "function get_DeviceErrorLog() { return ";
+        $ipsOps->serializeArrayAsPhp($storedError_Log, $statusDevices);        // gateway array in das include File schreiben
+        $statusDevices .= ';}'."\n\n";        
+        $statusDevices .= "\n".'?>';
+        //if (false)      // kein Update der Datei
+            {
+            if (!file_put_contents($filename, $statusDevices)) 
+                {
+                throw new Exception('Create File '.$filename.' failed!');
+                } 
+            }
+
+        return($storedError_Log);
+
+        }
+
+
+    } /* ende class DeviceManagement_Homematic */
 
 /*********************************************************************************************
  *

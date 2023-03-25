@@ -72,6 +72,8 @@
         }
     $installedModules = $moduleManager->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+
+    $statusDeviceID                 = IPS_GetObjectIDByName("StatusDevice", $CategoryIdData);
     $statusEvaluateHardwareID       = IPS_GetObjectIDByName("StatusEvaluateHardware", $CategoryIdData);
     $logEvaluateHardwareID          = IPS_GetObjectIDByName("LogEvaluateHardware", $CategoryIdData);
 
@@ -112,7 +114,7 @@
         {
         IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
         echo "OperationCenter ist installiert.\n";
-        $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library
+        $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library
         //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
         $homematicErrors = $DeviceManager->HomematicFehlermeldungen();
         echo "$homematicErrors\n";
@@ -120,25 +122,9 @@
         $arrHM_Errors = $DeviceManager->HomematicFehlermeldungen(true);         // true Ausgabe als MariaDB freundliches Array
         echo "Aktuelle Homematic Fehlermeldungen, insgesamt ".sizeof($arrHM_Errors).":\n";
         //print_r($arrHM_Errors);
-        $html = '';  
-        $html.='<style>';             
-        $html.='.statyHm table,td {align:center;border:1px solid white;border-collapse:collapse;}';
-        $html.='.statyHm table    {table-layout: fixed; width: 100%; }';
-        //$html.='.statyHm td:nth-child(1) { width: 60%; }';                        // fixe breiten, sehr hilfreich
-        //$html.='.statyHm td:nth-child(2) { width: 15%; }';
-        //$html.='.statyHm td:nth-child(3) { width: 15%; }';
-        //$html.='.statyHm td:nth-child(4) { width: 10%; }';
-        $html.='</style>';        
-        $html.='<table class="statyHm">';              
-        foreach ($arrHM_Errors as $oid=>$entry) 
-            {
-            $html .= '<tr><td>';
-            $text = "   ".$entry["ErrorMessage"]."\n";
-            echo $text;
-            $html .= $text;
-            $html .= '</td></tr>';               
-            }
-        $html .= '</table>';
+        $arrHM_ErrorsDetailed = $DeviceManager->HomematicFehlermeldungen("Array");    
+        //print_r($arrHM_ErrorsDetailed);
+        $html=$DeviceManager->showHomematicFehlermeldungen($arrHM_ErrorsDetailed);
         SetValue($statusEvaluateHardwareID,$html);
         /* für eine OID die DeviceID herausfinden. es gibt wie bei AuditTrail einen Eintrag, mit EventId, Datum/Zeitstempel, NameOfIndex, IndexId, Event Description, EventShort 
          *
@@ -146,12 +132,22 @@
 
         $verzeichnis=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
         $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
+        $filename=$verzeichnis.'EvaluateHardware_DeviceErrorLog.inc.php';  
+        $storedError_Log=$DeviceManager->updateHomematicErrorLog($filename,$arrHM_Errors);
+        print_R($storedError_Log);
+        krsort($storedError_Log);
+        $html = $DeviceManager->showHomematicFehlermeldungenLog($storedError_Log);
+        $hwStatus = $DeviceManager->HardwareStatus("array");           // Ausgabe als Array
+        $output = $DeviceManager->showHardwareStatus($hwStatus,["Reach"=>false,]);           // Ausgabe als html
+        SetValue($statusDeviceID,$output);
+        /*              
         $filename='EvaluateHardware_DeviceErrorLog.inc.php';                 
         if ($dosOps->fileAvailable($filename,$verzeichnis))
             {
             IPSUtils_Include ('EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // deviceList
             }
         else "File $filename wird neu angelegt.\n";            
+
         $storedHM_Errors=array(); $storedError_Log=array();
         if (function_exists("get_DeviceErrorStatus")) $storedHM_Errors = get_DeviceErrorStatus();
         if (function_exists("get_DeviceErrorLog")) $storedError_Log = get_DeviceErrorLog();
@@ -213,15 +209,16 @@
             $html .= '</td></tr>';    
             }
         $html .= '</table>';
+        $html = showHomematicFehlermeldungen($arrHM_Errors);
         SetValue($logEvaluateHardwareID,$html);           
 
         $statusDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
         $statusDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
         $statusDevices     .= " *  \n";
         $statusDevices     .= " * Please do not edit, file will be overwritten on a regular base.     \n";
-        $statusDevices     .= " *  \n";
-        $statusDevices     .= " */    \n\n";
-        $statusDevices .= "function get_DeviceErrorStatus() { return ";
+        $statusDevices     .= " *  \n";     */
+        //$statusDevices     .= " */    \n\n";
+        /*$statusDevices .= "function get_DeviceErrorStatus() { return ";
         $ipsOps->serializeArrayAsPhp($arrHM_Errors, $statusDevices);        // gateway array in das include File schreiben
         $statusDevices .= ';}'."\n\n";        
         $statusDevices .= "function get_DeviceErrorLog() { return ";
@@ -235,6 +232,7 @@
                 throw new Exception('Create File '.$verzeichnis.$filename.' failed!');
                 } 
             }
+        */
 
         //echo "  Homematic Serialnummern erfassen:\n";
         $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug

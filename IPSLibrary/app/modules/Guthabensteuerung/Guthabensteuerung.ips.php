@@ -42,9 +42,6 @@
      *
      */
 
-
-
-    //Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
@@ -139,7 +136,7 @@
                 if (isset($processStart["selenium"])) 
                     {
                     $date=date("d.m.Y H:i:s");
-                    if ($processStart["selenium"]=="off") SetValue($SeleniumOnID,"Active since $date");
+                    if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active since $date");
                     else SetValue($SeleniumOnID,"Idle since $date");
                     }
                 }

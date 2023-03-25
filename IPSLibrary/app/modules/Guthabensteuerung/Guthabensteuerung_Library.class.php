@@ -1760,8 +1760,9 @@
         * plausi: in endDate wird das letzte Datum eines Ergebnisses gespeichert, in countCalc die Anzahl der summierten Werte von totalRevenue
         */
 
-        public function calcAddColumnsOfHistoryQuarterly($inputDataHistory,$calc)
+        public function calcAddColumnsOfHistoryQuarterly($inputDataHistory,$calc,$debug=false)
             {
+            if ($debug) echo "calcAddColumnsOfHistoryQuarterly aufgerufen, Berechnung nach ".json_encode($calc).":\n";
             $inputDataWork=array();           
             foreach ($inputDataHistory as $rowInput => $entry)
                 {
@@ -1769,13 +1770,13 @@
                     {
                     $row=$entry["Ticker"];         // Zeile mit Tickersymbol als Key
                     $date=$entry["endDate"];
-                    //echo "$row:".date("d.m.Y",$date)." ";
+                    if ($debug) echo "$row:".date("d.m.Y",$date)." ";
                     if (isset($inputDataWork[$row]["endDate"]))
                         {
                         if ($inputDataWork[$row]["endDate"]<$date) $inputDataWork[$row]["endDate"] = $date;            // jedes mal schauen ob es ein späteres Datum gibt
                         }
                     else $inputDataWork[$row]["endDate"] = $date;
-                    //echo date("d.m.Y",$inputDataWork[$row]["endDate"])." ";
+                    if ($debug) echo date("d.m.Y",$inputDataWork[$row]["endDate"])." ";
 
                     foreach ($calc as $key => $rule)
                         {
@@ -1783,24 +1784,27 @@
                             {
                             if ($key=="totalRevenue") 
                                 { 
-                                if ($entry[$key]>0) 
+                                if (is_numeric($entry[$key]))                   // > 0 funktioniert nicht, wir machen auch negative Gewinne
                                     {
                                     if (isset($inputDataWork[$row]["countCalc"])) $inputDataWork[$row]["countCalc"]++;
                                     else $inputDataWork[$row]["countCalc"]=1;
                                     } 
+                                elseif ($debug)  echo "no num ".$entry[$key]." ";                                    
                                 }
                             if (isset($inputDataWork[$row][$key])) 
                                 {
-                                $inputDataWork[$row][$key] += $entry[$key];
-                                }
+                                if (is_numeric($entry[$key]))  $inputDataWork[$row][$key] += $entry[$key];
+                                elseif ($debug)  echo "no num ".$entry[$key]." ";                                }
                             else
                                 {
                                 $inputDataWork[$row]["Ticker"] = $entry["Ticker"];
-                                $inputDataWork[$row][$key] = $entry[$key];
+                                if (is_numeric($entry[$key]))  $inputDataWork[$row][$key] = $entry[$key];
+                                elseif ($debug) echo "no num ".$entry[$key]." ";
                                 }
                             }
-                        }
-                    } 
+                        }           // ende foreach
+                    if ($debug) echo "\n";
+                    }           // isset entry ticker
                 }
             return ($inputDataWork);
             }

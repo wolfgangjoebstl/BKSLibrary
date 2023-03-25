@@ -63,6 +63,7 @@
 
     $ipsOps = new ipsOps();
 
+    $statusDeviceID                 = CreateVariable("StatusDevice", 3, $CategoryIdData,1020,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $statusEvaluateHardwareID       = CreateVariable("StatusEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $logEvaluateHardwareID          = CreateVariable("LogEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");
 
@@ -77,82 +78,21 @@
  * Webfront Konfiguration einlesen
  *
  ********************************/
-			
+
+    $configWFront=$ipsOps->configWebfront($moduleManager,false);     // wenn true mit debug Funktion
+    
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
-
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
-	if ($WFC10_Enabled==true)
-		{
-		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
-		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
-		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
-		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
-		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
-		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
-		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
-		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
-		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
-		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
-		echo "WF10 Administrator\n";
-		echo "  Path          : ".$WFC10_Path."\n";
-		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";
-		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10_TabItem."\n";
-		echo "  TabName       : ".$WFC10_TabName."\n";
-		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10_TabOrder."\n";
-		}
-
-	echo "\n";
 	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
-	if ($WFC10User_Enabled==true)
-		{
-		$WFC10User_ConfigId       = $WebfrontConfigID["User"];		
-		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10User');
-		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10User');
-		$WFC10User_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10User');
-		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10User');
-		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10User');
-		$WFC10User_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10User');
-		$WFC10User_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10User');
-		$WFC10User_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10User');
-		$WFC10User_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10User');
-		echo "WF10 User \n";
-		echo "  Path          : ".$WFC10User_Path."\n";
-		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
-		echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10User_TabItem."\n";
-		echo "  TabName       : ".$WFC10User_TabName."\n";
-		echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
-		}
+	$Mobile_Enabled       = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+    $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 
-	echo "\n";      
-	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
-	if ($Mobile_Enabled==true)
-	   	{
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-		echo "Mobile \n";
-		echo "  Path          : ".$Mobile_Path."\n";
-		}
-		
-	$Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
-	if ($Retro_Enabled==true)
-	   	{
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
-		echo "  Path          : ".$Retro_Path."\n";		
-		}
+	if ($WFC10_Enabled==true)       $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
+	if ($WFC10User_Enabled==true)   $WFC10User_ConfigId   = $WebfrontConfigID["User"];
+	if ($Mobile_Enabled==true)      $Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');
+	if ($Retro_Enabled==true)		$Retro_Path        	  = $moduleManager->GetConfigValue('Path', 'Retro');
+
+	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -162,7 +102,7 @@
 
     /* Webfront in SystemTPA, Anzeige Homematic Errror Status und Log */
 
-    $wfcHandling =  new WfcHandling($WFC10_ConfigId);                  // gleich für Interop Admin konfigurieren
+    //$wfcHandling =  new WfcHandling($WFC10_ConfigId);                  // gleich für Interop Admin konfigurieren
     $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
 
     $moduleManagerGUI = new IPSModuleManager('IPSModuleManagerGUI',$repository);
@@ -184,8 +124,24 @@
         $configWF["TabPaneItem"]="EvaluateHardware"; 
         $configWF["TabPaneOrder"]=1050;                                          
         }
+    else echo "EvaluateHardware Module Überblick im Administrator Standard Webfront $tabPaneParent abspeichern.\n";         
     $webfront_links=array();
-    $webfront_links["EvaluateHardware"]["Auswertung"]=array();
+    $webfront_links["EvaluateHardware"]["Auswertung"]=array(
+        $statusEvaluateHardwareID => array(
+                "NAME"				=> "Auswertung",
+                "ORDER"				=> 10,
+                "ADMINISTRATOR" 	=> true,
+                "USER"				=> false,
+                "MOBILE"			=> false,
+                    ),        
+        $statusDeviceID=> array(
+                "NAME"				=> "StatusOverview",
+                "ORDER"				=> 20,
+                "ADMINISTRATOR" 	=> true,
+                "USER"				=> false,
+                "MOBILE"			=> false,
+                    ),
+    );
     $webfront_links["EvaluateHardware"]["Nachrichten"] = array(
         $logEvaluateHardwareID => array(
                 "NAME"				=> "Nachrichten",
@@ -194,15 +150,10 @@
                 "USER"				=> false,
                 "MOBILE"			=> false,
                     ),
-        $statusEvaluateHardwareID => array(
-                "NAME"				=> "Auswertung",
-                "ORDER"				=> 10,
-                "ADMINISTRATOR" 	=> true,
-                "USER"				=> false,
-                "MOBILE"			=> false,
-                    ),
                 );	           
-    $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+    $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+    $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",false);            //true für Debug
+    $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
 
     /*-------------*/
 
@@ -220,18 +171,19 @@
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
 
+        $configWF = $configWFront["Administrator"];
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		echo "Webfront TabPane mit Parameter : ".$WFC10_ConfigId." ".$WFC10_TabPaneItem." ".$WFC10_TabPaneParent." ".$WFC10_TabPaneOrder." ".$WFC10_TabPaneIcon."\n";
-		CreateWFCItemTabPane   ($WFC10_ConfigId, "HouseTPA", $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, "HouseTPA",  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+		echo "Webfront TabPane mit Parameter : ".$WFC10_ConfigId." ".$configWF["TabPaneItem"]." ".$configWF["TabPaneParent"]." ".$configWF["TabPaneOrder"]." ".$configWF["TabPaneIcon"]."\n";
+		CreateWFCItemTabPane   ($WFC10_ConfigId, "HouseTPA", $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"], "HouseTPA",  20, $configWF["TabPaneName"], $configWF["TabPaneIcon"]);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
 		
-		echo "\nWebportal Datenstruktur installieren in: ".$WFC10_Path." \n";
-		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
+		echo "\nWebportal Datenstruktur installieren in: ".$configWF["Path"]." \n";
+        $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]);
 		IPS_SetHidden($categoryId_WebFrontAdministrator,true);
 		$worldID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
 	    EmptyCategory($worldID);
 
-		CreateWFCItemCategory  ($WFC10_ConfigId, 'World', $WFC10_TabPaneItem,   10, 'World', 'Wellness', $worldID   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, 'World', $configWF["TabPaneItem"],   10, 'World', 'Wellness', $worldID   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
 		
 		}

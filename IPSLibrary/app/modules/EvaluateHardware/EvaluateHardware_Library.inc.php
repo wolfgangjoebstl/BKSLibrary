@@ -1037,7 +1037,7 @@ class EvaluateHardware
         $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
         $includefile.='function FS20EXList() { return array('."\n";
         if (isset($this->installedModules["DetectMovement"])) $DetectDeviceHandler = new DetectDeviceHandler(); 
-        if (isset($this->installedModules["OperationCenter"]))    $DeviceManager = new DeviceManagement();
+        if (isset($this->installedModules["OperationCenter"]))    $DeviceManager = new DeviceManagement_FS20();
 
         echo "\nFS20EX Geräte: ".sizeof($alleInstanzen)."\n\n";
         foreach ($alleInstanzen as $instanz)
@@ -1098,7 +1098,7 @@ class EvaluateHardware
         $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
         $includefile.='function FS20List() { return array('."\n";
         if (isset($this->installedModules["DetectMovement"])) $DetectDeviceHandler = new DetectDeviceHandler();
-        if (isset($this->installedModules["OperationCenter"]))    $DeviceManager = new DeviceManagement();
+        if (isset($this->installedModules["OperationCenter"]))    $DeviceManager = new DeviceManagement_FS20();
 
         echo "\nFS20 Geräte: ".sizeof($alleInstanzen)."\n\n";
         foreach ($alleInstanzen as $instanz)

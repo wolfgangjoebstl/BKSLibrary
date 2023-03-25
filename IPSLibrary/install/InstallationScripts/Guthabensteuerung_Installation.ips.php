@@ -181,6 +181,7 @@
                 }
             if (isset($installedModules["Watchdog"]))
                 {
+                echo "\n";
                 echo "Watchdog Module ist installiert, zusätzliche Auswertungen machen.\n";
                 IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
                 IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
@@ -188,7 +189,6 @@
                 $watchDog = new watchDogAutoStart();
                 $config = $watchDog->getConfiguration();
 
-                echo "\n";
                 $processes    = $watchDog->getActiveProcesses();
                 $processStart = $watchDog->checkAutostartProgram($processes);
                 echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
@@ -196,21 +196,54 @@
                 $SeleniumOnID           = CreateVariable("SeleniumRunning", 3, $CategoryId_Mode,110,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                 if (isset($processStart["selenium"])) 
                     {
-                    if ($processStart["selenium"]=="off") SetValue($SeleniumOnID,"Active");
+                    if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active");
                     else SetValue($SeleniumOnID,"Idle");
                     }
+                $configWatchdog = $watchDog->getConfiguration();            
+                $processDir=$dosOps->correctDirName($configWatchdog["WatchDogDirectory"]);
+                echo "Watchdog Directory : $processDir\n";            
                 }
             else $SeleniumOnID=false;
             $categoryDreiID = $seleniumOperations->getCategory("DREI");                
             echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";  
             if (isset($installedModules["OperationCenter"]))
                 {
+                IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+                IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+                IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+
                 echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
                 $subnet="10.255.255.255";                               // dont know no longer why
                 $OperationCenter=new OperationCenter($subnet);
                 $OperationCenterSetup = $OperationCenter->getSetup();                       // die Verzeichnisse
                 $cloudDir=$dosOps->correctDirName($OperationCenterSetup["Cloud"]["CloudDirectory"]);
                 $execDir=$dosOps->correctDirName($cloudDir.$OperationCenterSetup["Cloud"]["Executes"]);         // alle chromedriver für die interne Verteilung)
+                echo "Cloud Verzeichnis für IP Symcon ist hier          : $cloudDir \n";
+                echo "Cloud Verzeichnis für IP Symcon Executes ist hier : $execDir \n";
+                $dosOps->writeDirStat($execDir);                    // Ausgabe eines Verzeichnis 
+                $execDirContent = $dosOps->readdirToArray($execDir);                   // Inhalt Verzeichnis als Array
+                $version=array();
+                foreach ($execDirContent as $fileName)
+                    {
+                    //$posNumeric=strpos()
+                    $match=array();
+                    $status=preg_match("/[0-9]{1,4}/", $fileName, $match);      // regex encoding [0-9] eine Ziffer, /^[0-9]{1,4}+\$/
+                    if ( ($status) && (count($match)==1) ) 
+                        {
+                        $matchFound=number_format($match[0]);
+                        if (strpos($fileName,"chromedriver")===0)
+                            {
+                            //echo "Gefunden in $fileName : $matchFound\n";
+                            $version[$matchFound]["Name"]=$fileName;
+                            $version[$matchFound]["Size"]=filesize($execDir.$fileName);
+                            }
+                        }
+                    }
+                ksort($version);
+                //print_r($version);
+                $latestVersion=array_key_last($version);
+                $cdVersion=(string)$latestVersion;
+                echo "Update with latest Chromedriver version \"$cdVersion\".\n";
 
                 }                        
             break;

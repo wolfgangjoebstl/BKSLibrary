@@ -227,93 +227,13 @@
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
-	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+	$Mobile_Enabled       = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
     $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 
-	if ($WFC10_Enabled==true)
-		{
-		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
-        }
-	if ($WFC10User_Enabled==true)
-		{
-		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
-        }
-
-	if ($Mobile_Enabled==true)
-	   	{
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-		}
-		
-	if ($Retro_Enabled==true)
-	   	{
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		}
-
-    /* extra abfragen, kann auch aus dem Array abgeleitet werden, redundante register, kann man später entfernen  
-	if ($WFC10_Enabled==true)
-		{
-		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
-		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
-		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
-		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
-		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
-		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
-		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
-		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
-		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
-		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
-        if ($excessiveLog) 
-            {
-            echo "WF10 Administrator\n";
-            echo "  Path          : ".$WFC10_Path."\n";
-            echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";
-            echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
-            echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
-            echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
-            echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
-            echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
-            echo "  TabItem       : ".$WFC10_TabItem."\n";
-            echo "  TabName       : ".$WFC10_TabName."\n";
-            echo "  TabIcon       : ".$WFC10_TabIcon."\n";
-            echo "  TabOrder      : ".$WFC10_TabOrder."\n";
-        	echo "\n";
-            }
-		}
-
-
-
-	if ($WFC10User_Enabled==true)
-		{
-		$WFC10User_ConfigId       = $WebfrontConfigID["User"];		
-		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10User');
-		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10User');
-		$WFC10User_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10User');
-		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10User');
-		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10User');
-		$WFC10User_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10User');
-		$WFC10User_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10User');
-		$WFC10User_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10User');
-		$WFC10User_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10User');
-        if ($excessiveLog) 
-            {
-            echo "WF10 User \n";
-            echo "  Path          : ".$WFC10User_Path."\n";
-            echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
-            echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
-            echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
-            echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
-            echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
-            echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
-            echo "  TabItem       : ".$WFC10User_TabItem."\n";
-            echo "  TabName       : ".$WFC10User_TabName."\n";
-            echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
-            echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
-            }
-		}
-      
-   */
+	if ($WFC10_Enabled==true)       $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
+	if ($WFC10User_Enabled==true)   $WFC10User_ConfigId   = $WebfrontConfigID["User"];
+	if ($Mobile_Enabled==true)      $Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');
+	if ($Retro_Enabled==true)		$Retro_Path        	  = $moduleManager->GetConfigValue('Path', 'Retro');
 	
     /**************************************************
      *
@@ -385,8 +305,11 @@
                 }
             }
         if ($excessiveLog) print_r($webfront_links);
-        $wfcHandling =  new WfcHandling($WFC10_ConfigId);
+
+        //$wfcHandling =  new WfcHandling($WFC10_ConfigId);         // Convergence to old way of configuring Webfront, new way is faster
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
         }
     else if ($excessiveLog) echo "   Keine Netatmos Modules vorhanden.\n";
 
@@ -533,11 +456,15 @@
             {               
             CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneParent"], "roottp",             $configWF["TabPaneOrder"], "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
             CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"]  , $configWF["TabPaneParent"],  20, $configWF["TabPaneName"], $configWF["TabPaneIcon"]);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+            //CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"]  , $configWF["TabPaneParent"],  20, "WerteTabellen", "");  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
             //print_R($configWF);
             //$wfcHandling->deletePane($configWF["ConfigId"], "roottpBewegung");
             echo "\n\n===================================================================================================\n";
-            $wfcHandling =  new WfcHandling($WFC10_ConfigId);
+
+            //$wfcHandling =  new WfcHandling($WFC10_ConfigId);         // Convergence to old way of configuring Webfront, new way is faster
+            $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
             $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
+            $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
             }
         else echo "***Fehler, ".$configWF["TabPaneParent"]." darf nicht roottp sein.\n";
         }
@@ -875,7 +802,7 @@ if ($noinstall==false)
             }       // ende if false
 
         if (function_exists('FS20List'))
-        {
+            {
             echo "FS20 Bewegungsmelder und Kontakte werden registriert.\n";
             $TypeFS20=RemoteAccess_TypeFS20();
             $FS20= FS20List();
@@ -884,25 +811,25 @@ if ($noinstall==false)
                 /* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
                 $found=false;
                 if ( (isset($Key["COID"]["MOTION"])==true) )
-                {
-                /* alle Bewegungsmelder */
-                $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-            $found=true;
+                    {
+                    /* alle Bewegungsmelder */
+                    $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+                    $found=true;
                     }
                 /* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
                 if ((isset($Key["COID"]["StatusVariable"])==true))
-                {
-                foreach ($TypeFS20 as $Type)
-                {
+                    {
+                    foreach ($TypeFS20 as $Type)
+                    {
                 if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
                     {
-                            $oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
-                        $found=true;
-                }
-                }
+                    $oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+                    $found=true;
                     }
+                }
+            }
 
-                if ($found)
+            if ($found)
                 {
                 $variabletyp=IPS_GetVariable($oid);
                     if ($variabletyp["VariableProfile"]!="")

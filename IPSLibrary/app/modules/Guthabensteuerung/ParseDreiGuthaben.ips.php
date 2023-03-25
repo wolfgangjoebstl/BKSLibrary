@@ -47,12 +47,13 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 /******************************************************
  *
- *				INIT
+ *				INIT, find needed Modules
  *
  *************************************************************/
 
     $startexec=microtime(true);   
     $execute=true;                     // Execute extra code when called manually
+    $debug=false;                       // false, nicht soviele Ausgaben, Übersichtlich halten
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager))
@@ -67,6 +68,14 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 	echo "Category Data ID           : ".$CategoryIdData."\n";
 	echo "Category App ID            : ".$CategoryIdApp."\n";
+
+    if (isset($installedModules["Amis"]))
+        {
+        IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+        IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');  
+        $moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */     
+        $CategoryIdDataAmis     = $moduleManagerAmis->GetModuleCategoryID('data');
+        }
 
 /***************************************************************************** 
  *
@@ -92,8 +101,6 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
     $maxcount=count($phoneID);
 
-    $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-
 /*********************************************************************************************
  * 
  * Logging aktivieren
@@ -105,7 +112,9 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
     echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
 
     $ipsOps = new ipsOps();    
-    $archiveOps = new archiveOps();  
+    $archiveOps = new archiveOps();                              
+    $archiveID = $archiveOps->getArchiveID();   
+
 
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
@@ -185,7 +194,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                 }
                             else echo "\n";
                             }
-                        print_R($ergebnis);
+                        //print_R($ergebnis);
                         echo "Berechnung Guthaben ist abgeschlossen.\n";
                         break;
                     case "EASY":
@@ -195,20 +204,20 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         $depotRegister = $seleniumEasycharts->getDebotBooksfromConfig($guthabenHandler->getSeleniumTabsConfig("EASY"));                 //  Auswertung
                         foreach ($depotRegister as $depot)
                             {
-                            echo "Depot ausgewählt: $depot  \n";
+                            if ($debug) echo "Depot ausgewählt: $depot  \n";
                             echo "--------------------------------\n";
-                            echo "Selenium Operations, readResult from EASY on $depot:\n";
-                            $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
-                            echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";       
+                            echo "Selenium Operations, readResult from EASY on $depot: ";
+                            $result=$seleniumOperations->readResult("EASY",$depot,$debug);                  // true Debug   
+                            echo "Letztes Update ".date("D d.m.Y H:i:s",$result["LastChanged"])."\n";       
                             $log_Guthabensteuerung->LogNachrichten("Parse Eayschart Depot $depot Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
                             $lines = explode("\n",$result["Value"]);    
                             $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
-                            $shares=$seleniumEasycharts->evaluateResult($data);
+                            $shares=$seleniumEasycharts->evaluateResult($data,$debug);
                             $depotName=str_replace(" ","",$depot);                      // Blanks weg
                             if ($depotName != $depot)               
                                 {
-                                echo "--------\n";
-                                $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
+                                if ($debug) echo "--------\n";
+                                $value=$seleniumEasycharts->evaluateValue($shares, $debug);         // Summe ausrechnen, nicht mehr relevant, da Depotzusammenstellung in actualDepot, aber es wird Musterdepot3 als eigene Kurve geführt
                                 $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
                                 }
                             else
@@ -218,6 +227,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             $seleniumEasycharts->updateResultConfigurationSplit($shares);                           // es kann sein dass es Splits für Aktien gibt
                             $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
                             }
+                        echo "--------------------------------\n";                            
                         // Split in allen Depots eintragen, immer machen, es könnte sich ja etwas geändert haben
                         $allDepotRegisters=$seleniumEasycharts->showDepotConfigurations(false,false);           // true für Debug
                         foreach ($allDepotRegisters as $result)       // es können auch mehrere sein
@@ -241,7 +251,19 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         echo "--------\n";
                         //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
                         $seleniumLogWien = new SeleniumLogWien();
-                        $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");
+                        $ergebnis = $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");
+                        //echo $ergebnis["Value"]." (".$ergebnis["OID"].")\n";
+                        $config=array();
+                        $config["manAggregate"]=false;
+                        $config["maxDistance"]=false;
+                        $archiveOps->getValues($ergebnis["OID"],$config,1);                                 // nicht nur ein get in das interne Array, es folgt auch eine Analyse der Werte
+                        $config["ShowTable"]=array();                           // input ist result.oid
+                        $config["ShowTable"]["align"]="daily";
+                        $config["ShowTable"]["adjust"]=["EnergyProfile"=>"+2 days"];
+                        echo "\n";
+                        $result=$archiveOps->showValues(false,$config);             // das interne Result nehmen, config berücksichtigen                     
+                        // do some manual cleanup
+                        //AC_DeleteVariableData ($archiveID, $ergebnis["OID"],strtotime("13.05.2018 00:00"),strtotime("14.05.2018 00:00"));          // $start>$end    
                         break;
                     case "YAHOOFIN":
                         echo "YAHOOFIN ============\n";                    
@@ -267,13 +289,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             else    
                                 {
                                 /********************** noch nicht richtig implmentiert, sucht nicht sondern definiert Test-BKS01 */
-
-                                IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-                                IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');  
-                                $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-                                $moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */     
-                                $CategoryIdData     = $moduleManagerAmis->GetModuleCategoryID('data');
-                                $ID = CreateVariableByName($CategoryIdData, "Test-BKS01", 3);           // Name neue Variablen
+                                $ID = CreateVariableByName($CategoryIdDataAmis, "Test-BKS01", 3);           // Name neue Variablen
                                 SetValue($ID,"nur testweise den EVN Smart Meter auslesen und speichern");
                                 $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
                                 }
@@ -281,7 +297,6 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         if ($LeistungID)
                             {
                             echo "Archivierte Werte erfassen, bearbeiten und speichern in $LeistungID (".$ipsOps->path($LeistungID).") :\n";
-                            $archiveID = $archiveOps->getArchiveID();   
                             if (AC_GetLoggingStatus($archiveID, $LeistungID)==false) 
                                 {
                                 echo "Werte wird noch nicht im Archive gelogged. Jetzt als Logging konfigurieren. \n";
@@ -393,15 +408,15 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                     $phone_User_ID       = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_User", $phone1ID);
                     $phone_VolumeCumm_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_VolumeCumm", $phone1ID);
                     echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
-                    if (AC_GetLoggingStatus($archiveHandlerID, $phone_VolumeCumm_ID)==false)
+                    if (AC_GetLoggingStatus($archiveID, $phone_VolumeCumm_ID)==false)
                         {
                         echo "Werte wird noch nicht gelogged.\n";
                         }
                     else
                         {
-                        $werteLogVolC = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
-                        $werteLogVol = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
-                        //$werteAggVol = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tägliche Aggregation */
+                        $werteLogVolC = AC_GetLoggedValues($archiveID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
+                        $werteLogVol = AC_GetLoggedValues($archiveID, $phone_Volume_ID, $starttime2, $endtime,0);
+                        //$werteAggVol = AC_GetAggregatedValues($archiveID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tägliche Aggregation */
                         $wertAlt=-1; $letzteZeile="";
                         foreach ($werteLogVol as $wert)
                             {
@@ -419,7 +434,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                             //echo $letzteZeile;
                             }
                         $phone_Cost_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_Cost", $phone1ID);
-                        $werteLogCost = AC_GetLoggedValues($archiveHandlerID, $phone_Cost_ID, $starttime2, $endtime,0);
+                        $werteLogCost = AC_GetLoggedValues($archiveID, $phone_Cost_ID, $starttime2, $endtime,0);
                         echo "Logged Cost Vaules:\n";
                         $wertAlt=-1; $letzteZeile="";
                         foreach ($werteLogCost as $wert)
@@ -437,7 +452,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                 }
                             }
                         $phone_Load_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["NUMMER"]."_Load", $phone1ID);
-                        $werteLogLoad = AC_GetLoggedValues($archiveHandlerID, $phone_Load_ID, $starttime2, $endtime,0);
+                        $werteLogLoad = AC_GetLoggedValues($archiveID, $phone_Load_ID, $starttime2, $endtime,0);
                         echo "Logged Load Vaules:\n";
                         $wertAlt=-1; $letzteZeile="";
                         foreach ($werteLogLoad as $wert)
@@ -574,15 +589,15 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                     $phone_VolumeCumm_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_VolumeCumm", $phone1ID);
 
                                     echo "\n".$TelNummer["Nummer"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
-                                    if (AC_GetLoggingStatus($archiveHandlerID, $phone_VolumeCumm_ID)==false)
+                                    if (AC_GetLoggingStatus($archiveID, $phone_VolumeCumm_ID)==false)
                                         {
                                         echo "Werte wird noch nicht gelogged.\n";
                                         }
                                     else
                                         {
-                                        $werteLogVolC = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
-                                        $werteLogVol = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
-                                        //$werteAggVol = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tägliche Aggregation */
+                                        $werteLogVolC = AC_GetLoggedValues($archiveID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
+                                        $werteLogVol = AC_GetLoggedValues($archiveID, $phone_Volume_ID, $starttime2, $endtime,0);
+                                        //$werteAggVol = AC_GetAggregatedValues($archiveID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tägliche Aggregation */
                                         $wertAlt=-1; $letzteZeile="";
                                         foreach ($werteLogVol as $wert)
                                             {
@@ -600,7 +615,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                             //echo $letzteZeile;
                                             }
                                         $phone_Cost_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Cost", $phone1ID);
-                                        $werteLogCost = AC_GetLoggedValues($archiveHandlerID, $phone_Cost_ID, $starttime2, $endtime,0);
+                                        $werteLogCost = AC_GetLoggedValues($archiveID, $phone_Cost_ID, $starttime2, $endtime,0);
                                         echo "Logged Cost Vaules:\n";
                                         $wertAlt=-1; $letzteZeile="";
                                         foreach ($werteLogCost as $wert)
@@ -618,7 +633,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                                 }
                                             }
                                         $phone_Load_ID = @IPS_GetObjectIDByName("Phone_".$TelNummer["Nummer"]."_Load", $phone1ID);
-                                        $werteLogLoad = AC_GetLoggedValues($archiveHandlerID, $phone_Load_ID, $starttime2, $endtime,0);
+                                        $werteLogLoad = AC_GetLoggedValues($archiveID, $phone_Load_ID, $starttime2, $endtime,0);
                                         echo "Logged Load Vaules:\n";
                                         $wertAlt=-1; $letzteZeile="";
                                         foreach ($werteLogLoad as $wert)

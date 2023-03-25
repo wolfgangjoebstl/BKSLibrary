@@ -1188,7 +1188,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 			$subnet="10.255.255.255";
 			$OperationCenter=new OperationCenter($subnet);
             echo "DeviceManagement initialisiern:\n";
-            $DeviceManager = new DeviceManagement($debug);
+            $DeviceManager = new DeviceManagement_Homematic($debug);
 			
 			$ergebnisOperationCenter.="Lokale IP Adresse im Netzwerk : \n";
             echo "Lokale IP Adresse im Netzwerk suchen.\n";
@@ -2966,15 +2966,18 @@ function send_status($aktuell, $startexec=0, $debug=false)
  *  getStatus               in einer lesbaren Zeile den Status aus der Archive Config einer Variable ausgeben
  *  getComponentValues      für alle oder einzelne Archive anzeigen wieviele Daten in einer Zeitspanne gelogged wurden
  *  showValues              ein oder mehrere Archive als echo ausgeben
+ *  lookforValues           nach einem historischen Wert mit einem bestimmten Zeitstempel suchen
  *  getArchivedValues       die Daten eines Archivs holen, Zeitspanne oder alle, keine Restriktionen, inklusive manueller Aggregation
  *  manualDailyAggregate    tägliche Aggregation von geloggten Daten, aktuell Energiedaten
  *  getValues               holt sich die Daten und analysiert sie, die generelle Funktion
  *  analyseValues           holt sich die Daten und analysiert sie, hier geht man bereits von einer geordneten Struktur aus
  *  alignScaleValues
  *  addInfoValues
+ *  configAggregated
  *  cleanupStoreValues
  *
  *
+ *  addValuesfromCsv
  *
  ***************************************************************************************************************************************/
 
@@ -2985,6 +2988,9 @@ class archiveOps
     private $oid;
     public $result;                 // das Array mit den Werten die verarbeitet werden
 
+    /* minimum init needed
+     *
+     */
     function __construct($oid=false)
         {
         $this->archiveID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -3005,27 +3011,35 @@ class archiveOps
 
         /* Wertespeicher initialisieren */
         $this->result=array();
-
         }
 
+    /* aggregationConfig von AC_GetAggregationVariables ausgeben, für alle oder für eine
+     *
+     */
     public function getConfig()
         {
         return($this->aggregationConfig);
         }
 
+    /* archiveID zurückgeben
+     *
+     */
     public function getArchiveID()
         {
         return($this->archiveID);
         }
 
+    /* 
+     *
+     */
     public function getSize()
         {
         return($this->aggregationConfig["RecordCount"]);
         }
 
     /* archiveOps, getStatus in einer lesbaren Zeile den Status aus der Archive Config einer oder aller Variablen ausgeben 
+     *
      */
-
     public function getStatus($oid=false)
         {
         if ($oid===false)
@@ -3389,7 +3403,6 @@ class archiveOps
      *
      *
      */
-
     public function getArchivedValues($oid,$configInput=array(),$debug=false)
         {
         //$debug=true;
@@ -3456,7 +3469,7 @@ class archiveOps
         }
 
     /* zum Check die Datenflut als Tageswerte zusammenzählen 
-     * zusätzlich zum Daily Aggreagate goinbt es auch wöchentliche oder monatliche Auswertungen 
+     * zusätzlich zum Daily Aggreagate gibt es auch wöchentliche oder monatliche Auswertungen 
      * das Ergebnis wird im Array result gespeichert, return ist etwas anderes, das Ergebnis
      * result wird wenn nicht leer einfach länger, zeitlich und nach Index wird einfach hinten dran angehängt, index = 0,1,2....n
      *
@@ -3468,7 +3481,6 @@ class archiveOps
      *      means.Day           pointer auf die class
      *
      */
-
     public function manualDailyAggregate(&$result,$werte,$config,$debug=false)
         {
         //$debug=true;
@@ -3702,7 +3714,7 @@ class archiveOps
         }
 
     /* archiveOps::getValues
-     * parallelfunktion für analyseValues, schon etwas weiter entwickelt
+     * Parallelfunktion für analyseValues, diese function ist schon etwas weiter entwickelt
      * Get/AnalyseValues,ArchiveOps, Abgrenzung klar, eine kann auch ohne Zeitangabe Werte verarbeiten
      *
      * kann bereits beide Formate, Logged [Value/TimeStamp/Duration] und aggregated [Avg/TimeStamp/Min/Max] , und kann auch ein Array [Value/TimeStamp] verarbeiten
@@ -3760,7 +3772,7 @@ class archiveOps
      *          Stueck
      *          Kosten     
      *
-     * Über die $logs kann eine Konfiguration mitgegeben werden
+     * Über die $logs kann eine Konfiguration mitgegeben werden, die Überprüfung der Konfig gehört zur Statistik Klasse
      *
      *
      *  DataType            Archive , Array
@@ -3769,7 +3781,6 @@ class archiveOps
      *  returnResult        wenn Wert ist DESCRIPTION dann nur den Index Description ausgeben
      *
      */
-
     function getValues($oid,$logs,$debug=false)
         {
         // Konfiguration vorbereiten
@@ -4810,16 +4821,20 @@ class archiveOps
      * array wert kann unterschiedlichen Namen für den timeStamp haben, dritter Parameter
      */
 
-    function filterNewData($werte,$timeStampknown,$timeStamp="TimeStamp")
+    function filterNewData($werte,$timeStampknown,$timeStamp="TimeStamp",$debug=false)
         {
         $inputAdd=array();
         $inputChg=array();
         $countAdd=0; $countChg=0;
-        echo "filterNewData, vergleiche ".count($werte)." neue Daten mit ".count($timeStampknown)." vorhandenen Daten.\n";
+        if ($debug)
+            {
+            echo "filterNewData, vergleiche ".count($werte)." neue Daten mit ".count($timeStampknown)." vorhandenen Daten.\n";
+            echo "Anzahl Einträge : ".count($werte)." First Key ".array_key_first($werte)." => ".date("d.m.Y H:i",array_key_first($werte))." Last Key ".array_key_last($werte)." => ".date("d.m.Y H:i",array_key_last($werte))."\n"; 
+            }
         $count=0;
         foreach ($werte as $wert) 
             {
-            //if ($count++==0) print_R($wert);
+            if (($debug) && ($count++==0)) print_R($wert);
             if (isset($wert[$timeStamp]))          // da kommt noch mehr
                 {
                 //echo ".";
@@ -4827,7 +4842,7 @@ class archiveOps
                     {
                     if ($wert["Value"] != $timeStampknown[$wert[$timeStamp]]) 
                         {
-                        if ($countChg<10)
+                        if ( ($debug) && ($countChg<10) )
                             {
                             echo "Wert mit Timestamp ".$wert[$timeStamp]." hat einen Eintrag unterschiedlich zum Archive : ";
                             echo $wert["Value"]." != ".$timeStampknown[$wert[$timeStamp]]."\n";
@@ -4870,6 +4885,13 @@ class archiveOps
         configfileParser($configInput, $config, ["FORMAT","Format","format" ],"Format" ,null); 
         configfileParser($configInput, $config, ["RESULT","Result","result" ],"Result" ,"All");
 
+       if (is_array($config["Key"])) 
+            {
+            if (isset($config["Key"]["Merge"])) $key=$config["Key"]["Merge"];
+            else echo "Config Parameter \"Merge\" id mising. Check Config \"Key\".\n";
+            }
+       else $key=$config["Key"]; 
+
         //$debug1=false;          // debug readFileCsv
         $debug1=$debug;
         echo "addValuesfromCsv, target für csv Werte ist OID : $oid. Werte aus dem Archiv auslesen. Config is ".json_encode($config)."\n";
@@ -4895,7 +4917,7 @@ class archiveOps
         echo "Insgesamt ".count($result)." Werte aus der Datei $file ausgelesen.\n";
         if ($debug1) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
 
-        $input = $this->filterNewData($result,$target);
+        $input = $this->filterNewData($result,$target,$key);
         
         //$this->showValues($write,$config);
 
@@ -8397,8 +8419,29 @@ class dosOps
      * liefert status true und false zurück
      *
      */    
-    function fileAvailable($filename,$verzeichnis,$debug=false)
+    function fileAvailable($filename,$verzeichnis="",$debug=false)
         {
+        if ($verzeichnis=="") 
+            {
+            echo "fileAvailable $filename aufgerufen.\n";
+            $posSlash=strrpos($filename,'/');
+            $posBackSlash=strrpos($filename,'\\');
+            if ($posSlash !== false)  
+                {
+                //echo $posSlash;
+                $name=substr($filename,$posSlash+1);
+                $dir=substr($filename,0,$posSlash+1);
+                }
+            elseif ($posBackSlash !== false)  
+                {
+                //echo $posBackSlash;
+                $name=substr($filename,$posBackSlash+1);
+                $dir=substr($filename,0,$posBackSlash+1);
+                }
+            else echo "Fehler, kein Verzeichnis angegeben, oder gefunden.\n";
+            //echo "Name \"$name\" Dir \"$dir\" \n";
+            $filename=$name; $verzeichnis=$dir;
+            }   
         $status=false;
         /* Wildcards beim Filenamen zulassen */
         $pos=strpos($filename,"*.");
@@ -8569,8 +8612,15 @@ class dosOps
      *      newest      interressante Funktion, die Dateinamen/Verzeichnisse verkehrt herum sortieren, wenn -n dann nur die ersten n übernehmen, also mit den ältesten Datum
      *                  Achtung damit wird auch die erste Verzeichnisstrukturebene umbenannt und heisst nur mehr 0...x oder 0..n
 	 */
-	public function readdirToArray($dir,$recursive=false,$newest=0,$debug=false)
+	public function readdirToArray($dir,$config=false,$newest=0,$debug=false)
 		{
+        $detailed=false;
+        if (is_array($config))
+            {
+            $recursive=$config["recursive"];
+            $detailed=$config["detailed"];    
+            }
+        else $recursive=$config;
 	   	$result = array();
         if ($debug) echo "readdirToArray aufgerufen für $dir\n";
 		// Test, ob ein Verzeichnis angegeben wurde
@@ -9191,7 +9241,7 @@ class fileOps
                 while (($data = fgetcsv($handle, 0, ";")) !== false) 
                     {
                     $num = count($data);                            // wieviel Spalten werden eingelesen, num
-                    if ( (($row % 100) ==0) && ($debug) ) echo "$row : Size Result ".count($result)." Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  // Speicherbedarf steigt mit dem Lesen der Datan
+                    if ( (($row % 100) ==0) && ($debug>1) ) echo "$row : Size Result ".count($result)." Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  // Speicherbedarf steigt mit dem Lesen der Datan
                     if ( ($firstline) && ($row==1) )                // in der ersten Reihe sind die Spaltenbezeichnungen
                         {
                         if ($debug) echo "   Erste Zeile als Index einlesen. Key löschen.\n";

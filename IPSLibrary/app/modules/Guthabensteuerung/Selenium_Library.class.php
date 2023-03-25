@@ -1377,8 +1377,10 @@ class SeleniumYahooFin extends SeleniumHandler
  *
  *
  *  __construct
+ *  getResultCategory
  *  setConfiguration
  *  writeEnergyValue
+ *  getEnergyValueId
  *
  *  runAutomatic            Aufruf der einzelnen Steps, Statemachine
  *      getTextValidLoggedInIf
@@ -1440,7 +1442,7 @@ class SeleniumLogWien extends SeleniumHandler
         $wert=floatval($value);         // Komma wird nicht richtig interpretiert
         //echo "Umgewandelt ist $value dann : $wert \n";
         SetValue($oid,$wert);
-        return($wert);
+        return(["Value"=>$wert,"OID"=>$oid]);
         }
 
    /*  Energiewert auslesen vorbereiten, OID holen
@@ -1529,9 +1531,17 @@ class SeleniumLogWien extends SeleniumHandler
                     if ($this->debug) echo "\n";
                     return("retry");                
                     }            
-                break;                  
+                break;    
             case 8:
-                echo "--------\n8: Read Energy Value.\n";             
+                echo "--------\n8: Find Popup Window with Privacy Ino to Accept and press Biutton. if not continue.\n";             
+                $result = $this->getPrivacyIf();
+                break;  
+            case 9:
+                echo "--------\n9: Find Popup Window with Gelesen and press Biutton. if not continue.\n";             
+                $result = $this->getGelesenIf();
+                break;  
+            case 10:
+                echo "--------\n10: Read Energy Value.\n";             
                 $result = $this->getEnergyValueIf(true);                // true für Debug
                 if ($result===false) return ("retry");
                 if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
@@ -1653,6 +1663,7 @@ class SeleniumLogWien extends SeleniumHandler
         $xpath = '/html/body/div/main/form/fieldset/section[3]/div[1]/button[2]';           // Button ist gleicg geblieben
         $this->pressButtonIf($xpath,true);          
         }
+
     /* was war das, hier die richtige Applikation aussuchen, ist jetzt eine Jumppage ohne schöne Bilder, hjüpft auf 6, clickSMLinkIf
      *
      * /html/body/app-root/app-start/div/main/div/div/div/div[1]/c-slider/div/div[1]/div[1]/button[2]
@@ -1689,6 +1700,42 @@ class SeleniumLogWien extends SeleniumHandler
             $status=$this->pressButtonIf($xpath2); // das dauert aber jetzt zum Laden
             }
         return ($status);                    
+        }
+
+    /* Privacy Information to click away
+     * /html/body/div[2]/div[2]/div/div[2]/div[3]/div[1]/button[3]
+     *
+     */
+    private function getPrivacyIf($debug=false)
+        {
+        if ($this->debug) echo "getPrivacyIf\n";
+        $xpath='/html/body/div[2]/div[2]/div/div[2]/div[3]/div[1]/button[3]';
+        $ergebnis = $this->getTextIf($xpath,$this->debug);    
+        if ((strlen($ergebnis))>3) 
+            {
+            $status=$this->pressButtonIf($xpath); // das dauert aber jetzt zum Laden
+            return($ergebnis);
+            }
+        else echo "kein Popup Window, alles in Ordnung \n";
+        }     
+
+    /* ein gelesen Pop up Window tritt in Erscheinung um über eien Wartung zu informieren 
+     * //*[@id="mat-dialog-0"]/app-general-info--dialog/div/div[2]/section[2]/button
+     * oder vollständig
+     * /html/body/div[10]/div[2]/div/mat-dialog-container/app-general-info--dialog/div/div[2]/section[2]/button
+     */
+
+    private function getGelesenIf($debug=false)
+        {
+        if ($this->debug) echo "getGelesenIf\n";
+        $xpath='/html/body/div[10]/div[2]/div/mat-dialog-container/app-general-info--dialog/div/div[2]/section[2]/button';
+        $ergebnis = $this->getTextIf($xpath,$this->debug);    
+        if ((strlen($ergebnis))>3) 
+            {
+            $status=$this->pressButtonIf($xpath); // das dauert aber jetzt zum Laden
+            return($ergebnis);
+            }
+        else echo "kein Popup Window, alles in Ordnung \n";
         }
 
     /* /html/body/div[1]/app-root/div/div[1]/app-new-page-layout/main/div/app-smp-welcome/div/div[2]/app-meter-stats/div/div/app-meter-stats-verbrauch/div/div/div[1]/div[1]/span[1]
@@ -3191,6 +3238,7 @@ class SeleniumEasycharts extends SeleniumHandler
 
     function evaluateResult($data, $debug=false)
         {
+        if ($debug) echo "evaluateResult aufgerufen, Ausgabe Tabelle:\n";
         //print_R($data["Data"]);
         /* rebuild table */
         $shares=array();
@@ -3201,7 +3249,7 @@ class SeleniumEasycharts extends SeleniumHandler
             $correct=false;
             foreach ($line as $columnNumber => $column)
                 {
-                echo str_pad($column,$data["Size"][$columnNumber])."|";
+                if ($debug) echo str_pad($column,$data["Size"][$columnNumber])."|";
                 if ($columnNumber==0) $entry["ID"]=$column;
                 if ($columnNumber==2) $entry["Name"]=$column;
                 if ($columnNumber==3) $entry["Currency"]=$column;
@@ -3216,13 +3264,13 @@ class SeleniumEasycharts extends SeleniumHandler
                 $shares[$count]=$entry;    
                 $count++;
                 }
-            echo "\n";
+            if ($debug) echo "\n";
             }
-        echo "\n";
+        if ($debug) echo "\n";
         $sortTable="Kursaenderung";
         $this->ipsOps->intelliSort($shares,$sortTable,SORT_DESC);    
         //print_r($shares);
-        echo "\n";
+        if ($debug) echo "\n";
         return($shares);
         }
 
@@ -3232,8 +3280,9 @@ class SeleniumEasycharts extends SeleniumHandler
      * einen Umrechnungskurs suchen: EU0009652759
      */
 
-    public function evaluateValue($shares)
+    public function evaluateValue($shares, $debug=false)
         {
+        if ($debug) echo "evaluateValue aufgerufen, Ausgabe Tabelle:\n";            
         $value=0;
         $eurusd=1;
         foreach ($shares as $index => $entry)
@@ -3244,7 +3293,7 @@ class SeleniumEasycharts extends SeleniumHandler
                 $eurusd=$entry["Kurs"];
                 }
             }
-        echo "Umrechnung USD auf EUR : ".$eurusd."\n";            
+        if ($debug) echo "Umrechnung USD auf EUR : ".$eurusd."\n";            
         foreach ($shares as $index => $entry)
             {
             //echo json_encode($entry)."\n";
@@ -3254,22 +3303,22 @@ class SeleniumEasycharts extends SeleniumHandler
                 {
                 case "EUR":
                 case "USD":
-                    echo str_pad($entry["ID"],14).str_pad($entry["Name"],41).str_pad($entry["Stueck"],8," ", STR_PAD_LEFT);
+                    if ($debug) echo str_pad($entry["ID"],14).str_pad($entry["Name"],41).str_pad($entry["Stueck"],8," ", STR_PAD_LEFT);
                     if ($currency=="USD") $kurs=$entry["Kurs"]/$eurusd;
                     else $kurs=$entry["Kurs"];
-                    echo str_pad(number_format($entry["Kurs"],2,",","."),12," ", STR_PAD_LEFT);
-                    if (isset($entry["Currency"])) echo str_pad($entry["Currency"],6," ", STR_PAD_LEFT);
-                    echo str_pad(number_format($entry["Kursaenderung"],3,",",".")."%",9," ", STR_PAD_LEFT)." ";
+                    if ($debug) echo str_pad(number_format($entry["Kurs"],2,",","."),12," ", STR_PAD_LEFT);
+                    if (isset($entry["Currency"])) if ($debug) echo str_pad($entry["Currency"],6," ", STR_PAD_LEFT);
+                    if ($debug) echo str_pad(number_format($entry["Kursaenderung"],3,",",".")."%",9," ", STR_PAD_LEFT)." ";
                     $shareValue=$entry["Stueck"]*$kurs;
-                    echo str_pad(number_format($shareValue,2,",",".")." Euro",18," ", STR_PAD_LEFT)."\n";
+                    if ($debug) echo str_pad(number_format($shareValue,2,",",".")." Euro",18," ", STR_PAD_LEFT)."\n";
                     $value += $shareValue;
                     break;
                 default:
                     break;
                 }
             }
-        echo "-----------------------------------------------------------------------------------------------------------\n";
-        echo "                                                                                             ".str_pad(number_format($value,2,",",".")." Euro",18," ", STR_PAD_LEFT)."   \n";
+        if ($debug) echo "-----------------------------------------------------------------------------------------------------------\n";
+        if ($debug) echo "                                                                                             ".str_pad(number_format($value,2,",",".")." Euro",18," ", STR_PAD_LEFT)."   \n";
         return ($value);            
         }
 
@@ -3357,7 +3406,7 @@ class SeleniumEasycharts extends SeleniumHandler
      *
      */
 
-    function writeResultConfiguration(&$shares, $nameDepot="MusterDepot")
+    function writeResultConfiguration(&$shares, $nameDepot="MusterDepot",$debug=false)
         {
         $categoryIdResult = $this->getResultCategory();
         $oid = CreateVariableByName($categoryIdResult,"Config".$nameDepot,3);
@@ -3372,7 +3421,7 @@ class SeleniumEasycharts extends SeleniumHandler
             if (isset($share["Split"])) $config[$share["ID"]]["Split"]=$share["Split"];
             }
         SetValue($oid,json_encode($config));
-        echo "Konfiguration Depot $nameDepot: ".GetValue($oid)."\n";
+        if ($debug) echo "Konfiguration Depot $nameDepot: ".GetValue($oid)."\n";
         }
 
     /* Split Konfiguration dazunehmen, da die Konfiguration immer aus Easycharts wieder überschrieben wird
