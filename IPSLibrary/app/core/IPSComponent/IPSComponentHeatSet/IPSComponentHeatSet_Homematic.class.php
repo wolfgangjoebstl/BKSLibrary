@@ -199,7 +199,9 @@
 				{
 				//echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
                 IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetLevel von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
-				HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
+                //echo "IPSComponent HeatSet_Homematic SetLevel von ".IPS_GetName($this->instanceId)." (".$this->instanceId.") mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')."\n"; 
+                // SET_TEMPERATURE, SET_POINT_TEMPERATURE for HomemtaicIP
+                HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
 				}
 			else
 				{

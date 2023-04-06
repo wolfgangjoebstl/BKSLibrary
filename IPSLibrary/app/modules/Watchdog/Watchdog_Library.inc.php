@@ -24,7 +24,9 @@
 /*                              Functions, Klassendefinitionen                               */
 /*                                                                                           
  * Zusammenfassung nutzvoller Funktionen in einer Klasse
- *      set/getConfiguration
+ *      __construct
+ *      setConfiguration
+ *      getConfiguration
  *      getActiveProcesses
  *      checkAutostartProgram
  *
@@ -168,10 +170,11 @@ class watchDogAutoStart
         $dosOps->deleteFile($verzeichnis.$unterverzeichnis."jps.txt");      // nur einen Eintrag pro Datei
         $dosOps->deleteFile($verzeichnis.$unterverzeichnis."tasklist.txt");      // nur einen Eintrag pro Datei
         $dosOps->deleteFile($verzeichnis.$unterverzeichnis."processlist.txt");      // nur einen Eintrag pro Datei
+        $dosOps->deleteFile($verzeichnis.$unterverzeichnis."wmic.txt");      // nur einen Eintrag pro Datei
 
         if ($debug) echo "Aufruf script $verzeichnis$unterverzeichnis"."read_username.bat.\n";
-        $handle1=fopen($verzeichnis.$unterverzeichnis."read_username.bat","r");
-        /*while (($result=fgets($handle1)) !== false) 
+        /*$handle1=fopen($verzeichnis.$unterverzeichnis."read_username.bat","r");
+        while (($result=fgets($handle1)) !== false) 
             {
             echo   "   $result";
             }
@@ -189,8 +192,9 @@ class watchDogAutoStart
         $file["Tasklist"] = $verzeichnis.$unterverzeichnis."tasklist.txt";
         $file["Processlist"] = $verzeichnis.$unterverzeichnis."processlist.txt";
         $file["Javalist"] = $verzeichnis.$unterverzeichnis."jps.txt";                           // wichtig für Selenium, darf nur einmal gestartet werden, sonst gibt es einen anderen unbekannten Port
-
-        $processes = $sysOps->getProcessListFull($file);
+        $file["Wmiclist"] = $verzeichnis.$unterverzeichnis."wmic.txt";                           // wichtig für Selenium, darf nur einmal gestartet werden, sonst gibt es einen anderen unbekannten Port
+        
+        $processes = $sysOps->getProcessListFull($file,$debug);
 
         if ($debug) 
             {

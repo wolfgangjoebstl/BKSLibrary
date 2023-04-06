@@ -134,7 +134,7 @@
         $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
         $filename=$verzeichnis.'EvaluateHardware_DeviceErrorLog.inc.php';  
         $storedError_Log=$DeviceManager->updateHomematicErrorLog($filename,$arrHM_Errors);
-        print_R($storedError_Log);
+        //print_R($storedError_Log);
         krsort($storedError_Log);
         $html = $DeviceManager->showHomematicFehlermeldungenLog($storedError_Log);
         $hwStatus = $DeviceManager->HardwareStatus("array");           // Ausgabe als Array
@@ -739,11 +739,12 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 
 	echo "\n==================================================================\n";
 
+    echo "\n";
+    echo "Gesamtlaufzeit ".(time()-$startexec)." Sekunden.\n";
+
 	} /* ende if execute */
 
 
-echo "\n";
-echo "Gesamtlaufzeit ".(time()-$startexec)." Sekunden.\n";
 
 
 

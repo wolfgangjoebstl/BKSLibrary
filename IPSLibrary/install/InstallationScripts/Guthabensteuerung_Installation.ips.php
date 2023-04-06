@@ -91,6 +91,7 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
     $ipsOps = new ipsOps();    
+    $webOps = new webOps();                                     // Webfront Operationen
 	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
 
 /********************************************************
@@ -133,11 +134,11 @@
         $depotTableID           = CreateVariableByName($CategoryId_Finance,"DepotTable", 3, "~HTMLBox",false, 20);		// CreateVariable ($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
         $depotGraphID           = CreateVariableByName($CategoryId_Finance,"DepotGraph", 3, "~HTMLBox",false, 30);		// CreateVariable ($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
-        $profilName=createButtonProfileByName("Update");
+        $profilName=$webOps->createButtonProfileByName("Update");
         $updateApiTableID          = CreateVariableByName($CategoryId_Finance,"Update", 1,$profilName,"",10,$GuthabensteuerungID);           // button profile is Integer
-        $profilName=createButtonProfileByName("Calculate");
+        $profilName=$webOps->createButtonProfileByName("Calculate");
         $calculateApiTableID          = CreateVariableByName($CategoryId_Finance,"Calculate", 1,$profilName,"",20,$GuthabensteuerungID);           // button profile is Integer
-        $profilName=createButtonProfileByName("Sort");
+        $profilName=$webOps->createButtonProfileByName("Sort");
         $sortApiTableID          = CreateVariableByName($CategoryId_Finance,"Sort", 1,$profilName,"",30,$GuthabensteuerungID);           // button profile is Integer
         }
 
@@ -270,12 +271,12 @@
         foreach ($configTabs as $tab => $config) $nameID[]=$tab;
         //$nameID=["Easy","YahooFin", "EVN"];
 
-        createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
+        $webOps->createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
         $actionWebID          = CreateVariableByName($CategoryId_Mode,"StartAction", 1,$pname,"",1000,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
         $pname="SeleniumGruppen";                                         // keine Standardfunktion, da Inhalte Variable
         $nameID=["morning","lunchtime", "evening"];
-        createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
+        $webOps->createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
         $actionGroupWebID          = CreateVariableByName($CategoryId_Mode,"StartGroupCall", 1,$pname,"",1010,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
         }
 

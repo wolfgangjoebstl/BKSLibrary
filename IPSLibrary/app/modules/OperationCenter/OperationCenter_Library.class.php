@@ -6781,7 +6781,6 @@ class DeviceManagement
                         "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
                         "Reach"       => $result,
                         );
-
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_POWER","REGISTER" => "ENERGY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -6799,7 +6798,6 @@ class DeviceManagement
                         "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
                         "Reach"       => $result,
                         );
-
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_THERMOSTAT","REGISTER" => "SET_TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -6809,6 +6807,14 @@ class DeviceManagement
                 {
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 $resulttext.= "\n";                
+                $result=$this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben, schreibt Nachrichten in Operation Log                
+                $resultTable[$Key["COID"]]=array(
+                        "Type"          => "Solltemperatur",
+                        "Name"          => $Key["Name"],
+                        "Value"         => GetValueFormatted($Key["COID"]),
+                        "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
+                        "Reach"       => $result,
+                        );
                 }
 
             $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_ACTUATOR","REGISTER" => "VALVE_STATE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
@@ -6818,6 +6824,14 @@ class DeviceManagement
                 {
                 $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
                 $resulttext.= "\n";                
+                $result=$this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben, schreibt Nachrichten in Operation Log                
+                $resultTable[$Key["COID"]]=array(
+                        "Type"          => "Ventilwert",
+                        "Name"          => $Key["Name"],
+                        "Value"         => GetValueFormatted($Key["COID"]),
+                        "LastChanged"   => IPS_GetVariable($Key["COID"])["VariableChanged"],
+                        "Reach"       => $result,
+                        );
                 }
 
             if ($oldstyle)
@@ -7202,23 +7216,29 @@ class DeviceManagement
 	 *
 	 */
 
-	function showHardwareStatus($hwStatus,$filter=false,$debug=false)
+	function showHardwareStatus($hwStatus,$filter=false,$config=false,$debug=false)
 		{
         if ($debug) echo "showHardwareStatus aufgerufen.\n";
         if ( ($filter !== false) && (is_array($filter)===false) )
             {
             $filter = array( "Type" => $filter,);
             }
+        if ( ($config === false) || (is_array($config)===false) )
+            {
+            $config = array( "Header" => false,);
+            }
+
         $html = '';  
         $html.='<style>';             
-        $html.='.statyHm table,td {align:center;border:1px solid white;border-collapse:collapse;}';
-        $html.='.statyHm table    {table-layout: fixed; width: 100%; }';
+        $html.='.statyHm table,td {align:center;border:1px solid white;border-collapse:collapse; word-break:break-all;}';
+        //$html.='.statyHm table    {table-layout: fixed; width: 100%; }';
         //$html.='.statyHm td:nth-child(1) { width: 60%; }';                        // fixe breiten, sehr hilfreich
         //$html.='.statyHm td:nth-child(2) { width: 15%; }';
         //$html.='.statyHm td:nth-child(3) { width: 15%; }';
         //$html.='.statyHm td:nth-child(4) { width: 10%; }';
         $html.='</style>';        
         $html.='<table class="statyHm">'; 
+        if ($config["Header"]) $html .= '<th>'.$config["Header"].'</th>';
         foreach ($hwStatus as $coid => $entry)
             {
             if ( ($filter===false) || ($this->filterOnArray($entry,$filter)) )
@@ -7270,19 +7290,19 @@ class DeviceManagement
             {
             if ((isset($entry[$key])) && ($value !== null))
                 {
-                echo "Filter $key ".$entry[$key]."===$value  "; 
+                //echo "Filter $key ".$entry[$key]."===$value  "; 
                 if ($entry[$key]===$value) 
                     {
-                    echo "$operation OK  ";
+                    //echo "$operation OK  ";
                     $result=true;
                     if ( ($operation=="AND") && $resultSub) $resultSub = true;    
                     else $resultSub = false;
-                    echo $resultSub;
+                    //echo $resultSub;
                     }
                 else $resultSub = false;
                 }
             }
-        echo "\n";
+        //echo "\n";
         return ($result && $resultSub);
         }
 
@@ -9163,8 +9183,9 @@ class DeviceManagement_Homematic extends DeviceManagement
     * $filename ist eiugentlich immer auf 'EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware'
     */
 
-    public function updateHomematicErrorLog($filename,$arrHM_Errors)
+    public function updateHomematicErrorLog($filename,$arrHM_Errors,$debug=false)
         {
+        if ($debug) echo "updateHomematicErrorLog($filename,...) aufgerufen:\n";
         $dosOps = new dosOps();               
         $ipsOps = new ipsOps();
         if ($dosOps->fileAvailable($filename))
@@ -9172,7 +9193,7 @@ class DeviceManagement_Homematic extends DeviceManagement
             include $filename;
             //IPSUtils_Include ('EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // deviceList
             }
-        else "File $filename wird neu angelegt.\n";      
+        elseif ($debug) echo "File $filename wird neu angelegt.\n";      
         $storedHM_Errors=array(); $storedError_Log=array();
         if (function_exists("get_DeviceErrorStatus")) $storedHM_Errors = get_DeviceErrorStatus();           // aus dem file nehmen, sind dort definiert, das ist der aktuelle Status
         if (function_exists("get_DeviceErrorLog")) $storedError_Log = get_DeviceErrorLog();                 // aus dem file nehmen, sind dort definiert, das ist das aktuelle Log mit Add und Delete
@@ -9180,7 +9201,7 @@ class DeviceManagement_Homematic extends DeviceManagement
         $newHM_Errors = array();
         $today = time();
 
-        echo "Unterschied zu den gespeicherten Homematic Fehlermeldungen, insgesamt ".sizeof($storedHM_Errors).":\n";
+        if ($debug) echo "Unterschied zu den gespeicherten Homematic Fehlermeldungen, insgesamt ".sizeof($storedHM_Errors).":\n";
         //print_R($storedHM_Errors);        
         foreach ($arrHM_Errors as $oid=>$entry)
             {
@@ -9196,8 +9217,7 @@ class DeviceManagement_Homematic extends DeviceManagement
 
         $i=0; 
         //$storedError_Log=array();
-        echo "Diese Meldungen sind weggefallen, insgesamt ".sizeof($storedHM_Errors).":\n";
-        print_R($storedHM_Errors);
+
         foreach ($storedHM_Errors as $oid=>$entry)
             {
             $dateTime = date("YmdHis",($today+$i));
@@ -9210,8 +9230,13 @@ class DeviceManagement_Homematic extends DeviceManagement
             $storedError_Log[$dateTime]["DateTime"]=$today;
             $i++;
             }
-        echo "Diese Meldungen sind neu dazugekommen, insgesamt ".sizeof($newHM_Errors).":\n";
-        print_R($newHM_Errors);
+        if ($debug) 
+            {
+            echo "Diese Meldungen sind weggefallen, insgesamt ".sizeof($storedHM_Errors).":\n";
+            print_R($storedHM_Errors);
+            echo "Diese Meldungen sind neu dazugekommen, insgesamt ".sizeof($newHM_Errors).":\n";
+            print_R($newHM_Errors);
+            }            
         foreach ($newHM_Errors as $oid=>$entry)
             {
             $dateTime = date("YmdHis",($today+$i));              // wie ein zeitbasierter Index, für die Zeit der Erfassung in die Spalte schauen  

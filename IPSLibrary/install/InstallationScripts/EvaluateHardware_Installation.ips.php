@@ -55,17 +55,21 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-	
-	echo "\n";
-	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";	
+	$scriptIdImproveDeviceDetection   = IPS_GetScriptIDByName('ImproveDeviceDetection', $CategoryIdApp);
 
     $ipsOps = new ipsOps();
 
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $valuesDeviceID                 = CreateVariable("ValuesTable", 3, $CategoryIdData,1020,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $statusDeviceID                 = CreateVariable("StatusDevice", 3, $CategoryIdData,1020,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $statusEvaluateHardwareID       = CreateVariable("StatusEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $logEvaluateHardwareID          = CreateVariable("LogEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");
+
+    $categoryId_DetectDevice        = CreateCategory('DetectDevice',        $CategoryIdData, 20);
+
+	echo "\n";
+	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";	
 
     /* check if Administrator and User Webfronts are already available */
 
@@ -101,6 +105,8 @@
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
     /* Webfront in SystemTPA, Anzeige Homematic Errror Status und Log */
+
+    // EvaluateHardware
 
     //$wfcHandling =  new WfcHandling($WFC10_ConfigId);                  // gleich für Interop Admin konfigurieren
     $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
@@ -155,6 +161,52 @@
     $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",false);            //true für Debug
     $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
 
+    // MessageHandler
+
+    /* es gibt kein Module mit passenden ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
+    $configWF["Path"]="Visualization.WebFront.Administrator.MessageHandler";
+    $configWF["TabPaneItem"]="MessageHandler"; 
+    $configWF["TabPaneOrder"]=2000;                                          
+
+    $webfront_links=array(
+        "MessageTabellen" => array(
+            $SchalterSortID => array(
+                    "NAME"				=> "SortierenEreignisse",
+                    "ORDER"				=> 100,
+                    "ADMINISTRATOR" 	=> true,
+                    "USER"				=> false,
+                    "MOBILE"			=> false,
+                        ),        
+            $TableEventsID => array(
+                    "NAME"				=> "NachrichtenTabelleDetailiert",
+                    "ORDER"				=> 110,
+                    "ADMINISTRATOR" 	=> true,
+                    "USER"				=> false,
+                    "MOBILE"			=> false,
+                        ),
+           
+            $actionSortMessageTableID => array(
+                    "NAME"				=> "Sortieren",
+                    "ORDER"				=> 200,
+                    "ADMINISTRATOR" 	=> true,
+                    "USER"				=> false,
+                    "MOBILE"			=> false,
+                        ),        
+            $messageTableID => array(
+                    "NAME"				=> "NachrichtenTabelle",
+                    "ORDER"				=> 210,
+                    "ADMINISTRATOR" 	=> true,
+                    "USER"				=> false,
+                    "MOBILE"			=> false,
+                        ),
+            "CONFIG" => array("type" => "link"),
+                    ),
+                );	           
+
+    $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+    $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+    $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+
     /*-------------*/
 
 	if ($WFC10_Enabled)
@@ -181,7 +233,7 @@
         $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]);
 		IPS_SetHidden($categoryId_WebFrontAdministrator,true);
 		$worldID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
-	    EmptyCategory($worldID);
+	    //EmptyCategory($worldID);                                                              // die wird nicht mehr erzeugt
 
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'World', $configWF["TabPaneItem"],   10, 'World', 'Wellness', $worldID   /*BaseId*/, 'true' /*BarBottomVisible*/);
 

@@ -33,21 +33,26 @@
 	 *
 	 * Script immer ähnlich aufgebaut.
 	 *
-	 * Init	includes, installed Modules
+	 * Init	includes, installed Modules, allgemeine classes
+     * Logging
 	 * Hardware Evaluierung, nur auf die aktuellsten Hardware Objekte aufbauen
 	 * Webfront Config einlesen, OperationCenter hat jetzt auch einen eigenen Tab
 	 * Init Timer
-	 * INIT, iMacro Router auslesen
+     * Variablen Profile festlegen
+	 * INIT, iMacro oder SNMP Router auslesen
 	 * INIT, Nachrichtenspeicher
 	 * INIT, TraceRouteSpeicher
 	 * INIT, SystemInfo
 	 * Webfront Vorbereitung
 	 * Webfront zusammenräumen
 	 * INIT, Webcams 
-	 *
+	 * Init SysPing
+     * Homematic RSSI auslesen
+     * Init DetectMovement vs Event Darstellung, Teil von SystemTP
+     * init Alexa, Autosteuerung, Hue, Netatm etc. Darstellung, wo eigentlich
 	 *
 	 * WebFront Installation
-	 *
+	 * verwendet noch nicht easyWebfront
 	 *
 	 */
 
@@ -119,7 +124,7 @@
     echo "Operating System : $opSystem\n";
     echo "Working Directory from IPSComponentLogger_Configuration : $systemDir\n";          // ersetzt hart kodiertes C:/Scripts, hat ein / am Ende
 
-    // max. Scriptlaufzeit definierensonst stoppt vorher wegen langsamer Kamerainstallation
+    // max. Scriptlaufzeit definieren, sonst stoppt vorher wegen langsamer Kamerainstallation
     $dosOps->setMaxScriptTime(400); 
 
 	/******************************************************
@@ -148,14 +153,13 @@
 	$OperationCenterSetup = $OperationCenter->getSetup();
 	
 	$modulhandling = new ModuleHandling();
-
-
 	
     /*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * Hardware Evaluierung starten, auf Fertigstellung warten
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
+
 	if (isset ($installedModules["EvaluateHardware"])) 
 		{     
         $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
@@ -175,7 +179,7 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	$scriptId                 = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
+	$scriptIdOperationCenter  = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 	$scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
 
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -189,10 +193,7 @@
 	 *************************************************************/    
 
     $configWFront     = $ipsOps->configWebfront($moduleManager);          // nue Art der Webfront ini Konfiguration einlesen, das Ini File auslesen und als Array zur verfügung stellen, es wird nur der modulManager benötigt 
-    $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();           // Webfront Configuration Admintrtor ConfigID, User etc.
-    //print_r($WebfrontConfigID);
-
-    /* komplizierte Version : */
+    $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();           // Webfront Configuration Administrator ConfigID, User etc.
 
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
@@ -222,11 +223,11 @@
 	$timer = new TimerHandling();
 	//print_r($timer->listScriptsUsed());
 	
-	$tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
+	$tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptIdOperationCenter);
 	if ($tim4ID==false)
 		{
 		$tim4ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim4ID, $scriptId);
+		IPS_SetParent($tim4ID, $scriptIdOperationCenter);
 		IPS_SetName($tim4ID, "SysPingTimer");
         /* das Event wird alle 5 Minuten aufgerufen, der Standard Sysping, wenn nicht als FAST gekennzeichnet, läuft allerdings alle 60 Minuten */
 		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,5);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
@@ -243,11 +244,11 @@
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
   		}
   		
-	$tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
+	$tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptIdOperationCenter);
 	if ($tim5ID==false)
 		{
 		$tim5ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim5ID, $scriptId);
+		IPS_SetParent($tim5ID, $scriptIdOperationCenter);
 		IPS_SetName($tim5ID, "CyclicUpdate");
 		IPS_SetEventCyclic($tim5ID,4,1,0,12,0,0);    /* jeden 12. des Monats , Monatliche Ausführung, alle 1 Monate, Datumstage, Datumstageintervall,  */
 		echo "   Timer Event CyclicUpdate neu angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
@@ -601,9 +602,9 @@
 						else IPS_SetHidden($result,true);	// alle anderen variablen mit _ werden als Hilfsvariablen betrachtet und versteckt 	
 						}
 					}
-				$SchalterFastPoll_ID=CreateVariable("SNMP Fast Poll",0, $fastPollId,100,"~Switch",$scriptId, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				$SchalterFastPoll_ID=CreateVariable("SNMP Fast Poll",0, $fastPollId,100,"~Switch",$scriptIdOperationCenter, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 				$ifTable_ID=CreateVariable("ifTable",3, $fastPollId,150,"~HTMLBox",null, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-				$SchalterSortSnmp_ID=CreateVariable("Tabelle sortieren",1, $fastPollId,110,"SortifTable",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				$SchalterSortSnmp_ID=CreateVariable("Tabelle sortieren",1, $fastPollId,110,"SortifTable",$scriptIdOperationCenter,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 				IPS_SetHidden($SchalterFastPoll_ID,false);	
 				IPS_SetHidden($ifTable_ID,false);	
 				IPS_SetHidden($SchalterSortSnmp_ID,false);
@@ -677,10 +678,10 @@
 
 	$categoryId_BackupFunction	= CreateCategory('Backup',   $CategoryIdData, 500);
 	/* Hilfe zur Verwendeung von CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon ); */
-	$StatusSchalterBackupID		       = CreateVariable("Backup-Funktion",1, $categoryId_BackupFunction,100,"AusEinAuto",$scriptId,null,"");
-	$StatusSchalterActionBackupID	   = CreateVariable("Backup-Actions",1, $categoryId_BackupFunction,110,"RepairRestartFullIncrementCleanup",$scriptId,null,"");
-	$StatusSchalterOverwriteBackupID   = CreateVariable("Backup-Overwrite",1, $categoryId_BackupFunction,120,"KeepOverwriteAuto",$scriptId,null,"");
-    $StatusSliderMaxcopyID   = CreateVariable("Maxcopy per Session",1, $categoryId_BackupFunction,130,"MaxCopySlider",$scriptId,null,"");
+	$StatusSchalterBackupID		       = CreateVariable("Backup-Funktion",1, $categoryId_BackupFunction,100,"AusEinAuto",$scriptIdOperationCenter,null,"");
+	$StatusSchalterActionBackupID	   = CreateVariable("Backup-Actions",1, $categoryId_BackupFunction,110,"RepairRestartFullIncrementCleanup",$scriptIdOperationCenter,null,"");
+	$StatusSchalterOverwriteBackupID   = CreateVariable("Backup-Overwrite",1, $categoryId_BackupFunction,120,"KeepOverwriteAuto",$scriptIdOperationCenter,null,"");
+    $StatusSliderMaxcopyID   = CreateVariable("Maxcopy per Session",1, $categoryId_BackupFunction,130,"MaxCopySlider",$scriptIdOperationCenter,null,"");
 
 	$StatusBackupId				= CreateVariable("Status",3, $categoryId_BackupFunction, 20, "", null, null, ""); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	$ConfigurationBackupId		= CreateVariable("Configuration",3, $categoryId_BackupFunction, 2000, "", null, null, ""); 		/* speichert die konfiguration im json Format */	
@@ -926,7 +927,7 @@
 
 	$SysPingTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingTable",   3 /*String*/, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
-	$SysPingSortTableID = CreateVariableByName($categoryId_SysPingControl, "SortPingTable",   1 /*Integer*/, 'SortifTableNameStateSince', "", 9000, $scriptId );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+	$SysPingSortTableID = CreateVariableByName($categoryId_SysPingControl, "SortPingTable",   1 /*Integer*/, 'SortifTableNameStateSince', "", 9000, $scriptIdOperationCenter );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingSortTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 	$SysPingActivityTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingActivityTable",   3 /*String*/, '~HTMLBox', "", 6010, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingActivityTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
@@ -1030,7 +1031,7 @@
 	$HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox',null,null,"");
 	$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*Integer*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp',null,null,"");
     
-    $ExecuteRefreshID = CreateVariable("UpdateDurchfuehren",   0 /*Boolean*/,  $CategoryIdHomematicErreichbarkeit, 400 , '~Switch',$scriptId,null,"");
+    $ExecuteRefreshID = CreateVariable("UpdateDurchfuehren",   0 /*Boolean*/,  $CategoryIdHomematicErreichbarkeit, 400 , '~Switch',$scriptIdOperationCenter,null,"");
 
 	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
 	$HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox',null,null,"");
@@ -1170,7 +1171,7 @@
 			//Var-Profil erstellen
 			IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 			IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-			IPS_SetVariableProfileValues($pname, 0, 10, 1); //PName, Minimal, Maximal, Schrittweite
+			IPS_SetVariableProfileValues($pname, 0, 10, 0); //PName, Minimal, Maximal, Schrittweite
 			IPS_SetVariableProfileAssociation($pname, 0, "Event#", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
 			IPS_SetVariableProfileAssociation($pname, 1, "ID", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
 			IPS_SetVariableProfileAssociation($pname, 2, "Name", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
@@ -1212,12 +1213,12 @@
 		$moduleManagerDM = new IPSModuleManager('DetectMovement',$repository);
 		$CategoryIdDataDM     = $moduleManagerDM->GetModuleCategoryID('data');
 		$CategoryIdAppDM      = $moduleManagerDM->GetModuleCategoryID('app');
-		$scriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);	
+		$scriptIdTestMovement = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);	
 
 		$categoryId_DetectMovement    = CreateCategory('DetectMovement',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_DetectMovement, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 		$TableEventsDM_ID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");
-		$SchalterSortDM_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$SchalterSortDM_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$scriptIdTestMovement,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 		}
 
 	/********************************************************
@@ -1236,7 +1237,7 @@
 
     /* Diese Werte wurden schon lange nicht mehr upgedatet, verwendet von AUtosteuerung ? */       
     $TableEventsDevMan_ID=CreateVariable("TableEvents",3, $categoryId_DeviceManagement,0,"~HTMLBox",null,null,"");
-    $SchalterSortDevMan_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DeviceManagement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+    $SchalterSortDevMan_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DeviceManagement,0,"SortTableEvents",$scriptIdOperationCenter,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 
     /* HMI_CreateReport hängt manchmal wenn CCU abstürzt. Diesen Zustand erkennen sonst funktioniert OperationCenter und vieles mehr nicht mehr. */
     $HMIStatus_DevMan_ID=CreateVariable("HMI_ReportStatus",3, $categoryId_DeviceManagement,100,"",null,null,"");
@@ -1256,12 +1257,12 @@
         $moduleManagerAS = new IPSModuleManager('Autosteuerung',$repository);
 		$CategoryIdDataAS     = $moduleManagerAS->GetModuleCategoryID('data');
 		$CategoryIdAppAS      = $moduleManagerAS->GetModuleCategoryID('app');
-		$scriptId  = IPS_GetObjectIDByIdent('WebfrontControl', $CategoryIdAppAS);		
+		$scriptIdAutosteuerung  = IPS_GetObjectIDByIdent('WebfrontControl', $CategoryIdAppAS);		
 
 		$categoryId_Autosteuerung    = CreateCategory('Autosteuerung',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_Autosteuerung, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
 		$TableEventsAS_ID=CreateVariable("TableEvents",3, $categoryId_Autosteuerung,0,"~HTMLBox",null,null,"");
-		$SchalterSortAS_ID=CreateVariable("Tabelle sortieren",1, $categoryId_Autosteuerung,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$SchalterSortAS_ID=CreateVariable("Tabelle sortieren",1, $categoryId_Autosteuerung,0,"SortTableEvents",$scriptIdAutosteuerung,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 
 	    echo "===========================================\n";
 	    echo "Alexa Variablen für Webfront anlegen.\n";		
@@ -1269,7 +1270,7 @@
 		$categoryId_AutosteuerungAlexa    = CreateCategory('Alexa',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_AutosteuerungAlexa, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
 		$TableEventsAlexa_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungAlexa,0,"~HTMLBox",null,null,"");
-		$SchalterSortAlexa_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEventsAlexa",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$SchalterSortAlexa_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEventsAlexa",$scriptIdAutosteuerung,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 
 	    echo "===========================================\n";
 	    echo "Zusammenfassung Taster anzeigen.\n";		
@@ -1322,15 +1323,18 @@
 		//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, 0, "Adresse", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-		IPS_SetVariableProfileAssociation($pname, 1, "DeviceType", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 2, "ChannelType", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 3, "Pfad", "", 		0x4e7127); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 4, "IPSDeviceName", "", 		0x1ef1f7); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 5, "DeviceName", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt;\n";
-		}
+        echo "Profil ".$pname." erstellt;\n";
+        }
+    IPS_SetVariableProfileValues($pname, 0, 7, 0); //PName, Minimal, Maximal, Schrittweite
+    IPS_SetVariableProfileAssociation($pname, 0, "Adresse", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+    IPS_SetVariableProfileAssociation($pname, 1, "DeviceType", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+    IPS_SetVariableProfileAssociation($pname, 2, "ChannelType", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
+    IPS_SetVariableProfileAssociation($pname, 3, "Pfad", "", 		0x4e7127); //P-Name, Value, Assotiation, Icon, Color
+    IPS_SetVariableProfileAssociation($pname, 4, "IPSDeviceName", "", 		0x1ef1f7); //P-Name, Value, Assotiation, Icon, Color
+    IPS_SetVariableProfileAssociation($pname, 5, "DeviceName", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color
+    IPS_SetVariableProfileAssociation($pname, 6, " ", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color		
+    IPS_SetVariableProfileAssociation($pname, 7, "Update", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color		
+
 	$order=1000;	
 	$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
 	$countHMI = sizeof($HMIs);
@@ -1344,7 +1348,8 @@
 		if ( is_dir ( $Verzeichnis ) == false ) $dosOps->mkdirtree($Verzeichnis);
 		
 		$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
-				
+        $ipsOps->emptyCategory($CategoryIdHomematicInventory,["deleteCategories" => true,]);		
+		
 		foreach ($HMIs as $HMI)
 			{
 			$configHMI=IPS_GetConfiguration($HMI);
@@ -1370,13 +1375,72 @@
 			$CategoryIdHomematicCCU=CreateCategory("HomematicInventory_".$HMI,$CategoryIdHomematicInventory,$order+5);
 			// function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0, $action=0)
 			$HomematicInventory = CreateVariableByName($CategoryIdHomematicCCU,IPS_GetName($HMI),3,"~HTMLBox","",$order+5);		// String
-			$SortInventory = CreateVariableByName($CategoryIdHomematicCCU,"Sortieren",1,"SortTableHomematic","",$order,$scriptId);		// String
+			$SortInventory = CreateVariableByName($CategoryIdHomematicCCU,"Sortieren",1,"SortTableHomematic","",$order,$scriptIdOperationCenter);		// String
             $html='<iframe frameborder="0" width="100%" height="4000px"  src="../user/OperationCenter/Homematics/'.$HMI.'/HM_inventory.html"</iframe>';
-			//HMI_CreateReport($HMI);	SetValue($HomematicInventory,$html);			
+			HMI_CreateReport($HMI);	
+            SetValue($HomematicInventory,$html);			
 			$order +=10;
 			}
 		}
 	
+    /* easySetupWebfront braucht im einfachsten Fall folgende Struktur
+     * Tabpane 
+     *   Subtabpane Auswertung
+     *
+     *   Subtabpane Nachrichten
+     *      VariableID
+     *          NAME
+     *          ORDER
+     *
+     * Im Fall von Monitor hab ich vier Splittabs, drei horizontale und das letzte als vertikales
+     *
+     *
+     */
+
+    $paneName="Homematic";
+    $webfront_links=array();
+    $hmi=1; $order=100;
+
+    $subCategories = IPS_GetChildrenIDs($CategoryIdHomematicInventory);
+    foreach ($subCategories as $categoryID) 
+        {
+        echo $categoryID." ".IPS_GetName($categoryID)."\n";
+        $variables = IPS_GetChildrenIDs($categoryID);
+        foreach ($variables as $variableID) 
+            {
+            echo "    ".$variableID." ".IPS_GetName($variableID)."\n";
+            $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["NAME"]=IPS_GetName($variableID);
+            if (IPS_GetName($variableID)=="Sortieren") $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["ORDER"]=10;
+            else $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["ORDER"]=$order;
+            $order += 10;
+            }
+        $webfront_links[$paneName][IPS_GetName($categoryID)]["CONFIG"] = array("type" => "link", "name" => "HMI".$hmi, "icon"=>"Notebook",);               // um sicherzustellen dass nicht irrtümlich noch eine Unterkatgeorie erkannt wird
+        $hmi++;
+        }
+    $webfront_links[$paneName]["CONFIG"] = array("type" => "pane");
+    
+    print_r($webfront_links);
+
+
+    /* Webfront Darstellung für Homematic Inventory in Administrator
+     *
+     */
+
+	if ($WFC10_Enabled)
+		{
+        echo "\n";
+        $configWF = $configWFront["Administrator"];
+        $configWF["Path"].=".Homematic";
+        $tabPaneParent=$configWF["TabPaneItem"];
+        $configWF["TabPaneItem"]="Homematic";
+        $configWF["TabPaneParent"]=$tabPaneParent;
+        echo "Homematic Module im Administrator Webfront $tabPaneParent mit Namen ".$configWF["TabPaneItem"]." abspeichern.\n";
+        echo "Visualization Kategorie : ".$configWF["Path"]."\n";
+
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            // true für Debug
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);
+        }
 																																
 	/* ----------------------------------------------------------------------------------------------------------------------------
 	 * WebFront Installation
@@ -1466,7 +1530,15 @@
             }	
         } 
 
-    /***********************************************************************************/
+    /**********************************************************************************
+     * Path ist vom Operationcenter, das ist jetzt das DoctorBag
+     * OperationCenter verlinkt auch direkt auf das Data vom Modul
+     * Alexa mit der Auflistung aller befehle kommt von Autosteuerung, ist mittlerweile direkt dort angeordnet
+     * Autosteuerung gibt einen Überblick aller Befehle - ab ins DoctorBag
+     *
+     *
+     *
+     */
 
 	if ($WFC10_Enabled)
 		{
@@ -1475,7 +1547,7 @@
 		CreateLinkByDestination('OperationCenter', $CategoryIdData,    $categoryId_WebFront,  10);
 		if (isset ($installedModules["Autosteuerung"]))
             {
-            CreateLinkByDestination('Alexa', $categoryId_AutosteuerungAlexa,    $categoryId_WebFront,  80);		
+            //CreateLinkByDestination('Alexa', $categoryId_AutosteuerungAlexa,    $categoryId_WebFront,  80);		
             CreateLinkByDestination('Autosteuerung', $categoryId_Autosteuerung,    $categoryId_WebFront,  80);		
             CreateLinkByDestination('TasterDarstellung', $categoryId_AutosteuerungButton,    $categoryId_WebFront,  80);		
             CreateLinkByDestination('TimerSimulation', $categoryId_AutosteuerungSimulation,    $categoryId_WebFront,  80);		

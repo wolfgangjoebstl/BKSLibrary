@@ -85,40 +85,46 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
  	 *
 	 *************************************************************/
 
-if (isset ($installedModules["WebCamera"]))
-	{
-    IPSUtils_Include ("WebCamera_Configuration.inc.php","IPSLibrary::config::modules::WebCamera");
-	IPSUtils_Include ("WebCamera_Library.inc.php","IPSLibrary::app::modules::WebCamera");
-    }
+    if (isset ($installedModules["WebCamera"]))
+        {
+        IPSUtils_Include ("WebCamera_Configuration.inc.php","IPSLibrary::config::modules::WebCamera");
+        IPSUtils_Include ("WebCamera_Library.inc.php","IPSLibrary::app::modules::WebCamera");
+        }
 
-if (isset ($installedModules["IPSCam"]))
-	{
-	//echo "Modul IPSCam ist installiert.\n";
-	//echo "   Timer 150 Sekunden aktivieren um Camfiles wegzuschlichten.\n";
-	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
-	IPS_SetEventActive($tim2ID,true);
-	}
-else
-	{
-	//echo "Modul IPSCam ist NICHT installiert.\n";
-	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
-	if ($tim2ID > 0)  {	IPS_SetEventActive($tim2ID,false);  }
-	}
+    if (isset ($installedModules["IPSCam"]))
+        {
+        //echo "Modul IPSCam ist installiert.\n";
+        //echo "   Timer 150 Sekunden aktivieren um Camfiles wegzuschlichten.\n";
+        $tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
+        IPS_SetEventActive($tim2ID,true);
+        }
+    else
+        {
+        //echo "Modul IPSCam ist NICHT installiert.\n";
+        $tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
+        if ($tim2ID > 0)  {	IPS_SetEventActive($tim2ID,false);  }
+        }
+	if (isset ($installedModules["EvaluateHardware"])) 
+		{     
+        $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
+        $CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
+        $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
+        }
 
-$tim1ID  = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
-$tim3ID  = @IPS_GetEventIDByName("RouterExectimer", $scriptId);
-$tim4ID  = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
-$tim5ID  = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
-$tim6ID  = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
-$tim7ID  = @IPS_GetEventIDByName("FileStatus", $scriptId);
-$tim8ID  = @IPS_GetEventIDByName("SystemInfo", $scriptId);
-$tim9ID  = @IPS_GetEventIDByName("Reserved", $scriptId);
-$tim10ID = @IPS_GetEventIDByName("Maintenance",$scriptId);						/* Starte Maintennance Funktionen */	
-$tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintenance Funktion: Move Log Files */	
-$tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptId);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
+    $tim1ID  = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
+    $tim3ID  = @IPS_GetEventIDByName("RouterExectimer", $scriptId);
+    $tim4ID  = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
+    $tim5ID  = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
+    $tim6ID  = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
+    $tim7ID  = @IPS_GetEventIDByName("FileStatus", $scriptId);
+    $tim8ID  = @IPS_GetEventIDByName("SystemInfo", $scriptId);
+    $tim9ID  = @IPS_GetEventIDByName("Reserved", $scriptId);
+    $tim10ID = @IPS_GetEventIDByName("Maintenance",$scriptId);						/* Starte Maintennance Funktionen */	
+    $tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintenance Funktion: Move Log Files */	
+    $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptId);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
 
-$tim13ID = @IPS_GetEventIDByName("CleanUpEndofDay",$scriptId);                  /* CleanUp für Backup starten, sollte alte Backups loeschen */
-$tim14ID  = @IPS_GetEventIDByName("UpdateStatus", $scriptId);                   /* rausfinden welche Module ein Update benötigen, war früher bei FleStatus Timer dabei. */ 
+    $tim13ID = @IPS_GetEventIDByName("CleanUpEndofDay",$scriptId);                  /* CleanUp für Backup starten, sollte alte Backups loeschen */
+    $tim14ID  = @IPS_GetEventIDByName("UpdateStatus", $scriptId);                   /* rausfinden welche Module ein Update benötigen, war früher bei FleStatus Timer dabei. */ 
 
 /*********************************************************************************************/
 
@@ -208,23 +214,29 @@ if ($_IPS['SENDER']=="WebFront")
 		case 0:
 			break;
 		default:	
+            //echo "OperationCenter $variableId ";        
 		    if (array_key_exists($variableId,$ActionButton))
 		        {
+                //echo "found ";                    
                 /* nach Klassen getrennt auswerten, Routine kann in die Klasse später übernommen werden */
-				if (isset($ActionButton[$variableId]["DeviceManager"]))
+				if (isset($ActionButton[$variableId]["DeviceManagement"]))
 					{
-					if (isset($ActionButton[$variableId]["DeviceManager"]["HMI"]))
+                    //echo "in DM "; 
+					if (isset($ActionButton[$variableId]["DeviceManagement"]["HMI"]))
                         {
                         /* Homematic Inventory Tabelle sortieren
                         *
                         ********************************************************************************************/					
-                        $HMI=$ActionButton[$variableId]["DeviceManager"]["HMI"];
-                        $HomematicInventoryId=$ActionButton[$variableId]["DeviceManager"]["HtmlBox"];
+                        $sortOrder = $_IPS['VALUE'];
+                        if ($sortOrder>5) $sortOrder=0;
+                        $HMI=$ActionButton[$variableId]["DeviceManagement"]["HMI"];
+                        $HomematicInventoryId=$ActionButton[$variableId]["DeviceManagement"]["HtmlBox"];
                         //echo "$variableId gefunden.".IPS_GetName($HMI)."   ".IPS_GetProperty($HMI,"SortOrder");
-                        IPS_SetProperty($HMI,"SortOrder",$_IPS['VALUE']);
+                        IPS_SetProperty($HMI,"SortOrder",$sortOrder);
                         IPS_ApplyChanges($HMI);
                         HMI_CreateReport($HMI);
                         SetValue($HomematicInventoryId,GetValue($HomematicInventoryId));
+                        if ( (isset($scriptIdEvaluateHardware)) && ($_IPS['VALUE']>5) ) IPS_RunScriptWait($scriptIdEvaluateHardware);
                         }
 					}
 

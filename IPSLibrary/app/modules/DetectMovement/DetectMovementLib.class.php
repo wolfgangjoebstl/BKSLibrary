@@ -804,10 +804,13 @@
         * mit Parameter true kann man eine erweiterte Ausgabe erzwingen
         */
 
-        public function Print_EventConfigurationAuto($list=false)
+        public function Print_EventConfigurationAuto($list=false,$extend=false)
             {
-            $extend=false;
-            if (is_array($list)) $configuration = $list;
+            //$extend=false;
+            if (is_array($list)) 
+                {
+                $configuration = $list;
+                }
             else 
                 {
                 if ($list==1) $extend=true;
@@ -842,7 +845,10 @@
                 {
                 foreach ($configuration as $variableId=>$params)
                     {
-                    echo "  ".$variableId."   ".str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",60)." \"".$params[0]."\",\"".$params[1]."\",\"".$params[2]."\"\n";
+                    echo "  ".$variableId."   ";
+                    if (IPS_ObjectExists($variableId)) echo str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",60)." \"".$params[0]."\",\"".$params[1]."\",\"".$params[2]."\"";
+                    else echo "******* Delete Entry from IPSDetectDeviceHandler_GetEventConfiguration() in EvaluateHardware_Configuration.";
+                    echo "\n";
                     }
                 }
             }
@@ -3306,13 +3312,15 @@
  *      Config, ist die Config aus dem MessageHandler
  *      Homematic, ist das Object eine Homematic Instanz und wenn ja welche
  *
- * getEventListforDeletion
- * getAutoEventListTable
- * writeEventListTable
- * findMotionDetection
- * findSwitches
- * findButtons
- * sortEventList
+ *  getEventListforDeletion
+ *  getEventListfromIPS
+ *  getComponentEventListTable
+ *  getAutoEventListTable
+ *  writeEventListTable
+ *  findMotionDetection
+ *  findSwitches
+ *  findButtons
+ *  sortEventList
  *
  **************************************/
 
@@ -3604,7 +3612,7 @@ class TestMovement
 		}	
 
 	/**********************************
-	 *
+	 * TestMovement, getEventListforDeletion Werte ausgeben die beim construct bereits erstellt wurden
 	 * es gibt Events in der IPS_MessageHandler Konfigurationsdatei/function denen keine eigene Konfiguration zugeordnet ist
 	 * berücksichtigt sowohl Configuration als auch ConfigurationCust
 	 *
@@ -3616,9 +3624,8 @@ class TestMovement
         }
 
 	/**********************************
-	 *
-	 * erst einmal alle Events von IP Symcon auslesen und in einem
-     * wieder neuen Format ausgeben
+	 * TestMovement, erst einmal alle Events von IP Symcon auslesen und in einem neuen Format ausgeben
+     * Es gibt filter als Parameter, das ist der Name des Parents des Events
 	 *
 	 *******************************/
 
@@ -3662,6 +3669,9 @@ class TestMovement
         return ($resultEventList);
         }
 
+    /* Ausgabe als html Tabelle
+     *
+     */
     public function getComponentEventListTable($resultEventList,$filter="",$htmlOutput=false,$debug=false)
         {
         /* das Ergebnis der Events in resultEventList auswerten */
@@ -3700,6 +3710,7 @@ class TestMovement
                     {
                     $path=IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger));
                     if ($echo) echo str_pad($path,40)."  ";
+                    $html.="<td>$trigger</td>";
                     $html.="<td>$path</td>";
                     $result[$index]["Pfad"]=$path;
                     }
@@ -3709,10 +3720,20 @@ class TestMovement
                     $html.="<td>==> Variable nicht mehr vorhanden.</td>";
                     $delete[$entry["OID"]]=true;
                     }
-                if (isset($eventlist[$trigger])) 
+                if (isset($entry["Component"])) 
                     {
-                    if ($echo) echo str_pad($eventlist[$trigger][1],50);
-                    $html.="<td>".$eventlist[$trigger][1]."</td>";
+                    if ($echo) echo str_pad($entry["Component"],50);
+                    $html.="<td>".$entry["Component"]."</td>";
+                    }
+                else 
+                    {
+                    if ($echo) echo str_pad("-----",50);
+                    $html.="<td>------</td>";
+                    }
+                if (isset($entry["Module"])) 
+                    {
+                    if ($echo) echo str_pad($entry["Module"],50);
+                    $html.="<td>".$entry["Module"]."</td>";
                     }
                 else 
                     {

@@ -3005,22 +3005,35 @@ class SeleniumEasycharts extends SeleniumHandler
         }
 
     /* Easychart Configuration und Orderbook 
+     * function get_EasychartConfiguration()
+		    {
+            $orderbook=array(
+                "AT000000STR1" => array(                                // Strabag, closed
+                    "Short"    => "STR.VI",
+                    "Depot"     =>  "actualDepot.Easy",                                     // Depot and SubDepot                    
+                    "Orders"   => array(
+                        "20210302" => array(
+                            "pcs" => 300,"price" => 30.7,"currency" => "USD", "exrate" => 1.09),                                  // 45,2
+                        "20220812" => array(
+                            "pcs" => -300,"price" => 40),                                   // Verkauf vor squeezeout im Feb 2023
+                                            ),                                              // https://de.finance.yahoo.com/quote/STR.VI?p=STR.VI&.tsrc=fin-srch
+                                        ),
      * zwei unterschiedliche Formatierungen, angleichen auf Standard flexibles Format
      * Orderbook ist mit Index Orders und Short
      */
     function getEasychartConfiguration()
         {
         $orderbook=array();    
-        foreach (get_EasychartConfiguration() as $index => $entry)
+        if ( (function_exists("get_EasychartConfiguration")) && (@sizeof(get_EasychartConfiguration())) )
             {
-            // parse configuration, entry ist der Input und orderbook der angepasste Output
-            configfileParser($entry, $orderbook[$index], ["ORDERS","Orders","Order","orders" ],"Orders" , null); 
-            /*if (isset($entry["Orders"])) $orderbook[$index]["Orders"]=$entry["Orders"];
-            elseif (isset($entry["Order"])) $orderbook[$index]["Orders"]=$entry["Order"];
-            elseif (isset($entry["ORDERS"])) $orderbook[$index]["Orders"]=$entry["ORDERS"];
-            else $orderbook[$index]["Orders"]=$entry;  */
-            if ((isset($orderbook[$index]["Orders"]))===false) $orderbook[$index]["Orders"]=$entry;
-            configfileParser($entry, $orderbook[$index], ["Short","SHORT","short","Shortname","ShortName" ],"Short" , null); 
+            foreach (get_EasychartConfiguration() as $index => $entry)
+                {
+                // parse configuration, entry ist der Input und orderbook der angepasste Output
+                configfileParser($entry, $orderbook[$index], ["ORDERS","Orders","Order","orders" ],"Orders" , null); 
+                if ((isset($orderbook[$index]["Orders"]))===false) $orderbook[$index]["Orders"]=$entry;
+                configfileParser($entry, $orderbook[$index], ["Short","SHORT","short","Shortname","ShortName"],"Short" , null); 
+                configfileParser($entry, $orderbook[$index], ["Depot","DEPOT","depot"],"Depot" , null); 
+                }
             }
         return ($orderbook);
         }

@@ -54,58 +54,24 @@
         $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
         }
     $installedModules = $moduleManager->GetInstalledModules();
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $categoryId_DetectDevice        = IPS_GetObjectIDByName('DetectDevice',        $CategoryIdData);
+    $actionSortMessageTableID          = IPS_GetObjectIDByName("SortTableBy",$categoryId_DetectDevice);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+    $messageTableID          = IPS_GetObjectIDByName("MessageTable", $categoryId_DetectDevice);
+
+    $moduleManagerCC = new IPSModuleManager('CustomComponent',$repository);
+	$CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
+    $hardwareStatusCat      = IPS_GetObjectIDByName("HardwareStatus",$CategoryIdDataCC);
+    $valuesDeviceTableID    = IPS_GetObjectIDByName("ValuesTable", $hardwareStatusCat);	
+    $actionDeviceTableID    = IPS_GetObjectIDByName("ShowTablesBy", $hardwareStatusCat);
+    
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$scriptIdImproveDeviceDetection   = IPS_GetScriptIDByName('ImproveDeviceDetection', $CategoryIdApp);
+
+    $ipsOps = new ipsOps();
+
     $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-
-    if (isset($installedModules["OperationCenter"])) 
-        {
-        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
-        echo "OperationCenter ist installiert. HMI_CreateReport updaten, wenn in den letzten 24h nicht erfolgt.\n\n";
-        $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library, getHomematicAddressList wird auch im construct aufgerufen
-        //$HomematicAddressesList = $DeviceManager->getHomematicAddressList(true);        // noch einmal aufrufen mit Debug
-        //print_r($HomematicAddressesList);
-        //echo "    --done---\n";
-        }  
-
-    if (isset($installedModules["DetectMovement"])) 
-        {
-        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-        
-        IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
-        IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
-
-        IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
-        IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
-        IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
-
-    	$debug=false;
-        echo "DetectMovement Module installiert. Class TestMovement für Auswertungen verwenden:\n";
-		$testMovement = new TestMovement($debug);
-        //echo "--------\n";
-        $eventListforDeletion = $testMovement->getEventListforDeletion();
-        if (count($eventListforDeletion)>0) 
-            {
-            echo "Ergebnis TestMovement construct: Es müssen ".count($eventListforDeletion)." Events in der Config Datei \"IPSMessageHandler_GetEventConfiguration\" gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
-            echo "                                 und es müssen auch diese Events hinterlegt beim IPSMessageHandler_Event geloescht werden \"Bei Änderung Event Ungültig\".\n";
-            print_R($eventListforDeletion);
-            }
-        else 
-            {
-            echo "Events von IPS_MessageHandler mit Konfiguration abgeglichen. TestMovement sagt alles ist in Ordnung.\n";
-            echo "\n";
-            }
-        $filter="IPSMessageHandler_Event";
-        $resultEventList = $testMovement->getEventListfromIPS($filter,true);
-        $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,true);
-        echo $html;
-
-        }
-
-	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
-
-    $TopologyLibrary=$modulhandling->printModules('TopologyMappingLibrary');
-    if (empty($TopologyLibrary)) echo "TopologyMappingLibrary noch nicht installiert.  \n";
-    echo "\n";   
 
 
     /***************************************************************************
@@ -128,98 +94,149 @@
   	$eventConf = IPSMessageHandler_GetEventConfiguration();
  	$eventCust = IPSMessageHandler_GetEventConfigurationCust();
 	$eventlist = $eventConf + $eventCust;
-	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
 
-    if (false)          // Alle Events einsammeln und strukturieren, auf nicht mehr benötigte Events untersuchen und diese löschen
+    if (isset($installedModules["DetectMovement"])) 
         {
-        $resultEventList=array();
-        $filter = "";
-        echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        
+        IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+        IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
+
+        IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+        IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+        IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+
+    	$debug=false;
+		$testMovement = new TestMovement($debug);
+        }
+
+    if (isset($installedModules["OperationCenter"])) 
+        {    
+        echo "OperationCenter ist installiert.\n";
+        IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+        $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library
+        }
+
+    if ($_IPS['SENDER']=="WebFront")
+	    {
+    	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+        switch ($_IPS['VARIABLE'])
+            {
+            case $actionSortMessageTableID:
+                if ($messageTableID)
+                    {
+                    $filter="IPSMessageHandler_Event";
+                    $resultEventList = $testMovement->getEventListfromIPS($filter,false);                           // false no Debug
+                    foreach ($resultEventList as $index => $entry)
+                        {
+                        $trigger = $entry["TriggerVariableID"];
+                        if (isset($eventlist[$trigger])) 
+                            {
+                            $resultEventList[$index]["Component"]=$eventlist[$trigger][1];
+                            $resultEventList[$index]["Module"]=$eventlist[$trigger][2];
+                            }
+                        }
+                    $ipsOps->intelliSort($resultEventList,"Module");
+                    $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,false);             // false no Debug, wenn file IPSMessage_Handler ist gibt es detailliertere Informationen
+                    setValue($messageTableID,$html);
+                    }
+                else echo "Table not found.\n";
+                break;
+            case $actionDeviceTableID:
+                if (isset($DeviceManager))
+                    {
+                    $hwStatus = $DeviceManager->HardwareStatus("array");           // Ausgabe als Array
+                    //print_r($hwStatus);
+                    $output="";
+                    $output.='<style>';
+                    $output.=' .first1  { margin: 30px; float:left; background-color: green; display: flex; flex-wrap: wrap;}';
+                    $output.=' .second2 { margin: 30px;  float:left; background-color: blue; display: flex; flex-wrap: wrap;}';
+                    $output.=' .third3  { margin: 30px;  float:left; background-color: orange; display: flex; flex-wrap: wrap;}';
+                    $output.='</style>';
+                    $output.='<div style="overflow:auto">';
+                    $output.='  <div class="first1">';
+                    $output .= $DeviceManager->showHardwareStatus($hwStatus,["Type"=>"Temperature"],["Header"=>"Temperatur"]);           // Ausgabe als html
+                    $output.="  </div>";
+                    $output.='  <div class="second2">';
+                    $output .= $DeviceManager->showHardwareStatus($hwStatus,["Type"=>"Humidity"],["Header"=>"Feuchtigkeit"]);           // Ausgabe als html
+                    $output.="  </div>";
+                    $output.='  <div class="third3">';
+                    $output .= $DeviceManager->showHardwareStatus($hwStatus,["Type"=>"Motion"],["Header"=>"Bewegung"]);           // Ausgabe als html
+                    $output.="  </div>";
+                    $output.='  <div class="first1">';
+                    $output .= $DeviceManager->showHardwareStatus($hwStatus,["Type"=>"Contact"],["Header"=>"Kontakte"]);           // Ausgabe als html
+                    $output.="  </div>";
+                    $output.='  <div class="second2">';
+                    $output .= $DeviceManager->showHardwareStatus($hwStatus,["Type"=>"Brightness"],["Header"=>"Helligkeit"]);           // Ausgabe als html
+                    $output.="  </div>";
+                    $output.='  <div class="third3">';
+                    $output .= $DeviceManager->showHardwareStatus($hwStatus,["Type"=>"Energy"],["Header"=>"Energie"]);           // Ausgabe als html
+                    $output.="  </div>";
+                    $output.="  </div>";
+                    $output.='  <div class="first1">';
+                    $output .= $DeviceManager->showHardwareStatus($hwStatus,["Type"=>"Solltemperatur"],["Header"=>"Solltemperatur"]);           // Ausgabe als html
+                    $output.="  </div>";
+                    $output.='  <div class="second2">';
+                    $output .= $DeviceManager->showHardwareStatus($hwStatus,["Type"=>"Ventilwert"],["Header"=>"Ventilwert"]);           // Ausgabe als html
+                    $output.="  </div>";
+                    $output.="</div>";
+                    SetValue($valuesDeviceTableID,$output);
+                    }
+
+                break;
+            default:
+                echo "Do not know ".$_IPS['VARIABLE']."\n";
+                break;
+            }
+        }
+
+
+    if ($_IPS['SENDER']=="Execute")
+        {
+
+    if (isset($installedModules["OperationCenter"])) 
+        {
+        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+        echo "OperationCenter ist installiert. HMI_CreateReport updaten, wenn in den letzten 24h nicht erfolgt.\n\n";
+        $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library, getHomematicAddressList wird auch im construct aufgerufen
+        //$HomematicAddressesList = $DeviceManager->getHomematicAddressList(true);        // noch einmal aufrufen mit Debug
+        //print_r($HomematicAddressesList);
+        //echo "    --done---\n";
+        }  
+
+    if (isset($testMovement)) 
+        {
+        echo "DetectMovement Module installiert. Class TestMovement für Auswertungen verwenden:\n";
+        //echo "--------\n";
+        $eventListforDeletion = $testMovement->getEventListforDeletion();
+        if (count($eventListforDeletion)>0) 
+            {
+            echo "Ergebnis TestMovement construct: Es müssen ".count($eventListforDeletion)." Events in der Config Datei \"IPSMessageHandler_GetEventConfiguration\" gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
+            echo "                                 und es müssen auch diese Events hinterlegt beim IPSMessageHandler_Event geloescht werden \"Bei Änderung Event Ungültig\".\n";
+            print_R($eventListforDeletion);
+            }
+        else 
+            {
+            echo "Events von IPS_MessageHandler mit Konfiguration abgeglichen. TestMovement sagt alles ist in Ordnung.\n";
+            echo "\n";
+            }
         $filter="IPSMessageHandler_Event";
+        $resultEventList = $testMovement->getEventListfromIPS($filter,true);
+        //$ipsOps->intelliSort($resultEventList,"OID");                           // Event ID
+        $ipsOps->intelliSort($resultEventList,"Name");                           // Device Event ID
+        $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,true);
+        echo $html;
 
-        /* Alle Events einsammeln und strukturieren */
-        $alleEreignisse = IPS_GetEventList();
-        $index=0;
-        foreach ($alleEreignisse as $ereignis)
-            {
-            if ( ($filter == "") || ($filter == IPS_GetName(IPS_GetParent($ereignis))) )
-                {
-                $resultEventList[$index]["OID"]=$ereignis;
-                $resultEventList[$index]["Name"]=IPS_GetName($ereignis);
-                $resultEventList[$index]["Pfad"]=IPS_GetName(IPS_GetParent($ereignis))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($ereignis)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis)))));
-                $details=IPS_GetEvent($ereignis);
-                //print_r($details);
-                switch ($details["EventType"])
-                    {
-                    case 0:
-                        $resultEventList[$index]["Type"]="Auslöser";
-                        break;
-                    case 1:
-                        $resultEventList[$index]["Type"]="Zyklisch";
-                        break;
-                    case 2:
-                        $resultEventList[$index]["Type"]="Wochenplan";
-                        break;
-                    }
-                $resultEventList[$index]["LastRun"]=$details["LastRun"];
-                //$resultEventList[$index]["EventConditions"]=$details["EventConditions"];
-                $resultEventList[$index]["TriggerVariableID"]=$details["TriggerVariableID"];
-                $script=str_replace("\n","",$details["EventScript"]);
-                $resultEventList[$index]["Script"]=$script;
-                $index++;
-                }
-            }
+        }
 
-        /* das Ergebnis der Events in resultEventList auswerten */
-        $delete=array();
-        foreach ($resultEventList as $index => $entry)
-            {
-            echo str_pad($index,3)." ".str_pad($entry["OID"],6);
-            if ($filter == "IPSMessageHandler_Event")
-                {
-                $trigger=$entry["TriggerVariableID"];
-                echo str_pad($entry["Name"],15)." ";
-                $info=@IPS_GetVariable($trigger);
-                if ($info !== false) echo str_pad(IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger)),40)."  ";
-                else 
-                    {
-                    echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
-                    $delete[$entry["OID"]]=true;
-                    }
-                if (isset($eventlist[$trigger])) 
-                    {
-                    echo str_pad($eventlist[$trigger][1],50);
-                    }
-                else echo str_pad("-----",50);
-                }
-            else echo str_pad($entry["Name"],40)." ";
-            if ($entry["LastRun"]==0) echo str_pad("nie",20);
-            else 
-                {
-                $timePassed=time()-$entry["LastRun"];
-                echo str_pad("vor ".nf($timePassed,"s"),20);
-                //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
-                }
-            echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
-            }
+	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 
-        /* eventuell veraltete unbenutzte Events loeschen */
-        if (sizeof($delete)>0)
-            {
-            echo "Folgende Events loeschen:\n";
-            //print_r($delete);
-            foreach ($delete as $oid => $state)
-                {
-                $eventName=IPS_GetName($oid);
-                $event=explode("_",$eventName)[1];
-                //echo "   $oid $eventName $event ".IPS_GetName($event)."\n";
-                echo "   $oid $eventName $event \n";
-                $messageHandler->UnRegisterEvent($event);
-                IPS_DeleteEvent($oid);
-                }
-            }
-        }           // ende false
-                
+    $TopologyLibrary=$modulhandling->printModules('TopologyMappingLibrary');
+    if (empty($TopologyLibrary)) echo "TopologyMappingLibrary noch nicht installiert.  \n";
+    echo "\n";   
+
+
     /**********************************************************************************
      *
      * Topology Mapping, check Libraries
@@ -235,6 +252,9 @@
     $modulhandling->printInstances('TopologyRoom');        
     $roomInstances = $modulhandling->getInstances('TopologyRoom');
     */
+
+	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
+    //print_R($eventlist);
 
     if ( (isset($installedModules["DetectMovement"])) && (isset($installedModules["EvaluateHardware"])) && !(empty($TopologyLibrary)) )
         {
@@ -716,6 +736,7 @@
         }	
         echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
 
+        }       // nur wenn Script Execute
 
 /**********************************************************************************************/
 

@@ -317,62 +317,6 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             } 
         }
 
-    /* SpezialProfile für Action Aufrufe aus dem Webfront 
-     *  pname ist der Name
-     *  nameID ein Array aus einzelnen Einträgen
-     * die Farbe wird automatisch bestimmt
-     *
-     */
-
-    function createActionProfileByName($pname,$nameID)
-        {
-        $create=false;
-        $namecount=count($nameID);
-        if (IPS_VariableProfileExists($pname) == false)
-            {
-            //Var-Profil existiert noch nicht, neu erstellen
-            IPS_CreateVariableProfile($pname, 1);                           // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
-            IPS_SetVariableProfileDigits($pname, 0);                        // PName, Nachkommastellen
-            $create=true;
-            }
-        // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
-        if ($namecount>1) IPS_SetVariableProfileValues($pname, 0, ($namecount-1), 1);      //PName, Minimal, Maximal, Schrittweite
-        $i=0;
-        foreach ($nameID as $name)
-            {
-            IPS_SetVariableProfileAssociation($pname, $i, $name, "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
-            $i++;       // sonst wird letzter Wert überschrieben
-            }
-        if ($create) echo "Aktions Profil ".$pname." erstellt.\n";
-        else echo "Aktions Profil ".$pname." überarbeitet.\n";		
-        }
-
-    /* SpezialProfile für Action Aufrufe aus dem Webfront 
-     *  pname ist der Name des Button, der Link auf den Button sollte dann "" sein oder der Button Teil des Webfronts
-     * die Farbe wird optional übergeben
-     *
-     */
-
-    function createButtonProfileByName($pname,$color=0x235643)
-        {
-        $create=false;
-        $button=$pname;
-        $pname .="Profil";
-        if (IPS_VariableProfileExists($pname) == false)
-            {
-            //Var-Profil existiert noch nicht, neu erstellen
-            IPS_CreateVariableProfile($pname, 1);                           // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
-            IPS_SetVariableProfileDigits($pname, 0);                        // PName, Nachkommastellen
-            $create=true;
-            }
-        // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
-        IPS_SetVariableProfileValues($pname, 0, 0, 0);      //PName, Minimal, Maximal, Schrittweite muss 0 sein für einen Button
-        IPS_SetVariableProfileAssociation($pname, 0, $button, "", $color); //P-Name, Value, Assotiation, Icon, Color=grau
-        if ($create) echo "Button $button mit Aktions Profil ".$pname." erstellt.\n";
-        else echo "Button $button mit Aktions Profil ".$pname." überarbeitet.\n";	
-        return $pname;	
-        }
-
     /* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
     * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
     * $rpc ist entweder eine class oder false
@@ -2950,6 +2894,71 @@ function send_status($aktuell, $startexec=0, $debug=false)
         echo "getVariableId: '$name' could NOT be found in 'Switches' and 'Groups'\n";
         return (false);
         }
+
+class webOps
+    {
+
+
+    /* SpezialProfile für Action Aufrufe aus dem Webfront 
+     *  pname ist der Name
+     *  nameID ein Array aus einzelnen Einträgen
+     * die Farbe wird automatisch bestimmt
+     *
+     */
+
+    function createActionProfileByName($pname,$nameID,$style=1)
+        {
+        $create=false;
+        $namecount=count($nameID);
+        if (IPS_VariableProfileExists($pname) == false)
+            {
+            //Var-Profil existiert noch nicht, neu erstellen
+            IPS_CreateVariableProfile($pname, 1);                           // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
+            IPS_SetVariableProfileDigits($pname, 0);                        // PName, Nachkommastellen
+            $create=true;
+            }
+        // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
+        if ($namecount>1) IPS_SetVariableProfileValues($pname, 0, ($namecount-1), $style);      //PName, Minimal, Maximal, Schrittweite
+        $i=0;
+        foreach ($nameID as $name)
+            {
+            IPS_SetVariableProfileAssociation($pname, $i, $name, "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
+            $i++;       // sonst wird letzter Wert überschrieben
+            }
+        if ($create) echo "Aktions Profil ".$pname." erstellt.\n";
+        else echo "Aktions Profil ".$pname." überarbeitet.\n";		
+        }
+
+    /* SpezialProfile für Action Aufrufe aus dem Webfront 
+     *  pname ist der Name des Button, der Link auf den Button sollte dann "" sein oder der Button Teil des Webfronts
+     * die Farbe wird optional übergeben
+     *
+     */
+
+    function createButtonProfileByName($pname,$color=0x235643)
+        {
+        $create=false;
+        $button=$pname;
+        $pname .="Profil";
+        if (IPS_VariableProfileExists($pname) == false)
+            {
+            //Var-Profil existiert noch nicht, neu erstellen
+            IPS_CreateVariableProfile($pname, 1);                           // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
+            IPS_SetVariableProfileDigits($pname, 0);                        // PName, Nachkommastellen
+            $create=true;
+            }
+        // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
+        IPS_SetVariableProfileValues($pname, 0, 0, 0);      //PName, Minimal, Maximal, Schrittweite muss 0 sein für einen Button
+        IPS_SetVariableProfileAssociation($pname, 0, $button, "", $color); //P-Name, Value, Assotiation, Icon, Color=grau
+        if ($create) echo "Button $button mit Aktions Profil ".$pname." erstellt.\n";
+        else echo "Button $button mit Aktions Profil ".$pname." überarbeitet.\n";	
+        return $pname;	
+        }
+
+
+
+
+    }
 
 /***************************************************************************************************************************
  *
@@ -7286,21 +7295,21 @@ class ipsOps
         {
         $sortArray = array(); 
         if ($sort === false) $sort=SORT_ASC;
-        if ($orderby === false) return (false);
+        if ($orderby === false) return (false);         // Spalten Key nachdem sortiert werden soll
         if (is_array($inputArray))
             {
             if ($debug) echo "intellisort: ".sizeof($inputArray)." Zeilen. Order by $orderby. Sort $sort.\n";
-            foreach($inputArray as $entry)
+            foreach($inputArray as $index => $entry)              // alle Spalten zeilenweise durchgehen
                 {
                 if ((is_array($entry))===false) return false; 
-                if ($debug) echo "   ".sizeof($entry)." Spalten\n";
+                if ($debug) echo str_pad($index,5)."   ".sizeof($entry)." Spalten\n";
                 foreach($entry as $key=>$value)
                     { 
                     if(!isset($sortArray[$key])) $sortArray[$key] = array();  
-                    $sortArray[$key][] = $value; 
+                    $sortArray[$key][$index] = strtoupper($value);                          // Speicherung mit Index und strtoupper hinzugefügt, kann auch parametrierbar werden
                     } 
                 } 
-            array_multisort($sortArray[$orderby],$sort,$inputArray);        // inputArray basierend auf sortArray.orderby sortieren, wird Teil von sortArray
+            array_multisort($sortArray[$orderby],$sort,SORT_STRING,$inputArray);        // inputArray basierend auf sortArray.orderby sortieren, wird Teil von sortArray
             return($sortArray);
             }
         else return false;
@@ -7412,9 +7421,10 @@ class ipsOps
 	 * @param integer $CategoryId ID der Kategory
 	 *
 	 */
-	function emptyCategory($CategoryId) 
+	function emptyCategory($CategoryId,$config=false) 
         {
-        echo "ipsOps:emptyCategory aufgerufen mit $CategoryId (".IPS_GetName($CategoryId).").\n";
+        if ($config===false) $config=array();
+        echo "ipsOps:emptyCategory aufgerufen mit $CategoryId (".IPS_GetName($CategoryId)."). Config ist ".json_encode($config)."\n";
 		if ($CategoryId==0) 
             {
             echo "Root Category could NOT be deleted!!!\n";    
@@ -7430,7 +7440,11 @@ class ipsOps
                 echo "Subchildren found,\n";
                 $this->emptyCategory($ObjectId) ;
                 }
-            if (IPS_GetObject($ObjectId)["ObjectType"]==0) $this->emptyCategory($ObjectId) ;  
+            if (IPS_GetObject($ObjectId)["ObjectType"]==0) 
+                {
+                $this->emptyCategory($ObjectId) ;  
+                if ( (isset($config["deleteCategories"])) && ($config["deleteCategories"]) ) DeleteObject($ObjectId);
+                }
 			else DeleteObject($ObjectId);
 		    }
 		Debug ("Empty Category ID=$CategoryId");
@@ -7601,7 +7615,7 @@ class sysOps
                 if ($debug) echo "getProcessList, die aktuell gestarteten Programme werden aus der Datei $filename erfasst.\n";
                 while (($line=fgets($handle4)) !== false) 
                     {
-                    $line=mb_convert_encoding($line,"UTF-8","UTF-16");
+                    $line=mb_convert_encoding($line,"ASCII","UTF-16");                      // UTF-8 ist ein Multibyteformat, damit funktionieren keine strpos und substr Befehle mehr
                     if ($debug) echo str_pad($i,2)." | ".strlen($line)." | $line";
                     $result .= $line;
                     if ($i++>10000) break;
@@ -7805,24 +7819,29 @@ class sysOps
 
     private function getJavaList($filename=false,$debug=false)
         {
+        if ($debug) echo "getJavaList($filename,... aufgerufen.\n";
+        $lines=0;
         $javas=array();
         if ($filename)  
             {
             if (file_exists($filename))
                 {            
                 $handle4=fopen($filename,"r");
-                if ($debug) echo "Java Processe die aktiv sind : \n";
+                if ($debug) echo "Java Processe die aktiv sind, lese $filename : \n";
                 $javas=array();
                 while (($result=fgets($handle4)) !== false) 
                     {
-                    if ($debug) echo $result;
+                    $lines++;
+                    if ($lines==1) echo "Textformat ".mb_detect_encoding($result)."\n";
                     $java=explode(" ",$result);
+                    if (($debug) && ($lines<10)) echo count($java)." Spalten : $result \n";
                     $javas[$java[0]]=trim($java[1]);
                     }
                 fclose($handle4);
                 }
             }
         //print_R($javas);
+        if ($debug) echo "In total $lines Lines had been read and ".count($javas)." processes had been found.\n";
         return ($javas);
         }
 
@@ -7838,7 +7857,7 @@ class sysOps
         {
         if ($debug) 
             {
-            echo "Aufruf getProcessListFull:\n";
+            echo "Aufruf getProcessListFull, die folgenden Dateien auswerten:\n";
             print_R($filename);
             }
         $tasklist=array(); $process=array(); $javas=array();
@@ -7855,6 +7874,8 @@ class sysOps
         else $process = $this->getProcessList();
         if ($debug) echo "Processlist ".sizeof($process)." Zeilen gefunden.\n";
         if ( (isset($filename["Javalist"])) && ($filename["Javalist"] !== false) ) $javas = $this->getJavaList($filename["Javalist"]);
+        //if ( (isset($filename["Wmiclist"])) && ($filename["Wmiclist"] !== false) ) $wmics = $this->getJavaList($filename["Wmiclist"],$debug);
+        //print_r($wmics);
 
         $processes = array_merge($tasklist,$process,$javas);            
         sort($processes,SORT_NATURAL | SORT_FLAG_CASE);
@@ -8951,11 +8972,17 @@ class fileOps
         }
 
     /* ein Fixed Delimiter File einlesen und die erste Zeile als array übergeben. 
-     * Fixed Delimiter bedeuted dass die Spalten in der jeweiligen Zeile die selbe Länge haben 
-     * Es ist auch eine File Format Conversion eingebaut
+     * Fixed Delimiter bedeuted dass die Spalten in der jeweiligen Zeile die selbe Länge haben und aus der Überschrift vorgegeben werden
+     * Es ist auch eine File Format Conversion eingebaut, convert gibt das Format aus dem in ASCII konvertiert werden soll vor
+     * es gibt möglicherweise Probleme mit fgets bei 16 Bit Formaten für die Char Darstellung, dann gleich die readFileFixed Funktion nehmen, die liest das ganze File ein
+     *
+     * ACHTUNG:  Routine ist noch nicht für mb_ funktionen vorbereitet. Kann nur ASCII 
+     * bei Gelegenheit alle Filefunktionen umstellen, String Bearbeitung ist immer Multibyte
+     * UTF-8 ist auch ein Multibyte Format, Standardfunktionen wie trin, substr, strpos etc. funktionieren nicht mehr
+     *
      */
 
-    function readFileFixedFirstline($convert="UTF-8",$debug=false)
+    function readFileFixedFirstline($convert="ASCII",$debug=false)
         {
         $delimiter=array();
         $i=0;
@@ -8964,17 +8991,19 @@ class fileOps
             if (($handle = fopen($this->fileName, "r")) !== false)
                 {
                 if ($debug) echo "readFileFixedFirstline, bearbeite Datei ".$this->fileName." mit Format $convert:\n";
-                while (($result=fgets($handle)) !== false) 
+                while (($line=fgets($handle)) !== false) 
                     {
-                    if ($convert != "UTF-8") $result=mb_convert_encoding($result,"UTF-8",$convert);
-                    if ($i==0) 
+                    if ($convert != "ASCII") $result=mb_convert_encoding($line,"ASCII",$convert);
+                    else $result=$line;
+                    if ($debug) echo "   ".strlen($line)." characters, ".strlen($result)." chars after encoding to ASCII and ".mb_strlen($line,$convert)." Multibyte Characters with format $convert found in Input.\n";
+                    if ($i==0)                                                                              // nur die erste Zeile lesen
                         {
                         $oldstart=false; $oldstring="";
                         $tabs=explode(" ",$result);
-                        $countTabs=sizeof($tabs);               // sizeof trifft noc jede Menge Eintraeg mit einem blank                        
+                        $countTabs=sizeof($tabs);               // sizeof trifft noch jede Menge Eintraeg mit einem blank                        
                         if ($countTabs>1)
                             {
-                            echo $result;                       
+                            echo "Erste Zeile :\"$result\"\n";                       
                             $delimiter=array();
                             foreach ($tabs as $index => $string)
                                 {
@@ -8984,37 +9013,51 @@ class fileOps
                                     }
                                 else    
                                     {
-                                    $string = trim($string);
-                                    //if ($debug) echo str_pad($index,2)." | \"$string\" \n";
-                                    if ($oldstart !== false) 
+                                    $stringTrimmed = trim($string);
+                                    if ($oldstart !== false)                                        // schon etwas gefunden
                                         {
                                         $delimiter[$oldstring]["Index"]=$oldstart;
-                                        $begin=$oldend;
-                                        $end=strpos($result,$string);
-                                        if ($end<$begin) $end=strpos($result," ".$string)+1;            // mit einem Blank erweitern
+                                        $begin=$oldend;                                                 // beim ersten Mal steht das auf Pos von oldstring, im Normalfall 0
+                                        if ($debug) echo "   ".str_pad($index,2)." | \"$string\" \n";
+                                        if (strlen($stringTrimmed)>0) $end=strpos($result,$stringTrimmed);              // das Ende kann nur der Anfang des nächsten Eintrages sein, nicht das Ende des Wortes
+                                        else 
+                                            {
+                                            echo "Trimmed String is empty, original string was \"$string\" \n";    
+                                            $end=strlen($result);                                                    // wenn strlen 0 ist haben wir ein non doisplayable character, Tab oder end of line
+                                            }
+                                        if ($end<$begin) $end=strpos($result," ".$stringTrimmed)+1;            // Needle am ANfang mit einem Blank erweitern und schauen ob wir dann die richtige Position finden
                                         $delimiter[$oldstring]["Begin"]=$begin;
                                         $delimiter[$oldstring]["End"]=$end;
                                         $delimiter[$oldstring]["Length"]=$end-$begin;
                                         if ($debug) echo str_pad($index,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";
                                         $oldstart=$index;
-                                        $oldstring=$string;
+                                        $oldstring=$stringTrimmed;
                                         $oldend=$end;
+                                        if ($end == strlen($result))
+                                            {
+                                            echo "End of line found. Stopp analyzing.\n";
+                                            break;              // stopp we are at the end, ignore trailing blanks
+                                            } 
                                         }
-                                    else 
+                                    else                    // Wir suchen erstmal, blanks sind schon aussortiert, wir fangen mit einem Wort an
                                         {
                                         $oldstart=$index;
-                                        $oldstring=$string;
+                                        $oldstring=$stringTrimmed;
                                         $oldend=strpos($result,$oldstring);
+                                        //if ($debug) echo "   ".str_pad($index,2)." | \"$string\" Erster Treffer Init, Eintrag endet auf Position $oldend\n";
                                         } 
                                     }       
                                 } 
-                            $delimiter[$oldstring]["Index"]=$oldstart;
                             $begin=$oldend;
                             $end=strlen($result);
-                            if ($end<$begin) $end=strpos($result," ".$string)+1;            // mit einem Blank erweitern
-                            $delimiter[$oldstring]["Begin"]=$begin;
-                            $delimiter[$oldstring]["End"]=$end;
-                            $delimiter[$oldstring]["Length"]=$end-$begin;
+                            if ($end<$begin) $end=strpos($result," ".$stringTrimmed)+1;            // mit einem Blank erweitern
+                            if ($begin<$end)            // zumindet 1 Zeichen
+                                {
+                                $delimiter[$oldstring]["Index"]=$oldstart;
+                                $delimiter[$oldstring]["Begin"]=$begin;
+                                $delimiter[$oldstring]["End"]=$end;
+                                $delimiter[$oldstring]["Length"]=$end-$begin;
+                                }
                             if ($debug) echo str_pad($oldstart,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";                                
                             //print_r($delimiter);
                             echo "Zeile mit gefundene Spalten: ".sizeof($delimiter)."   \n";                             
@@ -9034,18 +9077,132 @@ class fileOps
     *
     */
 
-    function readFileFixed($convert = "UTF-8",$delimiter=array(),$maxline=10,$debug=false)
+    function readFileFixed($convert = "ASCII",$delimiter=array(),$maxline=10,$debug=false)
         {
+        if ($debug) echo "readFileFixed, bearbeite Datei ".$this->fileName." mit Format $convert und ".count($delimiter)." Spalten.\n";
         $resultArray=array();
         $i=0;
         if ($this->fileName !== false) 
             {
-            if (($handle = fopen($this->fileName, "r")) !== false)
+            if ($convert != "ASCII")
                 {
-                if ($debug) echo "readFileFixed, bearbeite Datei ".$this->fileName." mit Format $convert:\n";
+                //echo "read full file.\n";
+                $result = @file_get_contents($this->fileName);              // dopelter Speicher
+                if ($result !== false) 
+                    {
+                    //$encoding = mb_detect_encoding( $content, array("UTF-8","UTF-32","UTF-32BE","UTF-32LE","UTF-16","UTF-16BE","UTF-16LE"), TRUE );
+                    $encoding = mb_detect_encoding( $result);
+                    //$content = mb_convert_encoding($content, "UTF-8", $convert);
+                    $content = mb_convert_encoding($result, "ASCII", $convert);
+                    //$encoding2 = mb_detect_encoding( $content, array("UTF-8","UTF-32","UTF-32BE","UTF-32LE","UTF-16","UTF-16BE","UTF-16LE"), TRUE );
+                    $encoding2 = mb_detect_encoding( $content);     // after conversion
+
+                    if ($debug) 
+                        {
+                        echo "readFileFixed, full file, bearbeite Datei ".$this->fileName." mit Format $convert:\n";
+                        echo "   Textformat $encoding -> $encoding2\n";             // oder ".mb_detect_encoding($content)."
+                        echo "   ".strlen($result)." characters, ".strlen($content)." chars after encoding to ASCII and ".mb_strlen($result,$convert)." Multibyte Characters with format $convert found in Input.\n";
+
+                        }
+                    // Separate lines
+                    $content = str_replace(array("\r\n", "\n\r", "\r"), "\n", $content);
+                    $content = explode("\n", $content);
+                    foreach ($content as $index => $line)                            
+                        {
+                        if (($i==0) && ($delimiter==[]))
+                            {
+                            echo "Use first line to find delimiters.\n";
+                            $oldstart=false; $oldstring="";
+                            $tabs=explode(" ",$line);
+                            $countTabs=sizeof($tabs);               // sizeof trifft noch jede Menge Eintraeg mit einem blank                        
+                            if ($countTabs>1)
+                                {
+                                echo "Erste Zeile :\"$line\"\n";                       
+                                $delimiter=array();
+                                foreach ($tabs as $index => $string)
+                                    {
+                                    if (($string == " ") || ($string == "")) 
+                                        {
+                                        //unset($tabs[$index]);
+                                        }
+                                    else    
+                                        {
+                                        $stringTrimmed = trim($string);
+                                        if ($oldstart !== false)                                        // schon etwas gefunden
+                                            {
+                                            $delimiter[$oldstring]["Index"]=$oldstart;
+                                            $begin=$oldend;                                                 // beim ersten Mal steht das auf Pos von oldstring, im Normalfall 0
+                                            if ($debug) echo "   ".str_pad($index,2)." | \"$string\" \n";
+                                            if (strlen($stringTrimmed)>0) $end=strpos($line,$stringTrimmed);              // das Ende kann nur der Anfang des nächsten Eintrages sein, nicht das Ende des Wortes
+                                            else 
+                                                {
+                                                echo "Trimmed String is empty, original string was \"$string\" \n";    
+                                                $end=strlen($line);                                                    // wenn strlen 0 ist haben wir ein non doisplayable character, Tab oder end of line
+                                                }
+                                            if ($end<$begin) $end=strpos($line," ".$stringTrimmed)+1;            // Needle am ANfang mit einem Blank erweitern und schauen ob wir dann die richtige Position finden
+                                            $delimiter[$oldstring]["Begin"]=$begin;
+                                            $delimiter[$oldstring]["End"]=$end;
+                                            $delimiter[$oldstring]["Length"]=$end-$begin;
+                                            if ($debug) echo str_pad($index,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";
+                                            $oldstart=$index;
+                                            $oldstring=$stringTrimmed;
+                                            $oldend=$end;
+                                            if ($end == strlen($line))
+                                                {
+                                                echo "End of line found. Stopp analyzing.\n";
+                                                break;              // stopp we are at the end, ignore trailing blanks
+                                                } 
+                                            }
+                                        else                    // Wir suchen erstmal, blanks sind schon aussortiert, wir fangen mit einem Wort an
+                                            {
+                                            $oldstart=$index;
+                                            $oldstring=$stringTrimmed;
+                                            $oldend=strpos($line,$oldstring);
+                                            //if ($debug) echo "   ".str_pad($index,2)." | \"$string\" Erster Treffer Init, Eintrag endet auf Position $oldend\n";
+                                            } 
+                                        }       
+                                    } 
+                                $begin=$oldend;
+                                $end=strlen($line);
+                                if ($end<$begin) $end=strpos($line," ".$stringTrimmed)+1;            // mit einem Blank erweitern
+                                if ($begin<$end)            // zumindet 1 Zeichen
+                                    {
+                                    $delimiter[$oldstring]["Index"]=$oldstart;
+                                    $delimiter[$oldstring]["Begin"]=$begin;
+                                    $delimiter[$oldstring]["End"]=$end;
+                                    $delimiter[$oldstring]["Length"]=$end-$begin;
+                                    }
+                                if ($debug) echo str_pad($oldstart,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";                                
+                                //print_r($delimiter);
+                                echo "Zeile mit gefundene Spalten: ".sizeof($delimiter)."   \n";                             
+                                if (sizeof($delimiter)>1) $i++;
+                                }           // ende if count tabs
+                            //$this->readFileFixedLine($line,$delimiter,true);          // Test, hier stimmt noch alles
+                            $delimiter2=array(); $offset=0;
+                            foreach ($delimiter as $index => $entry)                                    // irgend etwas läuft falsch und wir wissen nicht was 
+                                {
+                                $delimiter2[$index]["Begin"]=$entry["Begin"]-$offset;
+                                $delimiter2[$index]["Length"]=$entry["Length"];
+                                //if ($index==0) $offset=3;
+                                }
+                            $delimiter=$delimiter2;
+                            }
+                        else 
+                            {
+                            /* der obere Teil ist gleich wie bei FirstLine, jetzt wird aber wirklich eingelesen */
+                            $resultArray[$i] = $this->readFileFixedLine($line,$delimiter,$debug);
+                            if ($i++>$maxline) break;
+                            }
+                        }
+                    }
+                else echo "File is empty.\n";
+                }
+            elseif (($handle = fopen($this->fileName, "r")) !== false)
+                {
+                if ($debug) echo "readFileFixed, line per line, bearbeite Datei ".$this->fileName." mit Format $convert:\n";
                 while (($result=fgets($handle)) !== false) 
                     {
-                    if ($convert != "UTF-8") $result=mb_convert_encoding($result,"UTF-8",$convert);
+                    //if ($convert != "UTF-8") $result=mb_convert_encoding($result,"UTF-8",$convert);
                     if ($debug) echo $result;
                     if ($i==0) 
                         {
@@ -9107,18 +9264,36 @@ class fileOps
                     else 
                         {
                         /* der obere Teil ist gleich wie bei FirstLine, jetzt wird aber wirklich eingelesen */
-                        foreach($delimiter as $key => $entry)
-                            {
-                            $resultArray[$i][$key]=trim(substr($result,$entry["Begin"],$entry["Length"]));
-                            }
+                        $resultArray[$i] = $this->readFileFixedLine($result,$delimiter);
                         if ($i++>$maxline) break;
                         }
                     }
                 fclose($handle);
                 }
             }
+        else echo "Filename empty.\n";
         return($resultArray);
         }
+
+    /* nur eine Zeile zerkleinern
+     */
+    function readFileFixedLine($line,$delimiter,$debug=false)
+        {
+        $resultArray=array();
+        foreach($delimiter as $key => $entry)
+            {
+            //if ($debug) echo $entry["Begin"]."/".$entry["Length"]."|";
+            $resultArray[$key]=trim(substr($line,$entry["Begin"],$entry["Length"]));
+            }            
+        if ($debug) 
+            {
+            //echo "\n$line\n";
+            foreach ($resultArray as $item => $entry) echo $entry."|";
+            echo "\n";
+            }
+        return($resultArray);
+        }
+
 
     /* ein csv File einlesen und die erste Zeile als array übergeben für die Verwendung als index. 
      * die php Funktion fgetcsv macht dabei die Arbeit
@@ -10154,7 +10329,7 @@ class ComponentHandling
                 }
             }               // ende MySQL Analyse
 
-		if ( (!$totalfound) && (sizeof($Elements)>0) ) echo "************getComponent, Fehler kenne ".json_encode($keywords)." nicht.\n";
+		if ( (!$totalfound) && (sizeof($Elements)>0) ) if ($debug) echo "************getComponent, Warning, keine Einträge für ".json_encode($keywords)." gefunden.\n";
         switch ($write)
             {
             case "Array":
@@ -12220,6 +12395,30 @@ class WfcHandling
         return ($WebfrontConfigID);  
         }
 
+    private function anzahlItems($webfront_links)
+        {
+        $result = new stdClass();
+        $result->count=0;
+        $result->firstKey=false;
+        $result->tabs=array();
+        foreach ($webfront_links as $key => $item)
+            {
+            switch (strtoupper($key))
+                {
+                case "CONFIG":
+                case "STYLE":
+                case "ORDER":
+                    break;
+                default:
+                    if ($result->firstKey) $result->firstKey=$key;
+                    $result->tabs[$key]=$item;
+                    $result->count++;
+                    break;
+                }    
+            }
+        return ($result);        
+        }
+
     /*
      *
      *
@@ -12291,17 +12490,20 @@ class WfcHandling
         $active=true;           // false for debugging purposes, true to execute
         $status=false;
         $this->configWF=$configWF;                                              /* mitnehmen in die anderen Routinen */
+        $info   = $this->anzahlItems($webfront_links);
         if ($debug)                             // check, analyze Config
             {
             echo "easySetupWebfront für Scope \"$scope\" aufgerufen.\n";
-            if (sizeof($webfront_links)==1) echo "Installation im ".$this->configWF["TabPaneParent"].", nur ein Key ".array_key_first($webfront_links).":\n";
+            if ($info->count==1) echo "Installation im ".$this->configWF["TabPaneParent"].", nur ein Key ".$info->firstKey.":\n";
             else 
                 {
                 echo "Installation im \"".$this->configWF["TabPaneItem"]."|".$this->configWF["TabPaneParent"]."\" mit Tabs : ";
-                foreach ($webfront_links as $key => $entry) echo "$key  ";
+                foreach ($info->tabs as $key => $entry) echo "$key  ";
                 echo "\n";                    
                 }
             if (isset($configWF["TabPaneName"])) echo "  Tab ".$configWF["TabPaneName"]."(".$configWF["TabPaneItem"].")\n";             // nur ausgeben wenn wirklich definiert wurde
+            //echo json_encode($webfront_links)."\n";
+            $default=false;
             foreach ($webfront_links as $Name => $webfront_group)
                 {
                 switch ($Name)
@@ -12309,36 +12511,54 @@ class WfcHandling
                     case "ORDER":
                     case "STYLE":
                     case "CONFIG":
-                        echo "      Configuration $Group ".json_encode($RegisterEntries)."\n";    
+                        echo "      Configuration ".json_encode($webfront_group)."\n";    
                         break;
                     case "Auswertung":
                     case "Nachrichten":
+                        $default=true;
                     default:
                         echo "    Subtab:    ".$Name."\n";
+                        //echo json_encode($webfront_group)."\n";
+                        foreach ($webfront_group as $Group => $RegisterEntries)
+                            {
+                            //echo "      Switch $Group \n";
+                            switch ($Group)
+                                {
+                                case "ORDER":
+                                case "STYLE":
+                                case "CONFIG":
+                                    echo "         Configuration ".json_encode($RegisterEntries)."\n";    
+                                    break;
+                                case "Auswertung":
+                                case "Nachrichten": 
+                                default:
+                                    if ((isset($webfront_links["CONFIG"])) && ($default==false))
+                                        {
+                                        //echo json_encode($RegisterEntries);
+                                        echo "        Register:  ".$Group."/".$RegisterEntries["NAME"]."\n";
+                                        }
+                                    elseif (isset($webfront_group["CONFIG"]))
+                                        {
+                                        if (is_numeric($Group)) echo "        Register:  ".$Group."/".$RegisterEntries["NAME"]."\n";
+                                        }
+                                    elseif (is_array($RegisterEntries))
+                                        {
+                                        echo "      Gruppe:  ".$Group."\n";
+                                        foreach ($RegisterEntries as $OID => $Entries)
+                                            {
+                                            if (is_numeric($OID))
+                                                {
+                                                echo "        Register:  ".$OID;
+                                                echo "/".$Entries["NAME"]."\n";
+                                                }
+                                            }
+                                        }
+                                    break;
+                                }
+                            }               // foreach 
                         break;
                     }
-                foreach ($webfront_group as $Group => $RegisterEntries)
-                    {
-                    switch ($Group)
-                        {
-                        case "ORDER":
-                        case "STYLE":
-                        case "CONFIG":     
-                            break;
-                        case "Auswertung":
-                        case "Nachrichten": 
-                        default:
-                            if (is_array($RegisterEntries))
-                                {
-                                echo "      Gruppe:  ".$Group."\n";
-                                foreach ($RegisterEntries as $OID => $Entries)
-                                    {
-                                    echo "        Register:  ".$OID."/".$Entries["NAME"]."\n";
-                                    }
-                                }
-                            break;
-                        }
-                    }	
+
                 }
             }
         if ( !((isset($configWF["Enabled"])) && ($this->configWF["Enabled"]==false)) )   
@@ -12420,7 +12640,7 @@ class WfcHandling
      *
      * im Detail noch einmal:
      *  wenn es nur einen ersten Key gibt der nicht Auswertung oder Nachrichten heisst, dann wird createSplitPane aufgerufen und dort alles erstellt
-     *  wenn es nur einen ersten Key gibt der Auswertung heisst werden die Links gleich hier erstellt
+     *  wenn es nur einen ersten Key gibt der Auswertung heisst wird CreateCategoy aufgerufen und es werden die Links gleich hier erstellt
      *  wenn nur Nachrichten scheitert die Routine, wenn weder Auswertung noch Nachrichten dann werden SubTabs angelegt
      *  wenn es mehrere Keys gibt, wovon einer Auswertung oder Nachrichten heisst, dann wird createSplitPane aufgerufen und dort alles erstellt
      *
@@ -12431,21 +12651,33 @@ class WfcHandling
      *      STYLE   andere Bearbeitung, es muss nur der key da sein
      *  dann ist wieder entscheidend wieviele sub keys vorhanden sind oder ob eine config vorliegt
      *
+     *  $webfront_links = array (
+     *               "stationKey" => array (            Netatmo
+     *                          )
+     *                        )
+     *
+     *  $webfront_links = array (
+     *               "Auswertung" => array (            
+     *                          )
+     *               "Nachrichten" => array (            optional, da wird halt ein Splitpane erstellt, sonst nur ein Pane
+     *                          )
+     *                        )
      */
 
     public function setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator, $scope, $debug=false)
         {
         $active=true;                       // false for debugging purposes, true to execute
-        $anzahlGruppen=sizeof($webfront_links);
+        $info   = $this->anzahlItems($webfront_links);
+        if ($debug) echo "--------------------------\nsetupWebfrontEntry, Anzahl Gruppen gefunden : ".$info->count."\n";
     	if (isset($this->configWF["TabPaneOrder"])) $order=$this->configWF["TabPaneOrder"];
         else $order=10; 
         if ( (array_key_exists("Auswertung",$webfront_links)) || (array_key_exists("Nachrichten",$webfront_links)) )            // Index für Item oder SplitPane bereits in der ersten Ebene
             {
             //$count=getConfig;
             $tabItem="Default";                
-            if ($anzahlGruppen==1)      // kein SplitPane notwendig
+            if ($info->count==1)      // kein SplitPane notwendig
                 {
-                if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung vorhanden. Nur ein Pane erstellen.\n";
+                if ($debug) echo "setupWebfrontEntry Typ 1.1, Kategorie Auswertung vorhanden. Nur ein Pane erstellen.\n";
                 if ($active)
                     {
                     $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $tabItem, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
@@ -12456,7 +12688,7 @@ class WfcHandling
                 {
         	    /* Kein Name für den Pane definiert */
 	    		//echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";    
-    		    if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung vorhanden, SplitPane erzeugt TabItem \"".$WFC10_TabPaneItem."Item\" in \"".$WFC10_TabPaneItem."\" mit Namen $tabItem.\n";
+    		    if ($debug) echo "setupWebfrontEntry Typ 1.2, Kategorie Auswertung vorhanden, SplitPane erzeugt TabItem \"".$WFC10_TabPaneItem."Item\" in \"".$WFC10_TabPaneItem."\" mit Namen $tabItem.\n";
     	        if ($active) $this->createSplitPane($webfront_links,$tabItem,$WFC10_TabPaneItem."Item",$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope);
         	    }
             }
@@ -12464,16 +12696,17 @@ class WfcHandling
             {
             if ($debug) 
                 {
-                echo "setupWebfrontEntry, Kategorie Auswertung oder Nachrichten nicht als Key vorhanden. Untergruppen bilden mit den folgenden Tabs : ";
-                foreach ($webfront_links as $key => $entry) if ( ($key != "STYLE") && ($key != "ORDER") && ($key != "CONFIG") ) echo "$key  ";
+                echo "setupWebfrontEntry Typ 2, Kategorie Auswertung oder Nachrichten nicht als Key vorhanden. Untergruppen bilden mit den folgenden Tabs : ";
+                foreach ($info->tabs as $key => $entry) echo "$key  ";
                 echo "\n";                
                 }
             //if (sizeof($webfront_links)==1) 
             foreach ($webfront_links as $Name => $webfront_group)
                 {
+                $infoGroup   = $this->anzahlItems($webfront_group);
                 if ($Name=="CONFIG")
                     {
-
+                    echo "Config erkannt neben Tabname. ignorieren. Config muss untergeordnet sein.\n";
                     }
                 else    
                     {
@@ -12496,12 +12729,11 @@ class WfcHandling
                     else $style=false;
                     if (isset($webfront_group["CONFIG"])) 
                         {  
-                        //echo "Tab $Name Config Information Detected.\n";           
+                        echo "Tab $Name Config Information Detected.\n";           
                         $config = $webfront_group["CONFIG"];
                         //unset($webfront_group["CONFIG"]);      
                         }
                     else $config=false;
-                    $anzahlSubGruppen=sizeof($webfront_group);
 
                     /* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.
                     * Der Name für die Felder wird selbst erfunden.
@@ -12524,19 +12756,53 @@ class WfcHandling
 
                     if ( ($config !==false ) || (array_key_exists("Auswertung",$webfront_group)) || (array_key_exists("Nachrichten",$webfront_group)) )            // Index für Item oder SplitPane bereits in der ersten Ebene
                         {
-                        if ($anzahlSubGruppen==1)      // kein SplitPane notwendig
+                        if ( ($infoGroup->count==1) || ((isset($config["type"])) && ($config["type"]=="link") ))     // kein SplitPane notwendig
                             {
-                            if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden oder Config. Nur ein Pane erstellen.\n";
+                            if ($debug) echo "setupWebfrontEntry Typ 2.1, Kategorie Auswertung in $Name vorhanden oder Config für link level. Nur ein Pane erstellen. Active $active\n";
                             if ($active)
                                 {
+                                echo "CreateWFCItemCategory   ($tabItem, $WFC10_TabPaneItem,  $order, $Name, ,$categoryId_WebFrontTab)\n";    
                                 $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $Name, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
-                                //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $order, $Name, "");     // darunter kommen Untergruppen
-                                $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab,false,$debug);
+                                if ($config !==false ) $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab,false,$debug);
+                                else $this->createGroupLinks($webfront_group,$scope,$categoryId_WebFrontTab,false,$debug);
+                                }
+                            }
+                        elseif ( (isset($config["type"])) && ($config["type"]=="pane") )
+                            {
+                            if ($debug) echo "setupWebfrontEntry Typ 3.n no Split Pane, but several panes.\n";
+                            foreach ($webfront_group as $SubName => $webfront_subgroup)
+                                {                    
+                                /* noch eine Zwischenebene an Tabs einführen */
+                                if ( ($active) && (strtoupper($SubName) !== "CONFIG") )
+                                    {
+                                    if (isset($webfront_subgroup["CONFIG"])) $subconfig=$webfront_subgroup["CONFIG"];
+                                    else $subconfig=array();
+                                    if ($debug) 
+                                        {
+                                        echo "\n         erstelle Sub Kategorie ".$SubName." in $categoryId_WebFrontTab. Subtab Konfiguration ".json_encode($config)." ";                                
+                                        echo "Item Konfiguration ".json_encode($subconfig)."  Pane Config ".json_encode($this->paneConfig);
+                                        echo "\n";
+                                        }
+                                    if (isset($subconfig["name"])===false) $subconfig["name"]="";
+                                    if (isset($subconfig["icon"])===false) $subconfig["icon"]="";
+                                    $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
+                                    EmptyCategory($categoryId_WebFrontSubTab);   
+                                    //if ($debug) echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
+
+                                    $tabSubItem = $WFC10_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
+                                    $this->deletePane($tabSubItem);              /* Spuren von vormals beseitigen */
+
+                                    if ($debug) echo "   ***Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem.". Der Name im Titel ist $Name.\n";
+                                    //$this->CreateWFCItemTabPane($tabItem, $WFC10_TabPaneItem,  $order, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste, oder in der zweiten Zeile den Subtab Namen */
+                                    $this->CreateWFCItemCategory  ($tabItem.$SubName,   $WFC10_TabPaneItem,   10, $subconfig["name"], $subconfig["icon"], $categoryId_WebFrontSubTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
+                                    $this->createLinks($webfront_subgroup,$scope,$categoryId_WebFrontSubTab,false,$debug);
+                                    //$this->createSplitPane($webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator",$debug);    
+                                    }
                                 }
                             }
                         else
                             {                        
-                            if ($debug) echo "setupWebfrontEntry, Kategorie Auswertung in $Name vorhanden oder Config, SplitPane erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." mit Namen $Name\n";
+                            if ($debug) echo "setupWebfrontEntry Typ 2.2, Kategorie Auswertung in $Name vorhanden oder Config, SplitPane erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem." mit Namen $Name\n";
                             $this->configWF["TabPaneOrder"]=$order;     // neue Anordnung des SplitPane, etwas komplizierte Parameter Übergabe
                             if ($active) $this->createSplitPane($webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator",$debug);
                             }
@@ -12546,11 +12812,26 @@ class WfcHandling
                         if ($debug) echo "\n  **** new Style Visualization in ".$categoryId_WebFrontTab.".\n";
                         foreach ($webfront_group as $SubName => $webfront_subgroup)
                             { 
-                            if ($debug) echo "\n         erstelle Sub Kategorie ".$SubName.".\n";
+                            if ( ($active) && (strtoupper($SubName) !== "CONFIG") )
+                                {
+                                if ($debug) echo "\n         erstelle Sub Kategorie ".$SubName." in $categoryId_WebFrontTab.\n";
+                                $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
+                                EmptyCategory($categoryId_WebFrontSubTab);   
+                                //if ($debug) echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
+
+                                $tabSubItem = $WFC10_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
+                                $this->deletePane($tabSubItem);              /* Spuren von vormals beseitigen */
+
+                                if ($debug) echo "   ***Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem.". Der Name im Titel ist $Name.\n";
+                                $this->CreateWFCItemTabPane($tabItem, $WFC10_TabPaneItem,  $order, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste, oder in der zweiten Zeile den Subtab Namen */
+
+                                $this->createSplitPane($webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator",$debug);    
+                                }
                             }                    
                         }            
                     else                // noch mehr Subgruppen, es gibt keine Auswertung/Nachrichten Tabs
                         {
+                        if ($debug) echo "setupWebfrontEntry Typ 3, keine Kategorie Auswertung in $Name vorhanden oder Config definiert, erstelle eine Sub Kategorie.\n";
                         foreach ($webfront_group as $SubName => $webfront_subgroup)
                             {                    
                             /* noch eine Zwischenebene an Tabs einführen */
@@ -12580,8 +12861,9 @@ class WfcHandling
 
 
 
-    /* Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem*/
-
+    /* Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem
+     * Nutzt zusätzlich einen class parameter paneConfig mit width
+     */
     private function createSplitPane($webfront_group, $Name, $tabItem, $WFC10_TabPaneItem,$categoryId_WebFrontSubTab,$scope="Administrator", $debug=false)
         {
     	if (isset($this->configWF["TabPaneOrder"])) $order=$this->configWF["TabPaneOrder"];
@@ -12616,7 +12898,7 @@ class WfcHandling
         $this->CreateWFCItemCategory  ($tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);            
 
         //print_r($webfront_group); 
-        $this->createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight,$debug);   
+        $this->createGroupLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight,$debug);   
             
         }
 
@@ -12640,12 +12922,12 @@ class WfcHandling
      * 
      */
 
-    private function createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
+    private function createGroupLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
         {
         //$debug=true;
         $config=array();
         if ($categoryIdRight==false) $categoryIdRight=$categoryIdLeft;
-        if ($debug) echo "    createLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight .".json_encode($webfront_group)." \n";
+        if ($debug) echo "    createGroupLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight .".json_encode($webfront_group)." \n";
 
         /* Konfiguration, wenn übermittelt, berücksichtigen */
         if (isset($webfront_group["CONFIG"])) 
@@ -12670,7 +12952,7 @@ class WfcHandling
                         * Auswertung kommt nach links und Nachrichten nach rechts
                         */	
                         if (isset($link["NAME"]) === false) { echo "OID: $OID"; print_r($link); }
-                        if ($OID!="ORDER")
+                        if (!( ($OID=="ORDER") || ($OID=="CONFIG") ))
                             {
                             if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."  (".json_encode($link).")\n";
                             // Optional auch einzelne Berechtigungen pro Objekt
@@ -12721,6 +13003,55 @@ class WfcHandling
                 }  // ende foreach  
 
         }
+
+    private function createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
+        {
+        //$debug=true;
+        $config=array();
+        if ($categoryIdRight==false) $categoryIdRight=$categoryIdLeft;
+        if ($debug) echo "    createLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight .".json_encode($webfront_group)." \n";
+
+        /* Konfiguration, wenn übermittelt, berücksichtigen */
+        if (isset($webfront_group["CONFIG"])) 
+            {
+            echo "          CONFIG erkannt ".json_encode($webfront_group["CONFIG"])."\n";
+            $config=$webfront_group["CONFIG"];          // ORDER, RIGHT
+            }
+        if (isset($config["right"])==false) $config["right"]="AUSWERTUNG";
+
+			foreach ($webfront_group as $OID => $link)
+				{
+                if ( ($OID == "CONFIG") || ($OID == "STYLE") || ($OID == "ORDER") )       // SplitPane Konfiguration
+                    {
+                    //echo "Konfiguration für createLinks erkannt: ".json_encode($webfront_link)."\n";   // wird bereits oben abgearbeitet
+                    }
+                else
+                    {
+                    /* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
+                    * Auswertung kommt nach links und Nachrichten nach rechts
+                    */	
+                    if (isset($link["NAME"]) === false) { echo "WebfrontGroup OID: $OID"; print_r($link); }               // fehlererkennung
+                    if ($OID!="ORDER")
+                        {
+                        if ($debug) echo "        createLinks, bearbeite Link ".$link["NAME"]." mit OID : ".$OID."  (".json_encode($link).")\n";
+                        // Optional auch einzelne Berechtigungen pro Objekt
+                        if ( (($scope=="Administrator") && (((isset($link["ADMINISTRATOR"])) && ($scope=="Administrator") &&  $link["ADMINISTRATOR"]) || ((isset($link["ADMINISTRATOR"])===false)) )) ||
+                                    (($scope=="User") && (((isset($link["USER"])) &&  $link["USER"]) || ((isset($link["USER"])===false)) )) || 
+                                        (($scope=="Mobile") && (((isset($link["MOBILE"])) &&  $link["MOBILE"]) || ((isset($link["MOBILE"])===false)) ))  )
+                            {  
+                            if (isset($link["ORDER"])===false) $link["ORDER"]=10;
+                            if (isset($link["PANE"])===false) $link["PANE"]=false;
+                            else echo "         Link Pane definiert \n";
+                            if ($debug) echo "       erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der linken Category ".$categoryIdLeft."\n";
+                            CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
+                            }
+                        }
+                    } // ende foreach
+                }                               // CONFIG ausfiltern
+
+        }
+
+
 
     /** Anlegen eines TabPanes im WebFront Konfigurator, Nutzung von IPSInstaller
 	 *

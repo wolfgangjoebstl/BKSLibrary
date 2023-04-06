@@ -102,7 +102,7 @@
                     }
 				$this->deviceHM = $instances[$this->instanceId];		
 				}
-            else echo "nichts gefunden, Fehler\n";
+            else echo "nichts gefunden, Fehler keine Instanz $instanceId in HomematicList(), run EvaluateHardware.\n";
 			$this->remoteServerSet();           // definiert im gemeinsamen IPSComponentHeatSet
 			}
 

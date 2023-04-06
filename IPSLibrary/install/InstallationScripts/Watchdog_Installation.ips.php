@@ -263,6 +263,8 @@
     fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
     fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
     fwrite($handle2,'jps >>jps.txt'."\r\n");  
+    //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
+    fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
 	//fwrite($handle2,"pause\r\n");
 	fclose($handle2);
 

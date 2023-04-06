@@ -176,7 +176,7 @@ if ($_IPS['SENDER']=="Execute")
 			//Var-Profil erstellen
 			IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 			IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-			IPS_SetVariableProfileValues($pname, 0, 10, 1); //PName, Minimal, Maximal, Schrittweite
+			IPS_SetVariableProfileValues($pname, 0, 10, 0); //PName, Minimal, Maximal, Schrittweite
 			IPS_SetVariableProfileAssociation($pname, 0, "Event#", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
 			IPS_SetVariableProfileAssociation($pname, 1, "ID", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
 			IPS_SetVariableProfileAssociation($pname, 2, "Name", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
@@ -193,7 +193,7 @@ if ($_IPS['SENDER']=="Execute")
 		else
 			{
 			IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-			IPS_SetVariableProfileValues($pname, 0, 10, 1); //PName, Minimal, Maximal, Schrittweite
+			IPS_SetVariableProfileValues($pname, 0, 10, 0); //PName, Minimal, Maximal, Schrittweite
 			IPS_SetVariableProfileAssociation($pname, 0, "Event#", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
 			IPS_SetVariableProfileAssociation($pname, 1, "ID", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
 			IPS_SetVariableProfileAssociation($pname, 2, "Name", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color

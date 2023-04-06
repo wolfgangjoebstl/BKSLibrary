@@ -76,6 +76,7 @@
 
     $dosOps = new dosOps();
     $ipsOps = new ipsOps();    
+    $webOps = new webOps();
 	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
 
     $dosOps->setMaxScriptTime(30);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
@@ -89,9 +90,13 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-    $mirrorCat      = CreateCategoryByName($CategoryIdData,"Mirror",10001);
-    $loggingConfCat = CreateCategoryByName($CategoryIdData,"LoggingConfig",10001);
-    $loggingConf    = CreateVariableByName($loggingConfCat, "Logging_Variable", 1); /* 0 Boolean 1 Integer 2 Float 3 String */   // nur eine Variable Loggen, ist übersichtlicher
+    $hardwareStatusCat      = CreateCategoryByName($CategoryIdData,"HardwareStatus",10001);
+    $mirrorCat              = CreateCategoryByName($CategoryIdData,"Mirror",10001);
+    $loggingConfCat         = CreateCategoryByName($CategoryIdData,"LoggingConfig",10001);
+
+    $valuesDeviceTableID    = CreateVariable("ValuesTable", 3, $hardwareStatusCat,1020,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+
+    $loggingConf            = CreateVariableByName($loggingConfCat, "Logging_Variable", 1); /* 0 Boolean 1 Integer 2 Float 3 String */   // nur eine Variable Loggen, ist übersichtlicher
     SetValue($loggingConf,false);         // false no logg, true logg all, OID value log OID
 
     /*******************************
@@ -103,9 +108,17 @@
 	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
-        echo "Modul EvaluateHardware ist installiert.\n"; 
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
         IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
+        $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
+        $CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');
+        echo "Modul EvaluateHardware ist installiert. Scripts für WebfronControl sind hier $CategoryIdAppEH.\n"; 
+        $scriptIdImproveDeviceDetection   = IPS_GetScriptIDByName('ImproveDeviceDetection', $CategoryIdAppEH);
+        $pname="DeviceTables";                                         // keine Standardfunktion, da Inhalte Variable
+        $nameID=["DeviceType","Rooms"];
+        $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable, 0 ohne Selektor
+        $actionDeviceTableID          = CreateVariableByName($hardwareStatusCat,"ShowTablesBy", 1,$pname,"",1010,$scriptIdImproveDeviceDetection);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
         $hardwareTypeDetect = new Hardware();
         $dir = IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
         $file = "EvaluateHardware_Devicelist.inc.php";
@@ -132,6 +145,7 @@
     else 
         { 
         echo "Modul EvaluateHardware ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+        $evaluateHardware=false;
         }
 	if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; }
 	if (isset ($installedModules["RemoteAccess"]))
@@ -223,7 +237,6 @@
         print_R($configWFront);
         }
 
-
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
@@ -249,6 +262,8 @@
     $tabPaneParent="roottp";                        // Default Wert
 
     echo "\n";
+    echo "==================================================\n";
+    echo "Webfront für Netatmo Geräteverwaltung erstellen.\n";
     echo "Status Evaluierung, check ob Netatmos Modules vorhanden sind:\n";
     $guid = "{1023DB4A-D491-A0D5-17CD-380D3578D0FA}";  // Netatmo Gerät 
     $instances = $modulhandling->getInstances($guid);
@@ -308,12 +323,49 @@
 
         //$wfcHandling =  new WfcHandling($WFC10_ConfigId);         // Convergence to old way of configuring Webfront, new way is faster
         $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
-        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            // true für Debug
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
         }
     else if ($excessiveLog) echo "   Keine Netatmos Modules vorhanden.\n";
 
-    echo "Abgelaufene Zeit nach Bearbeitung des Webfronts für Netatmo: ".exectime($startexec)." Sek \n";
+    // Hardwarestatus als Responsive Display machen, lustige Darstellung des Hardwarestatus nach Räumen oder nach Gewerken
+    echo "\n";
+    echo "==================================================\n";
+    echo "Webfront für Darstellung Hardwarestatus erstellen.\n";
+    $configWF = $configWFront["Administrator"];
+	echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$configWF["TabPaneItem"]."Show".",Parent:".$configWF["TabPaneParent"].",Order:20,Name:".$configWF["TabPaneName"].",Icon:".$configWF["TabPaneIcon"]."\n"; 
+    //CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"]."Show"  , $configWF["TabPaneParent"],  20, "WerteTabellen", "");  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+    $configWF["Path"]="Visualization.WebFront.Administrator.HardwareStatus";        // sonst wird ganze Gruppe gelöscht, mit allen local data
+    echo $configWF["Path"]."\n";
+    $configWF["TabPaneName"] = "WerteTabellen";
+    $webfront_links=array(
+        "Werte" => array(                                           // das soll ein CategoryPane werden
+            $valuesDeviceTableID => array(
+                    "NAME"				=> "Werte",
+                    "ORDER"				=> 100,
+                    "ADMINISTRATOR" 	=> true,
+                    "USER"				=> false,
+                    "MOBILE"			=> false,
+                        ),      
+            "CONFIG" => array("type" => "link"),
+                    ),
+                );
+    if (isset($actionDeviceTableID)) 
+        {
+        echo "Es kommt noch ein Button dazu.\n";
+        $webfront_links["Werte"][$actionDeviceTableID] =array(
+                    "NAME"				=> "Choose Display Arrangement by",
+                    "ORDER"				=> 10,
+                    "ADMINISTRATOR" 	=> true,
+                    "USER"				=> false,
+                    "MOBILE"			=> false,
+                ); 
+        }       
+    $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+    $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+    $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);
+
+    echo "Abgelaufene Zeit nach Bearbeitung des Webfronts für Netatmo und Hardwarestatus: ".exectime($startexec)." Sek \n";
     echo "\n\n===================================================================================================\n";
 
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -375,9 +427,19 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 		
-	/* Links für Webfront identifizieren, alle Verzeichnisse in CustomComponents Data /core/IPSComponent Verzeichnis 
-	 *
-	 * Trennung in Kategorien erfolgt durch - Zeichen nach Auswertung und Nachrichten
+	/* Links für Webfront identifizieren, alle Kategorien in CustomComponents Data Verzeichnis  /core/IPSComponent  darstellen  
+	 * Trennung in Tabs erfolgt durch die bezeichnung der Kategrorien wie zB Bewegung-Auswertung und Bewegung-Nachrichten 
+     * - Zeichen für Aufteilung in links und rechts nach Auswertung und Nachrichten
+	 * wenn kein - zeichen auch keine Darstellung
+     *
+     * easySetupWebfront braucht folgende Struktur
+     * Tabpane 
+     *   Subtabpane Auswertung
+     *
+     *   Subtabpane Nachrichten
+     *      VariableID
+     *          NAME
+     *          ORDER
 	 */
 	 
 	echo "\nLinks für Webfront Administrator und User identifizieren :\n";
@@ -463,7 +525,7 @@
 
             //$wfcHandling =  new WfcHandling($WFC10_ConfigId);         // Convergence to old way of configuring Webfront, new way is faster
             $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
-            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator");
+            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            // true für Debug
             $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
             }
         else echo "***Fehler, ".$configWF["TabPaneParent"]." darf nicht roottp sein.\n";
