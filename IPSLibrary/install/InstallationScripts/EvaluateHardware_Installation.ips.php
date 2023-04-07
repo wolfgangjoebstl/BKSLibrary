@@ -58,7 +58,9 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$scriptIdImproveDeviceDetection   = IPS_GetScriptIDByName('ImproveDeviceDetection', $CategoryIdApp);
 
+    $dosOps = new dosOps();
     $ipsOps = new ipsOps();
+    $webOps = new webOps();
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
     $valuesDeviceID                 = CreateVariable("ValuesTable", 3, $CategoryIdData,1020,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
@@ -66,10 +68,32 @@
     $statusEvaluateHardwareID       = CreateVariable("StatusEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $logEvaluateHardwareID          = CreateVariable("LogEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");
 
-    $categoryId_DetectDevice        = CreateCategory('DetectDevice',        $CategoryIdData, 20);
-
 	echo "\n";
 	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";	
+
+    $categoryId_DetectDevice        = CreateCategory('DetectDevice',        $CategoryIdData, 20);
+    $pname="DetectDeviceMessages";                                         // keine Standardfunktion, da Inhalte Variable
+    $nameID=["Sort1","Sort2", "Sort3"];
+    $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable
+    $actionSortMessageTableID          = CreateVariableByName($categoryId_DetectDevice,"SortTableBy", 1,$pname,"",1010,$scriptIdImproveDeviceDetection);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+    $messageTableID          = CreateVariable("MessageTable", 3, $categoryId_DetectDevice,1010,"~HTMLBox",null,null,"");
+
+   if (  (isset($installedModules["OperationCenter"])) && (isset($installedModules["DetectMovement"]))  )
+        {    
+        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+        $moduleManagerOC 	= new IPSModuleManager('OperationCenter',$repository);
+        $CategoryIdDataOC   = $moduleManagerOC->GetModuleCategoryID('data');
+        $categoryId_DetectMovement    = CreateCategory('DetectMovement',   $CategoryIdDataOC, 150);
+		$TableEventsID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");
+
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+    	$moduleManagerDM = new IPSModuleManager('DetectMovement',$repository);
+        $CategoryIdDataDM     = $moduleManagerDM->GetModuleCategoryID('data');
+        $CategoryIdAppDM      = $moduleManagerDM->GetModuleCategoryID('app');
+        $testMovementscriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);  
+		$SchalterSortID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$testMovementscriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+        }
 
     /* check if Administrator and User Webfronts are already available */
 
@@ -163,50 +187,53 @@
 
     // MessageHandler
 
-    /* es gibt kein Module mit passenden ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
-    $configWF["Path"]="Visualization.WebFront.Administrator.MessageHandler";
-    $configWF["TabPaneItem"]="MessageHandler"; 
-    $configWF["TabPaneOrder"]=2000;                                          
+   if (  (isset($installedModules["OperationCenter"])) && (isset($installedModules["DetectMovement"]))  )
+        {    
 
-    $webfront_links=array(
-        "MessageTabellen" => array(
-            $SchalterSortID => array(
-                    "NAME"				=> "SortierenEreignisse",
-                    "ORDER"				=> 100,
-                    "ADMINISTRATOR" 	=> true,
-                    "USER"				=> false,
-                    "MOBILE"			=> false,
-                        ),        
-            $TableEventsID => array(
-                    "NAME"				=> "NachrichtenTabelleDetailiert",
-                    "ORDER"				=> 110,
-                    "ADMINISTRATOR" 	=> true,
-                    "USER"				=> false,
-                    "MOBILE"			=> false,
+        /* es gibt kein Module mit passenden ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
+        $configWF["Path"]="Visualization.WebFront.Administrator.MessageHandler";
+        $configWF["TabPaneItem"]="MessageHandler"; 
+        $configWF["TabPaneOrder"]=2000;                                          
+
+        $webfront_links=array(
+            "MessageTabellen" => array(
+                $SchalterSortID => array(
+                        "NAME"				=> "SortierenEreignisse",
+                        "ORDER"				=> 100,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),        
+                $TableEventsID => array(
+                        "NAME"				=> "NachrichtenTabelleDetailiert",
+                        "ORDER"				=> 110,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),
+            
+                $actionSortMessageTableID => array(
+                        "NAME"				=> "Sortieren",
+                        "ORDER"				=> 200,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),        
+                $messageTableID => array(
+                        "NAME"				=> "NachrichtenTabelle",
+                        "ORDER"				=> 210,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),
+                "CONFIG" => array("type" => "link"),
                         ),
-           
-            $actionSortMessageTableID => array(
-                    "NAME"				=> "Sortieren",
-                    "ORDER"				=> 200,
-                    "ADMINISTRATOR" 	=> true,
-                    "USER"				=> false,
-                    "MOBILE"			=> false,
-                        ),        
-            $messageTableID => array(
-                    "NAME"				=> "NachrichtenTabelle",
-                    "ORDER"				=> 210,
-                    "ADMINISTRATOR" 	=> true,
-                    "USER"				=> false,
-                    "MOBILE"			=> false,
-                        ),
-            "CONFIG" => array("type" => "link"),
-                    ),
-                );	           
+                    );	           
 
-    $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
-    $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
-    $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
-
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+        }
     /*-------------*/
 
 	if ($WFC10_Enabled)

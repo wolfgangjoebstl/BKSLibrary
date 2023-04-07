@@ -7560,8 +7560,13 @@ class ipsOps
  *  checkProcess, verwendt folgende private functions
  *      getProcessList
  *      getTaskList
+ *      getJavaList
+ *  getProcessListFull
+ *  checkProcess
+ *
  *  getNiceFileSize
  *  formatSize
+ *
  *  getServerMemoryUsage
  *  readHardDisk
  *
@@ -7570,7 +7575,7 @@ class ipsOps
 class sysOps
     { 
 
-    /* IPS_ExecuteEX funktioniert nicht wenn der IP Symcon Dienst statt mit dem SystemUser bereits als Administrator angemeldet ist 
+    /* sysOps, IPS_ExecuteEX funktioniert nicht wenn der IP Symcon Dienst statt mit dem SystemUser bereits als Administrator angemeldet ist 
      *
      */
 
@@ -7594,8 +7599,14 @@ class sysOps
         }
 
     /*****************************************************************
-     * von checkProcess verwendet
+     * sysOps, von checkProcess verwendet
+     * wenn filename übergeben wird, dieses file öffnen, von UTF-16 auf fixed 8Bit ASCII komvertieren
+     * alternativ wmic mit IPS_Execute öffnen, ??? wird aber nicht funktionieren
+     * ein paar linefeeds rausnehmen und wieder als process.txt speichern
+     *
      * die aktuell gestarteten Dienste werden mit wmic process list erfasst
+     *
+     * dann das wmic Format auflösen, mit fixed tabs zwischen den Spalten, geht mittlerweile besser
      *
      */
 
@@ -7707,8 +7718,42 @@ class sysOps
         return ($processList);
         }
 
+   /*****************************************************************
+     * sysOps, von getProcessListFull verwendet, nutzt fileOps
+     * die aktuell gestarteten Programme werden erfasst
+     * findet auch Java Processe die unter java.exe laufen
+     *
+     *
+     */
+
+    private function getWmicsProcessList($filename,$debug=false)
+        {
+        if ($debug) echo "getWmicsProcessList mit $filename \n";
+            $wmics=array();
+            $fileOps = new fileOps($filename);
+            $result = $fileOps->readFileFixed("UTF-16",[],1000,$debug);           // First Line selbst finden
+            foreach ($result as $entry)
+                {
+                if (isset($entry["Caption"]))
+                    {
+                    if (strtolower($entry["Caption"])==="java.exe") 
+                        {
+                        print_R($entry);
+                        $commandlets = explode(" ",$entry["CommandLine"]);
+                        print_r($commandlets);
+                        foreach ($commandlets as $i => $command) 
+                            {
+                            if ( ($i>0) && (strlen($command)>1) && (substr($command,0,1) != "-") ) $wmics[]=$command;
+                            }
+                        }
+                    else $wmics[]=$entry["Caption"];
+                    }
+                }
+        return($wmics);
+        }
+
     /*****************************************************************
-     * von checkProcess verwendet
+     * sysOps, von checkProcess verwendet
      * die aktuell gestarteten Programme werden erfasst
      * entweder Abfrage selbst, oder aus einem Filenamen
      */
@@ -7812,7 +7857,7 @@ class sysOps
         }
 
     /*****************************************************************
-     * von checkProcess verwendet
+     * sysOps, von checkProcess verwendet
      * die aktuell gestarteten Java Programme werden erfasst
      *
      */
@@ -7847,9 +7892,12 @@ class sysOps
 
     /***********************************************************************************
      *
-     * eine Liste der aktuell aktiven Prozesse auslesen
-     * auch Java jdk berücksichtigen
-     *
+     * sysOps, eine Liste der aktuell aktiven Prozesse auslesen
+     * auch Java jdk berücksichtigen, wird von Watchdog Library getActiveProcesses aufgerufen
+     * es wird ein array aus filenamen übergeben, alles Ergebnisse von process Abfragen
+     * Verschiedene Typen:
+     *      Tasklist
+     *      WmicsProcesslist
      */
 
 
@@ -7864,26 +7912,39 @@ class sysOps
         if (isset($filename["Tasklist"])) 
             {
             if ($filename["Tasklist"] !== false) $tasklist = $this->getTaskList($filename["Tasklist"]);
+            if ($debug) echo "Tasklist in ".$filename["Tasklist"]." mit ".sizeof($tasklist)." Zeilen gefunden. File Size : ".$this->getNiceFileSize(filesize($filename["Tasklist"]))." Last modified: ".date("d.m.Y H:i:s",filemtime($filename["Tasklist"]))."\n";
             }
-        else $tasklist = $this->getTaskList($filename["Tasklist"]);
-        if ($debug) echo "Tasklist ".sizeof($tasklist)." Zeilen gefunden.\n";
-        if (isset($filename["Processlist"])) 
+        if (isset($filename["Processlist"]))        // wmic Format Abfrage
             {
-            if ($filename["Processlist"] !== false) $process = $this->getProcessList($filename["Processlist"]);        
+            if ($filename["Processlist"] !== false) $process = $this->getWmicsProcessList($filename["Processlist"]);            // bessere Abfrage, einheitliches Format        
+            if ($debug) echo "Processlist in ".$filename["Processlist"]." mit ".sizeof($process)." Zeilen gefunden. File Size : ".$this->getNiceFileSize(filesize($filename["Processlist"]))." Last modified: ".date("d.m.Y H:i:s",filemtime($filename["Processlist"]))."\n";
             }
-        else $process = $this->getProcessList();
-        if ($debug) echo "Processlist ".sizeof($process)." Zeilen gefunden.\n";
-        if ( (isset($filename["Javalist"])) && ($filename["Javalist"] !== false) ) $javas = $this->getJavaList($filename["Javalist"]);
-        //if ( (isset($filename["Wmiclist"])) && ($filename["Wmiclist"] !== false) ) $wmics = $this->getJavaList($filename["Wmiclist"],$debug);
+        else 
+            {
+            $process = $this->getProcessList();
+            if ($debug) echo "Default Abfrage. Processlist ".sizeof($process)." Zeilen gefunden.\n";
+            }
+        if ( (isset($filename["Javalist"])) && ($filename["Javalist"] !== false) ) 
+            {
+            $javas = $this->getJavaList($filename["Javalist"]);
+            if ($debug) echo "Javalist in ".$filename["Javalist"]." mit ".sizeof($javas)." Zeilen gefunden. File Size : ".$this->getNiceFileSize(filesize($filename["Javalist"]))." Last modified: ".date("d.m.Y H:i:s",filemtime($filename["Javalist"]))."\n";
+            }    
+        if ( (isset($filename["Wmiclist"])) && ($filename["Wmiclist"] !== false) ) 
+            {
+            $wmics = $this->getWmicsProcessList($filename["Wmiclist"]);
+            if ($debug) echo "Wmiclist in ".$filename["Wmiclist"]." mit ".sizeof($wmics)." Zeilen gefunden. File Size : ".$this->getNiceFileSize(filesize($filename["Wmiclist"]))." Last modified: ".date("d.m.Y H:i:s",filemtime($filename["Wmiclist"]))."\n";
+            }
         //print_r($wmics);
 
-        $processes = array_merge($tasklist,$process,$javas);            
+        $processes = array_merge($tasklist,$process,$javas,$wmics);            
         sort($processes,SORT_NATURAL | SORT_FLAG_CASE);
        
+        // gleiche Prozesse aus der Tabelle nehmen
         $processesFound=array();
         $prevProcess="";
         foreach ($processes as $process)
             {
+            //print_r($process);
             if ($prevProcess != $process)
                 {
                 $prevProcess = $process;
@@ -7895,7 +7956,7 @@ class sysOps
 
     /***********************************************************************************
      *
-     * eine Liste der aktuell aktiven Prozesse auslesen
+     * sysOps, eine Liste der aktuell aktiven Prozesse auslesen
      * die Prgramme die in processStart übergeben wurden, überprüfen ob sie enthalten sind
      * wenn eine Prozessliste übergeben wird werden diese verwendet
      *
@@ -7963,7 +8024,7 @@ class sysOps
 
     /********
      *
-     * getNiceFileSize, formatSize
+     * sysOps, getNiceFileSize, formatSize
      *
      * zum Formattieren von Byte Angaben, beide Routinen machen das selbe auf ähnliche Weise
      * formatSize arbeitet immer mit 1024, getNicefileSize unterscheidet, da scheinbar jetzt Mega, Giga, Terra wieder auf mehrfache von 1000 gehen
@@ -7986,7 +8047,8 @@ class sysOps
             }
         }
 
-
+    /* sysOps, formatSize
+     */
     function formatSize($value,$komma=2)
         {
         if ($value <1024) $result = number_format($value,2). " Byte";
@@ -7999,7 +8061,7 @@ class sysOps
         }
 
     /********
-     *
+     * sysOps
      *Returns used memory (either in percent (without percent sign) or free and overall in bytes)
      *
      *****************************/
@@ -8103,7 +8165,7 @@ class sysOps
             }
         }
 
-    /*
+    /* sysOps
      *
      *
      **************/
@@ -8223,7 +8285,7 @@ class dosOps
     {
 
 
-    /*  C: scripts kann nicht auf allen Rechnern verwendet werden. 
+    /*  dosOps, C: scripts kann nicht auf allen Rechnern verwendet werden. 
      *  parametrierbar machen. Unterschiede Unix und Windows rausarbeiten
      * Auf einer Unix Maschine (Docker)
      *      Kernel Dir seit IPS 5.3. getrennt abgelegt : /var/lib/symcon/
@@ -8256,14 +8318,14 @@ class dosOps
         return($verzeichnis);
         }
 
-    /* not implemented now
+    /* dosOps, not implemented now
      */
     public function replaceWorkDirectory()
         {
 
         }
 
-    /* noch ein typisches Verzeichnis, das des Users
+    /* dosOps, noch ein typisches Verzeichnis, das des Users
      */
     public function getUserDirectory()
         {
@@ -8289,7 +8351,7 @@ class dosOps
         return($verzeichnis);
         }
 
-    /*  Anhand von einer Configuration oder
+    /*  dosOps, Anhand von einer Configuration oder
      *  durch Test von C:/Scripts herausfinden ob Unix oder Windows system
      echo IPS_GetKernelDir();
         // Beispielausgabe:
@@ -8314,7 +8376,7 @@ class dosOps
         else return("WINDOWS");
         }
 
-    /* anhand der Logging Konfiguration herausfinden welches Betriebssystem
+    /* dosOps, anhand der Logging Konfiguration herausfinden welches Betriebssystem
      *
      */
     public function getOperatingSystem()
@@ -8337,7 +8399,7 @@ class dosOps
             }
         }
 
-    /* ini_set funktioniert bei Linux Systemen scheinbar nicht mehr, daher hier zentralisiseren
+    /* dosOps, ini_set funktioniert bei Linux Systemen scheinbar nicht mehr, daher hier zentralisiseren
      */
     public function setMaxScriptTime($time)
         {
@@ -8348,7 +8410,7 @@ class dosOps
         }
 
     /*
-     * überprüfen ob das File den php Koventionen entspricht
+     * dosOps, überprüfen ob das File den php Koventionen entspricht
      */
     function fileIntegrity($fullDir,$fileName)
         {
@@ -8373,7 +8435,7 @@ class dosOps
         else return (true);
         }
 
-    /* wie fileavailable, aber hier aus einem array die Dateien herausfiltern
+    /* dosOps, wie fileavailable, aber hier aus einem array die Dateien herausfiltern
      * kann Wildcards *, *.
      *
      */
@@ -8434,7 +8496,7 @@ class dosOps
         return ($filesToRead);
         }
 
-    /* fileAvailable
+    /* dosOps, fileAvailable
      *
      * einen Filenamen , auch mit Wildcards, in einem Verzeichnis suchen
      * liefert status true und false zurück
@@ -9079,7 +9141,11 @@ class fileOps
 
     function readFileFixed($convert = "ASCII",$delimiter=array(),$maxline=10,$debug=false)
         {
-        if ($debug) echo "readFileFixed, bearbeite Datei ".$this->fileName." mit Format $convert und ".count($delimiter)." Spalten.\n";
+        if ($debug) 
+            {
+            if (count($delimiter)>0) echo "readFileFixed, bearbeite Datei ".$this->fileName." mit Format $convert und ".count($delimiter)." Spalten.\n";
+            else echo "readFileFixed, bearbeite Datei ".$this->fileName.". Erste Zeile gleich hier analysieren.\n";
+            }
         $resultArray=array();
         $i=0;
         if ($this->fileName !== false) 
@@ -9099,8 +9165,8 @@ class fileOps
 
                     if ($debug) 
                         {
-                        echo "readFileFixed, full file, bearbeite Datei ".$this->fileName." mit Format $convert:\n";
-                        echo "   Textformat $encoding -> $encoding2\n";             // oder ".mb_detect_encoding($content)."
+                        //echo "readFileFixed, full file, bearbeite Datei ".$this->fileName." mit Format $convert:\n";
+                        echo "   File gefunden, Textformat $encoding -> $encoding2\n";             // oder ".mb_detect_encoding($content)."
                         echo "   ".strlen($result)." characters, ".strlen($content)." chars after encoding to ASCII and ".mb_strlen($result,$convert)." Multibyte Characters with format $convert found in Input.\n";
 
                         }
@@ -9117,7 +9183,7 @@ class fileOps
                             $countTabs=sizeof($tabs);               // sizeof trifft noch jede Menge Eintraeg mit einem blank                        
                             if ($countTabs>1)
                                 {
-                                echo "Erste Zeile :\"$line\"\n";                       
+                                //echo "Erste Zeile :\"$line\"\n";                       
                                 $delimiter=array();
                                 foreach ($tabs as $index => $string)
                                     {
@@ -9132,7 +9198,7 @@ class fileOps
                                             {
                                             $delimiter[$oldstring]["Index"]=$oldstart;
                                             $begin=$oldend;                                                 // beim ersten Mal steht das auf Pos von oldstring, im Normalfall 0
-                                            if ($debug) echo "   ".str_pad($index,2)." | \"$string\" \n";
+                                            //if ($debug) echo "   ".str_pad($index,2)." | \"$string\" \n";
                                             if (strlen($stringTrimmed)>0) $end=strpos($line,$stringTrimmed);              // das Ende kann nur der Anfang des nächsten Eintrages sein, nicht das Ende des Wortes
                                             else 
                                                 {
@@ -9143,7 +9209,7 @@ class fileOps
                                             $delimiter[$oldstring]["Begin"]=$begin;
                                             $delimiter[$oldstring]["End"]=$end;
                                             $delimiter[$oldstring]["Length"]=$end-$begin;
-                                            if ($debug) echo str_pad($index,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";
+                                            if ($debug) echo "    ".str_pad($index,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";
                                             $oldstart=$index;
                                             $oldstring=$stringTrimmed;
                                             $oldend=$end;
@@ -9264,7 +9330,7 @@ class fileOps
                     else 
                         {
                         /* der obere Teil ist gleich wie bei FirstLine, jetzt wird aber wirklich eingelesen */
-                        $resultArray[$i] = $this->readFileFixedLine($result,$delimiter);
+                        $resultArray[$i] = $this->readFileFixedLine($result,$delimiter,false);            // andernfalls debug einsetzen
                         if ($i++>$maxline) break;
                         }
                     }
@@ -12535,7 +12601,9 @@ class WfcHandling
                                     if ((isset($webfront_links["CONFIG"])) && ($default==false))
                                         {
                                         //echo json_encode($RegisterEntries);
-                                        echo "        Register:  ".$Group."/".$RegisterEntries["NAME"]."\n";
+                                        echo "        Register:  ".$Group."/";
+                                        if (isset($RegisterEntries["NAME"])) echo $RegisterEntries["NAME"];
+                                        echo "\n";
                                         }
                                     elseif (isset($webfront_group["CONFIG"]))
                                         {

@@ -408,7 +408,7 @@
         $i++;       // sonst wird letzter Wert überschrieben	
         $nameID[$i++]="Alle";
         $nameID[$i++]="Test";
-        createActionProfileByName($pname,$nameID);
+        $webOps->createActionProfileByName($pname,$nameID);
 
         if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
             {
@@ -633,6 +633,7 @@
             if ($result === false) echo "---------\n".$seleniumHandler->readFailure()."\n---------------------\n";
             else echo "Selenium Webdriver ordnungsgemaess gestartet.\n";
 
+            echo "Webfront Selenium do install:\n";
             $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, kein interop mode, ist in der Kopie der Config in der class
 
             if ($DoDelete)          // alles was mit Money anfängt löschen
@@ -709,7 +710,8 @@
             $wfcHandling->CreateWFCItemTabPane($configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);
             $configWF["TabPaneParent"]=$configWF["TabPaneItem"];          // überschreiben wenn roottp, wir sind jetzt bereits eins drunter  
             $configWF["TabPaneItem"] = $configWF["TabItem"];
-
+            
+            echo "Webfront Api Money do install:\n";
             $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
 
             if (false)          // comment to view structure of webfront
