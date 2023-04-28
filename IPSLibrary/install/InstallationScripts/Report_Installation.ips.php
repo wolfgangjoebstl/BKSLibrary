@@ -51,7 +51,8 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSComponent','2.50.1');
 	
-	echo "\nKernelversion         : ".IPS_GetKernelVersion()."\n";
+	echo "\n";
+    echo "Kernelversion           : ".IPS_GetKernelVersion()."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "IPSModulManager Version : ".$ergebnis."\n";
 	$ergebnisCustoComponent=$moduleManager->VersionHandler()->GetVersion('CustomComponent')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
@@ -111,12 +112,32 @@
 	IPSUtils_Include ("Report_Constants.inc.php",      				"IPSLibrary::app::modules::Report");
 	IPSUtils_Include ('Report_Configuration.inc.php', 					'IPSLibrary::config::modules::Report');
 
+    $ipsOps = new ipsOps();
+    $webOps = new webOps();
+	$wfcHandling = new WfcHandling();		// für die Interoperabilität mit den alten WFC Routinen nocheinmal mit der Instanz als Parameter aufrufen
+
 /*******************************
  *
- * Webfront Vorbereitung
+ * Webfront Vorbereitung, kein anlegen der Webfront Configuratoren Administartor und User, die müssen schon woanders angeelgt worden sein
  *
  ********************************/
 
+    $configWFront=$ipsOps->configWebfront($moduleManager);
+	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
+
+	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
+	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+    $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
+
+	if ($WFC10_Enabled==true)   	    $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];	
+	if ($WFC10User_Enabled==true)		$WFC10User_ConfigId       = $WebfrontConfigID["User"];        
+	if ($Mobile_Enabled==true)  		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');	
+	if ($Retro_Enabled==true)   		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+
+if (false)          // wird nicht mehr benötigt, old school
+    {
 	/* Webfront GUID herausfinden */
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
@@ -188,6 +209,7 @@
 		echo "Retro \n";
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 		}
+    } // ende if false
 
 /*******************************
  *
@@ -198,8 +220,10 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	$categoryIdCommon   = CreateCategory('Common',  $CategoryIdData, 10);
-	$categoryIdValues   = CreateCategory('Values',  $CategoryIdData, 20);
+	$categoryIdCommon       = CreateCategory('Common',          $CategoryIdData, 10);
+	$categoryIdValues       = CreateCategory('Values',          $CategoryIdData, 20);
+	$categoryIdSelectValues = CreateCategory('SelectValues',    $categoryIdCommon, 1000);
+
 	//$categoryIdCustom   = CreateCategory('Custom',  $CategoryIdData, 30);
 
     /* muss bevor die Class zum ersten Mal aufgerufen wird bereits vorhanden sein */
@@ -259,7 +283,7 @@
     $pcManager = new ReportControl_Manager();
   	$report_config=$pcManager->getConfiguration();
     echo "\n";
-    echo "Report_GetConfiguration abarbeiten. Es gibt ".count($report_config)." Einträge. Das ist die lange detaillierte Liste.\n";
+    //echo "Report_GetConfiguration abarbeiten. Es gibt ".count($report_config)." Einträge. Das ist die lange detaillierte Liste.\n";
 
   	$count=0;
 	$associationsValues = array();
@@ -269,7 +293,7 @@
 		$associationsValues[$count]=$displaypanel;
 		$count++;
   		}
-	CreateProfile_Associations ('IPSReport_SelectValues',     $associationsValues);
+	CreateProfile_Associations ('IPSReport_SelectValues',     $associationsValues);             // wird augenscheinlich nicht verwendet
 	//print_r($associationsValues);
 
 	// ===================================================================================================
@@ -279,11 +303,23 @@
 	$variableIdPeriodCount = CreateVariable(IPSRP_VAR_PERIODCOUNT, 1 /*Integer*/, $categoryIdCommon,  20, 'IPSReport_PeriodAndCount',  $scriptIdActionScript,  IPSRP_PERIOD_DAY, 'Clock');
 	$variableIdTimeOffset  = CreateVariable(IPSRP_VAR_TIMEOFFSET,  1 /*Integer*/, $categoryIdCommon,  40, '',                                null,                   0, '');
 	$variableIdTimeCount   = CreateVariable(IPSRP_VAR_TIMECOUNT,   1 /*Integer*/, $categoryIdCommon,  50, '',                                null,                   1, '');
-	/* Höhe kann nicht absolut angegeben werden, ausserdem wird die Variable noch von Highcharts ueberschrieben */
-	$variableIdChartHtml   = CreateVariable(IPSRP_VAR_CHARTHTML,   3 /*String*/,  $categoryIdCommon, 100, '~HTMLBox',                        $scriptIdActionScript, '<iframe frameborder="0" width="100%" height="530px"  src="../user/Highcharts/IPS_Template.php" </iframe>', 'Graph');
 
+   echo "Defaultwerte für Zwischenspeicherung Werte lezter Auswahl der Periode, Speicherung in Kategorie $categoryIdCommon:\n";
+    // defaultwerte, Speicherung letzter Wert, wird verwendet beim Schalten zwischen den Perioden
+    // function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+    $variableIdPeriodYear  = CreateVariableByName($categoryIdCommon,"PeriodYearLast",   1 /*Integer*/,false,false,   5000);
+    $variableIdPeriodMonth = CreateVariableByName($categoryIdCommon,"PeriodMonthLast",  1 /*Integer*/,false,false,   5010);
+    $variableIdPeriodWeek  = CreateVariableByName($categoryIdCommon,"PeriodWeekLast",   1 /*Integer*/,false,false,   5020);
+    $variableIdPeriodDay   = CreateVariableByName($categoryIdCommon,"PeriodDayLast",    1 /*Integer*/,false,false,   5030);
+    $variableIdPeriodHour  = CreateVariableByName($categoryIdCommon,"PeriodHourLast",   1 /*Integer*/,false,false,   5040);
+
+	/* Höhe kann nicht absolut angegeben werden, ausserdem wird die Variable noch von Highcharts ueberschrieben */
+	$variableIdChartHtml   = CreateVariable(IPSRP_VAR_CHARTHTML,   3 /*String*/,  $categoryIdCommon, 100, '~HTMLBox', $scriptIdActionScript, '<iframe frameborder="0" width="100%" height="530px"  src="../user/Highcharts/IPS_Template.php" </iframe>', 'Graph');
+
+    // Report Umschalter auf der inken Seite
 	if ( function_exists("Report_GetValueConfiguration") == true )
 		{
+        echo "Evaluate function Report_GetValueConfiguration.\n";
 		foreach (Report_GetValueConfiguration() as $idx=>$data)
 			{
 			$valueType = $data[IPSRP_PROPERTY_VALUETYPE];
@@ -301,7 +337,10 @@
 				}
 			$variableIdSelectValue  = CreateVariable(IPSRP_VAR_SELECTVALUE.$idx, 0 /*Boolean*/, $categoryIdCommon,  100+$idx, '~Switch', $scriptIdActionScript, 0, 'Lightning');
 			}
-		}
+        $webOps->setConfigButtons(9000);                    // order in ID display
+        $buttonIds = $webOps->createSelectButtons($associationsValues,$categoryIdSelectValues, $scriptIdActionScript);
+		}      
+    else echo "Fehler, function Report_GetValueConfiguration nicht verfügbar in Report_Configuration.\n";
 
 
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -394,6 +433,62 @@
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
 
+
+	if ($WFC10_Enabled) 
+        {
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
+        $configWf=$configWFront["Administrator"];
+
+        echo "\nWebportal Report SplitPane installieren in: ".$configWf["Path"]." \n";
+		$categoryId_WebFront         = CreateCategoryPath($configWf["Path"]."3");         // neueste Variante es gibt bereits "", "2" und jetzt "3"
+		$ipsOps->emptyCategory($categoryId_WebFront);
+		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFront, 10);
+		$categoryIdRight = CreateCategory('Right', $categoryId_WebFront, 20);
+        SetValue($visualizationCategoryID,$categoryIdRight);
+		echo "Kategorien erstellt, Main: ".$categoryId_WebFront." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+
+        echo "\n";
+        echo "Webfront SplitPane mit Parameter : ConfigId ".$configWf["ConfigId"]." TabItem ".$configWf["TabItem"]." TabPaneItem ".$configWf["TabPaneItem"]." TabPaneParent ".$configWf["TabPaneParent"];
+        echo " TabPaneOrder ".$configWf["TabPaneOrder"]." TabPaneName ".$configWf["TabPaneName"]." TabPaneIcon ".$configWf["TabPaneIcon"]."\n";
+        $wfcHandling->DeleteWFCItems("Report");         // alles was mit report anfängt
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
+        //$wfcHandling->deletePane ($WFC10_ConfigId);
+        //$wfcHandling->deletePane ($configWf["TabItem"]);
+        // function CreateWFCItemSplitPane ($ItemId, $ParentId, $Position, $Title, $Icon="", $Alignment=0 /*0=horizontal, 1=vertical*/, $Ratio=50, $RatioTarget=0 /*0 or 1*/, $RatioType /*0=Percentage, 1=Pixel*/, $ShowBorder='true' /*'true' or 'false'*/) 
+		$wfcHandling->CreateWFCItemSplitPane ($configWf["TabPaneItem"], $configWf["TabPaneParent"], $configWf["TabPaneOrder"], $configWf["TabPaneName"], $configWf["TabPaneIcon"], 1 /*Vertical*/, 15 /*Width*/, 0 /*Target=Pane1*/, 0 /*1 Percentage, 1 UsePixel*/, 'true');
+		$wfcHandling->CreateWFCItemCategory  ($configWf["TabItem"].'_Right',  $configWf["TabPaneItem"],   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+		$wfcHandling->CreateWFCItemCategory  ($configWf["TabItem"].'_Left',   $configWf["TabPaneItem"],   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+        $categoryIdButtonGroup  = CreateVariableByName($categoryIdLeft, "Select Report", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+        foreach ($buttonIds as $id => $button)
+            {
+            //print_R($button);
+            CreateLinkByDestination(" ", $button["ID"], $categoryIdButtonGroup, $id+100);         // kein Name, sonst zu Viel Platzbedarf, Profil hat einen Namen, geht nicht mit CreateLink
+
+            }
+			
+		// Right Panel
+		CreateLink('Type/Offset',       $variableIdTypeOffset,  $categoryIdRight, 10);
+		CreateLink('Zeitraum',          $variableIdPeriodCount, $categoryIdRight, 20);
+		CreateLink('Chart',             $variableIdChartHtml,   $categoryIdRight, 40);
+        CreateLink('AddSelector',       $ReportDataSelectorID,   $categoryIdRight, 10);
+        CreateLink('DataTable',         $ReportDataTableID,   $categoryIdRight, 110);
+        
+        $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
+        foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+            {
+            echo "\n------$index:\n";
+            $wfcHandling->print_wfc($wfc[$index]);
+            } 
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+        }
+
+
+
+
+if (false)
+    {
 	if ($WFC10_Enabled) {
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path."2");
 		EmptyCategory($categoryId_WebFront);
@@ -445,10 +540,10 @@
         CreateLink('DataTable',         $ReportDataTableID,   $categoryIdRight, 110);
 
 		ReloadAllWebFronts();
-	}
+	    }
 
 
-/* alte variante, bald nicht mehr benötigt */
+    /* alte variante, bald nicht mehr benötigt */
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
@@ -457,11 +552,13 @@
 		CreateLinkByDestination('ReportPageType', $ReportPageTypeID,    $categoryId_WebFront,  10);
 		CreateLinkByDestination('ReportTimeType', $ReportTimeTypeID,    $categoryId_WebFront,  11);
 		}
+    }       // ende if false
 		
 	if ($WFC10User_Enabled)
 		{
-		echo "\nWebportal User installieren auf ".$WFC10User_Path.": \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
+        $configWf=$configWFront["User"];
+        echo "\nWebportal User Report installieren in: ".$configWf["Path"]." \n";
+		$categoryId_WebFront         = CreateCategoryPath($configWf["Path"]);
 
 		}
 

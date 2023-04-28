@@ -59,7 +59,6 @@ $cutter=true;
 
 	/******************** Defaultprogrammteil ********************/
 	 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');	
@@ -170,31 +169,11 @@ $cutter=true;
 	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
     $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 
-	if ($WFC10_Enabled==true)
-		{
-		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];	
-        }
-	if ($WFC10User_Enabled==true)
-		{
-		$WFC10User_ConfigId       = $WebfrontConfigID["User"];        
-        }    
+	if ($WFC10_Enabled==true)   	    $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];	
+	if ($WFC10User_Enabled==true)		$WFC10User_ConfigId       = $WebfrontConfigID["User"];        
+	if ($Mobile_Enabled==true)  		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');	
+	if ($Retro_Enabled==true)   		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 
-	if ($Mobile_Enabled==true)
-	   	{
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-		echo "Mobile \n";
-		echo "  Path          : ".$Mobile_Path."\n";
-		}
-		
-	if ($Retro_Enabled==true)
-	   	{
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
-		echo "  Path          : ".$Retro_Path."\n";		
-		}
-
-
-	echo "\n";
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
@@ -467,7 +446,7 @@ $cutter=true;
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;                        			
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=true;                        			
                 break;
 			
 		    case "AMIS":                /************************** und ein AMIS Zähler mit dem auslesen über die serielle Schnittstelle 
@@ -610,6 +589,7 @@ $cutter=true;
                     if (strtoupper($meter["STATUS"]) != "ACTIVE" ) SetValue($AmisReadMeterID,false);
                     }	
                 $webfront_links["Control"]["Read Meter"][$AmisReadMeterID]["NAME"]="ReadAMISMeter";		            // Read Meter ist die Gruppe
+                $webfront_links["Control"]["Read Meter"][$AmisReadMeterID]["PANE"]=false;                           // notwendig, entweder ist der Name Auswertung oder Nachrichten, oder PANE wird definiert
 
                 // AMIS, Gruppe meter NAME, Wirkenergie, Leistung, Andere Seite Zählervariablen			
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["NAME"]="Wirkenergie";
@@ -627,8 +607,8 @@ $cutter=true;
 		
         print_r($meter);
 
-        $webfront_links["Control"]["Read Meter"][$MeterReadID]["NAME"]="ReadMeter";
-			//CreateLinkByDestination("Read Meter", $MeterReadID,    $categoryIdLeft,  0);
+        //$webfront_links["Control"]["Read Meter"][$MeterReadID]["NAME"]="ReadMeter";           // wurde schon beschrieben
+		//CreateLinkByDestination("Read Meter", $MeterReadID,    $categoryIdLeft,  0);
 
 
 
@@ -679,10 +659,12 @@ $cutter=true;
 	$tableID = CreateVariableByName($ID, "Historie-Energie", 3);
 	IPS_SetVariableCustomProfile($tableID,'~HTMLBox');			
 	$webfront_links["Zusammenfassung"]["Energievorschub der letzten Tage"][$tableID]["NAME"]="Zaehlervariablen";
+	$webfront_links["Zusammenfassung"]["Energievorschub der letzten Tage"][$tableID]["PANE"]=false;
 		
 	$regID = CreateVariableByName($ID, "Aktuelle-Energie", 3);
 	IPS_SetVariableCustomProfile($regID,'~HTMLBox');			
 	$webfront_links["Zusammenfassung"]["Energieregister"][$regID]["NAME"]="Zaehlervariablen";	
+	$webfront_links["Zusammenfassung"]["Energieregister"][$regID]["PANE"]=false;	
 	
 	/* Tab Kurven
      * html basierte Kurven ebenfalls anzeigen, Name Zaehlervariablen als Identifier für rechtes Tab 
@@ -761,7 +743,7 @@ $cutter=true;
                 } 
             $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
             }
-        else
+        else               // alte Webfront erstellung
             {
             /* Kategorien für Administrator werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
 

@@ -52,7 +52,8 @@
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(100);                              // kein Abbruch vor dieser Zeit, funktioniert nicht für linux basierte Systeme
 
-    $doQuery=false;                             // Abfrage mit Selenium Host starten
+    $debug   = false;                           // zusätzliche Ausgaben unterdrücken, ist auch die Webfront ActionScript Routine hier
+    $doQuery = false;                             // Abfrage mit Selenium Host starten
     $startexec=microtime(true);    
     //echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";         //keine Ausgabe da auch vom Webfront aufgerufen 
 
@@ -130,6 +131,7 @@
                 IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
                 IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
                 $watchDog = new watchDogAutoStart();
+                if ($debug) echo "Watchdog Modul available, get Active Processes:\n";
                 $processes    = $watchDog->getActiveProcesses();
                 $processStart = $watchDog->checkAutostartProgram($processes);
                 $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
@@ -846,8 +848,8 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
         case "SELENIUM":
             $debug=true;
             echo "============================================================================\n";
-            if ($webDriverName) echo "WebDriverName: Default\n";
-            else echo "WebDriverName:  $webDriverName\n";
+            if ($webDriverName) echo "WebDriverName: $webDriverName\n";
+            else echo "WebDriverName: Default\n";
             echo "GuthabenHandler Aktive Selenium Konfiguration:\n";
             $configSelenium = $guthabenHandler->getSeleniumWebDriverConfig($webDriverName);       // ist jetzt immer false, könnte aber auch ein Name sein     
             print_r($configSelenium);
@@ -858,16 +860,19 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
 			if ($ScriptCounter < $maxcount) $value=$ScriptCounter;
             else { $value=0; SetValue($ScriptCounterID,0); }
             echo "============================================================================\n";
-            echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
-            $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
-            $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"]; 
-
+            if (isset($phoneID[$value]["Nummer"]))  // nur wenn Nummern eingegeben, drei abfragen
+                {
+                echo "Aufruf Selenium von ".$phoneID[$value]["Nummer"]." mit Index $value/$maxcount.\n";
+                $config["DREI"]["CONFIG"]["Username"]=$phoneID[$value]["Nummer"];
+                $config["DREI"]["CONFIG"]["Password"]=$phoneID[$value]["Password"]; 
+                }
             /* die Abendabfrage dazumergen */  
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
             //print_R($configTabs);
             unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, durch echte Werte ersetzen
             unset($configTabs["Hosts"]["EASY"]);                // EASY einmal weglassen
             unset($configTabs["Hosts"]["LogWien"]);             // LogWien einmal weglassen, wenn alle ist zu langsam
+            unset($configTabs["Hosts"]["YAHOOFIN"]);            // Yahoo Finance einmal weglassen, das ist nicht das API 
             //print_R($configTabs);
             //$config = array_merge($configTabs["Hosts"],$config);          // array merge ersetzt die entsprechenden keys, der letzte Eintrag überschreibt die vorangehenden
             $config = $configTabs["Hosts"];                 //nur YahooFin, keine einzelne Drei Telefonnummer, kein LogWien, kein Easy, Drei braucht aktuell lange

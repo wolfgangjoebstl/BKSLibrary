@@ -37,6 +37,7 @@
 	IPSUtils_Include ('Report_Configuration.inc.php', 	'IPSLibrary::config::modules::Report');
 	IPSUtils_Include ('Report_class.php', 					'IPSLibrary::app::modules::Report');
 
+    ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
 
 	if ($_IPS['SENDER']=='WebFront')
 		{

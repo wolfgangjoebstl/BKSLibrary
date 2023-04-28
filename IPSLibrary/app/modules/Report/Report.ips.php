@@ -58,16 +58,19 @@
     /**************************************** PROGRAM *********************************************************/
 
     $debug=false;
+    ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
 
 	$pcManager = new ReportControl_Manager();
     $report_config = $pcManager->getConfiguration();
     $categoryIdCommon = $pcManager->getcategoryIdCommon();
     $variableIdChartType = IPS_GetObjectIDByIdent(IPSRP_VAR_TYPEOFFSET, $categoryIdCommon);
 
+    // linkes Auswahlfenster mit zum Beispiel Easychart/trend kommt hier vorbei 
     if ($_IPS['SENDER']=="WebFront")
         {
+        echo "Check Report, wrong action script";
         $variableId = $_IPS['VARIABLE'];
-
+        $value = $_IPS['VALUE'];
         $variableIdent = IPS_GetIdent($variableId);
         if ($debug) echo "ReportControl_Manager->ChangeSetting,VariableID : ".$variableId." Variableident : ".$variableIdent." mit Wert ".$value."   \n";
         if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)                                         // entweder die letzte Zahl ist der Index
@@ -164,7 +167,7 @@
             }
         echo "Medienobjekt Highcharts in ".IPS_GetParent($MediaID)." gefunden: $MediaID\n";
 
-        $reportControl_Manager= new ReportControl_Manager(true);
+        $reportControl_Manager= new ReportControl_Manager(false);            // true für Debug
 
         $configuration = $reportControl_Manager->getConfiguration();
         $displaypanel=getValueFormatted($ReportPageTypeID);

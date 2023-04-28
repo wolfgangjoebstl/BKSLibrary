@@ -2895,18 +2895,40 @@ function send_status($aktuell, $startexec=0, $debug=false)
         return (false);
         }
 
+
+/***************************************************************************************************************************
+ *
+ * versammelt Operationen in einer Klasse die die Darstellung der Webfronts betrifft
+ * 
+ *  createActionProfileByName       erzeugt ein Profil für eine Zeile aus einzelnen Buttons die ein Script initieren
+ *  createButtonProfileByName       erzeugt ein profil für einen einzelnen Button
+ *  createSelectButtons             eine Reihe von Buttons anlegen, die untereinander ein Auswahlfeld ergeben
+ *      setButtonColors
+ *      setSelectButtons
+ *
+ *
+ */
+
 class webOps
     {
 
+    var $pnames=array();
+    var $categoryId;
 
-    /* SpezialProfile für Action Aufrufe aus dem Webfront 
+    // Default Values
+    var $order=10;                                  // position of Buttons
+    var $color       = 0x235643;                        // color of button
+    var $colorSelect = 0x897654;                  // color of selected button
+    var $modulName   = "";                      // Before Profilname to differ between modules
+
+    /* SpezialProfile für Action Aufrufe aus dem Webfront, erzeugt eine Zeile aus einzelnen Buttons die ein Script initieren 
      *  pname ist der Name
      *  nameID ein Array aus einzelnen Einträgen
      * die Farbe wird automatisch bestimmt
      *
      */
 
-    function createActionProfileByName($pname,$nameID,$style=1)
+    function createActionProfileByName($pname,$nameIDs,$style=1)
         {
         $create=false;
         $namecount=count($nameID);
@@ -2920,7 +2942,7 @@ class webOps
         // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
         if ($namecount>1) IPS_SetVariableProfileValues($pname, 0, ($namecount-1), $style);      //PName, Minimal, Maximal, Schrittweite
         $i=0;
-        foreach ($nameID as $name)
+        foreach ($nameIDs as $name)
             {
             IPS_SetVariableProfileAssociation($pname, $i, $name, "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
             $i++;       // sonst wird letzter Wert überschrieben
@@ -2935,11 +2957,12 @@ class webOps
      *
      */
 
-    function createButtonProfileByName($pname,$color=0x235643)
+    function createButtonProfileByName($pname,$color=false)
         {
+        if ($color===false) $color = $this->color;
         $create=false;
         $button=$pname;
-        $pname .="Profil";
+        $pname = $this->modulName.$pname."Profil";
         if (IPS_VariableProfileExists($pname) == false)
             {
             //Var-Profil existiert noch nicht, neu erstellen
@@ -2955,8 +2978,103 @@ class webOps
         return $pname;	
         }
 
+    /* eine Reihe von Buttons anlegen, die untereinander ein Auswahlfeld ergeben  
+     * pnames ist ein array
+     * es braucht die categoryId und scriptId, werden auch in die class gespeichert
+     *
+     */
+
+    function createSelectButtons($pnames,$categoryId, $scriptId, $debug=false)
+        {
+        $this->setSelectButtons($pnames,$categoryId);           // auch in der class speichern
+        $result=array();
+        if ($debug) 
+            {
+            echo "createSelectButtons with following Names :\n";
+            foreach ($pnames as $pname)
+                {
+                echo $pname." ";
+                }
+            echo "\n";
+            }
+        $order=$this->order;
+        $id=0;
+        foreach ($pnames as $pname)
+            {
+            $profilName         = $this->createButtonProfileByName($pname);
+            $updateButtonID     = CreateVariableByName($categoryId,$pname, 1,$profilName,"",$order,$scriptId);           // button profile is Integer
+            $result[$id]["ID"]     = $updateButtonID;           // button profile is Integer
+            $result[$id]["NAME"]   = $pname; 
+            $id++;
+            $order += 10;
+            }
+        return ($result);
+        }
+
+    /* set color of Button
+     */
+
+    function setButtonColors($color = 0x235643, $colorSelect = 0x897654)                  // color of button and selected button
+        {
+        $this->color       = $color;
+        $this->colorSelect = $colorSelect;
+        }
+
+    /* save Button Parameters in class for other functions
+     *
+     */
+    function setSelectButtons($pnames,$categoryId)
+        {
+        $this->pnames       = $pnames;
+        $this->categoryId   = $categoryId;
+        }
+
+    /* save other default parameters for Button in class
+     */
+    function setConfigButtons($order=10,$modulName="")
+        {
+        $this->order       = $order;
+        $this->modulName   = $modulName;
+        }
 
 
+    /* get the Button Id
+     *
+     */
+    function getSelectButtons($debug=false)
+        {
+        $result=array();
+        if ($debug) 
+            {
+            echo "getSelectButtons with following Names :\n";
+            foreach ($this->pnames as $pname)
+                {
+                echo $pname." ";
+                }
+            echo "\n";
+            }
+        $id=0;
+        foreach ($this->pnames as $pname)
+            {
+            $result[$id]["ID"]     = IPS_GetObjectIdByName($pname,$this->categoryId);           // button profile is Integer
+            $result[$id]["NAME"]   = $pname; 
+            $id++;
+            }
+        return ($result);
+        }
+
+    /* get the Button Id
+     *
+     */
+    function selectButton($select)
+        {
+        $buttonIds = $this->getSelectButtons();
+        foreach ($buttonIds as $index => $buttonId)
+            {
+            if ($index == $select) IPS_SetVariableProfileAssociation($buttonId["NAME"]."Profil", 0, $buttonId["NAME"], "", $this->colorSelect); 
+            else IPS_SetVariableProfileAssociation($buttonId["NAME"]."Profil", 0, $buttonId["NAME"], "", $this->color); 
+            }
+        }
 
     }
 
@@ -6176,8 +6294,12 @@ class maxminCalc extends statistics
             }        
 
         }
-/*  Converting XML to an array isn't easy. But if you convert it, then it's a lot easier to use.
- * As you an I both know, this isn't the best way of doing things. After years of playing around with the DOMDocument, I created this class to convert an XML string to a well formatted PHP Array.
+        
+/* Basis ist eine übernommene Funktion mit ein paar Erweiterungen
+ *
+ *
+ * Converting XML to an array isn't easy. But if you convert it, then it's a lot easier to use.
+ * As you and I both know, this isn't the best way of doing things. After years of playing around with the DOMDocument, I created this class to convert an XML string to a well formatted PHP Array.
  */
 
 class App_Convert_XmlToArray 
@@ -6195,11 +6317,19 @@ class App_Convert_XmlToArray
 
     /**
      * Convert a given XML String to Array
+     * [body][div][a] => Array  (
+            [0] => Array( [@content] => Musterdepot 1, @attributes] => Array([href] => /markets/musterdepot/308831, [class] => dropdown-item ))
+            [1] => Array( [@content] => Musterdepot 2, [@attributes] => Array([href] => /markets/musterdepot/308832, [class] => dropdown-item))
+            ....
+            [6] => Array( [@content] => Musterdepot 3, [@attributes] => Array([href] => /markets/musterdepot/2531376, [class] => dropdown-item))
+                                )
+                 [@attributes] => Array( [class] => dropdown-menu wmax-400 wmax-lg-600 d-print-none, [x-placement] => bottom-start))
+     *
      *
      * @param string $xmlString
      * @return array|boolean false for failure
      */
-    public static function XmlToArray($xmlString) 
+    public static function XmlToArray($xmlString,$debug=false) 
         {
         $doc = new DOMDocument();
         libxml_use_internal_errors(true);           
@@ -6211,78 +6341,123 @@ class App_Convert_XmlToArray
             return false;
             }
         $root = $doc->documentElement;
-        $output = self::DOMDocumentToArray($root);
+        $output = self::DOMDocumentToArray($root,$debug);              // die eigentliche Konvertierungsfunktion
         $output[self::NAME_ROOT] = $root->tagName;
         return $output;
         }
 
     /**
      * Convert DOMDocument->documentElement to array
+     * arbeitet rekursiv
      *
      * @param DOMElement $documentElement
      * @return array
      */
-    protected static function DOMDocumentToArray($documentElement) 
+    protected static function DOMDocumentToArray($documentElement, $debug=false, $indent=0) 
         {
+        //if ($debug) echo "\nDOMDocumentToArray ";           // neue Zeile bei rekursiven Aufruf
         $return = array();
         switch ($documentElement->nodeType) 
             {
             case XML_CDATA_SECTION_NODE:
                 $return = trim($documentElement->textContent);
+                if ($debug) echo " XML_CDATA_SECTION_NODE $return ";
                 break;
             case XML_TEXT_NODE:
                 $return = trim($documentElement->textContent);
+                if ($debug) echo " XML_TEXT_NODE $return ";
                 break;
             case XML_ELEMENT_NODE:
-                for ($count=0, $childNodeLength=$documentElement->childNodes->length; $count<$childNodeLength; $count++) {
-                    $child = $documentElement->childNodes->item($count);
-                    $childValue = self::DOMDocumentToArray($child);
-                    if(isset($child->tagName)) {
-                        $tagName = $child->tagName;
-                        if(!isset($return[$tagName])) {
-                            $return[$tagName] = array();
-                        }
-                        $return[$tagName][] = $childValue;
-                    }
-                    elseif($childValue || $childValue === '0') {
-                        $return = (string) $childValue;
-                    }
-                }
-                if($documentElement->attributes->length && !is_array($return)) {
-                    $return = array(self::NAME_CONTENT=>$return);
-                }
-
-                if(is_array($return))
-                {
-                    if($documentElement->attributes->length)
+                $childNodeLength=$documentElement->childNodes->length;
+                $tagName="";
+                if (isset($child->tagName)) $tagName = $child->tagName; 
+                if ($debug) echo " XML_ELEMENT_NODE [$childNodeLength] <$tagName> ";
+                //echo json_encode($return)." ";
+                if ($childNodeLength>0)
                     {
+                    //echo " >0 ";
+                    for ($count=0; $count<$childNodeLength; $count++)           //ein vorhandenes return als String darf nicht mehr überschrieben werden, umwandeln als Content, mehrere Content zusammmenzählen
+                        {
+                        //echo $count." ";
+                        $child = $documentElement->childNodes->item($count);
+                        if ($debug) 
+                            {
+                            if (isset($child->tagName)) echo "<".$child->tagName."> " ;
+                            echo "\n   "; for ($i=0;($i<$indent);$i++) { echo "    "; }
+                            }
+                        $childValue = self::DOMDocumentToArray($child,$debug, $indent+1);                      // rekursiv, wir steigen ausschliesslich hier nach unten
+                        if(isset($child->tagName)) 
+                            {
+                            $tagName = $child->tagName;
+                            if ($debug) echo " </$tagName> ";            // if tagname store result as [tagname][]  
+                            //echo json_encode($childValue);
+                            if(!isset($return[$tagName]))               // aber es gibt noch keinen Index mit tagName
+                                {
+                                //echo json_encode($return)." tagName $tagName ";
+                                if (is_array($return)===false)                          // aber vielleicht einen Content von Text Node
+                                    {
+                                    $return = array(self::NAME_CONTENT=>$return);    
+                                    }
+                                $return[$tagName] = array();
+                                }
+                            $return[$tagName][] = $childValue;          // ist das return, wieder als array oder text
+                            }
+                        elseif($childValue || $childValue === '0') 
+                            {
+                            if (is_array($return)===false)                          // aber vielleicht einen Content von Text Node
+                                {
+                                $return .= (string) $childValue;
+                                }
+                            else        // return ist bereits ein array 
+                                {
+                                if (isset($return[self::NAME_CONTENT])) $return[self::NAME_CONTENT].= (string) $childValue;
+                                else $return[self::NAME_CONTENT]=(string) $childValue;
+                                }
+                            //echo $return;
+                            }
+                        //print_r($childValue);
+                        }
+                    }
+                //else echo " =0 ";
+                
+                // Die Auswertung beginnt
+
+                if($documentElement->attributes->length && !is_array($return))             // nur ein text node darunter, childvalue ein String :  array(@content => text)
+                    {
+                    $return = array(self::NAME_CONTENT=>$return);
+                    }
+
+                if(is_array($return))                           // wenn kein text und keine attributes hier nicht sonst immer vorbei
+                    {
+                    if($documentElement->attributes->length)                    // return um attributes erweitern array(@content => text,$attributes => attributes)
+                        {
                         $attributes = array();
                         foreach($documentElement->attributes as $attrName => $attrNode)
-                        {
+                            {
                             $attributes[$attrName] = (string) $attrNode->value;
-                        }
+                            }
                         $return[self::NAME_ATTRIBUTES] = $attributes;
-                    }
-                    foreach ($return as $key => $value)
-                    {
-                        if(is_array($value) && count($value)==1 && $key!=self::NAME_ATTRIBUTES)
+                        }
+                    foreach ($return as $key => $value)         // kleine Korrektur wenn array(tagname)
                         {
+                        if(is_array($value) && count($value)==1 && $key!=self::NAME_ATTRIBUTES)
+                            {
                             $return[$key] = $value[0];
+                            }
                         }
                     }
-                }
-                break;
+                break;          // ende Node
             }
         return $return;
         }
     
     /* rekursive Funktion, auf der Suche nach 
      * DomElement wird übergeben mit childNodes und attributes
-     *
+     * return Wert ist this->result
      */
     public function walkHtml($link,$debug=false)
         {
-        if ($this->level==0) 
+        if ($this->level==0)            // init routine
             {
             if ($debug) echo "walkHtml ";
             $this->result=array();
@@ -6291,7 +6466,7 @@ class App_Convert_XmlToArray
         if(isset($link->tagName)) if ($debug) echo $link->tagName;
         if ($link->hasAttributes())
             {
-            $attributes=array();
+            $attributes=array();                                        // sammeln für die Debug Ausgabe
             foreach($link->attributes as $attrName => $attrNode)
                 {
                 $attributes[$attrName] = (string) $attrNode->value;
@@ -6330,6 +6505,7 @@ class App_Convert_XmlToArray
         }
 
     }       // end of class
+
 /**************************************************************************************************************************
  *
  * ipsTables, Zusammenfassung von Funktionen rund um die Darstellung von Tables mit html
@@ -7002,7 +7178,22 @@ class ipsOps
         else $count++;
         }     
 
-
+    /**
+    * mb_str_pad
+    *
+    * @param string $input
+    * @param int $pad_length
+    * @param string $pad_string
+    * @param int $pad_type
+    * @return string
+    * @author Kari "Haprog" Sderholm
+    */
+    function mb_str_pad( $input, $pad_length, $pad_string = ' ', $pad_type = STR_PAD_RIGHT)
+        {
+        $diff = strlen( $input ) - mb_strlen( $input );
+        return str_pad( $input, $pad_length + $diff, $pad_string, $pad_type );
+        }
+        
     /* ipsOps, sucht ein Children mit dem Namen der needle enthält 
      * nimmt gleich den ersten Treffer in der Reihe von Children
      *
@@ -7729,26 +7920,26 @@ class sysOps
     private function getWmicsProcessList($filename,$debug=false)
         {
         if ($debug) echo "getWmicsProcessList mit $filename \n";
-            $wmics=array();
-            $fileOps = new fileOps($filename);
-            $result = $fileOps->readFileFixed("UTF-16",[],1000,$debug);           // First Line selbst finden
-            foreach ($result as $entry)
+        $wmics=array();
+        $fileOps = new fileOps($filename);
+        $result = $fileOps->readFileFixed("UTF-16",[],1000,$debug);           // First Line selbst finden
+        foreach ($result as $entry)
+            {
+            if (isset($entry["Caption"]))
                 {
-                if (isset($entry["Caption"]))
+                if (strtolower($entry["Caption"])==="java.exe") 
                     {
-                    if (strtolower($entry["Caption"])==="java.exe") 
+                    //print_R($entry);
+                    $commandlets = explode(" ",$entry["CommandLine"]);
+                    //print_r($commandlets);
+                    foreach ($commandlets as $i => $command) 
                         {
-                        print_R($entry);
-                        $commandlets = explode(" ",$entry["CommandLine"]);
-                        print_r($commandlets);
-                        foreach ($commandlets as $i => $command) 
-                            {
-                            if ( ($i>0) && (strlen($command)>1) && (substr($command,0,1) != "-") ) $wmics[]=$command;
-                            }
+                        if ( ($i>0) && (strlen($command)>1) && (substr($command,0,1) != "-") ) $wmics[]=$command;
                         }
-                    else $wmics[]=$entry["Caption"];
                     }
+                else $wmics[]=$entry["Caption"];
                 }
+            }
         return($wmics);
         }
 
@@ -7877,9 +8068,12 @@ class sysOps
                 while (($result=fgets($handle4)) !== false) 
                     {
                     $lines++;
-                    if ($lines==1) echo "Textformat ".mb_detect_encoding($result)."\n";
                     $java=explode(" ",$result);
-                    if (($debug) && ($lines<10)) echo count($java)." Spalten : $result \n";
+                    if ($debug)
+                        {
+                        if ($lines==1) echo "Textformat ".mb_detect_encoding($result)."\n";
+                        if ($lines<10) echo count($java)." Spalten : $result \n";
+                        }
                     $javas[$java[0]]=trim($java[1]);
                     }
                 fclose($handle4);
@@ -9177,7 +9371,7 @@ class fileOps
                         {
                         if (($i==0) && ($delimiter==[]))
                             {
-                            echo "Use first line to find delimiters.\n";
+                            //echo "Use first line to find delimiters.\n";
                             $oldstart=false; $oldstring="";
                             $tabs=explode(" ",$line);
                             $countTabs=sizeof($tabs);               // sizeof trifft noch jede Menge Eintraeg mit einem blank                        
@@ -9240,7 +9434,7 @@ class fileOps
                                     }
                                 if ($debug) echo str_pad($oldstart,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";                                
                                 //print_r($delimiter);
-                                echo "Zeile mit gefundene Spalten: ".sizeof($delimiter)."   \n";                             
+                                //echo "Zeile mit gefundene Spalten: ".sizeof($delimiter)."   \n";                             
                                 if (sizeof($delimiter)>1) $i++;
                                 }           // ende if count tabs
                             //$this->readFileFixedLine($line,$delimiter,true);          // Test, hier stimmt noch alles
@@ -12555,6 +12749,7 @@ class WfcHandling
         {
         $active=true;           // false for debugging purposes, true to execute
         $status=false;
+        $ipsOps = new ipsOps();
         $this->configWF=$configWF;                                              /* mitnehmen in die anderen Routinen */
         $info   = $this->anzahlItems($webfront_links);
         if ($debug)                             // check, analyze Config
@@ -12564,7 +12759,7 @@ class WfcHandling
             else 
                 {
                 echo "Installation im \"".$this->configWF["TabPaneItem"]."|".$this->configWF["TabPaneParent"]."\" mit Tabs : ";
-                foreach ($info->tabs as $key => $entry) echo "$key  ";
+                foreach ($info->tabs as $key => $entry)  { if ( ($key !== "CONFIG") && ($key !== "@CONFIG") ) echo "$key  "; }
                 echo "\n";                    
                 }
             if (isset($configWF["TabPaneName"])) echo "  Tab ".$configWF["TabPaneName"]."(".$configWF["TabPaneItem"].")\n";             // nur ausgeben wenn wirklich definiert wurde
@@ -12576,6 +12771,7 @@ class WfcHandling
                     {
                     case "ORDER":
                     case "STYLE":
+                    case "@CONFIG":
                     case "CONFIG":
                         echo "      Configuration ".json_encode($webfront_group)."\n";    
                         break;
@@ -12593,19 +12789,20 @@ class WfcHandling
                                 case "ORDER":
                                 case "STYLE":
                                 case "CONFIG":
+                                case "@CONFIG":
                                     echo "         Configuration ".json_encode($RegisterEntries)."\n";    
                                     break;
                                 case "Auswertung":
                                 case "Nachrichten": 
                                 default:
-                                    if ((isset($webfront_links["CONFIG"])) && ($default==false))
+                                    if ( ((isset($webfront_links["CONFIG"])) || (isset($webfront_links["@CONFIG"]))) && ($default==false))
                                         {
                                         //echo json_encode($RegisterEntries);
                                         echo "        Register:  ".$Group."/";
                                         if (isset($RegisterEntries["NAME"])) echo $RegisterEntries["NAME"];
                                         echo "\n";
                                         }
-                                    elseif (isset($webfront_group["CONFIG"]))
+                                    elseif ( (isset($webfront_group["CONFIG"])) || (isset($webfront_links["@CONFIG"])) )
                                         {
                                         if (is_numeric($Group)) echo "        Register:  ".$Group."/".$RegisterEntries["NAME"]."\n";
                                         }
@@ -12637,7 +12834,7 @@ class WfcHandling
                 if ($debug) 
                     {
                     echo "Webfront für ".IPS_GetName($categoryId_WebFront)." ($categoryId_WebFront) Kategorie im Pfad ".$this->configWF["Path"]." erstellen.\n";
-                    echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";  
+                    echo "Kategorie $categoryId_WebFront (".$ipsOps->path($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";  
                     }            
                 if ($active) $status=@EmptyCategory($categoryId_WebFront);
                 if (($debug)  && ($status)) echo "   -> erfolgreich.\n";  
@@ -12657,7 +12854,7 @@ class WfcHandling
                             if ($debug) 
                                 {
                                 echo "Installation im \"".$this->configWF["TabPaneItem"]."|".$this->configWF["TabPaneParent"]."\" mit Tabs : ";
-                                foreach ($webfront_links as $key => $entry) echo "$key  ";
+                                foreach ($webfront_links as $key => $entry) { if ( ($key !== "CONFIG") && ($key !== "@CONFIG") ) echo "$key  "; }
                                 echo "\n";
                                 }
                             if ($active) $this->setupWebfront($webfront_links,$this->configWF["TabPaneItem"],$categoryId_WebFront, $scope, $debug);
@@ -12771,10 +12968,11 @@ class WfcHandling
             //if (sizeof($webfront_links)==1) 
             foreach ($webfront_links as $Name => $webfront_group)
                 {
-                $infoGroup   = $this->anzahlItems($webfront_group);
-                if ($Name=="CONFIG")
+                $infoGroup   = $this->anzahlItems($webfront_group);                         // ist eine stdclass, count und tab
+                $onePane=true;                                                              // wenn count == 1 und onePane immer noch true
+                if (($Name=="CONFIG") || ($Name=="@CONFIG"))
                     {
-                    echo "Config erkannt neben Tabname. ignorieren. Config muss untergeordnet sein.\n";
+                    echo "Config erkannt neben Tabname. ignorieren. Config muss untergeordnet sein.\n";         // hier könnte noch eine Erweiterungsmöglichkeit bestehen
                     }
                 else    
                     {
@@ -12795,10 +12993,12 @@ class WfcHandling
                         unset($webfront_group["STYLE"]);      
                         }
                     else $style=false;
-                    if (isset($webfront_group["CONFIG"])) 
+                    if ( (isset($webfront_group["CONFIG"])) || (isset($webfront_group["@CONFIG"])) )
                         {  
                         echo "Tab $Name Config Information Detected.\n";           
-                        $config = $webfront_group["CONFIG"];
+                        if (isset($webfront_group["CONFIG"])) $config = $webfront_group["CONFIG"];
+                        else $config = $webfront_group["@CONFIG"];
+                        if ( (is_array($config)) && (in_array("WFCSplitPanel",$config)) ) $onePane=false;    
                         //unset($webfront_group["CONFIG"]);      
                         }
                     else $config=false;
@@ -12807,7 +13007,7 @@ class WfcHandling
                     * Der Name für die Felder wird selbst erfunden.
                     */
 
-                    if ($debug) echo "***erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
+                    if ($debug) echo "***erstelle Kategorie \"".$Name."\" in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
                     $categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, $order);
                     $status = @EmptyCategory($categoryId_WebFrontTab);   
                     if ($debug) 
@@ -12824,7 +13024,7 @@ class WfcHandling
 
                     if ( ($config !==false ) || (array_key_exists("Auswertung",$webfront_group)) || (array_key_exists("Nachrichten",$webfront_group)) )            // Index für Item oder SplitPane bereits in der ersten Ebene
                         {
-                        if ( ($infoGroup->count==1) || ((isset($config["type"])) && ($config["type"]=="link") ))     // kein SplitPane notwendig
+                        if ( (($onePane) && ($infoGroup->count==1) ) || ((isset($config["type"])) && ($config["type"]=="link") ))     // kein SplitPane notwendig
                             {
                             if ($debug) echo "setupWebfrontEntry Typ 2.1, Kategorie Auswertung in $Name vorhanden oder Config für link level. Nur ein Pane erstellen. Active $active\n";
                             if ($active)
@@ -12942,7 +13142,7 @@ class WfcHandling
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontSubTab, 20);
 		if ($debug) echo "  Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n"; 
 
-        if ($debug) echo "   **** Splitpane mit Namen $WFC10_TabPaneItem erzeugen als $tabItem in Wfc:\n";
+        if ($debug) echo "   **** Splitpane mit Namen $WFC10_TabPaneItem erzeugen als $tabItem in Wfc:";
         /* @param integer $WFCId ID des WebFront Konfigurators
             * @param string $ItemId Element Name im Konfigurator Objekt Baum
             * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
@@ -12958,8 +13158,10 @@ class WfcHandling
         $width=40;
         if ($this->paneConfig !== false) 
             {
+            if ($debug) echo json_encode($this->paneConfig);
             if (isset($this->paneConfig["width"])) { $width=$this->paneConfig["width"]; echo "Width is $width.\n"; }
             }
+        if ($debug) echo "\n";
         //CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
         $this->CreateWFCItemSplitPane ($tabItem, $WFC10_TabPaneItem,    $order,     $Name,     "", 1 /*Vertical*/, $width, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
         $this->CreateWFCItemCategory  ($tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
@@ -12998,16 +13200,17 @@ class WfcHandling
         if ($debug) echo "    createGroupLinks aufgerufen. Category Left: $categoryIdLeft Right: $categoryIdRight .".json_encode($webfront_group)." \n";
 
         /* Konfiguration, wenn übermittelt, berücksichtigen */
-        if (isset($webfront_group["CONFIG"])) 
+        if ( (isset($webfront_group["CONFIG"])) || (isset($webfront_group["@CONFIG"])) ) 
             {
-            echo "          CONFIG erkannt ".json_encode($webfront_group["CONFIG"])."\n";
-            $config=$webfront_group["CONFIG"];          // ORDER, RIGHT
+            if (isset($webfront_group["CONFIG"]))$config=$webfront_group["CONFIG"];          // ORDER, RIGHT
+            else $config=$webfront_group["@CONFIG"];
+            echo "          CONFIG erkannt ".json_encode($config)."\n";
             }
         if (isset($config["right"])==false) $config["right"]="AUSWERTUNG";
 
 			foreach ($webfront_group as $Group => $webfront_link)
 				{
-                if ( ($Group == "CONFIG") || ($Group == "STYLE") || ($Group == "ORDER") )       // SplitPane Konfiguration
+                if ( ($Group == "CONFIG") || ($Group == "@CONFIG") || ($Group == "STYLE") || ($Group == "ORDER") )       // SplitPane Konfiguration
                     {
                     //echo "Konfiguration für createLinks erkannt: ".json_encode($webfront_link)."\n";   // wird bereits oben abgearbeitet
                     }
@@ -13019,8 +13222,8 @@ class WfcHandling
                         /* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
                         * Auswertung kommt nach links und Nachrichten nach rechts
                         */	
-                        if (isset($link["NAME"]) === false) { echo "OID: $OID"; print_r($link); }
-                        if (!( ($OID=="ORDER") || ($OID=="CONFIG") ))
+                        if (isset($link["NAME"]) === false) { echo "no NAME key in array OID: $OID   > "; print_r($link); }
+                        if (!( ($OID=="ORDER") || ($OID=="CONFIG") || ($OID=="@CONFIG")))
                             {
                             if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."  (".json_encode($link).")\n";
                             // Optional auch einzelne Berechtigungen pro Objekt
@@ -13098,8 +13301,8 @@ class WfcHandling
                     /* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
                     * Auswertung kommt nach links und Nachrichten nach rechts
                     */	
-                    if (isset($link["NAME"]) === false) { echo "WebfrontGroup OID: $OID"; print_r($link); }               // fehlererkennung
-                    if ($OID!="ORDER")
+                    if (isset($link["NAME"]) === false) { echo "WebfrontGroup OID: $OID, no NAME in config of Link:   "; print_r($link); }               // fehlererkennung
+                    elseif ($OID!="ORDER")
                         {
                         if ($debug) echo "        createLinks, bearbeite Link ".$link["NAME"]." mit OID : ".$OID."  (".json_encode($link).")\n";
                         // Optional auch einzelne Berechtigungen pro Objekt

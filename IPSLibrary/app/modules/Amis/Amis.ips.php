@@ -21,15 +21,6 @@ IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
-if ($_IPS['SENDER']=="WebFront")
-	{
-	/* vom Webfront aus gestartet */
-
-	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
-
-	}
-else
-	{	
 
 	/******************************************************
 
@@ -47,6 +38,41 @@ else
     $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	$amis=new Amis();           // Ausgabe SystemDir, erstellt MeterConfig
+    $webOps = new webOps();
+
+    $categoryId_SmartMeter      = IPS_GetObjectIDByName('SmartMeter', $CategoryIdData);
+    $pnames = ["Update","Calculate","Sort"];
+    $webOps->setSelectButtons($pnames,$categoryId_SmartMeter);
+    $buttonsId = $webOps->getSelectButtons();
+    //print_r($buttonsId);
+    $updateApiTableID           = IPS_GetObjectIDByName("Update", $categoryId_SmartMeter);           // button profile is Integer
+    $calculateApiTableID        = IPS_GetObjectIDByName("Calculate", $categoryId_SmartMeter);           // button profile is Integer
+    $sortApiTableID             = IPS_GetObjectIDByName("Sort", $categoryId_SmartMeter);           // button profile is Integer
+
+if ($_IPS['SENDER']=="WebFront")
+	{
+	/* vom Webfront aus gestartet */
+
+	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+
+    switch ($_IPS['VARIABLE'])
+        {
+        case $buttonsId[0]["ID"]:         // Update
+            $webOps->selectButton(0);
+            break;
+        case $buttonsId[1]["ID"]:         // Update
+            $webOps->selectButton(1);
+            break;
+        case $buttonsId[2]["ID"]:         // Update
+            $webOps->selectButton(2);
+            break;
+
+        }
+
+	}
+else
+	{	
+
     echo "\n";
 	$MeterConfig = $amis->getMeterConfig();
 	//print_r($MeterConfig);

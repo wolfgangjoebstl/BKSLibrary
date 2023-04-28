@@ -137,10 +137,11 @@
             } 
 
 		/**
-		 * @public
-		 *
+		 * direkt aufgerufen von Webfront Report_ActionManager
+		 * 
 		 * Modifiziert einen Variablen Wert der Report Steuerung
-         * die Variablenamen sind beliebig. Wichtig ist der identifier für die Steuerung der weiteren Tätigkeiten.
+         * die Variablenamen sind beliebig. Wichtig ist der identifier für die Steuerung der weiteren Tätigkeiten
+         * Auswahl der Reports mit neuem System gemacht, verwendet webOps.
          *
          * Für das linke Auswahlfenster gilt: 
          *    Die letzte Zahl aus dem identifier, es ist 0-9 und 10-99 möglich, wird als Index (pweridx) herausgenommen.
@@ -150,104 +151,86 @@
          * Für das rechte Auswahlfenster gilt:
          *    es wird Navigation aufgerufen
          *
-         *
+         * Zusatzfunktion in Navigation für die Periodenauswahl
          *
 		 * @param integer $variableId ID der Variable die geändert werden soll
 		 * @param variant $value Neuer Wert der Variable
 		 */
 		public function ChangeSetting($variableId, $value) 
             {
-			$variableIdent = IPS_GetIdent($variableId);
+            //echo "ChangeSetting $variableId (".IPS_GetName($variableId)."), $value ";
+            $webOps = new webOps();
+            $valueConfig=$this->getValueConfiguration();
 
-			if ($this->debug) echo "ReportControl_Manager->ChangeSetting,VariableID : ".$variableId." Variableident : ".$variableIdent." mit Wert ".$value."   \n";
-			if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)                                         // entweder die letzte Zahl ist der Index
-				{   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */
-                //echo "go1   $variableIdent Look for: ".IPSRP_VAR_SELECTVALUE;
-				$powerIdx      = intval(substr($variableIdent,-1,1));          // powerIdx ist die letzte Stelle
-				$variableIdent = substr($variableIdent,0,-1);
-				//echo "Select Value mit ID ".$powerIdx."\n";
-				}
-			if (substr($variableIdent,0,-2)==IPSRP_VAR_SELECTVALUE)                         // oder die letzten beiden Zahlen ist der Index 
+            $count=0;
+            $buttonValues = array();
+            foreach ($valueConfig as $id=>$entries)
                 {
-                //echo "go2   $variableIdent ";                    
-				$powerIdx      = intval(substr($variableIdent,-2,2));           // powerIdx sind die letzten beiden Stellen
-				$variableIdent = substr($variableIdent,0,-2);
-                //echo " \"$powerIdx\"  \"$variableIdent\" ";
-			    }
+                $buttonValues[$count]=$entries[IPSRP_PROPERTY_NAME];
+                $count++;
+                }
+            $categoryIdSelectValues = IPS_GetObjectIDByName("SelectValues", $this->categoryIdCommon);
+            //print_r($associationsValues);
+            $webOps->setSelectButtons($buttonValues,$categoryIdSelectValues);
+            $buttonsId = $webOps->getSelectButtons();
+            $selectButton=false;
+            foreach ($buttonsId as $id => $button)
+                {
+                if ($variableId == $button["ID"]) 
+                    { 
+                    $selectButton=$id;  
+                    $webOps->selectButton($id);             // umfärben wenn gedrückt wurde
+                    break; 
+                    }
+                }
+            if ($selectButton !== false)            // Tastendruck erkannt, neue Auswahlleiste links
+                {
+                $variableIdent = IPSRP_VAR_SELECTVALUE;
+                $powerIdx = $id;             
+                $variableId=IPS_GetObjectIDByName(IPSRP_VAR_SELECTVALUE.$id, $this->categoryIdCommon);              // abwärtskompatibilität
+                $value=true;
+                //echo "Select Button gedrückt, ID ist $id Variable Identifier ist $variableIdent. Kompatibilität $variableId ,\n";
+                }
+            else 
+                {
+                $variableIdent = IPS_GetIdent($variableId);
+
+                if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)                                         // entweder die letzte Zahl ist der Index
+                    {   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */
+                    //echo "go1   $variableIdent Look for: ".IPSRP_VAR_SELECTVALUE;
+                    $powerIdx      = intval(substr($variableIdent,-1,1));          // powerIdx ist die letzte Stelle
+                    $variableIdent = substr($variableIdent,0,-1);
+                    //echo "Select Value mit ID ".$powerIdx."\n";
+                    }
+                if (substr($variableIdent,0,-2)==IPSRP_VAR_SELECTVALUE)                         // oder die letzten beiden Zahlen ist der Index 
+                    {
+                    //echo "go2   $variableIdent ";                    
+                    $powerIdx      = intval(substr($variableIdent,-2,2));           // powerIdx sind die letzten beiden Stellen
+                    $variableIdent = substr($variableIdent,0,-2);
+                    //echo " \"$powerIdx\"  \"$variableIdent\" ";
+                    }
+                }
+			if ($this->debug) echo "ReportControl_Manager->ChangeSetting,VariableID : ".$variableId." Variableident : ".$variableIdent." mit Wert ".$value."   \n";
 			/* der Identifier von SelectValue 0 .. 99 wird herausgearbeitet und zusätzlich nach poweridx indexiert
 			   sonst wird entsprechend der gedrückten Variable auf die Funktion aufgeteilt
 			*/
-
-            /* 
-            $value_config=$pcManager->getValueConfiguration();          // rausfinden welcher Report selektiert wurde
-            $config=$pcManager->getConfiguration();
-            print_R($value_config);
-            $result=false;
-            foreach ($value_config as $valueIdx => $valueEntry)
-                {
-                $variableIdValueDisplay = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $categoryIdCommon);   
-                if (GetValue($variableIdValueDisplay))                  // nur einer der Schalter ist auf 1
-                    {
-                    echo "Select $valueIdx \n";
-                    $resultIdx=$valueIdx;
-                    if (isset($valueEntry["Name"]))
-                        {
-                        $name=$valueEntry["Name"];
-                        if (isset($config[$name])) $resultConfig=$config[$name];
-                        }
-                    }
-                }
-            // Type is Chart, abhängig von der Konfiguration wird die Formatierung der Auswahlvariable geändert 
-            if (isset($value_config[$resultIdx][IPSRP_PROPERTY_VALUETYPE]))
-                {
-                if ($value_config[$resultIdx][IPSRP_PROPERTY_VALUETYPE] == IPSRP_VALUETYPE_CHART)
-                    {
-                    // es muss der Typ Chart sein
-                    echo json_encode($resultConfig)."\n";
-
-
-                    }
-                }            
-            if (isset($report_config["configuration"]))
-                {
-                unset ($report_config["series"]);                                       // selber erstellen
-                $selectAssociation=array();
-                $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData); 
-                $select=GetValue($ReportDataSelectorID);
-                if ($this->debug) echo "Alternative Configuration for Series Display detected, create series from config var, use selection $select:\n";
-                foreach ($report_config["configuration"] as $index=>$configID)
-                    {
-                    $selectAssociation[]=$index;    
-                    }
-                CreateProfile_Associations ('ReportDataSelect',     $selectAssociation);
-                if (isset($report_config[IPSRP_PROPERTY_VALUETYPE])) $valueType=$report_config[IPSRP_PROPERTY_VALUETYPE];
-                else $valueType="Euro";
-                $config=GetValue($report_config["configuration"][$selectAssociation[$select]]);
-                $configArray=json_decode($config,true);
-                //print_R($configArray);
-                foreach ($configArray as $index => $entry)
-                    {
-                    if ( (isset($entry["Name"])) && ($entry["Name"] != "") ) $name=$entry["Name"];
-                    else $name=$index;
-                    $result["Id"]=$entry["OID"];
-                    $result[IPSRP_PROPERTY_VALUETYPE]=$valueType;
-                    $report_config["series"][$name]=$result;
-                    }
-                }*/
-
+            //echo $variableIdent;
 			switch ($variableIdent) {
 				case IPSRP_VAR_SELECTVALUE:         /* Änderung der Variable SelectValue, Auswahlfeld links */
-                    $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData);  
+                    //echo "Select Value ausgewählt: $powerIdx\n";
+                    $variableIdTypeOffset = IPS_GetObjectIdByName(IPSRP_VAR_TYPEOFFSET, $this->categoryIdCommon);
+                    $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData);                 // für Easytrend: SAp oder Intl etc.
                     $this->visualizationCategoryID = IPS_GetObjectIdByName("VisualizationCategory",$this->categoryIdData);
                     if ($this->visualizationCategoryID) 
                         { 
+                        $TypeOffsetID  = IPS_GetObjectIdByName("Type/Offset", GetValue($this->visualizationCategoryID));        // die Links verstecken oder wieder herzeigen
                         $AddSelectorID = IPS_GetObjectIdByName("AddSelector", GetValue($this->visualizationCategoryID));
                         $DataTableID   = IPS_GetObjectIdByName("DataTable",   GetValue($this->visualizationCategoryID)); 
                         }
 
-                    $valueConfig=$this->getValueConfiguration();
                     if (isset($valueConfig[$powerIdx][IPSRP_PROPERTY_VALUETYPE]))
                         {
+                        //echo "Select Value ausgewählt mit ".($valueConfig[$powerIdx][IPSRP_PROPERTY_VALUETYPE])."\n";
                         switch ($valueConfig[$powerIdx][IPSRP_PROPERTY_VALUETYPE])
                             {
                             case IPSRP_VALUETYPE_CHART:
@@ -263,25 +246,28 @@
                                     } 
                                 if ($this->debug) echo "   CreateProfile_Associations ReportDataSelect with ".json_encode($selectAssociation)." \n";
                                 CreateProfile_Associations ('ReportDataSelect',     $selectAssociation);  
-                                IPS_SetVariableCustomProfile ($ReportDataSelectorID, 'ReportDataSelect');                                                           
-                                if ($AddSelectorID) IPS_SetHidden($AddSelectorID,false);          // die Variable darunter sichtbar oder nicht machen
-                                if ($DataTableID)   IPS_SetHidden($DataTableID,  false);          // die Variable darunter sichtbar oder nicht machen
+                                IPS_SetVariableCustomProfile ($ReportDataSelectorID, 'ReportDataSelect');                      
+                                IPS_SetHidden($TypeOffsetID,true);
+                                SetValue($variableIdTypeOffset,11);                         // sicherstellen dass kWh ausgewählt ist           
+                                if ($AddSelectorID) IPS_SetHidden($AddSelectorID,false);          // die Variable darunter sichtbar oder nicht machen, Depot aussuchen
+                                if ($DataTableID)   IPS_SetHidden($DataTableID,  false);          // die Variable darunter sichtbar oder nicht machen, die Datentabelle
                                 //echo $ReportDataSelectorID;
                                 //echo json_encode($valueConfig[$powerIdx]);   
                                 break;
                             default:
+                                IPS_SetHidden($TypeOffsetID,false);
                                 if ($AddSelectorID) IPS_SetHidden($AddSelectorID,true);
                                 if ($DataTableID)   IPS_SetHidden($DataTableID,  true);
                                 break;
                             }
                         }                                         
-					SetValue($variableId, $value);
+					SetValue($variableId, $value);              // nur für Interoperabilität, seit es die einfachen taster gibt
 					$this->CheckValueSelection($variableId);                // die anderen auf 0 setzen
 					$this->RebuildGraph();
 					break;
-				case IPSRP_VAR_TYPEOFFSET:          /* Änderung der Variable TypeandOffset, Auswahlfeld erste Zeile */
-				case IPSRP_VAR_PERIODCOUNT:         /* Änderung der Variable PeriodandCount, Auswahlfeld zweite Zeile */
-                    //echo "ANvigattion Rechts oben, sowohl Darstellungsart als auch Zeitraum";
+				case IPSRP_VAR_TYPEOFFSET:          /* Änderung der Variable TypeandOffset, rechter Teil des Auswahlfeld erste Zeile */
+				case IPSRP_VAR_PERIODCOUNT:         /* Änderung der Variable PeriodandCount, rechter Teil des Auswahlfeld zweite Zeile */
+                    //echo "Navigattion Rechts oben, sowohl Darstellungsart als auch Zeitraum";
 					$this->Navigation($variableId, $value);
 					$this->RebuildGraph();
 					break;
@@ -322,11 +308,13 @@
 			}
 
         /* eine etwas schräge und sehr kompakte Darstellungsform.
-         * Es gibt zwei Profile die individuell zur Runtime angepasst werden
+         * Es gibt zwei Profile die individuell zur Runtime angepasst werden, das bedeutet auch einen Update der Profil Associations, damit der neue Wert angezeigt werden kann
          * Bearbeitet werden dadurch folgende Einstellungen
          *      $variableIdCount  aus der Zeile PeriodAndCount
          *      $variableIdOffset aus der Zeile TypeAndOffset
          * die anderen Werte werden geradlinig transparent abgespeichert
+         *
+         * anhand des Wertes der beiden Profile kann erkannt werden in welcher Variable man ist 
          *
          */
 
@@ -336,20 +324,31 @@
 			$lastValue = GetValue($variableId);
 			$variableIdOffset = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMEOFFSET, $this->categoryIdCommon);
 			$variableIdCount  = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMECOUNT,  $this->categoryIdCommon);
+
+            $variableIdPeriodCount = IPS_GetObjectIdByName(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
+            $variableIdPeriodYear  = IPS_GetObjectIDByName("PeriodYearLast",     $this->categoryIdCommon);
+            $variableIdPeriodMonth = IPS_GetObjectIDByName("PeriodMonthLast",    $this->categoryIdCommon);
+            $variableIdPeriodWeek  = IPS_GetObjectIDByName("PeriodWeekLast",     $this->categoryIdCommon);
+            $variableIdPeriodDay   = IPS_GetObjectIDByName("PeriodDayLast",      $this->categoryIdCommon);
+            $variableIdPeriodHour  = IPS_GetObjectIDByName("PeriodHourLast",     $this->categoryIdCommon);
+
 			SetValue($variableId, $value);
 			$restoreOldValue = false;
+            $updateLastValue = false;
 			Switch($value) {
 				case IPSRP_COUNT_MINUS:
 					if (GetValue($variableIdCount) > 1) {
 						SetValue($variableIdCount, GetValue($variableIdCount) - 1);
 					}
 					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+                    $updateLastValue = true;
 					$restoreOldValue = true;
 					break;
 				case IPSRP_COUNT_PLUS:
 					SetValue($variableIdCount, GetValue($variableIdCount) + 1);
 					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
 					$restoreOldValue = true;
+                    $updateLastValue = true;
 					break;
 				case IPSRP_OFFSET_PREV:
 					SetValue($variableIdOffset, GetValue($variableIdOffset) - 1);
@@ -360,7 +359,7 @@
 					if (GetValue($variableIdOffset) < 0) {
 						SetValue($variableIdOffset, GetValue($variableIdOffset) + 1);
 					}
-					IPS_SetVariableProfileAssociation('IPSReport_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
+					IPS_SetVariableProfileAssociation('IPSReport_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);          // es wird nur eine Association umgestellt auf den aktuellen Wert
 					$restoreOldValue = true;
 					break;
 				case IPSRP_OFFSET_VALUE:
@@ -369,9 +368,53 @@
 				case IPSRP_COUNT_SEPARATOR:
 					SetValue($variableId, $lastValue);
 					break;
+	            case IPSRP_PERIOD_HOUR:
+                    SetValue($variableIdCount, GetValue($variableIdPeriodHour));
+					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+                    break;
+	            case IPSRP_PERIOD_DAY:
+                    SetValue($variableIdCount, GetValue($variableIdPeriodDay));
+					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+                    break;
+                case IPSRP_PERIOD_WEEK:
+                    SetValue($variableIdCount, GetValue($variableIdPeriodWeek));
+					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+                    break;
+                case IPSRP_PERIOD_MONTH:
+                    SetValue($variableIdCount, GetValue($variableIdPeriodMonth));
+					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+                    break;
+                case IPSRP_PERIOD_YEAR:
+                    SetValue($variableIdCount, GetValue($variableIdPeriodYear));
+					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+                    break;
 				default:
 					// other Values
 			}
+            if ($updateLastValue)
+                {
+                switch ($lastValue)
+                    {
+	            case IPSRP_PERIOD_HOUR:
+                    SetValue($variableIdPeriodHour,GetValue($variableIdCount));
+                    break;
+	            case IPSRP_PERIOD_DAY:
+                    SetValue($variableIdPeriodDay,GetValue($variableIdCount));
+                    break;
+                case IPSRP_PERIOD_WEEK:
+                    SetValue($variableIdPeriodWeek,GetValue($variableIdCount));
+                    break;
+                case IPSRP_PERIOD_MONTH:
+                    SetValue($variableIdPeriodMonth,GetValue($variableIdCount));
+                    break;
+                case IPSRP_PERIOD_YEAR:
+                    SetValue($variableIdPeriodYear,GetValue($variableIdCount));
+                    break;
+                default:
+                    echo "Dont know";
+                    break;
+                    }    
+                }
 			if ($restoreOldValue)  {
 				IPS_Sleep(200);
 				SetValue($variableId, $lastValue);
@@ -529,7 +572,7 @@
                 {
 				SetValue($variableIdPeriod, IPSRP_PERIOD_DAY);
 			    }
-            if ($this->debug) echo "Einstellungen ChartType : ".GetValue($variableIdChartType)."  Period : ".GetValue($variableIdPeriod)."  (after justification)\n";
+            if ($this->debug) echo "Einstellungen ChartType : ".$valueTypeList[GetValue($variableIdChartType)]."  Period : ".$periodList[GetValue($variableIdPeriod)]."  (after justification)\n";
 
 			$archiveHandlerList = IPS_GetInstanceListByModuleID ('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 			$archiveHandlerId   = $archiveHandlerList[0];
@@ -775,6 +818,7 @@
 						case IPSRP_TYPE_KWH:                         /* Graphendarstellung */
                             if (GetValue($variableIdValueDisplay)) 
                                 {
+                                //echo "kWh ".GetValue($variableIdValueDisplay);
                                 $displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
                                 $this->compileConfiguration($CfgDaten,$report_config[$displaypanel], $chartType);          // CfgDaten is pointer
                                 }

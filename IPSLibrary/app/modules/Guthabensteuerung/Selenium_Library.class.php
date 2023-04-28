@@ -1,6 +1,6 @@
 <?
 
- 	/*
+	/*
 	 * This file is part of the IPSLibrary.
 	 *
 	 * The IPSLibrary is free software: you can redistribute it and/or modify
@@ -59,10 +59,10 @@ require_once(IPS_GetKernelDir().'scripts\vendor\autoload.php');
  * construct
  * setConfiguration     spezifische konfiguration speichern
  * getConfiguration     konfiguration lesen
- * syncHandles
+ * syncHandles          handle ist gespeichert mit Index als webIndex und der Wert dem kurzen Namen, dem identifier, Tab
  * isTab
  * readFailure
- * updateHandles
+ * updateHandles        schreibt $handle in die class 
  * analyseFailure
  * initHost
  * getHost
@@ -170,7 +170,7 @@ class SeleniumHandler
         return($this->failure);
         }
 
-    /* schreibt $handle */
+    /* schreibt $handle in die class */
 
     function updateHandles($handle, $debug=false)
         {
@@ -773,17 +773,40 @@ class SeleniumHandler
         $links = $xpath->query($xPathQuery);
         if ($debug) echo "Insgesamt ".count($links)." gefunden für \"$xPathQuery\"\n";
 
+        $count=0; $maxcount=5;          // max 5 Einträge im debug darstellen, aber alle einsammeln
+        $result=array();                // für walkHtml Auswertung
+
+        // alle Ergebnisse in ein neues DOM speichern 
         $tmp_doc = new DOMDocument();   
         foreach ($links as $a) 
             {
             //$attribute=$a->getAttribute('@*');  if ($attribute != "") echo $attribute."\n";
             //echo $a->textContent,PHP_EOL;
+            $xmlArray = new App_Convert_XmlToArray();           // class aus AllgemeineDefinitionen, convert html/xml printable string to an array
+
             $style = $a->getAttribute($filterAttr);
-            if ( ($filterValue=="") || ($filterValue=="*") || ($style == $filterValue) )
+            if ( ($filterValue=="") || (strpos($filterValue,"*")!==false) || ($style == $filterValue) )
                 {
-                if ($debug) echo "   -> found:  ".$a->nodeName." , ".$a->nodeType." $style\n";
-                $tmp_doc->appendChild($tmp_doc->importNode($a,true));                 
-                //echo $innerHTML;
+                $found=true;
+                if (strpos($filterValue,"*")!==false)           // * als Einzelchar oder am Ende eines Suchstrings wie ein Filter
+                    {
+                    $pos = strpos($filterValue,"*");
+                    //if ($pos>0) echo substr($style,0,$pos)." == ".substr($filterValue,0,$pos)."\n";
+                    if ( ($pos==0) || (substr($style,0,$pos) == substr($filterValue,0,$pos)) )
+                        {
+                        // gefunden, andernfalls wird found doch wieder false
+                        }
+                    else $found=false;
+                    }
+                if ($found)
+                    {
+                    if ($debug) echo "   -> found:  ".$a->nodeName." , ".$a->nodeType." $style\n";
+                    $result[$count] = $xmlArray->walkHtml($a,false);                                        // Ergebnis noch etwas unklar, wir sammlen mal
+                    //if (($count)<$maxcount) if ($debug) print_R($result[($count)]);
+                    $count++;
+                    $tmp_doc->appendChild($tmp_doc->importNode($a,true));                 
+                    //echo $innerHTML;
+                    }
                 }
             }
         $innerHTML .= $tmp_doc->saveHTML();                      
@@ -826,7 +849,25 @@ class SeleniumHandler
         if ($debug) echo "getHtmlIf($xpath):\n";  
         $count=count(static::$webDriver->findElements(WebDriverBy::xpath($xpath)));
         if ( $count === 0) {                  
-            if ($debug) echo "   -->Text Field not found.\n";
+            if ($debug)
+                { 
+                echo "   -->Text Field not found at $xpath.\n";
+                while ($count===0)
+                    {
+                    $count=1;
+                    $pos = strrpos($xpath,"/");
+                    if ($pos!==false) 
+                        {
+                        $xpath = substr($xpath,0,$pos);
+                        echo "look for $xpath now\n";
+                        $count=count(static::$webDriver->findElements(WebDriverBy::xpath($xpath)));
+                        if ($count >0) 
+                            {
+                            echo "----> found\n";
+                            }
+                        }
+                    }
+                }
             }
         else
             {            
@@ -842,7 +883,7 @@ class SeleniumHandler
                 //if (strlen($page)>10) return ($page);
                 //if ($debug) echo "   -->result too short \"$page\", then try text.\n";
                 $page = $element->getText();
-                if ( (strlen($page)<=10) && ($debug) ) echo "   -->result still too short \"$page\".\n";                
+                if ( (strlen($page)<=10) && ($debug) ) echo "   -->result of getText still too short \"$page\".\n";                
                 return ($page);
                 }
             }
@@ -1018,7 +1059,7 @@ class SeleniumYahooFin extends SeleniumHandler
         return ($this->symbols);
         }
 
-    /*  Nachdem bereits als json encoded array übergeben wird gibt es nicht alzuviel zu tun
+    /*  YahooFin, Nachdem bereits als json encoded array übergeben wird gibt es nicht alzuviel zu tun
      *  also Ausgabe der Kursziele und das wars auch schon wieder  
      *
      */
@@ -1831,7 +1872,7 @@ class SeleniumEVN extends SeleniumHandler
         return($wert);
         }
 
-    /* parse result register to werte
+    /* EVN, parse result register to werte
      * zuerst den String in ein Array mit einem Eintrag pro Zeile aufteilen
      * dann jede Zeile in durch blank getrennte Einträge als Spalten aufteilen
      * Spalte 0 ist die Zeit und Spalte 2 ist der Wert
@@ -2797,18 +2838,21 @@ class SeleniumORF extends SeleniumHandler
             $xpath = new DOMXpath($dom);
             $links = $xpath->query('//li[@*]');
             if ($debug) echo "Insgesamt ".count($links)." Links gefunden für \"'//li[@*]'\"\n";
+            
+            // bis hier gleich wie mit queryFilterHtml, dann aber fortschrittlicher/anders da walkhtml verwendet wird
 
-            $count=0; $maxcount=5;
+            $count=0; $maxcount=5;          // max 5 Einträge einsammeln, dann isses gut
+            $result=array();
 
-            $tmp_doc = new DOMDocument();   
+            $tmp_doc = new DOMDocument();   // das Ergebnis Dokumnet, nur die links speichern die passen könnten
             foreach ($links as $link)                       //ein DomElement nach dem anderen durchgehen
                 {
-                $xmlArray = new App_Convert_XmlToArray();
+                $xmlArray = new App_Convert_XmlToArray();           // class aus AllgemeineDefinitionen, convert html/xml printable string to an array
                 $style = $link->getAttribute('class');
                 if ($style == 'broadcast') 
                     {
                     if ($debug) echo "   -> found:  ".$link->nodeName." , ".$link->nodeType." $style\n"; 
-                    $result[$count] = $xmlArray->walkHtml($link,false);
+                    $result[$count] = $xmlArray->walkHtml($link,false);                                         
                     if (($count++)<$maxcount) 
                         {
                         //var_dump($link);
@@ -2818,7 +2862,7 @@ class SeleniumORF extends SeleniumHandler
                     $tmp_doc->appendChild($tmp_doc->importNode($link,true));                 
                     }
                 }
-            $ergebnis="";
+            $ergebnis="";       //der tatsächliche return Wert
             $deleteIndex = array("class","xmlns","width","height","viewbox","transform","d");
             foreach ($result as $index => $entry)
                 {
@@ -2965,9 +3009,9 @@ class SeleniumORF extends SeleniumHandler
  *      calcOrderBook
  *      createDepotBook
  *      evaluateDepotBook
- *      runAutomatic
  *
  * Funktionen zum Einlesen des Host
+ *      runAutomatic
  *      getTextValidLoggedInIf
  *      enterLogin
  *      gotoLinkMusterdepot
@@ -2976,7 +3020,608 @@ class SeleniumORF extends SeleniumHandler
  *      getTablewithCharts
  *
  */
-class SeleniumEasycharts extends SeleniumHandler
+
+ /* Easycharts Neu, Webpage hat komplette neue Struktur
+  *
+  *
+  */
+class SeleniumEasycharts extends SeleniumEasychartModul
+    {
+
+
+    /* EasyCharts, hier wird Schritt für Schritt das Automatische Abfragen der Easychart Webseite abgearbeitet
+     * die alten Routinen sind noch in EaysychartModul
+     *  (0) Cookies auf Easybank.at bestätigen wenn notwendig, wenn Url bereits auf plus dann auf 6, wenn bereits auf musterdepot dann auf 7
+     *  (1) Goto to Markets (https://www.easybank.at/markets/wertpapiere/intro)
+     *  (2) Cookies erneut abfragen
+     *  (3) Goto persönliches profil MyMarkets
+     *  (4) nur vorbereiten, hier passiert nichts
+     *  (5) Username, Passwort eingeben, Login Buttorn drücken, einloggen es öffnet sich die Profileingabe 
+     *  (6) goto Musterdepot Link
+     *  (7) Dropdown mit vorhandenen Musterdepots auswerten
+     *  (8) erstes oder nächstes konfiguriertes Musterdepot auswählen und goto
+     *  (9) Musterdepot Tabelle einlesen, neues Format, wird als result gespeichert
+     *
+     * löst writeResult mit Depotname unter Category Easy aus. Kann mit readResult und Depotname wieder gelesen werden
+     * Es gibt eine Konfiguration Depot, diese gibt den Namen des auszulesenden Depots an
+     * Wert kann ein Array sein mit mehren Werten.
+     *
+     */
+    public function runAutomatic($step=0)
+        {
+        if ($this->debug) echo "runAutomatic SeleniumEasycharts Step $step.\n";
+        switch ($step)
+            {
+            case 0:     // check cookies for privacy and jump if already logged in or at musterdepot
+                $this->depotCount=1;              // es können mehrere Depots in einem Durchgang abgefragt werden, gesamte Anzahl hier speichern
+                if (isset($this->configuration["Depot"])) 
+                    {
+                    if (is_array($this->configuration["Depot"]))
+                        {
+                        $this->depotCount=count($this->configuration["Depot"]);    
+                        }
+                    }
+                if ($this->debug) echo "--------\n$step: check if cookies button, if so press. ".$this->depotCount." Depots are read.\n";
+
+                $status = $this->checkCookiesButtonIf();        // kann sowohl für easycharts als auch easybank web adresse verwendet werden
+                if ($status) echo "gefunden und gedrückt !\n";
+                $actualUrl=$this->getUrl();
+                echo "Wir sind jetzt auf dieser Url : $actualUrl Shortcuts sind möglich.\n";
+                if ($actualUrl == 'https://www.easybank.at/markets/plus/profile') return(["goto" => 6]);
+                if (strpos($actualUrl,'https://www.easybank.at/markets/musterdepot/')===0) return(["goto" => 7]);
+                break;
+            case 1:     // goto Market, Button upper right            
+                if ($this->debug) echo "--------\n$step: goto Link Market.\n";
+                $result = $this->gotoLinkMarketIf();                // Market Button rechts oben, jump to https://www.easybank.at/markets/wertpapiere/intro
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    }
+                echo "Wir sind jetzt auf dieser Url : ".$this->getUrl()."\n";
+                break;
+            case 2:     // check cookies for privacy once more
+                if ($this->debug) echo "--------\n$step: check if cookies button, if so press.\n";
+                $status = $this->checkCookiesButtonIf();
+                if ($status) echo "gefunden und gedrückt !\n";
+                break;
+            case 3:     // goto MyMarkets, personal Profile
+                if ($this->debug) echo "--------\n$step: go to personal Link MyMarkets and Login\n";
+                $result = $this->gotoLinkMyMarketIf();
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    }
+                echo "Wir sind jetzt auf dieser Url : ".$this->getUrl()." Result $result\n";
+                break;
+            case 4:     // just prepare
+                $this->depotCount=1;              // es können mehrere Depots in einem Durchgang abgefragt werden
+                if (isset($this->configuration["Depot"])) 
+                    {
+                    if (is_array($this->configuration["Depot"]))
+                        {
+                        $this->depotCount=count($this->configuration["Depot"]);    
+                        }
+                    }
+                if ($this->debug) echo "--------\n$step: check if not logged in, then log in. ".$this->depotCount." Depots are read. \n";
+                echo "Wir sind jetzt auf dieser Url : ".$this->getUrl()."\n";
+                //if ($this->getTextValidLoggedInIf()!==false)  return(["goto" => 6]);                // brauche ein LogIn Fenster
+                break;
+            case 5:     // enter login form, password form, enter Login Button
+                if ($this->debug) echo "--------\n$step: enter form log in.\n";
+                echo "Wir sind jetzt auf dieser Url : ".$this->getUrl()."\n";
+                $result = $this->enterLoginElement($this->configuration["Username"]);            
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    }
+                if ($this->debug) echo "--------\n$step: enter form Password.\n";
+                $result = $this->enterPasswordElement($this->configuration["Password"]);            
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    }
+                if ($this->debug) echo "--------\n$step: press button log in.\n";
+                $result = $this->pressLoginButtonIf();
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    }
+                echo "Wir sind jetzt auf dieser Url : ".$this->getUrl()."\n";
+                break;
+            case 6:     // goto musterdepot area
+                if ($this->debug) echo "--------\n$step: we are logged in, go to portfolio.\n";
+                echo "Wir sind jetzt eingelogged und befinden uns auf dieser Url : ".$this->getUrl()."\n";
+                // look for dropdown        /html/body/div[1]/main/div/section/div[1]/button
+                // read innerhtml of this   /html/body/div[1]/main/div/section/div[1]/div[1]
+                $result = $this->pressMusterDepotLinkIf();
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    }
+                break;
+            case 7:     // Dropdown Feld mit einzelnen Links zu den Portfolios auswerten
+                $actualUrl = $this->getUrl();
+                if ($this->debug) echo "--------\n$step: we are logged in, and on portfolio $actualUrl.\n";
+                $this->tableOverview = $this->readDropDownMusterdepot();         // die Namen aller Musterdepots rausbekommen, mit der Liste kann dann ein Dropdown angesteuert werden
+                // array hat index 0..n für die portfolios, gleich wie dropdown list und verweist mit .name auf den Portfolio Namen und mit .link auf den Link der angesprungen werden muss
+                if ($this->debug) echo "Ergebnis ------------------\n".json_encode($this->tableOverview)."\n";                 
+                break;
+            case 8:     // goto to first or next musterdepot given from configuration
+                if ($this->debug) echo "--------\n$step: goto Link Musterdepot.\n";
+                $found=false;
+                if (isset($this->configuration["Depot"])) 
+                    {
+                    $depot=$this->configuration["Depot"][($this->depotCount-1)];
+                    foreach ($this->tableOverview as $index => $entry)
+                        {
+                        $pos1=strpos($entry["name"],$depot);
+                        if ($pos1 !== false) $found = $index;
+                        }
+                    echo "Gesuchtes Musterdepot $depot ist auf Position $found \n";                            
+                    }
+                if ($found !== false) $result = $this->gotoLinkMusterdepotNum($found);            // zum jeweiligen Musterdepot wechseln
+                else $result = $this->gotoLinkMusterdepotNum();
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    }
+                break;
+            case 9:     // get Musterdepot, return Ergebnis und Musterdepot to automatedQuery in seleniumOperations
+                $actualUrl = $this->getUrl();
+                if ($this->debug) echo "--------\n$step: we are at Musterdepot Link $actualUrl.\n";
+                $result = $this->getResponsiveTablewithCharts();
+                if ($result===false) return ("retry");
+                if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
+                if (isset($this->configuration["Depot"])) return(["Ergebnis" => $result, "Depot" => $this->configuration["Depot"][($this->depotCount-1)]]);
+                else return(["Ergebnis" => $result]);
+                break;
+            case 10:
+                if ($this->debug) echo "--------\n$step: go back to Link Musterdepot if necessary.\n";
+                $result = $this->pressMusterDepotLinkIf();
+                if ($result === false) 
+                    {
+                    if ($this->debug) echo "   --> failed\n";
+                    return("retry");                
+                    } 
+                $this->depotCount--;
+                if ($this->depotCount>0) return(["goto" => 8]);
+                break;  
+            default:
+                return (false);
+            }
+        }
+
+    /* goto market page
+     * /html/body/header/div/div/div[1]/div[2]/div[2]/a[2]
+     */
+    function goToLinkMarketIf()
+        {
+        if ($this->debug) echo "goToLinkMarketIf : ";
+        $xpath='/html/body/header/div/div/div[1]/div[2]/div[2]/a[2]';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)." : $result\n";
+            $this->pressElementIf($xpath,true);                                                      // true debug , there is catch but still error
+            //$this->pressButtonIf($xpath,true);
+            //$this->pressSubmitIf($xpath,true);                                                      // true debug , error 
+            }
+        return ($result);
+        }
+
+    /* press Cookie Button if available
+     *  /html/body/div[4]/div[2]/div/div/div[2]/div/div/button[1]
+     *  /html/body/div[5]/div[2]/div/div/div[2]/div/div/button[1]
+     */
+    function checkCookiesButtonIf()
+        {
+        if ($this->debug) echo "CheckCookiesButtonIf ";
+        $xpath1='/html/body/div[4]/div[2]/div/div/div[2]/div/div/button[1]';
+        $xpath2='/html/body/div[5]/div[2]/div/div/div[2]/div/div/button[1]';
+        $result = $this->getHtmlIf($xpath1,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            //print $result;
+            $result = $this->pressButtonIf($xpath1,true);                                                      // true debug  
+            } 
+        else 
+            {
+            $result = $this->getHtmlIf($xpath2,$this->debug);
+            if ($result !== false)
+                {
+                echo "found fetch data, length is ".strlen($result)."\n";
+                //print $result;
+                $result = $this->pressButtonIf($xpath2,true);                                                      // true debug  
+                } 
+            else echo "Button not pressed.\n";
+            }
+        return ($result);
+        }
+
+    /* click on MyMarket to go to personalized Portal
+     * /html/body/div[1]/nav/div/div/ul[2]/li[7]/a/span[1]
+     * /html/body/div[1]/nav/div/div/ul[2]/li[7]/a
+     */
+    function gotoLinkMyMarketIf()
+        {
+        $xpath='/html/body/div[1]/nav/div/div/ul[2]/li[7]/a/span[1]';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)." : $result\n";
+            $this->pressElementIf($xpath,true);                                                      // true debug , there is catch but still error
+            //$this->pressButtonIf($xpath);
+            }
+        else echo "Button not pressed.\n";
+        return($result);        
+        }
+
+    /* enter Login
+     * /html/body/div[1]/main/div/div/div[1]/section/div/form/div/div[1]/input
+     */
+    function enterLoginElement($username)
+        {
+        $xpath = '/html/body/div[1]/main/div/div/div[1]/section/div/form/div/div[1]/input';        // relative path
+        $this->sendKeysToFormIf($xpath,$username);              // wjobstl
+        }
+
+    /* enter Password
+     * /html/body/div[1]/main/div/div/div[1]/section/div/form/div/div[2]/input
+     */
+    function enterPasswordElement($password)
+        {
+        $xpath = '/html/body/div[1]/main/div/div/div[1]/section/div/form/div/div[2]/input';        // relative path
+        $this->sendKeysToFormIf($xpath,$password);              // wjobstl
+        }
+
+    /* press Button LogIn (JetztEinloggen)
+     * /html/body/div[1]/main/div/div/div[1]/section/div/form/button
+     */
+    function pressLoginButtonIf()
+        {
+        if ($this->debug) echo "pressLoginButtonIf ";
+        $xpath = '/html/body/div[1]/main/div/div/div[1]/section/div/form/button';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)." result $result\n";
+            //print $result;
+            $this->pressElementIf($xpath,true);                                                      // true debug , there is catch but still error
+            //$result = $this->pressButtonIf($xpath,true);                                                      // true debug  
+            } 
+        else echo "Button not pressed.\n";
+        return ($result);
+        }
+
+    /* goto Link Portfolios
+     * /html/body/div[1]/nav/div/div/ul[2]/li[3]/a
+     */
+    function pressMusterDepotLinkIf()
+        {
+        if ($this->debug) echo "pressMusterDepotLinkIf ";
+        $xpath = '/html/body/div[1]/nav/div/div/ul[2]/li[3]/a';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)." result $result\n";
+            //print $result;
+            $this->pressElementIf($xpath,true);                                                      // true debug , there is catch but still error
+            //$result = $this->pressButtonIf($xpath,true);                                                      // true debug  
+            } 
+        else echo "Link Element not pressed.\n";
+        return ($result);
+        }
+
+    /* read drop down field to discover configured portfolios
+     * /html/body/div[1]/main/div/section/div[1]/div[1]
+     */
+    private function readDropDownMusterdepot() 
+        {
+        $result=false;
+        if ($this->debug) echo "readDropDownMusterdepot ";
+        //$xpath='/html/body/div[1]/main/div/section/div[1]/div[1]';
+        $xpath='/html/body/div[1]/main/div/section/div[1]';
+        $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+        if ((strlen($ergebnis))>10) 
+            {
+            echo "found fetch data, length is ".strlen($ergebnis)." result $ergebnis\n";
+            $page=$this->getInnerHtml();
+            $debugVariable=CreateVariableByName($this->getResultCategory(),"Debug",3);
+            SetValue($debugVariable,$page);
+            $xPathQuery  = '//div[@*]';
+            $filterAttr  = 'class';
+            $filterValue ="dropdown-menu wmax*";
+
+            $innerHtml = $this->queryFilterHtml($page,$xPathQuery,$filterAttr,$filterValue,$this->debug);            // das ganze Textfeld nach dem xpath mit den nachstehenden Attributen filtern und ausgeben
+            //echo $innerHtml;
+    
+            $xmlArray = new App_Convert_XmlToArray;
+            $array = $xmlArray->XmlToArray($innerHtml);            // input muss string sein, das Ergebnis in ein Array wandeln
+            //print_R($array);   
+
+            $result=array();
+            if (isset($array["body"]["div"]["a"]))
+                {
+                print_r($array["body"]["div"]["a"]);
+                foreach ($array["body"]["div"]["a"] as $index => $entry)
+                    {
+                    $result[$index]["name"]=$entry["@content"];
+                    $result[$index]["link"]=$entry["@attributes"]["href"];
+                    }
+                }
+            }
+        return($result);
+        }
+
+    /* Tabelle einzelner Musterdepots auslesen, wenn kein Index angegeben wurde dann  
+     * das ist jetzt ein Dropdown Feld mit Referenz auf Links
+     *
+     *
+     */
+    private function gotoLinkMusterdepotNum($id=0)
+        {
+        $url = 'https://www.easybank.at'.$this->tableOverview[$id]["link"];
+        $status = $this->updateUrl($url);
+        return ($status);                    
+        }
+
+    /* die ganze Tabelle einlesen, ist zwar immer noch als Tabelle organisiert aber um einges moderner
+     * /html/body/div[1]/main/div/section/table
+     *
+     */
+    private function getResponsiveTablewithCharts()
+        {
+        if ($this->debug) echo "Get Full Table of Depot\n";
+        $xpath='/html/body/div[1]/main/div/section/table';
+        $ergebnis = $this->getHtmlIf($xpath,$this->debug);    
+        if ((strlen($ergebnis))>10) 
+            {
+            if ($this->debug) echo "   ---> table found.\n";
+            $page=$this->getInnerHtml();
+            $debugVariable=CreateVariableByName($this->getResultCategory(),"Debug",3);
+            SetValue($debugVariable,$page);
+
+            return($ergebnis);
+            }
+        else echo $ergebnis;
+        return (false);
+        }
+
+    /* Easychart2, extract table, function to get fixed elements of a table line per line     
+     * input ist array mit Eintraegen pro Spalte (umgewandelt aus dem resultat mit zeilenumbrüchen)
+     * hier sind die neuen Formatierungsanweisungen für die responsive version von Easycharts: 
+     *      start   die ersten zwei Zeilen überspringen
+     *      columns es gibt 11 Spalten
+     * column 0 ist der erste Eintrag, bei Debug Ausgabe die alte Zeile abschliessen
+     * column 2 ist ein Name mit Blanks, solange zusammenfassen bis ein Währungszeichen koomt
+     *
+     *
+     * nachher evaluateResult
+     */
+
+    function parseResult($lines, $debug=false)
+        {
+        $config=array(
+            "start"     => 2,
+            "columns"   => 12,
+        );
+
+        $config=array(
+            "start"     => 0,
+            "columns"   => ["head" => 12, "body" => 9],
+            "insert"    => array(
+                "head"    => array(
+                    "1"         => "Index",
+                ),
+                "body"      => array(
+                ),
+            ),
+            "split"    => array(
+                "head"    => array(
+                    "10"         => "KaufMarkt",
+                ),
+                "body"      => array(
+                    "3"         => "Whg",
+                    "4"         => "Börse",
+                    "5"         => "Zeit",
+                    "6"         => "DiffKauf",
+                    "7"         => "KaufMarkt",
+                ),
+            ),
+        );
+
+        if ($debug) echo "parseResult für die neue responsive Version von Easycharts:\n";
+
+        $start=$config["start"];                               // jetzt gleich, alte Version die ersten beiden Zeilen überspringen
+        if (isset($config["columns"]["head"])) $columns=$config["columns"]["head"];                            // alle 11 Zeilen ist gleich Spalten gibt es einen Zeilenumbruch
+        elseif (isset($config["columns"])) $columns = $config["columns"];
+        else $columns=11; 
+        echo "columns to start : $columns\n";
+        if (isset($config["columns"]["body"])) $columnsUpd=$config["columns"]["body"];
+        $count=0;                               // Zeilenzähler
+        $join=0;                                // damit können zeilen wieder verbunden werden
+                            
+        $data=array();                          // Eintraege pro Zeile und Analyse der max Spaltenenlänge, Returnwert
+        $zeile=0; $spalte=0;
+        foreach ($lines as $index => $line)
+            {
+            if ($count >= $start)           // ab welcher Zeile gehts los
+                {
+                $length=strlen($line);
+                $column = ($count-$start)%$columns;         // die Start Zeilen werden nicht mitgezählt
+                if ($column==0) 
+                    {
+                    if ($debug) echo "\n".$this->ipsOps->mb_str_pad($zeile,3);                  // 0 ist der erste Eintrag, letzten Eintrag mit neuer Zeile abschliessen
+                    $zeile++;
+                    $spalte=0;
+                    }
+                else 
+                    {
+                    //if ($debug) echo $this->ipsOps->str_pad($column,2)." ";                  // 0 ist der erste Eintrag, letzten Eintrag mit neuer Zeile abschliessen                    
+                    $spalte++;
+                    }
+            if ( ($zeile==2) &&  $columnsUpd ) 
+                {
+                //echo "columns to go : $column = $count - $start % $columns \n";
+                $start+=$count;
+                $columns=$columnsUpd;   // body anders als head, alle x Zeilen ist gleich Spalten gibt es einen Zeilenumbruch
+                $columnsUpd=false;    
+                //echo str_pad($zeile,3)."columns to go : $column = $count - $start % $columns \n";
+                //echo str_pad($zeile,3);
+                }
+
+                /*if ($column==2)                             // in der Spalte 2 solange zusammenfassen bis ein Währungszeichen kommt
+                    {
+                    switch ($lines[$index+1])
+                        {
+                        case "EUR":
+                        case "USD":
+                        case "RAT":
+                        case "XPP":
+                            $join=0;
+                            break;
+                        default:
+                            $join=strlen($line);
+                            break;
+                        }
+                    }
+                if ($column==11)
+                    {
+                    if ($debug) echo "*";    
+                    }
+                */
+                if ($join && ($column==2) )         // Spalte 2 und kein Währungszeichen als nächstes
+                    {
+                    if ($debug) echo $line;
+                    $data["Data"][$zeile][$spalte]=$line;                
+                    }
+                else            // default
+                    {
+                    if ($join)                      // weiter zusammenfassen
+                        {
+                        if ($debug) echo $this->ipsOps->mb_str_pad($line,32-$join-3).$this->ipsOps->mb_str_pad($join,2)."|";
+                        $length += $join;
+                        $join=0;
+                        $count--; $spalte--;
+                        $data["Data"][$zeile][$spalte].=$line;
+                        }
+                    else                // Normale Bearbeitung
+                        {
+                        // insert    
+                        if ($zeile==1)          // erste Zeile, Spaltenüberschriften 
+                            {
+                            if ($column==1)          // charts2 ergänzen, add index wenn Typ
+                                {
+                                $addline="Index";
+                                if ($debug) echo $this->ipsOps->mb_str_pad($addline,31)."|";
+                                $data["Data"][$zeile][$spalte]=$addline;
+                                $spalte++;
+                                }
+                            }
+                        //split
+                        $numElements=1;         // init für split head und body
+                        if (($zeile==1) && (isset($config["split"]["head"])) )  //  body, tabelleneinzträge auf emhrere Spalten aufteilen 
+                            {
+                            $found=false;
+                            foreach ($config["split"]["head"] as $col => $cell) 
+                                {
+                                if ($col==$column) $found=$cell;
+                                }
+                            if ($found)
+                                {
+                                echo "*";
+                                $entries=explode(" ",$line);
+                                $numElements=sizeof($entries);
+                                }    
+                            }
+                        if (($zeile>1) && (isset($config["split"]["body"])) )  //  body, tabelleneinzträge auf emhrere Spalten aufteilen 
+                            {
+                            $found=false;
+                            foreach ($config["split"]["body"] as $col => $cell) 
+                                {
+                                if ($col==$column) $found=$cell;
+                                }
+                            if ($found)
+                                {
+                                echo "*";
+                                $entries=explode(" ",$line);
+                                $numElements=sizeof($entries);
+                                if (($found=="Zeit") && ($numElements==3))         // combine 2 und 3
+                                    {
+                                    $numElements=2;
+                                    $entries[1].=$entries[2];
+                                    unset ($entries[2]);
+                                    //echo json_encode($entries)."  ";
+                                    }
+                                }    
+                            }
+                        if (false && ( ($spalte==4) || ($spalte==8) || ($spalte==10) || ($spalte==12)) )                        //chart Split eines Eintrages auf mehrer Spalten
+                            {
+                            $entries=explode(" ",$line);
+                            $numElements=sizeof($entries);
+                            }
+                        if ($numElements==2)
+                            {
+                            $first = $entries[0];
+                            $last  = $entries[1];
+                            }
+                        if ($numElements>2)
+                            {
+                            //echo $numElements." ".json_encode($entries);
+                            $first=""; 
+                            for ($i=0;($i<($numElements-1));$i++) $first.=$entries[$i]." ";
+                            $last=$entries[$numElements-1];
+                            }
+                        if ($numElements>1)     
+                            {
+                            if ($debug) echo $this->ipsOps->mb_str_pad($first,31)."|";
+                            $data["Data"][$zeile][$spalte]=$first;         // erster Teil wird eigene Spalte
+                            $length=strlen($first);
+                            if (isset($data["Size"][$spalte]))
+                                {
+                                if ($length>$data["Size"][$spalte]) $data["Size"][$spalte]=$length;
+                                }
+                            else $data["Size"][$spalte]=$length;
+                            $length=strlen($last);
+                            $line=$last;
+                            $spalte++;
+                            if ($debug) echo $this->ipsOps->mb_str_pad($line,31)."|";
+                            $data["Data"][$zeile][$spalte]=$line;                                
+                            }
+                        else            // alles in ordnung, einfach abspeichern
+                            {
+                            if ($debug) echo $this->ipsOps->mb_str_pad($line,31)."|";
+                            $data["Data"][$zeile][$spalte]=$line;
+                            }
+                        }
+                    }
+
+                if (isset($data["Size"][$spalte]))
+                    {
+                    if ($length>$data["Size"][$spalte]) $data["Size"][$spalte]=$length;
+                    }
+                else $data["Size"][$spalte]=$length;
+
+                }
+            $count++;           // zeilensprung
+            }
+        return($data);
+        }
+    }
+
+/* Basisfunktion von Easychart, der Webspezifische Teil sollte in Easycharts sein
+ *
+ */
+
+class SeleniumEasychartModul extends SeleniumHandler
     {
     protected $configuration;               //array mit Datensaetzen
     protected $CategoryIdDataEasy;          // Kategorie Easy
@@ -3045,13 +3690,20 @@ class SeleniumEasycharts extends SeleniumHandler
     function getEasychartOrderConfiguration()
         {
         $orderbook=array();    
-        foreach (get_EasychartConfiguration() as $index => $entry)
+        if (function_exists("get_EasychartConfiguration"))
             {
-            // parse configuration, entry ist der Input und order der angepasste Output
-            configfileParser($entry, $order, ["ORDERS","Orders","Order","orders" ],"Orders" , null); 
-            if ((isset($order["Orders"]))===false) $order["Orders"]=$entry;
-            $orderbook[$index]=$order["Orders"];
-            }
+            $orderConfig=get_EasychartConfiguration();
+            if ( (is_array($orderConfig)) && (count($orderConfig)>0) )          // geht auch effizienter, siehe oben
+                {
+                foreach (get_EasychartConfiguration() as $index => $entry)
+                    {
+                    // parse configuration, entry ist der Input und order der angepasste Output
+                    configfileParser($entry, $order, ["ORDERS","Orders","Order","orders" ],"Orders" , null); 
+                    if ((isset($order["Orders"]))===false) $order["Orders"]=$entry;
+                    $orderbook[$index]=$order["Orders"];
+                    }
+                }
+            }                
         return ($orderbook);
         }
     
@@ -3246,6 +3898,22 @@ class SeleniumEasycharts extends SeleniumHandler
      *  2    Name
      *  3    EUR,USD
      *
+     * neues responsive Format
+                         [0] => Name
+                    [1] => Index
+                    [2] => Typ
+                    [3] => Stück
+                    [4] => Whg
+                    [5] => Börse
+                    [6] => Aktuell
+                    [7] => Zeit
+                    [8] => Diff. Vortag
+                    [9] => Diff. Kauf
+                    [10] => Einstandskurs
+                    [11] => Kaufsumme
+                    [12] => Marktwert
+                    [13] => Anteil
+     *
      * nachher evaluateValue
      */
 
@@ -3263,10 +3931,16 @@ class SeleniumEasycharts extends SeleniumHandler
             foreach ($line as $columnNumber => $column)
                 {
                 if ($debug) echo str_pad($column,$data["Size"][$columnNumber])."|";
-                if ($columnNumber==0) $entry["ID"]=$column;
+                /*if ($columnNumber==0) $entry["ID"]=$column;
                 if ($columnNumber==2) $entry["Name"]=$column;
                 if ($columnNumber==3) $entry["Currency"]=$column;
                 if ($columnNumber==5) $entry["Stueck"]=floatval(str_replace(',', '.', str_replace('.', '', $column)));
+                if ($columnNumber==6) $entry["Kurs"]=floatval(str_replace(',', '.', str_replace('.', '', $column)));
+                if ($columnNumber==8) $entry["Kursaenderung"]=floatval(str_replace(',', '.', str_replace('.', '', $column))); */
+                if ($columnNumber==1) $entry["ID"]=$column;
+                if ($columnNumber==0) $entry["Name"]=$column;
+                if ($columnNumber==4) $entry["Currency"]=$column;
+                if ($columnNumber==3) $entry["Stueck"]=floatval(str_replace(',', '.', str_replace('.', '', $column)));
                 if ($columnNumber==6) $entry["Kurs"]=floatval(str_replace(',', '.', str_replace('.', '', $column)));
                 if ($columnNumber==8) $entry["Kursaenderung"]=floatval(str_replace(',', '.', str_replace('.', '', $column)));
                 }
@@ -4799,14 +5473,17 @@ class SeleniumOperations
     function writeResult($index,$result,$name="Result", $debug=false)
         {
         echo "SeleniumOperations::writeResult($index,..,$name).\n";
-        $categoryID = @IPS_GetObjectIDByName($index, $this->CategoryIdData);
+        $categoryID = @IPS_GetObjectIDByName($index, $this->CategoryIdData);                // index ist Easy, Drei, YahooFin, Orf etc.
         if ($categoryID===false) return(false);
-        $variableID = CreateVariableByName($categoryID, $name, 3);
+        $variableID = CreateVariableByName($categoryID, $name, 3);                          // name ist result, und wenn mehrere Durchläufe dann personalifiziert
         SetValue($variableID,$result);
 
         }
 
-    /* SeleniumOperations, einfach nur RESULT auslesen und mit Value und LastChanged speichern
+    /* SeleniumOperations, einfach von einem Module (Easy, Drei etc) nur RESULT auslesen und mit Value und LastChanged speichern
+     * es gibt ein paar Zusatzfunktionen: 
+     *  ohne index/false wird eine Übersicht der in Data vorhandenen Module, ID und Anzahl Ergebnisregister gegeben
+     *  name ist der Name des Ergebnisregisters, entwerde defalut Result oder der Name oder mehrere Namen durch & getrennt
      *
      */
 
@@ -4816,6 +5493,7 @@ class SeleniumOperations
         if ($index==false) 
             {
             if ($debug) echo "SeleniumOperations::readResult ohne Zielangabe aufgerufen.\n";
+            echo "Vorhandene Module, ID und Anzahl Ergebnisregister:\n";
             $childrens=IPS_getChildrenIDs($this->CategoryIdData);
             foreach ($childrens as $children)
                 {
@@ -5006,7 +5684,7 @@ class SeleniumOperations
                                     $runSelenium[$index]->setConfiguration($config);
                                     }
                                 }
-
+                            // ------> hier der eigentliche Aufruf des einzelnen Schritts der Webautomatisiserung <--------------
                             $result = $runSelenium[$index]->runAutomatic($steps[$index]);
                             if ($debug) echo "Aufruf ".$steps[$index]." erfolgt. Rückmeldung ist ".json_encode($result)."\n";
                             if (is_Array($result))

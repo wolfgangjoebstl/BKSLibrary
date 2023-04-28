@@ -5448,13 +5448,13 @@ class Autosteuerung
                             if ($simulate==false)
                                 {
                                 $this->setDimTimer($result["NAME"],$result["DELAY"],$befehl);           // richtige Implementierung, alle Delay Sekunden nachschauen obs noch passt
-                                IPSLogger_Wrn(__file__, "timerCommand für Timer ".$result["NAME"]." Funktion DELAY#CHECK mit gültigem Undo Befehl ".$result["UNDO"]." erkannt.");
+                                IPSLogger_Dbg(__file__, "timerCommand für Timer ".$result["NAME"]." Funktion DELAY#CHECK mit gültigem Undo Befehl ".$result["UNDO"]." erkannt.");
                                 //$this->setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);        // nur ein einmaliger Timer aufruf
                                 }
                             }
                         else 
                             {
-                            IPSLogger_Wrn(__file__, "timerCommand für Timer ".$result["NAME"]." Funktion DELAY#CHECK mit ungültigem Undo Befehl erkannt.");   
+                            IPSLogger_Dbg(__file__, "timerCommand für Timer ".$result["NAME"]." Funktion DELAY#CHECK mit ungültigem Undo Befehl erkannt.");   
                             }
 						}
 					else
