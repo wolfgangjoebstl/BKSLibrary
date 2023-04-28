@@ -68,7 +68,7 @@
     // linkes Auswahlfenster mit zum Beispiel Easychart/trend kommt hier vorbei 
     if ($_IPS['SENDER']=="WebFront")
         {
-        echo "Check Report, wrong action script";
+        //echo "Check Report, wrong action script";
         $variableId = $_IPS['VARIABLE'];
         $value = $_IPS['VALUE'];
         $variableIdent = IPS_GetIdent($variableId);

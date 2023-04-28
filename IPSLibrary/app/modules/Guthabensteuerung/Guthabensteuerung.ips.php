@@ -20,7 +20,7 @@
 
     /* Guthabensteuerung
      *
-     * soll das verbleibende Guthaben von SIM Karten herausfinden
+     * soll das verbleibende Guthaben von SIM Karten von einer Webseite herausfinden
      * unterschiedliche Strategien, Betriebsarten: Aufruf mit
      *
      *      iMacro          leider nur mehr mittels Lizenzzahlung unterstützt, daher Fokus jetzt auf Selenium
@@ -131,16 +131,6 @@
                 IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
                 IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
                 $watchDog = new watchDogAutoStart();
-                if ($debug) echo "Watchdog Modul available, get Active Processes:\n";
-                $processes    = $watchDog->getActiveProcesses();
-                $processStart = $watchDog->checkAutostartProgram($processes);
-                $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
-                if (isset($processStart["selenium"])) 
-                    {
-                    $date=date("d.m.Y H:i:s");
-                    if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active since $date");
-                    else SetValue($SeleniumOnID,"Idle since $date");
-                    }
                 }
             else $SeleniumOnID=false;
             break;
@@ -186,23 +176,15 @@
     if ($tim1ID==false) echo "Fehler Timer Aufruftimer nicht definiert.\n";
     $tim12ID = IPS_GetEventIDByName("Lunchtimer", $_IPS['SELF']);
     if ($tim12ID==false) echo "Fehler Timer Lunchtimer nicht definiert.\n";
+    $tim2ID = @IPS_GetEventIDByName("Exectimer", $GuthabensteuerungID);
+    if ($tim2ID==false) echo "Fehler Timer Exectimer nicht definiert.\n";
     $tim3ID = @IPS_GetEventIDByName("EveningCallTimer", $GuthabensteuerungID);
     if ($tim3ID==false) echo "Fehler Timer EveningCallTimer nicht definiert.\n";
-
-    $tim2ID = $timerOps->CreateTimerSync("Exectimer",150,$_IPS['SELF']);
-
-    /* $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
-    if ($tim2ID==false)
-        {
-        $tim2ID = IPS_CreateEvent(1);
-        IPS_SetParent($tim2ID, $_IPS['SELF']);
-        IPS_SetName($tim2ID, "Exectimer");
-        IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      // alle 150 sec 
-        //IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  // immer um 02:10 
-        } */
-
-    $tim4ID = $timerOps->CreateTimerHour("AufrufMorgens",4,55,$_IPS['SELF']);
-    $tim5ID = $timerOps->CreateTimerSync("Tasktimer",310,$_IPS['SELF']);        // Tasks wie YahooFin ein wenig entkoppeln
+    $tim4ID = @IPS_GetEventIDByName("AufrufMorgens", $GuthabensteuerungID);
+    if ($tim4ID==false) echo "Fehler Timer AufrufMorgens nicht definiert.\n";
+    $tim5ID = @IPS_GetEventIDByName("Tasktimer", $GuthabensteuerungID);
+    if ($tim5ID==false) echo "Fehler Timer Tasktimer nicht definiert.\n";
+    $tim22ID=false;                                                                     // checks availability of Selenium Webdriver, independent process
 
     $phoneID=$guthabenHandler->getPhoneNumberConfiguration();
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
@@ -211,6 +193,7 @@
             break;
         case "SELENIUM":        
             $guthabenHandler->extendPhoneNumberConfiguration($phoneID,$seleniumOperations->getCategory("DREI"));            // phoneID is return parameter, erweitert um  [LastUpdated] und [OID]   
+            $tim22ID   = @IPS_GetEventIDByName("CheckAvailtimer", $GuthabensteuerungID);
             break;
         }
 
@@ -231,6 +214,8 @@
  *      es wir für alle Rufnummern einzeln die Drei Guthaben abfrage gestartet, entweder als Selenium oder wenn noch funktioniert als imacro
  *      danach wird ParseDreiGuthaben aufgerufen
  *      und bei iMacro geprüft ob die ergebnisdateien jetzt da sind
+ *
+ * tim12
  *
  * tim3 ist alternativ am Abend um 22:16 für Selenium Operationen
  *      DREI wird immer morgens gemacht, mehrmalige Aufrufe je Nummer, daher Abends rausnehmen, wird dezidiert aus der Config gelöscht,
@@ -449,6 +434,21 @@ if ($_IPS['SENDER']=="TimerEvent")
             $configTabs=false;        
             IPS_SetEventActive($tim5ID,false);
             break;      // Ende Timer5
+        case $tim22ID:                              // check availability of Selenium driver, dauert so lange darum in einen Timer ausgelagert
+            if (isset($installedModules["Watchdog"]))
+                {
+                if ($debug) echo "Watchdog Modul available, get Active Processes:\n";
+                $processes    = $watchDog->getActiveProcesses();
+                $processStart = $watchDog->checkAutostartProgram($processes);
+                $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
+                if (isset($processStart["selenium"])) 
+                    {
+                    $date=date("d.m.Y H:i:s");
+                    if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active since $date");
+                    else SetValue($SeleniumOnID,"Idle since $date");
+                    }
+                }
+            break;
 		default:                    // kein bekannter Timer
 			break;
 		}
@@ -829,13 +829,13 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
     $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
 
 	echo "Timerprogrammierung: \n";
-	//echo "  Timer 1 ID : ".$tim1ID."   ".(IPS_GetEvent($tim1ID)["EventActive"]?"Ein":"Aus")."\n";
-    //echo "  Timer 2 ID : ".$tim2ID."   ".(IPS_GetEvent($tim2ID)["EventActive"]?"Ein":"Aus")."\n";
-    //echo "  Timer 3 ID : ".$tim3ID."   ".(IPS_GetEvent($tim3ID)["EventActive"]?"Ein":"Aus")."\n";
     $timerOps->getEventData($tim1ID);
     $timerOps->getEventData($tim2ID);
+    $timerOps->getEventData($tim12ID);
     $timerOps->getEventData($tim3ID);
     $timerOps->getEventData($tim4ID);
+    $timerOps->getEventData($tim5ID);
+    $timerOps->getEventData($tim22ID);
 
 	$ScriptCounter=GetValue($ScriptCounterID);
 	$checkScriptCounter=GetValue($checkScriptCounterID);

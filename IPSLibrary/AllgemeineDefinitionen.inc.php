@@ -2931,7 +2931,7 @@ class webOps
     function createActionProfileByName($pname,$nameIDs,$style=1)
         {
         $create=false;
-        $namecount=count($nameID);
+        $namecount=count($nameIDs);
         if (IPS_VariableProfileExists($pname) == false)
             {
             //Var-Profil existiert noch nicht, neu erstellen
@@ -10131,17 +10131,20 @@ class timerOps
 
     public function getEventData($EreignisID,$debug=false)
         {
-        $EreignisInfo = IPS_GetEvent($EreignisID);
-        $eventID = $EreignisInfo["EventID"];
-        $lastrun=date("d.m.Y H:i:s",$EreignisInfo["LastRun"]);
-        $nextrun=date("d.m.Y H:i:s",$EreignisInfo["NextRun"]);
-        echo "$eventID ";
-        if ($debug) $text = "(".IPS_GetName($eventID)."/".IPS_GetName(IPS_GetParent($eventID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($eventID))).")";
-        else $text = "(".IPS_GetName($eventID).")";
-        echo str_pad($text,72);
-        echo " Lastrun $lastrun   Nextrun $nextrun  Status ".($EreignisInfo["EventActive"]?"Ein":"Aus")."  \n";
-        //if ($debug) print_r($EreignisInfo);
-
+        $EreignisInfo = @IPS_GetEvent($EreignisID);
+        if ($EreignisInfo===false) echo "Timer $EreignisID not available.\n";
+        else
+            {
+            $eventID = $EreignisInfo["EventID"];
+            $lastrun=date("d.m.Y H:i:s",$EreignisInfo["LastRun"]);
+            $nextrun=date("d.m.Y H:i:s",$EreignisInfo["NextRun"]);
+            echo "$eventID ";
+            if ($debug) $text = "(".IPS_GetName($eventID)."/".IPS_GetName(IPS_GetParent($eventID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($eventID))).")";
+            else $text = "(".IPS_GetName($eventID).")";
+            echo str_pad($text,72);
+            echo " Lastrun $lastrun   Nextrun $nextrun  Status ".($EreignisInfo["EventActive"]?"Ein":"Aus")."  \n";
+            //if ($debug) print_r($EreignisInfo);
+            }
         }
 
     /* verwendet in IpsComponentSensor_Motion für die Delayed Bewegungungsereignisse

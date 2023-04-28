@@ -48,8 +48,11 @@
     $dosOps->setMaxScriptTime(400); 
 	$startexec=microtime(true);
 
+    $errorWarning=false;            // Zusammenfassung ob es etwas zum anschauen gibt oder nicht
+
     $DoInstall=true; 
-    $DoDelete=false;                    // Alle Webfronts beginnend mit Money löschen
+    $DoWatchdogProcessActiveCheck = false;      // check ob Selenium läuft, dauert zu lange
+    $DoDelete=false;                            // Alle Webfronts beginnend mit Money löschen
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -120,8 +123,8 @@
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 	$categoryId_Nachrichten     = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 100);
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$log_OperationCenter=new Logging($systemDir."Log_Guthabensteuerung.csv",$input);
+	$input                      = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$log_OperationCenter        = new Logging($systemDir."Log_Guthabensteuerung.csv",$input);
 
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
@@ -142,7 +145,16 @@
         $sortApiTableID          = CreateVariableByName($CategoryId_Finance,"Sort", 1,$profilName,"",30,$GuthabensteuerungID);           // button profile is Integer
         }
 
+/********************************************************
+ *
+ * Setup Selenium or iMacro Environment
+ *
+ *******************************************************************/
+
+    echo "Setup Selenium oder imacro Environment. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+
     $seleniumWeb=false;
+    $SeleniumOnID=false;                            // für den Fall es gibt kein Watchdog Modul
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
         case "IMACRO":
@@ -190,10 +202,14 @@
                 $watchDog = new watchDogAutoStart();
                 $config = $watchDog->getConfiguration();
 
-                $processes    = $watchDog->getActiveProcesses();
-                $processStart = $watchDog->checkAutostartProgram($processes);
-                echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
-                print_r($processStart);
+                if ($DoWatchdogProcessActiveCheck)                              // check if Selenium Java process is running, will be done automatically with timer interogation
+                    {
+                    $processes    = $watchDog->getActiveProcesses();
+                    $processStart = $watchDog->checkAutostartProgram($processes);
+                    echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
+                    print_r($processStart);
+                    }
+                $SeleniumStatusID       = CreateVariable("SeleniumStatus",  3, $CategoryId_Mode,120,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                 $SeleniumOnID           = CreateVariable("SeleniumRunning", 3, $CategoryId_Mode,110,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                 if (isset($processStart["selenium"])) 
                     {
@@ -204,7 +220,6 @@
                 $processDir=$dosOps->correctDirName($configWatchdog["WatchDogDirectory"]);
                 echo "Watchdog Directory : $processDir\n";            
                 }
-            else $SeleniumOnID=false;
             $categoryDreiID = $seleniumOperations->getCategory("DREI");                
             echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";  
             if (isset($installedModules["OperationCenter"]))
@@ -246,6 +261,46 @@
                 $cdVersion=(string)$latestVersion;
                 echo "Update with latest Chromedriver version \"$cdVersion\".\n";
 
+                $latestChromeDriver = "chromedriver_".$cdVersion.".exe";
+                $foundNew = $dosOps->findfiles($execDirContent,$latestChromeDriver);
+                if ($foundNew)
+                    {
+                    echo "Check if missing and then move ".$foundNew[0]." to Selenium Directory.\n";
+                    $sourceFile=$execDir.$foundNew[0];   
+                    }
+                else $sourceFile=false;
+
+                //print_R($configWatchdog);
+                if (isset($configWatchdog["Software"]["Selenium"]["Directory"]))
+                    {
+                    $selDir=$dosOps->correctDirName($configWatchdog["Software"]["Selenium"]["Directory"]);
+                    echo "Watchdog config defines where Selenium is operating: $selDir \n";
+                    $dosOps->writeDirStat($selDir);                    // Ausgabe eines Verzeichnis 
+                    $selDirContent = $dosOps->readdirToArray($selDir);                   // Inhalt Verzeichnis als Array
+                    //print_R($selDirContent);
+                    $found = $dosOps->findfiles($selDirContent,"chromedriver-alt.exe");
+                    if ($found)
+                        {
+                        echo "Altes chromedriver.exe gefunden. Loeschen \"".$found[0]."\"\n";   
+                        $dosOps->deleteFile($selDir.$found[0]);
+                        }
+                    $found = $dosOps->findfiles($selDirContent,"chromedriver.exe");
+                    if ($found)
+                        {
+                        echo "Aktuelles chromedriver.exe gefunden. Version vergleichen.\n";   
+                        $size=filesize($selDir."chromedriver.exe");
+                        foreach ($version as $index => $info)
+                            {
+                            if ($info["Size"]==$size) break;
+                            }
+                        if ($latestVersion==$index) 
+                            {
+                            echo "Version ist die letzte Version mit Index $index \n";
+                            }
+                        else echo "Version aktuelles chromedriver.exe ist $index. Es sollte auf $latestVersion upgedated werden. \n";
+                        SetValue($SeleniumStatusID,"Active Selenium version is $index . Latest version available $latestVersion ");
+                        }
+                    }                   // aktuellen Selenium Driver rausfinden 
                 }                        
             break;
         case "NONE":
@@ -257,12 +312,36 @@
         }
 	
 
+	/*****************************************************
+	 *
+	 * initialize Timer 
+	 *
+	 ******************************************************************/
+
+
+    // Timer installieren
+	$timer = new timerOps();
+    
+    $tim1ID   = $timer->CreateTimerHour("Aufruftimer",2,rand(1,59),$GuthabensteuerungID);
+    $tim12ID  = $timer->CreateTimerHour("Lunchtimer",13,rand(1,59),$GuthabensteuerungID);
+    $tim2ID   = $timer->CreateTimerSync("Exectimer",150,$GuthabensteuerungID);
+    $tim3ID   = $timer->CreateTimerHour("EveningCallTimer",22,rand(1,59),$GuthabensteuerungID);
+    $tim4ID   = $timer->CreateTimerHour("AufrufMorgens",4,55,$GuthabensteuerungID);
+    $tim5ID   = $timer->CreateTimerSync("Tasktimer",50,$GuthabensteuerungID);        // Tasks wie YahooFin ein wenig entkoppeln, 310 Sekundne war zu lange
+
     $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 
+	/*****************************************************
+	 *
+	 * Selenium Webdriver 
+	 *
+	 ******************************************************************/
+
     if ($seleniumWeb)
         {
+        echo " Selenium Webdriver initialisieren. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
         // Es gibt Selenium Webdriver, die kann man wieder starten, so wie bei Guthaben StartSelenium,  CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,""
         $pname="SeleniumAktionen";                                         // keine Standardfunktion, da Inhalte Variable
 
@@ -412,6 +491,8 @@
 
         if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
             {
+            echo "Start Selenium Webdriver Running check Timer setup.\n";
+            $tim22ID   = $timer->setTimerPerMinute("CheckAvailtimer",$GuthabensteuerungID,180);
             $startImacroID      = CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             }
         else
@@ -428,20 +509,6 @@
 
 	createProfilesByName("Euro");
 	createProfilesByName("MByte");
-
-	/*****************************************************
-	 *
-	 * initialize Timer 
-	 *
-	 ******************************************************************/
-
-
-
-	$timer = new timerOps();
-    
-    $tim1ID   = $timer->CreateTimerHour("Aufruftimer",2,rand(1,59),$GuthabensteuerungID);
-    $tim12ID  = $timer->CreateTimerHour("Lunchtimer",13,rand(1,59),$GuthabensteuerungID);
-    $tim3ID   = $timer->CreateTimerHour("EveningCallTimer",22,rand(1,59),$GuthabensteuerungID);
 
 	/* Create Web Pages */
 
@@ -494,10 +561,15 @@
 		}
 
 
+
     /**************************************************
      *
      * Guthabensteuerung und Selnium wird hier überwacht, Anzeige erfolgt im SystemTP
      *
+     */
+    echo " Selenium Webfront initialisieren. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+
+    /*
     echo "\n";
     echo "Status Evaluierung, check ob Guthabensteuerung und Selenium vorhanden sind:\n";
     if (isset ($installedModules["Guthabensteuerung"])) 
@@ -612,12 +684,16 @@
                 $webfront_links["Selenium"]["Auswertung"][$statusID]["ORDER"]=210;
                 $webfront_links["Selenium"]["Auswertung"][$statusID]["ADMINISTRATOR"]=true;
                 }
-            if ($SeleniumOnID)
+            if ($SeleniumOnID)          // wie SeleniumWeb, aber nicht false wenn Watchdog Modul vorhanden 
                 {
                 echo "     Selenium Process active : ".GetValue($SeleniumOnID)."\n";
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumOnID]["NAME"]="Selenium Process Active";
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumOnID]["ORDER"]=10;
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumOnID]["ADMINISTRATOR"]=true;
+
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumStatusID]["NAME"]="Selenium Status Information";
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumStatusID]["ORDER"]=20;
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumStatusID]["ADMINISTRATOR"]=true;
                 }
             echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";
             $webDrivers=$guthabenHandler->getSeleniumWebDrivers();   
@@ -820,7 +896,8 @@
 		}
 
 
-
+    echo "Installation Guthabensteuerung abgeschlossen. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+    if ($errorWarning) echo "check log, maybe there is an error or warning in the log\n";
 
 
 
