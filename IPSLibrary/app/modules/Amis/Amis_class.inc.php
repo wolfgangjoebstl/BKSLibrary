@@ -1571,9 +1571,15 @@
                 else $kwh=false;
                 if (isset($config["Sort"]))  $sort=$config["Sort"];
                 if (isset($config["Extend"])) $extend=true;
-                echo " writeEnergyPeriodesTabletoString mit Config ".json_encode($config)." aufgerufen.\n";
+                echo "writeEnergyPeriodesTabletoString mit Config ".json_encode($config)." aufgerufen.\n";
                 }
-			else $html=$config;
+			else 
+                {
+                $html=$config;
+                $sort      = "lastWeek";            // es gibt keinen Defaultparameter, für intellisort der Tabellendaten benötigt
+
+                echo "writeEnergyPeriodesTabletoString mit Config \"".($config?"html":"line")."\" aufgerufen.\n";
+                }
 
 			if ($html==true) 
 				{
@@ -1631,29 +1637,31 @@
 				$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch als Periodenwerte aggregiert in EUR:".$endcellheader.$endparagraph;
 				}	
 			$outputTabelle.=$startparagraph.$zeile0.$endparagraph;
-			echo "Gesamt Tabelle aufbauen, eine Zeile pro Zähler\n";
+			echo "  Gesamte Tabelle aufbauen, eine Zeile pro Zähler\n";
 
             $display=array();
 			for ($line=0;$line<($metercount);$line++)
 				{
 				$PeriodenwerteID = $Werte[$line]["Information"]["Periodenwerte"];
                 $props = IPS_GetVariable($Werte[$line]["Information"]["Register-OID"]);
-                $display[$line]["lastChanged"] = $props["VariableUpdated"];         // VariableUpdated
-                $display[$line]["lastDay"]      = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzterTag',$PeriodenwerteID));
-				$display[$line]["lastWeek"]     = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte7Tage',$PeriodenwerteID));
-				$display[$line]["lastMonth"]    = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte30Tage',$PeriodenwerteID));
-				$display[$line]["lastYear"]     = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte360Tage',$PeriodenwerteID));
-				$display[$line]["lastDayEuro"]     = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzterTag',$PeriodenwerteID));
-				$display[$line]["lastWeekEuro"]    = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte7Tage',$PeriodenwerteID));
-				$display[$line]["lastMonthEuro"]   = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte30Tage',$PeriodenwerteID));
-				$display[$line]["lastYearEuro"]    = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte360Tage',$PeriodenwerteID));
-                $display[$line]["Information"]["NAME"] = $Werte[$line]["Information"]["NAME"];
-                $display[$line]["Information"]["Type"] = $Werte[$line]["Information"]["Type"];
+                $display[$line]["lastChanged"]      = $props["VariableUpdated"];         // VariableUpdated
+                $display[$line]["lastDay"]          = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzterTag',$PeriodenwerteID));
+				$display[$line]["lastWeek"]         = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte7Tage',$PeriodenwerteID));
+				$display[$line]["lastMonth"]        = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte30Tage',$PeriodenwerteID));
+				$display[$line]["lastYear"]         = GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte360Tage',$PeriodenwerteID));
+				$display[$line]["lastDayEuro"]      = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzterTag',$PeriodenwerteID));
+				$display[$line]["lastWeekEuro"]     = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte7Tage',$PeriodenwerteID));
+				$display[$line]["lastMonthEuro"]    = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte30Tage',$PeriodenwerteID));
+				$display[$line]["lastYearEuro"]     = GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte360Tage',$PeriodenwerteID));
+                $display[$line]["Information"]      = json_encode($Werte[$line]["Information"]);
+                //$display[$line]["Information"]["Name"] = $Werte[$line]["Information"]["NAME"];            // intelliSort kann nur zweidimensional arrays
+                //$display[$line]["Information"]["Type"] = $Werte[$line]["Information"]["Type"];
 				}	
             $this->ipsOps->intelliSort($display,$sort,SORT_DESC);
 
 			for ($line=0;$line<($metercount);$line++)
 				{
+                $display[$line]["Information"]      = json_decode($display[$line]["Information"],true);
 				$outputTabelle.=$startparagraph.$startcell.substr($display[$line]["Information"]["NAME"]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
 				if ($kwh==true)
 					{
@@ -1726,7 +1734,7 @@
             $ipsOps = new ipsOps();
             $ipsOps->intelliSort($powerValues,"Power");
             //print_R($powerValues);
-            echo "\nLeistungsregister direkt aus den Homematic Instanzen:\n";
+            if ($debug) echo "\nLeistungsregister direkt aus den Homematic Instanzen:\n";
             foreach ($powerValues as $name => $entry) 
                 {
                 $oid=$entry["OID"];
@@ -1877,7 +1885,7 @@
                     $config=array();
                     $config["StartTime"] = $starttime;   // 0 endtime ist now
                     $config["EndTime"]   = $endtime;
-                    $valuesAnalysed = $archiveOps->getValues($EnergieID,$config,1);     // Analyse der Archivdaten
+                    $valuesAnalysed = $archiveOps->getValues($EnergieID,$config,$debug);     // Analyse der Archivdaten, debug von default
                     //if ($metercount==0) print_R($valuesAnalysed["Description"]["MaxMin"]);
                     if (isset($valuesAnalysed["Values"]))
                         {

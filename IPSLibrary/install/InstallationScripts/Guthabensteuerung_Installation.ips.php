@@ -211,6 +211,10 @@
                     }
                 $SeleniumStatusID       = CreateVariable("SeleniumStatus",  3, $CategoryId_Mode,120,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                 $SeleniumOnID           = CreateVariable("SeleniumRunning", 3, $CategoryId_Mode,110,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
+                $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+                $nameID=["None"];
+                $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+                $updateChromedriverID          = CreateVariableByName($CategoryId_Mode,"UpdateChromeDriver", 1,$pname,"",120,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 if (isset($processStart["selenium"])) 
                     {
                     if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active");
@@ -293,12 +297,23 @@
                             {
                             if ($info["Size"]==$size) break;
                             }
+                        $tab=array();                       // für chromedriver update Button
                         if ($latestVersion==$index) 
                             {
                             echo "Version ist die letzte Version mit Index $index \n";
                             }
-                        else echo "Version aktuelles chromedriver.exe ist $index. Es sollte auf $latestVersion upgedated werden. \n";
+                        else // need update by manual request
+                            {
+                            echo "Version aktuelles chromedriver.exe ist $index. Es sollte auf $latestVersion upgedated werden. \n";
+                            foreach ($version as $num => $entry)
+                                {
+                                if ($num>$index) $tab[]=(string)$num;         
+                                }
+                            print_R($tab);
+                            }
                         SetValue($SeleniumStatusID,"Active Selenium version is $index . Latest version available $latestVersion ");
+                        $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+                        $webOps->createActionProfileByName($pname,$tab,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                         }
                     }                   // aktuellen Selenium Driver rausfinden 
                 }                        
@@ -350,12 +365,12 @@
         foreach ($configTabs as $tab => $config) $nameID[]=$tab;
         //$nameID=["Easy","YahooFin", "EVN"];
 
-        $webOps->createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
+        $webOps->createActionProfileByName($pname,$nameID,0);               // erst das Profil, dann die Variable, 0 ohne Selektor
         $actionWebID          = CreateVariableByName($CategoryId_Mode,"StartAction", 1,$pname,"",1000,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
         $pname="SeleniumGruppen";                                         // keine Standardfunktion, da Inhalte Variable
         $nameID=["morning","lunchtime", "evening"];
-        $webOps->createActionProfileByName($pname,$nameID);  // erst das Profil, dann die Variable
+        $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
         $actionGroupWebID          = CreateVariableByName($CategoryId_Mode,"StartGroupCall", 1,$pname,"",1010,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
         }
 
@@ -694,6 +709,10 @@
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumStatusID]["NAME"]="Selenium Status Information";
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumStatusID]["ORDER"]=20;
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumStatusID]["ADMINISTRATOR"]=true;
+
+                $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["NAME"]="Update Chromedriver to";
+                $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["ORDER"]=20;
+                $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["ADMINISTRATOR"]=true;                
                 }
             echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";
             $webDrivers=$guthabenHandler->getSeleniumWebDrivers();   

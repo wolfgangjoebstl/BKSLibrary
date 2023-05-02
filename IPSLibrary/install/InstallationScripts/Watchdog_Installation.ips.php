@@ -256,46 +256,17 @@
 	$verzeichnis=$configWD["WatchDogDirectory"];
 	$unterverzeichnis="";
 
-    echo "Write check username and active processes including java to script ".$verzeichnis.$unterverzeichnis."read_username.bat\n";
-	$handle2=fopen($verzeichnis.$unterverzeichnis."read_username.bat","w");
-    fwrite($handle2,'cd '.$verzeichnis.$unterverzeichnis."\r\n");
-	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
-    fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
-    fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
-    fwrite($handle2,'jps >>jps.txt'."\r\n");  
-    //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
-    fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
-	//fwrite($handle2,"pause\r\n");
-	fclose($handle2);
-
-    echo "Write Shutdown procedure to script ".$verzeichnis.$unterverzeichnis."self_shutdown.bat\n";
-	$handle2=fopen($verzeichnis.$unterverzeichnis."self_shutdown.bat","w");
-	fwrite($handle2,'net stop IPSServer'."\r\n");
-	fwrite($handle2,'shutdown /s /t 150 /c "Es erfolgt ein Shutdown in 2 Minuten'."\r\n");
-	fwrite($handle2,'pause'."\r\n");
-	fwrite($handle2,'shutdown /a'."\r\n");
-	fclose($handle2);
-
-    echo "Write Self Restart procedure to script ".$verzeichnis.$unterverzeichnis."self_restart.bat\n";
-	$handle2=fopen($verzeichnis.$unterverzeichnis."self_restart.bat","w");
-	fwrite($handle2,'net stop IPSServer'."\r\n");
-	fwrite($handle2,'shutdown /r /t 150 /c "Es erfolgt ein Restart in 2 Minuten'."\r\n");
-	fwrite($handle2,'pause'."\r\n");
-	fwrite($handle2,'shutdown /a'."\r\n");
-	fclose($handle2);
+    // scriptfile schreiben
+    $watchDog->createCmdFileActiveProcesses($verzeichnis.$unterverzeichnis);
+    $watchDog->createCmdFileSelfShutdown($verzeichnis.$unterverzeichnis);
+    $watchDog->createCmdFileSelfRestart($verzeichnis.$unterverzeichnis);
 
     if (strtoupper($configWD["Software"]["Selenium"]["Autostart"])=="YES")
         {
-        echo "Write Selenium Startup Script to ".$verzeichnis.$unterverzeichnis."start_Selenium.bat\n";
-        $handle2=fopen($verzeichnis.$unterverzeichnis."start_Selenium.bat","w");
-        fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
-        fwrite($handle2,'cd '.$configWD["Software"]["Selenium"]["Directory"]."\r\n");
-        fwrite($handle2,'java -jar '.$configWD["Software"]["Selenium"]["Execute"]."\r\n");
-        /*  cd C:\Scripts\Selenium\ 
-            java -jar selenium-server-standalone-3.141.59.jar
-            pause       */
-        fwrite($handle2,'pause'."\r\n");
-        fclose($handle2);
+        $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
+        // scriptfile schreiben
+        $seleniumChromedriverUpdate->createCmdFileStartSelenium($verzeichnis.$unterverzeichnis);       
+        $seleniumChromedriverUpdate->createCmdFileStoppSelenium($verzeichnis.$unterverzeichnis);       
         }
 
 	if (strtoupper($configWD["Software"]["Firefox"]["Autostart"])=="YES" )

@@ -130,7 +130,9 @@
                 {
                 IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
                 IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
-                $watchDog = new watchDogAutoStart();
+                $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
+                $processDir = $seleniumChromedriverUpdate->getprocessDir();
+                //echo "Watchdog Directory : $processDir\n";            
                 }
             else $SeleniumOnID=false;
             break;
@@ -145,8 +147,10 @@
     // Wenn Selenium Webfront aufgebaut wird
     $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     //$testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMacro,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-    $startActionID      = IPS_GetObjectIdByName("StartAction", $CategoryId_Mode);	
-    $startActionGroupID = IPS_GetObjectIdByName("StartGroupCall", $CategoryId_Mode);
+    
+    $startActionID              = IPS_GetObjectIdByName("StartAction", $CategoryId_Mode);	
+    $startActionGroupID         = IPS_GetObjectIdByName("StartGroupCall", $CategoryId_Mode);
+    $updateChromedriverID       = IPS_GetObjectIdByName("UpdateChromeDriver", $CategoryId_Mode);
 
     // Wenn YahooApi aufgebaut wird
     if (isset($GuthabenAllgConfig["Api"]))
@@ -438,8 +442,8 @@ if ($_IPS['SENDER']=="TimerEvent")
             if (isset($installedModules["Watchdog"]))
                 {
                 if ($debug) echo "Watchdog Modul available, get Active Processes:\n";
-                $processes    = $watchDog->getActiveProcesses();
-                $processStart = $watchDog->checkAutostartProgram($processes);
+                $processes    = $seleniumChromedriverUpdate->getActiveProcesses();
+                $processStart = $seleniumChromedriverUpdate->checkAutostartProgram($processes);
                 $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
                 if (isset($processStart["selenium"])) 
                     {
@@ -478,6 +482,7 @@ if ($configTabs)
 
 $reguestedAction    = false;               // Vereinheitlichung der Actions
 $reguestedActionApi = false;               // Vereinheitlichung der Actions
+$updateChromedriver = false;                // gleich gelöst, wäre aber nicht notwendig
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -579,6 +584,10 @@ if ($_IPS['SENDER']=="WebFront")
                 break;
             case $updateApiTableID:
                 $reguestedActionApi=GetValueFormatted($updateApiTableID);              // Update
+                break;
+            case $updateChromedriverID:
+                $updateChromedriver=GetValueFormatted($updateChromedriverID);
+                //echo "go for $updateChromedriver";
                 break;
             default:
                 echo "GuthabenSteuerung, unknown ActionID Variable : $variable";
@@ -811,6 +820,46 @@ if ($_IPS['SENDER']=="WebFront")
             default:
                 break;        
             }
+        }
+
+    /* eine neue Version des chromedriver einspielen, angeforderte Version (integer) ist in der Variable
+     * zuerst die Source checken, ein Cloudlaufwerk, welche Versionen sind vorhanden, Namenskonvention chromedriver_".$version.".exe
+     * dann das Zielverzeichnis untersuchen, herausfinden aufgrund der Filegroesse welche version die Datei chromedriver.exe hat
+     * dann weitermachen wenn unterschiedlich
+     * stopp Selenium
+     *  
+     */
+    if ($updateChromedriver)            
+        {
+        if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
+            {
+            IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+            IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+
+            $log_Guthabensteuerung->LogNachrichten("Update Chromedriver auf Version $updateChromedriver gestartet");
+            //echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
+            $subnet="10.255.255.255";                               // dont know no longer why
+            $seleniumChromedriver=new SeleniumChromedriver($subnet);         // SeleniumChromedriver.OperationCenter Child
+            $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
+            $sourceFile = $seleniumChromedriver->getFilenameOfVersion($updateChromedriver);         // file Adresse erforderlich Quelldatei ermitteln
+
+            $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();
+            $selDir        = $seleniumChromedriverUpdate->getSeleniumDirectory();
+            $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
+            if ($actualVersion==$updateChromedriver) echo "already done on $updateChromedriver";
+            else 
+                {
+                //echo "Aktuelles chromedriver.exe gefunden. Version $actualVersion. Neue version ist hier : $sourceFile\n";
+                $status=$seleniumChromedriverUpdate->copyChromeDriver($sourceFile,$selDir);
+                if ($status==102) $log_Guthabensteuerung->LogNachrichten("Neues Chromedriver File wurde bereits in Zielverzeichnis $selDir kopiert");
+                $seleniumChromedriverUpdate->deleteChromedriverBackup();
+                $seleniumChromedriverUpdate->stoppSelenium();   
+                $seleniumChromedriverUpdate->renameChromedriver();              // Filename zum umbenennen kommt ais copyChromedriver
+                $seleniumChromedriverUpdate->startSelenium();   
+                $log_Guthabensteuerung->LogNachrichten("Update Chromedriver auf Version $updateChromedriver abgeschlossen. Selenium läuft wieder.");
+                }
+            }
+
         }
 
 /******************************************************

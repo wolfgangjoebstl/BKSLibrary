@@ -837,6 +837,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
 	if ($aktuell) /* aktuelle Werte */
 		{
+        echo "------------------jetzt aktuelle Werte verarbeiten :\n";
 		$alleTempWerte="";
 		$alleHumidityWerte="";
 		$alleMotionWerte="";
@@ -1052,6 +1053,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
 		if (isset($installedModules["Amis"])==true)
 			{
+            echo "--> AMIS Stromverbrauchswerte erfassen:\n";
 			$alleStromWerte.="\n\nAktuelle Stromverbrauchswerte direkt aus den gelesenen und dafür konfigurierten Registern:\n\n";
 
 			$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
@@ -1427,6 +1429,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 		}
 	else   /* historische Werte */
 		{
+        echo "------------------jetzt historische Werte verarbeiten :\n";
 		$alleHeizungsWerte="";
 
 		/******************************************************************************************
@@ -1450,7 +1453,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 			$ergebnistab_energie="";
 			
 			$amis=new Amis();
-			$Meter=$amis->writeEnergyRegistertoArray($MeterConfig);		/* alle Energieregister in ein Array schreiben */
+			$Meter=$amis->writeEnergyRegistertoArray($MeterConfig,false);		/* alle Energieregister in ein Array schreiben, Parameter : Config, debug */
 			$ergebnistab_energie.=$amis->writeEnergyRegisterTabletoString($Meter,false);	/* output with no html encoding */	
 			$ergebnistab_energie.="\n\n";					
 			$ergebnistab_energie.=$amis->writeEnergyRegisterValuestoString($Meter,false);	/* output with no html encoding */	
@@ -2900,12 +2903,14 @@ function send_status($aktuell, $startexec=0, $debug=false)
  *
  * versammelt Operationen in einer Klasse die die Darstellung der Webfronts betrifft
  * 
- *  createActionProfileByName       erzeugt ein Profil für eine Zeile aus einzelnen Buttons die ein Script initieren
+ *  createActionProfileByName       erzeugt ein Profil für eine Zeile aus einzelnen Buttons die ein Script initieren, mit und ohne Selector
  *  createButtonProfileByName       erzeugt ein profil für einen einzelnen Button
  *  createSelectButtons             eine Reihe von Buttons anlegen, die untereinander ein Auswahlfeld ergeben
- *      setButtonColors
- *      setSelectButtons
- *
+ *      setButtonColors                 set color of Button
+ *      setSelectButtons                save Button Parameters as configuration in class for other functions
+ *      setConfigButtons                save other default parameters for Button in class
+ *  getSelectButtons
+ *  selectButton
  *
  */
 
@@ -2924,7 +2929,14 @@ class webOps
     /* SpezialProfile für Action Aufrufe aus dem Webfront, erzeugt eine Zeile aus einzelnen Buttons die ein Script initieren 
      *  pname ist der Name
      *  nameID ein Array aus einzelnen Einträgen
+     *  style ist 1 wenn ein Selector mit der Auswahl von Defaultwerten aufgerufen werden kann
      * die Farbe wird automatisch bestimmt
+     *
+     * Beispielaufruf:
+     *    $pname="DeviceTables";                                        // Profilname
+     *    $nameID=["DeviceType","Rooms"];                               // Auswahlfelder
+     *    $webOps->createActionProfileByName($pname,$nameID,0);         // erst das Profil, dann die Variable, 0 ohne Selektor
+     *    $actionDeviceTableID          = CreateVariableByName($hardwareStatusCat,"ShowTablesBy", 1,$pname,"",1010,$scriptIdImproveDeviceDetection);                 
      *
      */
 
@@ -3020,7 +3032,7 @@ class webOps
         $this->colorSelect = $colorSelect;
         }
 
-    /* save Button Parameters in class for other functions
+    /* save Button Parameters as configuration in class for other functions
      *
      */
     function setSelectButtons($pnames,$categoryId)
@@ -3063,7 +3075,7 @@ class webOps
         return ($result);
         }
 
-    /* get the Button Id
+    /* select the Button Id
      *
      */
     function selectButton($select)
@@ -7496,6 +7508,7 @@ class ipsOps
                 if ($debug) echo str_pad($index,5)."   ".sizeof($entry)." Spalten\n";
                 foreach($entry as $key=>$value)
                     { 
+                    if (is_array($value)) { echo "intellisort, input array mehr als zweidimensional : ".json_encode($entry)."\n"; return (false); }
                     if(!isset($sortArray[$key])) $sortArray[$key] = array();  
                     $sortArray[$key][$index] = strtoupper($value);                          // Speicherung mit Index und strtoupper hinzugefügt, kann auch parametrierbar werden
                     } 

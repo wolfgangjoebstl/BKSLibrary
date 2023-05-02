@@ -6513,6 +6513,94 @@ class LogFileHandler extends OperationCenter
 
 /********************************************************************************************************
  *
+ * SeleniumChromedriver of OperationCenter
+ * ================================= 
+ *
+ * extends OperationCenter because it is using same config file
+ * provides information of chromedriver versions provided by cloud services
+ *
+ *
+ **************************************************************************************************************************/
+
+class SeleniumChromedriver extends OperationCenter
+	{
+
+    var $cdVersions=array();                // Überblick über alle chromedriver versionen am Cloud Drive und deren größe um die version zu erkennen
+    var $execDirContent=array();            // Inhalt des Verzeichnis mit den Chromedrivern
+    var $execDir;                           // Name des Verzeichnis mit den Chromedrivern
+    var $debug;
+
+	public function __construct($subnet='10.255.255.255',$debug=false)
+		{
+        if ($debug) echo "class SeleniumChromedriver, Construct Parent class OperationCenter.\n";
+        $this->debug=$debug;   
+        parent::__construct($subnet,$debug);                       // sonst sind die Config Variablen noch nicht eingelesen
+        $OperationCenterSetup = $this->getSetup();                       // die Verzeichnisse
+        $cloudDir=$this->dosOps->correctDirName($OperationCenterSetup["Cloud"]["CloudDirectory"]);
+        $this->execDir=$this->dosOps->correctDirName($cloudDir.$OperationCenterSetup["Cloud"]["Executes"]);         // alle chromedriver für die interne Verteilung)
+        if ($debug)
+            {
+            echo "Cloud Verzeichnis für IP Symcon ist hier          : $cloudDir \n";
+            echo "Cloud Verzeichnis für IP Symcon Executes ist hier : ".$this->execDir." \n";
+            $this->dosOps->writeDirStat($this->execDir);                    // Ausgabe eines Verzeichnis 
+            }        
+        $this->execDirContent = $this->dosOps->readdirToArray($this->execDir);                   // Inhalt Verzeichnis als Array
+        }
+
+    /* SeleniumChromedriver, erstellt anhand des gespeicherten Inhalt des execdir Verzeichnis eine sortierte Liste von Chromdrivern mit Name und Filegröße
+     * die Filegröße kann zum bestimmen der Versionsnummer verwendet werden
+     */
+    function getListAvailableChromeDriverVersion()
+        {
+        $version=array();
+        foreach ($this->execDirContent as $fileName)
+            {
+            //$posNumeric=strpos()
+            $match=array();
+            $status=preg_match("/[0-9]{1,4}/", $fileName, $match);      // regex encoding [0-9] eine Ziffer, /^[0-9]{1,4}+\$/
+            if ( ($status) && (count($match)==1) ) 
+                {
+                $matchFound=number_format($match[0]);
+                if (strpos($fileName,"chromedriver")===0)
+                    {
+                    //echo "Gefunden in $fileName : $matchFound\n";
+                    $version[$matchFound]["Name"]=$fileName;
+                    $version[$matchFound]["Size"]=filesize($this->execDir.$fileName);
+                    }
+                }
+            }
+        ksort($version);
+        //print_r($version);
+        $this->cdVersion=$version;
+        return ($version);
+        }
+
+    /* SeleniumChromedriver, get sourcefile with dedicated version from cloud directory
+     */
+    function getFilenameOfVersion($version=false,$debug=false)
+        {
+        if ($debug===false) $debug=$this->debug;
+        if ($version===false) 
+            {
+            $version=array_key_last($this->cdVersion);
+            if ($debug) echo "getFilenameOfVersion, update with latest Chromedriver version \"$version\".\n";
+            }
+        $version=(string)$version;
+        $filenameChromeDriver = "chromedriver_".$version.".exe";
+        $foundNew = $this->dosOps->findfiles($this->execDirContent,$filenameChromeDriver);
+        if ($foundNew)
+            {
+            if ($debug) echo "Check if missing and then move ".$foundNew[0]." to Selenium Directory.\n";
+            $sourceFile=$this->execDir.$foundNew[0];   
+            }
+        else $sourceFile=false;
+        return ($sourceFile);                
+        }
+
+    }
+
+/********************************************************************************************************
+ *
  * DeviceManagement
  * ================ 
  *
