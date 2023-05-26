@@ -199,6 +199,9 @@
                 IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
                 IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
 
+                $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
+                $processDir = $seleniumChromedriverUpdate->getprocessDir();
+
                 $watchDog = new watchDogAutoStart();
                 $config = $watchDog->getConfiguration();
 
@@ -233,6 +236,10 @@
                 IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
                 echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
+                $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
+                $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
+                $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
+                /*
                 $subnet="10.255.255.255";                               // dont know no longer why
                 $OperationCenter=new OperationCenter($subnet);
                 $OperationCenterSetup = $OperationCenter->getSetup();                       // die Verzeichnisse
@@ -260,11 +267,13 @@
                         }
                     }
                 ksort($version);
-                //print_r($version);
+                //print_r($version);   */
                 $latestVersion=array_key_last($version);
                 $cdVersion=(string)$latestVersion;
-                echo "Update with latest Chromedriver version \"$cdVersion\".\n";
-
+                $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
+                if ($actualVersion != $latestVersion) echo "Update with latest available Chromedriver version \"$cdVersion\" recommended. Actual version is \"$actualVersion\".\n";
+ 
+                /*
                 $latestChromeDriver = "chromedriver_".$cdVersion.".exe";
                 $foundNew = $dosOps->findfiles($execDirContent,$latestChromeDriver);
                 if ($foundNew)
@@ -272,7 +281,8 @@
                     echo "Check if missing and then move ".$foundNew[0]." to Selenium Directory.\n";
                     $sourceFile=$execDir.$foundNew[0];   
                     }
-                else $sourceFile=false;
+                else $sourceFile=false;  */
+
 
                 //print_R($configWatchdog);
                 if (isset($configWatchdog["Software"]["Selenium"]["Directory"]))
@@ -291,29 +301,35 @@
                     $found = $dosOps->findfiles($selDirContent,"chromedriver.exe");
                     if ($found)
                         {
-                        echo "Aktuelles chromedriver.exe gefunden. Version vergleichen.\n";   
-                        $size=filesize($selDir."chromedriver.exe");
-                        foreach ($version as $index => $info)
+                        if (false)
                             {
-                            if ($info["Size"]==$size) break;
-                            }
-                        $tab=array();                       // für chromedriver update Button
-                        if ($latestVersion==$index) 
-                            {
-                            echo "Version ist die letzte Version mit Index $index \n";
-                            }
-                        else // need update by manual request
-                            {
-                            echo "Version aktuelles chromedriver.exe ist $index. Es sollte auf $latestVersion upgedated werden. \n";
-                            foreach ($version as $num => $entry)
+                            echo "Aktuelles chromedriver.exe gefunden. Version vergleichen.\n";   
+                            $size=filesize($selDir."chromedriver.exe");
+                            foreach ($version as $index => $info)
                                 {
-                                if ($num>$index) $tab[]=(string)$num;         
+                                if ($info["Size"]==$size) break;
                                 }
-                            print_R($tab);
+                            $tab=array();                       // für chromedriver update Button
+                            if ($latestVersion==$index) 
+                                {
+                                echo "Version ist die letzte Version mit Index $index \n";
+                                }
+                            else // need update by manual request
+                                {
+                                echo "Version aktuelles chromedriver.exe ist $index. Es sollte auf $latestVersion upgedated werden. \n";
+                                foreach ($version as $num => $entry)
+                                    {
+                                    if ($num>$index) $tab[]=(string)$num;         
+                                    }
+                                print_R($tab);
+                                }
                             }
-                        SetValue($SeleniumStatusID,"Active Selenium version is $index . Latest version available $latestVersion ");
+                        $SeleniumUpdate = new SeleniumUpdate();
+                        $tabs=$SeleniumUpdate->findTabsfromVersion($version, $actualVersion);
+
+                        SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
                         $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
-                        $webOps->createActionProfileByName($pname,$tab,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+                        $webOps->createActionProfileByName($pname,$tabs,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                         }
                     }                   // aktuellen Selenium Driver rausfinden 
                 }                        

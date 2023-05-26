@@ -20,8 +20,22 @@
 	/**
 	 *
 	 * Script zur Erstellung von WebLinks
+     *
+     * testet auch verschiedene Varianten der Komunikation mit den Scripts in webfront/user/
+     * $FrameLinkID  = '<iframe frameborder="0" width="100%" height="600px"  src="../user/Startpage/StartpageTopology.php"</iframe>';
+	 * 			function trigger_button(action, module, info) {
+				var id         = $(this).attr("id");
+				$.ajax({type: "POST",
+						url: "/user/Startpage/StartpageTopology_Receiver.php",
+						data: "id="+id+"&action="+action+"&module="+module+"&info="+info});			}
 	 *
-	 *
+     * in _Receiver die geposteten Werte übernehmen
+     *
+     *	$id       = $_POST['id']; 	$action   = $_POST['action']; 	$module   = $_POST['module']; 	$info     = $_POST['info'];
+     *  $result = Startpage_SetPage($action, $module, $info);
+     *  es können Variablen gesetzt werden, aber auch functions aufgerufen werden
+     *
+     *
 	 * @file          WebLinks_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 *

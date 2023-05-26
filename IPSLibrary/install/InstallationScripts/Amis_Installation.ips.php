@@ -108,11 +108,11 @@ $cutter=true;
     $dosOps = new dosOps();
 	$wfcHandling = new WfcHandling();		// für die Interoperabilität mit den alten WFC Routinen nocheinmal mit der Instanz als Parameter aufrufen
 
-	/***********************
-	 *
-	 * Webfront GUID herausfinden und Konfiguratoren anlegen
-	 * 
-	 **************************/
+/***********************
+ *
+ * Webfront GUID herausfinden und Konfiguratoren anlegen
+ * 
+ **************************/
 	
 	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
 	if ( isset($WebfrontConfigID["Administrator"]) == false )       /* webfront Administrator Configuratoren anlegen, wenn noch nicht vorhanden */
@@ -154,11 +154,11 @@ $cutter=true;
 
 	//echo "\nAdministrator ID : ".$AdministratorID." User ID : ".$UserID."\n\n";
 	
-	/***********************
-	 *
-	 * Webfront Konfigurationen herausfinden
-	 * 
-	 **************************/
+/***********************
+ *
+ * Webfront Konfigurationen herausfinden
+ * 
+ **************************/
 
     $configWFront=$ipsOps->configWebfront($moduleManager);
     //print_r($configWFront);
@@ -179,11 +179,11 @@ $cutter=true;
 	
 	$scriptIdAmis   = IPS_GetScriptIDByName('Amis', $CategoryIdApp);
 
-	/***********************
-	 *
-	 *					Profile Definition
-	 * 
-	 **************************/	
+/***********************
+ *
+ *					Profile Definition
+ * 
+ **************************/	
 
     echo "Profile Definition für AMIS Modul:\n";
 	$pname="AusEin-Boolean";
@@ -283,19 +283,19 @@ $cutter=true;
 	   }
 		
 		
-	/******************* 
-	 * 
-	 *				Variable Definition aus dem Config File auslesen
-	 *
-	 *	zwei Config Functions:  
-	 * 	get_MeterConfiguration()
-	 *		get_AmisConfiguration (alt, ergänzend, mit STATUS kann die Ablesung defaultmäßig ein und ausgeschaltet werden) 
-	 *
-	 * es gibt mehrer TYPEs of Meters: HOMEMATIC, REGISTER, AMIS und SUMME
-	 *   Homematic ist das Energieregister der Homeatic Serie, Register ein Wert von RemoteAccess, AMIS die Auslesunmg des AMIS Zählers 
-	 *   und SUMME eine kalkulatorische Berechnung immer dann wenn sich ein Wert aendert. 
-	 *
-	 ************************************************/
+/******************* 
+ * 
+ *				Variable Definition aus dem Config File auslesen
+ *
+ *	zwei Config Functions:  
+ * 	get_MeterConfiguration()
+ *		get_AmisConfiguration (alt, ergänzend, mit STATUS kann die Ablesung defaultmäßig ein und ausgeschaltet werden) 
+ *
+ * es gibt mehrer TYPEs of Meters: HOMEMATIC, REGISTER, AMIS und SUMME
+ *   Homematic ist das Energieregister der Homeatic Serie, Register ein Wert von RemoteAccess, AMIS die Auslesunmg des AMIS Zählers 
+ *   und SUMME eine kalkulatorische Berechnung immer dann wenn sich ein Wert aendert. 
+ *
+ ************************************************/
 	
 
 
@@ -681,12 +681,12 @@ $cutter=true;
 	SetValue($regID,$Amis->writeEnergyRegisterValuestoString($Meter));
 
 
-	/******************* Timer Definition ******************************
-     *
-     *   Momentanwerte Abfragen alle 60 Sekunden machen
-     *   Die Periodenwerte einmal am Tag updaten
-     *
-     */
+/******************* Timer Definition ******************************
+ *
+ *   Momentanwerte Abfragen alle 60 Sekunden machen
+ *   Die Periodenwerte einmal am Tag updaten
+ *
+ */
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
 	IPS_SetScriptTimer($scriptIdMomAbfrage, 60);  /* alle Minuten */
@@ -704,10 +704,10 @@ $cutter=true;
 		}
 	IPS_SetEventActive($tim1ID,true);
     
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
-
+/* ----------------------------------------------------------------------------------------------------------------------------
+ * WebFront Installation
+ *  ----------------------------------------------------------------------------------------------------------------------------
+ */
 	foreach ($webfront_links as $Name => $webfront_group)
 	   	{
         //$webfront_links[$Name]["STYLE"]=true;                   // für easySetupWebfront

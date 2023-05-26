@@ -170,24 +170,29 @@ if ($_IPS['SENDER'] == "RunScript")
 
 if ($_IPS['SENDER']=="Execute")
 	{
+    echo "Execute of Script requested:\n";
     if (($dosOps->getOperatingSystem()) == "WINDOWS")
         {
+        echo "   Operation System is Windows, thats good.\n";
         if ( isset($configuration["Directories"]["VideoLan"]) == true ) $command=$configuration["Directories"]["VideoLan"];
         else $command='C:/Program Files/VideoLAN/VLC/VLC.exe';
         if ( isset($configuration["Directories"]["Playlist"]) == true ) $playlist=$configuration["Directories"]["Playlist"];	
         else $playlist=" C:\Scripts\Fernsehprogramme\Technisat.m3u";
        
+        echo "   Call IPS_ExecuteEX($unterverzeichnis"."start_vlc.bat,$playlist,...)\n";
         //IPS_ExecuteEX('"'.$command.'"', $playlist, false, false, 1);	
         //IPS_ExecuteEX($command, $playlist, false, false, -1);
         IPS_ExecuteEX($unterverzeichnis."start_vlc.bat",$playlist, false, false, -1);
         //IPS_ExecuteEX("c:/Scripts/nircmd.exe", "sendkeypress F11", false, false, 1);
         //IPS_ExecuteEX("c:/Scripts/nircmd.exe", "monitor off", false, false, 1);
-        print_r($configuration);
+        
+        //print_r($configuration);
 
         if (isset($installedModules["OperationCenter"])==true)
             {  /* nur wenn OperationCenter vorhanden auch die lokale Soundausgabe starten*/
+            echo "   check tts_play\n";
             IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-            tts_play(1,'Ausgabe Monitor Status wird unterstützt','',2);
+            tts_play(1,'Ausgabe Monitor Status wird unterstützt','',2,true);            //true für Debug wenn aus OperationCenter_Library
             }
         }
 	}

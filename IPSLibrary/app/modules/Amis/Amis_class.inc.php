@@ -74,11 +74,11 @@
 		
 		private $MeterConfig;           // die bereinigtre AMIS Meter Config
         private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
-        private $debug;                 // zusaetzliche hilfreiche Debugs
 
         public $result;                 // Array mit aktuellen zusätzlichen Ergebnissen
 
-        private $ipsOps,$dosOps;
+        protected $ipsOps,$dosOps;
+        protected $debug;                 // zusaetzliche hilfreiche Debugs
 		
 		/**
 		 * @public
@@ -135,6 +135,7 @@
                     configfileParser($config,$result[$index],["Type","TYPE","type"],"TYPE","Register");
                     configfileParser($config,$result[$index],["Order","ORDER","order"],"ORDER","Main");
                     configfileParser($config,$result[$index],["costkWh","COSTKWH","costkwh","Costkwh","CostKwh"],"costkWh",$cost);
+                    configfileParser($config,$result[$index],["Source","SOURCE","source"],"Source","default");
                     configfileParser($config,$result[$index],["VariableName","VARIABLENAME","nariablename","Variablename"],"VariableName",null);
                     if (strtoupper($result[$index]["TYPE"])=="AMIS") 
                         {
@@ -252,17 +253,22 @@
             {
             if ($debug) echo "getRegisterIDbyConfig(".json_encode($meter).", $identifier\n";                
             $LeistungID=false;                
+            $ID = @IPS_GetObjectIdByName($meter["NAME"], $this->CategoryIdData);   // ID der Kategorie  
             switch (strtoupper($meter["TYPE"]))
                 {
                 case "DAILYLPREAD":
                 case "HOMEMATIC":
-                    $ID = @IPS_GetObjectIdByName($meter["NAME"], $this->CategoryIdData);   // ID der Kategorie  
                     if ($ID===false)  { echo "Warnung, Kategorie noch nicht installiert.\n"; return (false); }                      
                     $LeistungID = @IPS_GetObjectIdByName($identifier,$ID);   // nur eine Wirkleistung gespeichert
                     if ($LeistungID && $debug) echo "   --> Ergebnis $LeistungID in $ID\n";                           
                     break;
                 case "DAILYREAD":
                     if ($identifier=="Wirkenergie") $LeistungID=$meter["WirkenergieID"];
+                    else
+                        {
+                        if ($ID===false)  { echo "Warnung, Kategorie noch nicht installiert.\n"; return (false); }                      
+                        $LeistungID = @IPS_GetObjectIdByName($identifier,$ID);   // nur eine Wirkleistung gespeichert
+                        }
                     //print_R($meter);  
                     break;
                 case "AMIS":
@@ -2690,7 +2696,7 @@
             return ($deleteIndex);
             }
 
-    /******************************************************************************************************************/
+        /******************************************************************************************************************/
 
         /*
          * Routinen werden für die Auswertung der Datenströme vom Zähler und zusätzlichen Berechnungen verwendet
@@ -2850,6 +2856,231 @@
             return ($this->result);
             }
 			
+		}  // ende class
+
+    /* Erweiterung für Smart Meter Funktionen
+     *
+     */
+	class AmisSmartMeter extends Amis
+        {
+
+        protected $guthabenHandler;
+
+        function __construct($debug=false)
+            {
+            $this->guthabenHandler = new GuthabenHandler();                  //default keine Ausgabe, speichern
+
+            parent::__construct($debug);
+            }
+
+        function writeSmartMeterDataToHtml()
+            {
+            //echo "Button 0";                              // das sind die drei Button links
+            $webOps = new webOps();
+            $archiveOps = new archiveOps();                // allgemeines Init
+
+            $MeterConfig = $this->getMeterConfig();
+
+            $endtime=time();
+            $starttime=$endtime-60*60*24*60;            // letzte 60 Tage
+
+            $html="";
+            /*
+            $html .= '<style>';
+            $html .= '.cuwContainer { width: auto; height: auto; max-height:95%; max-width: 100%; background-color: #1f1f1f; }';
+            $html .= '</style>';
+            */
+            if ($this->debug) echo "Show Smart Meter Types from Configuration :\n";
+            $html .= '<div class="cuw-quick">';
+            $html .= '<table>';
+
+            foreach ($MeterConfig as $identifier => $meter)
+                {
+                $html .= "<tr>";
+                $ID = IPS_GetObjectIdByName($meter["NAME"], $this->CategoryIdData);   
+                switch (strtoupper($meter["TYPE"]))
+                    {
+                    case "DAILYREAD":
+                    case "DAILYLPREAD":
+                        $html .= "<td>".$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier."</td>";
+                        if (isset($meter["Source"])) $html .= '<td colspan="4">Quelle der Daten kommt von '.$meter["Source"]."</td>";
+                        $html .= "</tr>";
+                        $html .= "<tr>";
+                        $html .= "<th>Bezeichnung</th><th>OID</th><th>Anzahl</th><th>Periode</th><th>Intervall</th><th>Erster Eintrag</th><th>Letzter Eintrag</th><th>Pfad</th>";
+                        $html .= "</tr>";
+                        $variableID = IPS_GetObjectIdByName('Wirkenergie', $ID);
+                        $smEnergyCounterArchiveOps = new archiveOps($variableID);
+                        $smEnergyCounterConfig = $smEnergyCounterArchiveOps->getConfig();
+                        //print_r($smEnergyCounterConfig);    
+                        $count = $smEnergyCounterConfig["RecordCount"];
+                        $periode = $smEnergyCounterConfig["LastTime"] - $smEnergyCounterConfig["FirstTime"];
+                        $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        if ($this->debug) 
+                            {
+                            echo "   ".$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier." \n";
+                            echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyCounterConfig["AggregationType"]?"Zaehler":"Werte")." :",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyCounterConfig["LastTime"])." ID : $variableID . Wert wurde berechnet.";
+                            echo " Pfad: ".$this->ipsOps->path($variableID)."  \n";
+                            }
+                        $html .= "<tr>";
+                        $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyCounterConfig["AggregationType"]?"Zaehler":"Werte")."</td>";
+                        $html .= "<td>$variableID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smEnergyCounterConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smEnergyCounterConfig["LastTime"])."</td>";
+                        $html .= "<td>".$this->ipsOps->path($variableID)."</td>";
+                        $html .= "</tr>";
+                        /*$archiveID = $smEnergyCounterArchiveOps->getArchiveID();
+                        AC_DeleteVariableData ($archiveID, $variableID,strtotime("24.08.2021 00:00"),strtotime("24.10.2021 00:00"));          // $start>$end    
+                        AC_ReaggregateVariable ($archiveID, $variableID);
+                        */ 
+                        $variableLogWienID = $this->getWirkenergieID($meter); 
+                        $smEnergyWebArchiveOps = new archiveOps($variableLogWienID);
+                        $smEnergyWebConfig = $smEnergyWebArchiveOps->getConfig();
+                        //print_r($smEnergyWebConfig);    
+                        $count = $smEnergyWebConfig["RecordCount"];
+                        $periode = $smEnergyWebConfig["LastTime"] - $smEnergyWebConfig["FirstTime"];
+                        $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        if ($this->debug) 
+                            {
+                            echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von logWien:",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyWebConfig["LastTime"])." ID : $variableLogWienID . Wert wurde berechnet.";
+                            echo " Pfad: ".$this->ipsOps->path($variableLogWienID)."  \n";
+                            }
+                        $html .= "<tr>";
+                        $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von logWien</td>";
+                        $html .= "<td>$variableLogWienID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smEnergyWebConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smEnergyWebConfig["LastTime"])."</td>";
+                        $html .= "<td>".$this->ipsOps->path($variableLogWienID)."</td>";
+                        $html .= "</tr>";
+
+                        if (isset($meter["LeistungID"])===false) 
+                            {
+                            $inputID=$this->getWirkleistungID($meter,false);                //true for Debug
+                            //echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYREAD of ".$meter["NAME"].". Found one by searching: $inputID\n";
+                            } 
+                        else $inputID=$meter["LeistungID"];
+                        $smPowerInputArchiveOps = new archiveOps($inputID);
+                        $smPowerInputConfig = $smPowerInputArchiveOps->getConfig();
+                        //print_r($smEnergyWebConfig);    
+                        $count = $smPowerInputConfig["RecordCount"];
+                        $periode = $smPowerInputConfig["LastTime"] - $smPowerInputConfig["FirstTime"];
+                        $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        if ($this->debug) 
+                            {
+                            echo "    ".str_pad("Smart Meter Wirkleistung ".($smPowerInputConfig["AggregationType"]?"Zaehler":"Werte")." von InputCsv:",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smPowerInputConfig["LastTime"])." ID : $inputID . Wert wurde von File eingelesen.";
+                            echo " Pfad: ".$this->ipsOps->path($inputID)."  \n";
+                            }
+                        $html .= "<tr>";
+                        $html .= "<td>"."Smart Meter Wirkleistung ".($smPowerInputConfig["AggregationType"]?"Zaehler":"Werte")." von InputCsv</td>";
+                        $html .= "<td>$inputID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smPowerInputConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smPowerInputConfig["LastTime"])."</td>";
+                        $html .= "<td>".$this->ipsOps->path($inputID)."</td>";
+                        $html .= "</tr>";
+                        //echo "\n";
+                        if (isset($meter["Source"]))
+                            {
+                            if ($this->debug) echo "Quelle der Daten kommt von ".$meter["Source"]."   \n";
+                            switch ($meter["Source"])
+                                {
+                                case "LOGWIEN":
+                                case "logwien":
+                                case "LogWien":
+                                case "log.wien":
+                                    IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+                                    $configLogWien = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"]["LogWien"]["CONFIG"];
+                                    //print_R($configLogWien);
+                                    $seleniumLogWien = new SeleniumLogWien();
+                                    $seleniumOperations = new SeleniumOperations();
+                                    $variableLogWienID = $seleniumOperations->defineTargetID("LogWien",$configLogWien);        
+                                    if ($this->debug) echo "    LogWien Werte werden hier gespeichert: $variableLogWienID \n";
+                                    //$variableLogWienID=$seleniumOperations->getResultID("LogWien","Result",true);                  // true Debug
+                                    //print_R($result);
+                                    //echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                                    //$variableLogWienID = $seleniumLogWien->getEnergyValueId("EnergyCounter");
+                                    $smEnergyLogWienArchiveOps = new archiveOps($variableLogWienID);
+                                    $smEnergyLogWienConfig = $smEnergyLogWienArchiveOps->getConfig();
+                                    //print_r($smEnergyLogWienConfig);    
+                                    $count = $smEnergyLogWienConfig["RecordCount"];
+                                    $periode = $smEnergyLogWienConfig["LastTime"] - $smEnergyLogWienConfig["FirstTime"];
+                                    $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                                    if ($this->debug) 
+                                        {
+                                        echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium logWien:",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyLogWienConfig["LastTime"])." ID : $variableLogWienID . Wert wurde mit Selenium geladen.";
+                                        echo " Pfad: ".$this->ipsOps->path($variableLogWienID)."  \n";
+                                        }
+                                    $html .= "<tr>";
+                                    $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium LogWien</td>";
+                                    $html .= "<td>$variableLogWienID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smEnergyLogWienConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smEnergyLogWienConfig["LastTime"])."</td>";
+                                    $html .= "<td>".$this->ipsOps->path($variableLogWienID)."</td>";
+                                    $html .= "</tr>";
+
+                                    break;
+                                case "default":
+                                default:
+                                    break;
+                                }
+                            }
+                        else print_R($meter);
+
+                        break;
+                    }                   // ende switch
+                //$html .= "</tr>";            
+                }                       // ende foreach
+            $html .= "</table>";
+            $html .= "</div>";
+            //echo "\n";
+            return ($html);
+            }
+
+        function writeSmartMeterCsvInfoToHtml()
+            {
+            $config = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+            $html = "";
+            foreach ($config as $host => $entry)
+                {
+                switch (strtoupper($host))
+                    {
+                    case "LOGWIEN":       
+                        ini_set('memory_limit', '128M');                        // können grosse Dateien werden
+                        $logWien = new SeleniumLogWien();
+                        $result = $logWien->getInputCsvFiles($entry["INPUTCSV"],false);              // true Debug
+                        //print_R($result);
+                        $html .= '<div class="cuw-quick">';
+                        $html .= '<table>';
+                        $html .= "<tr>";
+                        $html .= "<th>Verzeichnis</th><th>Filename</th><th>Size</th><th>FileDate</th><th>Erster Eintrag</th><th>Letzter Eintrag</th><th>Anzahl</th><th>Interval</th><th>Periode</th><th>Analyze</th>";
+                        $html .= "</tr>";
+                        foreach ($result as $entry) 
+                            {
+                            $html .= "<tr>";
+                            $html .= "<td>".$entry["Verzeichnis"]."</td>";
+                            $html .= "<td>".$entry["Filename"]."</td>";
+                            $html .= "<td>".$entry["Size"]."</td>";
+                            $html .= "<td>".date("d.m.Y H:i",$entry["DateTime"])."</td>";
+                            $html .= "<td>".date("d.m.Y H:i",$entry["FirstDate"])."</td>";
+                            $html .= "<td>".date("d.m.Y H:i",$entry["LastDate"])."</td>";
+                            $html .= "<td>".$entry["Count"]."</td>";
+                            $html .= "<td>".nf($entry["Interval"],"s")."</td>";
+                            $html .= "<td>".nf($entry["Periode"],"s")."</td>";
+                            if (sizeof($entry["Analyze"])>0) 
+                                {
+                                $html .= "<td><table>";
+                                foreach ($entry["Analyze"] as $index => $subentry) 
+                                    {
+                                    $html .= "<tr>";
+                                    $html .= "<td>".$subentry["Type"]."</td>";    
+                                    $html .= "<td>".date("d.m.Y H:i",$subentry["StartDate"])."</td>";
+                                    $html .= "<td>".date("d.m.Y H:i",$subentry["EndDate"])."</td>";
+                                    $html .= "<td>".nf($subentry["Diff"],"s")."</td>";
+                                    $html .= "</tr>";                            
+                                    }
+                                $html .= "</table></td>";
+                                }
+                            else 
+                            $html .= "</tr>";
+                            }
+                        $html .= "</table>";
+                        $html .= "</div>";
+                        break;
+                    }
+                }
+            return ($html);
+            }   // ende function
+
 		}  // ende class
 
 	/** @}*/

@@ -37,6 +37,12 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
     $installedModules = $moduleManager->GetInstalledModules();
     $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
+    if (isset($installedModules["Guthabensteuerung"]))
+        {
+        IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+        IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");					// Library verwendet Configuration, danach includen
+        }
+        
 	$amis=new Amis();           // Ausgabe SystemDir, erstellt MeterConfig
     $webOps = new webOps();
 
@@ -49,6 +55,8 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
     $calculateApiTableID        = IPS_GetObjectIDByName("Calculate", $categoryId_SmartMeter);           // button profile is Integer
     $sortApiTableID             = IPS_GetObjectIDByName("Sort", $categoryId_SmartMeter);           // button profile is Integer
 
+    $amisSM = new AmisSmartMeter();
+
 if ($_IPS['SENDER']=="WebFront")
 	{
 	/* vom Webfront aus gestartet */
@@ -59,6 +67,12 @@ if ($_IPS['SENDER']=="WebFront")
         {
         case $buttonsId[0]["ID"]:         // Update
             $webOps->selectButton(0);
+            $html="";
+            $html .= $amisSM->writeSmartMeterDataToHtml();
+            $html .= "<br>";
+            $html .= $amisSM->writeSmartMeterCsvInfoToHtml();
+            $statusSmartMeterID = IPS_GetObjectIDByName("SmartMeterStatus",$categoryId_SmartMeter);
+            SetValue($statusSmartMeterID,$html);
             break;
         case $buttonsId[1]["ID"]:         // Update
             $webOps->selectButton(1);

@@ -74,6 +74,7 @@
 
     $ipsOps = new ipsOps();    
     $timerOps = new timerOps();
+    $webOps = new webOps();                                     // Webfront Operationen
 
     $systemDir     = $dosOps->getWorkDirectory();     
 
@@ -115,6 +116,7 @@
             $seleniumOperations = new SeleniumOperations();        
             $CategoryId_Mode        = CreateCategory('Selenium',        $CategoryIdData, 20);
             $startImacroID          = IPS_GetObjectIdByName("StartSelenium", $CategoryId_Mode);	
+            $SeleniumStatusID       = IPS_GetObjectIdByName("SeleniumStatus", $CategoryId_Mode);
             $sessionID      = $guthabenHandler->getSeleniumSessionID();
             $config=array(
                         "DREI"       =>  array (
@@ -162,6 +164,10 @@
         $sortApiTableID      = @IPS_GetObjectIdByName("Sort",$CategoryId_Finance);           // button 
 
         $financeTableID       =   @IPS_GetVariableIDByName("YahooFinanceTable", $CategoryId_Finance);		// wenn false nicht gefunden
+        }
+    else 
+        {
+        $updateApiTableID=false;                // Defaultwerte für die verarbeitung    
         }
         
     $ScriptCounterID      = CreateVariableByName($CategoryIdData,"ScriptCounter",1);                    // wir zählen die erfolgreichen Aufrufe von Timer2
@@ -841,23 +847,35 @@ if ($_IPS['SENDER']=="WebFront")
             $subnet="10.255.255.255";                               // dont know no longer why
             $seleniumChromedriver=new SeleniumChromedriver($subnet);         // SeleniumChromedriver.OperationCenter Child
             $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
+            $latestVersion=array_key_last($version);
             $sourceFile = $seleniumChromedriver->getFilenameOfVersion($updateChromedriver);         // file Adresse erforderlich Quelldatei ermitteln
 
             $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();
             $selDir        = $seleniumChromedriverUpdate->getSeleniumDirectory();
             $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
-            if ($actualVersion==$updateChromedriver) echo "already done on $updateChromedriver";
+            $log_Guthabensteuerung->LogNachrichten("Update Chromedriver aktuelle Version $actualVersion identifiziert.");
+            if ($actualVersion==$updateChromedriver) 
+                {
+                echo "already done on $updateChromedriver";
+                }
             else 
                 {
                 //echo "Aktuelles chromedriver.exe gefunden. Version $actualVersion. Neue version ist hier : $sourceFile\n";
                 $status=$seleniumChromedriverUpdate->copyChromeDriver($sourceFile,$selDir);
                 if ($status==102) $log_Guthabensteuerung->LogNachrichten("Neues Chromedriver File wurde bereits in Zielverzeichnis $selDir kopiert");
                 $seleniumChromedriverUpdate->deleteChromedriverBackup();
+                $log_Guthabensteuerung->LogNachrichten("Update Chromedriver, Selenium wurde gestoppt.");
                 $seleniumChromedriverUpdate->stoppSelenium();   
                 $seleniumChromedriverUpdate->renameChromedriver();              // Filename zum umbenennen kommt ais copyChromedriver
                 $seleniumChromedriverUpdate->startSelenium();   
                 $log_Guthabensteuerung->LogNachrichten("Update Chromedriver auf Version $updateChromedriver abgeschlossen. Selenium läuft wieder.");
                 }
+            $SeleniumUpdate = new SeleniumUpdate();
+            $tabs=$SeleniumUpdate->findTabsfromVersion($version, $actualVersion);
+
+            SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
+            $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+            $webOps->createActionProfileByName($pname,$tabs,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
             }
 
         }

@@ -385,55 +385,9 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             }
         }
 
-    /* die vollautomatiosche Function zum synchronisieren von Profilen, lokal oder remote 
-     * wenn ein Profil erzeugt werden soll wird createProfilesByName aufgerufen
-     *
-     *      server      ist der Remote Server, kann auch Local/false annehmen
-     *      profilname  ist ein Array [pname => masterName]
-     *                  pname ist das neue Profil das auf Basis von masterName angelegt werden soll     
-     *
-     */
-
-    function synchronizeProfiles($server,$profilname,$debug=false)
-        {
-        foreach ($profilname as $pname => $masterName)
-            {
-            if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
-                {
-                if ($debug) echo "Profile existiert nicht oder neu anlegen/update,\n";
-                createProfilesByName($pname);               //lokal
-                }
-            elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
-            elseif (IPS_VariableProfileExists($masterName) == false)
-                {
-                if (IPS_VariableProfileExists($pname)) 
-                    {
-                    $target=IPS_GetVariableProfile ($pname);
-                    $master=array();
-                    $masterName="new";                              // nicht vorhanden braucht auch einen Namen
-                    $targetName=$target["ProfileName"];
-                    compareProfiles($server,$master, $target,$masterName,$targetName,$debug);      // nur die lokalen Profile anpassem, geht auch Remote
-                    }
-                else 
-                    {
-                    if ($debug) echo "Zu übernehmendes Profil $masterName existiert nicht, vorbereitetes Profil nehmen.\n";
-                    createProfilesByName($pname,$server);
-                    }
-                }
-            else    
-                {
-                if ($debug) echo "  Profil ".$pname." existiert bereits und erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
-                $master=IPS_GetVariableProfile ($masterName);                       // mastername ist die Quelle zum Synchronisieren
-                $target=IPS_GetVariableProfile ($pname);                            // pname wird synchronisiert oder upgedatet
-                $masterName=$master["ProfileName"];         // sonst nicht rekursiv möglich
-                $targetName=$target["ProfileName"];
-                compareProfiles($server,$master, $target,$masterName,$targetName,false, $debug);      // nur die lokalen Profile anpassem, geht auch Remote, false kein demo mode 
-                }
-            } 
-        }
-
     /* Anlegen und Synchronisieren von Profilen, Aufruf geht auch rekursiv
      * soll auch gleich Remote gehen
+     * verwendet in CustomComponent und RemoteAccess und hier in synchronize Profiles
      *
      *  server      Remote Server oder Local/false, damit wird rpc false, sonst der Server Zugriffsname
      *  master      kann auch ein leeres array sien
@@ -551,7 +505,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             }
         }
 
-    /* alle Profile manuell erzeugen, geht auch lokal oder remote, keine Update Funktion
+    /* alle Profile manuell erzeugen, geht auch lokal oder remote, keine Update Funktion, DEPRECIATED, look createKnownProfilesByName in profileOps class
      * die Profile haben alle vorgegebene Namen und werden hier zentral ausschliesslich nach dem erkannten Namen erzeugt
      *
      *      Temperatur            °C
@@ -2898,6 +2852,342 @@ function send_status($aktuell, $startexec=0, $debug=false)
         return (false);
         }
 
+/***************************************************************************************************************************
+ *
+ * versammelt Operationen rund um die Bearbeitung von Profile
+ * synchronize profiles between nodes (rpc)
+ *
+ */
+
+class profileOps
+    {
+
+    var $rpc;               // rpc für remote server, wenn server nicht local
+
+    function __construct($server="local")
+        {
+        if (strtoupper($server) != "LOCAL") 
+            {
+            $this->rpc = new JSONRPC($server);
+            $remote=true;
+            }
+        else $this->rpc=false;
+        }
+
+    /* Profile lokal oder Remote auslesen
+     */
+    function GetVariableProfile($pname)
+        {
+        if ($this->rpc) $profile=$this->rpc->IPS_GetVariableProfile ($pname);
+        else $profile=IPS_GetVariableProfile ($pname);
+        return ($profile);
+        }
+
+    /* Profile Associations lokal oder Remote auslesen
+     */
+    function GetVariableProfileAssociations($pname)
+        {
+        $profile=$this->GetVariableProfile ($pname);
+        return ($profile["Associations"]);
+        }
+
+    /* Profile Associations lokal oder Remote schreiben
+     */
+    function SetVariableProfileAssociation($pname,$pos,$name,$icon,$color)
+        {
+        if ($this->rpc) $status=$this->rpc->IPS_SetVariableProfileAssociation ($pname, $pos, $name, $icon, $color);
+        else $status=IPS_SetVariableProfileAssociation ($pname, $pos,  $name, $icon, $color); 
+        return ($status);
+        }
+
+    /* Update Profile Associations lokal oder Remote
+     */
+    function UpdateVariableProfileAssociations($pname, $profile=array())
+        {
+        $profileOld=$this->GetVariableProfile ($pname)["Associations"];
+        $count = sizeof($profile);
+        $countOld = sizeof($profileOld);
+        if ( ($countOld > $count) && ($count>0) )  
+            {
+            echo "Delete some Profile ( $countOld > $count )\n";
+            foreach ($profileOld as $num => $assoc)
+                {
+                if ($num>($count-1)) 
+                    {
+                    echo "Delete Profile Association $num.\n";
+                    $this->DeleteVariableProfileAssociation($pname, $num);
+                    }
+                else echo "Keep   Profile Association $num.\n";
+                }
+            }
+        foreach ($profile as $num => $assoc)
+            {
+            $this->SetVariableProfileAssociation($pname,$assoc["Value"],$assoc["Name"],$assoc["Icon"],$assoc["Color"]);
+            }
+        }
+
+    /* Delete Profile Association Position pos lokal oder Remote
+     * set    IPS_SetVariableProfileAssociation (string $ProfileName, variant $Value, string $Name, string $Icon, int $Color) 
+     * delete IPS_SetVariableProfileAssociation (string $ProfileName, variant $Value, "", "", -1);
+     *
+     * link: en/service/documentation/components/visualizations/object-presentation/ text: Object presentation 
+     */
+    function DeleteVariableProfileAssociation($pname, $pos)
+        {
+        if ($this->rpc) $status=$this->rpc->IPS_SetVariableProfileAssociation ($pname, $pos, "", "", -1);
+        else $status=IPS_SetVariableProfileAssociation ($pname, $pos, "", "", -1); 
+        return ($status);
+        }
+
+    /* alle Profile manuell erzeugen, geht auch lokal oder remote, keine Update Funktion, DEPRECIATED, look createKnownProfilesByName in profileOps class
+     * die Profile haben alle vorgegebene Namen und werden hier zentral ausschliesslich nach dem erkannten Namen erzeugt
+     *
+     *      Temperatur            °C
+     *      TemperaturSet          °C
+     *      Humidity
+     *      Switch
+     *      Contact
+     *      Button
+     *      Motion      
+     *      Pressure
+     *      CO2
+     *      mode.HM
+     *      Rainfall
+     *
+     *
+     */
+
+	function createKnownProfilesByName($pname,$server="LOCAL")
+        {
+        if (($this->rpc === false) && (strtoupper($server) != "LOCAL")) 
+            {
+            $rpc = new JSONRPC($server);
+            $this->rpc=$rpc;
+            $remote=true;
+            }
+        else $rpc=false;
+        echo "  Profil ".$pname." existiert nicht, oder Aufforderung zum update.\n";
+        switch ($pname)
+            {
+            case "Temperatur":
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+                    $rpc->IPS_SetVariableProfileText($pname,'',' °C');
+                    }
+                else 
+                    {
+                    IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+                    IPS_SetVariableProfileText($pname,'',' °C');
+                    }
+                break;
+            case "TemperaturSet":
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileIcon ($pname, "Temperature");
+                    $rpc->IPS_SetVariableProfileText($pname,'',' °C');
+                    $rpc->IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
+                    $rpc->IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileIcon ($pname, "Temperature");
+                    IPS_SetVariableProfileText($pname,'',' °C');
+                    IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
+                    IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
+                    }
+                break;
+            case "Humidity";
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                    $rpc->IPS_SetVariableProfileText($pname,'',' %');
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                    IPS_SetVariableProfileText($pname,'',' %');                
+                    }
+                break;
+            case "Switch";
+                rpc_CreateVariableProfile($rpc, $pname, 0);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
+                    IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
+                    }
+                break;
+            case "Contact";
+                rpc_CreateVariableProfile($rpc, $pname, 1);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileIcon ($pname, "Window");
+                    $rpc->IPS_SetVariableProfileText ($pname, "","");
+                    $rpc->IPS_SetVariableProfileValues ($pname, 0,2,0);
+                    $rpc->IPS_SetVariableProfileDigits ($tpname, 0);                    
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileIcon ($pname, "Window");
+                    IPS_SetVariableProfileText ($pname, "","");
+                    IPS_SetVariableProfileValues ($pname, 0,2,0);
+                    IPS_SetVariableProfileDigits ($tpname, 0);                    
+                    IPS_SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
+                    IPS_SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
+                    IPS_SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
+
+                    //IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                    //IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
+                    //IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
+                    }
+                break;
+            case "Button";
+                rpc_CreateVariableProfile($rpc, $pname, 0);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
+                    IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);                
+                    }
+                break;
+            case "Motion";
+                rpc_CreateVariableProfile($rpc, $pname, 0);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
+                    IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);                
+                    }
+                break;
+            case "Pressure";
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                IPS_SetVariableProfileText($pname,'',' mbar');
+                IPS_SetVariableProfileIcon($pname,"Gauge");
+                break;      
+            case "CO2";
+                rpc_CreateVariableProfile($rpc, $pname, 1);
+                IPS_SetVariableProfileText($pname,'',' ppm');
+                IPS_SetVariableProfileIcon($pname,"Gauge");
+                IPS_SetVariableProfileValues ($pname, 250, 2000, 0);
+                break;                                    
+            case "mode.HM";
+                rpc_CreateVariableProfile($rpc, $pname, 1);
+                IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
+                IPS_SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                IPS_SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                IPS_SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                IPS_SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                IPS_SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
+                //echo "Profil ".$pname." erstellt;\n";
+                break;		
+            case "Rainfall":
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                IPS_SetVariableProfileIcon ($pname, "Rainfall");
+                IPS_SetVariableProfileText ($pname, ""," mm");
+                //IPS_SetVariableProfileValues ($pname, 0,0,0);
+                IPS_SetVariableProfileDigits ($tpname, 1);			
+                break;
+            case "Euro":
+        		rpc_CreateVariableProfile($rpc, $pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		        IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+		        IPS_SetVariableProfileText($pname,'','Euro');
+                break;
+            case "MByte":
+        		rpc_CreateVariableProfile($rpc, $pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		        IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+		        IPS_SetVariableProfileText($pname,'',' MByte');
+                break;
+            default:
+                break;
+            }
+        }
+
+
+    /* die vollautomatiosche Function zum synchronisieren von Profilen, lokal oder remote 
+     * wenn ein Profil aus Defaultwerten erzeugt werden soll (new) wird createKnownProfilesByName aufgerufen
+     * verwendet in CustomComponents
+     *
+     *      server      ist der Remote Server, kann auch Local/false annehmen
+     *      profilname  ist ein Array [pname => masterName]
+     *                  pname ist das neue Profil das auf Basis von masterName angelegt werden soll
+     *                  masterName kann new, update oder ein bekannter Profilname sein
+     *  Beispiel:
+     *     
+     	$profilname     = array("Temperatur"=>"new",
+                                "TemperaturSet"=>"new",
+                                "Humidity"=>"new",
+                                "Switch"=>"new",
+                                "Button"=>"new",
+                                "Contact"=>"new",
+                                "Motion"=>"new",
+                                "Pressure"=>"Netatmo.Pressure",
+                                "CO2"=>"Netatmo.CO2",
+                                "mode.HM"=>"new");
+     *
+     */
+
+    function synchronizeProfiles($server,$profilname,$debug=false)
+        {
+        foreach ($profilname as $pname => $masterName)
+            {
+            if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
+                {
+                if ($debug) echo "Profile existiert nicht oder neu anlegen/update,\n";
+                $this->createKnownProfilesByName($pname);               //lokal
+                }
+            elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
+            elseif (IPS_VariableProfileExists($masterName) == false)
+                {
+                if (IPS_VariableProfileExists($pname)) 
+                    {
+                    $target=IPS_GetVariableProfile ($pname);
+                    $master=array();
+                    $masterName="new";                              // nicht vorhanden braucht auch einen Namen
+                    $targetName=$target["ProfileName"];
+                    compareProfiles($server,$master, $target,$masterName,$targetName,$debug);      // nur die lokalen Profile anpassem, geht auch Remote
+                    }
+                else 
+                    {
+                    if ($debug) echo "Zu übernehmendes Profil $masterName existiert nicht, vorbereitetes Profil nehmen.\n";
+                    $this->createKnownProfilesByName($pname,$server);
+                    }
+                }
+            else    
+                {
+                if ($debug) echo "  Profil ".$pname." existiert bereits und erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
+                $master=IPS_GetVariableProfile ($masterName);                       // mastername ist die Quelle zum Synchronisieren
+                $target=IPS_GetVariableProfile ($pname);                            // pname wird synchronisiert oder upgedatet
+                $masterName=$master["ProfileName"];         // sonst nicht rekursiv möglich
+                $targetName=$target["ProfileName"];
+                compareProfiles($server,$master, $target,$masterName,$targetName,false, $debug);      // nur die lokalen Profile anpassem, geht auch Remote, false kein demo mode 
+                }
+            } 
+        }
+
+
+    }
 
 /***************************************************************************************************************************
  *
@@ -2943,6 +3233,7 @@ class webOps
     function createActionProfileByName($pname,$nameIDs,$style=1)
         {
         $create=false;
+        $profileOps = new profileOps();                 //lokal
         $namecount=count($nameIDs);
         if (IPS_VariableProfileExists($pname) == false)
             {
@@ -2954,11 +3245,15 @@ class webOps
         // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
         if ($namecount>1) IPS_SetVariableProfileValues($pname, 0, ($namecount-1), $style);      //PName, Minimal, Maximal, Schrittweite
         $i=0;
+        $profile=array();
         foreach ($nameIDs as $name)
             {
-            IPS_SetVariableProfileAssociation($pname, $i, $name, "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
+            $profile[$i]=array("Value"=>$i,"Name"=>$name,"Icon"=>"","Color"=>(1040+200*$i),);
+            //IPS_SetVariableProfileAssociation($pname, $i, $name, "", ); //P-Name, Value, Assotiation, Icon, Color=grau
             $i++;       // sonst wird letzter Wert überschrieben
             }
+        print_r($profile);
+        $profileOps->UpdateVariableProfileAssociations($pname,$profile);            
         if ($create) echo "Aktions Profil ".$pname." erstellt.\n";
         else echo "Aktions Profil ".$pname." überarbeitet.\n";		
         }
@@ -3098,7 +3393,7 @@ class webOps
  *
  * dann kommen die archive operations, functions für die bearbeitung der Daten in den Archiven
  *
- *  __construct             alle oder ein Archive auswählen
+ *  __construct             alle oder ein Archive auswählen, in aggregationConfig speichern
  *  getConfig               aggregationConfig von AC_GetAggregationVariables ausgeben, für alle oder für eine
  *  getArchiveID            archiveID
  *  getSize                 aggregationConfig["RecordCount"]
@@ -3114,9 +3409,14 @@ class webOps
  *  addInfoValues
  *  configAggregated
  *  cleanupStoreValues
- *
- *
+ *  calculateSplitOnData
+ *  prepareSplit
+ *  countperIntervalValues
+ *  filterNewData
  *  addValuesfromCsv
+ *
+ *
+ *  
  *
  ***************************************************************************************************************************************/
 
@@ -3128,7 +3428,7 @@ class archiveOps
     public $result;                 // das Array mit den Werten die verarbeitet werden
 
     /* minimum init needed
-     *
+     * wenn Defaultparameter Übergabe , construct liest die OIDs aller Datenwerte mit Archivfunktion in die aggregationConfig ein  
      */
     function __construct($oid=false)
         {
@@ -5006,6 +5306,17 @@ class archiveOps
         return($input);
         }
 
+    function setConfigForAddValues($configInput)
+        {
+        //parse config file, done twice, also in readFileCsv
+        $config=array();
+        configfileParser($configInput, $config, ["INDEX","Index","index" ],"Index" ,[]); 
+        configfileParser($configInput, $config, ["KEY","Key","key" ],"Key" ,null); 
+        configfileParser($configInput, $config, ["FORMAT","Format","format" ],"Format" ,null); 
+        configfileParser($configInput, $config, ["RESULT","Result","result" ],"Result" ,"All");
+        return ($config);
+        }
+
     /* add Values to archive oid from csv file
      * used for 15min and daily power values imported manually from Smart Meter Portals
      * Input is config, following format is expected here and at readFileCsv called in here
@@ -5016,20 +5327,7 @@ class archiveOps
 
     function addValuesfromCsv($file,$oid,$configInput,$debug=true)
         {
-
-        //parse config file, done twice, also in readFileCsv
-        $config=array();
-        configfileParser($configInput, $config, ["INDEX","Index","index" ],"Index" ,[]); 
-        configfileParser($configInput, $config, ["KEY","Key","key" ],"Key" ,null); 
-        configfileParser($configInput, $config, ["FORMAT","Format","format" ],"Format" ,null); 
-        configfileParser($configInput, $config, ["RESULT","Result","result" ],"Result" ,"All");
-
-       if (is_array($config["Key"])) 
-            {
-            if (isset($config["Key"]["Merge"])) $key=$config["Key"]["Merge"];
-            else echo "Config Parameter \"Merge\" id mising. Check Config \"Key\".\n";
-            }
-       else $key=$config["Key"]; 
+        $config=$this->setConfigForAddValues($configInput);           //parse config file, done twice, also in readFileCsv
 
         //$debug1=false;          // debug readFileCsv
         $debug1=$debug;
@@ -5053,15 +5351,21 @@ class archiveOps
         $result=array();                                                        // Ergebnis
         if ($debug) echo "readFileCsv mit Config ".json_encode($config)." und Index ".json_encode($index)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
         $status = $fileOps->readFileCsv($result,$config,$index,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
-        echo "Insgesamt ".count($result)." Werte aus der Datei $file ausgelesen.\n";
+        if ($debug) echo "Insgesamt ".count($result)." Werte aus der Datei $file ausgelesen.\n";
         if ($debug1) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
 
+        if (is_array($config["Key"]))        // key extrahieren
+            {
+            if (isset($config["Key"]["Merge"])) $key=$config["Key"]["Merge"];
+            else echo "Config Parameter \"Merge\" id mising. Check Config \"Key\".\n";
+            }
+        else $key=$config["Key"]; 
         $input = $this->filterNewData($result,$target,$key);
         
         //$this->showValues($write,$config);
 
         $countAdd = count($input["Add"]);
-        echo "Add Logged Values: ".$countAdd."\n";
+        if ($debug) echo "Add Logged Values: ".$countAdd."\n";
         $count=0;
         foreach ($input["Add"] as $entry)          // Anzahl neuer Werte schreiben vorerst limitieren
             {
@@ -8651,23 +8955,23 @@ class dosOps
         $filesToRead=false;            
         if (trim($filename)=="*") 
             {
-            echo "alle Dateien nehmen.\n";
+            if ($debug) echo "findfiles, alle Dateien nehmen : ".json_encode($files)."\n";
             $filesToRead=$files;
-            print_R($files);                                 
+            //print_R($files);                                 
             }
         else
             {
             $pos=strpos($filename,"*.");
             if ( $pos === false )
                 {
-                if ($debug) echo "fileAvailable: wir suchen nach dem Filenamen \"".$filename."\"\n";
+                if ($debug) echo "findfiles, fileAvailable: wir suchen nach dem Filenamen \"".$filename."\"\n";
                 $detName=true;
                 $detExt=false;
                 }
             else
                 {
                 $filename=substr($filename,$pos+1,20);
-                if ($debug) echo "fileAvailable: wir suchen nach der Extension \"*".$filename."\"\n";
+                if ($debug) echo "findfiles, fileAvailable: wir suchen nach der Extension \"*".$filename."\"\n";
                 $detExt=true;
                 }
             foreach ($files as $file)
@@ -9100,6 +9404,44 @@ class dosOps
             }            
         }
 
+    /* Array über die Struktur eines Directories ausgeben
+     *
+     */
+    public function writeDirToArray($verzeichnis, $files=false, $debug=false)
+        {
+        $result=array();
+        $index=0;
+        $verzeichnis = $this->correctDirName($verzeichnis);
+        if ($files===false) $files=$this->readdirToArray($verzeichnis);
+        if ($debug) echo "writeDirToArray aufgerufen für Verzeichnis $verzeichnis und Dateien ".json_encode($files).":\n";
+        foreach ($files as $file)
+            {
+            $dateityp=@filetype( $verzeichnis.$file );                                          // warnings und Fehlermeldungen unterdrücken
+            //echo " $verzeichnis.$file : $dateityp ,";
+            if ($dateityp===false) $dateityp="Warning received";
+            //if (is_dir($verzeichnis.$file)) echo "  dir";  else echo "  file";
+            //echo str_pad($dateityp,12);
+            if ($dateityp == "dir")
+                {
+                $dirSize=$this->readdirtoStat($verzeichnis.$file,true);       // true rekursiv
+                //echo str_pad($dateityp,12)."  ".str_pad($file,56)." mit insgesamt ".str_pad($dirSize["files"],10, " ", STR_PAD_LEFT)." gespeicherten Dateien.";                                    
+                } 
+            if ($dateityp == "file")
+                {
+                $result[$index]["Filename"]=$file;
+                $result[$index]["Verzeichnis"]=$verzeichnis;
+                $filesize=filesize($verzeichnis.$file);
+                $result[$index]["Size"]=$filesize;
+                $datetime=filemtime($verzeichnis.$file);
+                if ($debug) echo "  ".str_pad($file,56)." ".nf($filesize,"Byte",12)."      ".date("d.m.Y H:i:s",$datetime)."\n";
+                $result[$index]["DateTime"]=$datetime;
+                $index++;
+                }
+            }            
+        return ($result);
+        }
+
+
     /* einem Verzeichnisbaum ein Backslash oder Slash anhängen, sonst wäre die letzte Position eventuell auch eine Datei */
 
 	function correctDirName($verzeichnis,$debug=false)
@@ -9224,6 +9566,7 @@ class fileOps
     var $dosOps;
     var $fileName, $newFileName;
     var $config;                            //generell config to ease things
+    var $analyze=array();
 
     function __construct($fileName=false,$config=false)
         {
@@ -9626,6 +9969,8 @@ class fileOps
      * und in dataentries Spalte für Spalte mit dem neuen Index gespeichert, Spalten die nicht übernommen werden sollen sind mit Indexwert false
      * es können zwei Spalten für Date und Time zu einem Unixtimestamp gemerged werden
      *
+     * mehrere Debug Leveles  false/0 true/1 2 3
+     *
      */
 
     public function readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
@@ -9634,7 +9979,7 @@ class fileOps
         $merge=false;
         if (is_array($key)) 
             { 
-            $config=$this->readFileCsvParseConfig($key,$debug);             // gibt bei Debug die Konfiguration aus
+            $config=$this->readFileCsvParseConfig($key,($debug>1));             // gibt bei Debug die Konfiguration aus
             if (is_array($config["Key"]))
                 {
                 if ( (isset($config["Key"]["Merge"])) && (isset($config["Key"]["From"])) && (is_array($config["Key"]["From"])) ) $merge=true;
@@ -9642,27 +9987,35 @@ class fileOps
                 }
             else $key=$config["Key"]; 
             }
-        else $config = $this->readFileCsvParseConfig([],$debug);               // Defaultwerte ausprobieren
-        if ($debug) 
+        else 
             {
-            echo "readFileCsv, adjusted input config is ".json_encode($config)."\n";
-            echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  
+            echo "Do defaults, Key is no array.\n";
+            $config = $this->readFileCsvParseConfig([],$debug);               // Defaultwerte ausprobieren
             }
+        if ($debug)   echo "readFileCsv::fileOps, adjusted input config is ".json_encode($config)."\n";
+        if ($debug>2) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  
 
         // continue
         $error=0; $errorMax=20;     /* nicht mehr als 20 Fehler/Info Meldungen ausgeben */
-        $error1=0; $errorMax1=5;
+        $error1=0; $errorMax1=50;
         $error2=0;
 
         $rowMax=10;                 /* debug, nicht mehr als rowMax Zeilen ausgeben, sonst ist der output buffer voll */
-        $ergebnis=true;
+        $ergebnis=true;             // wird false wenn Filename nicht korrekt oder result kein array
         $keyIndex=false;            // wenn kein Index mit Namen key gefunden wird
+        $this->analyze=array();     // zusätzliche Auswertungen übergeben
+        $analyzeIndex=0;
+        $overwrite=false;           // Erkennen von einem OverLap
+        $overwriteStart=false; $overwriteEnd=false;
+
+        $oldkey1=false; $oldDiff=false; $diff=false;
+
         /* erste Zeile für die Bezeichnung der Spalten verwenden */
         if (count($index)==0) 
             {
             if ($debug)
                 {
-                echo "readFileCsv : No index given, use first Line for defining Columns of the Table.";
+                echo "    No index given, use first Line for defining Columns of the Table.";
                 if ($key!="") echo " Use column $key as Index for Table.";
                 echo "\n";
                 }
@@ -9673,23 +10026,23 @@ class fileOps
             $firstline=false;
             if ($debug)
                 {
-                echo "readFileCsv: ".$this->fileName.". Index given, use this array ".json_encode($index)." for defining Index for array of result.";
-                if ($key!="") echo " Use column $key as Index for Table.";
+                echo "Inputfile ".$this->fileName.". Index given, use this array ".json_encode($index)." for defining Index for array of result.";
+                if ($key!="") echo "     Use column $key as Index for Table.";
                 echo "\n";                
                 //print_r($index);
                 }
             }    
-        if ( ($debug) && (count($result)>0) ) echo "    Input array for result has allready ".count($result)." lines. Will try to merge.\n";
+        if ( ($debug) && (count($result)>0) ) echo "    Input array for result has already ".count($result)." lines. Will try to merge.\n";
 
         if ( ($this->fileName !== false) && (is_array($result)) )           // nur machen wenn filename und übergabe Array richtig
             {
             if ( (($handle = @fopen($this->fileName, "r")) !== false) )
                 {
-                $row=1; $rowShow=1;
+                $row=1; $rowShow=1; $countIndex=false;
                 while (($data = fgetcsv($handle, 0, ";")) !== false) 
                     {
                     $num = count($data);                            // wieviel Spalten werden eingelesen, num
-                    if ( (($row % 100) ==0) && ($debug>1) ) echo "$row : Size Result ".count($result)." Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  // Speicherbedarf steigt mit dem Lesen der Datan
+                    if ( (($row % 100) ==0) && ($debug>2) ) echo "$row : Size Result ".count($result)." Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  // Speicherbedarf steigt mit dem Lesen der Datan
                     if ( ($firstline) && ($row==1) )                // in der ersten Reihe sind die Spaltenbezeichnungen
                         {
                         if ($debug) echo "   Erste Zeile als Index einlesen. Key löschen.\n";
@@ -9724,7 +10077,7 @@ class fileOps
                             if ($key2 == $key) $keyIndex=$i;                  // key Index finden, mehr nicht
                             elseif ($key2 !== false) $i++;                  // Index der nicht übernommen wird auch nicht berücksichtigen    !! Merge fehlt noch hier
                             }
-                        if ($debug) 
+                        if ($debug>1) 
                             {
                             echo "   Erste Zeile gefunden, aber nicht verwenden: ";
                             for ($i=0;($i<$num);$i++)                   // erste Zeile Spalten aus data bearbeiten
@@ -9737,15 +10090,27 @@ class fileOps
                     else    /* alle anderen Zeilen hier einlesen */
                         {
                         if ($num==0) echo "Fehler, no csv Data identified in Line $row.\n";
-                        if ($num != (count($index)) ) 
+                        if ($countIndex==false)
                             {
-                            if ( ($debug) && (($error1++)<$errorMax1) )
+                            $countIndex=0;
+                            foreach ($index as $ct => $nameIndex) 
                                 {
-                                echo "$row Warning, not same amount of columns. $num Columns found. ".count($data)." columns expected.\n";
+                                if (strtoupper($nameIndex) != "DUMMY") $countIndex++;
+                                else break;                                                     // trailing Dummies aus der mindest geforderten Liste rausnehmen 
+                                }   
+                            if ($debug>1) echo "From index minimum first $countIndex Columns have to be provided.\n";
+                            }
+                        if ($num != (count($index)) )               // num ist count($data)
+                            {
+                            if ( ($debug>1) && (($error1++)<$errorMax1) )
+                                {
+                                echo "$row Warning, not same amount of columns. $num Columns found. ".count($index)." columns expected.";
+                                echo json_encode($data);
+                                echo "\n";
                                 //print_r($data);
                                 }
                             }                            
-                        if ($num >= (count($index)) )    
+                        if ($num >= $countIndex)     
                             { 
                             // nur Zeilen einlesen die die gewünschte Anzahl von Spalten zumindest zur Verfügung haben, zuerst alle Werte als dataEntries abspeichern 
                             $key1=$row-2;    // starts with 0, if there is no key defined
@@ -9753,7 +10118,7 @@ class fileOps
                             $dataEntries=array();       // Zeile bearbeiten und Ergebnis zwischenspeichern
                             foreach ($index as $key2)   // index durchgehen, Eintraege mit false überspringen
                                 {
-                                if ($key2 !== false) $dataEntries[$key2]=$data[$i];
+                                if (($key2 !== false) && (strtoupper($key2) !== "DUMMY")) $dataEntries[$key2]=$data[$i];
                                 $i++;
                                 }
                             //dataEntries zusammenfassen
@@ -9785,10 +10150,10 @@ class fileOps
                                         }
                                     $str=$date." ".$time;           // sonst wird falsches Jahr erkannt
                                     $timeStamp=strtotime($str);
-                                    if ( ($debug) && ($error++ < $errorMax) ) echo "Zeitstempel aus $str berechnet: ".date("d.m.y H:i:s",$timeStamp)."\n";
+                                    if ( ($debug>1) && ($error++ < $errorMax) ) echo "Zeitstempel aus $str berechnet: ".date("d.m.y H:i:s",$timeStamp)."\n";
                                     $dataEntries[$config["Key"]["Merge"]]=$timeStamp;
                                     //if ($error++ < $errorMax) print_r($dataEntries);
-                                    $keyIndex=9999; // sonst greift key nicht
+                                    $keyIndex=99999; // sonst greift key nicht
                                     }
                                 }
                             // eventuell umformatieren
@@ -9800,7 +10165,7 @@ class fileOps
                                         {
                                         if (isset($dataEntries[$keyComp])) 
                                             {
-                                            if ( ($debug) && ($error++ < $errorMax) ) echo "Formatänderung $keyComp auf $format.\n";
+                                            if ( ($debug>1) && ($error++ < $errorMax) ) echo "Formatänderung $keyComp auf $format.\n";
                                             switch (strtoupper($format))
                                                 {
                                                 case "FLOAT":
@@ -9829,8 +10194,12 @@ class fileOps
                                 if ($dataEntries["Value"]!="") 
                                     {
                                     $result[$key1]=$dataEntries;
-                                    if ($rowShow < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                    if ($rowShow < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key / $keyIndex<br /></p>\n";
                                     $rowShow++;
+                                    if ($oldkey1) $diff=$key1-$oldkey1; 
+                                    if ( ($oldDiff) && ($diff != $oldDiff) ) echo "Other Intervall : $diff != $oldDiff\n";
+                                    $oldkey1=$key1;
+                                    $oldDiff=$diff;
                                     }
                                 }
                             else 
@@ -9842,7 +10211,7 @@ class fileOps
                                  * wenn es einen key gibt und der im Index gefunden wurde sind wir hier
                                  */
 
-                                if ($keyIndex<9999) 
+                                if ($keyIndex<99999) 
                                     {
                                     //$key1=$data[$keyIndex];             //key1 richtig berechnen ist kein 0..n Index, keyindex wird 9999 wen ein Merge erfolgt ist
                                     $key1=$dataEntries[$index[$keyIndex]];
@@ -9850,11 +10219,16 @@ class fileOps
                                 else $key1=$timeStamp;
                                 if (isset($result[$key1])) 
                                     {
+                                    if ($overwrite===false) 
+                                        {
+                                        $overwriteStart=$key1;
+                                        $overwrite=true;
+                                        }
                                     $entryExist=json_encode($result[$key1]);
                                     $entryNew=json_encode($dataEntries);
                                     if ($entryExist != $entryNew)
                                         {
-                                        if ($error++ < $errorMax)           // nicht alle Meldungen ausgeben, führen zu einem Overflow
+                                        if ( ($debug) && ($error++ < $errorMax) )           // nicht alle Meldungen ausgeben, führen zu einem Overflow
                                             {
                                             echo "-> $key1 bereits bekannt. Eintrag $entryExist wird mit $entryNew nicht überschrieben.\n"; 
                                             }
@@ -9863,11 +10237,41 @@ class fileOps
                                     }
                                 else 
                                     {
+                                    if ($overwrite===true) 
+                                        {
+                                        $overwriteEnd=$key1;
+                                        $overwrite=false;
+                                        $this->analyze[$analyzeIndex]["Type"]="Lap";     // zusätzliche Auswertungen übergeben
+                                        $this->analyze[$analyzeIndex]["StartDate"]=$overwriteStart;
+                                        $this->analyze[$analyzeIndex]["EndDate"]=$overwriteEnd;
+                                        $this->analyze[$analyzeIndex]["Diff"]=$overwriteEnd-$overwriteStart;
+                                        $analyzeIndex++;
+                                        }
                                     if ($dataEntries["Value"]!="") 
                                         {                                        
-                                        if ($rowShow < $rowMax) if ($debug) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                        if ($rowShow < $rowMax) if ($debug>1) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
                                         $result[$key1]=$dataEntries;   
                                         $rowShow++;
+                                        if ($oldkey1)  $diff=$key1-$oldkey1; 
+                                        if ( ($oldDiff) && ($diff != $oldDiff) ) 
+                                            {
+                                            if ($debug)
+                                                {
+                                                echo "<p> $oldkey1 : $num Felder in Zeile $oldRow: ".json_encode($oldDataEntries)." index is $oldKey ".date("D d.m.y H:i",$oldDataEntries[$oldKey])."<br /></p>\n";
+                                                echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key ".date("D d.m.y H:i",$dataEntries[$key])."<br /></p>\n";
+                                                echo "Other Intervall : $diff != $oldDiff  ".nf($diff,"s")." != ".nf($oldDiff,"s")."\n";
+                                                }
+                                            if ($diff > $oldDiff)
+                                                {
+                                                $this->analyze[$analyzeIndex]["Type"]="Gap";     // zusätzliche Auswertungen übergeben
+                                                $this->analyze[$analyzeIndex]["StartDate"]=$oldkey1;
+                                                $this->analyze[$analyzeIndex]["EndDate"]=$key1;
+                                                $this->analyze[$analyzeIndex]["Diff"]=$diff;
+                                                $analyzeIndex++;
+                                                }
+                                            }
+                                        $oldDataEntries = $dataEntries; 
+                                        $oldKey=$key; $oldRow=$row; $oldkey1=$key1; $oldDiff=$diff;                                        
                                         }
 
                                     //if ($error2++ < $errorMax) print_r($dataEntries);
@@ -9882,9 +10286,9 @@ class fileOps
                 fclose($handle);
                 if ($debug) echo "Input File hat $row Zeilen und $num Spalten. ".sizeof($index)." Spalten davon uebernommen.\n";
                 }           // ende File korrekt geöffnet
-            else $ergebis=false;                
+            else $ergebnis=false;                
             }           // ende if param error check
-        else $ergebis=false;
+        else $ergebnis=false;
         if ($ergebnis) return ($this->findColumnsLines($result));           // columns und lines übergeben, nicht das result, führt zu Speicherverschwendung
         else return($ergebnis);
         }  // ende function
@@ -13238,7 +13642,7 @@ class WfcHandling
                         /* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
                         * Auswertung kommt nach links und Nachrichten nach rechts
                         */	
-                        if (isset($link["NAME"]) === false) { echo "no NAME key in array OID: $OID   > "; print_r($link); }
+                        if (isset($link["NAME"]) === false) { echo "no NAME key in array OID: $OID   > ".json_encode($link)." Overall ".json_encode($webfront_link); }
                         if (!( ($OID=="ORDER") || ($OID=="CONFIG") || ($OID=="@CONFIG")))
                             {
                             if ($debug) echo "        createLinks, bearbeite Link ".$Group.".".$link["NAME"]." mit OID : ".$OID."  (".json_encode($link).")\n";

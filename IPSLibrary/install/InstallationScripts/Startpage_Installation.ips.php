@@ -244,7 +244,7 @@
     else
         {       // Profil kann sich bei Erweiterungen jederzeit ändern, daher immer konfigurieren
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 7, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileValues($pname, 0, 7, 0); //PName, Minimal, Maximal, Schrittweite
 		IPS_SetVariableProfileAssociation($pname, 0, "Explorer", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=dunkelgrau
   		IPS_SetVariableProfileAssociation($pname, 1, "FullScreen", "", 0x00f0c0); //P-Name, Value, Assotiation, Icon, Color=dunkelgrün
   		IPS_SetVariableProfileAssociation($pname, 2, "Station", "", 0xf040f0); //P-Name, Value, Assotiation, Icon, Color=pink

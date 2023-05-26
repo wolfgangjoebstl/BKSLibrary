@@ -77,7 +77,8 @@
     $dosOps = new dosOps();
     $ipsOps = new ipsOps();    
     $webOps = new webOps();
-	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
+	
+    $modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
 
     $dosOps->setMaxScriptTime(30);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
 
@@ -377,48 +378,10 @@
      *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
+    $profileOps = new profileOps();
 	echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("Temperatur"=>"new","TemperaturSet"=>"new","Humidity"=>"new","Switch"=>"new","Button"=>"new","Contact"=>"new","Motion"=>"new","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"new");
-    synchronizeProfiles("local",$profilname);
-
-
-    if (false)
-        {
-        foreach ($profilname as $pname => $masterName)
-            {
-            if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
-                {
-                echo "Profile existiert nicht oder neu anlegen/update,\n";
-                createProfiles("local",$pname);
-                }
-            elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
-            elseif (IPS_VariableProfileExists($masterName) == false)
-                {
-                if (IPS_VariableProfileExists($pname)) 
-                    {
-                    $target=IPS_GetVariableProfile ($pname);
-                    $master=array();
-                    $masterName="new";                              // nicht vorhanden braucht auch einen Namen
-                    $targetName=$target["ProfileName"];
-                    compareProfiles("local",$master, $target,$masterName,$targetName);      // nur die lokalen Profile anpassem, geht auch Remote
-                    }
-                else 
-                    {
-                    echo "Zu übernehmendes Profil $masterName existiert nicht, vorbereitetes Profil nehmen.\n";
-                    createProfiles("local",$pname);
-                    }
-                }
-            else    
-                {
-                echo "  Profil ".$pname." erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
-                $master=IPS_GetVariableProfile ($masterName);
-                $target=IPS_GetVariableProfile ($pname);
-                $masterName=$master["ProfileName"];         // sonst nicht rekursiv möglich
-                $targetName=$target["ProfileName"];
-                compareProfiles("local",$master, $target,$masterName,$targetName);      // nur die lokalen Profile anpassem, geht auch Remote
-                }
-            }     
-        }
+    $profileOps->synchronizeProfiles("local",$profilname);
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *

@@ -1493,10 +1493,96 @@ class SeleniumLogWien extends SeleniumHandler
         {
         $componentHandling = new ComponentHandling();           // um Logging zu setzen
         $categoryIdResult = $this->getResultCategory();
+        echo "getEnergyValueId, Werte aus Kategorie ".IPS_GetName($categoryIdResult)."\n";
         $oid = IPS_GetObjectIdByName($name,$categoryIdResult);
         return ($oid);
         }
 
+    /* InputCsv unterstützen
+     * Input ist config aus inputCsv, Beispielroutine    
+     $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+     foreach ($config as $host => $entry)     {
+        switch (strtoupper($host))        {
+            case "LOGWIEN"
+                ->getInputCsvFiles($entry["INPUTCSV"])
+     */
+    function getInputCsvFiles($config,$debug=false)
+        {
+        if ($debug) echo "getInputCsvFiles(".json_encode($config)."\n";
+        $dosOps = new dosOps();
+        $archiveOps = new archiveOps();
+        if (isset($config["InputDir"]))                        //Input Verzeichnis suchen 
+            {
+            $inputDir=$config["InputDir"];
+            $verzeichnis=$dosOps->getWorkDirectory();
+            $inputDir=$dosOps->correctDirName($verzeichnis.$inputDir);          // richtiges Abschlusszeichen / oder \
+            if ($debug) 
+                {
+                echo "Look for Input files in ";
+                $dosOps->writeDirStat($inputDir);                    // Ausgabe eines Verzeichnis   
+                }
+            $files=$dosOps->readdirToArray($inputDir);                                      
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
+        if (isset($config["InputFile"]))
+            {
+            $filename=$config["InputFile"];
+            if ($debug) echo "Input Filename is \"$filename\".\n";
+            $filesToRead = $dosOps->findfiles($files,$filename,false);           // true für Debug
+            if ($filesToRead==false) return (false);
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt       
+        //echo "Files to Read : "; print_r($filesToRead);
+        $config=$archiveOps->setConfigForAddValues($config);           //parse config file, done twice, also in readFileCsv
+        $indexCols=$config["Index"];
+        $debug1=false;
+        $fileinfo = $dosOps->writeDirToArray($inputDir, $filesToRead); 
+        //print_R($fileinfo);                                                     // das sind nur die Filenamen und Directories
+        //$files = $fileinfo;                     // files wird von readFileCsv ergänzt um Einzelwerte
+        foreach ($filesToRead as $file)
+            {
+            $result=array();                                // keine Summe aus allen Dateien machen, sondern Datei für Datei auswerten, daher vorher immer init
+            $dateityp=@filetype( $inputDir.$file );     
+            if ($debug) echo "Check $dateityp $inputDir$file \n";
+            if ($dateityp == "file")
+                {
+                $index=false;
+                foreach ($fileinfo as $index => $entry) 
+                    {
+                    if (isset($entry["Filename"]))
+                        {
+                        if ($entry["Filename"] == $file) break;     
+                        }
+                    else echo "No Filename as index where we can add information : ".json_encode($entry)."\n";
+                    }
+                if ($debug) echo "Filename $file als $index gefunden.\n";               
+                $fileOps = new fileOps($inputDir.$file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
+                //$index=[];                            // erste Zeile als Index übernehmen
+                //$index=["Date","Time","Value"];         // Date und Time werden gemerged
+                //if (isset($config$index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
+                //$index=["DateTime","Value","Estimate","Dummy"];
+                                            // Ergebnis
+                //if ($debug1) echo "readFileCsv mit Config ".json_encode($config)." und Index ".json_encode($indexCols)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
+                $status = $fileOps->readFileCsv($result,$config,$indexCols,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
+                //print_r($fileOps->analyze);
+                //print_R($status);
+                //echo "-----------\n";  print_r($status["columns"]);
+                $firstDate = array_key_first($status["lines"]);
+                $lastDate  = array_key_last ($status["lines"]);
+                $periode = $lastDate-$firstDate;
+                $count=sizeof($status["lines"]);
+                $interval=$periode/($count-1);
+                if ($debug) echo "beinhaltet $count Werte von ".date("d.m.Y H:i",$firstDate)." bis ".date("d.m.Y H:i",$lastDate)." , Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." \n";
+                $fileinfo[$index]["Count"] = $count;
+                $fileinfo[$index]["FirstDate"] = $firstDate;
+                $fileinfo[$index]["LastDate"]  = $lastDate;
+                $fileinfo[$index]["Periode"]  = $periode;
+                $fileinfo[$index]["Interval"]  = $interval;
+                $fileinfo[$index]["Analyze"]  = $fileOps->analyze;
+                }
+            }
+        return ($fileinfo);
+        }
 
     /*  Statemachine, der reihe nach Logwien abfragen
      *      (1) check if not logged in
@@ -5399,6 +5485,7 @@ class SeleniumEasychartModul extends SeleniumHandler
  *  initResultStorage
  *  getCategory
  *  getCategories
+ *  defineTargetID
  *  writeResult             allgemeine Schreibroutine
  *  readResult              allgemeine Leseroutine
  *  automatedQuery
@@ -5462,6 +5549,59 @@ class SeleniumOperations
         foreach ($result as $index => $childID) echo "  $index  $childID (".IPS_GetName($childID).") \n";
         return ($result);
         }
+
+    /* in der Selenium Config gibt es auch die Möglichkeit eine Result targetID vorzugeben
+     * im normalen result werden die Werte nicht historisiert
+     */
+    function defineTargetID($sub,$config,$debug=false)
+        {
+        $ipsOps = new ipsOps();  
+        $archiveOps = new archiveOps();              
+        $archiveID = $archiveOps->getArchiveId();  
+        if ($debug)
+            {
+            echo "defineTargetID, eine Variable festlegen in dem die Ergebnisse archiviert werden.\n";
+            print_R($config);
+            }
+        $TargetID=false;
+        if (isset($config["ResultTarget"]))
+            {
+            if (is_array($config["ResultTarget"])) 
+                {
+                if (isset($config["ResultTarget"]["OID"])) $TargetID = $config["ResultTarget"]["OID"];              // Wenn die OID angegeben wurde, ist die Variable bereits woanders definiert worden
+                /*if ($TargetID === false)      // workaround, nicht mehr verwenden
+                    {
+                    if (isset($installedModules["Amis"])===false) echo "unknown Module.\n";
+                    else    
+                        {
+                        // ********************* noch nicht richtig implmentiert, sucht nicht sondern definiert Test-BKS01 
+                        $ID = CreateVariableByName($CategoryIdDataAmis, "Test-BKS01", 3);           // Name neue Variablen
+                        SetValue($ID,"nur testweise den EVN Smart Meter auslesen und speichern");
+                        $TargetID = CreateVariableByName($ID, 'Wirkleistung', 2);   // 0 Boolean 1 Integer 2 Float 3 String 
+                        }
+                    }  */
+                }
+            else 
+                {
+                $targetName =$config["ResultTarget"];
+                $categoryID=$this->getCategory($sub);
+                $TargetID = CreateVariableByName($categoryID, $targetName, 2);                          // float einmal als default annehmen
+
+                }
+            }
+        if ($TargetID)
+            {   
+            if (AC_GetLoggingStatus($archiveID, $TargetID)==false) 
+                {
+                if ($debug) echo "   Werte wird noch nicht im Archive gelogged. Jetzt als Logging konfigurieren. \n";
+                AC_SetLoggingStatus($archiveID,$TargetID,true);           // daraus eine geloggte Variable machen
+                }
+            $type=AC_GetAggregationType ($archiveID,$TargetID);
+            if ($debug) echo "   Archivierte Werte erfassen, bearbeiten und speichern in $TargetID (".$ipsOps->path($TargetID).") :  Type is ".($type?"Zaehler":"Werte")."\n";
+            }
+        return ($TargetID);
+        }
+
 
     /* speichern von Ergebnissen bei der Auslesung von Webinhalten
      * Ort ist data.Guthabensteuerung.Selenium.RESULT (CategoryIdData)
@@ -5538,6 +5678,56 @@ class SeleniumOperations
         return ($result);
         }
 
+    /* nur die Result ID ausgeben
+     */
+    function getResultID($index=false,$name="Result", $debug=false)
+        {
+        $result=array();
+        if ($index==false) 
+            {
+            if ($debug) echo "SeleniumOperations::readResult ohne Zielangabe aufgerufen.\n";
+            echo "Vorhandene Module, ID und Anzahl Ergebnisregister:\n";
+            $childrens=IPS_getChildrenIDs($this->CategoryIdData);
+            foreach ($childrens as $children)
+                {
+                $objectType=IPS_getObject($children)["ObjectType"];
+                $Name=IPS_GetName($children);
+                if ($objectType==0)     // nur die Kategorien anzeigen 
+                    {
+                    $countData=sizeof(IPS_getChildrenIDs($children));
+                    echo "   $children   ".str_pad($Name,40)."  Registeranzahl : $countData   \n";
+                    }
+                }
+            return($this->CategoryIdData);
+            }
+        elseif ($debug) echo "SeleniumOperations::readResult mit Zielangabe \"$index\" aufgerufen.\n";
+
+        $categoryID = @IPS_GetObjectIDByName($index, $this->CategoryIdData);
+        if ($categoryID===false)
+            {
+            echo "readResult, Fehler, $index in ".$this->CategoryIdData." nicht gefunden.\n";
+            return (false);
+            }
+        $more=explode("&",$name);
+        if (sizeof($more)>1)
+            {
+            print_r($more);
+            $variableNameID = @IPS_GetObjectIDByName($more[1], $categoryID);
+            if ($variableNameID===false) return(false);
+            $variableName = GetValue($variableNameID);
+            echo "readResult   $name = $variableName\n";
+            $variableID = @IPS_GetObjectIDByName($variableName, $categoryID);
+            if ($variableID===false) return(false);
+            }
+        else
+            {
+            //$variableID = CreateVariableByName($categoryID, $name, 3);
+            $variableID = @IPS_GetObjectIDByName($name, $categoryID);
+            echo "readResult, suche $name als OID:$variableID in $categoryID ($index in ".$this->CategoryIdData.").\n";
+            if ($variableID===false) return(false);
+            }
+        return ($variableID);
+        }
  
     /* alle Homepages gleichzeitig abfragen 
      *
@@ -5814,8 +6004,35 @@ class SeleniumOperations
 
     }
 
+/* SeleniumUpdate, nutzt Funktion von Watchdog und OperationCenter Library
+ */
 
+class SeleniumUpdate
+    {
 
+    /* version sind die verfügbaren versionen als array, actualVersion ist die aktuell installierte version
+     * es werden alle version beginnend von actualVersion übernommen, wenn weniger zwei werden zumindest zwei versionen übernommen
+     */
+    function findTabsfromVersion($version,$actualVersion)
+        {
+        print_r($version);
+        $tab=array(); 
+        $count = sizeof($version);
+        $indexStart=$count-3;
+        $start=false;
+        $index=0;
+        foreach ($version as $num => $entry)
+            {
+            if ($num===$actualVersion) $start=true;
+            if ($index>$indexStart) $start=true;
+            if ($start) $tab[]=(string)$num;     
+            $index++;    
+            }
+        //print_R($tab);
+        return ($tab);
+        }
+
+    }
 
 
 

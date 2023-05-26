@@ -39,11 +39,12 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
-IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
-IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");					// Library verwendet Configuration, danach includen
-IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+    IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+    IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 /******************************************************
  *
@@ -242,8 +243,9 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         echo "Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden.\n";          
                         break;
                     case "LOGWIEN":
-                        echo "LOGWIEN ============\n";                    
-                        echo "parse LogWien Ergebnis in Result.\n";
+                        echo "LOGWIEN ============\n";        
+                        $targetID = $seleniumOperations->defineTargetID($host,$entry["CONFIG"]);            
+                        echo "parse LogWien Ergebnis in Result and archive in $targetID.\n";
                         $result=$seleniumOperations->readResult("LogWien","Result",true);                  // true Debug
                         //print_R($result);
                         echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
@@ -251,7 +253,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                         echo "--------\n";
                         //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
                         $seleniumLogWien = new SeleniumLogWien();
-                        $ergebnis = $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");
+                        $ergebnis = $seleniumLogWien->writeEnergyValue($result["Value"],$entry["CONFIG"]["ResultTarget"]);
                         //echo $ergebnis["Value"]." (".$ergebnis["OID"].")\n";
                         $config=array();
                         $config["manAggregate"]=false;
@@ -703,7 +705,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
                                 $oid=$entry["INPUTCSV"]["Target"]["OID"];
                                 echo "Get and use the Register mit OID $oid und Name ".IPS_GetName($oid).". Probably not stored in ResultTarget Area.\n";
                                 } 
-                            else $go=false;         // nicht weitermachen wenn diser Input Parameter fgehlt                        
+                            else $go=false;         // nicht weitermachen wenn diser Input Parameter fehlt                        
 
                             //Input Verzeichnis suchen 
                             if (isset($entry["INPUTCSV"]["InputDir"]))
