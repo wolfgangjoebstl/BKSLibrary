@@ -941,6 +941,78 @@ $cutter=true;
     
 
     echo "=================================================================\n";
+
+    $webOps = new webOps();
+    $categoryId_SmartMeter        = CreateCategory('SmartMeter',        $CategoryIdData, 80);
+    $pnames = ["Update","Calculate","Sort"];
+    $buttonsId = $webOps->createSelectButtons($pnames,$categoryId_SmartMeter, $scriptIdAmis);
+    $statusSmartMeterID = CreateVariableByName($categoryId_SmartMeter, "SmartMeterStatus", 3,'~HTMLBox');
+
+	$variableIdInterActiveHTML = CreateVariableByName($categoryId_SmartMeter, "InterActive", 3 , '~HTMLBox', 'Information', 300,  false, '<iframe frameborder="0" width="100%" height="600px"  src="../user/Guthabensteuerung/GuthabensteuerungReceiver.php"</iframe>' );
+
+	$webfront_links=array(
+        "SmartMeter"     => array(
+            "Left"          => array(),
+            "Select"         => array(),
+            "@CONFIG"       => array(
+                "style"         =>  "WFCSplitPanel",
+                "width"         =>  10,
+                "right"         => "Select",
+                "left"          => "Left",
+                            ),
+                        ),
+        "@CONFIG" => array( ),                // sonst wird Smart Meter ein Category Pane und kein wie gewollt Splitpane
+                );
+
+        $webfront_links["SmartMeter"]["Left"]        = array(
+                $statusSmartMeterID => array(
+                    "NAME"              => "Status",
+                    "ORDER"             => 10,
+                    "ADMINISTRATOR"     => true,
+                    "PANE"              => true,
+                            ),
+                $variableIdInterActiveHTML => array(
+                    "NAME"              => "InterActive",
+                    "ORDER"             => 100,
+                    "ADMINISTRATOR"     => true,
+                    "PANE"              => true,
+                            ),
+                        );
+
+        $webfront_links["SmartMeter"]["Select"]        = array(
+                $buttonsId[0]["ID"] => array(
+                    "NAME"              => " ",
+                    "ORDER"             => 200,
+                    "ADMINISTRATOR"     => true,
+                    "PANE"              => true,
+                            ),
+                $buttonsId[1]["ID"] => array(
+                    "NAME"              => " ",
+                    "ORDER"             => 210,
+                    "ADMINISTRATOR"     => true,
+                    "PANE"              => true,
+                            ),
+                $buttonsId[2]["ID"] => array(
+                    "NAME"              => " ",
+                    "ORDER"             => 220,
+                    "ADMINISTRATOR"     => true,
+                    "PANE"              => true,
+                            ),
+                        );
+
+	if ($WFC10_Enabled) 
+		{
+        $categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+        $configWf=$configWFront["Administrator"];
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
+
+        $configWf["TabPaneParent"] = "HouseTPA"; $configWf["TabPaneOrder"] = 30;        // das Haeuschen ist dazwischen geschoben
+        $wfcHandling->easySetupWebfront($configWf,$webfront_links, "Administrator", true);
+
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       // nur hier wird geschrieben
+        }
+
+    echo "=================================================================\n";
     echo "AMIS Installation erfolgreich abgeschlossen.\n";
 
 

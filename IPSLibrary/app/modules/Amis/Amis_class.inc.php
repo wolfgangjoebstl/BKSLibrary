@@ -24,7 +24,7 @@
      *
      *  __construct                 speichert strukturierte MeterConfig
      *  setMeterConfig              mit dieser Routine wird MeterConfig erstellt
-     *  getMeterConfig              die bereinihgte Konfiguration auslesen, die disabled registers sind weg
+     *  getMeterConfig              die bereinigte Konfiguration auslesen, die disabled registers sind weg
      *
      *  getWirkenergieID            Wirkenergie Spiegelregister mit dem Namen Wirkenergie in der Kategorie des jeweiligen Objektes
      *  getZaehlervariablenID       beliebiges Register aus den Zaehlervariablen der jeweiligen Kategorie heraussuchen, nur für AMIS aktuell
@@ -137,6 +137,7 @@
                     configfileParser($config,$result[$index],["costkWh","COSTKWH","costkwh","Costkwh","CostKwh"],"costkWh",$cost);
                     configfileParser($config,$result[$index],["Source","SOURCE","source"],"Source","default");
                     configfileParser($config,$result[$index],["VariableName","VARIABLENAME","nariablename","Variablename"],"VariableName",null);
+                    configfileParser($config,$result[$index],["OIDTYPE","oidtype","OidType","oidType","OIDType"],"OIDType","kWh");                    
                     if (strtoupper($result[$index]["TYPE"])=="AMIS") 
                         {
                         configfileParser($config,$result[$index],["Port","PORT","port"],"PORT",null);                                   // default null, produziert einen Fehler wenn nicht vorhanden
@@ -151,8 +152,17 @@
                         }
                     if (strtoupper($result[$index]["TYPE"])=="DAILYREAD") 
                         {
-                        configfileParser($config,$result[$index],["WirkenergieID","WIRKENERGIEID","WirkenergieId","Oid","OID","oid"],"WirkenergieID",null);
-                        if (isset($result[$index]["WirkenergieID"])===false) echo "Warning, OID must be provided for TYPE DAILYREAD.\n";
+                        if (isset($result[$index]["WirkenergieID"])===false) 
+                            {
+                            $oid=$this->getWirkEnergieID($config,$this->debug);
+                            //echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYREAD of ".$result[$index]["NAME"].". Found one by searching: $oid\n";
+                            }                            
+                        configfileParser($config,$result[$index],["WirkenergieID","WIRKENERGIEID","WirkenergieId","Oid","OID","oid"],"WirkenergieID",$oid);
+                        if ( (isset($result[$index]["WirkenergieID"])===false) || ($result[$index]["OIDType"] !== "kWh") ) 
+                            {
+                            echo "Warning, OID of OIDType kWh must be provided for TYPE DAILYREAD.\n";
+                            print_R($result[$index]);
+                            }
                         }
                     if (strtoupper($result[$index]["TYPE"])=="DAILYLPREAD") 
                         {
@@ -160,9 +170,11 @@
                         if (isset($result[$index]["LeistungID"])===false) 
                             {
                             $oid=$this->getWirkleistungID($config,$this->debug);
-                            echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYREAD of ".$result[$index]["NAME"].". Found one by searching: $oid\n";
+                            //echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYLPREAD of ".$result[$index]["NAME"].". Found one by searching: $oid\n";
                             }
-                        configfileParser($config,$result[$index],["LeistungID","LEISTUNGID","LeistungId","Oid","OID","oid"],"LeistungID",$oid);
+                        if ($result[$index]["OIDType"] !== "kWh") configfileParser($config,$result[$index],["LeistungID","LEISTUNGID","LeistungId","Oid","OID","oid"],"LeistungID",$oid);
+                        else                                      configfileParser($config,$result[$index],["WirkenergieID","WIRKENERGIEID","WirkenergieId","Oid","OID","oid"],"WirkenergieID",null); 
+                        // both Types are possible
                         }
                     if (strtoupper($result[$index]["TYPE"])=="SUMME") 
                         {
@@ -2858,7 +2870,11 @@
 			
 		}  // ende class
 
-    /* Erweiterung für Smart Meter Funktionen
+    /*************************************************************************************************
+     * 
+     * Erweiterung für Smart Meter Funktionen
+     *
+     * verwendet getMeterConfig um alle AMIS Register herauszufinden und abzuarbeiten
      *
      */
 	class AmisSmartMeter extends Amis
@@ -2873,6 +2889,8 @@
             parent::__construct($debug);
             }
 
+        /* die Register mit Werten von Smart metern gemeinsam als html Tabelle darstellen
+         */
         function writeSmartMeterDataToHtml()
             {
             //echo "Button 0";                              // das sind die drei Button links
@@ -2914,7 +2932,8 @@
                         //print_r($smEnergyCounterConfig);    
                         $count = $smEnergyCounterConfig["RecordCount"];
                         $periode = $smEnergyCounterConfig["LastTime"] - $smEnergyCounterConfig["FirstTime"];
-                        $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        if ($count>1) $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        else $interval = false;
                         if ($this->debug) 
                             {
                             echo "   ".$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier." \n";
@@ -2936,14 +2955,15 @@
                         //print_r($smEnergyWebConfig);    
                         $count = $smEnergyWebConfig["RecordCount"];
                         $periode = $smEnergyWebConfig["LastTime"] - $smEnergyWebConfig["FirstTime"];
-                        $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        if ($count>1) $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        else $interval = false;
                         if ($this->debug) 
                             {
-                            echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von logWien:",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyWebConfig["LastTime"])." ID : $variableLogWienID . Wert wurde berechnet.";
+                            echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von ".$meter["Source"].":",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyWebConfig["LastTime"])." ID : $variableLogWienID . Wert wurde berechnet.";
                             echo " Pfad: ".$this->ipsOps->path($variableLogWienID)."  \n";
                             }
                         $html .= "<tr>";
-                        $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von logWien</td>";
+                        $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von ".$meter["Source"]."</td>";
                         $html .= "<td>$variableLogWienID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smEnergyWebConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smEnergyWebConfig["LastTime"])."</td>";
                         $html .= "<td>".$this->ipsOps->path($variableLogWienID)."</td>";
                         $html .= "</tr>";
@@ -2959,7 +2979,8 @@
                         //print_r($smEnergyWebConfig);    
                         $count = $smPowerInputConfig["RecordCount"];
                         $periode = $smPowerInputConfig["LastTime"] - $smPowerInputConfig["FirstTime"];
-                        $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        if ($count>1) $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                        else $interval = false;
                         if ($this->debug) 
                             {
                             echo "    ".str_pad("Smart Meter Wirkleistung ".($smPowerInputConfig["AggregationType"]?"Zaehler":"Werte")." von InputCsv:",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smPowerInputConfig["LastTime"])." ID : $inputID . Wert wurde von File eingelesen.";
@@ -2986,7 +3007,7 @@
                                     $seleniumLogWien = new SeleniumLogWien();
                                     $seleniumOperations = new SeleniumOperations();
                                     $variableLogWienID = $seleniumOperations->defineTargetID("LogWien",$configLogWien);        
-                                    if ($this->debug) echo "    LogWien Werte werden hier gespeichert: $variableLogWienID \n";
+                                    if ($this->debug) echo "    ".$meter["Source"]." Werte werden hier gespeichert: $variableLogWienID \n";
                                     //$variableLogWienID=$seleniumOperations->getResultID("LogWien","Result",true);                  // true Debug
                                     //print_R($result);
                                     //echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
@@ -2996,14 +3017,15 @@
                                     //print_r($smEnergyLogWienConfig);    
                                     $count = $smEnergyLogWienConfig["RecordCount"];
                                     $periode = $smEnergyLogWienConfig["LastTime"] - $smEnergyLogWienConfig["FirstTime"];
-                                    $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                                    if ($count>1) $interval = $periode/($count-1);            // Abstände nicht Anzahl
+                                    else $interval = false;
                                     if ($this->debug) 
                                         {
-                                        echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium logWien:",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyLogWienConfig["LastTime"])." ID : $variableLogWienID . Wert wurde mit Selenium geladen.";
+                                        echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium ".$meter["Source"].":",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyLogWienConfig["LastTime"])." ID : $variableLogWienID . Wert wurde mit Selenium geladen.";
                                         echo " Pfad: ".$this->ipsOps->path($variableLogWienID)."  \n";
                                         }
                                     $html .= "<tr>";
-                                    $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium LogWien</td>";
+                                    $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium ".$meter["Source"]."</td>";
                                     $html .= "<td>$variableLogWienID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smEnergyLogWienConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smEnergyLogWienConfig["LastTime"])."</td>";
                                     $html .= "<td>".$this->ipsOps->path($variableLogWienID)."</td>";
                                     $html .= "</tr>";
@@ -3026,8 +3048,11 @@
             return ($html);
             }
 
+        /* es gibt ein csv Verzeichnis, die Dateien darin initialisieren
+         */
         function writeSmartMeterCsvInfoToHtml()
             {
+            if ($this->debug) echo "writeSmartMeterCsvInfoToHtml \n";
             $config = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"];
             $html = "";
             foreach ($config as $host => $entry)
@@ -3037,7 +3062,7 @@
                     case "LOGWIEN":       
                         ini_set('memory_limit', '128M');                        // können grosse Dateien werden
                         $logWien = new SeleniumLogWien();
-                        $result = $logWien->getInputCsvFiles($entry["INPUTCSV"],false);              // true Debug
+                        $result = $logWien->getInputCsvFiles($entry["INPUTCSV"],$this->debug);              // true Debug
                         //print_R($result);
                         $html .= '<div class="cuw-quick">';
                         $html .= '<table>';

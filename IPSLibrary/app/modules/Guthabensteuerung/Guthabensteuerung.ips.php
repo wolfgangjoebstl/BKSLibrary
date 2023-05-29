@@ -415,6 +415,19 @@ if ($_IPS['SENDER']=="TimerEvent")
                         }
                     $yahoofin->writeResult($ergebnis,"TargetValue",true);           // echte YahooFin writeresult, sonst nur bei Webfront nur Standard
                     break;
+                case "EVN":
+                    $configTemp["EVN"] = $configTabs["Hosts"]["EVN"];
+                    $configTemp["Logging"]=$log_Guthabensteuerung;
+                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                    // Auswertung
+                    $result=$seleniumOperations->readResult("EVN","Result",true);                  // true Debug
+                    //print_R($result);
+                    echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                    $log_Guthabensteuerung->LogNachrichten("Parse EVN Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                    echo "--------\n";
+                    // no parsing, always done in IPS_RunScript($ParseGuthabenID);     
+                    break;                
                 case "LOGWIEN":
                     $configTemp["LOGWIEN"] = $configTabs["Hosts"]["LogWien"];
                     $configTemp["Logging"]=$log_Guthabensteuerung;
@@ -426,9 +439,10 @@ if ($_IPS['SENDER']=="TimerEvent")
                     echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
                     $log_Guthabensteuerung->LogNachrichten("Parse Log.Wien Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
                     echo "--------\n";
+                    // no parsing, always done in IPS_RunScript($ParseGuthabenID);     
                     //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
-                    $seleniumLogWien = new SeleniumLogWien();
-                    $seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");                    
+                    //$seleniumLogWien = new SeleniumLogWien();
+                    //$seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");                    
                     break;                    
                 case "morning":
                 case "lunchtime":
@@ -441,7 +455,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                 default:
                     break;
                 }
-            $configTabs=false;        
+            //$configTabs=false;                // sonst override von den morning etc tabs        
             IPS_SetEventActive($tim5ID,false);
             break;      // Ende Timer5
         case $tim22ID:                              // check availability of Selenium driver, dauert so lange darum in einen Timer ausgelagert

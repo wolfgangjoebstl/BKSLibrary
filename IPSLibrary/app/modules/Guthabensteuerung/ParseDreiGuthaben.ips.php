@@ -280,7 +280,9 @@
                     case "EVN":
                         echo "EVN ============\n";                    
                         echo "parse EVN Ergebnis in Result.\n"; 
-                        $LeistungID = false;     
+                        $targetID = $seleniumOperations->defineTargetID($host,$entry["CONFIG"]);            
+                        echo "parse LogWien Ergebnis in Result and archive in $targetID.\n";
+                        /*$LeistungID = false;     
                         if (isset($entry["CONFIG"]["ResultTarget"]))
                             {
                             if (isset($entry["CONFIG"]["ResultTarget"]["OID"])) $LeistungID = $entry["CONFIG"]["ResultTarget"]["OID"];
@@ -290,10 +292,10 @@
                             if (isset($installedModules["Amis"])===false) echo "unknown Module.\n";
                             else    
                                 {
-                                /********************** noch nicht richtig implmentiert, sucht nicht sondern definiert Test-BKS01 */
+                                // ********************* noch nicht richtig implmentiert, sucht nicht sondern definiert Test-BKS01 
                                 $ID = CreateVariableByName($CategoryIdDataAmis, "Test-BKS01", 3);           // Name neue Variablen
                                 SetValue($ID,"nur testweise den EVN Smart Meter auslesen und speichern");
-                                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   
                                 }
                             }
                         if ($LeistungID)
@@ -303,19 +305,21 @@
                                 {
                                 echo "Werte wird noch nicht im Archive gelogged. Jetzt als Logging konfigurieren. \n";
                                 AC_SetLoggingStatus($archiveID,$LeistungID,true);           // eine geloggte Variable machen
-                                }
+                                } */
+                        if ($targetID)
+                            {                                
                             //echo "Variable mit Archive ist hier : $LeistungID \n";
                             $result=$seleniumOperations->readResult("EVN","Result",true); 
                             echo "Letztes Update  von Selenium  am ".date("d.m.Y H:i:s",$result["LastChanged"])." erfolgt.\n";       
                             $log_Guthabensteuerung->LogNachrichten("Parse EVN Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
                             $evn = new SeleniumEVN();
                             $werte = $evn->parseResult($result); 
-                            $knownTimeStamps = $evn->getKnownData($LeistungID);
+                            $knownTimeStamps = $evn->getKnownData($targetID);
                             $input = $evn->filterNewData($werte,$knownTimeStamps);
                             echo "Add Logged Values: ".count($input["Add"])."\n";
-                            $status=AC_AddLoggedValues($archiveID,$LeistungID,$input["Add"]);
+                            $status=AC_AddLoggedValues($archiveID,$targetID,$input["Add"]);
                             echo "Erfolgreich : $status \n";
-                            AC_ReAggregateVariable($archiveID,$LeistungID);                    
+                            AC_ReAggregateVariable($archiveID,$targetID);                    
                             }
                         break;
                     case "ORF":

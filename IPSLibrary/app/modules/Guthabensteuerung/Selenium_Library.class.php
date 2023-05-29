@@ -132,6 +132,92 @@ class SeleniumHandler
         return($this->configuration);
         }
 
+    /* InputCsv unterstützen
+     * Input ist config aus inputCsv, Beispielroutine    
+     $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+     foreach ($config as $host => $entry)     {
+        switch (strtoupper($host))        {
+            case "LOGWIEN"
+                ->getInputCsvFiles($entry["INPUTCSV"])
+     */
+    function getInputCsvFiles($config,$debug=false)
+        {
+        if ($debug) echo "getInputCsvFiles(".json_encode($config)."\n";
+        $dosOps = new dosOps();
+        $archiveOps = new archiveOps();
+        if (isset($config["InputDir"]))                        //Input Verzeichnis suchen 
+            {
+            $inputDir=$config["InputDir"];
+            $verzeichnis=$dosOps->getWorkDirectory();
+            $inputDir=$dosOps->correctDirName($verzeichnis.$inputDir);          // richtiges Abschlusszeichen / oder \
+            if ($debug) 
+                {
+                echo "Look for Input files in ";
+                $dosOps->writeDirStat($inputDir);                    // Ausgabe eines Verzeichnis   
+                }
+            $files=$dosOps->readdirToArray($inputDir);                                      
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
+        if (isset($config["InputFile"]))
+            {
+            $filename=$config["InputFile"];
+            if ($debug) echo "Input Filename is \"$filename\".\n";
+            $filesToRead = $dosOps->findfiles($files,$filename,false);           // true für Debug
+            if ($filesToRead==false) return (false);
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt       
+        //echo "Files to Read : "; print_r($filesToRead);
+        $config=$archiveOps->setConfigForAddValues($config);           //parse config file, done twice, also in readFileCsv
+        $indexCols=$config["Index"];
+        $debug1=false;
+        $fileinfo = $dosOps->writeDirToArray($inputDir, $filesToRead); 
+        //print_R($fileinfo);                                                     // das sind nur die Filenamen und Directories
+        //$files = $fileinfo;                     // files wird von readFileCsv ergänzt um Einzelwerte
+        foreach ($filesToRead as $file)
+            {
+            $result=array();                                // keine Summe aus allen Dateien machen, sondern Datei für Datei auswerten, daher vorher immer init
+            $dateityp=@filetype( $inputDir.$file );     
+            if ($debug) echo "Check $dateityp $inputDir$file \n";
+            if ($dateityp == "file")
+                {
+                $index=false;
+                foreach ($fileinfo as $index => $entry) 
+                    {
+                    if (isset($entry["Filename"]))
+                        {
+                        if ($entry["Filename"] == $file) break;     
+                        }
+                    else echo "No Filename as index where we can add information : ".json_encode($entry)."\n";
+                    }
+                if ($debug) echo "Filename $file als $index gefunden.\n";               
+                $fileOps = new fileOps($inputDir.$file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
+                //$index=[];                            // erste Zeile als Index übernehmen
+                //$index=["Date","Time","Value"];         // Date und Time werden gemerged
+                //if (isset($config$index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
+                //$index=["DateTime","Value","Estimate","Dummy"];
+                                            // Ergebnis
+                //if ($debug1) echo "readFileCsv mit Config ".json_encode($config)." und Index ".json_encode($indexCols)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
+                $status = $fileOps->readFileCsv($result,$config,$indexCols,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
+                //print_r($fileOps->analyze);
+                //print_R($status);
+                //echo "-----------\n";  print_r($status["columns"]);
+                $firstDate = array_key_first($status["lines"]);
+                $lastDate  = array_key_last ($status["lines"]);
+                $periode = $lastDate-$firstDate;
+                $count=sizeof($status["lines"]);
+                $interval=$periode/($count-1);
+                if ($debug) echo "beinhaltet $count Werte von ".date("d.m.Y H:i",$firstDate)." bis ".date("d.m.Y H:i",$lastDate)." , Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." \n";
+                $fileinfo[$index]["Count"] = $count;
+                $fileinfo[$index]["FirstDate"] = $firstDate;
+                $fileinfo[$index]["LastDate"]  = $lastDate;
+                $fileinfo[$index]["Periode"]  = $periode;
+                $fileinfo[$index]["Interval"]  = $interval;
+                $fileinfo[$index]["Analyze"]  = $fileOps->analyze;
+                }
+            }
+        return ($fileinfo);
+        }
+
     /* handle ist gespeichert mit Index als webIndex und der Wert dem kurzen Namen, dem iodentifier, Tab
      */
 
@@ -1422,6 +1508,7 @@ class SeleniumYahooFin extends SeleniumHandler
  *  setConfiguration
  *  writeEnergyValue
  *  getEnergyValueId
+ *  getInputCsvFiles
  *
  *  runAutomatic            Aufruf der einzelnen Steps, Statemachine
  *      getTextValidLoggedInIf
@@ -1465,7 +1552,7 @@ class SeleniumLogWien extends SeleniumHandler
         $this->configuration = $configuration;
         }
 
-    /*  Energiewert abspeichern und archivieren
+    /* LogWien Energiewert abspeichern und archivieren
      *
      */
     function writeEnergyValue($value,$name="EnergyCounter")
@@ -1498,91 +1585,6 @@ class SeleniumLogWien extends SeleniumHandler
         return ($oid);
         }
 
-    /* InputCsv unterstützen
-     * Input ist config aus inputCsv, Beispielroutine    
-     $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
-     foreach ($config as $host => $entry)     {
-        switch (strtoupper($host))        {
-            case "LOGWIEN"
-                ->getInputCsvFiles($entry["INPUTCSV"])
-     */
-    function getInputCsvFiles($config,$debug=false)
-        {
-        if ($debug) echo "getInputCsvFiles(".json_encode($config)."\n";
-        $dosOps = new dosOps();
-        $archiveOps = new archiveOps();
-        if (isset($config["InputDir"]))                        //Input Verzeichnis suchen 
-            {
-            $inputDir=$config["InputDir"];
-            $verzeichnis=$dosOps->getWorkDirectory();
-            $inputDir=$dosOps->correctDirName($verzeichnis.$inputDir);          // richtiges Abschlusszeichen / oder \
-            if ($debug) 
-                {
-                echo "Look for Input files in ";
-                $dosOps->writeDirStat($inputDir);                    // Ausgabe eines Verzeichnis   
-                }
-            $files=$dosOps->readdirToArray($inputDir);                                      
-            }
-        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
-        if (isset($config["InputFile"]))
-            {
-            $filename=$config["InputFile"];
-            if ($debug) echo "Input Filename is \"$filename\".\n";
-            $filesToRead = $dosOps->findfiles($files,$filename,false);           // true für Debug
-            if ($filesToRead==false) return (false);
-            }
-        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt       
-        //echo "Files to Read : "; print_r($filesToRead);
-        $config=$archiveOps->setConfigForAddValues($config);           //parse config file, done twice, also in readFileCsv
-        $indexCols=$config["Index"];
-        $debug1=false;
-        $fileinfo = $dosOps->writeDirToArray($inputDir, $filesToRead); 
-        //print_R($fileinfo);                                                     // das sind nur die Filenamen und Directories
-        //$files = $fileinfo;                     // files wird von readFileCsv ergänzt um Einzelwerte
-        foreach ($filesToRead as $file)
-            {
-            $result=array();                                // keine Summe aus allen Dateien machen, sondern Datei für Datei auswerten, daher vorher immer init
-            $dateityp=@filetype( $inputDir.$file );     
-            if ($debug) echo "Check $dateityp $inputDir$file \n";
-            if ($dateityp == "file")
-                {
-                $index=false;
-                foreach ($fileinfo as $index => $entry) 
-                    {
-                    if (isset($entry["Filename"]))
-                        {
-                        if ($entry["Filename"] == $file) break;     
-                        }
-                    else echo "No Filename as index where we can add information : ".json_encode($entry)."\n";
-                    }
-                if ($debug) echo "Filename $file als $index gefunden.\n";               
-                $fileOps = new fileOps($inputDir.$file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
-                //$index=[];                            // erste Zeile als Index übernehmen
-                //$index=["Date","Time","Value"];         // Date und Time werden gemerged
-                //if (isset($config$index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
-                //$index=["DateTime","Value","Estimate","Dummy"];
-                                            // Ergebnis
-                //if ($debug1) echo "readFileCsv mit Config ".json_encode($config)." und Index ".json_encode($indexCols)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
-                $status = $fileOps->readFileCsv($result,$config,$indexCols,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
-                //print_r($fileOps->analyze);
-                //print_R($status);
-                //echo "-----------\n";  print_r($status["columns"]);
-                $firstDate = array_key_first($status["lines"]);
-                $lastDate  = array_key_last ($status["lines"]);
-                $periode = $lastDate-$firstDate;
-                $count=sizeof($status["lines"]);
-                $interval=$periode/($count-1);
-                if ($debug) echo "beinhaltet $count Werte von ".date("d.m.Y H:i",$firstDate)." bis ".date("d.m.Y H:i",$lastDate)." , Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." \n";
-                $fileinfo[$index]["Count"] = $count;
-                $fileinfo[$index]["FirstDate"] = $firstDate;
-                $fileinfo[$index]["LastDate"]  = $lastDate;
-                $fileinfo[$index]["Periode"]  = $periode;
-                $fileinfo[$index]["Interval"]  = $interval;
-                $fileinfo[$index]["Analyze"]  = $fileOps->analyze;
-                }
-            }
-        return ($fileinfo);
-        }
 
     /*  Statemachine, der reihe nach Logwien abfragen
      *      (1) check if not logged in
@@ -2148,6 +2150,10 @@ class SeleniumEVN extends SeleniumHandler
      * es reicht pressButtonIf($xpath
      * /html/body/ngb-modal-window/div/div/app-cookie-consent-modal/div[2]/div/div/button[1]
      * alternative Implementierung mit vorher fragen ob da
+     *
+     * Anderer Ort ebenfalls check
+     * /html/body/div[2]/div/div[2]/a[3]
+     *
      */
 
     function checkCookiesButtonIf()
@@ -2164,6 +2170,17 @@ class SeleniumEVN extends SeleniumHandler
             $result = $this->pressButtonIf($xpath,true);                                                      // true debug  
             } 
         else echo "Button not pressed.\n";
+
+        $xpath='/html/body/div[2]/div/div[2]/a[3]';
+        $result = $this->getHtmlIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            //print $result;
+            $result = $this->pressButtonIf($xpath,true);                                                      // true debug  
+            } 
+        else echo "Button on another place also not pressed.\n";
+
         return ($result);
         }
 
@@ -2242,9 +2259,22 @@ class SeleniumEVN extends SeleniumHandler
         {
         echo "clickDetailedDataIf aufgerufen : \n";
         $xpath='/html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[1]';
-        $status=$this->pressElementIf($xpath);  
-        echo "Status $status \n";           
-        return ($status);                    
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            $status=$this->pressElementIf($xpath);  
+            echo "Status $status \n";
+            return ($status);                    
+            }           
+        $xpath='/html/body/app-root/div/div/app-consumption/div/div[2]/div[5]/div';
+        $result = $this->getTextIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            $status=$this->pressElementIf($xpath);  
+            echo "Status 2nd Try $status \n";
+            return ($status);                    
+            }           
+        return (false);        
         }
 
     /* goto Smart meter App, Press Link for Webportal, look for a
@@ -2264,6 +2294,9 @@ class SeleniumEVN extends SeleniumHandler
     /* suche eine Tabelle in einem div
      * /html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[2]/div
      * /html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[2]/div/table
+     *
+     * /html/body/app-root/div/div/app-consumption/div/div[2]/div[5]/div[2]/app-consumption-records-table/div/table
+     *      
      */
 
     private function getEnergyValueIf($debug=false)
@@ -2272,7 +2305,13 @@ class SeleniumEVN extends SeleniumHandler
         $xpath='/html/body/app-root/div/div/app-consumption/div[3]/div[2]/div[11]/div[2]/div';
         $ergebnis = $this->getTextIf($xpath,$this->debug);    
         if ((strlen($ergebnis))>3) return($ergebnis);
-        else echo "Fehler, keinen Vernünftigen Wert eingelesen: $ergebnis \n";
+        else 
+            {
+            $xpath='/html/body/app-root/div/div/app-consumption/div/div[2]/div[5]/div[2]/app-consumption-records-table/div';
+            $ergebnis = $this->getTextIf($xpath,$this->debug);    
+            if ((strlen($ergebnis))>3) return($ergebnis);
+            else  echo "Fehler, keinen Vernünftigen Wert eingelesen: $ergebnis \n";
+            }
         return (false);
         }
 

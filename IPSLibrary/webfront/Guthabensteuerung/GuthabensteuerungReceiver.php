@@ -3,20 +3,21 @@
 	 *
 	 * Empfangs Script um Requests (JQuery) der HTML Seiten zu bearbeiten.
 	 *
-	 */
+	 *
 
 	IPSUtils_Include ("Startpage_Include.inc.php", "IPSLibrary::app::modules::Startpage");
 	IPSUtils_Include ("Startpage.class.php", "IPSLibrary::app::modules::Startpage");
 	
-	IPSUtils_Include ("IPSModuleManager.class.php", "IPSLibrary::install::IPSModuleManager");
-
 	include_once "Startpage_Configuration.inc.php";
 
 	//IPSLogger_Inf(__file__, "Post Parameters: ");
 	//foreach ($_POST as $key=>$value) {
 	//	IPSLogger_Inf(__file__, "Post $key = $value");
 	//}
+	*/
 	
+	IPSUtils_Include ("IPSModuleManager.class.php", "IPSLibrary::install::IPSModuleManager");
+
 	$id       = $_POST['id'];
 	$action   = $_POST['action'];
 	$module   = $_POST['module'];
@@ -32,11 +33,11 @@
 		{
 
 		default:
-			$result=Startpage_SetPage($action, $module, $info);
-			IPSLogger_Inf(__file__, 'StartpageTopology_Receiver mit Wert '.$action.' und Ergebnis '.$result);			
+			//$result=Startpage_SetPage($action, $module, $info);
+			//IPSLogger_Inf(__file__, 'GuthabensteuerungReceiver mit Wert '.$action.' und Ergebnis '.$result);			
 		}
 	echo "was here";
-	StartpageOverview_Refresh();
+	//StartpageOverview_Refresh();
 
 
 	/** @}*/

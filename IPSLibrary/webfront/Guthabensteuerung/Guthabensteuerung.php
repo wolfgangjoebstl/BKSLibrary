@@ -17,8 +17,12 @@
 	 */
 
 	/**
-	
-	
+	  Guthabensteuerung und GuthabensteuerungReceiver
+	  Nachdem php Client Seitig nicht geht, das streaming von Daten und damit die regelmaessige Aktualisiserung 
+	  nicht für html Boxen geht probieren wir uns im user Teil des Webfronts. 
+	  Das Wichtigste zuerst, die automatische Aktualisiserung geht so auch nicht, aber man kann die html box aktualisieren
+	  gedrückte buttons führen zu einem Post zum nächsten php script im User bereich. Hier wird dann etwas abgearbeitet 
+	  
 	 */
 
 	/** @}*/
@@ -69,7 +73,7 @@
 				var MobileOrder           = $("#MobileOrder").val();
 
 				$.ajax({type: "POST",
-						url: "/user/Startpage/StartpageTopology_Receiver.php",
+						url: "/user/Guthabensteuerung/GuthabensteuerungReceiver.php",
 						contentType:"application/x-www-form-urlencoded; charset=ISO-8859-1",
 						data: "id="+encodeURIComponent(id)
 						       +"&action="+encodeURIComponent(action)
