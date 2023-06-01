@@ -35,7 +35,7 @@
 		<meta http-equiv="Pragma" content="no-cache">
 		<meta http-equiv="Expires" content="0">
 
-		<link rel="stylesheet" type="text/css" href="/user/Guthabensteuerung/Guthabensteuerung.css" />'
+		<link rel="stylesheet" type="text/css" href="/user/Guthabensteuerung/Guthabensteuerung.css" />
 
 		<script type="text/javascript" src="jquery.min.js"></script>
 
@@ -43,6 +43,7 @@
 			function trigger_button(action, module, info) {
 				var id         = $(this).attr("id");
 
+				document.getElementById('demo').innerHTML = Date()+" action="+action;
 				$.ajax({type: "POST",
 						url: "/user/Guthabensteuerung/GuthabensteuerungReceiver.php",
 						data: "id="+id+"&action="+action+"&module="+module+"&info="+info});
@@ -107,56 +108,94 @@
 		</script>
 
 	</head>
-	<body >
-		<a href="#" onClick=trigger_button('View1','','')>View1</a> |
-		<a href="#" onClick=trigger_button('View2','','')>View2</a> |
-		<a href="#" onClick=trigger_button('View3','','')>View3</a> |
-		<a href="#" onClick=trigger_button('View4','','')>View4</a> |
-		<a href="#" onClick=trigger_button('View5','','')>View5</a>
+	<body>
 		<?php
-			IPSUtils_Include ("Startpage_Include.inc.php", "IPSLibrary::app::modules::Startpage");
+			IPSUtils_Include ("Guthabensteuerung_Include.inc.php", "IPSLibrary::app::modules::Guthabensteuerung");
 
-			$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-			$action  = GetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId));
-			$module  = GetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_MODULE, $baseId));
-			$info    = GetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_INFO,   $baseId));
+			$htmlID=false;
+			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+			$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+			$installedModules = $moduleManager->GetInstalledModules();
+			if (isset($installedModules["Amis"])) {
+				$moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+				$CategoryIdDataAmis     = $moduleManagerAmis->GetModuleCategoryID('data');
+				$categoryId_SmartMeter        = IPS_GetObjectIdByName('SmartMeter', $CategoryIdDataAmis);		
+				$htmlID = IPS_GetObjectIDByIdent(GUTHABEN_VAR_HTML, $categoryId_SmartMeter);				
+			}					
+			
+			$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung.Webfront');
+			//echo "Base ID für dei Variablen ist $baseId.";
+			$infoID  = IPS_GetObjectIDByIdent(GUTHABEN_VAR_INFO,   $baseId);
+			$action  = GetValue(IPS_GetObjectIDByIdent(GUTHABEN_VAR_ACTION, $baseId));
+			$module  = GetValue(IPS_GetObjectIDByIdent(GUTHABEN_VAR_MODULE, $baseId));
+			$info    = GetValue($infoID);
 
-		?>
-		<BR>
-		<BR>
-		<?php
+			$amisSM = new AmisSmartMeter();
+			$header = $amisSM->writeSmartMeterCsvInfoToHtml("header");
+			
+			$selenium = new SeleniumHandler();
+			
+			
+			$html="";
 			switch($action) {
+				case 'header':
+				    echo "Header ".GetValue($infoID)." ";
+					break;
+				case 'files':
+					$guthabenHandler = new GuthabenHandler();
+					$config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"]["LogWien"]["INPUTCSV"];					// fixer Verweis, schlecht
+					$inputDir = $amisSM->writeSmartMeterCsvInfoToHtml("inputDir");
+				    echo "Files ".$inputDir.GetValue($infoID)."   ".$action."<br>";
+					$archiveOps = new archiveOps();                       
+					$archiveID = $archiveOps->getArchiveID();   
+					$oid = $amisSM->writeSmartMeterCsvInfoToHtml("targetID");
+					$archiveOps->addValuesfromCsv($inputDir.GetValue($infoID),$oid,$config,false);
+					AC_ReAggregateVariable($archiveID,$oid);      
+					$action .= "->done";
+					SetValue(IPS_GetObjectIDByIdent(GUTHABEN_VAR_ACTION, $baseId),$action);
+					break;
 				case 'View1':
 					echo 'Hallo, hier ist View1 mit Temperaturwerten -check<br> ';
 					$Werte=IPS_GetChildrenIDs(22334);
 					foreach ($Werte as $Wert) echo "   ".$Wert."  ".IPS_GetName($Wert)."   ".GetValue($Wert)."<br>";
-					SetValue(35191,"View1 gedrueckt");
+					SetValue($infoID,"View1 gedrueckt");
 					break;
 				case 'View2':
-					echo "Hallo, hier ist View2 mit Bewegunghswerten <br>";
+					echo "Hallo, hier ist View2 mit Bewegungswerten <br>";
 					$Werte=IPS_GetChildrenIDs(22823);
 					foreach ($Werte as $Wert) echo "   ".$Wert."  ".IPS_GetName($Wert)."   ".(GetValue($Wert)?"Ein":"Aus")."<br>";	
-					SetValue(35191,"View2 gedrueckt");
+					SetValue($infoID,"View2 gedrueckt");
 					break;
 				case 'View3':
 					echo "Hallo, hier ist View3 mit den installierten Modulen <br>";					
 					IPSUtils_Include ("IPSModuleManager.class.php", "IPSLibrary::install::IPSModuleManager");
 					$moduleManager = new IPSModuleManager();
 					$modules         = $moduleManager->GetInstalledModules();
-					foreach ($modules as $name => $module) echo "   ".$name."  ".$module."<br>";					
+					foreach ($modules as $name => $module) echo "   ".$name."  ".$module."<br>";
+					SetValue($infoID,"View3 gedrueckt");					
 					break;
 				case 'View4':
 					echo "Hallo, hier ist View4 mit der aktuellen Uhrzeit:<br>";
 					echo 'Es ist heute '.date("D.m.Y H:i:s").' Refresh ?';  					
+					SetValue($infoID,"View4 gedrueckt");
 					break;
 				case 'View5':
-					echo "Hallo, hier ist View5";				
+					echo "Hallo, hier ist View5";
+					SetValue($infoID,"View5 gedrueckt");
 					break;
 				default:
-					trigger_error('Unknown Action '.$action);
+					echo "unknown";
+					//trigger_error('Unknown Action '.$action);
 			}
+			if ($htmlID) {
+				// $html .= $amisSM->writeSmartMeterDataToHtml();
+				// $html .= "<br>";
+				$html .= $amisSM->writeSmartMeterCsvInfoToHtml();					
+				echo $html;	
+			}		
+			echo "$action $module $info";
 		?>
-
+		<p id="demo"></p>
 	</body>
 </html>
 

@@ -42,6 +42,7 @@
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");    
+    IPSUtils_Include ('Guthabensteuerung_Include.inc.php', 'IPSLibrary::app::modules::Guthabensteuerung');
 
 	// max. Scriptlaufzeit definieren
     $dosOps = new dosOps();
@@ -97,6 +98,15 @@
     $webOps = new webOps();                                     // Webfront Operationen
 	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
 
+    if (isset($installedModules["Amis"]))
+        {
+        echo "Amis installiert.\n";
+		$moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+    	$CategoryIdDataAmis     = $moduleManagerAmis->GetModuleCategoryID('data');
+        $categoryId_SmartMeter        = CreateCategory('SmartMeter',        $CategoryIdDataAmis, 80);
+
+        }
+
 /********************************************************
  *
  * INIT, Variablen anlegen
@@ -119,7 +129,24 @@
 
     $categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 20);
     $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 1000);
+    $categoryId_Webfront        = CreateCategory('Webfront',        $CategoryIdData, 1010);
   
+	/* 
+	 * Variablen für die externe user/Webfront Darstellung generieren, abgeleitet vom Webfront des IPSModuleManagerGUI 
+	 * Verwendet den Identifier zum finden der Variablen, Namen nur zufällig gleich
+     * function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false) 
+     */
+
+	$variableIdStatus        = CreateVariableByName($categoryId_Webfront, GUTHABEN_VAR_ACTION,      3 /*String*/, '',  GUTHABEN_VAR_ACTION,  10, '',   'View1');
+	$variableIdModule        = CreateVariableByName($categoryId_Webfront, GUTHABEN_VAR_MODULE,      3 /*String*/, '',  GUTHABEN_VAR_MODULE,  20, '',   '');
+	$variableIdInfo          = CreateVariableByName($categoryId_Webfront, GUTHABEN_VAR_INFO,        3 /*String*/, '',  GUTHABEN_VAR_INFO,    30, '',   '');
+    if (isset($categoryId_SmartMeter))
+        {
+    	$variableIdHTML          = CreateVariableByName($categoryId_SmartMeter, GUTHABEN_VAR_HTML, 3 , '~HTMLBox', GUTHABEN_VAR_HTML, 300, '', '<iframe frameborder="0" width="100%" height="600px"  src="../user/Guthabensteuerung/Guthabensteuerung.php"</iframe>' );
+        echo "Category SmartMeter vorhanden. Html wird erzeugt : $variableIdHTML\n";
+        }
+    SetValue($variableIdStatus,'View1');
+
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 	$categoryId_Nachrichten     = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 100);

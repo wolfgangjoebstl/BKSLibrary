@@ -32,3 +32,41 @@ a:hover {
 p {
 	margin: 10px;
 }
+
+
+/* <link rel="stylesheet" href="css/styles.css"> hier kommt der cuw css Teil, eigene Datei etwas schwieriger */
+
+.cuw-table {
+	background-color: #755555;
+}
+
+.cuw-quick table { 
+	border:solid 5px #006CFF; 
+	margin:0px; 
+	padding:0px; 
+	border-spacing:0px; 
+	border-collapse:collapse; 
+	line-height:22px; 
+	font-size:13px;
+    font-family:Arial, Verdana, Tahoma, Helvetica, sans-serif; 
+	font-weight:400; 
+	text-decoration:none; 
+	background-color:#48acdf; 
+	color:#34182f; 
+	white-space:pre-wrap; 
+}
+.cuw-quick table th { 
+	padding: 2px; 
+	background-color:#98dcff; 
+	border:solid 2px #006CFF; 
+}
+.cuw-quick table td { 
+	padding: 2px; 
+	border:solid 1px #006CFF; 
+}
+
+.cuw-quick a:link, a:visited, a:active, a:hover {
+	color: #112211;
+	text-decoration: none;
+}
+

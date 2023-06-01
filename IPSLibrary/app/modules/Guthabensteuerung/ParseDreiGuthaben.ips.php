@@ -738,7 +738,11 @@
                                     {
                                     echo "===========================================\n";
                                     echo "Read csv File $file in Directory $inputDir:\n";
-                                    $archiveOps->addValuesfromCsv($inputDir.$file,$oid,$entry["INPUTCSV"],false);             // false means add to archive, add values to archive from csv, works for logWien and EVN data according to config above
+                                    $resultAddChg = $archiveOps->addValuesfromCsv($inputDir.$file,$oid,$entry["INPUTCSV"],false);             // false means add to archive, add values to archive from csv, works for logWien and EVN data according to config above
+                                    foreach ($resultAddChg as $type => $entries)
+                                        {
+                                        echo "  $type  : ".count($entries)."\n";            // Chg sind wahrscheinlich Ersatzwerte die nachträglich abgelesen wurden, Wiener netze bezeichnet sie als rechnerisch ermittelt
+                                        }
                                     }
                                 AC_ReAggregateVariable($archiveID,$oid);                                     
                                 }

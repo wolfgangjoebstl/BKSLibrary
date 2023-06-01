@@ -263,6 +263,19 @@
 
         public function getRegisterIDbyConfig($meter,$identifier,$debug=false)
             {
+            if ((is_array($meter))===false)           // Name und nicht aus der MeterConfig
+                {
+                $config=$this->getMeterConfig();
+                foreach ($config as $index => $meterEntry)
+                    {
+                    if ($debug) echo "   checking \"".$meterEntry["NAME"]."\" mit Type ".$meterEntry["TYPE"]."\n";
+                    if ($meterEntry["NAME"]==$meter)
+                        {
+                        $meter = $meterEntry; 
+                        break;
+                        }
+                    }
+                }
             if ($debug) echo "getRegisterIDbyConfig(".json_encode($meter).", $identifier\n";                
             $LeistungID=false;                
             $ID = @IPS_GetObjectIdByName($meter["NAME"], $this->CategoryIdData);   // ID der Kategorie  
@@ -3050,11 +3063,18 @@
 
         /* es gibt ein csv Verzeichnis, die Dateien darin initialisieren
          */
-        function writeSmartMeterCsvInfoToHtml()
+        function writeSmartMeterCsvInfoToHtml($cmd=false,$config=false)
             {
             if ($this->debug) echo "writeSmartMeterCsvInfoToHtml \n";
-            $config = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+            if ($config===false) $config = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"];
             $html = "";
+            //$header = array("Verzeichnis","Filename","Size","FileDate","Erster Eintrag","Letzter Eintrag","Anzahl","Interval","Periode","Analyze");
+            $header = array("Filename","Size","FileDate","Erster Eintrag","Letzter Eintrag","Anzahl","Interval","Periode","Analyze");
+            if (strtoupper($cmd)=="HEADER") 
+                {
+                foreach ($header as $index => $entry) $header[$index]=str_replace(" ", "",$entry);
+                return ($header);            // Header ausgeben, damit Befehle erkannt werden können
+                }
             foreach ($config as $host => $entry)
                 {
                 switch (strtoupper($host))
@@ -3063,17 +3083,40 @@
                         ini_set('memory_limit', '128M');                        // können grosse Dateien werden
                         $logWien = new SeleniumLogWien();
                         $result = $logWien->getInputCsvFiles($entry["INPUTCSV"],$this->debug);              // true Debug
+                        if (strtoupper($cmd)=="FILES") 
+                            {
+                            $files = array();
+                            foreach ($result as $entry) $files[]=str_replace(" ", "",$entry["Filename"]);
+                            return ($files);            // Header ausgeben, damit Befehle erkannt werden können
+                            }
+                        if (strtoupper($cmd)=="INPUTDIR") return ($logWien->getDirInputCsv($entry["INPUTCSV"]));            // Header ausgeben, damit Befehle erkannt werden können
+                        if (strtoupper($cmd)=="TARGETID") return ($logWien->getTargetIdInputCsv($entry["INPUTCSV"]));
                         //print_R($result);
                         $html .= '<div class="cuw-quick">';
                         $html .= '<table>';
+                        if (in_array("Verzeichnis",$header)===false) foreach ($result as $entryHeader) if (isset($entryHeader["Verzeichnis"])) 
+                            { 
+                            $html .= "<tr>";
+                            $html .= "<th>".$entryHeader["Verzeichnis"]."</th>";
+                            $html .= "<th>".$logWien->getTargetIdInputCsv($entry["INPUTCSV"],$this->debug)."</th>";
+                            $html .= "</tr>"; 
+                            break; 
+                            }
                         $html .= "<tr>";
-                        $html .= "<th>Verzeichnis</th><th>Filename</th><th>Size</th><th>FileDate</th><th>Erster Eintrag</th><th>Letzter Eintrag</th><th>Anzahl</th><th>Interval</th><th>Periode</th><th>Analyze</th>";
+                        //$html .= "<th>Verzeichnis</th><th>Filename</th><th>Size</th><th>FileDate</th><th>Erster Eintrag</th><th>Letzter Eintrag</th><th>Anzahl</th><th>Interval</th><th>Periode</th><th>Analyze</th>";
+                        //foreach ($header as $value) $html .= "<th>".$value."</th>";
+                        foreach ($header as $value) 
+                            {
+							$value1 = str_replace(" ", "",$value);
+                            $html .= '<th><a href="#" onClick=trigger_button(\''.$value1.'\',\'Guthabensteuerung\',\'\')>'.$value."</a></th>"; 
+                            }
                         $html .= "</tr>";
                         foreach ($result as $entry) 
                             {
                             $html .= "<tr>";
-                            $html .= "<td>".$entry["Verzeichnis"]."</td>";
-                            $html .= "<td>".$entry["Filename"]."</td>";
+                            if (in_array("Verzeichnis",$header)) $html .= "<td>".$entry["Verzeichnis"]."</td>";
+                            //$html .= "<td>".$entry["Filename"]."</td>";
+                            $html .= '<td><a href="#" onClick=trigger_button(\''.$entry["Filename"].'\',\'Guthabensteuerung\',\'\')>'.$entry["Filename"]."</a></td>";
                             $html .= "<td>".$entry["Size"]."</td>";
                             $html .= "<td>".date("d.m.Y H:i",$entry["DateTime"])."</td>";
                             $html .= "<td>".date("d.m.Y H:i",$entry["FirstDate"])."</td>";

@@ -145,28 +145,10 @@ class SeleniumHandler
         if ($debug) echo "getInputCsvFiles(".json_encode($config)."\n";
         $dosOps = new dosOps();
         $archiveOps = new archiveOps();
-        if (isset($config["InputDir"]))                        //Input Verzeichnis suchen 
-            {
-            $inputDir=$config["InputDir"];
-            $verzeichnis=$dosOps->getWorkDirectory();
-            $inputDir=$dosOps->correctDirName($verzeichnis.$inputDir);          // richtiges Abschlusszeichen / oder \
-            if ($debug) 
-                {
-                echo "Look for Input files in ";
-                $dosOps->writeDirStat($inputDir);                    // Ausgabe eines Verzeichnis   
-                }
-            $files=$dosOps->readdirToArray($inputDir);                                      
-            }
-        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
-        if (isset($config["InputFile"]))
-            {
-            $filename=$config["InputFile"];
-            if ($debug) echo "Input Filename is \"$filename\".\n";
-            $filesToRead = $dosOps->findfiles($files,$filename,false);           // true für Debug
-            if ($filesToRead==false) return (false);
-            }
-        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt       
-        //echo "Files to Read : "; print_r($filesToRead);
+        if ( ($inputDir = $this->getDirInputCsv($config,$debug))===false) return(false);                        //Input Verzeichnis suchen 
+        if ( ($filesToRead = $this->getFilesInputCsv($config,$debug))===false) return (false);
+
+        if ($debug) echo "    Files to Read from : ".json_encode($filesToRead)."<br>";
         $config=$archiveOps->setConfigForAddValues($config);           //parse config file, done twice, also in readFileCsv
         $indexCols=$config["Index"];
         $debug1=false;
@@ -177,7 +159,7 @@ class SeleniumHandler
             {
             $result=array();                                // keine Summe aus allen Dateien machen, sondern Datei für Datei auswerten, daher vorher immer init
             $dateityp=@filetype( $inputDir.$file );     
-            if ($debug) echo "Check $dateityp $inputDir$file \n";
+            if ($debug) echo "    Check $dateityp $inputDir$file \n";
             if ($dateityp == "file")
                 {
                 $index=false;
@@ -189,7 +171,7 @@ class SeleniumHandler
                         }
                     else echo "No Filename as index where we can add information : ".json_encode($entry)."\n";
                     }
-                if ($debug) echo "Filename $file als $index gefunden.\n";               
+                if ($debug) echo "    Filename $file als $index gefunden.\n";               
                 $fileOps = new fileOps($inputDir.$file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
                 //$index=[];                            // erste Zeile als Index übernehmen
                 //$index=["Date","Time","Value"];         // Date und Time werden gemerged
@@ -216,6 +198,69 @@ class SeleniumHandler
                 }
             }
         return ($fileinfo);
+        }
+    /* files anhand der Config bestimmen
+     */
+    function getFilesInputCsv($config,$debug=false)
+        {
+        if ($debug) echo "getFilesInputCsv(".json_encode($config)."\n";
+        $dosOps = new dosOps();
+        if ($inputDir = $this->getDirInputCsv($config,$debug))                        //Input Verzeichnis suchen 
+            {
+            if ($debug) 
+                {
+                echo "Look for Input files in ";
+                $dosOps->writeDirStat($inputDir);                    // Ausgabe eines Verzeichnis   
+                }
+            $files=$dosOps->readdirToArray($inputDir);                                      
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
+        if (isset($config["InputFile"]))
+            {
+            $filename=$config["InputFile"];
+            if ($debug) echo "Input Filename is \"$filename\".\n";
+            $filesToRead = $dosOps->findfiles($files,$filename,false);           // true für Debug
+            if ($filesToRead==false) return (false);
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt       
+        return ($filesToRead);
+        }
+
+    /* Dir anhand der Config bestimmen
+     */
+    function getDirInputCsv($config,$debug=false)
+        {
+        if ($debug) echo "getDirInputCsv(".json_encode($config)."\n";
+        $dosOps = new dosOps();
+        if (isset($config["InputDir"]))                        //Input Verzeichnis suchen 
+            {
+            $inputDir=$config["InputDir"];
+            $verzeichnis=$dosOps->getWorkDirectory();
+            return ($dosOps->correctDirName($verzeichnis.$inputDir));          // richtiges Abschlusszeichen / oder \
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
+        }
+
+    /* TargetId anhand der Config bestimmen
+     */
+    function getTargetIdInputCsv($config,$debug=false)
+        {
+        $oid=false;
+        if ($debug) echo "getTargetIdInputCsv(".json_encode($config)."\n";
+        if (isset($config["Target"]["Name"]))
+            {
+            $targetName = $config["Target"]["Name"];
+            if ($debug) echo "   Get the new register, Modul $modul mit Category $categoryIdResult und Register Name $targetName.\n";
+            $oid = IPS_GetObjectIDByName($targetName,$targetCategory);         // kein Identifier, darf in einer Ebene nicht gleich sein
+            if ($debug) echo "   Use the Register mit OID $oid und Name ".IPS_GetName($oid).".\n";
+            }
+        elseif (isset($config["Target"]["OID"]))
+            {
+            $oid=$config["Target"]["OID"];
+            if ($debug) echo "   Get and use the Register mit OID $oid und Name ".IPS_GetName($oid).".\n";
+            } 
+        else return(false);
+        return($oid);
         }
 
     /* handle ist gespeichert mit Index als webIndex und der Wert dem kurzen Namen, dem iodentifier, Tab

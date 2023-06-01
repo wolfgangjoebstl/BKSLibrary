@@ -67,18 +67,16 @@ if ($_IPS['SENDER']=="WebFront")
         {
         case $buttonsId[0]["ID"]:         // Update
             $webOps->selectButton(0);
-            $html="";
-            $html .= $amisSM->writeSmartMeterDataToHtml();
-            $html .= "<br>";
-            $html .= $amisSM->writeSmartMeterCsvInfoToHtml();
             $statusSmartMeterID = IPS_GetObjectIDByName("SmartMeterStatus",$categoryId_SmartMeter);
-            SetValue($statusSmartMeterID,$html);
+            SetValue($statusSmartMeterID,$amisSM->writeSmartMeterDataToHtml());
             break;
-        case $buttonsId[1]["ID"]:         // Update
+        case $buttonsId[1]["ID"]:         // Calculate
             $webOps->selectButton(1);
             break;
-        case $buttonsId[2]["ID"]:         // Update
+        case $buttonsId[2]["ID"]:         // Sort
             $webOps->selectButton(2);
+            $variableIdInterActiveHTML = IPS_GetObjectIdByName("InterActive",$categoryId_SmartMeter);
+            SetValue($variableIdInterActiveHTML,GetValue($variableIdInterActiveHTML));
             break;
 
         }
@@ -377,7 +375,7 @@ if ($_IPS['SENDER'] == "Execute")
 		echo GetValue($AMISReceiveChar1ID);
 		}
     
-    echo "==================================\n";
+    echo "======================aboutMeterTopology============\n";
 
     function processMeterTopology(&$meterTopology,&$meter,$ident="")
         {
@@ -431,23 +429,23 @@ if ($_IPS['SENDER'] == "Execute")
         return ($resultOverall);
         }
 
-    function printMeterTopology($meterTopology, $meterValues, $ident="")
+    function printMeterTopology($meterTopology, $meterValues, $ident="",$debug=false)
         {
 	    $amis=new Amis();               
         $ipsOps=new ipsOps();
         foreach ($meterTopology as $name => $meter)
             {
-            echo $ident.$name;
+            if ($debug) echo $ident.$name;
             foreach ($meterValues as $line => $entry)
                 {
                 if ( (isset($entry["Information"]["NAME"])) && ($entry["Information"]["NAME"]==$name) ) 
                     {
-                    echo "  found";
-                    $oid=$amis->getWirkleistungID($name);
+                    if ($debug) echo "  found";
+                    $oid=$amis->getWirkleistungID($name,false);              //true für Debug
                     //print_R($regs);
                     if ($oid !== false) 
                         {
-                        echo "    ($oid) ".nf(getValue($oid),"kW");
+                        if ($debug) echo "    ($oid) ".nf(getValue($oid),"kW");
                         $regs=$amis->getRegistersfromOID($name);     // geht auch mit Name
                         if (isset($regs["LeistungID"])) echo "  Homematic (".$regs["LeistungID"]."): ".GetValueIfFormatted($regs["LeistungID"]);
                         //echo " (".$ipsOps->path($oid).") ";
@@ -466,10 +464,10 @@ if ($_IPS['SENDER'] == "Execute")
 
 
     $meterTopology=array(); 
-    if (createMeterTopology($meterTopology,$MeterConfig)===false) createMeterTopology($meterTopology,$MeterConfig);     //zweimal aufrufen       
+    if (createMeterTopology($meterTopology,$MeterConfig,true)===false) createMeterTopology($meterTopology,$MeterConfig);     //zweimal aufrufen       
     //print_R($meterTopology);
     //print_R($meterValues);
-    
+    echo "printMeterTopology:\n";
     printMeterTopology($meterTopology,$meterValues);
 
     echo "\n";

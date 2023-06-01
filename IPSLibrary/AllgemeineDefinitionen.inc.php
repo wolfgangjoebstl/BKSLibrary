@@ -5283,7 +5283,7 @@ class archiveOps
                         {
                         if ( ($debug) && ($countChg<10) )
                             {
-                            echo "Wert mit Timestamp ".$wert[$timeStamp]." hat einen Eintrag unterschiedlich zum Archive : ";
+                            echo "Wert mit Timestamp ".$wert[$timeStamp]." (".date("d.m.Y H:i",$wert[$timeStamp]).") hat einen Eintrag unterschiedlich zum Archive : ";
                             echo $wert["Value"]." != ".$timeStampknown[$wert[$timeStamp]]."\n";
                             }
                         $inputChg[$countChg]["TimeStamp"] = $wert[$timeStamp];
@@ -5327,17 +5327,21 @@ class archiveOps
 
     function addValuesfromCsv($file,$oid,$configInput,$debug=true)
         {
+        $input=false;
         $config=$this->setConfigForAddValues($configInput);           //parse config file, done twice, also in readFileCsv
 
         //$debug1=false;          // debug readFileCsv
         $debug1=$debug;
-        echo "addValuesfromCsv, target für csv Werte ist OID : $oid. Werte aus dem Archiv auslesen. Config is ".json_encode($config)."\n";
-        echo "Aggregation Status für diesen Wert : ".(AC_GetAggregationType($this->archiveID, $oid)?"Zähler":"Standard")."\n";            // bedingung ? erfüllt : nicht erfüllt; 
-        if ($debug1) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
-        echo "Archivierte Werte bearbeiten:\n";
+        if ($debug) 
+            {
+            echo "addValuesfromCsv, target für csv Werte ist OID : $oid. Werte aus dem Archiv auslesen. Config is ".json_encode($config)."\n";
+            echo "Aggregation Status für diesen Wert : ".(AC_GetAggregationType($this->archiveID, $oid)?"Zähler":"Standard")."\n";            // bedingung ? erfüllt : nicht erfüllt; 
+            if ($debug1>1) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
+            echo "Archivierte Werte bearbeiten:\n";
+            }
 
-        $werte = $this->getArchivedValues($oid,$config,2);            // 2 für debug
-        echo "Insgesamt ".count($werte)." Werte aus dem Archive ausgelesen.\n";
+        $werte = $this->getArchivedValues($oid,$config,$debug1);            // 2 für debug
+        if ($debug) echo "Insgesamt ".count($werte)." Werte aus dem Archive ausgelesen.\n";
         $target=array();
         foreach ($werte as $wert) $target[$wert["TimeStamp"]]=$wert["Value"];
         //$this->showValues($werte,$config);
@@ -5352,7 +5356,7 @@ class archiveOps
         if ($debug) echo "readFileCsv mit Config ".json_encode($config)." und Index ".json_encode($index)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
         $status = $fileOps->readFileCsv($result,$config,$index,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
         if ($debug) echo "Insgesamt ".count($result)." Werte aus der Datei $file ausgelesen.\n";
-        if ($debug1) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
+        if ($debug1>1) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";                        
 
         if (is_array($config["Key"]))        // key extrahieren
             {
@@ -5360,7 +5364,7 @@ class archiveOps
             else echo "Config Parameter \"Merge\" id mising. Check Config \"Key\".\n";
             }
         else $key=$config["Key"]; 
-        $input = $this->filterNewData($result,$target,$key);
+        $input = $this->filterNewData($result,$target,$key,$debug);
         
         //$this->showValues($write,$config);
 
@@ -5383,6 +5387,7 @@ class archiveOps
             echo " Zeitraum von ".date("d.m.Y",$writeInput[array_key_first($writeInput)]["TimeStamp"])." bis ".date("d.m.Y",$writeInput[array_key_last($writeInput)]["TimeStamp"])." \n";
             }
         else echo "Debug Mode oder count $count, no add to archive.\n";
+        return ($input);            // as result, also useful in Debug Mode
         }
 
 
