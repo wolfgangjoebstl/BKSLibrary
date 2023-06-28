@@ -4502,13 +4502,17 @@ class BackupIpsymcon extends OperationCenter
 
     public function getAccessToDrive($configuration,$debug)
         {
+        if ($debug) echo "getAccessToDrive with configuration ".json_encode($configuration)." aufgerufen.\n";        
         $backupDrive=$this->dosOps->correctDirName($configuration["Directory"],$debug);
         if (isset($configuration["Drive"]))
             {
             if ($debug) echo "es gibt einen Drive Letter. Backup Konfiguration erweitern.\n";
             $backupDrive = $configuration["Drive"].":".$backupDrive;
             }
-        if (is_dir($backupDrive)) if ($debug) echo "Backup Drive vorhanden.\n";
+        if (is_dir($backupDrive)) 
+            {
+            if ($debug) echo "Backup Drive konfiguriert und vorhanden: $backupDrive\n";
+            }        
         else
             {
             $location = $configuration["Network"];

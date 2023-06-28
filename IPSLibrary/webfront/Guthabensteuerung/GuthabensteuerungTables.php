@@ -168,7 +168,6 @@
 			else echo "htmlID not set";
 			echo "Befehle $action $module $info";
 		?>
-		<button onclick=trigger_button('action', 'module', 'info');>Click Here if you dare</button>
 		<p id="demo"></p>
 	</body>
 </html>

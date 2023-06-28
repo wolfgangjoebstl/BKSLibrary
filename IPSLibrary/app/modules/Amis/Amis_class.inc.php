@@ -3061,36 +3061,56 @@
             return ($html);
             }
 
-        /* es gibt ein csv Verzeichnis, die Dateien darin initialisieren
+        /* es gibt ein csv Verzeichnis, die Dateien darin anzeigen mit den relevanten verfügbaren Informationen
+         * es gibt eine Steuerung mit cmd als array oder string, könnte man auch als class variable machen
+         * folgende Commands werden unterstützt:
+         * Format cmd oder "cmd"=>cmd, "Sort"=sort
+         *      header          header ist fix und ist die erste Zeile ohne ZwischenBlanks
+         *      config          die INPUTCSV Config
+         *      files           die files als array
+         *      inputDir
+         *      TargetIG
+         *
          */
         function writeSmartMeterCsvInfoToHtml($cmd=false,$config=false)
             {
+            $sort=false; $headerIndex=array(); $headerSort=array();
             if ($this->debug) echo "writeSmartMeterCsvInfoToHtml \n";
             if ($config===false) $config = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+            if (is_array($cmd))
+                {
+                if (isset($cmd["Sort"])) $sort = $cmd["Sort"];
+                if (isset($cmd["Cmd"]))  $cmd  = $cmd["Cmd"];
+                else $cmd=false;
+                }
             $html = "";
             //$header = array("Verzeichnis","Filename","Size","FileDate","Erster Eintrag","Letzter Eintrag","Anzahl","Interval","Periode","Analyze");
             $header = array("Filename","Size","FileDate","Erster Eintrag","Letzter Eintrag","Anzahl","Interval","Periode","Analyze");
-            if (strtoupper($cmd)=="HEADER") 
+            foreach ($header as $index => $entry) 
                 {
-                foreach ($header as $index => $entry) $header[$index]=str_replace(" ", "",$entry);
-                return ($header);            // Header ausgeben, damit Befehle erkannt werden können
+                $headerIndex[$index]=str_replace(" ", "",$entry);
+                $headerSort[$headerIndex[$index]] = $entry;
                 }
+            //echo json_encode($headerSort);
+            if (strtoupper($cmd)=="HEADER") return ($headerIndex);            // Header ausgeben, damit Befehle erkannt werden können
             foreach ($config as $host => $entry)
                 {
                 switch (strtoupper($host))
                     {
+                    case "EVN":
                     case "LOGWIEN":       
+                        if (strtoupper($cmd)=="CONFIG") return($entry["INPUTCSV"]);
                         ini_set('memory_limit', '128M');                        // können grosse Dateien werden
-                        $logWien = new SeleniumLogWien();
-                        $result = $logWien->getInputCsvFiles($entry["INPUTCSV"],$this->debug);              // true Debug
+                        $selenium = new SeleniumHandler();                       // gemeinsam für log.Wien und EVN, übergeordnet
+                        $result = $selenium->getInputCsvFiles($entry["INPUTCSV"],$this->debug);              // true Debug
                         if (strtoupper($cmd)=="FILES") 
                             {
                             $files = array();
                             foreach ($result as $entry) $files[]=str_replace(" ", "",$entry["Filename"]);
                             return ($files);            // Header ausgeben, damit Befehle erkannt werden können
                             }
-                        if (strtoupper($cmd)=="INPUTDIR") return ($logWien->getDirInputCsv($entry["INPUTCSV"]));            // Header ausgeben, damit Befehle erkannt werden können
-                        if (strtoupper($cmd)=="TARGETID") return ($logWien->getTargetIdInputCsv($entry["INPUTCSV"]));
+                        if (strtoupper($cmd)=="INPUTDIR") return ($selenium->getDirInputCsv($entry["INPUTCSV"]));            // Header ausgeben, damit Befehle erkannt werden können
+                        if (strtoupper($cmd)=="TARGETID") return ($selenium->getTargetIdInputCsv($entry["INPUTCSV"]));
                         //print_R($result);
                         $html .= '<div class="cuw-quick">';
                         $html .= '<table>';
@@ -3098,7 +3118,8 @@
                             { 
                             $html .= "<tr>";
                             $html .= "<th>".$entryHeader["Verzeichnis"]."</th>";
-                            $html .= "<th>".$logWien->getTargetIdInputCsv($entry["INPUTCSV"],$this->debug)."</th>";
+                            $html .= "<th>".$selenium->getTargetIdInputCsv($entry["INPUTCSV"],$this->debug)."</th>";
+                            if (isset($headerSort[$sort])) $html .= "<th>Sort:".$headerSort[$sort]."</th>";
                             $html .= "</tr>"; 
                             break; 
                             }

@@ -3359,6 +3359,7 @@ class webOps
                 echo $pname." ";
                 }
             echo "\n";
+            echo "Button Data is stored here : ".$this->categoryId."\n";
             }
         $id=0;
         foreach ($this->pnames as $pname)
