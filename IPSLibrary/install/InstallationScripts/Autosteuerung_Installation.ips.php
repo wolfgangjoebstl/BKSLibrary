@@ -173,103 +173,19 @@
 		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
         }    
 
-/*******************************
+/*----------------------------------------------------------------------------------------------------------------------------
  *
- * Variablen Profile Vorbereitung
+ * Variablen Profile für lokale Darstellung anlegen, sind die selben wie bei Remote Access
  *
- ********************************/
+ * Vorteil ist das ein vorhandenes Profil nicht mühsam über Remote angelegt werden muss also gleich hier richtig anlegen
+ *
+ *
+ * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	$name="Bedienung";
-	$pname="AusEinAuto";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-			//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-		IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-		//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt;\n";
-		}
-	$pname="AusEin";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-	   	//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil ".$pname." erstellt;\n";
-		}
-	$pname="AusEin-Boolean";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-	   	//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil ".$pname." erstellt;\n";
-		}
-		
-	$pname="NeinJa";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-	   	//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 0, "Nein", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, 1, "Ja", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil ".$pname." erstellt;\n";
-		}
-	$pname="Null";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-	   	//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 0, "Null", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil ".$pname." erstellt;\n";
-		}
-	$pname="SchlafenAufwachenMunter";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-	   	//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 0, "Schlafen", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, 1, "Aufwachen", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 2, "Munter", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil ".$pname." erstellt;\n";
-		}
-	$pname="AusEinAutoP1P2P3P4";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-	   	//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 6, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x615c6e); //P-Name, Value, Assotiation, Icon, Color             
-  	   	IPS_SetVariableProfileAssociation($pname, 3, "Profil 1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 4, "Profil 2", "", 0x3ec127); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 5, "Profil 3", "", 0x5ea147); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 6, "Profil 4", "", 0x7ea167); //P-Name, Value, Assotiation, Icon, Color
-  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil ".$pname." erstellt;\n";
-		}
-
+    $profileOps = new profileOps();
+	echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
+	$profilname=array("AusEinAuto"=>"update","AusEin"=>"update","AusEin-Boolean"=>"update","NeinJa"=>"update","Null"=>"update","SchlafenAufwachenMunter"=>"update","AusEinAutoP1P2P3P4"=>"update",);
+    $profileOps->synchronizeProfiles($profilname);    
 
 /*******************************
  *

@@ -317,11 +317,12 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             } 
         }
 
-    /* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
-    * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
-    * $rpc ist entweder eine class oder false
-    *
-    */
+    /* DEPRECIATED, change to profileOps class
+     * Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
+     * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
+     * $rpc ist entweder eine class oder false
+     *
+     */
 
     function rpc_CreateVariableProfile($rpc, $pname, $type, $demo=false)
         {
@@ -345,6 +346,8 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             }        
         }
 
+    /* DEPRECIATED, change to profileOps class */
+
     function rpc_SetVariableProfileIcon($rpc, $pname, $icon, $demo=false)
         {
         if ($demo) echo '    IPS_SetVariableProfileIcon ($pname, "'.$icon.'");'."\n";
@@ -354,6 +357,8 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             else IPS_SetVariableProfileIcon ($pname, $icon);
             }        
         }
+
+    /* DEPRECIATED, change to profileOps class */
 
     function rpc_SetVariableProfileDigits($rpc, $pname, $digits, $demo=false)
         {
@@ -365,6 +370,8 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             }
         }
 
+    /* DEPRECIATED, change to profileOps class */
+
     function rpc_SetVariableProfileText($rpc, $pname, $prefix, $suffix, $demo=false)
         {
         if ($demo) echo '    IPS_SetVariableProfileText ($pname, "'.$master["Prefix"].'","'.$master["Suffix"]."\");\n";
@@ -374,6 +381,8 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             else IPS_SetVariableProfileText ($pname, $prefix,$suffix);
             }
         }
+
+    /* DEPRECIATED, change to profileOps class */
 
     function rpc_SetVariableProfileValues($rpc, $pname, $minValue, $maxValue, $stepSize, $demo=false)
         {
@@ -505,7 +514,8 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             }
         }
 
-    /* alle Profile manuell erzeugen, geht auch lokal oder remote, keine Update Funktion, DEPRECIATED, look createKnownProfilesByName in profileOps class
+    /* DEPRECIATED, look createKnownProfilesByName in profileOps class
+     * alle Profile manuell erzeugen, geht auch lokal oder remote, keine Update Funktion, 
      * die Profile haben alle vorgegebene Namen und werden hier zentral ausschliesslich nach dem erkannten Namen erzeugt
      *
      *      Temperatur            °C
@@ -2869,18 +2879,74 @@ class profileOps
         if (strtoupper($server) != "LOCAL") 
             {
             $this->rpc = new JSONRPC($server);
-            $remote=true;
             }
         else $this->rpc=false;
         }
 
-    /* Profile lokal oder Remote auslesen
+    /* Profile lokal oder Remote auslesen, das config array auslesen
      */
     function GetVariableProfile($pname)
         {
         if ($this->rpc) $profile=$this->rpc->IPS_GetVariableProfile ($pname);
         else $profile=IPS_GetVariableProfile ($pname);
         return ($profile);
+        }
+
+    /* Profile lokal oder Remote auslesen, das config array auslesen
+     */
+    function VariableProfileExists($pname)
+        {
+        if ($this->rpc) return $this->rpc->IPS_VariableProfileExists($pname);
+        else return IPS_VariableProfileExists($pname);
+        }
+
+    /* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
+    * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
+    * $rpc ist entweder eine class oder false
+    *
+    */
+
+    function CreateVariableProfile($pname, $type)
+        {
+        if ($this->VariableProfileExists($pname))
+            {
+            $targetTyp=$this->GetVariableProfile($pname)["ProfileType"];
+            if ($targetTyp != $type)
+                {
+                echo "profileOps::CreateVariableProfile,Profile has different type, requested $type, existing $targetTyp.\n";
+                return (false);
+                }
+            }
+        else 
+            {
+            if ($this->rpc) $this->rpc->IPS_CreateVariableProfile ($pname, $type);
+            else IPS_CreateVariableProfile ($pname, $type);                                             // wird immer erstellt, es könnte sich ja auch der Typ geändert haben
+            }
+        }
+
+
+    function SetVariableProfileIcon($pname, $icon)
+        {
+        if ($this->rpc) $this->rpc->IPS_SetVariableProfileIcon ($pname, $icon);
+        else IPS_SetVariableProfileIcon ($pname, $icon);
+        }
+
+    function SetVariableProfileDigits($pname, $digits)
+        {
+        if ($this->rpc) $this->rpc->IPS_SetVariableProfileDigits ($pname, $digits);
+        else IPS_SetVariableProfileDigits ($pname, $digits);
+        }
+
+    function SetVariableProfileText($pname, $prefix, $suffix)
+        {
+        if ($this->rpc) $this->rpc->IPS_SetVariableProfileText ($pname, $prefix,$suffix);
+        else IPS_SetVariableProfileText ($pname, $prefix,$suffix);
+        }
+
+    function SetVariableProfileValues($pname, $minValue, $maxValue, $stepSize)
+        {
+        if ($this->rpc) $this->rpc->IPS_SetVariableProfileValues ($pname, $minValue,$maxValue,$stepSize);
+        else IPS_SetVariableProfileValues ($pname, $minValue,$maxValue,$stepSize);
         }
 
     /* Profile Associations lokal oder Remote auslesen
@@ -2900,7 +2966,8 @@ class profileOps
         return ($status);
         }
 
-    /* Update Profile Associations lokal oder Remote
+    /* profileOps::UpdateVariableProfileAssociations
+     * Update Profile Associations lokal oder Remote
      */
     function UpdateVariableProfileAssociations($pname, $profile=array())
         {
@@ -2926,7 +2993,8 @@ class profileOps
             }
         }
 
-    /* Delete Profile Association Position pos lokal oder Remote
+    /* profileOps::DeleteVariableProfileAssociation
+     * Delete Profile Association Position pos lokal oder Remote
      * set    IPS_SetVariableProfileAssociation (string $ProfileName, variant $Value, string $Name, string $Icon, int $Color) 
      * delete IPS_SetVariableProfileAssociation (string $ProfileName, variant $Value, "", "", -1);
      *
@@ -2939,7 +3007,8 @@ class profileOps
         return ($status);
         }
 
-    /* alle Profile manuell erzeugen, geht auch lokal oder remote, keine Update Funktion, DEPRECIATED, look createKnownProfilesByName in profileOps class
+    /* profileOps::createKnownProfilesByName , Aufruf von synchronizeProfiles in zB CustomComponent_Installation verwendet
+     * alle Profile manuell erzeugen, geht auch lokal oder remote, entscheidet ob ein Servername mitgegeben wir
      * die Profile haben alle vorgegebene Namen und werden hier zentral ausschliesslich nach dem erkannten Namen erzeugt
      *
      *      Temperatur            °C
@@ -2959,165 +3028,162 @@ class profileOps
 
 	function createKnownProfilesByName($pname,$server="LOCAL")
         {
-        if (($this->rpc === false) && (strtoupper($server) != "LOCAL")) 
-            {
-            $rpc = new JSONRPC($server);
-            $this->rpc=$rpc;
-            $remote=true;
-            }
-        else $rpc=false;
-        echo "  Profil ".$pname." existiert nicht, oder Aufforderung zum update.\n";
+        echo "      createKnownProfilesByName, Profil ".$pname." existiert nicht, oder Aufforderung zum update. ";
+        if ($this->rpc) echo "Durchführung remote für Server ".$this->rpc."\n";
+        else echo "Durchführung lokal.\n";
         switch ($pname)
             {
             case "Temperatur":
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-                    $rpc->IPS_SetVariableProfileText($pname,'',' °C');
-                    }
-                else 
-                    {
-                    IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-                    IPS_SetVariableProfileText($pname,'',' °C');
-                    }
+                $this->CreateVariableProfile($pname, 2);
+                $this->SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+                $this->SetVariableProfileText($pname,'',' °C');
                 break;
             case "TemperaturSet":
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileIcon ($pname, "Temperature");
-                    $rpc->IPS_SetVariableProfileText($pname,'',' °C');
-                    $rpc->IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
-                    $rpc->IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileIcon ($pname, "Temperature");
-                    IPS_SetVariableProfileText($pname,'',' °C');
-                    IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
-                    IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
-                    }
+                $this->CreateVariableProfile($pname, 2);
+                $this->SetVariableProfileIcon ($pname, "Temperature");
+                $this->SetVariableProfileText($pname,'',' °C');
+                $this->SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
+                $this->SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
                 break;
             case "Humidity";
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                    $rpc->IPS_SetVariableProfileText($pname,'',' %');
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                    IPS_SetVariableProfileText($pname,'',' %');                
-                    }
+                $this->CreateVariableProfile($pname, 2);
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileText($pname,'',' %');
                 break;
             case "Switch";
-                rpc_CreateVariableProfile($rpc, $pname, 0);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
-                    IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
-                    }
+                $this->CreateVariableProfile($pname, 0);
+                $this->SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
+                $this->SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
                 break;
             case "Contact";
-                rpc_CreateVariableProfile($rpc, $pname, 1);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileIcon ($pname, "Window");
-                    $rpc->IPS_SetVariableProfileText ($pname, "","");
-                    $rpc->IPS_SetVariableProfileValues ($pname, 0,2,0);
-                    $rpc->IPS_SetVariableProfileDigits ($tpname, 0);                    
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileIcon ($pname, "Window");
-                    IPS_SetVariableProfileText ($pname, "","");
-                    IPS_SetVariableProfileValues ($pname, 0,2,0);
-                    IPS_SetVariableProfileDigits ($tpname, 0);                    
-                    IPS_SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
-                    IPS_SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
-                    IPS_SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
-
-                    //IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-                    //IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
-                    //IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
-                    }
+                $this->CreateVariableProfile($pname, 0);
+                $this->SetVariableProfileIcon ($pname, "Alert");
+                $this->SetVariableProfileText ($pname, "","");
+                $this->SetVariableProfileValues ($pname, 0,1,0);
+                $this->SetVariableProfileDigits ($pname, 0);                    
+                $this->SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
+                $this->SetVariableProfileAssociation($pname, 1, "Geöffnet", "", 65280);                    
+                break;
+            case "Window";
+                $this->CreateVariableProfile($pname, 1);
+                $this->SetVariableProfileIcon ($pname, "Window");
+                $this->SetVariableProfileText ($pname, "","");
+                $this->SetVariableProfileValues ($pname, 0,2,0);
+                $this->SetVariableProfileDigits ($pname, 0);                    
+                $this->SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
+                $this->SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
+                $this->SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
                 break;
             case "Button";
-                rpc_CreateVariableProfile($rpc, $pname, 0);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
-                    IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);                
-                    }
+                $this->CreateVariableProfile($pname, 0);
+                $this->SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
+                $this->SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
                 break;
             case "Motion";
-                rpc_CreateVariableProfile($rpc, $pname, 0);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
-                    IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);                
-                    }
+                $this->CreateVariableProfile($pname, 0);
+                $this->SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
+                $this->SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
                 break;
             case "Pressure";
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                IPS_SetVariableProfileText($pname,'',' mbar');
-                IPS_SetVariableProfileIcon($pname,"Gauge");
+                $this->CreateVariableProfile($pname, 2);
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileText($pname,'',' mbar');
+                $this->SetVariableProfileIcon($pname,"Gauge");
                 break;      
             case "CO2";
-                rpc_CreateVariableProfile($rpc, $pname, 1);
-                IPS_SetVariableProfileText($pname,'',' ppm');
-                IPS_SetVariableProfileIcon($pname,"Gauge");
-                IPS_SetVariableProfileValues ($pname, 250, 2000, 0);
+                $this->CreateVariableProfile($pname, 1);
+                $this->SetVariableProfileText($pname,'',' ppm');
+                $this->SetVariableProfileIcon($pname,"Gauge");
+                $this->SetVariableProfileValues ($pname, 250, 2000, 0);
                 break;                                    
             case "mode.HM";
-                rpc_CreateVariableProfile($rpc, $pname, 1);
-                IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
-                IPS_SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-                IPS_SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-                IPS_SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                IPS_SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                IPS_SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
+                $this->CreateVariableProfile($pname, 1);
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
                 //echo "Profil ".$pname." erstellt;\n";
                 break;		
             case "Rainfall":
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                IPS_SetVariableProfileIcon ($pname, "Rainfall");
-                IPS_SetVariableProfileText ($pname, ""," mm");
+                $this->CreateVariableProfile($pname, 2);
+                $this->SetVariableProfileIcon ($pname, "Rainfall");
+                $this->SetVariableProfileText ($pname, ""," mm");
                 //IPS_SetVariableProfileValues ($pname, 0,0,0);
-                IPS_SetVariableProfileDigits ($tpname, 1);			
+                $this->SetVariableProfileDigits ($tpname, 1);			
                 break;
             case "Euro":
-        		rpc_CreateVariableProfile($rpc, $pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		        IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-		        IPS_SetVariableProfileText($pname,'','Euro');
+        		$this->CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		        $this->SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+		        $this->SetVariableProfileText($pname,'','Euro');
                 break;
             case "MByte":
-        		rpc_CreateVariableProfile($rpc, $pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		        IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-		        IPS_SetVariableProfileText($pname,'',' MByte');
+        		$this->CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		        $this->SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+		        $this->SetVariableProfileText($pname,'',' MByte');
+                break;
+	        case "AusEinAuto":
+                $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+                break;
+	        case "AusEin":
+                $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                break;
+	        case "AusEin-Boolean":
+                $this->CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                break;
+	        case "NeinJa":
+                $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 0, "Nein", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 1, "Ja", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+  	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+                break;
+	        case "Null":
+                $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 0, "Null", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+                break;
+	        case "SchlafenAufwachenMunter":
+                $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 0, "Schlafen", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 1, "Aufwachen", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 2, "Munter", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+  	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+                break;
+	        case "AusEinAutoP1P2P3P4":
+                $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 6, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 2, "Auto", "", 0x615c6e); //P-Name, Value, Assotiation, Icon, Color             
+                $this->SetVariableProfileAssociation($pname, 3, "Profil 1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 4, "Profil 2", "", 0x3ec127); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 5, "Profil 3", "", 0x5ea147); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 6, "Profil 4", "", 0x7ea167); //P-Name, Value, Assotiation, Icon, Color
+  	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
                 break;
             default:
                 break;
@@ -3125,7 +3191,8 @@ class profileOps
         }
 
 
-    /* die vollautomatiosche Function zum synchronisieren von Profilen, lokal oder remote 
+    /* profileOps::synchronizeProfiles, in zB CustomComponent_Installation verwendet
+     * die vollautomatische Function zum synchronisieren von Profilen, lokal oder remote 
      * wenn ein Profil aus Defaultwerten erzeugt werden soll (new) wird createKnownProfilesByName aufgerufen
      * verwendet in CustomComponents
      *
@@ -3148,44 +3215,140 @@ class profileOps
      *
      */
 
-    function synchronizeProfiles($server,$profilname,$debug=false)
+    function synchronizeProfiles($profilname,$debug=false)
         {
+        if ($debug) echo "profileOps::synchronizeProfiles aufgerufen für folgende Profile: ".json_encode($profilname)."\n";
         foreach ($profilname as $pname => $masterName)
             {
-            if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
+            if (( ($this->VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
                 {
-                if ($debug) echo "Profile existiert nicht oder neu anlegen/update,\n";
+                if ($debug) 
+                    {
+                    if ( ($this->VariableProfileExists($pname) == false) && ($masterName=="new") ) echo "   Profil $pname existiert nicht und Aufforderung zum neu anlegen.\n";
+                    else echo "   Profil $pname update.\n";
+                    }
                 $this->createKnownProfilesByName($pname);               //lokal
                 }
-            elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
-            elseif (IPS_VariableProfileExists($masterName) == false)
+            elseif ($masterName == "new") echo "   Profil ".$pname." existiert bereits, nichts weiter machen.\n";          // wenn das Profil existiert kommt man hier vorbei
+            elseif (IPS_VariableProfileExists($masterName) == false)            
                 {
-                if (IPS_VariableProfileExists($pname)) 
+                if ($this>VariableProfileExists($pname)) 
                     {
                     $target=IPS_GetVariableProfile ($pname);
                     $master=array();
                     $masterName="new";                              // nicht vorhanden braucht auch einen Namen
                     $targetName=$target["ProfileName"];
-                    compareProfiles($server,$master, $target,$masterName,$targetName,$debug);      // nur die lokalen Profile anpassem, geht auch Remote
+                    $this->compareProfiles($master, $target,$masterName,$targetName,$debug);      // nur die lokalen Profile anpassem, geht auch Remote
                     }
                 else 
                     {
-                    if ($debug) echo "Zu übernehmendes Profil $masterName existiert nicht, vorbereitetes Profil nehmen.\n";
-                    $this->createKnownProfilesByName($pname,$server);
+                    if ($debug) echo "Zu übernehmendes Profil $masterName existiert nicht, anstelle vorbereitetes default Profil nehmen.\n";
+                    $this->createKnownProfilesByName($pname);
                     }
                 }
             else    
                 {
-                if ($debug) echo "  Profil ".$pname." existiert bereits und erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
+                if ($debug) echo "   Profil ".$pname." existiert bereits und erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
                 $master=IPS_GetVariableProfile ($masterName);                       // mastername ist die Quelle zum Synchronisieren
-                $target=IPS_GetVariableProfile ($pname);                            // pname wird synchronisiert oder upgedatet
+                $target=$this->GetVariableProfile ($pname);                            // pname wird synchronisiert oder upgedatet
                 $masterName=$master["ProfileName"];         // sonst nicht rekursiv möglich
                 $targetName=$target["ProfileName"];
-                compareProfiles($server,$master, $target,$masterName,$targetName,false, $debug);      // nur die lokalen Profile anpassem, geht auch Remote, false kein demo mode 
+                $this->compareProfiles($master, $target,$masterName,$targetName,$debug);      // nur die lokalen Profile anpassem, geht auch Remote, false kein demo mode 
                 }
             } 
         }
 
+    /* Anlegen und Synchronisieren von Profilen, Aufruf geht auch rekursiv
+     * soll auch gleich Remote gehen
+     * verwendet in CustomComponent und RemoteAccess und hier in synchronize Profiles
+     *
+     *  server      Remote Server oder Local/false, damit wird rpc false, sonst der Server Zugriffsname
+     *  master      kann auch ein leeres array sien
+     *
+     */
+
+    function compareProfiles($master,$target,$masterName,$targetName, $debug=false)
+        {
+        $prefix=true; $minvalue=true;
+        foreach ($master as $index => $entry)           // kann ach ein leeres array sein, dann wird hier übersprungen und nix gemacht
+            {
+            if (is_array($master[$index])) 
+                {
+                switch ($index)
+                    {
+                    case "Associations":
+                        if ( (isset($target[$index])) === false) 
+                            {
+                            $target[$index]=array();
+                            echo "$index ist ein Array. Im Target neu anlegen. ".sizeof($master[$index])." != ".sizeof($target[$index])."\n";
+                            }
+                        if ( (sizeof($master[$index])) != (sizeof($target[$index])) ) 
+                            {
+                            if (sizeof($target[$index])==0)
+                                {
+                                //echo "Associations im Target neu anlegen.\n";
+                                //print_r($master[$index]);
+                                foreach ($master[$index] as $entry)
+                                    {
+                                    $this->SetVariableProfileAssociation($targetName, $entry["Value"], $entry["Name"], $entry["Icon"], $entry["Color"]);
+                                    }
+                                }
+                            else echo "Associations nicht gleich gross\n";
+                            }
+                        break;
+                    default:
+                        echo "sub array $index\n";
+                        if (isset($target[$index])) $this->compareProfiles($master[$index], $target[$index],$masterName,$targetName, $debug);
+                        else echo "Target Index not available\n";
+                        break;
+                    }
+                }
+            elseif ( ((isset($target[$index])) === false) || ( (isset($target[$index])) && ($master[$index] != $target[$index]) ))      //entweder gibts den target Index gar nicht oder er ist nicht gleich dem master
+                {
+                if ( (isset($target["ProfileType"])) === false)
+                    {
+                    //echo "$index: Profil noch nicht vorhanden. Als ersten Befehl CreateVariableProfil durchführen.\n";
+                    $this->CreateVariableProfile($targetName, $master["ProfileType"], $demo);
+                    $target["ProfileName"]=$targetName;
+                    $target["ProfileType"]=$master["ProfileType"];   
+                    }
+                switch ($index)
+                    {
+                    case "ProfileName":
+                    case "ProfileType":
+                        //echo "Variable bereits mit $targetName und Typ ".$master["ProfileType"]." erstellt.\n";
+                        break;
+                    case "MinValue":
+                    case "MaxValue":
+                    case "StepSize":
+                        if ($minvalue)
+                            {
+                            $this->SetVariableProfileValues($targetName, $master["MinValue"], $master["MaxValue"], $master["StepSize"], $demo);
+                            $minvalue=false;
+                            }
+                        break;
+                    case "Digits":
+                        $this->SetVariableProfileDigits($targetName, $master["Digits"],$demo);
+                        break;
+                    case "Icon":
+                        $this->SetVariableProfileIcon($targetName, $master["Icon"], $demo);
+                        break;
+                    case "Prefix":
+                    case "Suffix":
+                        if ($prefix)
+                            {
+                            $this->SetVariableProfileText ($targetName, $master["Prefix"], $master["Suffix"]);
+                            $prefix=false;
+                            }
+                        break;
+                    default:
+                        if (isset($target[$index])) echo "    ".str_pad($index,20)."  $master[$index]  $target[$index] \n";
+                        else echo "    ".str_pad($index,20)."  $master[$index]  $targetName Index $index unknown \n";
+                        break;
+                    }
+                }
+            }
+        }
 
     }
 
@@ -11398,7 +11561,13 @@ class ComponentHandling
                 $indexNameExt="_Rain";								/* gemeinsam mit den CO2 Werten abspeichern */                
                 $profile="Rainfall";        /* profile am Remote Server, ähnlich wie für Mirror Register, umgestellt auf gemeinsames Custom Profile */
                 $update="OnUpdate";
-                break;                              
+                break;           
+            case "KEYSTATE":
+                // kein detectmovement, false ist default
+                $variabletyp=1; 		/* Integer */	
+                $index="PowerLock";
+                //$profile="Powerlock";            
+                break;                   
             default:	
                 $variabletyp=0; 		/* Boolean */	
                 echo "************AllgemeineDefinitionen::addOnKeyName, kenne ".strtoupper($keyName["KEY"])." nicht.\n";

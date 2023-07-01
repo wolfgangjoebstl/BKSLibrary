@@ -8194,6 +8194,8 @@ class DeviceManagement
      * CURRENT                                      Energiemessgerät
      * CURRENT_ILLUMINATION                         Helligkeitssensor
      * RAIN_COUNTER                                 Wetterstation
+     * CURRENT_PASSAGE_DIRECTION                    Durchgangserkennung, zählt und erkennt Richtung
+     * ACTIVITY_STATE                               Tuerschloss
      *
      * zur Auswertung werden die Namen der Childrens sortiert und gleiche Namen entfernt
      *
@@ -8212,6 +8214,7 @@ class DeviceManagement
      *  TYPE_MOTION                 => MOTION
      *  TYPE_RSSI                   => RSSI
      *  TYPE_METER_POWER
+     *  TYPE_POWERLOCK
      *
      * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
      *   false   die aktuelle Kategorisierung
@@ -8474,8 +8477,8 @@ class DeviceManagement
                 $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
                 }
             }
-            /*-------------Durchgangssensor ["CURRENT_PASSAGE_DIRECTION","LAST_PASSAGE_DIRECTION","PASSAGE_COUNTER_OVERFLOW","PASSAGE_COUNTER_VALUE"]-------*/
-        elseif  (array_search("CURRENT_PASSAGE_DIRECTION",$registerNew) !== false)    /* neue HomematicIP Wetterstation  */
+        /*-------------Durchgangssensor ["CURRENT_PASSAGE_DIRECTION","LAST_PASSAGE_DIRECTION","PASSAGE_COUNTER_OVERFLOW","PASSAGE_COUNTER_VALUE"]-------*/
+        elseif  (array_search("CURRENT_PASSAGE_DIRECTION",$registerNew) !== false)    /* neue HomematicIP Durchgangserkennung  */
             {
             $result[0] = "Durchgangsmelder";
             $result[1]="IP Funk Durchgangsmelder";              // HomematicIP 
@@ -8485,6 +8488,17 @@ class DeviceManagement
             $resultReg[$i]["COUNTER"]="PASSAGE_COUNTER_VALUE";
             $resultReg[$i]["DIRECTION"]="CURRENT_PASSAGE_DIRECTION";
             $resultReg[$i]["LAST_DIRECTION"]="LAST_PASSAGE_DIRECTION";
+            }                      
+        /*-------Tuerschloss  ["ACTIVITY_STATE","LOCK_STATE","PROCESS","SECTION","SECTION_STATUS","WP_OPTIONS"]--------------------------------*/
+        elseif  (array_search("ACTIVITY_STATE",$registerNew) !== false)    /* HomematicIP Tuerschloss, Aktuator WP_OPTIONS 0,1,2 Status LOCK_STATE  */
+            {
+            $result[0] = "Tuerschloss";
+            $result[1]="IP Funk Tuerschloss";              // HomematicIP 
+
+            $i=0;                                               // kann auch weitere Funktionen beinhalten
+            $resultType[$i]="TYPE_POWERLOCK";
+            $resultReg[$i]["LOCKSTATE"]="LOCK_STATE";
+            $resultReg[$i]["KEYSTATE"]="WP_OPTIONS";                // Aktuator
             }                      
         else 
             {
@@ -8600,6 +8614,9 @@ class DeviceManagement
      *      1                   eine deutsprachige Beschreibung ausgegeben.
      *      2                   eine Matrix,  Index ist Port, nur Port mit Wert 1 oder größer wird übernommen, 0 generell ignoriert
      *
+     * Neue Geräte mit dem Device Type der in der Fehlermeldung angegeben wurde hinzufügen. Neue Kategorie nur anlegen wenn keine vergleichbare Funktion gefunden wurde.
+     * HomematicDeviceType muss eventuell auch angepasst werden
+     *
      ***********************************************/
 	 		
 	function getHomematicHMDevice($instanz, $output=false, $debug=false)
@@ -8618,6 +8635,7 @@ class DeviceManagement
                     {
                     case "HM-PB-6-WM55":
                     case "HmIP-WRC6":
+                    case "HmIP-FCI6":                               // der mit den Kontakten, hat auch andere Darstellung der einzelnen Taster : PRESS_LONG_START, PRESS_LONG_RELEASE, STATE
                         $result="Taster 6-fach";
                         $matrix=[0,2,2,2,2,2,2,1];                        
                         break;
@@ -8755,6 +8773,11 @@ class DeviceManagement
                         $matrix=[0,2,1,1,1,1,1,1];      // Standard Matrix, Infos in Kanal 1
                         break;                        
 
+                    case "HMIP-DLD":
+                        $result="Tuerschloss";                  
+                        $matrix=[0,2,1,1,1,1,1,1];      // Standard Matrix, Infos in Kanal 1
+                        break;
+                        
                     case "-":
                         echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz))." Gerät wurde gelöscht. Bitte auch manuell in IP Symcon loeschen.\n";
                         return(false);          // nicht hier weiter machen

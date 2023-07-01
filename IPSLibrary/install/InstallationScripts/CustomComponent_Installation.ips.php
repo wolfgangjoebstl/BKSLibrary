@@ -380,8 +380,9 @@
 
     $profileOps = new profileOps();
 	echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
-	$profilname=array("Temperatur"=>"new","TemperaturSet"=>"new","Humidity"=>"new","Switch"=>"new","Button"=>"new","Contact"=>"new","Motion"=>"new","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"new");
-    $profileOps->synchronizeProfiles("local",$profilname);
+	//$profilname=array("Temperatur"=>"new","TemperaturSet"=>"new","Humidity"=>"new","Switch"=>"new","Button"=>"new","Contact"=>"new","Motion"=>"new","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"new");
+	$profilname=array("Temperatur"=>"update","TemperaturSet"=>"update","Humidity"=>"update","Switch"=>"update","Button"=>"update","Contact"=>"update","Window"=>"update","Motion"=>"update","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"update");
+    $profileOps->synchronizeProfiles($profilname);
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
