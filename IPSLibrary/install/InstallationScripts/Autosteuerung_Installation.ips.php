@@ -183,9 +183,57 @@
  * ----------------------------------------------------------------------------------------------------------------------------*/
 
     $profileOps = new profileOps();
-	echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
+	echo "Darstellung der Variablenprofile im lokalem Bereich für Autosteuerungsfunktionen, wenn fehlt anlegen:\n";
 	$profilname=array("AusEinAuto"=>"update","AusEin"=>"update","AusEin-Boolean"=>"update","NeinJa"=>"update","Null"=>"update","SchlafenAufwachenMunter"=>"update","AusEinAutoP1P2P3P4"=>"update",);
     $profileOps->synchronizeProfiles($profilname);    
+
+
+/*----------------------------------------------------------------------------------------------------------------------------
+ * spezielle Sicherheitsfunktionen bearbeiten
+ * nur wenn PowerLock eingesetzt wird, danach suchen und ein paar kosmetische Tätigkeiten ansetzen
+ */
+
+    $profileOps = new profileOps();         // local
+	echo "Darstellung der Variablenprofile für PowerLock im lokalem Bereich, wenn fehlt anlegen:\n";
+	$profilname=array("PowerLockBefehl"=>"update","PowerLockStatus"=>"update", );
+    $profileOps->synchronizeProfiles($profilname,true);             //true für Debug
+
+    $componentHandling = new ComponentHandling();
+    $DeviceManager     = new DeviceManagement();
+
+    echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+    IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+    $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
+
+    // Aktuator
+    $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",true);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+    $countPowerLock=(sizeof($resultKey));				
+    $resulttext="Alle Tuerschloesser Aktuatoren ausgeben ($countPowerLock):\n";            
+    $resulttext.=$DeviceManager->writeCheckStatus($resultKey);          
+    echo $resulttext;
+    //print_r($resultKey);
+    foreach ($resultKey as $homematic=>$entry)
+        {
+        IPS_SetVariableCustomProfile($entry["COID"],"PowerLockBefehl");    
+        }
+
+    // Status
+    $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",true);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+    $countPowerLock+=(sizeof($resultState));				
+    $resulttext="Alle Tuerschloesser Stati ausgeben ($countPowerLock):\n";            
+    $resulttext.=$DeviceManager->writeCheckStatus($resultState);          
+    echo $resulttext;
+    //print_r($resultState);
+    foreach ($resultState as $homematic=>$entry)
+        {
+        IPS_SetVariableCustomProfile($entry["COID"],"PowerLockStatus");    
+        }
+
+    if ($countPowerLock>0)
+        {
+        echo "Es wird ein PowerLock von Homematic verwendet. Die Darstellung erfolgt unter Alarmanlage/Tab Sicherheit:\n";
+
+        }
 
 /*******************************
  *
@@ -220,7 +268,7 @@
      *      Nachrichtenverlauf-Autosteuerung
      *      Nachrichtenverlauf-Wichtig
      *      Nachrichtenverlauf-AnwesenheitErkennung
-     *
+     *      Nachrichtenverlauf-Sicherheit
      */
     $categoryId_NachrichtenAuto    = CreateCategory('Nachrichtenverlauf-Autosteuerung',   $CategoryIdData, 20);
 	$inputAuto = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenAuto, 0, "",null,null,""  );   /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
@@ -233,6 +281,10 @@
     $categoryId_NachrichtenAnwe    = CreateCategory('Nachrichtenverlauf-AnwesenheitErkennung',   $CategoryIdData, 20);
     $inputAnwe = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenAnwe, 0, "",null,null,""  );     /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
     $log_Anwesenheitserkennung=new Logging($setup["LogDirectory"]."Anwesenheitserkennung.csv",$inputAnwe,IPS_GetName(0).";Anwesenheitserkennung;");
+
+    $categoryId_NachrichtenSicherheit    = CreateCategory('Nachrichtenverlauf-Sicherheit',   $CategoryIdData, 20);
+    $inputSicherheit = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenSicherheit, 0, "",null,null,""  );     /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
+    $log_AlarmSicherheit=new Logging($setup["LogDirectory"]."AlarmSicherheit.csv",$inputSicherheit,IPS_GetName(0).";Sicherheit;");
 
 	$categoryId_Schaltbefehle = CreateCategory('Schaltbefehle-Anwesenheitssimulation',   $CategoryIdData, 20);
     $inputSchalt=CreateVariable("Schaltbefehle",3,$categoryId_Schaltbefehle, 0,'',null,'');
@@ -267,7 +319,24 @@
 		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
         $webfront_links[$AutosteuerungID]["OID_R"]=$inputAuto;              // Default Nachrichtenspeicher
 
-		/* Spezialfunktionen hier abarbeiten, default am Ende des Switches */
+		/* Spezialfunktionen hier abarbeiten, default am Ende des Switches 
+         * wenn OWNTAB in der Config den richtigen Namen hat, gibt es einen eigenen Tab, sonst alle Variablen gemeinsam geordnet als Gruppen in Autosteuerung 
+         *      Anwesenheitserkennung       OWNTAB=>Erkennung
+         *      Alarmanlage                 OWNTAB=>Sicherheit
+         *      GutenMorgenWecker
+         *      VentilatorSteuerung
+         *      AnwesenheitsSimulation       OWNTAB->Schaltbefehle
+         *      StromHeizung                 OWNTAB=>Wochenplan
+         *      GartenSteuerung             OWNTAB=>Gartensteuerung
+         *      Alexa                       OWNTAB=>Alexa
+         *      Private
+         *      Logging
+         *      Control
+         *      MonitorMode
+         *      SientMode
+         *      Denon
+         *
+         */
     	switch (strtoupper($AutoSetSwitch["NAME"]))
 			{
 			case "ANWESENHEITSERKENNUNG":
@@ -327,6 +396,8 @@
 				break;
 			case "ALARMANLAGE":
 				echo "   Variablen für Alarmanlage in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Sicherheit'));  
+
 				$StatusAnwesendID=CreateVariable("StatusAlarmanlage",0, $AutosteuerungID,0,"~Presence",null,null,"");
 				$StatusAnwesendZuletztID=CreateVariable("StatusAlarmanlageZuletzt",0, $AutosteuerungID,0,"~Presence",null,null,"");
 				IPS_SetHidden($StatusAnwesendZuletztID,true);
@@ -341,6 +412,39 @@
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
+
+				$alarm=new AutosteuerungAlarmanlage();
+                echo " --> AutosteuerungAlarmanlage erfolgreich aufgerufen.\n";
+
+                /* PowerLock Variables */
+                if ($countPowerLock>0)
+                    {
+                    // CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
+				    $SliderLockID=CreateVariable("LockBuilding",1, $AutosteuerungID,100,"~Intensity.100",$scriptIdWebfrontControl,null,"");			
+
+
+                    $order=200;
+                    foreach ($resultKey as $homematic=>$entry)
+                        {
+                        CreateLinkByDestination("PowerlockKey-".IPS_GetName($entry["OID"]), $entry["COID"],    $AutosteuerungID, $order);
+                        $order+=10;
+                        }
+                    $order=200;
+                    foreach ($resultState as $homematic=>$entry)
+                        {
+                        CreateLinkByDestination("PowerlockState".IPS_GetName($entry["OID"]), $entry["COID"],    $AutosteuerungID, $order);
+                        $order+=10;
+                        }
+                    }
+
+                if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
+                    {
+                    /* mehr Informationen anzeigen, wenn wir einen eigenen Tab haben. */
+                    echo "Eigener Tab für die Alarmanlage mit Name Sicherheit:\n";
+    				$webfront_links[$AutosteuerungID]["OID_R"]=$inputSicherheit;	
+                    print_r($webfront_links[$AutosteuerungID]);			
+                    }
+
                 break;										
 			case "GUTENMORGENWECKER":
 				echo "   Variablen für GutenMorgenWecker in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";		
@@ -524,7 +628,7 @@
 				$categoryId_Schaltbefehle = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Schaltbefehle, 0,'',null,'');
-				$simulation=new AutosteuerungRegler();
+				$regler=new AutosteuerungRegler();
 				echo "    webfrontlinks noch setzen und fertig.\n";													
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {                

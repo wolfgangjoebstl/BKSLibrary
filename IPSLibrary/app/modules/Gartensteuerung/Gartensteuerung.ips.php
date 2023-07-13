@@ -1,8 +1,6 @@
 <?
 
 /*
- * @defgroup Gartensteuerung
- * @{
  *
  * Script zur Ansteuerung der Giessanlage in BKS
  *
@@ -19,13 +17,19 @@
  * Gartensteuerung
  *
  * wird nur mit den Timern aufgerufen und steuert die Giessanlage
+ * erstellt auch eine Regenstatistik, daher auch ohne Gartenpumpe/ventile sinnvoll
  *
- * es gibt mittlerweile zwei Betriebsarten Switch und Auto:
+ * Betriebsarten Aus/EinmalEin/Auto
+ *
+ * Nach EinmalEin wird zurück auf die vorige Betriebsart geschaltet, entweder Aus oder Auto.
+ *
+ * es gibt mittlerweile zwei Betriebsarten in der Konfiguration  Switch und Auto
  *
  * bei Switch wird mit Ventilen die Giesskreislaeufe geschaltet
  * bei Auto wird durch Ein/Ausschalten der Pumpe automatisch um einen Giesskreis weitergeschaltet
- * 
  *
+ * 
+ * die zentrale Steuerung des Giessvorgangs übernimmt UpdateTimer der sobald der Giessvorgang gestartet wurde mit minütlichen Aufrufen agiert
  *
  ****************************************************************/
  
@@ -54,11 +58,18 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-    $debug=true;               // full debug der class
+    $debug=true;               // full debug auch in diesem script und der Klassen
     $extraLog=true;             // zusaetzliche Nachrichten im Log
 
+    if ($debug) echo "Konfiguration der Gartensterung analysieren:\n";
     $gartensteuerung = new Gartensteuerung(0,0,$debug);   // default, default, debug=false
     $GartensteuerungConfiguration =	$gartensteuerung->getConfig_Gartensteuerung();
+    $configuration=$GartensteuerungConfiguration["Configuration"];
+    if ($debug) 
+        {
+        print_R($GartensteuerungConfiguration);
+        echo "---Ende\n";
+        }
 
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
@@ -140,7 +151,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
     if ($debug) echo "Naechstes mal Giessen erfolgt ".($GiessStartzeitpunkt ? "Abends":"Morgens")." fuer ".$giessTime." Minuten.\n";
 
 	/* Zeitdauer für Pause zwischen den Giessereignissen aus der Config holen oder selbst bestimmen */
-	if (isset ($GartensteuerungConfiguration["Configuration"]["PAUSE"])) { $pauseTime=$GartensteuerungConfiguration["Configuration"]["PAUSE"]; } else { $pauseTime=1; }
+	if (isset ($configuration["PAUSE"])) { $pauseTime=$configuration["PAUSE"]; } else { $pauseTime=1; }
 	SetValue($GiessPauseID,$pauseTime);
     
 /******************************************************
@@ -154,8 +165,8 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	$log_Giessanlage->LogMessage("Gartengiessanlage Execute aufgerufen");
 	//$variableTempID = $gartensteuerung->getConfig_aussentempID();
 	//$variableID     = $gartensteuerung->getConfig_raincounterID();
-    $variableTempID   = $GartensteuerungConfiguration["Configuration"]["AussenTemp"];
-    $variableID       = $GartensteuerungConfiguration["Configuration"]["RainCounter"];
+    $variableTempID   = $configuration["AussenTemp"];
+    $variableID       = $configuration["RainCounter"];
 	
 	echo "\n";	
 	echo "=======EXECUTE====================================================\n";
@@ -176,16 +187,16 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	echo "  Update Timer ID   : ".$UpdateTimerID."   ".(IPS_GetEvent($UpdateTimerID)["EventActive"]?"Ein":"Aus")." (Wenn Ein ist der Giessvorgang gestartet)\n";
 	echo "  Hourly Timer ID   : ".$SlowUpdateTimerID."   ".(IPS_GetEvent($SlowUpdateTimerID)["EventActive"]?"Ein":"Aus")."\n";
 	echo "\n";
-	echo "Gartensteuerungs Konfiguration:\n";
-	print_r($GartensteuerungConfiguration);
-	if ( (isset($GartensteuerungConfiguration["Configuration"]["DEBUG"])) && ($GartensteuerungConfiguration["Configuration"]["DEBUG"]==true) )
+	echo "Gartensteuerungs Konfiguration:\n";               // $GartensteuerungConfiguration["Configuration"]
+	print_r($configuration);
+	if ( (isset($configuration["DEBUG"])) && ($configuration["DEBUG"]==true) )
 	   {
 	   echo "  Debugmeldungen eingeschaltet.\n";
 	   }
 	$Count=floor(GetValue($GiessCountID)/2+GetValue($GiessCountOffsetID));
-	if ( isset($GartensteuerungConfiguration["Configuration"]["KREIS".(string)$Count]) )
+	if ( isset($configuration["KREIS".(string)$Count]) )
 		{	
-		echo "  Giesskreis : ".$GartensteuerungConfiguration["Configuration"]["KREIS".(string)$Count]."\n";
+		echo "  Giesskreis : ".$configuration["KREIS".(string)$Count]."\n";
 		}
 	else
 		{
@@ -200,12 +211,12 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 
 
     $statusVentile=array();
-    if ( (($GartensteuerungConfiguration["Configuration"]["ValveControl"])!==null) && (sizeof($GartensteuerungConfiguration["Configuration"]["ValveControl"])>0) )
+    if ( (($configuration["ValveControl"])!==null) && (sizeof($configuration["ValveControl"])>0) )
         {
-        $oid = $GartensteuerungConfiguration["Configuration"]["ValveControl"]["KREIS".(string)($Count+1)];
+        $oid = $configuration["ValveControl"]["KREIS".(string)($Count+1)];
         $message="Ventil ".IPS_GetName($oid)." ($oid) auf ein.";
         echo $message."\n";             
-        foreach ($GartensteuerungConfiguration["Configuration"]["ValveControl"] as $oid)
+        foreach ($configuration["ValveControl"] as $oid)
             {
             $childs = IPS_GetChildrenIDs($oid);
             //print_R($childs);
@@ -428,7 +439,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	*/
 
 	echo "Zum Vergleich als Funktion berechnen :\n";
-	SetValue($GiessTimeID,$gartensteuerung->Giessdauer($GartensteuerungConfiguration["Configuration"]));            // umgestellt auf Sub Configuration
+	SetValue($GiessTimeID,$gartensteuerung->Giessdauer($configuration));            // umgestellt auf Sub Configuration
 	echo "Giessdauer wurde festgelegt mit ".GetValue($GiessTimeID)." Min.\n";
 	/* SetValue($GiessTimeID,giessdauer());
 	$textausgabe="Giesszeit berechnet mit ".GetValue($GiessTimeID)." Minuten da ".number_format($RegenGestern, 1, ",", "")." mm Regen vor "
@@ -526,10 +537,10 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
  *
  * abhängig vom TimerEvent wird abgearbeitet
  *
- * timerdawnId Vormittag oder Nachmittagstimer für Giessereignis
- * Giessstopptimer, spätetstestens dann wird alles ausgeschaltet
- * Giesstime, 5 min vor Beginn
- * UpdateTimer, Minutenintervall für gute Darstellung
+ * timerdawnId      Vormittag oder Nachmittagstimer für Giessereignis, wenn GiessTimeID>0 setzt eine Nachricht ab und startet UpdateTimer, erstellt/updatet tägliche Regenstatistik
+ * Giessstopptimer  spätetstestens dann wird alles ausgeschaltet
+ * Giesstime        immer 5 min vor Beginn
+ * UpdateTimer      Minutenintervall für gute Darstellung, und zentrale Steuerung der Intervalle
  *
  * vereinfacht ausgedrückt, werden 5 Minuten vorher die Details in Giesstime berechnet. Dann kommt der timerdawnId und danach wird im Minutentakt der updateTimer aufgerufen.
  * Die Giesssteuerung erfolgt im UpdateTimer
@@ -576,12 +587,7 @@ if($_IPS['SENDER'] == "TimerEvent")
             /* und den Zeitpunkt für die Evaluierung für den nächsten Giesszeitpunkt bestimmen */
 			SetValue($GiessCountID,0);
 			IPS_SetEventActive($UpdateTimerID,false);
-            if (strtoupper($GartensteuerungConfiguration["Configuration"]["Irrigation"])!="DISABLED")
-                {
-                if (isset($GartensteuerungConfiguration["Configuration"]["PUMPE"])==true) $failure=set_gartenpumpe(false,$GartensteuerungConfiguration["Configuration"]["PUMPE"]);
-                else $failure=set_gartenpumpe(false);
-                //$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
-                }
+            if (strtoupper($GartensteuerungConfiguration["Configuration"]["Irrigation"])!="DISABLED") $gartensteuerung->control_waterPump(false);                                     // sicherheitshalber hier immer nur ausschalten
 			/* Beginnzeit Timer für morgen ausrechnen, abhängig von Konfig entweder morgens oder abends */
             $startminuten=$gartensteuerung->fromdusktilldawn($GiessStartzeitpunkt);
 			$calcminuten=$startminuten-5;
@@ -636,7 +642,7 @@ if($_IPS['SENDER'] == "TimerEvent")
 				}
 			else
 				{
-				/* es wird gegossen bis GiessCount die Anzanhler der Giesskreise erreicht hat und wieder auf  Null gesetzt wird */
+				/* es wird gegossen bis GiessCount die Anzahl der Giesskreise erreicht hat und wieder auf  Null gesetzt wird */
 				if ($GiessCount==(($GartensteuerungConfiguration["Configuration"]["KREISE"]*2)+1))
 					{
                     $gartensteuerung->control_waterValves($GiessCount);           // Ventilsteuerung an einem Ort automatisch machen                        

@@ -1,5 +1,12 @@
 <?
 
+/* Webfront_Control für Autosterung
+ * deckt den Rest der nicht von Autosterung script direkt gemacht wird.
+ *
+ *
+ *
+ */ 
+
 //Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -34,11 +41,17 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
         $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $MonitorModeID);
 	    $StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$MonitorModeID);
         }
+    else
+        {
+        $SchalterMonitorID            = "unknown";
+	    $StatusMonitorID              = "unknown";
+        }
     $SilentModeID                = @IPS_GetObjectIDByName("SilentMode", $categoryId_Ansteuerung);
     if ($SilentModeID)
         {
         $PushSoundID            = IPS_GetObjectIDByName("PushSound", $SilentModeID);
         }
+    else $PushSoundID="unknown";
 
     //echo "gefunden: $MonitorModeID $SchalterMonitorID\n";
     $debug=true;
@@ -74,9 +87,10 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
 
     if (isset($installedModules["OperationCenter"]))
         {
+        IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+        
         $moduleManagerOC 	= new IPSModuleManager('OperationCenter',$repository);
         $CategoryIdDataOC   = $moduleManagerOC->GetModuleCategoryID('data');
-
 
         $categoryId_Autosteuerung 		= IPS_GetObjectIDByIdent('Autosteuerung',   $CategoryIdDataOC);
         $TableEventsAS_ID				= IPS_GetObjectIDByIdent("TableEvents", $categoryId_Autosteuerung);
@@ -113,9 +127,40 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
         $SchalterSortDM_ID="unknown";
         }
 
+
+    $AlarmanlageModeID                = @IPS_GetObjectIDByName("Alarmanlage", $categoryId_Ansteuerung);
+    if ($AlarmanlageModeID)
+        {
+        $powerLock_ID=IPS_GetObjectIdByName("LockBuilding",$AlarmanlageModeID);
+        $alarm=new AutosteuerungAlarmanlage();
+        $config=$alarm->getPowerLockEnvironmentConfig();
+        //print_R($config);
+        if (isset($config["Count"]))
+            {
+            foreach ($config["Key"] as $index => $entry)
+                {
+                echo "Index $index :  ".$entry["OID"]."\n";
+                //print_r($entry);
+                $powerLockActuatorOID=$entry["OID"];    
+                }
+            }
+        }
+    else $powerLock_ID="unknown";
+
 /************************************************************************************
  *
  * Webfront Routinen, abhängig vom Sortierbefehl
+ *
+ *  powerLock_ID
+ *
+ *  SchalterSortAS_ID           Autosteuerung Tabelle
+ *  SchalterSortAlexa_ID        Alexa Tabelle
+ *  MonitorModeID               Ansteuerung, Monitor Mode 
+ *  SchalterMonitorID           Ansteuerung, Monitor Mode
+ *  PushSoundID                 Ansteuerung, Silent Mode
+ *  SchalterSortDevMan_ID:      DeviceManagement Tabelle
+ *  SchalterSortDM_ID:          DetectMovement Tabelle
+ *
  *
  ***************************************************************************************/
 
@@ -123,10 +168,25 @@ if ($_IPS['SENDER']=="WebFront")
 	{
 	/* vom Webfront aus gestartet */
 	$debug=false;	// keine Echo Ausgaben
-	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+    $value=$_IPS['VALUE'];
+    SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);             // für alle Schater weiter unten in Ordnung
 	switch ($_IPS['VARIABLE'])
 		{
+        case $powerLock_ID:
+            if ($value>90)
+                {
+                echo "Lock";
+                HM_WriteValueInteger ($powerLockActuatorOID, "LOCK_TARGET_LEVEL",1);                // 0 zusperren, 1 aufsperren, 2 öffnen  Achtung auch 1 kann bereits die Türe öffnen
+                }
+            if ($value<10) 
+                {
+                echo "Open"; 
+                HM_WriteValueInteger ($powerLockActuatorOID, "LOCK_TARGET_LEVEL",0);                // 0 zusperren, 1 aufsperren, 2 öffnen  Achtung auch 1 kann bereits die Türe öffnen
+                }
+            SetValue($powerLock_ID,50);
+            break;
 		case $SchalterSortAS_ID:            			// Autosteuerungs Events, Tabelle updaten wenn die Taste gedrueckt wird 
+        	//SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
             if ( isset($installedModules["DetectMovement"]) === true )
                 {            
                 $detectMovement = new TestMovement($debug);
@@ -174,6 +234,7 @@ if ($_IPS['SENDER']=="WebFront")
                 }                				
 			break;
 		case $SchalterSortAlexa_ID:                 // Alexa Befehle, Tabelle updaten wenn die Taste gedrueckt wird 
+        	//SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
             //echo "Alexa";
 			$Alexa = new AutosteuerungAlexaHandler();
 			$alexaConfiguration=$Alexa->getAlexaConfig();
@@ -196,6 +257,7 @@ if ($_IPS['SENDER']=="WebFront")
             //echo "fertig";			
 			break;
         case $MonitorModeID:                // immer hier
+        	//SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
             //echo "monitor control ".GetValueIfFormatted($MonitorModeID);
             $state=GetValue($MonitorModeID);
             if ( ($state<2) && ($ergebnisTyp !== false) ) 
@@ -206,11 +268,13 @@ if ($_IPS['SENDER']=="WebFront")
                 }
             break;
         case $SchalterMonitorID:            // kommt nur hier her, wenn Alexa nicht installiert ist
+        	//SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
             $state=GetValue($SchalterMonitorID);
             $auto->switchByTypeModule($ergebnisTyp,$state, false);         // true für Debug
             SetValue($StatusMonitorID,$state);                  // sollte auch den Änderungsdienst zum Zuletzt Wert machen
             break;
         case $PushSoundID:
+        	//SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
             //echo "Push Default Sound Module\n";
 			if (isset($installedModules["OperationCenter"])==true)
 				{  /* nur wenn OperationCenter vorhanden auch die lokale Soundausgabe starten*/
@@ -223,6 +287,8 @@ if ($_IPS['SENDER']=="WebFront")
         case $SchalterSortDevMan_ID:
 		case $SchalterSortDM_ID:
 		default:
+        	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+
             IPSLogger_Inf(__file__, 'Aufruf WebfrontControl Variable Change von '.$_IPS['VARIABLE']."(".IPS_GetName($_IPS['VARIABLE']).') auf Wert '.$_IPS['VALUE']);
 			break;				
 		}

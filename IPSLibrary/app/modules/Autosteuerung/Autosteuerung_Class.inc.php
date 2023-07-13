@@ -25,11 +25,15 @@
  *       AutosteuerungConfigurationAlexa 
  *       AutosteuerungConfigurationHandler
  *   AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung) 
- *    Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind. 
+ *   Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind. 
+ *   AutosteuerungFunktionen, abstract class für:
+ *       AutosteuerungRegler
+ *       AutosteuerungAnwesenheitsSimulation
+ *       AutosteuerungAlexa
+ *       AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung *
+ *       AutosteuerungAlarmanlage
  *
- *
- *
- * Autosteuerung_class ist eine Sammlung aus unterschiedlichen Klassen:
+ * Im Detail, das php script Autosteuerung_class ist eine Sammlung aus unterschiedlichen Klassen:
  *
  *    AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
  *      Get_EventConfigurationAuto()
@@ -82,6 +86,7 @@
  *       AutosteuerungAnwesenheitsSimulation
  *       AutosteuerungAlexa
  *       AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung
+ *       AutosteuerungAlarmanlage
  *
  * alleinstehende functions die die Funktionen aus dem configfile übernehmen
  *	    Anwesenheit
@@ -932,7 +937,6 @@ class AutosteuerungOperator
 		return($delayed);
 		}
 
-
     /*
      * Im Configfile gibt es eine Möglichkeit den gewünschten  Status des Monitors (Ein/Aus) aus einer OR und AND Verknüpfung von  Statuswerten zu ermitteln.
      * Das ist die schnellste Art Monitor Ein/Aus zu ermitteln. Wird im Autosteuerungs Handler alle 60 Sekunden aufgerufen.
@@ -1723,6 +1727,13 @@ class Autosteuerung
         return ($this->configuration);
         }
 
+    /* einbetten der Konfiguration für das Webfront, welche Funktionen bekommen ein eigenes Tab */
+
+    public function get_Autosteuerung_SetSwitches()
+        {
+        return(Autosteuerung_SetSwitches());
+        }
+
 	/* of Autosteuerung
      * welche AutosteuerungsFunktionen sind aktiviert:
      * unter data.modules.Autosteuerung.Ansteuerung alle bekannten Variablen auswerten und den  Status zurückmelden
@@ -1731,6 +1742,12 @@ class Autosteuerung
      *
      * wird dann von den einzelnen Routinen isitawake etc. ausgewertet
      *
+     * Gibt für jede Kategorie der Autosteuerung, die in Ansteuerung eigentlich eine Integer Variable ist 
+     * den aktuellen Wert mit den formattierten Werten Ein/Aus/Auto als Array aus 
+     *      OID
+     *      VALUE
+     *      VALUE_F
+     * wenn die Funktion bekannt ist, zusätzlich noch STATUS
      *
      */
 
@@ -2049,6 +2066,52 @@ class Autosteuerung
         $this->timeStart=$timeStart;            // warum eigentlich ???? wird nicht benötigt 
 		return ($timeright);	
 		}	
+
+    /****************************************************
+     * of Autosteuerung
+     *
+     * Bearbeitung der Action Buttons
+     *
+     ********************************************************************/
+
+    /* Action Buttons suchen und speichern
+     *
+     */
+     
+    private function getPowerLockSwitchId()
+        {
+        if ($this->CategoryId_Alarm)
+            {
+            $powerLock_ID=@IPS_GetObjectIdByName("LockBuilding",$this->CategoryId_Alarm);
+            return($powerLock_ID);
+            }
+        else return (false);
+        }
+
+	/* Autosteuerung::get_ActionButton()
+	 * Zusammenfassung aller ActionButtons in dieser Klasse
+     *
+     *   Struktur: $variableId->Modul/class->Funktion 
+     *
+
+     Beispiel:
+     	$ActionButton  = $OperationCenter->get_ActionButton();
+	    $ActionButton += $DeviceManager->get_ActionButton();
+	    $ActionButton += $BackupCenter->get_ActionButton();
+        $variableId=$_IPS['VARIABLE'];
+        if (array_key_exists($variableId,$ActionButton))
+
+	 *
+	 */
+	 
+	function get_ActionButton()
+		{
+        $actionButton=array();
+
+		$actionButton[$this->getPowerLockSwitchId()]["BackupAutosteuerung"]["PowerLock"]=true;
+
+		return($ActionButton);
+		}
 
     /****************************************************
      * of Autosteuerung
@@ -4505,7 +4568,7 @@ class Autosteuerung
                  */
                  
    				//IPSLogger_Not(__file__, 'Autosteuerung::ExecuteCommand, Internal Module vorhanden. Hier evaluieren.');
-            	$AutoSetSwitches = Autosteuerung_SetSwitches();
+            	$AutoSetSwitches = $this->get_Autosteuerung_SetSwitches();
                 if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
                     {
                     $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["MonitorMode"]["NAME"],$this->CategoryId_Ansteuerung);
@@ -5812,6 +5875,21 @@ class Autosteuerung
  *       AutosteuerungAnwesenheitsSimulation
  *       AutosteuerungAlexa
  *       AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung 
+ *       AutosteuerungAlarmanlage
+ *
+ * mit den Stadard Funktionen, abstract
+ *      set_Configuration
+ *      get_Configuration
+ *      Init
+ *      InitLogMessage
+ *      InitLogNachrichten
+ *      InitMesagePuffer, abstract
+ *      WriteLink, abstract
+ *      LogMessage
+ *      LogNachrichten
+ *      PrintNachrichten
+ *
+ * abstract class definiert keine Variablen, muss in der jeweiligen class incusive construct passieren
  *
  **************************************************************************************************************/
 
@@ -5853,8 +5931,10 @@ abstract class AutosteuerungFunktionen
 		IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');		
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
-		$CategoryIdApp = $moduleManager->GetModuleCategoryID('app');
-		$this->scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
+		$this->categoryIdApp  = $moduleManager->GetModuleCategoryID('app');
+		$this->categoryIdData = $moduleManager->GetModuleCategoryID('data');
+        $this->installedmodules=$moduleManager->GetInstalledModules();			
+		$this->scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $this->categoryIdApp);
 						
 		$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 		if ($WFC10_Enabled==true)
@@ -5939,7 +6019,7 @@ abstract class AutosteuerungFunktionen
 			//echo $this->log_File."   ".$message."\n";
 			}
 		}
-		
+
     /* kein Logging wenn nicht html und nachrichteninput_Id == Ohne
      */
 
@@ -6077,6 +6157,7 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 	protected $script_Id="Default";
 	protected $nachrichteninput_Id="Default";
 	protected $installedmodules;
+    protected $categoryIdData,$categoryIdApp;
 	protected $zeile=array();
 	protected $scriptIdHeatControl;	
 
@@ -6129,12 +6210,8 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 		else
 			{
 			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
-			$this->installedmodules=$moduleManager->GetInstalledModules();			
-			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
-			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
-			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("ReglerAktionen-Stromheizung",$CategoryIdData);
+			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$this->categoryIdData."  (".IPS_GetName($this->categoryIdData).")\n";
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("ReglerAktionen-Stromheizung",$this->categoryIdData);
 			$vid=@IPS_GetObjectIDByName("ReglerAktionen",$this->nachrichteninput_Id);
 			if ($vid===false) 
 				{
@@ -6163,16 +6240,7 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
             }            
 		}
 
-	function LogMessage($message)
-		{
-		if ($this->log_File != "No-Output")
-			{
-			$handle3=fopen($this->log_File, "a");
-			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
-			fclose($handle3);
-			//echo $this->log_File."   ".$message."\n";
-			}
-		}
+
 
 	}
 	
@@ -6182,6 +6250,10 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
  *
  * Routinen zur Anwesenheitssimulation
  *
+ *      InitMesagePuffer
+ *      WriteLink
+ *      
+ *      
  **************************************************************************************************************/
 
 
@@ -6192,6 +6264,7 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 	protected $script_Id="Default";
 	protected $nachrichteninput_Id="Default";
 	protected $installedmodules;
+    protected $categoryIdData,$categoryIdApp;
 	protected $zeile=array();
 	protected $scriptIdHeatControl;	
 
@@ -6242,12 +6315,8 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 		else
 			{
 			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
-			$this->installedmodules=$moduleManager->GetInstalledModules();			
-			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
-			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
-			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Schaltbefehle-Anwesenheitssimulation",$CategoryIdData);
+			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$this->categoryIdData."  (".IPS_GetName($this->categoryIdData).")\n";
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Schaltbefehle-Anwesenheitssimulation",$this->categoryIdData);
 			$vid=@IPS_GetObjectIDByName("Schaltbefehle",$this->nachrichteninput_Id);
 			if ($vid==false) 
 				{
@@ -6276,17 +6345,6 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
             }
 		}
 
-	function LogMessage($message)
-		{
-		if ($this->log_File != "No-Output")
-			{
-			$handle3=fopen($this->log_File, "a");
-			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
-			fclose($handle3);
-			//echo $this->log_File."   ".$message."\n";
-			}
-		}
-
 	}
 
 /*****************************************************************************************************
@@ -6309,6 +6367,7 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 	protected $script_Id="Default";
 	protected $nachrichteninput_Id="Default";
 	protected $installedmodules;
+    protected $categoryIdData,$categoryIdApp;
 	protected $zeile=array();
 	protected $scriptIdHeatControl;	
 
@@ -6358,12 +6417,8 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 		else
 			{
 			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
-			$this->installedmodules=$moduleManager->GetInstalledModules();			
-			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
-			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
-			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Nachrichten-Alexa",$CategoryIdData);	/* <<<<<<< change here */
+			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$this->categoryIdData."  (".IPS_GetName($this->categoryIdData).")\n";
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Nachrichten-Alexa",$this->categoryIdData);	/* <<<<<<< change here */
 			$vid=@IPS_GetObjectIDByName("Nachrichten",$this->nachrichteninput_Id);							/* <<<<<<< change here */
 			if ($vid==false) 
 				{
@@ -6389,17 +6444,6 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }                    
                 }
             }            
-		}
-
-	function LogMessage($message)
-		{
-		if ($this->log_File != "No-Output")
-			{
-			$handle3=fopen($this->log_File, "a");
-			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
-			fclose($handle3);
-			//echo $this->log_File."   ".$message."\n";
-			}
 		}
 
 	}
@@ -6440,6 +6484,7 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 	protected $script_Id="Default";
 	protected $nachrichteninput_Id="Default";
 	protected $installedmodules;
+    protected $categoryIdData,$categoryIdApp;
 	protected $zeile=array();
 	protected $scriptIdHeatControl;
     protected $categoryIdTab;
@@ -6586,12 +6631,8 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		else
 			{
 			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt, $this->nachrichteninput_Id umschreiben */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
-			$this->installedmodules=$moduleManager->GetInstalledModules();			
-			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
-			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
-			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$CategoryIdData);
+			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$this->categoryIdData."  (".IPS_GetName($this->categoryIdData).")\n";
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$this->categoryIdData);
 			}		
 		$vid=$this->getWochenplanID();	
 		if ($vid==false) 
@@ -6964,6 +7005,174 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 	}       // ende class
 
 
+
+/*****************************************************************************************************
+ *
+ * Alarmanlage in der Autosteuerung
+ *
+ * Routinen zur Darstellung der Alarmanlage Funktionen
+ *
+ * Achtung, beim kopieren von Defaultfunktionen auf folgende Punkte aufpassen:
+ *    Links und Namen in Init MessagePugffer adaptieren
+ *    Alexa hat etwas andere Struktuer Nachrichten statt Nachricht_Input, Nachrichten-Alexa statt Nachrichtenverlauf-xxxx
+ *
+ **************************************************************************************************************/
+
+
+class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
+	{
+
+	protected $log_File="Default";
+	protected $script_Id="Default";
+	protected $nachrichteninput_Id="Default";
+	protected $installedmodules;
+    protected $categoryIdData,$categoryIdApp;
+	protected $zeile=array();
+
+    protected $configuration;                   // Configuration from Config File
+    protected $config=array();                  // internal configuration
+
+    protected $htmlLogging=true;
+    
+    /**************************/
+
+	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
+		{
+		echo "AutosteuerungAlarmanlage Logfile Construct\n";
+        $this->configuration = $this->set_Configuration();
+		
+		/******************************* Init *********/
+		$this->log_File=$logfile;
+		$this->nachrichteninput_Id=$nachrichteninput_Id;			
+		$this->Init();      /* Autosteuerung_HeatControl Script ID wird festgelegt in $this->scriptIdHeatControl */
+
+		/******************************* File Logging *********/
+		$this->InitLogMessage();
+		
+		/******************************* Nachrichten Logging *********/
+		$type=3;$profile=""; $this->zeile=array();
+        $this->config["HTMLOutput"]=$this->htmlLogging;        
+		$this->InitLogNachrichten($type,$profile);          /*  ruft das Geraete spezifische InitMesagePuffer() auf */
+		}
+
+	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
+		{
+        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+		$this->zeile[$i] = CreateVariableByName($vid,"Zeile".$i,$type,$profile,"",$i*10,$scriptIdHeatControl);
+		}
+
+	function InitMesagePuffer($type=3,$profile="")
+		{	
+        //echo "Installed Modules : ".json_encode($this->installedmodules)."\n";
+		if ($this->nachrichteninput_Id != "Ohne")
+			{
+			// bei etwas anderem als einem String stimmt der defaultwert nicht
+			$vid=@IPS_GetObjectIDByName("Nachrichten",$this->nachrichteninput_Id);	/* <<<<<<< change here */
+			if ($vid===false) 
+				{
+				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Alarmanalage InitMessagePuffer, keine Kategorie Sicherheit in '.$this->nachrichteninput_Id);
+				}
+			}
+		else
+			{
+			echo "   auch Wenn 'Ohne' angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt.\n";
+			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$this->categoryIdData."  (".IPS_GetName($this->categoryIdData).")\n";
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Nachrichtenverlauf-Sicherheit",$this->categoryIdData);	/* <<<<<<< change here */
+			$vid=@IPS_GetObjectIDByName("Nachricht_Input",$this->nachrichteninput_Id);							/* <<<<<<< change here */
+            echo "Nchrichten input Id ".$this->nachrichteninput_Id."   Vid $vid   \n";
+			if ($vid==false) 
+				{
+				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Alarmanlage InitMessagePuffer, keine Kategorie Sicherheit in '.$this->nachrichteninput_Id);
+				}
+			}
+        if ($vid)
+            {
+            if ($this->config["HTMLOutput"])
+                {
+                //echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
+                $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
+                IPS_SetHidden($storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                $this->config["storeTableID"]=$storeTableID;
+                $this->config["sumTableID"]=$sumTableID;
+                $this->config["nachrichteninput_Id"]=$vid;
+                SetValue($sumTableID,$this->PrintNachrichten(true));            // true für htmlOutput
+                }
+            else
+                {
+				//EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }                    
+                }
+            }            
+		}
+
+
+    public function getPowerLockEnvironmentConfig($debug=false)
+        {
+        $config=array();
+        if (isset($this->installedmodules["OperationCenter"]))
+            {
+            $componentHandling = new ComponentHandling();
+            $DeviceManager     = new DeviceManagement();
+
+            echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+            IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+
+            $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
+
+            // Aktuator
+            $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",true);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+            $countPowerLock=(sizeof($resultKey));				
+
+            // Status
+            $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",true);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+            $countPowerLock+=(sizeof($resultState));				
+
+            if ($countPowerLock>0)
+                {
+                echo "Es wird ein PowerLock von Homematic verwendet. Die Darstellung erfolgt unter Alarmanlage/Tab Sicherheit:\n";
+                $config["Count"] = $countPowerLock;               // Summe State und Key Instances
+                $config["State"] = $resultState;
+                $config["Key"]   = $resultKey;                }
+            }
+        else echo "OperationCenter Module not available.\n";
+
+
+        return ($config);
+        }
+
+
+    /* Homematic Türshlösser sind nicht vollständig in IP Symcon integriert
+     * sind aber erstaunlich robust, aber wahrscheinlich unzuverlässig, weiter ausprobieren
+     */
+    public function setPowerLockProfiles($config,$debug=false)
+        {
+        if (isset($config["Count"]))
+            {
+            $resultKey=$config["Key"];
+            $resulttext="Alle Tuerschloesser Aktuatoren ausgeben ($countPowerLock):\n";            
+            $resulttext.=$DeviceManager->writeCheckStatus($resultKey);          
+            echo $resulttext;
+            //print_r($resultKey);
+            foreach ($resultKey as $homematic=>$entry)
+                {
+                IPS_SetVariableCustomProfile($entry["COID"],"PowerLockBefehl");    
+                }
+            $resultState=$config["State"];
+            $resulttext="Alle Tuerschloesser Stati ausgeben ($countPowerLock):\n";            
+            $resulttext.=$DeviceManager->writeCheckStatus($resultState);          
+            echo $resulttext;
+            //print_r($resultState);
+            foreach ($resultState as $homematic=>$entry)
+                { 
+                IPS_SetVariableCustomProfile($entry["COID"],"PowerLockStatus");    
+                }
+            }
+        }
+
+
+
+	}
 
 
 

@@ -175,6 +175,8 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
  * nf                           number format with extended functionality, shifts automatically the unit , i.e. from seconds to minutes and hours etc.
  *
  * configfileParser             Unit, UNIT Einheit etc  wenn in der Config eines der Synonyme vorhanden ist wird es gemappt (&$inputArray, &$outputArray, [Synonym,2,3,4],$tag,$defaultValue)
+ * configfileMultiTarget        Switch whatever it is, adjust the config to fit to such needs
+ * doMultiTargetSwitch          Switch whatever it is when config is adjusted as above
  *
  * rpc_CreateVariableProfile    Variable Profile lokal oder remote erzeugen, $rpc ist entweder eine class oder false
  * rpc_SetVariableProfileIcon
@@ -3016,6 +3018,9 @@ class profileOps
      *      Humidity
      *      Switch
      *      Contact
+     *      Window
+     *      PowerLockBefehl
+     *      PowerLockStatus
      *      Button
      *      Motion      
      *      Pressure
@@ -3026,9 +3031,9 @@ class profileOps
      *
      */
 
-	function createKnownProfilesByName($pname,$server="LOCAL")
+	function createKnownProfilesByName($pname,$debug)
         {
-        echo "      createKnownProfilesByName, Profil ".$pname." existiert nicht, oder Aufforderung zum update. ";
+        echo "      profileOps::createKnownProfilesByName, Profil ".$pname." existiert nicht, oder Aufforderung zum update. ";
         if ($this->rpc) echo "Durchführung remote für Server ".$this->rpc."\n";
         else echo "Durchführung lokal.\n";
         switch ($pname)
@@ -3073,6 +3078,26 @@ class profileOps
                 $this->SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
                 $this->SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
                 $this->SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
+                break;
+            case "PowerLockBefehl";
+                $this->CreateVariableProfile($pname, 1);
+                $this->SetVariableProfileIcon ($pname, "PowerLockStatus");
+                $this->SetVariableProfileText ($pname, "","");
+                $this->SetVariableProfileValues ($pname, 0,2,0);
+                $this->SetVariableProfileDigits ($pname, 0);                    
+                $this->SetVariableProfileAssociation($pname, 0, "Verriegeln","" , -1);
+                $this->SetVariableProfileAssociation($pname, 1, "Entriegeln", "", 255);
+                $this->SetVariableProfileAssociation($pname, 2, "Öffnen", "", 65280);                    
+                break;
+            case "PowerLockStatus";
+                $this->CreateVariableProfile($pname, 1);
+                $this->SetVariableProfileIcon ($pname, "PowerLockStatus");
+                $this->SetVariableProfileText ($pname, "","");
+                $this->SetVariableProfileValues ($pname, 0,2,0);
+                $this->SetVariableProfileDigits ($pname, 0);                    
+                $this->SetVariableProfileAssociation($pname, 0, "Schloss verriegelt","" , -1);
+                $this->SetVariableProfileAssociation($pname, 1, "Schloss entriegelt", "", 255);
+                $this->SetVariableProfileAssociation($pname, 2, "Tür offen", "", 65280);                    
                 break;
             case "Button";
                 $this->CreateVariableProfile($pname, 0);
@@ -3227,7 +3252,7 @@ class profileOps
                     if ( ($this->VariableProfileExists($pname) == false) && ($masterName=="new") ) echo "   Profil $pname existiert nicht und Aufforderung zum neu anlegen.\n";
                     else echo "   Profil $pname update.\n";
                     }
-                $this->createKnownProfilesByName($pname);               //lokal
+                $this->createKnownProfilesByName($pname,$debug);               //lokal
                 }
             elseif ($masterName == "new") echo "   Profil ".$pname." existiert bereits, nichts weiter machen.\n";          // wenn das Profil existiert kommt man hier vorbei
             elseif (IPS_VariableProfileExists($masterName) == false)            
@@ -11566,7 +11591,13 @@ class ComponentHandling
                 // kein detectmovement, false ist default
                 $variabletyp=1; 		/* Integer */	
                 $index="PowerLock";
-                //$profile="Powerlock";            
+                $profile="PowerlockBefehl";            
+                break;                   
+            case "LOCKSTATE":
+                // kein detectmovement, false ist default
+                $variabletyp=1; 		/* Integer */	
+                $index="PowerLock";
+                $profile="PowerlockStatus";            
                 break;                   
             default:	
                 $variabletyp=0; 		/* Boolean */	

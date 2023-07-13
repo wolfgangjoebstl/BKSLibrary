@@ -23,14 +23,18 @@
  *
  * wenn man bei EinmalEin nocheinmal die selbe taste gedrückt wird der Giesskreis weitergeschaltet 
  *
+ * Die Ansteuerung und Configuration erfolgt mit standardisierten Methoden. Es ist Homematic oder IPSHeat aktuell unterstützt.
+ *
  *
  ****************************************************************/
 
 if ($_IPS['SENDER']=="WebFront")
 	{
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+	
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
+    IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');
 
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -74,7 +78,8 @@ if ($_IPS['SENDER']=="WebFront")
 	$timerDawnID = @IPS_GetEventIDByName("Timer3", $GartensteuerungScriptID);
 	$UpdateTimerID = @IPS_GetEventIDByName("UpdateTimer", $GartensteuerungScriptID);
 
-	$GartensteuerungConfiguration=getGartensteuerungConfiguration();
+    $gartensteuerung = new Gartensteuerung();   // default, default, debug=false
+    $GartensteuerungConfiguration =	$gartensteuerung->getConfig_Gartensteuerung();
 	if (isset ($GartensteuerungConfiguration["PAUSE"])) { $pauseTime=$GartensteuerungConfiguration["PAUSE"]; } else { $pauseTime=1; }
 	SetValue($GiessPauseID,$pauseTime);
 	//echo "PauseTime : ".$pauseTime;
@@ -105,7 +110,8 @@ if ($_IPS['SENDER']=="WebFront")
 					SetValue($GiessTimeRemainID ,0);				
  					$log_Giessanlage->LogMessage("Gartengiessanlage auf Auto gesetzt");
  					$log_Giessanlage->LogNachrichten("Gartengiessanlage auf Auto gesetzt");
-	 				$failure=set_gartenpumpe(false);
+                    $gartensteuerung->control_waterPump(false);                                     // sicherheitshalber hier immer nur ausschalten
+	 				//$failure=set_gartenpumpe(false);
 					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 					/* Vorgeschichte egal, nur bei einmal ein wichtig */
 					SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
@@ -122,7 +128,8 @@ if ($_IPS['SENDER']=="WebFront")
 			      		SetValue($GiessCountID,GetValue($GiessCountID)+1);
  						$log_Giessanlage->LogMessage("Gartengiessanlage Weiter geschaltet");
  						$log_Giessanlage->LogNachrichten("Gartengiessanlage Weiter geschaltet");
- 						$failure=set_gartenpumpe(false);
+                        $gartensteuerung->control_waterPump(false);
+ 						//$failure=set_gartenpumpe(false);
 						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 			   			}
 					else
@@ -131,7 +138,8 @@ if ($_IPS['SENDER']=="WebFront")
 			      		SetValue($GiessCountID,1);
 		 				$log_Giessanlage->LogMessage("Gartengiessanlage auf EinmalEin gesetzt.");
 		 				$log_Giessanlage->LogNachrichten("Gartengiessanlage auf EinmalEin gesetzt.");
- 						$failure=set_gartenpumpe(false);
+                        $gartensteuerung->control_waterPump(false);
+ 						//$failure=set_gartenpumpe(false);
 						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 						}
 					break;
@@ -142,7 +150,8 @@ if ($_IPS['SENDER']=="WebFront")
 					SetValue($GiessTimeRemainID ,0);				
  					$log_Giessanlage->LogMessage("Gartengiessanlage auf Aus gesetzt");
  					$log_Giessanlage->LogNachrichten("Gartengiessanlage auf Aus gesetzt");
- 					$failure=set_gartenpumpe(false);
+                    $gartensteuerung->control_waterPump(false);
+ 					//$failure=set_gartenpumpe(false);
 					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 					/* Vorgeschichte egal, nur bei einmal ein wichtig */
 					SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));

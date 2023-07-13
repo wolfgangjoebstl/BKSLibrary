@@ -3256,7 +3256,7 @@ class SeleniumEasycharts extends SeleniumEasychartModul
                 if ($status) echo "gefunden und gedrückt !\n";
                 break;
             case 3:     // goto MyMarkets, personal Profile
-                if ($this->debug) echo "--------\n$step: go to personal Link MyMarkets and Login\n";
+                if ($this->debug) echo "--------\n$step: go to personal Link MyMarkets and Login. Start from Url : ".$this->getUrl()."\n";
                 $result = $this->gotoLinkMyMarketIf();
                 if ($result === false) 
                     {
@@ -3368,13 +3368,21 @@ class SeleniumEasycharts extends SeleniumEasychartModul
             }
         }
 
-    /* goto market page
-     * /html/body/header/div/div/div[1]/div[2]/div[2]/a[2]
+    /* goto market page, wir drücken auf einen Link, Link Url könnte aber auch direkt eingeben werden
+     * https://www.easybank.at/markets/wertpapiere/intro
+     *
+     * /html/body/header/div/div/div[1]/div[2]/div[2]/a[2]          alter Link ohne Werbeseite am Anfang
+     * /html/body/header/div[1]/div/div/div[4]/div/a[1]
      */
     function goToLinkMarketIf()
         {
         if ($this->debug) echo "goToLinkMarketIf : ";
-        $xpath='/html/body/header/div/div/div[1]/div[2]/div[2]/a[2]';
+        $url='https://www.easybank.at/markets/wertpapiere/intro';
+        return($this->updateUrl($url));
+
+        /* es wird ein neues Fenster aufgemacht, dem können wir nicht folgen, daher siehe oben direkt zum Link */
+        //$xpath='/html/body/header/div/div/div[1]/div[2]/div[2]/a[2]';
+        $xpath='/html/body/header/div[1]/div/div/div[4]/div/a[1]';
         $result = $this->getTextIf($xpath,$this->debug);
         if ($result !== false)
             {
@@ -3417,12 +3425,15 @@ class SeleniumEasycharts extends SeleniumEasychartModul
         }
 
     /* click on MyMarket to go to personalized Portal
+     * das ist der Button ganz unten
+     *
+     * /html/body/div[1]/nav/div/div/ul[2]/li[7]/a
      * /html/body/div[1]/nav/div/div/ul[2]/li[7]/a/span[1]
      * /html/body/div[1]/nav/div/div/ul[2]/li[7]/a
      */
     function gotoLinkMyMarketIf()
         {
-        $xpath='/html/body/div[1]/nav/div/div/ul[2]/li[7]/a/span[1]';
+        $xpath='/html/body/div[1]/nav/div/div/ul[2]/li[7]/a';
         $result = $this->getTextIf($xpath,$this->debug);
         if ($result !== false)
             {

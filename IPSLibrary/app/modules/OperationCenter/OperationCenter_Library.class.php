@@ -4513,7 +4513,7 @@ class BackupIpsymcon extends OperationCenter
             {
             if ($debug) echo "Backup Drive konfiguriert und vorhanden: $backupDrive\n";
             }        
-        else
+        elseif (isset($configuration["Network"]))
             {
             $location = $configuration["Network"];
             $user = $configuration["User"];
@@ -4524,6 +4524,11 @@ class BackupIpsymcon extends OperationCenter
             if ($debug) echo "Map the drive system(net use ".$letter.": \"".$location."\" ".$pass." /user:".$user." /persistent:no>nul 2>&1)\n";
             system("net use ".$letter.": \"".$location."\" ".$pass." /user:".$user." /persistent:no>nul 2>&1");
             }
+        else
+            {
+            echo "Warning, getAccessToDrive does not find any drive or is able to map one.\n";
+            return (false);
+            } 
         return ($backupDrive);
         }
 
@@ -7273,7 +7278,7 @@ class DeviceManagement
 		else return($resultarray);
 		}
 
-    /* einheitliche Überprüfung ob schon länger keine Änderung mehr war */
+    /* DeviceManagement:: einheitliche Überprüfung ob schon länger keine Änderung mehr war */
 
     private function checkVariableChanged(&$result,&$index,$Key)
         {
@@ -7289,7 +7294,7 @@ class DeviceManagement
         return (true);
         }
 
-    /* da die Überprüfung private ist hier die Ausgabe public machen */
+    /* DeviceManagement:: da die Überprüfung private ist hier die Ausgabe public machen */
 
     public function writeCheckStatus($result)
         {
@@ -7304,7 +7309,7 @@ class DeviceManagement
         }
 	
 	/*
-	 * showHardwareStatus Statusinfo von Hardware als Table ausgeben
+	 * DeviceManagement::showHardwareStatus Statusinfo von Hardware als Table ausgeben
 	 *
 	 */
 
@@ -7349,7 +7354,7 @@ class DeviceManagement
         }
 
 	/*
-	 * countHardwareStatus vorab rausfinden ob es Werte giubt bevor eine Tabelle erzeugt wird
+	 * DeviceManagement::countHardwareStatus vorab rausfinden ob es Werte giubt bevor eine Tabelle erzeugt wird
 	 *
 	 */
 	function countHardwareStatus($hwStatus,$filter=false,$debug=false)
@@ -7398,7 +7403,7 @@ class DeviceManagement
         return ($result && $resultSub);
         }
 
-	/*
+	/* DeviceManagement::get_ActionButton()
 	 * Zusammenfassung aller ActionButtons in dieser Klasse
 	 *
 	 */
