@@ -101,19 +101,24 @@
         			break;
                 case "6":   /* Hierarchy, new one with picture drawing of geographical position*/
         			SetValue($StartPageTypeID,4);
+                    //echo "Set 6 ID to 4";
 					break;
                 case "5":   /* Topologie, new one with picture drawing of geographical position*/
         			SetValue($StartPageTypeID,3);
+                    //echo "Set 5 ID to 3";
 					break;
     	        case "4":  	/* Bildschirmschoner, Media */
         			SetValue($StartPageTypeID,5);
+                    //echo "Set 4 ID to 4";
 		        	break;
     	        case "3":  	/* Bildschirmschoner, Picture */
         			SetValue($StartPageTypeID,1);
+                    //echo "Set 3 ID to 1";                               // Media taste
 		        	break;
         		case "2":  	/* Wetterstation, Station */
 		        	SetValue($StartPageTypeID,2);
                     SetValue($switchSubScreenID,GetValue($switchSubScreenID)+1);
+                    //echo "Set 2 ID to 2";
         			break;
         		case "1":  	/* Full Screen ein, Fullscreen */
 		        case "0":  	/* Full Screen aus, Explorer */

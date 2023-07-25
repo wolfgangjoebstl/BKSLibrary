@@ -447,7 +447,7 @@ class seleniumChromedriverUpdate extends watchDog
         $result=false;
         $debug=$this->debug;
         if ($this->selDirContent)
-                {
+            {
             $found = $this->dosOps->findfiles($this->selDirContent,$file);
             if ($found)
                 {

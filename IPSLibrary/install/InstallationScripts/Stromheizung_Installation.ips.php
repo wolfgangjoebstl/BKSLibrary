@@ -94,27 +94,19 @@
 	IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
 	IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");	
 
+    $ipsOps = new ipsOps();    
+    $webOps = new webOps();                     // Buttons anlegen
+    $profileOps = new profileOps();             // Profile verwalten
+
 /*******************************
  *
  * Variablen Profile Vorbereitung
  *
  ********************************/
 
-	/* erweiterte Betriebsarten des Thermostat, vereinheitlicht über alle Typen  */
-	$pname="mode.HM";
-	if (IPS_VariableProfileExists($pname) == false)
-		{			//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-		IPS_SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt;\n";
-		}
+	echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
+	$profilname=array("mode.HM"=>"update");
+    $profileOps->synchronizeProfiles($profilname);
 
 /*******************************
  *
@@ -200,9 +192,18 @@ Path=Visualization.Mobile.Stromheizung
  *
  ********************************/	
 	
-	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
+    $configWFront=$ipsOps->configWebfront($moduleManager,false);     // wenn true mit debug Funktion
+	
+    $RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+	$Mobile_Enabled       = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+	$Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
+
+    $ipsOps->writeConfigWebfrontAll($configWFront);
+
+    /*
 	if ($WFC10_Enabled==true)
 		{
 		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
@@ -232,7 +233,7 @@ Path=Visualization.Mobile.Stromheizung
 
 	echo "\n";
 
-	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+
 	if ($WFC10User_Enabled==true)
 		{
 		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
@@ -260,7 +261,7 @@ Path=Visualization.Mobile.Stromheizung
 		echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
 		}		
 
-	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+
 	if ($Mobile_Enabled==true)
 		{	
 		$Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');
@@ -272,15 +273,14 @@ Path=Visualization.Mobile.Stromheizung
 		echo "  TabPaneOrder  : ".$mobile_PathOrder."\n";				
 		}
 
-	$Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 	if ($Retro_Enabled==true)
 		{	
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 		echo "Retro \n";
 		echo "  Path          : ".$Retro_Path."\n";		
-		}
+		}       */
 		
-	$WFC10_Regenerate     = false;			// das Webfront im Konfigurator neu aufbauen
+	$WFC10_Regenerate     = false;			// true, das Webfront im Konfigurator neu aufbauen
 	$mobile_Regenerate    = true;			// das mobile Webfront nicht neu aufbauen
 			
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -594,6 +594,7 @@ Path=Visualization.Mobile.Stromheizung
 	$WFC10_Autosteuerung_Path='Visualization.WebFront.Administrator.Autosteuerung.Stromheizung.AutoTPADetails2_LeftDown';
 	if ($WFC10_Enabled) 
 		{
+        $config = $configWFront["Administrator"];            
 		$categoryId_Autosteuerung_WebFront                = CreateCategoryPath($WFC10_Autosteuerung_Path);
 		if ($WFC10_Regenerate) 
 			{
@@ -657,23 +658,26 @@ Path=Visualization.Mobile.Stromheizung
 
 	echo "\n";
 	echo "=====================================================\n";
-	echo "Webfront Administrator aufbauen in ".$WFC10_Path." :\n";
-	echo "\n";
+
 	//print_r($webFrontConfig);	echo "\n";
 	
 	if ($WFC10_Enabled) 
 		{
 		/* Default Path ist Visualization.WebFront.Administrator.Stromheizung */
-		$categoryId_WebFront                = CreateCategoryPath($WFC10_Path);   // Administrator.Stromheizung
+        $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+        $config = $configWFront["Administrator"];   
+        $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
+        echo "Webfront Administrator aufbauen in ".$config["Path"]." :\n";
+        echo "\n";		$categoryId_WebFront                = CreateCategoryPath($config["Path"]);   // Administrator.Stromheizung
         IPS_SetHidden($categoryId_WebFront,true);
 		if ($WFC10_Regenerate) 
 			{
 			EmptyCategory($categoryId_WebFront);
-			DeleteWFCItems($WFC10_ConfigId, $WFC10_TabPaneItem);				// HeatTPA
+			$wfcHandling->DeleteWFCItems($config["TabPaneItem"]);				// HeatTPA
 			//DeleteWFCItems($WFC10_ConfigId, 'Light_TP');		/* eventuell alte Installationen von IPS_light wegraeumen */
 			}
-        echo "Tab Pane mit HeatTPA machen : CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon)\n";    
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);   // Tab Pane mit HeatTPA machen
+        echo "Tab Pane mit HeatTPA machen : \nCreateWFCItemTabPane   (".$config["ConfigId"].",".$config["TabPaneItem"].",".$config["TabPaneParent"].",".$config["TabPaneOrder"].",".$config["TabPaneName"].",".$config["TabPaneIcon"].")\n";    
+		$wfcHandling->CreateWFCItemTabPane   ($config["TabPaneItem"], $config["TabPaneParent"], $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]);   // Tab Pane mit HeatTPA machen
 
         /* $webFrontConfig is an array with setup of tabpane
          * Index is the Category in the Webfront category $WFC10_Path
@@ -683,6 +687,7 @@ Path=Visualization.Mobile.Stromheizung
          *    2  Parent
          *    3..9 die Parameter
          * Achtung, nach einem WFCSPLITPANEL muessen auf jeden Fall die WFCCATEGORY Befehle kommen, eine für den OriginalNamen und eine für den neue Split Namen
+         * das SplitPanel erzeugt einen neuen Tab, in diesem Tab werden zwei neue Kategorien angelegt
          * Nur die WFCLINKS und WFCGROUPS verlinken auf die Datenobjekte und werden in den Categories gespeichert
          *    2 Kategorie
          *    3 Datenobjekte als Komma getrennte Links
@@ -697,13 +702,13 @@ Path=Visualization.Mobile.Stromheizung
 				switch($WFCItem[0]) 
 					{
 					case IPSHEAT_WFCSPLITPANEL:
-						echo "CreateWFCItemSplitPane ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2] ,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9])\n";
-						CreateWFCItemSplitPane ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+						echo "CreateWFCItemSplitPane (".$config["ConfigId"].", $WFCItem[1], $WFCItem[2] ,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9])\n";
+						$wfcHandling->CreateWFCItemSplitPane ($WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
 						break;
 					case IPSHEAT_WFCCATEGORY:
 						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
-						echo "CreateWFCItemCategory ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2],$order, $WFCItem[3],$WFCItem[4], $categoryId, false)\n";
-						CreateWFCItemCategory ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+						echo "CreateWFCItemCategory ($WFCItem[1], $WFCItem[2],$order, $WFCItem[3],$WFCItem[4], $categoryId, false)\n";
+						$wfcHandling->CreateWFCItemCategory ($WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
 						break;
 					case IPSHEAT_WFCGROUP:
 					case IPSHEAT_WFCLINKS:
@@ -732,6 +737,7 @@ Path=Visualization.Mobile.Stromheizung
 			   	    }
 				}
 			}
+        $wfcHandling->write_WebfrontConfig($config["ConfigId"]);
 		}
 
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -740,20 +746,23 @@ Path=Visualization.Mobile.Stromheizung
 
 	echo "\n";
 	echo "=====================================================\n";
-	echo "Webfront User aufbauen in ".$WFC10User_Path." :\n";
-	echo "\n";
 	
 	if ($WFC10User_Enabled) 
 		{
-		$categoryId_WebFrontUser                = CreateCategoryPath($WFC10User_Path);
+        $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+        $config = $configWFront["User"];               
+        echo "Webfront User aufbauen in ".$config["Path"]." :\n";
+        echo "\n";
+        $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
+		$categoryId_WebFrontUser                = CreateCategoryPath($config["Path"]);
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontUser, true); //Objekt verstecken	
 		EmptyCategory($categoryId_WebFrontUser);
-		echo "================= ende empty categories \ndelete ".$WFC10User_TabPaneItem."\n";	
-		DeleteWFCItems($WFC10User_ConfigId, $WFC10User_TabPaneItem);
-		echo "================= ende delete ".$WFC10User_TabPaneItem."\n";			
-		echo " CreateWFCItemTabPane : ".$WFC10User_ConfigId. " ".$WFC10User_TabPaneItem. " ".$WFC10User_TabPaneParent. " ".$WFC10User_TabPaneOrder. " ".$WFC10User_TabPaneName. " ".$WFC10User_TabPaneIcon."\n";
-		CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem,  $WFC10User_TabPaneParent, $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
+		echo "================= ende empty categories \ndelete ".$config["TabPaneItem"]."\n";	
+		$wfcHandling->DeleteWFCItems($config["TabPaneItem"]);
+		echo "================= ende delete ".$config["TabPaneItem"]."\n";
+        echo "Tab Pane mit HeatTPU machen : \nCreateWFCItemTabPane   (".$config["ConfigId"].",".$config["TabPaneItem"].",".$config["TabPaneParent"].",".$config["TabPaneOrder"].",".$config["TabPaneName"].",".$config["TabPaneIcon"].")\n";    
+		$wfcHandling->CreateWFCItemTabPane   ($config["TabPaneItem"], $config["TabPaneParent"], $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]);   // Tab Pane mit HeatTPA machen
 		echo "================ende create Tabitem \n";
 		$webFrontConfig = IPSHeat_GetWebFrontUserConfiguration();
 		$order = 10;
@@ -764,11 +773,11 @@ Path=Visualization.Mobile.Stromheizung
 				$order = $order + 10;
 				switch($WFCItem[0]) {
 					case IPSHEAT_WFCSPLITPANEL:
-						CreateWFCItemSplitPane ($WFC10User_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+						$wfcHandling->CreateWFCItemSplitPane ($WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
 						break;
 					case IPSHEAT_WFCCATEGORY:
 						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
-						CreateWFCItemCategory ($WFC10User_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+						$wfcHandling->CreateWFCItemCategory ($WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
 						break;
 					case IPSHEAT_WFCGROUP:
 					case IPSHEAT_WFCLINKS:
@@ -791,6 +800,7 @@ Path=Visualization.Mobile.Stromheizung
 			   }
 			}
 		}
+    $wfcHandling->write_WebfrontConfig($config["ConfigId"]);        
 	}
 
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -799,12 +809,13 @@ Path=Visualization.Mobile.Stromheizung
 	
 	echo "\n";
 	echo "=====================================================\n";
-	echo "Webfront Mobile aufbauen in ".$Mobile_Path." : Die Kategorie wird ".($mobile_Regenerate?"neu erzeugt":"nur upgedated")."\n";
 	//echo "\n";
 		
 	if ($Mobile_Enabled ) 
 		{
-        $MobilePathSegments=explode(".",$Mobile_Path);
+        $config = $configWFront["Mobile"];              
+	    echo "Webfront Mobile aufbauen in ".$config["Path"]." : Die Kategorie wird ".($mobile_Regenerate?"neu erzeugt":"nur upgedated")."\n";
+        $MobilePathSegments=explode(".",$config["Path"]);
         //print_R($MobilePathSegments);
         $parent=0;
         $MobilePathOIDs=array(); 
@@ -814,7 +825,7 @@ Path=Visualization.Mobile.Stromheizung
             $visID = @IPS_GetObjectIDByName ($MobilePathSegment, $parent);
             if ($visID===false)
                 {
-                echo "\nFehler, $MobilePathSegment ist in $parent nicht vorhanden ($Mobile_Path)\n";
+                echo "\nFehler, $MobilePathSegment ist in $parent nicht vorhanden (".$config["Path"].")\n";
                 $oldVisID = @IPS_GetObjectIDByName ("Stromheizung", $parent);
                 if ($oldVisID !== false)
                     {
@@ -845,8 +856,8 @@ Path=Visualization.Mobile.Stromheizung
             else echo "Stromheizung ($oldVisID) ist in $parent nicht mehr vorhanden. Neuer Pfad ist $Mobile_Path.\n";
             }
         else echo "Aufbau Mobile Webfront erfolgt im Standard Pfad.\n";
-        
-		$mobileId  = CreateCategoryPath($Mobile_Path, $mobile_PathOrder, $mobile_PathIcon);
+        echo "Config Mobile Webfront : ".json_encode($config)."\n";
+		$mobileId  = CreateCategoryPath($config["Path"], $config["PathOrder"], $config["PathIcon"]);
 		if ($mobile_Regenerate) { 			EmptyCategory($mobileId); 		}
 
         /* es gibt eine Mobile Webfront Konfigurationsfunction

@@ -28,8 +28,15 @@
  * bei Switch wird mit Ventilen die Giesskreislaeufe geschaltet
  * bei Auto wird durch Ein/Ausschalten der Pumpe automatisch um einen Giesskreis weitergeschaltet
  *
+ * die Ansteuerung erfolgt zentralisisiert mit zugeordneten functions
+ *    $gartensteuerung->control_waterValves($GiessCount)        der Giesscount wird umgerechnet auf die Ventilstatus Entscheidung
+ *    $gartensteuerung->control_waterPump(false);               die Pumpe wird ein/ausgeschaltet
  * 
  * die zentrale Steuerung des Giessvorgangs übernimmt UpdateTimer der sobald der Giessvorgang gestartet wurde mit minütlichen Aufrufen agiert
+ *
+ * Abhängig von der Configuration werden zusaetzliche Webfront Tabs aktiviert:
+ *      Statistics  für Statistik Auswertungen 
+ *      PowerPump   Energiemessungen und Protokollierungen
  *
  ****************************************************************/
  
@@ -58,8 +65,16 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-    $debug=true;               // full debug auch in diesem script und der Klassen
-    $extraLog=true;             // zusaetzliche Nachrichten im Log
+    if ($_IPS['SENDER']=="Execute")
+        {
+        $debug=true;               // full debug auch in diesem script und der Klassen
+        $extraLog=true;             // zusaetzliche Nachrichten im Log
+        }
+    else            // Runtime
+        {
+        $debug=false;               // full debug auch in diesem script und der Klassen
+        $extraLog=true;             // zusaetzliche Nachrichten im Log
+        }
 
     if ($debug) echo "Konfiguration der Gartensterung analysieren:\n";
     $gartensteuerung = new Gartensteuerung(0,0,$debug);   // default, default, debug=false
@@ -68,6 +83,21 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
     if ($debug) 
         {
         print_R($GartensteuerungConfiguration);
+        echo "Betriebsart: ";
+        if ($GartensteuerungConfiguration["Configuration"]["Statistics"]=="ENABLED") echo "Statistik ";
+        if ($GartensteuerungConfiguration["Configuration"]["Irrigation"]=="ENABLED") 
+            {
+            echo ",Bewässerung ";
+            if ($GartensteuerungConfiguration["Configuration"]["PowerPump"]=="ENABLED") 
+                {
+                echo "mit Energiemessung ";
+                if ( (isset($GartensteuerungConfiguration["Configuration"]["CheckPower"])) && ($GartensteuerungConfiguration["Configuration"]["CheckPower"]!==null) )
+                    {
+                    echo "Register : ".$GartensteuerungConfiguration["Configuration"]["CheckPower"]."  ";
+                    }
+                }
+            if ($GartensteuerungConfiguration["Configuration"]["Mode"]=="Switch") echo "und Ventilsteuerung";
+            }
         echo "---Ende\n";
         }
 
@@ -89,10 +119,13 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 				
 *************************************************************/
 
-    $object2= new ipsobject($CategoryIdData);
-    $object3= new ipsobject($object2->osearch("Nachricht"));
-    $NachrichtenInputID=$object3->osearch("Input");
-    $log_Giessanlage=new Logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
+
+    $dosOps = new dosOps();    
+    $systemDir     = $dosOps->getWorkDirectory(); 
+
+	$NachrichtenID  = IPS_GetCategoryIDByName("Nachrichtenverlauf-Gartensteuerung",$CategoryIdData);
+    $NachrichtenInputID = IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenID);
+    $log_Giessanlage        = new Logging($systemDir."Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
 
 /******************************************************
 
@@ -506,15 +539,15 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
     echo "======================================================\n";
     echo "Giesszeit : ".GetValue($GiessTimeID)."\n";
     echo "GiessanlageID : ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto)\n";
-    if ($GartensteuerungConfiguration["Configuration"]["PUMPE"]!==null) echo "Gartenpumpe adresiert durch : ".$GartensteuerungConfiguration["Configuration"]["PUMPE"]."\n";
-    if ($GartensteuerungConfiguration["Configuration"]["CheckPower"]!==null) 
+    if ( (isset($configuration["WaterPump"])) && ($configuration["WaterPump"]!==null) ) echo "Gartenpumpe adresiert durch : ".json_encode($configuration["WaterPump"])."\n";     // "PUMPE" wenn set_gartenpumpe verwendet wird
+    if ( (isset($configuration["CheckPower"])) && ($configuration["CheckPower"]!==null) ) 
         {
-        echo "Gartenpumpe überprüft durch POWER Register : ".$GartensteuerungConfiguration["Configuration"]["CheckPower"]."\n";
-        $power = GetValue($GartensteuerungConfiguration["Configuration"]["CheckPower"]);
-        if ( ($power) && (isset( $GartensteuerungConfiguration["Configuration"]["KREIS".(string)($Count)])) )           // Leistungswert vorhanden und Kreis muss definiert sein
+        echo "Gartenpumpe überprüft durch POWER Register : ".$configuration["CheckPower"]."\n";
+        $power = GetValue($configuration["CheckPower"]);
+        if ( ($power) && (isset( $configuration["KREIS".(string)($Count)])) )           // Leistungswert vorhanden und Kreis muss definiert sein
             {
-            echo $GartensteuerungConfiguration["Configuration"]["KREIS".(string)($Count)]."<br>$power kW Pumpleistung\n";
-            SetValue($GiessKreisInfoID,$GartensteuerungConfiguration["Configuration"]["KREIS".(string)($Count)]."<br>$power W Pumpleistung");
+            echo $configuration["KREIS".(string)($Count)]."<br>$power kW Pumpleistung\n";
+            SetValue($GiessKreisInfoID,$configuration["KREIS".(string)($Count)]."<br>$power W Pumpleistung");
             }
         }
 
@@ -614,27 +647,29 @@ if($_IPS['SENDER'] == "TimerEvent")
             /* Alle 1 Minuten für Berechnung verbleibende Giesszeit 
 			 * Gesteuert wird über Timer Ein/Aus, GiessCount und GiessTimeRemain
 			 * Jede Minute wird der Stand der verbleibenden Minuten heruntergezählt, 
-             * GiessCount sind die Giesskreise mal zwei, damit auch die Giesspause abgebildet werden kann
-             * GiessCount 0 bedeute UpdateTimer aus
-             * wenn GiessCount die konfigurierten Gieskreise*2+1 erreicht hat wird Giesscount auf 0 gesetzt
-             * sonst wird GiessTimeRemain heruntergezählt
-             * wenn GiessTimeRemain == 0 ist wird abhängig vom Giesscount weitergemacht
-             *    ungerade, die Gartenpumpe wird eingeschaltet und der GiessTimeRemain wird auf die Giesszeit gestellt
-             *    gerade, die Gartenpumpe wird ausgeschaltet und die GiessTimeRemain wird auf die Pausenzeit gestellt
-
-			     Alle giesdauer Minuten für Monitor Ein/Aus
-				Beregner auf der Birkenseite
-				(4) Beregner beim Brunnen 1 und 2
-					Schlauchbewaesserung
-				(3) Beregner ehemaliges Pool (Spritzer bei Fichte, Poolberegner 1 und 2)
+             * GiessCount sind die Giesskreise mal zwei, damit auch die Giesspause für die automatische Weiterschaltung abgebildet werden kann
+             * Statemaschine zum Steuern:
+             *
+             *  GiessCount 0 bedeutet, schalte UpdateTimer aus, Ende Ablaufsteuerung, fertig
+             *  wenn GiessCount die konfigurierten Gieskreise*2+1 erreicht hat wird Giesscount auf 0 gesetzt, Ende Ablaufsteuerung
+             *  sonst wird GiessTimeRemain heruntergezählt
+             *      wenn GiessTimeRemain == 0 ist wird abhängig vom Giesscount weitergemacht
+             *          ungerade, die Gartenpumpe wird eingeschaltet und der GiessTimeRemain wird auf die Giesszeit gestellt
+             *          gerade, die Gartenpumpe wird ausgeschaltet und die GiessTimeRemain wird auf die Pausenzeit gestellt
+             *
+			 *    Alle giesdauer Minuten für Monitor Ein/Aus
+			            	Beregner auf der Birkenseite
+				            (4) Beregner beim Brunnen 1 und 2
+					        Schlauchbewaesserung
+				            (3) Beregner ehemaliges Pool (Spritzer bei Fichte, Poolberegner 1 und 2)
 			*/
             $power=false;
 			$GiessCount=GetValue($GiessCountID);                // zaehlt von 1 hinauf, immer wenn gerade wird eine Pause gemacht, wenn fertig wird auf 0 gestellt, dann ist es aus
             $Count=floor($GiessCount/2);                        // 0 oder 1 ist das erste Ventil
 
-			//if ($GartensteuerungConfiguration["DEBUG"]==true) $log_Giessanlage->message("Gartengiessanlage Giesstimer ".$TEventName."  ".$GiessCount);
+			//if ($GartensteuerungConfiguration["Configuration"]["DEBUG"]==true) $log_Giessanlage->message("Gartengiessanlage Giesstimer ".$TEventName."  ".$GiessCount);
 			// zweimal message innerhalb eines Scripts führt zur gleichen Nachricht
-			if ($GiessCount==0)
+			if ($GiessCount==0)                                                                                                         // *** status fertig, ende
 				{			
                 $failure=$gartensteuerung->control_waterPump(false);
 				IPS_SetEventActive($UpdateTimerID,false);
@@ -643,7 +678,7 @@ if($_IPS['SENDER'] == "TimerEvent")
 			else
 				{
 				/* es wird gegossen bis GiessCount die Anzahl der Giesskreise erreicht hat und wieder auf  Null gesetzt wird */
-				if ($GiessCount==(($GartensteuerungConfiguration["Configuration"]["KREISE"]*2)+1))
+				if ($GiessCount==(($GartensteuerungConfiguration["Configuration"]["KREISE"]*2)+1))                                      // **** Status Ende, Ventile schliessen, Pumpe aus
 					{
                     $gartensteuerung->control_waterValves($GiessCount);           // Ventilsteuerung an einem Ort automatisch machen                        
                     $failure=$gartensteuerung->control_waterPump(false);
@@ -663,13 +698,13 @@ if($_IPS['SENDER'] == "TimerEvent")
                             }
 						}
 					}
-				else            
+				else                                                                                                                // **** Status, Betrieb, runterzählen oder weiterschalten
 					{
                     /* ein GiesCount irgendwo dazwischen, wenn der Timer das erste Mal aktiviert ist, ist der Wert 1, also ungerade, und nachdem die Pumpe aktiviert wurde bereits 2 
                      * solange aber die GiessTimeRemain nicht abgelaufen ist, passiert einmal gar nichts
                      */                        
 					$GiessTimeRemain=GetValue($GiessTimeRemainID);
-					if ($GiessTimeRemain == 0)
+					if ($GiessTimeRemain == 0)                                                                                      // ***** Status GiesstimeRemain = 0, Pause oder weiterschalten
 						{
 						if (($GiessCount % 2)==1)       // ungerade, weg von der Pause
 							{
@@ -699,8 +734,8 @@ if($_IPS['SENDER'] == "TimerEvent")
 								$log_Giessanlage->LogNachrichten("Gartengiessanlage beginnt nicht, wegen Regen oder geringer Temperatur ");
 								}
 							}
-						else            // gerade Zahl, hier wird während GiessTimeRemain runtergezählt wird die Ganze Zeit gepumpt, danach ab in die Pause oder zum nächsten ventil
-							{
+						else             // ***** Giesstime
+							{           // gerade Zahl, hier wird während GiessTimeRemain runtergezählt wird die Ganze Zeit gepumpt, danach ab in die Pause oder zum nächsten ventil
                             switch (strtoupper($GartensteuerungConfiguration["Configuration"]["Mode"]))
                                 {
                                 case "VENTILS":

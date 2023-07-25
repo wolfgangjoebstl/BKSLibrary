@@ -6556,6 +6556,13 @@ class SeleniumChromedriver extends OperationCenter
         $this->execDirContent = $this->dosOps->readdirToArray($this->execDir);                   // Inhalt Verzeichnis als Array
         }
 
+    /* get_ExecDir
+     */
+    public function get_ExecDir()
+        {
+        return($this->execDir);    
+        }
+
     /* SeleniumChromedriver, erstellt anhand des gespeicherten Inhalt des execdir Verzeichnis eine sortierte Liste von Chromdrivern mit Name und Filegröße
      * die Filegröße kann zum bestimmen der Versionsnummer verwendet werden
      */
@@ -6604,6 +6611,63 @@ class SeleniumChromedriver extends OperationCenter
             }
         else $sourceFile=false;
         return ($sourceFile);                
+        }
+
+    function getListDownloadableChromeDriverVersion()
+        {
+        $url = "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json";
+        $type="chromedriver";           // oder chrome
+        $platform="win64";              // oder win32 oder linux64
+
+        $versions = file_get_contents($url);
+        //echo $versions;
+        $versionData=array();
+        $versionData=json_decode($versions,true);
+        //print_R($versionData);                        // Rodaten, alle Versionen
+
+        /* original versions daten durchsuchen. Sie beginnt mit timestamp als scalar und versions als array
+         *
+         */
+        $debug=false;
+        $result=array(); // nach Versionsnummer indexiert
+        foreach ($versionData as $intro => $fulldata)
+            {
+            if (is_array($fulldata)) 
+                {
+                $count=sizeof($fulldata);
+                //echo " $intro   ($count)\n";              // intro versions
+                foreach ($fulldata as $index => $data)      // index von 0 bis n
+                    {
+                    if (is_array($data)) 
+                        {
+                        $count=sizeof($data);    
+                        $version=explode(".",$data["version"]);                                             // version index 0..3, 0 is major version
+                        if ($debug) echo " ".str_pad($index,3)."   ($count)   ".str_pad($data["version"],20)."  ".str_pad(json_encode($version),30);
+                        if (isset(($data["downloads"][$type])))
+                            {
+                            if ($debug) echo "$type\n";
+                            foreach ($data["downloads"][$type] as $indexSub => $dataSub)
+                                {
+                                if ( (isset($dataSub["platform"])) && ($dataSub["platform"]==$platform) )
+                                    {
+                                    $result[$version[0]]["version"]=$data["version"];
+                                    $result[$version[0]]["url"]=$dataSub["url"];
+                                    if ($version[3]>0) 
+                                        {
+                                        $url = $dataSub["url"];                                 // defaultwert ist immer die letzte freigegebene Version
+                                        $downloadVersion=$data["version"];
+                                        }
+                                    } 
+                                }           // ende foreach
+                            }                   // ende isset choromedriver
+                        elseif ($debug)  echo "chrome only, $type not available\n";
+                        }                   // ende is_array
+                    else echo " $index   $data  Fehler ? \n";                 // Scalar Ausgabe 
+                    }                   // ende foreach
+                }                   // ende is_array
+            elseif ($debug)  echo " $intro   $fulldata \n";                 // timestamp Ausgabe
+            }
+        return($result);
         }
 
     }

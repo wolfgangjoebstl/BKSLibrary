@@ -1,30 +1,50 @@
 <?
-
-/*
-	 * @defgroup 
-	 * @ingroup
-	 * @{
+ 	/*
+	 * This file is part of the IPSLibrary.
 	 *
-	 * Script zur Auslesung von Energiewerten. Diese Script übernimmt die Webfrontvariablen Bearbeitung und wird zusaetzlich zu Testzwecken weiterhin verwendet
-	 * Regelmaessiger Aufruf wird jetzt von MomentanwerteAbfragen uebernommen. Die Antwort eines AMIS Zähler wird automatisch von AMIS Cutter bearbeitet sobald der Wert verfügbar ist
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */ 
+	 
+
+    /*
+     * @defgroup 
+     * @ingroup
+     * @{
      *
-	 * Diese Routine kann als Einstieg verwendet werden um einen Überblick über die Installation zu bekommen
-	 *
-	 * @file      
-	 * @author        Wolfgang Joebstl
-	 * @version
-	 *  Version 4.0 13.6.2016
-*/
+     * Script zur Auslesung von Energiewerten. Diese Script übernimmt die Webfrontvariablen Bearbeitung und wird zusaetzlich zu Testzwecken weiterhin verwendet
+     * Regelmaessiger Aufruf wird jetzt von MomentanwerteAbfragen uebernommen. Die Antwort eines AMIS Zähler wird automatisch von AMIS Cutter bearbeitet sobald der Wert verfügbar ist
+     *
+     * Diese Routine kann als Einstieg verwendet werden um einen Überblick über die Installation zu bekommen
+     *
+     * webfronverarbeitung allgemein und speziell für localdata->energiemessung->smart meter
+     * es gibt update,calculate,sort
+     *
+     * @file      
+     * @author        Wolfgang Joebstl
+     * @version
+     *  Version 4.0 13.6.2016
+     */
 
-IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+    IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
 
 	/******************************************************
-
-				INIT
-
+     *
+	 *			INIT
+     *
 	*************************************************************/
 	
 	
@@ -58,7 +78,14 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
 if ($_IPS['SENDER']=="WebFront")
 	{
-	/* vom Webfront aus gestartet */
+	/* vom Webfront aus gestartet 
+     *      Update      SmartMeterStatus        $amisSM->writeSmartMeterDataToHtml()
+     *      Cakculate
+     *      Sort        InterActive             html verlinkt auf ein webfront script file, das wird wo anders gesetzt
+     *
+     * Update erzeugt neue Smart Meter Register Übersicht mit 24h Counter und Tageswerten, den 15min Werten von InputCsv 
+     * und als weitere Referenz die logWien Daten die von Selenium ermittelt werden.
+     */
 
 	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 

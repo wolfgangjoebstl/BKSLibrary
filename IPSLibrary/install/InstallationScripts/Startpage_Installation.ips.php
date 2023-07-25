@@ -236,25 +236,11 @@
 	 *    SwitchScreen hat das Profil StartpageControl
 	 */
 
+    // ButtonProfil anpassen : \n";
 	$pname="StartpageControl";
-	if (IPS_VariableProfileExists($pname) == false)  //Var-Profil erstellen     
-		{
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-        }
-    else
-        {       // Profil kann sich bei Erweiterungen jederzeit ändern, daher immer konfigurieren
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 7, 0); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, 0, "Explorer", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=dunkelgrau
-  		IPS_SetVariableProfileAssociation($pname, 1, "FullScreen", "", 0x00f0c0); //P-Name, Value, Assotiation, Icon, Color=dunkelgrün
-  		IPS_SetVariableProfileAssociation($pname, 2, "Station", "", 0xf040f0); //P-Name, Value, Assotiation, Icon, Color=pink
-  		IPS_SetVariableProfileAssociation($pname, 3, "Media", "", 0xf04040); //P-Name, Value, Assotiation, Icon, Color=pink
-  		IPS_SetVariableProfileAssociation($pname, 4, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color=gold
-		IPS_SetVariableProfileAssociation($pname, 5, "Topologie", "", 0xc0f0c0); //P-Name, Value, Assotiation, Icon, Color=mittelgrau
-		IPS_SetVariableProfileAssociation($pname, 6, "Hierarchie", "", 0x40f0f0); //P-Name, Value, Assotiation, Icon, Color=cyan
-		IPS_SetVariableProfileAssociation($pname, 7, "Off", "", 0xf0f0f0); //P-Name, Value, Assotiation, Icon, Color        
-		echo "Profil $pname erstellt;\n";
-		}
+    $tabs=["Explorer","FullScreen","Station","Media",  "Picture","Topologie","Hierarchie","Off"];
+    $color=[0xc0c0c0,   0x00f0c0,  0xf040f0, 0xf04040, 0xf0c000, 0xc0f0c0,   0x40f0f0,   0xf0f0f0];
+    $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
 
 /*******************************
  *

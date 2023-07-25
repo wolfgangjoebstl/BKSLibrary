@@ -1,5 +1,13 @@
 <?
 
+/* kontrolliertes herunterfahren
+ * unter Kern Instanzen, Events, sind Start und Stop Watchdog als Scripts eingetragen
+ * Stop Watchdog sagt nur Gute Nachricht
+ *
+ * Info, noch nicht verwendet
+ * IPS_Execute('C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe', '-command "restart-service -name IPSServer"', false, false);
+ */
+
     //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
     //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Watchdog\Watchdog_Library.inc.php"); 

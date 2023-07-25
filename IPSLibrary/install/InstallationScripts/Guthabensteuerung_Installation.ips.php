@@ -21,8 +21,17 @@
 	 * @{
 	 *
 	 * Script um herauszufinden ob die Guthaben der Simkarten schon abgelaufen sind
+     * erweitert um die Funktionen von Selenium und chromedriver
+     * Abhängig von der Betriebsart wird iMacro (nur mehr gegen Geld nutzbar) oder Selenium initialisiert
+     *
 	 * Installationsroutine, Eigenes Tab im SystemTP für Selenium Status
      * Selenium Funktion wird hier immer mehr ausgeweitet
+     * Selenium benötigt aktuelle chromedriver Versionen, diese werden über Synology Drive verteilt
+     * Aus Synology Drive die chromedriver_xxx xxx version katalogisieren
+     * über Tastendruck kann Selemium aktualisisert werden, erfordert Aufruf Installation
+     *
+     * Zusätzlich werden jetzt aich die letztgültigen chjromedriver versuionen in das Download Verzeichnis geladen
+     * erfordert json download der versionierung und link, unzip und Speicherung mit _xxx
      *
      * Allgemeine Funktion Money mit dem Dollarzeichen
      * Darstellung von Guthaben, aktuellem Depotwert, Analyseergebnisse von Yahoo Finance API
@@ -53,6 +62,7 @@
 
     $DoInstall=true; 
     $DoWatchdogProcessActiveCheck = false;      // check ob Selenium läuft, dauert zu lange
+    $copyToSharedDrive=false;                   // nicht zurückspeichern auf den Shared drive
     $DoDelete=false;                            // Alle Webfronts beginnend mit Money löschen
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -83,8 +93,9 @@
 	echo str_pad("Kernelversion : ",40).IPS_GetKernelVersion()."\n";
 	echo str_pad("IPS Version : ",40).$ergebnis1." ".$ergebnis2."\n";
 	echo str_pad("IPSModulManager Version : ",40).$ergebnis3."\n";
-    echo str_pad("Guthabensteuerung Version : ",40).$ergebnis4."\n";        
-	echo $inst_modules;
+    echo str_pad("Guthabensteuerung Version : ",40).$ergebnis4."\n";  
+    echo "\n";      
+	echo $inst_modules."\n";
     echo "systemdir : ".$systemDir."\n";
 
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
@@ -178,6 +189,7 @@
  *
  *******************************************************************/
 
+    echo "\n";
     echo "Setup Selenium oder imacro Environment. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
     $seleniumWeb=false;
@@ -185,15 +197,17 @@
     switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
         {
         case "IMACRO":
+            echo "   --> starten mit Installation/Inbetriebnahme iMacro:\n";
             $CategoryId_Mode          = CreateCategory('iMacro',          $CategoryIdData, 90);
             $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_iMode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             $testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMode,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             break;
         case "SELENIUM":
+            echo "   --> starten mit Installation/Inbetriebnahme Selenium:\n";
             IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
             //echo "Do Init for Operating Mode Selenium.\n";
             $seleniumOperations = new SeleniumOperations();            
-            $CategoryId_Mode        = CreateCategory('Selenium',        $CategoryIdData, 90);
+            $CategoryId_Mode    = CreateCategory('Selenium',        $CategoryIdData, 90);
             $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
             if (isset($GuthabenAllgConfig["Selenium"]["WebDrivers"])) 
                 {
@@ -232,7 +246,8 @@
                 $watchDog = new watchDogAutoStart();
                 $config = $watchDog->getConfiguration();
 
-                if ($DoWatchdogProcessActiveCheck)                              // check if Selenium Java process is running, will be done automatically with timer interogation
+                // check if Selenium Java process is running, will be done automatically with timer interogation
+                if ($DoWatchdogProcessActiveCheck)                              // nur machen wenn Zeit ist, default maeßig ausgeschaltet
                     {
                     $processes    = $watchDog->getActiveProcesses();
                     $processStart = $watchDog->checkAutostartProgram($processes);
@@ -359,7 +374,240 @@
                         $webOps->createActionProfileByName($pname,$tabs,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                         }
                     }                   // aktuellen Selenium Driver rausfinden 
-                }                        
+                }               // OperationCenter ist installiert 
+                
+            /**************************** es werden chromedriver Versionen automatisch geladen, 
+             * hier das Verzeichnis download dafür machen, Target verzeichnis                   
+             * im target Verzeichnis 7zip installieren, implizierte Statemaschine duch mehrmaliges Aufrufen
+             *          download 7zr 
+             *          download 7za Archiv
+             *          erstellen Batchfile zum entpacken 7za
+             *          unzip 7za mit Batchfile, dient für entpacken von .zip Files
+             *
+             */
+
+            $sysOps = new sysOps();
+            $curlOps = new curlOps();             
+
+            $dosOps->mkdirtree($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
+            if (is_dir($GuthabenAllgConfig["Selenium"]["DownloadDir"])) echo "Verzeichnis für Selenium downloads verfügbar: ".$GuthabenAllgConfig["Selenium"]["DownloadDir"]."\n";
+
+            $dir = $GuthabenAllgConfig["Selenium"]["DownloadDir"];
+            echo "Zieldatei downloaden und abspeichern: $dir\n";
+
+            echo "Was ist schon alles im Targetverzeichnis gespeichert $dir:\n";
+            $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+            $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+            //print_R($files);
+
+            $filename="7zr.exe";
+            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            if ($file) echo "   --> Datei $filename gefunden.\n";
+            else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$dir);    
+
+            $filename="7z2301-extra.7z";
+            $file7 = $dosOps->findfiles($files,$filename,true);       //Debug
+            if ($file) echo "   --> Datei $filename gefunden.\n";
+            else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$dir);    
+
+            $filename="unzip_7za.bat";
+            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            if ($file) 
+                {
+                echo "   --> Datei $filename gefunden.\n";
+                //$lines = file($dir."unzip_7za.bat");
+                //foreach ($lines as $line) echo $line;        
+                }
+            else
+                {
+                $filenameProcess = "7z2301-extra.7z";
+                echo "Schreibe Batchfile zum automatischen Unzip der 7za Version.\n";
+                $handle2=fopen($dir."unzip_7za.bat","w");        
+                fwrite($handle2,'echo written '.date("H:m:i d.m.Y")."\r\n");
+                $command='7zr.exe x '.$filenameProcess."\r\n";
+                fwrite($handle2,$command);
+                //$command="pause\r\n";
+                //fwrite($handle2,$command);
+                fclose($handle2);
+                }
+
+            $filename="7za.exe";
+            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            if ($file) echo "   --> Datei $filename gefunden.\n";
+            else
+                {
+                $ergebnis = "not started";
+                $commandName="unzip_7za.bat";
+                $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
+                echo "Execute Batch $dir$commandName um File $dir$filename zu erhalten : \"$ergebnis\"\n";
+                }
+            /*
+            $filename="unzip_chromedriver.bat";
+            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            if ($file) echo "   --> Datei $filename gefunden.\n";
+            else
+                {
+                $filesFiltered = $dosOps->findfiles($files,"*.zip",true);       //Debug
+                echo "Schreibe Batchfile $filename zum automatischen Unzip der Chromedriver Versionen.\n";
+                $handle2=fopen($dir.$filename,"w");        
+                fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
+                foreach ($filesFiltered as $index => $filename)
+                    {
+                    $command='7za.exe x '.$filename."\r\n";
+                    fwrite($handle2,$command);
+                    echo "   Befehl ist jetzt : $command";
+                    }
+                fclose($handle2);
+                }        
+
+            $dirname=$dir."chromedriver-win64/";
+            if (is_dir($dirname))
+                {
+                echo "Process result of unzip in $dirname.\n";
+                $files = $dosOps->writeDirToArray($dirname);        // bessere Funktion
+                $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+                $dosOps->rrmdir($dirname);
+                $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                echo "    -> finished, result and $dirname deleted.\n";
+                }
+            else echo "Dir $dirname not found.\n"; 
+
+            $filename="chromedriver-win64.zip";
+            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            if ($file) 
+                {
+                echo "   --> Datei $filename gefunden.\n";
+                $commandName="unzip_chromedriver.bat";
+                $ergebnis = "not started";
+                //$ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
+                $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName);
+                echo "Execute Batch $dir$commandName \"$ergebnis\"\n";
+                echo "Delete File $dir$filename \n";
+                $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+                $dosOps->deleteFile($dir.$filename);
+                $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                }
+            */
+
+            $execDir=$seleniumChromedriver->get_ExecDir();
+            echo "Bestehende chromedriver Versionen ausgeben. Verzeichnis Synology/Shared Drive : ".$execDir."\n";
+            $dosOps->writeDirStat($execDir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+
+            //verfügbare chromedriver versionen herunterladen
+            $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
+
+            /*
+            $url = "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json";
+            $type="chromedriver";           // oder chrome
+            $platform="win64";              // oder win32 oder linux64
+
+            $versions = file_get_contents($url);
+            //echo $versions;
+            $versionData=array();
+            $versionData=json_decode($versions,true);
+            //print_R($versionData);                        // Rodaten, alle Versionen
+
+            // original versions daten durchsuchen. Sie beginnt mit timestamp als scalar und versions als array
+            $debug=false;
+            $result=array(); // nach Versionsnummer indexiert
+            foreach ($versionData as $intro => $fulldata)
+                {
+                if (is_array($fulldata)) 
+                    {
+                    $count=sizeof($fulldata);
+                    //echo " $intro   ($count)\n";              // intro versions
+                    foreach ($fulldata as $index => $data)      // index von 0 bis n
+                        {
+                        if (is_array($data)) 
+                            {
+                            $count=sizeof($data);    
+                            $version=explode(".",$data["version"]);                                             // version index 0..3, 0 is major version
+                            if ($debug) echo " ".str_pad($index,3)."   ($count)   ".str_pad($data["version"],20)."  ".str_pad(json_encode($version),30);
+                            if (isset(($data["downloads"][$type])))
+                                {
+                                if ($debug) echo "$type\n";
+                                foreach ($data["downloads"][$type] as $indexSub => $dataSub)
+                                    {
+                                    if ( (isset($dataSub["platform"])) && ($dataSub["platform"]==$platform) )
+                                        {
+                                        $result[$version[0]]["version"]=$data["version"];
+                                        $result[$version[0]]["url"]=$dataSub["url"];
+                                        if ($version[3]>0) 
+                                            {
+                                            $url = $dataSub["url"];                                 // defaultwert ist immer die letzte freigegebene Version
+                                            $downloadVersion=$data["version"];
+                                            }
+                                        } 
+                                    }           // ende foreach
+                                }                   // ende isset choromedriver
+                            elseif ($debug)  echo "chrome only, $type not available\n";
+                            }                   // ende is_array
+                        else echo " $index   $data  Fehler ? \n";                 // Scalar Ausgabe 
+                        }                   // ende foreach
+                    }                   // ende is_array
+                elseif ($debug)  echo " $intro   $fulldata \n";                 // timestamp Ausgabe
+                }  */
+
+            echo "ergebnisse abspeichern\n";
+            foreach ($result as $version => $entry)
+                {
+                echo "Wir beginnem mit Version $version.\n";
+                $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+                $filename="chromedriver-win64.zip";
+                $file = $dosOps->findfiles($files,$filename,true);       //Debug
+                if ($file) 
+                    {
+                    echo "    ---> delete file.\n";
+                    $dosOps->deleteFile($dir.$filename);
+                    }
+                $file = $dosOps->findfiles($files,"chromedriver_$version.exe",true);       //Debug
+                if ($file) echo "    --> File $version vorhanden.\n";
+                else
+                    {
+                    echo "Url laden.\n";
+                    $curlOps->downloadFile($entry["url"],$dir);
+                    $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                    $file = $dosOps->findfiles($files,$filename,true);       //Debug
+                    if ($file) 
+                        {
+                        echo "   --> Datei $filename für version $version gefunden.\n";
+                        $commandName="unzip_chromedriver.bat";
+                        $ergebnis = "not started";
+                        $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
+                        echo "Execute Batch $dir$filename \"$ergebnis\"\n";
+                        $dirname=$dir."chromedriver-win64/";
+                        if (is_dir($dirname))
+                            {
+                            echo "Process result of unzip in $dirname.\n";
+                            $files = $dosOps->writeDirToArray($dirname);        // bessere Funktion
+                            $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+                            echo "moveFile ".$dirname."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
+                            //$dosOps->moveFile($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
+                            copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
+                            //echo "rename  ".$dir."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
+                            //rename($dir."chromedriver.exe",$dir."chromedriver_".$version.".exe");
+                            $dosOps->rrmdir($dirname);
+                            echo "    -> finished, result and $dirname deleted.\n";
+                            }
+                        else echo "Dir $dirname not found.\n"; 
+                    
+                        $dosOps->deleteFile($dir.$filename);
+                        $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                        }
+                    }
+                }       // ende foreach
+
+            //print_R($result);
+            if ($copyToSharedDrive)
+                {
+                foreach ($result as $version => $entry)
+                    {
+                    if (file_exists($execDir."chromedriver_$version.exe")) echo "Version $version bereits vorhhanden, nicht überschreiben.\n";
+                    else copy ($dir."chromedriver_$version.exe",$execDir."chromedriver_$version.exe");
+                    }
+                }
             break;
         case "NONE":
             $DoInstall=false;

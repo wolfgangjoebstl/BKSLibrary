@@ -18,6 +18,10 @@
  *
  * Gartensteuerung Library
  *
+ * vorhandene classes
+ *      Gartensteuerung
+ *      GartensteuerungControl extends Gartensteuerung
+ *
  * verschiedene Funktionen um innerhalb und ausserhalb des Moduls Autosteuerung eine Giessanlage anzusteuern
  *
  * construct		mit bereits zahlreichen Ermittlungen, wie zB die regenStatistik, regenStand2h, regenStand48h
@@ -47,11 +51,11 @@ class Gartensteuerung
 	{
 	var         $installedmodules;                                  // welche Module sind installiert und können verwendet werden
 	
-	private 	$archiveHandlerID;
-	private		$debug;
-	private		$tempwerte, $tempwerteLog, $werteLog, $werte;
-	private		$variableTempID, $variableID;                       // Aussentemperatur und Regensensor
-	private 	$GartensteuerungConfiguration;
+	protected 	$archiveHandlerID;
+	protected	$debug;
+	protected	$tempwerte, $tempwerteLog, $werteLog, $werte;
+	protected	$variableTempID, $variableID;                       // Aussentemperatur und Regensensor
+	protected 	$GartensteuerungConfiguration;
 	
 	public 		$regenStatistik;
 	public 		$letzterRegen, $regenStand2h, $regenStand48h;
@@ -62,13 +66,14 @@ class Gartensteuerung
 	
 	public 		$log_Giessanlage;									// logging Library class
 
-    private     $RainRegisterIncrementID;                           // in CustomComponent gibt es einen Incremental Counter
-    private     $categoryRegisterID;                                // die Category für die Regenregister, Counter of CustomComponents
+    protected   $RainRegisterIncrementID;                           // in CustomComponent gibt es einen Incremental Counter
+    protected   $categoryRegisterID;                                // die Category für die Regenregister, Counter of CustomComponents
     public      $DauerKalendermonate, $RegenKalendermonate;         // Ausertung Regendauer (wenn inkrementell da) und Regenmenge der letzten 10 Jahre
 
-	var $heatManager;                                               // Einbindung des Stromheizung Modul, mit den Schaltgruppen
-	var $CategoryId_Stromheizung;
-	var $switchCategoryHeatId, $groupCategoryHeatId , $prgCategoryHeatId;
+	protected   $heatManager;                                               // Einbindung des Stromheizung Modul, mit den Schaltgruppen
+	protected   $CategoryId_Stromheizung;
+	protected   $switchCategoryHeatId, $groupCategoryHeatId , $prgCategoryHeatId;
+    protected   $CategoryIdData,$CategoryIdApp;
 
 	/******************
 	 *
@@ -150,10 +155,12 @@ class Gartensteuerung
 			$this->programCategoryHeatId = IPS_GetObjectIDByIdent('Programs', $baseId);			
 			}	
 
-		$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-		$this->categoryId_Auswertung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
-		$this->categoryId_Register  	= CreateCategory('Gartensteuerung-Register', $CategoryIdData, 200);
-        $this->categoryId_Statistiken	= CreateCategory('Statistiken',   $CategoryIdData, 200);
+		$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+        $this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+		$this->categoryId_Auswertung  	= CreateCategory('Gartensteuerung-Auswertung', $this->CategoryIdData, 10);
+		$this->categoryId_Register  	= CreateCategory('Gartensteuerung-Register', $this->CategoryIdData, 200);
+        $this->categoryId_Statistiken	= CreateCategory('Statistiken',   $this->CategoryIdData, 200);
         
 		$this->GiessTimeID	            = @IPS_GetVariableIDByName("GiessTime", $this->categoryId_Auswertung); 
 		$this->GiessDauerInfoID	        = @IPS_GetVariableIDByName("GiessDauerInfo",$this->categoryId_Auswertung);
@@ -167,12 +174,12 @@ class Gartensteuerung
         
         if ($this->debug)
             {
-            echo "Gartensteuerung Kategorie Data ist : ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
+            echo "Gartensteuerung Kategorie Data ist : ".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
             echo "Gartensteuerung Kategorie Data.Gartensteuerung-Register ist : ".$this->categoryId_Register."   (".IPS_GetName($this->categoryId_Register).")\n";
             //echo "GiesstimeID ist ".$this->GiessTimeID."\n";
             echo "-------\n";
             }        
-		$object2= new ipsobject($CategoryIdData);
+		$object2= new ipsobject($this->CategoryIdData);
 		$object3= new ipsobject($object2->osearch("Nachricht"));
 		$NachrichtenInputID=$object3->osearch("Input");
 
@@ -652,7 +659,7 @@ class Gartensteuerung
 
             /* courtesy for old functions */
             configfileParser($configConf["Configuration"], $config["Configuration"], ["DEBUG","Debug","debug"],"DEBUG",false);
-            configfileParser($configConf["Configuration"], $config["Configuration"], ["PUMPE","Pumpe","pumpe"],"PUMPE",null);           // nur wenn vorhanden übernehmen, sonst Waterpump
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["PUMPE","Pumpe","pumpe"],"PUMPE",null);           // nur wenn vorhanden übernehmen, sonst Waterpump, OID Parameter für den Fall setGartenpumpe(state,["PUMPE"])
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["KREISE","Kreise","kreise"],"KREISE",0);
             for ($i=1;$i<=$config["Configuration"]["KREISE"];$i++)
@@ -787,14 +794,28 @@ class Gartensteuerung
         return ($result);
         }
 
+     /* die einzelnen Pumpen sind mit KREIS1 bis KREISx bezeichnet
+      * aus einem Count von 0 bis x-1 den String berechnen der für den Index in der Config verwendet wird, zentral hier am besten   
+      */
+
+    function getKreisfromCount($Count)
+        {
+        $kreis = "KREIS".(string)($Count+1);            
+        return ($kreis);
+        }
+
     /******************
      * wenn es Ventile gibt, diese hier einheitlich ansteuern
      * Routine wird auch aufgerufen wenn es keine Ventile zum Schalten gibt, Mode Auto statt Switch
      * GiessCount wird alle x Minuten um 1 erhöht, jedes zweite Mal wird weitergeschaltet dazwischen gibt es eine Pause 
      * bem Automode war eine Pause nötig damit der Umschalter Zeit zum weiterschalten hatte, die Pumpe wurde angeschaltet und der Mechanismus schaltet damit automatisch um eins weiter
-     *      0/1 ist das erste Ventil, 1 wäre die Pause ohne Pumpleistung
+     *      0/1 ist das erste Ventil, 1 (?) wäre die Pause ohne Pumpleistung
      *      2/3 das zweite Ventil
      *      usw.
+     * GiessCount                                   0,     1,     2,     3,     4,   5,6...n        (n=KREISE*2+1, Beispiel für 2 Kreise ist n=5
+     * Count = floor(GiessCount/2)                  0,     0,     1,     1,     2...n/2    
+     * kreis = KREIS.(Count+1)                      KREIS1,KREIS1,KREIS2,KREIS2 ....
+     * kreisOld wird gespeichert sobald Count>0,    false, false,KREIS1, KREIS1,..... 
      *********************************/
 
     function control_waterValves($GiessCount,$debug=false)            
@@ -807,19 +828,22 @@ class Gartensteuerung
         $result=false;
         $config=$this->getConfig_Gartensteuerung()["Configuration"];        
         $Count=floor($GiessCount/2);                                    // 0 oder 1 ist das erste Ventil, berechnet zu 0
-        $kreis = "KREIS".(string)($Count+1);     // 0 wird zu 1 und ergänzt auf KREIS1
+        $kreis = $this->getKreisfromCount($Count);     // 0 wird zu 1 und ergänzt auf KREIS1
         if ($Count>0) $kreisOld = "KREIS".(string)($Count);                  // aus KREIS2 wird KREIS1
         else $kreisOld=false;
-        if ($GiessCount==(($config["KREISE"]*2)+1))             // wir sind am Ende angelangt, letztes Ventil ausschalten
+        if ($GiessCount==(($config["KREISE"]*2)+1))             // wir sind am Ende angelangt, letztes oder besser alle Ventile ausschalten
             {
             $state=false;
-            if (isset($config["ValveControl"][$kreis]))
+            for ($i=0;$i<(floor($GiessCount/2));$i++)
                 {
-                $configuration=$config["ValveControl"][$kreis];
-                $result=$this->control_xID($configuration,$state);
+                if (isset($config["ValveControl"][$this->getKreisfromCount($i)]))         // das wäre jetzt 0...floor(n/2) bei 2 Kreisen 0,1, bei 4 Kreisen 0..3
+                    {
+                    $configuration=$config["ValveControl"][$this->getKreisfromCount($i)];
+                    $result=$this->control_xID($configuration,$state);              // egal wie das Objekt dargetellt wird es wird gesschlatet, Venti1..4 oder Pumpe
+                    }
+                elseif (function_exists("set_ventile")) set_ventil($state,$oid);
+                else echo "No Config for setting valves.\n";
                 }
-            elseif (function_exists("set_ventile")) set_ventil($state,$oid);
-            else echo "No Config for setting valves.\n";
             }
         else                                                    // wir sind dazwischen, immer gerade/ungerade, 0/1 wird zu KREIS1, 2/3 zu KREIS 2
             {
@@ -1738,7 +1762,45 @@ class Gartensteuerung
 
 	}  /* Ende class Gartensteuerung */
 
+/************************************************************
+ *
+ * GartensteuerungControl
+ *
+ * Umsetzung von Befehlen
+ *
+ */
 
+class GartensteuerungControl extends Gartensteuerung
+	{
+
+    protected $GiessTimeRemainID,$GiessCountID;
+    protected $timerDawnID,$UpdateTimerID;
+
+    function __construct($debug=false)
+        {
+		$this->debug=$debug;		
+        parent::__construct();          // nicht vergessen den parent construct auch aufrufen
+        $this->GiessTimeRemainID           = @IPS_GetVariableIDByName("GiessTimeRemain", $this->categoryId_Auswertung);                 // sonst ist die category noch nicht bekannt
+        $this->GiessCountID		= @IPS_GetVariableIDByName("GiessCount",$this->categoryId_Register);
+
+        $GartensteuerungScriptID   		= IPS_GetScriptIDByName('Gartensteuerung', $this->CategoryIdApp);
+	    $this->timerDawnID = @IPS_GetEventIDByName("Timer3", $GartensteuerungScriptID);
+	    $this->UpdateTimerID = @IPS_GetEventIDByName("UpdateTimer", $GartensteuerungScriptID);	    
+        }
+
+    public function start()
+        {
+        if ($this->debug) echo "start aufgerufen.\n";
+        echo "here is ".$this->GiessTimeRemainID."\n";
+        SetValue($this->GiessTimeID,10);
+        SetValue($this->GiessTimeRemainID ,0);				
+        IPS_SetEventActive($this->UpdateTimerID,true);				
+        IPS_SetEventCyclicTimeBounds($this->UpdateTimerID,time(),0);  /* damit alle Timer gleichzeitig und richtig anfangen und nicht zur vollen Stunde */
+        IPS_SetEventActive($this->timerDawnID,false);
+        SetValue($this->GiessCountID,1);
+        }
+
+    }
 
 	
 ?>

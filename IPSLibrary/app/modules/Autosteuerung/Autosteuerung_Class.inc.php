@@ -4830,6 +4830,9 @@ class Autosteuerung
             case "Selenium":            // neuer Bereich um Webserver anzusprechen
                 $this->moduleSelenium($result);
                 break;
+            case "Gartensteuerung":            // andere Module ansteuern, hier Giessanlage
+                $this->moduleGartensteuerung($result);
+                break;                
 			case "SamsungTV":
                 $this->moduleSamsungTV($result); 
 				break;
@@ -5046,6 +5049,63 @@ class Autosteuerung
                 default:
                     break;
                 }
+            }
+        }
+
+
+    /* neue Gartensteuerung Ansteuerung, als Teil von ExecuteCommand
+     * result["NAME"]               nicht verwendet
+     * result["DEVICE"]             nicht verwendet
+     * result["COMMAND"]            Start, Stopp, Weiter, Zurueck, Kreis1..Kreis6 etc.
+     *
+     * übernimmt die Funktionen von Webfront_Control
+     *
+     * module:SamsungTizen,device:Wohnzimmer SamsungTizen,name:none,command:KEY_POWERON
+     * module:HarmonyHub,device:Logitech Wohnzimmer Harmony,name:Samsung TV,command:PowerOn
+     * module:Selenium,name:Iiyama,device:Wohnzimmer,comman:PowerOn
+     */
+    private function moduleGartensteuerung(&$result)
+        {
+        if ( isset($this->installedModules["Gartensteuerung"] ) )
+            {
+            echo "module Gartensteuerung aufgerufen: ".$result["COMMAND"]."\n";
+            //echo "module Gartensteuerung aufgerufen mit ".$result["DEVICE"]." ".$result["NAME"]." ".$result["COMMAND"].":\n";
+            IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
+            IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');
+            $gartensteuerung = new GartensteuerungControl();         // Steuerung 
+            switch (strtoupper($result["COMMAND"]))
+                {
+                case "START":
+                    echo "Start aufgerufen.\n";
+                    $gartensteuerung->start();
+                    break;
+                }    
+            /*
+            $seleniumHandler = new SeleniumHandler();           // Selenium Test Handler, false deaktiviere Ansteuerung von webdriver für Testzwecke vollstaendig
+            $configSelenium = $guthabenHandler->getGuthabenConfiguration()["Selenium"];
+            print_R($configSelenium);
+            $seleniumOperations = new SeleniumOperations(); 
+
+            switch (strtoupper($result["DEVICE"]))
+                {
+                case "IIYAMA":
+                    $configTabs=array(
+                        "Hosts" => array(
+                                "IIYAMA"   =>  array (
+                                    "URL" => "10.0.1.42",
+                                    "CLASS"     => "SeleniumIiyama", 
+                                    "CONFIG"    => array(                   // ohne Config wird zum Beispiel auch nicht die URL verfügbar sein
+                                                "Power" => "On"             // oder Standby
+                                                    ),                   
+                                                ),
+                                        ),
+                                );
+                    if (Strtoupper($result["COMMAND"])=="POWEROFF")  $configTabs["Hosts"]["IIYAMA"]["CONFIG"]["Power"] = "Off";     // anderen Wert überschreiben, Default is On
+                    $seleniumOperations->automatedQuery(false,$configTabs["Hosts"],true);          // true debug, $webDriverName false for default
+                    break;
+                default:
+                    break;
+                } */
             }
         }
 

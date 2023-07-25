@@ -1,6 +1,6 @@
 <?
 
-/*
+    /*
 	 * @defgroup 
 	 * @ingroup
 	 * @{
@@ -27,18 +27,17 @@
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.52, 07.08.2014<br/>
-*/
+     */
 
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+    IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
-/************************************************************
+    /************************************************************
 
-				INIT
+                    INIT
 
-*************************************************************/
+    *************************************************************/
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */

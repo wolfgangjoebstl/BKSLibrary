@@ -98,6 +98,7 @@
 
     $ipsOps = new ipsOps();
     $wfcHandling =  new WfcHandling();
+    $profileOps = new profileOps();         // local                Profilverwaltung
 
 	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
@@ -182,7 +183,6 @@
  *
  * ----------------------------------------------------------------------------------------------------------------------------*/
 
-    $profileOps = new profileOps();
 	echo "Darstellung der Variablenprofile im lokalem Bereich für Autosteuerungsfunktionen, wenn fehlt anlegen:\n";
 	$profilname=array("AusEinAuto"=>"update","AusEin"=>"update","AusEin-Boolean"=>"update","NeinJa"=>"update","Null"=>"update","SchlafenAufwachenMunter"=>"update","AusEinAutoP1P2P3P4"=>"update",);
     $profileOps->synchronizeProfiles($profilname);    
@@ -193,7 +193,6 @@
  * nur wenn PowerLock eingesetzt wird, danach suchen und ein paar kosmetische Tätigkeiten ansetzen
  */
 
-    $profileOps = new profileOps();         // local
 	echo "Darstellung der Variablenprofile für PowerLock im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("PowerLockBefehl"=>"update","PowerLockStatus"=>"update", );
     $profileOps->synchronizeProfiles($profilname,true);             //true für Debug

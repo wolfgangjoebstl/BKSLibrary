@@ -50,6 +50,8 @@
       * dosOps
       * sysOps
       * fileOps
+      * timerOps
+      * curlOps                 curl Aufgaben, zusammengefasst
       * errorAusgabe
       * ComponentHandling
 	  * WfcHandling                 Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen, vorerst von Modulen AMIS und Sprachsteuerung verwendet
@@ -2869,6 +2871,11 @@ function send_status($aktuell, $startexec=0, $debug=false)
  * versammelt Operationen rund um die Bearbeitung von Profile
  * synchronize profiles between nodes (rpc)
  *
+ *  GetVariableProfile
+ *  VariableProfileExists
+ *
+ *
+ *
  */
 
 class profileOps
@@ -3210,6 +3217,36 @@ class profileOps
                 $this->SetVariableProfileAssociation($pname, 6, "Profil 4", "", 0x7ea167); //P-Name, Value, Assotiation, Icon, Color
   	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
                 break;
+            // Gartensteuerung
+            /* case "GiessAnlagenProfil":
+        		$this->CreateVariableProfile($pname, 1);                // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
+		        $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 1, "EinmalEin", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                break;
+	        case "GiessConfigProfil":           // Boolean
+                $this->CreateVariableProfile($pname, 0);                // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
+                $this->SetVariableProfileAssociation($pname, 0, "Morgen", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 1, "Abend", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                break;
+	         case "GiessKreisProfil":             // wird anhand der verfügbaren Kreise angelegt, ist eigentlich ein Button
+                $this->CreateVariableProfile($pname, 1);                // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 1, 6, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, 1, "1", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, 2, "2", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 3, "3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                $this->SetVariableProfileAssociation($pname, 4, "4", "", 0xF6E3CE); //P-Name, Value, Assotiation, Icon, Color=orange
+                $this->SetVariableProfileAssociation($pname, 5, "5", "", 0x2EFE64); //P-Name, Value, Assotiation, Icon, Color=grassgruen
+                $this->SetVariableProfileAssociation($pname, 6, "6", "", 0xB40486); //P-Name, Value, Assotiation, Icon, Color=violett		
+                break;  */
+            case "Minuten":
+                $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileText($pname,'','Min');
+                break;
             default:
                 break;
             }
@@ -3381,7 +3418,7 @@ class profileOps
  *
  * versammelt Operationen in einer Klasse die die Darstellung der Webfronts betrifft
  * 
- *  createActionProfileByName       erzeugt ein Profil für eine Zeile aus einzelnen Buttons die ein Script initieren, mit und ohne Selector
+ *  createActionProfileByName       erzeugt ein Profil für eine Zeile aus einzelnen Buttons die ein Script initieren, mit und ohne Selector, ohne ist kompakt
  *  createButtonProfileByName       erzeugt ein profil für einen einzelnen Button
  *  createSelectButtons             eine Reihe von Buttons anlegen, die untereinander ein Auswahlfeld ergeben
  *      setButtonColors                 set color of Button
@@ -3418,8 +3455,32 @@ class webOps
      *
      */
 
-    function createActionProfileByName($pname,$nameIDs,$style=1)
+    function createActionProfileByName($pname,$nameIDs,$style=1,$colorSet=false)
         {
+        // Farben für die Bittons annehmen, fehlende oder nicht zueinander passende Werte schätzen
+        if (($colorSet===false) || (is_array($colorSet)==false))
+            {
+            $i=0;
+            if ($colorSet===false) $colorSet=1040;
+            $color=array();
+            foreach ($nameIDs as $index => $name)
+                {
+                $color[$index] = ($colorSet+200*$i);
+                $i++;       // sonst wird letzter Wert überschrieben
+                }
+            }
+        else
+            {
+            $i=0; $colorStart=1040;
+            foreach ($nameIDs as $index => $name)
+                {
+                if (isset($colorSet[$index])) $color[$index] = $colorSet[$index];
+                else $color[$index] = $colorStart+=200*$i;
+                $colorStart = $color[$index];
+                $i++;       
+                }
+            }  
+        // Profil erstellen      
         $create=false;
         $profileOps = new profileOps();                 //lokal
         $namecount=count($nameIDs);
@@ -3434,10 +3495,9 @@ class webOps
         if ($namecount>1) IPS_SetVariableProfileValues($pname, 0, ($namecount-1), $style);      //PName, Minimal, Maximal, Schrittweite
         $i=0;
         $profile=array();
-        foreach ($nameIDs as $name)
+        foreach ($nameIDs as $index => $name)
             {
-            $profile[$i]=array("Value"=>$i,"Name"=>$name,"Icon"=>"","Color"=>(1040+200*$i),);
-            //IPS_SetVariableProfileAssociation($pname, $i, $name, "", ); //P-Name, Value, Assotiation, Icon, Color=grau
+            $profile[$i]=array("Value"=>$i,"Name"=>$name,"Icon"=>"","Color"=>$color[$index],);
             $i++;       // sonst wird letzter Wert überschrieben
             }
         print_r($profile);
@@ -7922,6 +7982,8 @@ class ipsOps
             if ($TabPaneOrder !== false) $result["Administrator"]["TabPaneOrder"] = $TabPaneOrder;
             $TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10',false);              // TabItem="Monitor" nächste Reihe, Gliederung der Funktionen
             if ($TabItem !== false) $result["Administrator"]["TabItem"] = $TabItem;
+            $TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10',false);              // TabName
+            if ($TabName !== false) $result["Administrator"]["TabName"] = $TabItem;
             $TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10',false);              // TabIcon="Window"
             if ($TabIcon !== false) $result["Administrator"]["TabIcon"] = $TabIcon;
             $TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10',false);              
@@ -7947,6 +8009,10 @@ class ipsOps
             if ($TabPaneIcon !== false) $result["User"]["TabPaneIcon"] = $TabPaneIcon;
             $TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10User',false);      // TabPaneOrder="10" wo soll das Icon in der obersten Leiste stehen  
             if ($TabPaneOrder !== false) $result["User"]["TabPaneOrder"] = $TabPaneOrder;
+            $TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10User',false);              // TabItem="Monitor" nächste Reihe, Gliederung der Funktionen
+            if ($TabItem !== false) $result["User"]["TabItem"] = $TabItem;
+            $TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10User',false);              // TabName
+            if ($TabName !== false) $result["User"]["TabName"] = $TabItem;
             $TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10User',false);              // TabIcon="Window"
             if ($TabIcon !== false) $result["User"]["TabIcon"] = $TabIcon;
             $TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10User',false);              
@@ -7975,11 +8041,59 @@ class ipsOps
         if ($Retro_Enabled)
             {        
             $Path        	 = $moduleManager->GetConfigValueDef('Path', 'Retro',false);
-            if ($Path) $result["Mobile"]["Path"] = $Path;
+            if ($Path) $result["Retro"]["Path"] = $Path;
             }
         return ($result);
         }
 
+    /*  input ist das outcome von configWebfront
+    *
+    *
+    */
+    function writeConfigWebfrontAll($config)
+        {
+        echo "Überblick Konfiguration Webfront:\n";
+        if ( (isset($config["Administrator"]["Enabled"])) && ($config["Administrator"]["Enabled"]) )
+            {
+            echo "   Webfront Administrator Enabled\n";
+            echo $this->writeConfigWebfront($config["Administrator"],"      ");
+            }
+        if ( (isset($config["User"]["Enabled"])) && ($config["User"]["Enabled"]) )
+            {
+            echo "   Webfront User Enabled\n";
+            echo $this->writeConfigWebfront($config["User"],"      ");
+            }
+        if ( (isset($config["Mobile"]["Enabled"])) && ($config["Mobile"]["Enabled"]) )
+            {
+            echo "   Webfront Mobile Enabled\n";
+            echo $this->writeConfigWebfront($config["Mobile"],"      ");
+            }
+        if ( (isset($config["Retro"]["Enabled"])) && ($config["Retro"]["Enabled"]) )
+            {
+            echo "   Webfront Retro Enabled\n";
+            echo $this->writeConfigWebfront($config["Retro"],"      ");
+            }
+        }
+
+    /* ein Webfront ausgeben
+     * Administrator, User
+     */
+    function writeConfigWebfront($config,$ident="")
+        {
+        $result=""; 
+		if (isset($config["Path"]))           $result.=$ident."Path          : ".$config["Path"]."\n";
+		if (isset($config["ConfigId"]))       $result.=$ident."ConfigID      : ".$config["ConfigId"]."  (".IPS_GetName(IPS_GetParent($config["ConfigId"])).".".IPS_GetName($config["ConfigId"]).")\n";		
+		if (isset($config["TabPaneItem"]))    $result.=$ident."TabPaneItem   : ".$config["TabPaneItem"]."\n";
+		if (isset($config["TabPaneParent"]))  $result.=$ident."TabPaneParent : ".$config["TabPaneParent"]."\n";
+		if (isset($config["TabPaneName"]))    $result.=$ident."TabPaneName   : ".$config["TabPaneName"]."\n";
+		if (isset($config["TabPaneIcon"]))    $result.=$ident."TabPaneIcon   : ".$config["TabPaneIcon"]."\n";
+		if (isset($config["TabPaneOrder"]))   $result.=$ident."TabPaneOrder  : ".$config["TabPaneOrder"]."\n";
+		if (isset($config["TabItem"]))        $result.=$ident."TabItem       : ".$config["TabItem"]."\n";
+		if (isset($config["TabName"]))        $result.=$ident."TabName       : ".$config["TabName"]."\n";
+		if (isset($config["TabIcon"]))        $result.=$ident."TabIcon       : ".$config["TabIcon"]."\n";
+		if (isset($config["TabOrder"]))       $result.=$ident."TabOrder      : ".$config["TabOrder"]."\n";	 
+        return ($result);      
+        }
 
     /* ipsOps, verwendet array_multisort, array wird nach dem key orderby sortiert
      * Ergebnis ist sortarray, das inputarray besteht aus Zeilen und Spalten, die Spalte assoziert mit dem Key
@@ -8278,23 +8392,25 @@ class sysOps
     { 
 
     /* sysOps, IPS_ExecuteEX funktioniert nicht wenn der IP Symcon Dienst statt mit dem SystemUser bereits als Administrator angemeldet ist 
+     * Parameter fü+r den Aufruf
+     *    command   Befehl gemeinsam mit absolutem Pfad
      *
      */
 
-    public function ExecuteUserCommand($command,$path,$show=false,$wait=false,$session=-1,$debug=false)
+    public function ExecuteUserCommand($command,$parameter="",$show=false,$wait=false,$session=-1,$debug=false)
         {
-            $result=@IPS_ExecuteEx($command, $path, $show, $wait, $session); 
+            $result=@IPS_ExecuteEx($command, $parameter, $show, $wait, $session); 
             if ($result===false) 
                 {
                 try
                     {
-                    $result=@IPS_Execute($command, $path, $show, $wait);   
+                    $result=@IPS_Execute($command, $parameter, $show, $wait);   
                     }
                 catch (Exception $e) 
                     { 
                     echo "Catch Exception, Fehler bei $e.\n";
                     }
-                if ($debug) echo "Ergebnis IPS_Execute $result \n";  
+                if ($debug) echo "Ergebnis IPS_Execute nach retry $result \n";  
                 }
             else if ($debug) echo "Ergebnis IPS_ExecuteEx $result \n"; 
         return ($result);                                    
@@ -9140,13 +9256,16 @@ class dosOps
         else return (true);
         }
 
-    /* dosOps, wie fileavailable, aber hier aus einem array die Dateien herausfiltern
+    /* dosOps::findfiles, wie fileavailable, aber hier aus einem array die Dateien herausfiltern
      * kann Wildcards *, *.
+     * files ist ein array, index=>filename
+     * Ergebnis is filestoread
      *
      */
     function findfiles($files,$filename,$debug=false)
         {
-        $filesToRead=false;            
+        $filesToRead=false;   
+        $ignoreCase=true;         
         if (trim($filename)=="*") 
             {
             if ($debug) echo "findfiles, alle Dateien nehmen : ".json_encode($files)."\n";
@@ -9168,8 +9287,14 @@ class dosOps
                 if ($debug) echo "findfiles, fileAvailable: wir suchen nach der Extension \"*".$filename."\"\n";
                 $detExt=true;
                 }
-            foreach ($files as $file)
-                {                            
+            foreach ($files as $fileEntry)
+                { 
+                if (is_array($fileEntry))
+                    {
+                    if (isset($fileEntry["Filename"])) $file=$fileEntry["Filename"];
+                    else $file="unknown";
+                    }   
+                else $file=$fileEntry;                        
                 if ($detExt == false)
                     {
                     /* Wir suchen einen Filenamen */
@@ -9182,9 +9307,14 @@ class dosOps
                     }
                 else
                     {
-                    /* Wir suchen eine Extension */
+                    /* Wir suchen eine Extension, filename ist die extension */
                     //echo $file."\n";
-                    $pos = strpos($file,$filename);
+                    if ($ignoreCase) $pos = stripos($file,$filename);
+                    else
+                        {
+                        $pos = strpos($file,$filename);
+                        //if ($pos===false) $pos = strpos(strtoupper($file),strtoupper($filename));
+                        }
                     if ( ($pos > 0 ) )
                         {
                         $len = strlen($file)-strlen($filename)-$pos;
@@ -9325,12 +9455,16 @@ class dosOps
     /*****************************************************************
     * 
     * Einen Verzeichnisbaum erstellen. Routine scheitert wenn es bereits eine Datei gibt, die genauso wie das Verzeichnis heisst. Dafür einen Abbruchzähler vorsehen.
+    * alle Backslash auf slash umstellen, wenn kein slash am Schluss den Teil bis zum letzten Slash ignorieren
+    * zwei Schleifen inneinander
+    * erste Schleife prüft solange bis Verzeichnis vorhanden oder 20 Iterationen vergangen sind
+    * zweite Schleife verkürzt den Verzeichnispfad solange bis es möglich ist ein Verzeichnis zu erstellen
     *
     **/
     function mkdirtree($directory,$debug=false)
         {
         $directory = str_replace('\\','/',$directory);
-        $directory=substr($directory,0,strrpos($directory,'/')+1);
+        $directory = substr($directory,0,strrpos($directory,'/')+1);
         //$directory=substr($directory,strpos($directory,'/'));
         $i=0;
         while ((!is_dir($directory)) && ($i<20) )
@@ -9338,13 +9472,13 @@ class dosOps
             $i++;
             if ($debug) echo "mkdirtree: erzeuge Verzeichnis $directory \n"; 		
             $newdir=$directory;
-            while ( (!is_dir($newdir)) && ($i<20) )
+            while ( (!is_dir($newdir)) && ($i<20) )         // alle Verzeichnisse nach oben durchgehen bis eines bekannt ist
                 {
                 $i++;
                 //echo "es gibt noch kein ".$newdir."\n";
                 if (($pos=strrpos($newdir,"/"))==false) {$pos=strrpos($newdir,"\\");};
                 if ($pos==false) break;
-                $newdir=substr($newdir,0,$pos);
+                $newdir=substr($newdir,0,$pos);                                             // Zielverzeichnis noch nicht vorhanden, ein verzeichnis weiter oben machen (Parent)
                 if ($debug) echo "   Mach : ".$newdir.", Aufruf von mkdir($newdir)\n";
                 try
                     {
@@ -9361,7 +9495,7 @@ class dosOps
                     if ($debug) echo "Catch Exception, Fehler bei mkdir($newdir).\n";
                     }
                 if (is_dir($newdir)) if ($debug) echo "     Verzeichnis ".$newdir." erzeugt.\n";
-                }
+                }               // ende while erzeuge Verzeichnis wenn nicht vorhanden
             if ($pos==false) break;
             }
         if ($i >= 20) echo "Fehler bei der Verzeichniserstellung.\n";	
@@ -9393,12 +9527,18 @@ class dosOps
         }
 
 	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen 
-	 *
+	 * siehe auch writeDirToArray kann beides, ausgeben wenn debug eingestellt und detaillierte Ergebnisse als array zurückgeben
 	 * ein Verzeichnis einlesen und als Array zurückgeben 
 	 *      dir         Name des Verzeichnisses
-     *      recursive   true, auch die Unterverzeichnisse einlesen 
+     *      config      wenn kein array ist es 
+     *          recursive   true, auch die Unterverzeichnisse einlesen 
+     *                  wenn ein array gibt es
+     *          recursive   default false
+     *          detailed    default false, true für detaillierte Auswertung
      *      newest      interressante Funktion, die Dateinamen/Verzeichnisse verkehrt herum sortieren, wenn -n dann nur die ersten n übernehmen, also mit den ältesten Datum
      *                  Achtung damit wird auch die erste Verzeichnisstrukturebene umbenannt und heisst nur mehr 0...x oder 0..n
+     *
+     * detailed ist noch nicht implementiert
 	 */
 	public function readdirToArray($dir,$config=false,$newest=0,$debug=false)
 		{
@@ -9407,10 +9547,14 @@ class dosOps
             {
             $recursive=$config["recursive"];
             $detailed=$config["detailed"];    
+            if ($debug) echo "readdirToArray aufgerufen für $dir . Configuration ist ".json_encode($config)."\n";
             }
-        else $recursive=$config;
+        else 
+            {
+            $recursive=$config;
+            if ($debug) echo "readdirToArray aufgerufen für $dir\n";
+            }
 	   	$result = array();
-        if ($debug) echo "readdirToArray aufgerufen für $dir\n";
 		// Test, ob ein Verzeichnis angegeben wurde
 		if ( is_dir ( $dir ) )
 			{		
@@ -9480,7 +9624,7 @@ class dosOps
 		return $result;
 		}
 
-	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen 
+	/* readdirToStat 
 	 *
 	 * ein Verzeichnis einlesen und die statistische Auswertzung als Array zurückgeben 
      * wenn recursive true ist werden auch alle Unterverzeichnisse analysiert
@@ -10873,6 +11017,51 @@ class timerOps
 
     }
 
+/**************************************************************************************************************************
+ *
+ * curlOps
+ *
+ * curl Routinen zusammengefasst
+ *
+ *
+ *
+ *
+ ******************************************************/
+
+class curlOps
+    {
+
+    function __construct()
+        {
+
+        }
+
+    /* eine Datei in einem Target Verzeichnis speichern
+     * $url = "https://www.7-zip.org/a/7zr.exe";
+     *
+     */
+    function downloadFile($url, $dir, $debug=false)
+        {
+        $ch = curl_init($url);              // Initialize the cURL session
+        $file_name = basename($url);
+        $save_file_loc = $dir . $file_name;             // Save file into file location
+        if ($debug) echo "downloadFile, save Url with Filename $file_name to $save_file_loc.\n";
+        $fp = fopen($save_file_loc, 'wb');              // Open file für Target
+        
+        // It set an option for a cURL transfer
+        curl_setopt($ch, CURLOPT_FILE, $fp);
+        curl_setopt($ch, CURLOPT_HEADER, 0);
+        
+        curl_exec($ch);             // Perform a cURL session
+        
+        curl_close($ch);           // Closes a cURL session and frees all resources
+    
+        fclose($fp);                // Close file
+
+        return (true);
+        }
+
+    }
 
 /**************************************************************************************************************************
  *
@@ -11313,14 +11502,14 @@ class ComponentHandling
             }
         if (sizeof($keyNames)>1) 
             {
-            echo "Mehrere Ergebnisse in einer Instanz gefunden: ";
+            if ($debug) echo "getComponent, workOnDeviceList, Info : mehrere Ergebnisse in einer Instanz gefunden: ";           // normale betriebsart, kein fehler, nur unterschiedliche Art Daten zurückzumelden
             foreach ($keyNames as $index => $keyName) 
                 {
-                echo $keyName["Name"]." ";
+                if ($debug) echo $keyName["Name"]." ";
                 if ( (isset($keyName["KEY"]) === false) || ($keyName["COID"] === false) ) $keyNames[$index]=array();              // ohne gesetztem Key oder nicht gefundenem COID auch nichts gefunden, nachtraeglich korrigieren
                 }
-            echo "\n";
-            return $keyNames;
+            if ($debug) echo "\n";
+            return $keyNames;       // mit einem Index zurückgeben 
             }
         if ( (isset($keyName["KEY"]) === false) || ($keyName["COID"] === false) ) $keyName=array();              // ohne gesetztem Key oder nicht gefundenem COID auch nichts gefunden, nachtraeglich korrigieren
         if ($debug)
@@ -11334,7 +11523,7 @@ class ComponentHandling
                 //echo "   workOnDeviceList, Eingabe auf $typeChanKey und $typeRegKey in ".sizeof($Key)." Channels nicht gefunden.\n";
                 }
             }
-        return $keyName;
+        return $keyName;            // ohne Index zurückgeben
         }
 
     /* Handle Keys and Keywords on homematicList 

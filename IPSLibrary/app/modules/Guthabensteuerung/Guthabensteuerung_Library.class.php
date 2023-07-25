@@ -174,7 +174,9 @@
 
                     configfileParser($configSelenium["Selenium"], $config["Selenium"], ["HOSTS","Hosts","Host","hosts" ],"Hosts" , null);
                     configfileParser($configSelenium["Selenium"], $config["Selenium"], ["WebfrontPane","webfrontpane","Webfrontpane","webfrontpane" ],"WebfrontPane" , "Selenium");
-                    //print_r($config);
+                    configfileParser($configSelenium["Selenium"], $config["Selenium"], ["DownloadDir","downloadDir","DownLoadDir","Downloaddir","DOWNLOADDIR","downloaddir" ],"DownloadDir" , "/download/");
+                    if (strpos($config["Selenium"]["DownloadDir"],"C:/Scripts/")===0) $config["Selenium"]["DownloadDir"]=substr($config["Selenium"]["Scripts"],10);      // Workaround für C:/Scripts"
+                    $config["Selenium"]["DownloadDir"] = $this->dosOps->correctDirName($systemDir.$config["Selenium"]["DownloadDir"]);                    //print_r($config);
                     }
                 elseif  ( (strtoupper($config["OperatingMode"]))=="IMACRO")
                     {
