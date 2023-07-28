@@ -33,7 +33,8 @@
     *
     **************************************/
 
-    $debug=false;
+    if ($_IPS['SENDER']=="Execute") $debug=true;
+    else $debug=false;
 
     /********************************************* CONFIG *******************************************************/
 
@@ -73,7 +74,7 @@
     if ($debug) 
         {
         echo "StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).") ".GetValue($StartPageTypeID)."\n";
-        echo "Kategorienvergleich: ".$startpage->CategoryIdData."   $CategoryIdData  \n";
+        //echo "Kategorienvergleich: ".$startpage->CategoryIdData."   $CategoryIdData  \n";
         }
     $variableIdHTML  = CreateVariable("Uebersicht",    3 /*String*/, $CategoryIdData, 40, '~HTMLBox', null,null,"");
     $AstroLinkID     = CreateVariable("htmlAstroTable",3           , $CategoryIdData,100, "~HTMLBox", null,null,"");
@@ -86,6 +87,10 @@
 
     /**************************************** Tastendruecke aus dem Webfront abarbeiten *********************************************************/
 
+    $dosOps = new dosOps();
+    $Verzeichnis=$dosOps->correctDirName($dosOps->getWorkDirectory());
+    $Verzeichnis       = $dosOps->correctDirName($startpage->getPictureDirectory());
+    $VerzeichnisBilder = $dosOps->correctDirName($startpage->getPictureDirectory()."SmallPics");
 
  if ($_IPS['SENDER']=="WebFront")
 	{
@@ -94,6 +99,17 @@
     switch ($variableID)          // Value formatted : Explorer Fullscreen Station Picture Topologoe Off
         {
         case ($switchScreenID):
+            /* andere Zuordnung, Auswahlfeld ist breiter geworden, erfordert
+             * Zuordnung zu write Startpage
+             *      0       Explorer
+             *      1       Full Screen
+             *      2       Station             2
+             *      3       Media               5
+             *      4       Picture             1
+             *      5       Topologie           3
+             *      6       Hierarchie          4
+             *      7       Off
+             */
         	switch ($_IPS['VALUE'])
 		        {
         		case "7":	/* Monitor off/on, Off */
@@ -107,13 +123,13 @@
         			SetValue($StartPageTypeID,3);
                     //echo "Set 5 ID to 3";
 					break;
-    	        case "4":  	/* Bildschirmschoner, Media */
-        			SetValue($StartPageTypeID,5);
-                    //echo "Set 4 ID to 4";
-		        	break;
-    	        case "3":  	/* Bildschirmschoner, Picture */
+    	        case "4":  	/* Bildschirmschoner, Picture */
         			SetValue($StartPageTypeID,1);
-                    //echo "Set 3 ID to 1";                               // Media taste
+                    //echo "Set 4 ID to 1";
+		        	break;
+    	        case "3":  	/* Bildschirmschoner, Media */
+        			SetValue($StartPageTypeID,5);
+                    //echo "Set 3 ID to 5";                               // Media taste
 		        	break;
         		case "2":  	/* Wetterstation, Station */
 		        	SetValue($StartPageTypeID,2);
@@ -147,40 +163,57 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
     *
     */
 
-    $file=$startpage->readPicturedir();
-    $maxcount=count($file);
+    $files=$startpage->readPicturedir();
+    $maxcount=count($files);
     if ($maxcount>0)
         {
         $showfile=rand(1,$maxcount-1);
-        if ($debug) echo "StartpageTypeID ist 1. Parameter : $maxcount   $showfile \n";;
+        if ($debug) echo "StartpageTypeID ist 1. Parameter : Bilder zur Anzeige  $maxcount Datei Index dafür ausgesucht $showfile \n";;
         //print_r($file);
 
-        if ( is_dir($startpage->picturedir."SmallPics") ==  false ) mkdir($startpage->picturedir."SmallPics");
-        $datei=$file[$showfile];
+        if ( is_dir($VerzeichnisBilder) ==  false ) mkdir($VerzeichnisBilder);
+        $datei=$files[$showfile];
 
-        // Get new dimensions
-        list($width, $height) = getimagesize($startpage->picturedir.$datei);
-        if ($debug) echo "Resample Picture (".$width." x ".$height.") from ".$startpage->picturedir.$datei." to ".$startpage->picturedir."SmallPics/".$datei.".\n";
-
-        $new_width=1920;
-        $percent=$new_width/$width;
-        $new_height = $height * $percent;
-        if ($new_height > 1080) 
-            { 
-            //echo "Status zu hoch : ".$new_width."  ".$new_height."   \n";
-            $new_height=1080;
-            $percent=$new_height/$height;
-            $new_width = $width * $percent;
+        if (file_exists($VerzeichnisBilder.$datei))
+            {
+            if ($debug)
+                {
+                foreach ($files as $index=> $file )
+                    {
+                    if (file_exists($VerzeichnisBilder.$file)===false) 
+                        {
+                        $datei=$file;    
+                        break;
+                        }
+                    }
+                }
             }
-        if ($debug) echo "New Size : (".$new_width." x ".$new_height.").\n";
+        if (file_exists($VerzeichnisBilder.$datei)===false)
+            {
+            // Get new dimensions
+            list($width, $height) = getimagesize($Verzeichnis.$datei);
+            if ($debug) echo "Resample Picture $datei (".$width." x ".$height.") from ".$Verzeichnis.$datei." to ".$VerzeichnisBilder.$datei.".\n";
 
-        // Resample
-        $image_p = imagecreatetruecolor($new_width, $new_height);
-        $image = imagecreatefromjpeg($startpage->picturedir.$datei);
-        imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+            $new_width=1920;
+            $percent=$new_width/$width;
+            $new_height = floor($height * $percent);
+            if ($new_height > 1080) 
+                { 
+                if ($debug) echo "Status zu hoch : ".$new_width."  ".$new_height."   \n";
+                $new_height=1080;
+                $percent=$new_height/$height;
+                $new_width = floor($width * $percent);
+                }
+            if ($debug) echo "New Size : (".$new_width." x ".$new_height.").\n";
 
-        // Output
-        imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
+            // Resample
+            $image_p = imagecreatetruecolor($new_width, $new_height);
+            $image = imagecreatefromjpeg($startpage->picturedir.$datei);
+            imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+
+            // Output
+            imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
+            }
         }
     }
         
@@ -208,6 +241,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 	{
     echo "\n================================================================\n"; 
 	echo "Execute aufgerufen:\n";
+    echo "Startpage wird mit folgenden Parametern aufgerufen : Modus:".GetValue($StartPageTypeID)." ShowFile:".($showfile?"true":"false").".\n";
 	//echo "\nKonfigurationseinstellungen:\n"; print_r($configuration);
 
 	$pname="StartpageControl";
@@ -226,11 +260,8 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
     print_r($Config);
 
     /* Verzeichnisse auslesen für besseren Überblick */
-    $dosOps = new dosOps();
-    $Verzeichnis=$dosOps->correctDirName($dosOps->getWorkDirectory());
+    
     $dosOps->writeDirStat($Verzeichnis);
-    $Verzeichnis       = $dosOps->correctDirName($startpage->getPictureDirectory());
-    $VerzeichnisBilder = $dosOps->correctDirName($startpage->getPictureDirectory()."SmallPics");
     $dosOps->writeDirStat($VerzeichnisBilder);
 
     $files = $dosOps->readDirToArray($VerzeichnisBilder);
@@ -272,6 +303,77 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 
     echo "Durchlauf Startpage Write mit Debug ein:\n";
     $startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,true);      // true für Debug
+
+    echo "Vergleich der Fotos am Sharedrive mit den anderen Fotos:\n";
+
+    $picturedir = $startpage->picturedir;
+    //print_R($configuration["Directories"]);
+    $smallpicsdir = $picturedir."SmallPics/";
+    $filesTable=array();
+    echo "Bilderverzeichnis Source $bilderverzeichnis Target $picturedir Small Pics $smallpicsdir\n";
+    //$files=$dosOps->readdirToArray($bilderverzeichnis,["recursive"=>false,"detailed"=>true],false,true);
+    $files = $dosOps->writeDirToArray($bilderverzeichnis);        // bessere Funktion
+    $filesFiltered = $dosOps->findfiles($files,"*.jpg",false);       //Debug
+    foreach ($filesFiltered as $index => $filename)
+        {
+        $filesTable[$filename]["Source"]="ok";
+        }
+    //print_R($files);
+    //$dosOps->writeDirStat($bilderverzeichnis);
+    //$files=$dosOps->readdirToArray($picturedir);
+    //print_R($files);
+    echo "$bilderverzeichnis, insgesamt ".sizeof($files)." Dateien.\n";
+    //echo "\n";
+    //$files=$dosOps->readdirToArray($picturedir);
+    //$dosOps->writeDirStat($picturedir);
+    $files = $dosOps->writeDirToArray($picturedir);        // bessere Funktion
+    $filesFiltered = $dosOps->findfiles($files,"*.jpg",true);       //Debug
+    foreach ($filesFiltered as $index => $filename)
+        {
+        $filesTable[$filename]["Target"]="ok";
+        }
+    echo "$picturedir, insgesamt ".sizeof($files)." Dateien.\n";
+    //echo "\n";
+    //$files=$dosOps->readdirToArray($picturedir."SmallPics/");
+    //$dosOps->writeDirStat($picturedir."SmallPics/");
+    $files = $dosOps->writeDirToArray($smallpicsdir);
+    echo "Small Pics Dir $smallpicsdir, insgesamt ".sizeof($files)." Dateien.\n";
+    //print_R($files);
+    $filesFiltered = $dosOps->findfiles($files,"*.jpg",true);       //Debug
+    //print_R($filesFiltered);
+    foreach ($filesFiltered as $index => $filename)
+        {
+        $filesTable[$filename]["SmallPics"]="ok";
+        }    
+    echo "Ergebnistabelle der Auswertung:\n";
+    //print_R($filesTable);
+
+        $html = "<table>";
+        foreach ($filesTable as $filename=>$status)
+            {
+            $html .= "<tr>";
+            $html .= "<td>$filename</td>";
+            if (isset($status["Source"])) $html .= "<td>".$status["Source"]."</td>";
+            else $html .= "<td></td>";
+            if (isset($status["Target"])) 
+                {
+                $html .= "<td>".$status["Target"]."</td>";
+                list($width, $height) = getimagesize($startpage->picturedir.$filename);
+                $html .= "<td>".$width."</td><td>".$height."</td>";
+                }
+            else $html .= "<td></td><td></td><td></td>";
+            if (isset($status["SmallPics"])) 
+                {
+                $html .= "<td>".$status["SmallPics"]."</td>";
+                list($width, $height) = getimagesize($smallpicsdir.$filename);
+                $html .= "<td>".$width."</td><td>".$height."</td>";
+                }
+            else $html .= "<td></td><td></td><td></td>";
+            $html .= "</tr>";
+            }
+        $html .= "<table>";
+        echo $html;
+  
     }
 
 

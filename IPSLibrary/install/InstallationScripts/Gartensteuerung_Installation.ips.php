@@ -292,7 +292,8 @@
         if ($i>=($max-1)) break;                    // wenn die Anzahl der Kreise erreicht, unterbrechen
         $i++;
         }
-    print_r($tabs);
+    //print_r($tabs);
+    $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
 
 	$GiessKreisID		= CreateVariable3("GiessKreis",1,$categoryId_Gartensteuerung, 10,  $pname,$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 

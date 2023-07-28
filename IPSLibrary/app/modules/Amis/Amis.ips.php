@@ -27,8 +27,15 @@
      *
      * Diese Routine kann als Einstieg verwendet werden um einen Überblick über die Installation zu bekommen
      *
-     * webfronverarbeitung allgemein und speziell für localdata->energiemessung->smart meter
-     * es gibt update,calculate,sort
+     * webfront verarbeitung allgemein und speziell für localdata->energiemessung->smart meter
+     * es geht um Buttons innerhalb einer htmlBox, diese mit iFrame anlegen
+     *      InterActive     <iframe .. src="../user/Guthabensteuerung/GuthabensteuerungReceiver.php
+     * testweise siehe SetupWebfront
+     *      InterActive     <iframe .. src="../user/Guthabensteuerung/Guthabensteuerung.php                     in Debug
+     *      TestALot        <iframe .. src="../user/Guthabensteuerung/GuthabensteuerungTables.php
+     *
+     * iFrame gibt es zB für 
+     * es gibt wie Guthabensteuerung update,calculate,sort
      *
      * @file      
      * @author        Wolfgang Joebstl

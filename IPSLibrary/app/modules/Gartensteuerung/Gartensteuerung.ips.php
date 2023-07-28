@@ -764,6 +764,12 @@ if($_IPS['SENDER'] == "TimerEvent")
                         if ($GartensteuerungConfiguration["Configuration"]["CheckPower"]!==null) 
                             {
                             $power = GetValue($GartensteuerungConfiguration["Configuration"]["CheckPower"]);
+                            if (($power>0) && ($power<10) )
+                                {
+                                $GiessCount=(($GartensteuerungConfiguration["Configuration"]["KREISE"]*2)+1);
+                                $log_Giessanlage->LogNachrichten("Abbruch wegen fehlendem Wasser, $power W Pumpleistung");   
+                                }
+                            else $log_Giessanlage->LogNachrichten($configuration["KREIS".(string)(floor($GiessCount/2))].", $power W Pumpleistung");  
                             }
 						}
 					}  /* if nicht ende */

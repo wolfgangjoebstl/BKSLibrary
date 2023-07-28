@@ -110,7 +110,7 @@
 
 /*******************************
  *
- * wichtige Kategorien anlegen, werden für wfcHandling bmnötigt
+ * wichtige Kategorien anlegen, werden für wfcHandling benötigt
  *
  ********************************/
 
@@ -668,7 +668,8 @@ Path=Visualization.Mobile.Stromheizung
         $config = $configWFront["Administrator"];   
         $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
         echo "Webfront Administrator aufbauen in ".$config["Path"]." :\n";
-        echo "\n";		$categoryId_WebFront                = CreateCategoryPath($config["Path"]);   // Administrator.Stromheizung
+        echo "\n";		
+        $categoryId_WebFront                = CreateCategoryPath($config["Path"]);   // Administrator.Stromheizung
         IPS_SetHidden($categoryId_WebFront,true);
 		if ($WFC10_Regenerate) 
 			{

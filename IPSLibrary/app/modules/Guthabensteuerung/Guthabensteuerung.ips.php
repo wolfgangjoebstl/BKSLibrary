@@ -40,6 +40,10 @@
      *
      * Webfront übernimmt den Tastendruck
      *
+     * Es gibt auch webfront/user Funktionen gemeinsam mit dem AMIS Modul
+     * in der Tabelle sind Links versteckt
+     *
+     *
      */
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
@@ -83,7 +87,6 @@
     /* logging in einem File und in einem String am Webfront */
     //$log_Guthabensteuerung=new Logging("C:\Scripts\Guthabensteuerung\Log_Guthaben.csv",$NachrichtenInputID);
     $log_Guthabensteuerung=new Logging($systemDir."Guthabensteuerung/Log_Guthaben.csv",$NachrichtenInputID);
-
 
     $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
 	$GuthabenConfig         = $guthabenHandler->getContractsConfiguration();            // get_GuthabenConfiguration();
@@ -496,6 +499,8 @@ if ($configTabs)
  *				Webfront
  *
  * es gibt verschiedene Taster die hier zusammengeführt werden.                
+ *      Macro
+ *
  *
  *
  *************************************************************/
@@ -514,7 +519,7 @@ if ($_IPS['SENDER']=="WebFront")
         {
         switch ($variable)
             {
-            case ($startImacroID):
+            case ($startImacroID):                      // StartSelenium in eigenem Webfron Guthabensteuerung
                 //echo "Taste Macro gedrückt";
                 switch ($value)
                     {
@@ -596,16 +601,16 @@ if ($_IPS['SENDER']=="WebFront")
                         break;	
                     }       // end switch
                 break;
-            case $startActionID:                                                // ein bestimmter Einzel Aufruf aus Hosts für Selenium
+            case $startActionID:                                                // StartAction im Selenioum/Tools , ein bestimmter Einzel Aufruf aus Hosts für Selenium
                 $reguestedAction=GetValueFormatted($startActionID);
                 break;
-            case $startActionGroupID:                                           // ein bestimmter Gruppen Aufruf aus Hosts für Selenium
+            case $startActionGroupID:                                           // StartGroupCall im Selenioum/Tools , ein bestimmter Gruppen Aufruf aus Hosts für Selenium
                 $reguestedAction=GetValueFormatted($startActionGroupID);
                 break;
             case $updateApiTableID:
-                $reguestedActionApi=GetValueFormatted($updateApiTableID);              // Update
+                $reguestedActionApi=GetValueFormatted($updateApiTableID);              // Update Button in $ YahooFinance
                 break;
-            case $updateChromedriverID:
+            case $updateChromedriverID:                                                     // UpdateChromeDriver Button im Selenioum/Tools
                 $updateChromedriver=GetValueFormatted($updateChromedriverID);
                 //echo "go for $updateChromedriver";
                 break;
@@ -617,7 +622,7 @@ if ($_IPS['SENDER']=="WebFront")
 	}           // ende if
 
 
-    if ($reguestedAction)
+    if ($reguestedAction)                           // StartAction im Selenioum/Tools , ein bestimmter Einzel Aufruf aus Hosts für Selenium
         {
             $startexec=microtime(true);
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
@@ -713,7 +718,7 @@ if ($_IPS['SENDER']=="WebFront")
                 }   */
         }
 
-    if ($reguestedActionApi)
+    if ($reguestedActionApi)                             // Update Button in $ YahooFinance
         {
         switch ($reguestedActionApi)
             {

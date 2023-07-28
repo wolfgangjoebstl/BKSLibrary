@@ -2871,10 +2871,20 @@ function send_status($aktuell, $startexec=0, $debug=false)
  * versammelt Operationen rund um die Bearbeitung von Profile
  * synchronize profiles between nodes (rpc)
  *
- *  GetVariableProfile
- *  VariableProfileExists
- *
- *
+ *  GetVariableProfile                  IPS_GetVariableProfile
+ *  VariableProfileExists               IPS_VariableProfileExists
+ *  CreateVariableProfile               Fehlermeldung wenn Typ nicht übereinstimmt
+ *  SetVariableProfileIcon
+ *  SetVariableProfileDigits
+ *  SetVariableProfileText
+ *  SetVariableProfileValues
+ *  GetVariableProfileAssociations      siehe oben, nimmt nur Associations
+ *  SetVariableProfileAssociation
+ *  UpdateVariableProfileAssociations
+ *  DeleteVariableProfileAssociation
+ *  createKnownProfilesByName           bekannte neue persönliche Profile
+ *  synchronizeProfiles
+ *  compareProfiles
  *
  */
 
@@ -3506,9 +3516,23 @@ class webOps
         else echo "Aktions Profil ".$pname." überarbeitet.\n";		
         }
 
+    /* die umgekehrte Funktion, Profil analysieren, zuordnung Einzelbuttons aus dem Profil
+     *
+     */
+    function getActionProfileByName($pname)
+        {
+        $profileOps = new profileOps();                 //lokal
+        if (IPS_VariableProfileExists($pname) == false) return (false);
+        $associations = $profileOps->GetVariableProfileAssociations($pname);            
+        return($associations);
+        }
+
+
+
     /* SpezialProfile für Action Aufrufe aus dem Webfront 
-     *  pname ist der Name des Button, der Link auf den Button sollte dann "" sein oder der Button Teil des Webfronts
-     * die Farbe wird optional übergeben
+     * verwendet von Guthabensteuerung, für einzelne Buttons zum Draufdrücken
+     *      pname ist der Name des Button, der Link auf den Button sollte dann "" sein oder der Button Teil des Webfronts
+     *      die Farbe wird optional übergeben
      *
      */
 
@@ -3594,7 +3618,7 @@ class webOps
 
 
     /* get the Button Id
-     *
+     * needs pnames, categoryId stored in class by setSelectButtons used by createSelectButtons
      */
     function getSelectButtons($debug=false)
         {

@@ -465,7 +465,7 @@
                     //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
                     $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
                     $wert.='<td height="40%">';     // sonst zu gross
-                    if ($PageType==5) 
+                    if ($PageType==1) 
                         {
                         if ($debug) echo "Page Type Style is Picture.\n";
                         $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
@@ -2779,7 +2779,7 @@
                                     if ($value < $min) $min=$value;
                                     if ($value > $max) $max=$value;
                                     }                      
-                                echo "Show activated Min $min und Max $max\n";          
+                                if ($debug) echo "Show activated Min $min und Max $max\n";          
                                 }    
                             $result=$this->displayValue($wert,$value,$config,$init,$oid,$debug);          // $wert wird erweitert                                    
                             $config["Value"]=$wert;

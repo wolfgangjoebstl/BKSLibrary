@@ -84,8 +84,12 @@
     IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
     IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
+    $debug=false;               // weniger Informationen im Echo erhöhen die Übersichtlichkeit
 
+    $ipsOps = new ipsOps();
     $dosOps = new dosOps();
+    $webOps = new webOps();                     // Buttons anlegen, sind auch Profile, werden aber bei Install angelegt
+
 	$wfcHandling = new WfcHandling();		// für die Interoperabilität mit den alten WFC Routinen nocheinmal mit der Instanz als Parameter aufrufen
 
 /*******************************
@@ -95,13 +99,13 @@
  ********************************/
 
     echo "\n\n";
-    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
-    echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
-    echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
+    echo "Kernel Version (Revision) ist              : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+    echo "Kernel Datum ist                           : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+    echo "Kernel Startzeit ist                       : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
     echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
-    echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
+    echo "Kernel Install Dir ist auf                 : ".IPS_GetKernelDirEx()."\n";
     $operatingSystem = $dosOps->getOperatingSystem();
-    echo "OperatingSystem ist : $operatingSystem\n";
+    echo "OperatingSystem ist                        : $operatingSystem\n";
 	$verzeichnis     = $dosOps->getWorkDirectory();
     if ($verzeichnis===false) 
         {
@@ -109,13 +113,13 @@
         }
     else
         {
-        echo "Kernel Working Directory ist auf :  $verzeichnis\n";
+        echo "Kernel Working Directory ist auf           :  $verzeichnis\n";
         echo "\n";
         }
     $startpage = new StartpageHandler();         
     $unterverzeichnis=$startpage->getWorkDirectory();
    	$configuration = $startpage->getStartpageConfiguration();
-    print_r($configuration);
+    if ($debug) print_r($configuration);
     
     if (($dosOps->getOperatingSystem()) == "WINDOWS")
         {
@@ -148,7 +152,21 @@
  ********************************/
 
 	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
+	 
+    $configWFront=$ipsOps->configWebfront($moduleManager,false);     // wenn true mit debug Funktion
+    
+	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
+	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+    $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 
+	if ($WFC10_Enabled==true)		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
+	if ($WFC10User_Enabled==true)   $WFC10User_ConfigId       = $WebfrontConfigID["User"];
+  
+    $ipsOps->writeConfigWebfrontAll($configWFront);
+
+    /*
 	echo "\nWebuser activated : ";
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 	if ($WFC10_Enabled)
@@ -206,7 +224,7 @@
 		{
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 		echo "Retro \n";
-		}
+		}   */
 	
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -299,7 +317,7 @@
 		$WFC10_OW_Path=	"Visualization.WebFront.Administrator.Weather.OpenWeather";									
 		$categoryId_OW_WebFront         = CreateCategoryPath($WFC10_OW_Path);                       // Kategorie in der Visualization
 
-        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
+        $wfcHandling->read_WebfrontConfig($configWFront["Administrator"]["ConfigId"]);         // register Webfront Confígurator ID
 		$WFC10_OW_TabPaneItem="OpenWeatherTPA";$WFC10_OW_TabItem=""; $WFC10_OW_TabPaneParent="TPWeather"; $WFC10_OW_TabPaneOrder=100; $WFC10_OW_TabPaneName="OpenWeather"; $WFC10_OW_TabPaneIcon="Cloudy";
 		$wfcHandling->DeleteWFCItems( $WFC10_OW_TabPaneItem.$WFC10_OW_TabItem);           // delete alle panes mit "OpenWeatherTPA"
 
@@ -443,30 +461,37 @@
 	if ($WFC10_Enabled)
 		{
 		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
+        $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+        $config = $configWFront["Administrator"];   
+        $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
+        echo "Webfront Administrator aufbauen in ".$config["Path"]." :\n";
+        echo "\n";		
 
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
 		echo "\nWebportal Administrator: Startpage Kategorie installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."/".IPS_GetName(IPS_GetParent($categoryId_AdminWebFront))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($categoryId_AdminWebFront)))."\n";
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 
-		echo "    Startpage Kategorie installieren als: ".$WFC10_Path." und Inhalt löschen und dann verstecken.\n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		echo "    Startpage Kategorie installieren als: ".$config["Path"]." und Inhalt löschen und dann verstecken.\n";
+		$categoryId_WebFront         = CreateCategoryPath($config["Path"]);
 		EmptyCategory($categoryId_WebFront);
 		IPS_SetHidden($categoryId_WebFront, true); 		/* in der normalen Viz Darstellung verstecken */			
 
-		echo "\nWebportal Administrator:  in Webfront Konfigurator ID ".$WFC10_ConfigId." die ID Admin für die gesamte Kategorie Visualization installieren.\n";
-		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   800, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		echo "\nWebportal Administrator:  in Webfront Konfigurator ID ".$config["ConfigId"]." die ID Admin für die gesamte Kategorie Visualization installieren.\n";
+		$wfcHandling->CreateWFCItemCategory  ('Admin',   "roottp",   800, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 		echo "       Delete/hide IDs root und dwd.\n";
 		//DeleteWFCItems($WFC10_ConfigId, "root");
-		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
-		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);		
+		@WFC_UpdateVisibility ($config["ConfigId"],"root",false	);				
+		@WFC_UpdateVisibility ($config["ConfigId"],"dwd",false	);		
 
-		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;	
-		echo "       Create ID ".$tabItem." in ".$WFC10_TabPaneParent.".\n";
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem,   $WFC10_TabPaneParent,   $WFC10_TabPaneOrder, '', $WFC10_TabPaneIcon, $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		$tabItem = $config["TabPaneItem"].$config["TabItem"];	
+		echo "       Create ID ".$tabItem." in ".$config["TabPaneParent"].".\n";
+		$wfcHandling->CreateWFCItemCategory  ($tabItem,   $config["TabPaneParent"],   $config["TabPaneOrder"], '', $config["TabPaneIcon"], $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
 		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFront,  10);
 		CreateLinkByDestination('Ansicht', $switchScreenID,    $categoryId_WebFront,  20);
+
+        $wfcHandling->write_WebfrontConfig($config["ConfigId"]);
 		}
 
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -478,51 +503,61 @@
 	if ($WFC10User_Enabled)
 		{		
 		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
+        $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+        $config = $configWFront["User"];   
+        $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
+        echo "Webfront User aufbauen in ".$config["Path"]." :\n";
+        echo "\n";		
 
 		$categoryId_UserWebFront=CreateCategoryPath("Visualization.WebFront.User");
 		echo "====================================================================================\n";
-		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
-		CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   800, IPS_GetName(0).'-User', '', $categoryId_UserWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$config["ConfigId"]." installieren in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
+		$wfcHandling->CreateWFCItemCategory  ('User',   "roottp",   800, IPS_GetName(0).'-User', '', $categoryId_UserWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
-		@WFC_UpdateVisibility ($WFC10User_ConfigId,"root",false	);				
-		@WFC_UpdateVisibility ($WFC10User_ConfigId,"dwd",false	);
+		@WFC_UpdateVisibility ($config["ConfigId"],"root",false	);				
+		@WFC_UpdateVisibility ($config["ConfigId"],"dwd",false	);
 
 		/*************************************/
 
 		/* Neue Tab für untergeordnete Anzeigen wie eben Autosteuerung und andere schaffen */
-		echo "\nWebportal User.Autosteuerung Datenstruktur installieren in: ".$WFC10User_Path." \n";
-		$categoryId_WebFrontUser         = CreateCategoryPath($WFC10User_Path);
+		echo "\nWebportal User.Autosteuerung Datenstruktur installieren in: ".$config["Path"]." \n";
+		$categoryId_WebFrontUser         = CreateCategoryPath($config["Path"]);
 		EmptyCategory($categoryId_WebFrontUser);
 		IPS_SetHidden($categoryId_WebFrontUser, true); /* in der normalen Viz Darstellung verstecken */		
 
 		/*************************************/
 		
-		$tabItem = $WFC10User_TabPaneItem.$WFC10User_TabItem;	
-		CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem,   $WFC10User_TabPaneParent,   $WFC10User_TabPaneOrder, '', $WFC10User_TabPaneIcon, $categoryId_WebFrontUser   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		$tabItem = $config["TabPaneItem"].$config["TabItem"];	
+		echo "       Create ID ".$tabItem." in ".$config["TabPaneParent"].".\n";
+		$wfcHandling->CreateWFCItemCategory  ($tabItem,   $config["TabPaneParent"],   $config["TabPaneOrder"], '', $config["TabPaneIcon"], $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
 		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFrontUser,  10);
 		CreateLinkByDestination('Ansicht', $switchScreenID,    $categoryId_WebFrontUser,  20);
+
+        $wfcHandling->write_WebfrontConfig($config["ConfigId"]);
 		}
 	else
 	   {
 	   /* User not enabled, alles loeschen 
 	    * leider weiss niemand so genau wo diese Werte gespeichert sind. Schuss ins Blaue mit Fehlermeldung, da Variablen gar nicht definiert isnd
 		*/
-	   DeleteWFCItems($WFC10User_ConfigId, "StartpageTPU");
+	   DeleteWFCItems($config["ConfigId"], "StartpageTPU");
 	   EmptyCategory($categoryId_WebFrontUser);
 	   }
 
 	if ($Mobile_Enabled)
 		{
+        $config = $configWFront["Mobile"];  
 		echo "\nWebportal Mobile installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
+		$categoryId_WebFront         = CreateCategoryPath($config["Path"]);
 
 		}
 
 	if ($Retro_Enabled)
 		{
+        $config = $configWFront["Retro"];  
 		echo "\nWebportal Retro installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
+		$categoryId_WebFront         = CreateCategoryPath($config["Path"]);
 
 		}
 
