@@ -1,9 +1,58 @@
 $(document).ready(function(){  
 "use strict";
 
+	let pendingUpdate = false;
+	let pic=true, pic0=true, pic1=true, pic2=true;
+	let item=0;
 	var $write = $('#write');					// keine globale Variable ???
 	//var shift = false, capslock = false;
 
+	window.visualViewport.addEventListener("scroll", viewportHandler);
+	window.visualViewport.addEventListener("resize", viewportHandler);
+		 
+	// height ist immer Höhe iFrame, responsive muss ausserhalb sein
+
+	function viewportHandler(event) {
+		const viewport = event.target;
+		document.getElementById('sp-inf-txt').innerHTML = "infonow+" + Date() + "Viewport Height x Width : "+viewport.height+" x "+viewport.width+"Screen: "+screen.width+" x "+screen.height  ;
+		if (viewport.width<1100) {
+			$(".image-pic9").css("display", "none");
+			$(".image-pic4").css("display", "none");	
+			$(".image-pic0").css("display", "inline");			
+    		 }
+		else {
+		if (viewport.width<1400) {
+			$(".image-pic9").css("display", "none");
+			$(".image-pic4").css("display", "inline");
+			$(".image-pic0").css("display", "none");			
+			}
+		else {			
+			$(".image-pic0").css("display", "none");			
+			$(".image-pic4").css ("display", "none"); 
+			$(".image-pic9").css("display", "inline");
+			} }
+		if (pendingUpdate) return;
+		pendingUpdate = true;
+
+		requestAnimationFrame(() => {								// das ist eine window animation
+			pendingUpdate = false;
+			const layoutViewport = document.getElementById("sp");					// id ganze frame, default layoutViewport
+
+			// Since the bar is position: fixed we need to offset it by the
+			// visual viewport's offset from the layout viewport origin.
+			const viewport = event.target;
+			const offsetLeft = viewport.offsetLeft;
+			const offsetTop =
+			  viewport.height -
+			  layoutViewport.getBoundingClientRect().height +
+			  viewport.offsetTop;
+
+			// You could also do this by setting style.left and style.top if you
+			// use width: 100% instead.
+			//bottomBar.style.transform = `translate(${offsetLeft}px, ${offsetTop}px) scale(${1 / viewport.scale })`;
+			document.getElementById('sp-inf-txt').innerHTML = "requestAnimationFrame+" + Date();
+			});
+	}		 
 		 
   $("#phide").click(function(){ 
 	 $(this).hide('slow'); 
@@ -13,6 +62,111 @@ $(document).ready(function(){
 
 		});
 	
+	$("#sp-cmd-item0").click(function(){ 
+		document.getElementById('sp-inf-txt').innerHTML = "empty image picture 0";
+		if (pic) { 
+			$("#sp-pic-img-p0").css ("display", "none");
+			$("#sp-pic-img-p1").css ("display", "none");
+			$("#sp-pic-img-p2").css ("display", "none");
+			$("#sp-pic-img-p3").css ("display", "none");
+			$("#sp-pic-img-full").css ("display", "inline"); 
+			pic=false; }
+		else {
+		$("#sp-pic-img-full").css ("display", "none");
+		$("#sp-pic-img-p0").css ("display", "inline"); 
+		$("#sp-pic-img-p1").css ("display", "inline");
+		$("#sp-pic-img-p2").css ("display", "inline");
+		$("#sp-pic-img-p3").css ("display", "inline"); 
+		pic=true; }
+		
+		});
+	
+	// Button fuenf	
+	$("#sp-cmd-item4").click(function(){ 
+		document.getElementById('sp-inf-txt').innerHTML = "empty image picture 0";
+		if (item==0) $(".image-item-p0").css ("display", "none");
+		if (item==1) $(".image-item-p1").css ("display", "none");
+		if (item==2) $(".image-item-p2").css ("display", "none");
+		if (item==3) $(".image-item-p3").css ("display", "none");
+		if (item==4) $(".image-item-p0").css ("display", "inline");
+		if (item==5) $(".image-item-p1").css ("display", "inline");
+		if (item==6) $(".image-item-p2").css ("display", "inline");
+		if (item==7) $(".image-item-p3").css ("display", "inline");
+		
+		item++;
+		if (item==8) item=0;
+		});
+
+	$("#sp-cmd-item1").click(function(){ 
+		document.getElementById('sp-inf-txt').innerHTML = "resize image picture single to bigger";
+		$(".image-pic0").css ("max-height", "800px");
+		});
+
+	$("#sp-cmd-item2").click(function(){ 
+		document.getElementById('sp-inf-txt').innerHTML = "change picture size";
+		$("#sp-pic-img-full").css ("max-height", "800px");
+		});
+	
+	// Button vier, orf on/off
+	$("#sp-cmd-item3").click(function(){ 			// change class
+		document.getElementById('sp-inf-txt').innerHTML = "empty image picture frame to one";
+		if (pic1==false) { 
+			$("#sp-pic-grid").addClass("container-picture").removeClass("container-picture2"); 
+			$("#sp-pic-grid-right").css ("display", "none");
+			$(".image-pic9").css("display", "inline");
+			$(".image-pic4").css("display", "none");	
+			$(".image-pic0").css("display", "none");
+			pic1=true; }
+		else { 			// Orf ein
+			$("#sp-pic-grid").addClass("container-picture2").removeClass("container-picture"); 
+			$("#sp-pic-grid-right").css ("display", "inline");
+			$("#sp-pic-img-p4-4").css ("display", "inline"); 
+			$("#sp-pic-img-p5-4").css ("display", "inline"); 
+			$(".image-pic9").css("display", "none");
+			$(".image-pic4").css("display", "inline");	
+			$(".image-pic0").css("display", "none");
+			pic1=false; }
+		});
+		
+	$("#sp-pic-img-p0").click(function(){ 
+		document.getElementById('sp-inf-txt').innerHTML = "empty image picture 0";
+		if (pic0) { $("#sp-pic-img-p0").css ("display", "none"); pic0=false; }
+		else { $("#sp-pic-img-p0").css ("display", "inline"); pic0=true; }
+		});
+
+	$("#sp-pic-img-p3").click(function(){ 
+		document.getElementById('sp-inf-txt').innerHTML = "empty image picture 3";
+
+		});
+
+	$("#sp-pic-img-p2").click(function(){ 
+		document.getElementById('sp-inf-txt').innerHTML = "empty image picture";
+		if (pic0===false) { $("#sp-pic-img-p2").css ("display", "inline"); pic0=true; }
+		});
+
+	$("#sp-inf-txt").click(function(){ 
+		//$(this).hide('slow'); 
+		var screenWidth = screen.width;
+		var windowHeight = window.innerHeight;
+		let zoom = (( window.outerWidth - 10 ) / window.innerWidth) * 100;
+		$(this).text("Viewport: " + $(window).width() + " x " + $(window).height() + "Pixel   " + 
+		"Screen: " + screen.width + " x " + screen.height + "   Window : " + window.innerWidth + " x " + window.innerHeight + "  Zoom : " + zoom ); 
+		//	enterFullscreen(document.documentElement);				// nur der Frame geht Fullpage
+
+		});
+
+	// iframe auf fullscreen
+
+	function enterFullscreen(element) {
+	  if(element.requestFullscreen) {
+		element.requestFullscreen();
+	  } else if(element.msRequestFullscreen) {      // for IE11 (remove June 15, 2022)
+		element.msRequestFullscreen();
+	  } else if(element.webkitRequestFullscreen) {  // iOS Safari
+		element.webkitRequestFullscreen();
+	  }
+	}
+
 	//$('#guthbnField').click(function(){ alert("hi");  });
     //$("#guthbnField").click(function(){ $(this).hide(); });
 	

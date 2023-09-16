@@ -13,12 +13,16 @@ header('Cache-Control: must-revalidate, pre-check=0, no-store, no-cache, max-age
 	IPSUtils_Include ("Guthabensteuerung_Include.inc.php", "IPSLibrary::app::modules::Guthabensteuerung");
 	
 
+	$module=false;
+	$id=false;
+
 if (isset($_POST["id"]))
 	{
 	$id       = $_POST['id'];
-	$action   = $_POST['action'];
-	$module   = $_POST['module'];
-	$info     = $_POST['info'];
+	$module   = "Amis";
+	//$action   = $_POST['action'];
+	//$module   = $_POST['module'];
+	//$info     = $_POST['info'];
 	}
 elseif (isset($_POST["command"]))
 	{
@@ -27,7 +31,7 @@ elseif (isset($_POST["command"]))
 		
 		// Command auslesen
 		$command  = $_POST["command"];
-		getdataips($command);
+		//getdataips($command);
 				
 		// Leerzeichen vor und hinter den namen entfernen, sowie alles zu Kleinschreibung ändern
 		//$vorname  = trim(strtolower($vorname));
@@ -42,25 +46,18 @@ elseif (isset($_GET["command"]))
 		// Command auslesen
 		
 		$command = $_GET["command"];
-		getdataips($command);
+		//getdataips($command);
+		$response = "get erhalten";
+		//echo json_encode($response);
 	}
 //kein GET oder POST
 else 
 	{
 	$module="";			
-		echo "Es wurden keine Daten empfangen";
+	//echo "Es wurden keine Daten empfangen";
+
 	}
 
-function sendstatusresponse($command, $status)
-	{
-		echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
-		echo "<statuslist>\n";
-		echo "<status>\n";
-		echo "<command>".$command."</command>\n";
-		echo "<neostatus>".$status."</neostatus>\n";
-		echo "</status>\n";
-		echo "</statuslist>\n";
-	}
 
 	$moduleManagerGeneral = new IPSModuleManager('', '', sys_get_temp_dir(), true);
  	$installedModules = $moduleManagerGeneral->GetInstalledModules();
@@ -69,21 +66,24 @@ function sendstatusresponse($command, $status)
 		$moduleInfos = $moduleManagerGeneral->GetModuleInfos($module);			// Allgemeine Implementierung wenn Kombi Modul/Repository nicht bekannt
 		$repository  = $moduleInfos['Repository'];
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		$moduleManager = new IPSModuleManager($module,$repository);     /*   <--- change here */
+		$moduleManager = new IPSModuleManager($module,$repository);     
         }
 
-	if ( ($module=="Guthabensteuerung") && (isset($installedModules["Amis"])) ) {
-		$moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+	if ( ($module=="Amis") && (isset($installedModules["Amis"])) ) {
+		$moduleManagerAmis = new IPSModuleManager('Amis',$repository);     
 		$CategoryIdDataAmis     = $moduleManagerAmis->GetModuleCategoryID('data');
 		$categoryId_SmartMeter        = IPS_GetCategoryIDByName('SmartMeter', $CategoryIdDataAmis);			
-			
-		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung.Webfront');	
+		$amisSM = new AmisSmartMeter();
+		$json = $amisSM->writeSmartMeterCsvInfoToHtml(["Html"=>"array"]);				// als array zusammenbauen und am Ende json kodieren
+
+if (false)
+	{			
+		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis.Webfront');	
 		$infoID  = IPS_GetObjectIDByIdent(GUTHABEN_VAR_INFO,   $baseId);	
 		$actionID = IPS_GetObjectIDByIdent(GUTHABEN_VAR_ACTION, $baseId);
 		$htmlID = IPS_GetObjectIDByIdent(GUTHABEN_VAR_HTML, $categoryId_SmartMeter);
 		$testAlotID = IPS_GetObjectIDByIdent("TestAlot", $categoryId_SmartMeter);
 		
-		$amisSM = new AmisSmartMeter();
 		$header = $amisSM->writeSmartMeterCsvInfoToHtml("header");
 		if (in_array($action,$header)) { $info=$action; $action="header";  }
 		$files  =  $amisSM->writeSmartMeterCsvInfoToHtml("files");
@@ -105,7 +105,43 @@ function sendstatusresponse($command, $status)
 		SetValue($testAlotID,GetValue($testAlotID));		// Aufruf Guthabensteuerung.php zum Update der Webpage
 		//StartpageOverview_Refresh();
 		//IPS_Runscript(
+		}
 	}
+
+	switch($id)
+		{
+		case "amis_send_full_ajax":
+			$response = "get erhalten, Parameter $id for Module $module erkannt : ";		
+			break;
+		default:
+			$response = "get erhalten, keine Parameter erkannt : ";
+			break;
+		}
+	$result=array();
+	$result["id"]=$id;
+	if (isset($_GET)) $response .= json_encode($_GET);
+	if (isset($_POST)) $response .= json_encode($_POST);
+	$result["response"]=$json;
+	//$result["response"]=["eins","zwei","drei"];
+	//$result["response"]["new"]="neuerWert";
+	//$result["response"]=$response;
+	//$result=$response;
+	//echo json_encode("Wert:".json_encode($result));			// Scalar mit encoded Object, wird gedruckt
+	echo json_encode($result);									// Objekt, wird nur als object Object angedruckt
+
+
+
+function sendstatusresponse($command, $status)
+	{
+		echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+		echo "<statuslist>\n";
+		echo "<status>\n";
+		echo "<command>".$command."</command>\n";
+		echo "<neostatus>".$status."</neostatus>\n";
+		echo "</status>\n";
+		echo "</statuslist>\n";
+	}
+
 
 	/** @}*/
 ?>

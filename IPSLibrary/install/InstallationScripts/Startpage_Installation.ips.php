@@ -165,69 +165,14 @@
 	if ($WFC10User_Enabled==true)   $WFC10User_ConfigId       = $WebfrontConfigID["User"];
   
     $ipsOps->writeConfigWebfrontAll($configWFront);
-
-    /*
-	echo "\nWebuser activated : ";
-	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
-	if ($WFC10_Enabled)
-		{
-      	$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
-		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
-		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
-		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
-		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
-		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
-		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');		
-		echo "WF10 Administrator\n";
-		echo "  Path          : ".$WFC10_Path."\n";
-		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";		
-		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10_TabItem."\n";		
-		}
-
-	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
-	if ($WFC10User_Enabled)
-		{
-		$WFC10User_ConfigId       = $WebfrontConfigID["User"];		
-		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10User');
-		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10User');
-		$WFC10User_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10User');
-		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10User');
-		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10User');
-		$WFC10User_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10User');		
-		echo "WF10 User \n";
-		echo "  Path          : ".$WFC10User_Path."\n";
-		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
-		echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10User_TabItem."\n";		
-		}
-
-	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	if ($Mobile_Enabled)
-		{
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-		echo "Mobile ";
-		}
-		
-	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	if ($Retro_Enabled)
-		{
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
-		}   */
 	
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+    $profileOps = new profileOps();
+    echo "Darstellung der Variablenprofile für Startpage im lokalem Bereich, wenn fehlt anlegen:\n";
+	$profilname=array("HTMLBox.NoTitle"=>"~HTMLBox", );
+    $profileOps->synchronizeProfiles($profilname,true);             //true für Debug
 
     /* Uebersicht ist die Variable für die Darstellung der Seite 
      * Startpagetype wird von der Startpage Write Funktion verwendet verwendet
@@ -236,6 +181,8 @@
 	$StartPageTypeID = CreateVariableByName($CategoryIdData, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$variableIdStartpageHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,null,"");
 
+    $ScreenHeightID  = CreateVariable("ScreenHeight", 1 /*Integer*/,  $CategoryIdData, 400, '', null,null,"");              // Bildschirmhöhe,kann angepasst werden, leider nicht individuell für jeden Browser
+    SetValue($ScreenHeightID,800);
 
 	/* 
 	 * Variablen für die Topologiedarstellung generieren, abgeleitet vom Webfront des IPSModuleManagerGUI 
@@ -245,7 +192,7 @@
 	$variableIdStatus        = CreateVariable(STARTPAGE_VAR_ACTION,      3 /*String*/,  $CategoryIdData, 10, '',  null,   'View1', '');
 	$variableIdModule        = CreateVariable(STARTPAGE_VAR_MODULE,      3 /*String*/,  $CategoryIdData, 20, '',  null,   '', '');
 	$variableIdInfo          = CreateVariable(STARTPAGE_VAR_INFO,        3 /*String*/,  $CategoryIdData, 30, '',  null,   '', '');
-	$variableIdHTML          = CreateVariable(STARTPAGE_VAR_HTML,        3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,   '<iframe frameborder="0" width="100%" height="600px"  src="../user/Startpage/StartpageTopology.php"</iframe>', 'Information');
+	$variableIdHTML          = CreateVariable(STARTPAGE_VAR_HTML,        3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,   '<iframe frameborder="0" width="100%" height="600px"  src="../user/Startpage/StartpageTopology.php"></iframe>', 'Information');
 
 	SetValue($variableIdStatus,'View1');
 
@@ -256,8 +203,8 @@
 
     // ButtonProfil anpassen : \n";
 	$pname="StartpageControl";
-    $tabs=["Explorer","FullScreen","Station","Media",  "Picture","Topologie","Hierarchie","Off"];
-    $color=[0xc0c0c0,   0x00f0c0,  0xf040f0, 0xf04040, 0xf0c000, 0xc0f0c0,   0x40f0f0,   0xf0f0f0];
+    $tabs=["Explorer","FullScreen","Station","Media", "Frame",  "Picture","Topologie","Hierarchie","Off"];
+    $color=[0xc0c0c0,   0x00f0c0,  0xf040f0, 0xf04040, 0xc0c040, 0xf0c000, 0xc0f0c0,   0x40f0f0,   0xf0f0f0];
     $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
 
 /*******************************
@@ -488,7 +435,7 @@
 		echo "       Create ID ".$tabItem." in ".$config["TabPaneParent"].".\n";
 		$wfcHandling->CreateWFCItemCategory  ($tabItem,   $config["TabPaneParent"],   $config["TabPaneOrder"], '', $config["TabPaneIcon"], $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
-		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFront,  10);
+		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFront,  100);
 		CreateLinkByDestination('Ansicht', $switchScreenID,    $categoryId_WebFront,  20);
 
         $wfcHandling->write_WebfrontConfig($config["ConfigId"]);

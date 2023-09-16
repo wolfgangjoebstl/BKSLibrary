@@ -955,7 +955,7 @@ if ( ($_IPS['SENDER']=="Execute") )         // && false
             /* die Abendabfrage dazumergen */  
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
             //print_R($configTabs);
-            unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, durch echte Werte ersetzen
+            //unset($configTabs["Hosts"]["DREI"]);                // DREI ist nur default, durch echte Werte ersetzen
             unset($configTabs["Hosts"]["EASY"]);                // EASY einmal weglassen
             unset($configTabs["Hosts"]["LogWien"]);             // LogWien einmal weglassen, wenn alle ist zu langsam
             unset($configTabs["Hosts"]["YAHOOFIN"]);            // Yahoo Finance einmal weglassen, das ist nicht das API 

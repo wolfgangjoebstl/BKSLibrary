@@ -3257,6 +3257,127 @@ class profileOps
                 $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
                 $this->SetVariableProfileText($pname,'','Min');
                 break;
+            // Amis
+            case "Zaehlt":
+                $this->CreateVariableProfile($pname, 0); 
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+
+                $this->SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, false, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, true, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                break;
+            case "kWh":
+                $this->CreateVariableProfile($pname, 2); 
+                $this->SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+                $this->SetVariableProfileText($pname,'','kWh');
+                break;
+            case "Wh":
+                $this->CreateVariableProfile($pname, 2); 
+                $this->SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+                $this->SetVariableProfileText($pname,'','Wh');
+                break;
+            case "kW":
+                $this->CreateVariableProfile($pname, 2); 
+                $this->SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+                $this->SetVariableProfileText($pname,'','kW');
+                break;
+   /* echo "Profile Definition für AMIS Modul:\n";
+	$pname="AusEin-Boolean";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 0); 
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt.\n";
+		}
+    else echo "   Profil ".$pname." vorhanden.\n";
+		
+	$pname="Zaehlt";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 0); 
+  		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+
+		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, false, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  		IPS_SetVariableProfileAssociation($pname, true, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt.\n";
+		//print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+       echo "   Profil ".$pname." vorhanden.\n";           
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+	   
+	$pname="kWh";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); 
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','kWh');
+		echo "Profil ".$pname." erstellt.\n";          
+		print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+       echo "   Profil ".$pname." vorhanden.\n";             
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="Wh";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); 
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','Wh');
+		echo "Profil ".$pname." erstellt.\n";          
+        //print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+       echo "   Profil ".$pname." vorhanden.\n";             
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="kW";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); 
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','kW');
+		echo "Profil ".$pname." erstellt.\n";          
+		//print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+       echo "   Profil ".$pname." vorhanden.\n";             
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="Euro";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); 
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','Euro');
+		echo "Profil ".$pname." erstellt.\n";          
+		//print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+       echo "   Profil ".$pname." vorhanden.\n";             
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }  */
+
             default:
                 break;
             }
@@ -3320,11 +3441,21 @@ class profileOps
                 }
             else    
                 {
-                if ($debug) echo "   Profil ".$pname." existiert bereits und erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
+                if ($this->VariableProfileExists($pname) == false) 
+                    {
+                    if ($debug) echo "Profil $pname existiert noch nicht und erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
+                    $targetName=$pname;
+                    $target=array();
+                    }
+                else
+                    {
+                    if ($debug) echo "   Profil ".$pname." existiert bereits und erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";  
+                    $target=$this->GetVariableProfile ($pname);                            // pname wird synchronisiert oder upgedatet
+                    $targetName=$target["ProfileName"];
+                    }
+
                 $master=IPS_GetVariableProfile ($masterName);                       // mastername ist die Quelle zum Synchronisieren
-                $target=$this->GetVariableProfile ($pname);                            // pname wird synchronisiert oder upgedatet
                 $masterName=$master["ProfileName"];         // sonst nicht rekursiv möglich
-                $targetName=$target["ProfileName"];
                 $this->compareProfiles($master, $target,$masterName,$targetName,$debug);      // nur die lokalen Profile anpassem, geht auch Remote, false kein demo mode 
                 }
             } 
@@ -3341,6 +3472,7 @@ class profileOps
 
     function compareProfiles($master,$target,$masterName,$targetName, $debug=false)
         {
+        if ($debug) echo "compareProfiles aufgerufen.\n";
         $prefix=true; $minvalue=true;
         foreach ($master as $index => $entry)           // kann ach ein leeres array sein, dann wird hier übersprungen und nix gemacht
             {
@@ -3380,7 +3512,7 @@ class profileOps
                 if ( (isset($target["ProfileType"])) === false)
                     {
                     //echo "$index: Profil noch nicht vorhanden. Als ersten Befehl CreateVariableProfil durchführen.\n";
-                    $this->CreateVariableProfile($targetName, $master["ProfileType"], $demo);
+                    $this->CreateVariableProfile($targetName, $master["ProfileType"]);
                     $target["ProfileName"]=$targetName;
                     $target["ProfileType"]=$master["ProfileType"];   
                     }
@@ -3395,15 +3527,15 @@ class profileOps
                     case "StepSize":
                         if ($minvalue)
                             {
-                            $this->SetVariableProfileValues($targetName, $master["MinValue"], $master["MaxValue"], $master["StepSize"], $demo);
+                            $this->SetVariableProfileValues($targetName, $master["MinValue"], $master["MaxValue"], $master["StepSize"]);
                             $minvalue=false;
                             }
                         break;
                     case "Digits":
-                        $this->SetVariableProfileDigits($targetName, $master["Digits"],$demo);
+                        $this->SetVariableProfileDigits($targetName, $master["Digits"]);
                         break;
                     case "Icon":
-                        $this->SetVariableProfileIcon($targetName, $master["Icon"], $demo);
+                        $this->SetVariableProfileIcon($targetName, $master["Icon"]);
                         break;
                     case "Prefix":
                     case "Suffix":
@@ -3429,6 +3561,7 @@ class profileOps
  * versammelt Operationen in einer Klasse die die Darstellung der Webfronts betrifft
  * 
  *  createActionProfileByName       erzeugt ein Profil für eine Zeile aus einzelnen Buttons die ein Script initieren, mit und ohne Selector, ohne ist kompakt
+ *  getActionProfileByName
  *  createButtonProfileByName       erzeugt ein profil für einen einzelnen Button
  *  createSelectButtons             eine Reihe von Buttons anlegen, die untereinander ein Auswahlfeld ergeben
  *      setButtonColors                 set color of Button
@@ -3517,14 +3650,25 @@ class webOps
         }
 
     /* die umgekehrte Funktion, Profil analysieren, zuordnung Einzelbuttons aus dem Profil
-     *
+     * wenn style false einfach das Association array mit Icon und Color ausgeben
+     * wenn style true das Assciation array verkürzen auf Value=>Name verkuerzen
      */
-    function getActionProfileByName($pname)
+    function getActionProfileByName($pname,$style=false)
         {
         $profileOps = new profileOps();                 //lokal
         if (IPS_VariableProfileExists($pname) == false) return (false);
         $associations = $profileOps->GetVariableProfileAssociations($pname);            
-        return($associations);
+        if ($style===false) return($associations);
+        else
+            {
+            $result=array();
+            foreach ($associations as $index => $profil) 
+                {
+                //echo "  ".$index."  ".$profil["Value"]."  ".$profil["Name"]."\n";
+                $result[$profil["Value"]]=$profil["Name"];
+                }
+            return ($result);
+            }
         }
 
 
@@ -6894,6 +7038,11 @@ class maxminCalc extends statistics
  *
  * Converting XML to an array isn't easy. But if you convert it, then it's a lot easier to use.
  * As you and I both know, this isn't the best way of doing things. After years of playing around with the DOMDocument, I created this class to convert an XML string to a well formatted PHP Array.
+ *
+ *  analyseHtml            string analyse eine html files, nur zur Orientiuerung sinnvoll wenn kein Webpage Debugger F12 zur Verfügung steht
+ *  XmlToArray
+ *  DOMDocumentToArray
+ *
  */
 
 class App_Convert_XmlToArray 
@@ -6907,6 +7056,149 @@ class App_Convert_XmlToArray
     public function __construct()
         {
         $this->level=0;
+        }
+
+
+    /* App_Convert_XmlToArray::analyseHtml ein html analysieren, ist nur eine Orientierungsfunktion, besser DOM verwenden
+     * das erste Mal aufgtaucht im SeleniumHandler
+     * es wird zeichenweise analysiert
+     *
+     * hier werden die bekannten Search Algorithmen unterstützt
+     *
+     * false DIV :
+     * <div style="width: 608px">
+     */
+
+    function analyseHtml($page,$displayMode=false,$commandEntry=false)
+        {
+        $findID=false; 
+        $mode="All";
+        $display=true;
+        $pageLength = strlen($page);
+        echo "analyseHtml Size of Input : ".nf($pageLength,"Bytes")."\n";
+        //echo $page;
+        $lineShow=false;
+        if ($commandEntry !== false) $commandDisplay=strtoupper($commandEntry);
+        else $commandDisplay="UNKNOWN";
+        if ($displayMode===false) $display = false;
+        elseif (is_array($displayMode))
+            {
+            echo "  Config ".json_encode($displayMode)."\n";
+            if (isset($displayMode["findID"])) $findID=$displayMode["findID"];
+            if (isset($displayMode["ShowLine"])) $lineShow=$displayMode["ShowLine"];
+            if (isset($displayMode["mode"])) $mode=$displayMode["mode"];
+            if ($mode !== "All") $display=false;
+            }
+        elseif ($displayMode>1)
+            {
+            $display  = false;
+            $lineShow = $displayMode;
+            }
+        else $display = true;
+        $zeile=0; $until=0;
+
+        /* ausgabe i erfolgt auf 0 und dann nicht mehr */
+        $pos=false; $ident=0; $end=false; 
+        for ($i = 0; $i < $pageLength; $i++)                //html parser
+            {
+            if ($i<$until) 
+                {
+                echo htmlentities($page[$i]);           // funktioniert gut < wird in &lt; umgewandelt
+                //echo "$i(".ord($page[$i]).") ";
+                //echo $i.":".$page[$i].".";
+                }
+            if ($page[$i]=="<")             // erstes <, damit wird pos und ident bearbeitet
+                {
+                $pos=$i;
+                $ident++;
+                }
+            if (($page[$i]=="/") && ($pos !== false) ) { $ident--; $end=true; }
+            if (($page[$i]=="\n") || ($page[$i]=="\r")) 
+                {
+                $zeile++;
+                if ( ($mode=="Line") && ($zeile>$lineShow) ) $display=true;            // im Default Mode wird Display sofort eingeschaltet 
+                }
+            if ((($page[$i]==" ") || ($page[$i]=="\n") || ($page[$i]=="\r") || ($page[$i]==">")) && ($pos !== false) )           // ein Trennzeichen, pos=0 akzeptieren, pos=false nicht, logischerweise fangt es mit einem  < an
+                {
+                $epos=strpos($page,">",$pos);
+                $command=strtoupper(substr($page,$pos+1,$i-$pos-1));
+                //echo $zeile."  ".htmlentities(substr($page,$pos,($epos-$pos+1)))." : \"$command\"\n";
+                //if ($command == "SYMBOL") $display=false;
+                if ( ($mode=="findCMD") && ($command == $commandDisplay) ) $display=true;
+                if ( ($command != "BR") && ($command != "IMG") && ($command != "!DOCTYPE") && ($command != "!--") && ($command != "HTML") && ($command != "META") && ($command != "LINK"))
+                    {
+                    //if ($display)
+                        {
+                        //if ($command == "BUTTON")
+                            {
+                            //echo strtoupper($command);                                                          // Command=Tag
+                            // i steht erst bei dem ersten trennzeichen, epos beim Ende
+                            //echo "check $i $epos ";
+                            $attributes=""; $Wert=false;
+                            $wertFound="";
+                            if ( ($epos)>($i) ) 
+                                {
+                                $attributes=substr($page,$i,$epos-$i);
+                                //echo str_pad(": $attributes   ",(100-$ident));
+                                $attLen=strlen($attributes);
+                                $sCmd=false; $Cmd=false;
+                                for ($j=0;($j<$attLen);$j++)
+                                    {
+                                    if ( ($attributes[$j]==" ") || ($attributes[$j]=="=") || ($attributes[$j]=="\n") || ($attributes[$j]=="\r") )
+                                        {
+                                        if ($sCmd===false) $sCmd=$j;
+                                        else 
+                                            {
+                                            if (($j-$sCmd)>1) 
+                                                {
+                                                $Cmd = trim(substr($attributes,$sCmd,$j-$sCmd));
+                                                if ( ($findID===false) || (strtoupper($Cmd)==="ID") ) 
+                                                    {
+                                                    $sWert=false; $Wert=false;
+                                                    for ($k=$j;($k<$attLen);$k++)
+                                                        {
+                                                        if ($attributes[$k]=='"')
+                                                            {
+                                                            if ($sWert===false) $sWert=$k;
+                                                            else
+                                                                {
+                                                                $Wert=trim(substr($attributes,$sWert+1,($k-$sWert-1)));
+                                                                }
+                                                            }
+                                                        }
+                                                    //echo "Mode $display $mode $findID Attribute \"$Cmd\" = \"$Wert\" ";
+                                                    if ( ($findID) && ($findID==$Wert) )                // && ($mode=="findID")
+                                                        {
+                                                        //echo "*************************";
+                                                        $wertFound=$Wert;
+                                                        $display=true;
+                                                        }
+                                                    }
+                                                $sCmd=false;
+                                                }
+                                            }
+                                        }   
+                                    }
+                                }
+                            //else echo str_pad(" ",(100-$ident));
+                            //else echo ($epos-$pos+1)."<=".($i-$pos-1);
+                            //for ($p=$pos;$p<=$i;$p++) echo ord($page[$p]).".";
+                            if ($display) 
+                                {
+                                if ( ($ident<100) && ($ident>0) )  for ($p=0;$p<$ident;$p++) echo " ";              // ident with blanks
+                                echo strtoupper($command).str_pad(": $attributes   ",(100-$ident))." $wertFound  (Debug akt < len line cmd: $i $pos ".($epos-$pos)." $zeile $command)\n";
+                                }
+                            }
+                        }
+                    if ($end) {$ident--; $end=false;}
+                    }
+                else $ident--;
+                $pos=false; 
+                if ( ($mode=="findCMD") && ($command == "/".$commandDisplay) ) $display=false;
+                //if ($command == "/SYMBOL") $display=true;
+                }
+            }
+        echo "Insgesamt wurden $zeile Zeilen analysiert.\n";
         }
 
     /**
@@ -7096,6 +7388,20 @@ class App_Convert_XmlToArray
                 
         if ($this->level==1) echo "\n";                    
         return ($this->result);
+        }
+
+    /* returns a string with the HTML content from a DOMDocument node element ($elm)
+     */
+    function innerHTML(DOMNode $elm,$count=false) { 
+        $innerHTML = ''; 
+        $children  = $elm->childNodes;
+        $i=0;
+        foreach($children as $child) { 
+            $innerHTML .= $elm->ownerDocument->saveHTML($child);
+            if (($i++)===$count) { echo "break"; break; }
+            }
+
+        return $innerHTML;
         }
 
     }       // end of class
@@ -9105,8 +9411,10 @@ class sysOps
  *  getUserDirectory
  *  evaluateOperatingSystem
  *  getOperatingSystem          anhand der Logging Konfiguration herausfinden welches Betriebssystem
+ *
  *  setMaxScriptTime
  *  fileIntegrity               überprüfen ob das File den php Koventionen entspricht
+ *
  *  findfiles                   wie fileavailable, aber hier aus einem array die Dateien herausfiltern
  *  fileAvailable               eine Datei in einem Verzeichnis suchen, auch mit Wildcards
  *  dirAvailable                ein Verzeichnis in einem oder mehreren Verzeichnissen finden
@@ -9196,7 +9504,8 @@ class dosOps
         return($verzeichnis);
         }
 
-    /*  dosOps, Anhand von einer Configuration oder
+    /* dosOps::evaluateOperatingSystem
+     *  Anhand von einer Configuration oder
      *  durch Test von C:/Scripts herausfinden ob Unix oder Windows system
      echo IPS_GetKernelDir();
         // Beispielausgabe:
@@ -9564,18 +9873,23 @@ class dosOps
      *
      * detailed ist noch nicht implementiert
 	 */
-	public function readdirToArray($dir,$config=false,$newest=0,$debug=false)
+	public function readdirToArray($dir,$configInput=false,$newest=0,$debug=false)
 		{
         $detailed=false;
-        if (is_array($config))
+        if (is_array($configInput))
             {
-            $recursive=$config["recursive"];
-            $detailed=$config["detailed"];    
+            $config=array();
+            if ($debug) echo "readdirToArray($dir,".json_encode($configInput)."\n";
+            configfileParser($configInput,$config,["RECURSIVE","recursive","Recursive"],"Recursive",false);
+            configfileParser($configInput,$config,["DETAILED","detailed","Detailed"],"Detailed",false);             // nur die angeführten werden übernommen
+            configfileParser($configInput,$config,["FILTER","filter","Filter"],"Filter",null);             
+            $recursive = $config["Recursive"];
+            $detailed  = $config["Detailed"];    
             if ($debug) echo "readdirToArray aufgerufen für $dir . Configuration ist ".json_encode($config)."\n";
             }
         else 
             {
-            $recursive=$config;
+            $recursive=$configInput;
             if ($debug) echo "readdirToArray aufgerufen für $dir\n";
             }
 	   	$result = array();
@@ -9610,6 +9924,11 @@ class dosOps
             echo "ERROR, Verzeichnis $dir not available. Please create manually.\n";
             return (false);
             }
+        if (isset($config["Filter"]))
+            {
+            if ($debug) echo "Filter aufgerufen : ".json_encode($config["Filter"])."\n";
+            $result = $this->findFiles($result,$config["Filter"],$debug);                             // true Debug
+            } 
 		if ($newest != 0)
 			{
 			if ($newest<0) 
@@ -9767,7 +10086,8 @@ class dosOps
         }
 
     /* Array über die Struktur eines Directories ausgeben
-     *
+     * wie readdirToArray aber mit detaillierterer Ausgabe
+     * übernimmt die Dateien in files oder ruft selbst die Routine auf 
      */
     public function writeDirToArray($verzeichnis, $files=false, $debug=false)
         {
@@ -9792,6 +10112,77 @@ class dosOps
                 {
                 $result[$index]["Filename"]=$file;
                 $result[$index]["Verzeichnis"]=$verzeichnis;
+                $imageType = exif_imagetype($verzeichnis.$file);
+                if ($imageType) 
+                    {
+                    $result[$index]["Image"]["Type"] = $imageType;
+                    switch ($imageType)
+                        {
+                        case 1:
+                            $readable="GIF";
+                            break;
+                        case 2:
+                            $readable="JPEG";
+                            break;
+                        case 3:
+                            $readable="PNG";
+                            break;
+                        case 4:
+                            $readable="SWF";
+                            break;
+                        case 5:
+                            $readable="PSD";
+                            break;
+                        case 6:
+                            $readable="BMP";
+                            break;
+                        case 7:
+                            $readable="TIFF_II";
+                            break;
+                        case 8:
+                            $readable="TIFF_MM";
+                            break;
+                        case 9:
+                            $readable="JPC";
+                            break;
+                        case 10:
+                            $readable="JP2";
+                            break;
+                        case 11:
+                            $readable="JPX";
+                            break;
+                        case 12:
+                            $readable="JB2";
+                            break;
+                        case 13:
+                            $readable="SWC";
+                            break;
+                        case 14:
+                            $readable="IFF";
+                            break;
+                        case 15:
+                            $readable="WBMP";
+                            break;
+                        case 16:
+                            $readable="XBM";
+                            break;
+                        case 17:
+                            $readable="ICO";
+                            break;
+                        case 18:
+                            $readable="WEBP";
+                            break;
+                        default:                            
+                            $readable="Unknown";
+                            break;
+                        }
+                    $result[$index]["Image"]["ImageType"] = $readable; 
+                    list($width, $height, $type, $attr) = getimagesize($verzeichnis.$file);
+                    $result[$index]["Image"]["Width"] = $width;
+                    $result[$index]["Image"]["Height"] = $height;
+                    if ($height > $width) $result[$index]["Image"]["Orientation"] = "Portrait";
+                    else $result[$index]["Image"]["Orientation"] = "Landscape";
+                    }
                 $filesize=filesize($verzeichnis.$file);
                 $result[$index]["Size"]=$filesize;
                 $datetime=filemtime($verzeichnis.$file);

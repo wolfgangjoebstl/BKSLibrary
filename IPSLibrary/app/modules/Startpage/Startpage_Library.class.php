@@ -28,6 +28,11 @@
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
+    /* Implementierte Klassen
+     *      StartpageHandler
+     *      StartpageWidgets
+     *
+     */
 
     /*
      * Klasse StartpageHandler
@@ -35,17 +40,23 @@
      * sammelt alle Routinen für die Erstellung und Verwaltung der Startpage/Dashboard
      * mit der Absage des IPSWeather Moduls wurden die Wetter Aktivitäten hier her verlagert.
      *
+     * es werden die Versuche verstärkt das Webdesign auf eine responsive Darstellung zu erneuern
+     *
      * Hauptroutine ist StartPageWrite mit den 4 unterschiedlichen Darstellungen
      * aufgerufen werden dazu analog die folgenden Funktionen:   showHierarchy, [showPictureWidget,showTopology], [showDisplayStation, bottomTableLines], [showPictureWidget,showWeatherTemperatureWidget,bottomTableLines]     
      *
      * _construct
      * getWorkDirectory
-     * setStartpageConfiguration
+     * getAvailableIcons
+     * getHighchartsID
+     *
+     * setStartpageConfiguration            Konfiguration vereinheitlichen und intern abspeichern
      * getStartpageConfiguration
      * getStartpageDisplayConfiguration
      * getOWDs
      * configWeather
      * readPicturedir
+     * getPictureDirectory
      *
      * StartPageWrite                   Darstellung der Startpage am Webfront
      * showDisplayStation
@@ -56,6 +67,8 @@
      * transformConfigWidget
      * writeTable
      * transformStatus
+     * writeCell
+     * writeValue
      *
      * tempTableLine
      *
@@ -79,21 +92,21 @@
 	class StartpageHandler 
 		{
 
-		private $configuration = array();				// die angepasste, standardisierte Konfiguration
-		private $aussentemperatur, $innentemperatur;
+		protected $configuration = array();				// die angepasste, standardisierte Konfiguration
+		protected $aussentemperatur, $innentemperatur;
 		
 		public $picturedir, $imagedir, $icondir;			// hier sind alle Bilder für die Startpage abgelegt
         public $workdir;            // Arbeitsverzeichnis, zB VLC Start Scripts
 
         protected $scriptHighchartsID;                      // für Higcharts, die IPSHighcharts script ID
-        private $contentID;                             // für Highcharts als Dummy
-        private $installedModules;                      // welche Module sind installiert
+        protected $contentID;                             // für Highcharts als Dummy
+        protected $installedModules;                      // welche Module sind installiert
 
 		public $CategoryIdData, $CategoryIdApp;			// die passenden Verzeichnisse
 
-        private $dosOps;                                // ein paar Routinen ohne jedesmal new zu machen
+        protected $dosOps;                                // ein paar Routinen ohne jedesmal new zu machen
 		
-		private $OWDs;				// alle Openweather Instanzen
+		protected $OWDs;				// alle Openweather Instanzen
 
 		/**
 		 * @public
@@ -173,6 +186,7 @@
 		/*
 		 * Abstrahierung der Startpage Konfiguration
 		 * Einlesen aus der Datei und Abspeichern in der Class
+         * configInput -> config
 		 */
 
 		function setStartpageConfiguration($config=false,$debug=false)
@@ -219,14 +233,37 @@
             /* Sub Display */
             configfileParser($configInput["Display"], $config["Display"], ["Weather"],"Weather","[]"); 
             configfileParser($configInput["Display"], $config["Display"], ["BottomLine"],"BottomLine","[]"); 
+            configfileParser($configInput["Display"], $config["Display"], ["AddLine"],"AddLine","[]"); 
             configfileParser($configInput["Display"], $config["Display"], ["WidgetStyle"],"WidgetStyle",'{"RowMax":2,"ColMax":3,"Screens":1}');             // bereits als json_encode übergeben
 
-            /* Sub Sub Display */
+            /* Sub Sub Display Weather */
             configfileParser($configInput["Display"]["Weather"], $config["Display"]["Weather"], ["Weathertable"],"Weathertable","Active"); 
+
+            /* Sub Sub Display Widgetstyle */
             configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["RowMax"],"RowMax",2); 
             configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["ColMax"],"ColMax",3); 
             configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["Screens"],"Screens",1); 
 
+            /* Sub Sub Display AddLine */
+            $configAddLine=array(); 
+            if (sizeof($config["Display"]["AddLine"])>0)
+                {
+                foreach ($config["Display"]["AddLine"] as $name => $widget)              // alle Widgets Speks durchgehen, können auf mehrere Screens verteilt sein !
+                    {
+                    configfileParser($widget, $configAddLine[$name], ["TYPE","Type"],"Type" ,$name);  
+                    configfileParser($widget, $configAddLine[$name], ["NAME","Name"],"Name" ,$name); 
+                    $configAddLine[$name]["Type"] = strtoupper($configAddLine[$name]["Type"]);
+                    switch ($configAddLine[$name]["Type"])
+                        {
+                        case "INFOFIELD":
+                            break;
+                        default: 
+                            configfileParser($widget, $configAddLine[$name], ["OID","Oid", "oid"],"OID" ,false); 
+                            break;
+                        }
+                    }
+                $config["Display"]["AddLine"]=$configAddLine;
+                }
 
             /* Sub Widgets */
             $config["Widgets"] = $this->transformConfigWidget($configWidget["Widgets"],$config["Display"]["WidgetStyle"], $debug);       // mit oder ohne Debug, return output array, input array, widget config
@@ -355,6 +392,7 @@
 
 
         /* StartPageWrite, die Startpage vollständig schreiben, erstellt eine html Tabelle
+         * anhand von Pagetype wird eine von mehreren möglichen Darstellungen ausgewählt. createActionProfileByName("StartpageControl")
          *
          * Parameter:
          *       PageType    4 Hierarchie, 3 Topologie, 2 Station, 1 Picture
@@ -374,7 +412,7 @@
          *
          */
 
-		function StartPageWrite($PageType,$showfile=false,$debug=false)
+		function StartPageWrite($PageType=1,$showfile=false,$debug=false)
 			{
 			$Config=$this->configWeather();
 			$noweather=!$Config["Active"];
@@ -385,7 +423,7 @@
                 }                
 	    	/* html file schreiben, Anfang Style für alle gleich */
 			$wert="";
-		    $wert.= $this->writeStartpageStyle();
+		    $wert.= $this->writeStartpageStyle("");
             switch ($PageType)
                 {
                 case 4:        // Hierarchie
@@ -457,38 +495,95 @@
                     /*******************************************
                      *
                      * PageType==1,Diese Art der Darstellung der Startpage wird Bildschirmschoner genannt , Standard und bewährte Darstellung
-                     * Bild und Wetterstation als zweispaltige Tabelle gestalten
+                     * Bild und Wetterstation als zweispaltige Tabelle gestalten oder neu die Möglichkeit für Formatierung als Div Frames
+                     * <div id=“resp-table” style="width: 100%; display: table;">               oder im css #resp-table { ... }
+                         <div class=“resp-table-row” style="display: table-row;">               oder im css .resp-table-row{ ... }
+                            <div class=“table-body-cell” style="display: table-cell;"> 
+                                Cell 1–1
+                                </div>
+                            </div>
+                     *    </div>
+                     *
+                     * showPictureWidget ergänzt um zwei div frames die eingebettet werden können
                      *
                      *************************/
-                    $wert.='<table id="startpage">';
-                    //$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
-                    //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
-                    $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
-                    $wert.='<td height="40%">';     // sonst zu gross
-                    if ($PageType==1) 
-                        {
-                        if ($debug) echo "Page Type Style is Picture.\n";
-                        $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
-                        }
-                    else 
-                        {
-                        if ($debug) echo "Page Type Style is Media.\n";
-                        $wert.= $this->showMediaWidget();
-                        }
-                    if ( $noweather==false ) 
-                        {
-                        $wert.= $this->showWeatherTemperatureWidget($debug);     // zweite Zelle, eine dritte gibt es nicht
-                        }
-                    elseif ($debug) echo "no weather Display configured.\n";
-                    $wert.='</td>';
-                    $wert.='</tr>';
-                    $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
-	                $wert.='<td colspan="2">';                    
+                    //$wert.='<div id=“resp-table” style="padding-bottom: 56%;; width: 100%; display: table;">'; 
+                    $wert.='<div id=“resp-table” style="display: table; height:800px; width:auto">'; 
+                    $wert .=    '<div class=“resp-table-row” style="display: table-row;">';               
+                    $wert .=        '<div class=“table-body-cell” style="display: table-cell;">';                     
+                    $wert .=            $this->showPictureWidget($showfile);		
+                    $wert .=			'</div>';
+                    $wert .=		'<div class=“table-body-cell” style="display: table-cell; background-color:#202420; vertical-align:top;">';                
+                    $wert .= 			$this->showWeatherTemperatureWidget(false,$debug);              // true inline block, false table
+                    $wert .=			'</div>';                                                                  
+                    $wert .=		'</div>';                                               
+                    $wert .=    '<div class=“resp-table-row” style="display: table-row;">';                                 
+                    $wert .= '<table><tr>';
+                    $wert.='<td colspan="2">';                    
                     $wert.=$this->bottomTableLines($debug);                // komplette zweite Zeile, ist wesentlich dünner
                     $wert.='</td>';
-                    $wert.='</tr>';
-                    $wert.='</table>';
+                    $wert .= '</tr></table>';
+                    $wert .=		'</div>';                                               
+                    $wert .=	'</div>';
+                    if (false)
+                        {
+                        $wert.='<table id="startpage">';
+                        //$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
+                        //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
+                        $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
+                        $wert.='<td height="40%">';     // sonst zu gross
+                        if ($PageType==1) 
+                            {
+                            if ($debug) echo "Page Type Style is Picture.\n";
+                            $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
+                            }
+                        else 
+                            {
+                            if ($debug) echo "Page Type Style is Media.\n";
+                            $wert.= $this->showMediaWidget();
+                            }
+                        if ( $noweather==false ) 
+                            {
+                            $wert.= $this->showWeatherTemperatureWidget(false,$debug);     // zweite Zelle, eine dritte gibt es nicht
+                            }
+                        elseif ($debug) echo "no weather Display configured.\n";
+                        $wert.='</td>';
+                        $wert.='</tr>';
+                        $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
+                        $wert.='<td colspan="2">';                    
+                        $wert.=$this->bottomTableLines($debug);                // komplette zweite Zeile, ist wesentlich dünner
+                        $wert.='</td>';
+                        $wert.='</tr>';
+                        $wert.='</table>';
+                        }
                     break;
+                case 6:             // Frame
+                    /*******************************************
+                     *
+                     * Bild und Wetterstation als zweispaltige Tabelle mit responsive Mode und Formatierung als Div Frames
+                     * <div id=“resp-table” style="width: 100%; display: table;">               oder im css #resp-table { ... }
+                         <div class=“resp-table-row” style="display: table-row;">               oder im css .resp-table-row{ ... }
+                            <div class=“table-body-cell” style="display: table-cell;"> 
+                                Cell 1–1
+                                </div>
+                            </div>
+                     *    </div>
+                     *
+                     * showPictureWidget ergänzt um zwei div frames die eingebettet werden können
+                     *
+                     *******ACHTUNG WIRD NICHT VERWENDET, CHECK PHP FILE in WEBFRONT******************/ 
+                    $wert.='<div id=“resp-table” style="width: 100%; display: table;">';            // display type Table
+                    $wert.='<div class=“resp-table-row” style="display: table-row;">';                // display type  Row
+                    $wert.='<div class=“table-body-cell” style="width: 70%; display: table-cell;">';                 // display type Cell
+                    $wert.= $this->showPictureWidget($showfile);
+                    $wert.='</div>';
+                    $wert.='<div class=“table-body-cell” style="width: 30%; display: table-cell;">';                 // Cell
+                    $wert.= $this->showWeatherTemperatureWidget(true,$debug);                   // responsive Design
+                    $wert.='</div>';                                                                    // ende Cell
+                    $wert.='</div>';                                                                    // Ende Row
+                    
+                    $wert.='</div>';
+                    break; 
                 default:
                     break;    
                 }
@@ -1683,7 +1778,7 @@
         /********************
          *
          * Zelle Tabelleneintrag für die Darstellung eines BestOf Bildes
-         *
+         * class container = width: auto; height: auto; max-height:95%; max-width: 100%
          *
          **************************************/
 
@@ -1697,15 +1792,21 @@
             $verzeichnisWeb = "/user/Startpage/user/pictures/SmallPics/";
             $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb);
             $filegroesse=number_format((filesize($verzeichnis.$filename)/1024/1024),2);
-            $info=getimagesize($verzeichnis.$filename);
+            $info=getimagesize($verzeichnis.$filename);     // Index 3 ist eine Zeichenkette mit dem Attributen Breite und Höhe in der Form height="yyy" width="xxx" zur Verwendung in einem IMG-Tag.
             if (file_exists($verzeichnis.$filename)) 
                 {
                 if ($debug) echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
                 }
             //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";   
-            $wert.='<div class="container"><img src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" class="image">';
-            $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
-            $wert.='</div>';
+            //$wert.= '<div class="container" style="background:darkgrey;"'.$info[3].'>';
+            //$wert.= '<div class="container" style="width:auto; background-color:#202024;">';
+            $wert.= '<div style="width:100%; background-color:#202024;">';
+            //$wert.=     '<img src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" class="image" '.$info[3].'>';   // definiert die Größe des Bildes
+            $wert.=     '<img src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" style="width:100%; max-height:740px;">';   // definiert die Größe des Bildes
+            //$wert.=     '<div class="middle">';                                                                                               // Position unklar
+            //$wert.=         '<div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
+            //$wert.=         '</div>';
+            $wert.=     '</div>';
             return ($wert);
             }
 
@@ -1811,7 +1912,7 @@
                                         echo "      ".date("d.m.Y H:i:s",$startOfToday)."\n";
                                         //echo "      Variable Changed $addInfo, got from Property:".$tableEntry["Property"]."   ".json_encode(IPS_GetVariable($oid))."\n";
                                         $endtime=time();
-                                        $starttime=$endtime-$timeGone-(10*60*60);           // 10 Tage nach dem letzten Regen
+                                        $starttime=$endtime-$timeGone-(10*60*60);           // 10 Tage nach dem letzten RegentempTableLine
                                         $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);          
                                         // AC_GetAggregatedValues (integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit)    
                                         $werteAgg  = @AC_GetAggregatedValues($archiveID,$oid,0,$starttime,$endtime,0);                   
@@ -2436,8 +2537,8 @@
                 }
 
             $wert="";
-            $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
-            $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+            $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="/user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+            $wert.='<td bgcolor="#ffffff"><img src="/user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
 
             if ( ($tempTableConf===null) || (count($tempTableConf)==0) )            // schon wieder Defaultwerte
                 {
@@ -2475,10 +2576,23 @@
             return ($wert);
             }
 
-        /* read configuration for showTemperatureTable 
+        /* read configuration for showTemperatureTable und showTemperatureTableValues wenn responsive
+         * adapt configuration für interne Verarbeitung:
+         *      IndexNum    Konfiguration von Key ist Name auf laufende Nummer ändern, wichtig für korrekte Reihenfolge
+         *      Name        Key
+         *      Innen       analyseEntry
+         *      Aussen      analyseEntry
+         *      Unit
+         *      Size
+         *
+         * analyseEntry   schaut ob array(->ARRAY) ,numerischer Wert (->OID), string und eine gültiger functionname (->FUNCTION)
+         * wenn array, evaluateEntry liefert VALUE, dazu wird displayValue(&wert) verwendet
+         *
          * Aufruf von StartpageWrite als Grossbild übergibt keine Konfiguration, interne configuration["Temperature"] nehmen
-         * Konfiguration von Key ist Name auf laufende Nummer ändern, wichtig für korrekte Reihenfolge
+         * 
          * für dieses Grossbild Widget gilt immer es gibt immer Innen und Aussen Werte
+         *
+         *
          *
          */
 
@@ -2504,7 +2618,7 @@
                 configfileParser($tempConf[$index], $config[$indexNum], ["Aussen"],"Aussen",null);
                 configfileParser($tempConf[$index], $config[$indexNum], ["Unit","UNIT"],"Unit","");
                 configfileParser($tempConf[$index], $config[$indexNum], ["Size","SIZE"],"Size","Large");
-                $config[$indexNum]["Innen"] = $this->analyseEntry($config[$indexNum]["Innen"],"Innen",$debug);
+                $config[$indexNum]["Innen"]  = $this->analyseEntry($config[$indexNum]["Innen"],"Innen",$debug);
                 $config[$indexNum]["Aussen"] = $this->analyseEntry($config[$indexNum]["Aussen"],"Aussen",$debug);
                 $indexNum++; 
                 }
@@ -2512,7 +2626,7 @@
             return ($config);
             }
 
-        /* jeder Innen oder Aussenwert kann auf unterschiedliche Weise dargetsellt werden 
+        /* jeder Innen oder Aussenwert kann auf unterschiedliche Weise dargestellt werden 
          *      Zahl        OID, Wert wird überprüft
          *      Funktion    FUNCTION, Wert wird überprüft
          * 
@@ -2552,12 +2666,16 @@
          *      OID     wird als oid bzw oidArray weiter bearbeitet
          *
          * OID wird evaluiert, es wird daraus wieder eine config ausgegeben
-         *
+         * es gibt noch
+         *      Name
+         *      Icon
+         *      Unit
          * Zusatzfunktionen
          *      Aggregate       MEANS,MAX,MIN aus mehreren Werte in einem Array
          *      Property        nette Darstellung wann letzte Änderung erfolgt ist
          *      Type
          *      Integrate       aus einem Wert mit archivierten Werten, kein Aggregate konfiguriert
+         *      Show            Anzeigen wenn Wertebereich passt
          *
          * die Zusatzfunktionen vorbereiten und weiter an displayValue
          *
@@ -2794,25 +2912,38 @@
         /********************
          *
          * Zelle Tabelleneintrag für die Wettertabelle als Widget gemeinsam mit Innen/Aussentemperarur und einer ZusatzZeile
+         * wenn parameter false liefert eine Table cell mit einem eingebetteten table mit id nested
+         * bei true nur den table
          *
          **************************************/
 
-		function showWeatherTemperatureWidget($debug=false)
+		function showWeatherTemperatureWidget($config=false,$debug=false)
 			{
             if ($debug) echo "showWeatherTemperatureWidget aufgerufen. Zeigt Bilder, Temperatur, Add lines und Wettertabelle:\n";
+            if ($config) $useTable=false; else $useTable=true;
             $wert="";
             $weather=$this->getWeatherData();
 
             if ($weather["todayDate"] != "") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
             else { $tableSpare=''; $colspan=""; }
 
-            $wert.='<td><table id="nested">';
+            if ($useTable)
+                {
+                $wert.='<td valign="top" style="vertical-align:top">';
+                $wert.='<table id="nested" style="vertical-align:top">';
+                }
+            else  
+                {
+                //$wert.='<table id="nested" style="position:absolute; top:0; left: 0">';
+                $wert.='<table id="nested" style="display: inline-block;">';                        // aktive Verwendung von display, outer div bestimmt die positionierung
+                }
 
             $wert .= $this->showTemperatureTable($colspan,false,$debug);            // keine Config übergeben
             $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
             $wert .= $this->showWeatherTable($weather);
 
-            $wert.='</table></td>';
+            $wert.='</table>';
+            if ($useTable) $wert.='</td>';
             return ($wert);
             }
 
@@ -2920,7 +3051,7 @@
          *
          **************************************/
 
-	    function writeStartpageStyle()
+	    function writeStartpageStyle($input="")
 	        {
 	    	$wert='<style>';
 	        $wert.='kopf { background-color: red; height:120px;  }';        // define element selectors
@@ -2934,12 +3065,33 @@
 	        $wert.='addText { color:black; background-color: #c1c1c1; height:100px; font-size: 24px; align:center; }';
 	        $wert.='temperatur { color:black; height:100px; font-size: 28px; align:center; }';
 	        $wert.='datum { color:black; height:100px; font-size: 28px; align:center; }';
-	        $wert.='infotext { color:white; height:100px; font-size: 12px; }';
+	        
+	        $wert.='.innen-resp         { color:black; background-color: #ffffff; font-size:70px; display:flex; justify-content:center; }';                             // 70px zu 240 px
+	        $wert.='.aussen-resp        { color:black; background-color: #c1c1c1; font-size:70px; display:flex; justify-content:space-around;}';
+	        $wert.='.innenMed-resp      { color:black; background-color: #ffffff; font-size: 50px; }';                                      // height:100px;
+	        $wert.='.aussenMed-resp     { color:black; background-color: #c1c1c1; font-size: 50px; background-color:#c1c1c1;}';
+	        $wert.='.innenSmall-resp    { color:black; background-color: #ffffff; font-size: 30px; }';
+	        $wert.='.aussenSmall-resp   { color:black; background-color: #c1c1c1; font-size: 30px; background-color:#c1c1c1; }';
+	        $wert.='.addText-resp       { color:black; font-size: 24px; align:center; }';                                    // display style="background-color:7f8f9f;"
+	        $wert.='.temperatur-resp    { color:black;  font-size: auto; align:center; font-size: 28px;}';
+	        $wert.='.datum-resp         { color:black; font-size: auto; align:center; font-size: 28px;}';
+            $wert.='.image-temp         { width:240px;}';  
+            $wert.='.weather-item-left  { min-width:120px;}';                                                                       // Breite der beiden Icons ist fix, nicht responsive
+            /*$wert.='.container-cmd      { display:flex; justify-content:space-between;}';
+              $wert.='.image-pic0         { width:100%; max-height:700px; display:none;}';
+              $wert.='.image-pic4         { width:50%; max-height:350px; display:none;}';
+              $wert.='.image-pic9         { width:33%; max-height:240px; display:inline;}';           // width:33%; max-height:240px    
+              $wert.='.button-resp        { color:black; font-size: 1.5vw; align:center; background-color:#a1b1c1;}';                      // font-size: 28px; font-size: auto;
+              $wert.='.button-resp:hover  { background-color:#c1b1a1;}';                              // container cmd   
+            $wert.='#sp-pic-orf >h2 {font-size: 24px; }';
+            $wert.='#sp-pic-orf >p {font-size: 18px; }';            */
+
+            $wert.='infotext { color:white; height:100px; font-size: 12px; }';
 		    $wert.='#nested { border-collapse: collapse; border: 2px solid white; background-color: #f1f1f1; width: auto;  }';
 	        $wert.='#nested td { border: 1px solid white; }';		  
 	        $wert.='#temp td { background-color:#ffefef; }';                // define ID Selectors
 	        $wert.='#imgdisp { border-radius: 8px;  max-width: 100%; height: auto;  }';
-	        $wert.='#startpage { border-collapse: collapse; border: 2px dotted white; width: 100%; }';
+	        $wert.='#startpage { border-collapse: collapse; border: 2px dotted white; width: 100%;}';
 	        $wert.='#startpage td { border: 1px dotted DarkSlateGrey; }';	 
 	        $wert.='.container { width: auto; height: auto; max-height:95%; max-width: 100% }';
 	        $wert.='.image { opacity: 1; display: block; width: auto; height: auto; max-height: 90%; max-width: 80%; object-fit: contain; transition: .5s ease; backface-visibility: hidden; padding: 5px }';
@@ -2947,6 +3099,7 @@
 	        $wert.='.container:hover .image { opacity: 0.8; }';             // define classes
 	        $wert.='.container:hover .middle { opacity: 1; }';
 	        $wert.='.StartPageText { background-color: #4CAF50; color: white; font-size: 16px; padding: 16px 32px; }';          // was former .text only, this is used in standard formatting !!!
+            $wert.=$input;
 	        $wert.='</style>';
 	        return($wert);
 	        }
@@ -2960,7 +3113,7 @@
 	
 		function findIcon($cloudy,$rainy)
 			{
-			$icon="user/IPSWeatherForcastAT/icons/";
+			$icon="/user/IPSWeatherForcastAT/icons/";
 			if ($cloudy < 11)
 				{
 				if ($rainy>0) $icon.="chance_of_rain";
@@ -3698,9 +3851,9 @@
 			}
 			
 
-        /*
+        /* additionalTableLines
          * additional Table Lines werden zwischen temperatur und Wetteranzeige eingebaut
-         *
+         * mehrer Zeilen, index => [ Name, Type, OID,  ]
          */
 			
 	    function additionalTableLines($format="")
@@ -3710,10 +3863,14 @@
 	            {
 	            foreach($this->configuration["Display"]["AddLine"] as $tablerow)
 	                {
-	                //echo "   Eintrag : ".$tablerow["Name"]."  ".$tablerow["OID"]."  ".$tablerow["Icon"]."\n";
-	    			$wert.='<td '.$format.' bgcolor="#c1c1c1"><addText>'.$tablerow["Name"].'</addText></td><td  bgcolor="#c1c1c1"><addText>'.number_format(GetValue($tablerow["OID"]), 1, ",", "" ).'°C</addtext></td>';
+                    if ( (isset($tablerow["Type"])) && (strtoupper($tablerow["Type"])=="INFOFIELD") ) ;     // do nothing
+                    else   
+                        {
+                        //echo "   Eintrag : ".$tablerow["Name"]."  ".$tablerow["OID"]."  ".$tablerow["Icon"]."\n";
+                        $wert.='<td '.$format.' bgcolor="#c1c1c1"><addText>'.$tablerow["Name"].'</addText></td><td  bgcolor="#c1c1c1"><addText">'.number_format(GetValue($tablerow["OID"]), 1, ",", "" ).'°C</addText></td>';
+                        }
 	                }
-	            //print_r($cthis->onfiguration["AddLine"]);
+	            //print_r($this->configuration["AddLine"]);
 				//$wert.='<tr><td>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
 	            //echo $wert;
 	            }
@@ -3760,9 +3917,10 @@
                     if ($configBottomLine)
                         {
                         $wert.= '<td>';
-                        $wert.='<img src="user/Startpage/user/icons/'.$configBottomLine["Icon"].'.svg" alt="'.$configBottomLine["Icon"].' Icon">';
+                        $wert.='<img src="/user/Startpage/user/icons/'.$configBottomLine["Icon"].'.svg" alt="'.$configBottomLine["Icon"].' Icon">';
                         $wert.='</td><td>';
                         if ( (isset($configBottomLine["Value"])) && ($configBottomLine["Value"] !== false) )     $wert.= $configBottomLine["Value"];
+                        //if ( (isset($configBottomLine["AddInfo"])) && ($configBottomLine["AddInfo"] !== false) ) $wert.= '<div class="addText">    '.$configBottomLine["AddInfo"].'</div>';
                         if ( (isset($configBottomLine["AddInfo"])) && ($configBottomLine["AddInfo"] !== false) ) $wert.= '<addText>    '.$configBottomLine["AddInfo"].'</addtext>';
                         $wert.='</td>';
                         }
@@ -3777,8 +3935,10 @@
 	        }
 
         /* einen Wert am Webfront als Tabelleneintrag anzeigen , nutzt formatEntry
+         * in der Config altText übergibt alternative html identifier und class Zeichen, sonst p class=addText
+         *
          * der Wert wird als value übergeben, die Art der Darstellung steht in config und wert ist die Darstellung innerhalb einer html Tabelle
-         * verwendet <addText> als Text identifier
+         * verwendet <addText> als Tag identifier, nicht empfohlen
          *
          * tableEntry ist Configuration stored in config["Display"]["BottomLine"] oder config["Temperature"]
          * Nachdem nur ein Wert und keine OID übergeben wird, funktioniert die Config ["Unit"]="AUTO" nicht, verwende string GetValueFormattedEx (integer $VariableID, variant $value)
@@ -3795,8 +3955,9 @@
         function displayValue(&$wert, float $value, $tableEntry, &$init, $oidAlt=false, $debug=false)
             {
             /* zur Darstellung des Wertes */
-            if (isset($tableEntry["altText"])) $addText=$tableEntry["altText"];
-            else $addText="addText";
+            if (isset($tableEntry["altText"])) { $addText=$tableEntry["altText"]; $addTextE=$tableEntry["altText"]; }
+            //else $addText='p class="addText'; $addTextE='p';
+            else $addText='addText'; $addTextE='addText';
             if ($debug) echo "   displayValue mit Konfiguration ".json_encode($tableEntry)." und Wert $value aufgerufen. Init ist ".($init?"aktiv":"nicht aktiv")."\n";
             //if ( (isset($tableEntry["Property"])) || (isset($tableEntry["Integrate"])) ) return (false);
             if (isset($tableEntry["Profile"])) 
@@ -3827,30 +3988,32 @@
                 if ($init) { $wert .='<'.$addText.' style="background-color:#'.$color.';color:darkgrey;">'.$tableEntry["Name"].'   '; $init=false; }
                 else $wert .= '<'.$addText.' style="background-color:#'.$color.';color:darkgrey;">|';                    
                 //$wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$tableEntry["Name"].'   ';
-                $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</'.$addText.'>';                   // wenn als float übergeben wird handelt es sich nicht um eine OID
+                $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</'.$addTextE.'>';                   // wenn als float übergeben wird handelt es sich nicht um eine OID
                 }
             elseif (isset($tableEntry["Unit"]))                         // es gibt eine Einheitsbezeichnung
                 {
                 if ($init) { $wert .= '<'.$addText.'>'.$tableEntry["Name"].'   ';$init=false; }
                 else $wert .= '<'.$addText.'>|';                    
                 //$wert .= '<addText>'.$tableEntry["Name"].'   ';
-                $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</'.$addText.'>';
+                $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</'.$addTextE.'>';
                 }
             else                                                        // es gibt nix
                 {
                 if ($init) { $wert .= '<'.$addText.'>'.$tableEntry["Name"].'   ';$init=false; }
                 else $wert .= '<'.$addText.'>|';                    
                 //$wert .= '<addText>'.$tableEntry["Name"].'   ';
-                $wert .= $this->formatEntry($value, "").'</'.$addtext.'>';
+                $wert .= $this->formatEntry($value, "").'</'.$addtextE.'>';
                 }
             return (true);
             }
 
-        /* formatting with hints in format oder nutzt zusätzlich als Quelle eine andere oidAlt 
+        /* formatting with hints in format oder nutzt zusätzlich bei format=auto als Quelle eine andere oid, definiert mit oidAlt 
+         * liefert string, kein html5
+         * format unterstützt: ppm, auto, temp, mm, bps, presence, default
          *
          * es wird die OID übergeben. Wenn die OID nicht integer ist dann als Wert betrachten. Übergabe in diesem Fall als float oder boolean
          * displayValue verwendet zum Beispiel den Wert
-         *
+
          * return ist der formattierte Wert
          * 
          */
@@ -3931,7 +4094,1009 @@
 
 		}		// ende class
 		
-		
+    /* Widgets zusammenfassen, alte Routinen im Handler überschreiben und responsive darstellen
+     * Folgende neue rutinen wurden übernommen
+     *  setDebugMode                                Debug ein/ausschalten, ohne Einzelparameter in jeder function
+     *  selectPictures                              Auswahl von 1 bis max Bilder aus Smallpics
+     *  showPictureWidgetResponsive                 diese anzeigen,1,4 oder 9 Stück
+     *  showTemperatureTableIcons                   die Icons Aussen und Innen
+     *  showTemperatureTableValues
+     *  analyseEntryResponsive
+     *  additionalTableLinesResponsive
+     *  showWeatherTableResponsive
+     *  tempTableLineResponsive
+     *  bottomTableLinesResponsive
+     *  infoTableLinesResponsive
+     *  checkEntryConfig
+     *  evaluateEntryResponsive
+     *  displayValueResponsive
+     *
+     */    
+    class StartpageWidgets extends StartpageHandler          
+		{
 
+        protected $debug=false;
+
+        public function __construct()                 // alles responsive darstellen
+            {
+            parent::__construct();          // nicht vergessen den parent construct auch aufrufen
+
+            }
+
+        public function setDebugMode($debug)
+            {
+            $this->debug=$debug;
+            }
+
+        /* selectPictures
+         * eine Auswahl von Bildern aus einer Serie herausnehmen
+         * return als array von filenamen - ohne Verzeichnisangabe
+         */
+         public function selectPictures($max=1,$orientation="Landscape")
+            {
+            $result=array();
+            $getPictureDir = $this->getPictureDirectory();
+            $dosOps = new dosOps();
+            $files = $dosOps->readdirToArray($getPictureDir."SmallPics/",["detailed"=>true,"filter"=>"*.jpg"]);           // case insensitive, nach jpeg kann nicht gleichzeitig gesucht werden
+            if ($files) 
+                {
+                $maxcount=count($files);
+                $showfile=rand(1,$maxcount-1);                    
+                //echo "proceed, $maxcount files found, start with $showfile, get $max files.  \n";
+                $files = $dosOps->writedirToArray($getPictureDir."SmallPics/",$files);      // true Debug
+                //print_r($files);                                    // Liste von Filenamen
+                foreach ($files as $index => $file)                 // Pano erkennen, Workaround
+                    {
+                    $ratio = round($file["Image"]["Width"]/$file["Image"]["Height"],2);
+                    //echo str_pad($file["Filename"],80)."  ".str_pad($file["Image"]["Width"]."/".$file["Image"]["Height"],20)." Ratio : $ratio\n";
+                    if ($ratio>1.55) $files[$index]["Image"]["Orientation"]="Panorama";
+                    }
+
+                $check=sizeof($files); $count=0; $i=0;
+                if ($this->debug) 
+                    {
+                    echo "selectPictures($max, $orientation) out of ".sizeof($files)." available.\n";
+                    //print_r($files);
+                    }    
+                do {
+                    if ($this->debug) echo " Look for $showfile : ($i/$count/$max)";
+                    $i++;
+                    if (isset($files[$showfile])) 
+                        {
+                        if ( ($orientation) && (isset($files[$showfile]["Image"]["Orientation"])) && ($files[$showfile]["Image"]["Orientation"]==$orientation) )
+                            {
+                            $result[]=$files[$showfile];
+                            $count++;                               // Bilderzähler
+                            }
+                        elseif ($this->debug) echo "$orientation != ".$files[$showfile]["Image"]["Orientation"];
+                        $showfile++;
+                        }
+                    else 
+                        { 
+                        $showfile=0; 
+                        if ($this->debug) echo "File not found start from 0";
+                        }
+                    if ($this->debug) echo "\n";
+                    } while ( ($i < $check) && ($count<$max) );
+                }
+            return ($result);
+            }
+
+        /* StartpageWidgets::showPictureWidgetResponsive
+         *
+         * Zelle Tabelleneintrag für die Darstellung eines BestOf Bildes
+         * width:100%, eingeschränkt vom übergeordneten div
+         * es gibt ein Bild mit 100% und 4 Bilder mit 50%, man kann umschalten mit Hide
+         *
+         * #sp-pic-img-full #sp-pic-img-p0..n
+         * .image-pic0   .image-pic4   .image-pic9
+         *
+         *
+         ************************************/
+
+		function showPictureWidgetResponsive($max=1,$config=false)
+			{
+            $wert=""; 
+            $single=1; $quad=4; $ninth=9;                                       // responsive, switch between formatting
+            $verzeichnis = $this->getPictureDirectory()."SmallPics/"; 
+            $verzeichnisWeb = "/user/Startpage/user/pictures/SmallPics/";              
+            if  (is_array($config))         //extra configuration
+                {
+                if (isset($config["fixed"]))                // not responsive
+                    {
+                    $single=1;
+                    $quad=false;
+                    $ninth=false;
+                    }
+                }
+            /*
+            $file=$this->readPicturedir();
+            $maxcount=count($file);
+            $showfile=rand(1,$maxcount-1);
+            $filename = $file[$showfile];
+            $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb);
+            $info=getimagesize($verzeichnis.$filename);     // Index 3 ist eine Zeichenkette mit dem Attributen Breite und Höhe in der Form height="yyy" width="xxx" zur Verwendung in einem IMG-Tag.
+            */
+            $files=$this->selectPictures($max);
+            if (sizeof($files)>0)
+                {
+                //$wert.= '<div id="sp-pic-img" style="width:100%; background-color:#202024;">';
+                $i=0;
+                foreach ($files as $file) 
+                    {
+                    $filename=$file["Filename"];                        
+                    if (file_exists($verzeichnis.$filename)) 
+                        {
+                        /*if ($i==0)  
+                            {
+                            $wert.= '<div id="sp-pic-img-full" style="display:none;">';
+                            $wert.=     '<img class="image-pic0" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';   // definiert die Größe des Bildes
+                            $wert.=     '</div>';
+                            } */
+                        $filegroesse=number_format((filesize($verzeichnis.$filename)/1024/1024),2);
+                        if ($this->debug) 
+                            {
+                            echo "Filename $filename vorhanden - Groesse ".$filegroesse." MB.\n";
+                            print_r($file);
+                            }
+                        if ($i<$single)        // ein Bild
+                            {
+                            //$wert.= '<div id="sp-pic-img-p'.$i.'" style="display:block; width:100%; max-height:700px;">';
+                            $wert.= '<div id="sp-pic-img-p'.$i.'-1" style="display:block;">';
+                            $wert.=     '<img class="image-pic0 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';   // definiert die Größe des Bildes, unbedingt drinnen lassen
+                            $wert.=     '</div>';
+                            }
+                        if ( ($i<($quad+2)) )     // vier/sechs Bilder
+                            {
+                            $wert.= '<div id="sp-pic-img-p'.$i.'-4" ';
+                            if  ($i<$quad)  $wert.=         ' style="display:inline">';   
+                            else            $wert.=         ' style="display:none">';
+                            $wert.=     '<img class="image-pic4 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';
+                            $wert.=     '</div>';
+                            }
+                        if ($i<$ninth)                 // neun Bilder
+                            {
+                            $wert.= '<div id="sp-pic-img-p'.$i.'-9" style="display:inline;";">';
+                            $wert.=     '<img class="image-pic9 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';   // definiert die Größe des Bildes
+                            $wert.=     '</div>';
+                            }
+                        $i++;
+                        }
+                    }
+               //$wert.=     '</div>';
+                }
+            return ($wert);
+            }
+
+
+        /********************
+         *
+         * Teil von showTemperatureTable für responsive Darstellung
+         *
+         * Zelle Tabelleneintrag für die Tabelle für Innen und Aussentemperatur
+         * zeigt die beiden schönen Icons für Innen und Aussenthermometer an
+         * macht zumindest 2 Zeilen mit jeweils 2 Zellen
+         * ausgelegt als Aufruf als Widget
+         *
+         * es gibt auch eine Konfiguration, getTempTableConf zum Vorverarbeiten verwendet
+         * Aufruf von StartpageWrite als Grossbild übergibt keine Konfiguration
+         *
+         **************************************/
+
+		function showTemperatureTableIcons()
+            {
+            if ($this->debug) echo "showTemperatureTableIcons aufgerufen. \n";
+            $wert="";
+            $wert .=        '<div id="sp-table-aussen-jpg" style="grid-area:icon; background-color:#c1c1c1">'; 
+            $wert .=            '<img class="image-temp" src="/user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"  >';               // style="width:100%;"
+            $wert .=            '</div>';
+            $wert .=        '<div id="sp-table-innen-jpg" style="background-color:#ffffff">'; 
+            $wert .=            '<img class="image-temp" src="/user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur" >';                       // style="width:100%;"
+            $wert .=            '</div>';
+            return ($wert);
+            }
+
+        /* Teil von showTemperatureTable für responsive Darstellung
+         */
+
+		function showTemperatureTableValues($count=false)
+            {
+            $tempConf=$this->configuration["Temperature"];
+
+            if ($this->debug) echo "showTemperatureTableValues aufgerufen, Configuration analysieren: ".json_encode($tempConf)."\n";
+            $config=array();
+            $indexNum = 0;
+            foreach ($tempConf as $index => $regsConf)
+                {
+                $config[$indexNum]["name"] = $index;
+                configfileParser($tempConf[$index], $config[$indexNum], ["Innen"],"Innen",null);
+                configfileParser($tempConf[$index], $config[$indexNum], ["Aussen"],"Aussen",null);
+                configfileParser($tempConf[$index], $config[$indexNum], ["Unit","UNIT"],"Unit","");
+                configfileParser($tempConf[$index], $config[$indexNum], ["Size","SIZE"],"Size","Large");
+                $config[$indexNum]["Innen"]  = $this->analyseEntryResponsive($config[$indexNum]["Innen"],false,false);              // kein altText keine class
+                $config[$indexNum]["Aussen"] = $this->analyseEntryResponsive($config[$indexNum]["Aussen"],false,false);
+                $indexNum++; 
+                }
+            $tempTableConf = $config;                
+
+            $wert="";            
+            if ($this->debug) 
+                {
+                echo "     Configuration abarbeiten: ";
+                //echo " : ".json_encode($tempTableConf);
+                echo " .\n";
+                }
+            $i=0;
+            if ( ($tempTableConf===null) || (count($tempTableConf)==0) )            // schon wieder Defaultwerte
+                {
+                /* get Variables */
+                $innen="innentemperatur";
+                $aussen="aussentemperatur";
+                if ($this->debug) echo "   Keine Konfiguration angegeben. So wie früher die beiden functions innentemperatur() $innen und aussentemperatur() $aussen einlesen.\n"; 
+                if (function_exists($innen)) $this->innentemperatur=$innen();				
+                if (function_exists($aussen)) $this->aussentemperatur=$aussen();
+
+                $wert.='<div id="sp-table-aussen-temp" style="grid-area:span'.$i.'; background-color:#c1c1c1">';
+                $wert.='    <div id="sp-table-aussen-temp-val" class="aussen-resp" >'.number_format($this->aussentemperatur, 1, ",", "" ).'°C';
+                $wert.='        </div>';         // kein p besser div
+                $wert.='    </div>';
+                $wert.='<div id="sp-table-innen-temp" style="background-color:#ffffff">';
+                $wert.='    <div id="sp-table-innen-temp-val" class="innen-resp" >'.number_format($this->innentemperatur, 1, ",", "" ).'°C';
+                $wert.='        </div>';
+                $wert.='    </div>';
+                if ($this->debug) echo "Aussen ".number_format($this->aussentemperatur, 1, ",", "" )."°C Innen ".number_format($this->innentemperatur,1, ",", "" )."°C \n";
+                if ($count !== false) $count++;
+                $i++;
+                }
+            else                        // entsprechend der Konfiguration
+                {    
+                //print_R($tempTableConf);
+                $i=0;
+                foreach ($tempTableConf as $entry) 
+                    {
+                    if ($this->debug) echo "      ".json_encode($entry)."\n";
+                    /* Darstellung mit $aussenWert und $unitAussen
+                     * unit wird von Unit übernommen
+                     * Wert kommt entweder von
+                     *      FUNCTION        Aufruf der function, liefert Wert, unit extra
+                     *      OID             Getvalue der OID, liefert Wert, unit extra
+                     *      ARRAY           übernimmt VALUE samt Unit
+                     */
+                    $aussen="aussen";$innen="innen";
+                    $aussenWert="unknown";
+                    $unitAussen=$entry["Unit"]; $unitInnen=$unitAussen;
+                    if (isset($entry["Aussen"]["FUNCTION"]))    $aussenWert = round($entry["Aussen"]["FUNCTION"](),1);
+                    if (isset($entry["Aussen"]["OID"]))         $aussenWert = round(GetValue($entry["Aussen"]["OID"]),1);
+                    if (isset($entry["Aussen"]["ARRAY"]))       { $aussenWert = $entry["Aussen"]["ARRAY"]["Value"]; $unitAussen=""; }
+                    
+                    if (isset($entry["Innen"]["FUNCTION"]))     $innenWert  = round($entry["Innen"]["FUNCTION"](),1);
+                    if (isset($entry["Innen"]["OID"]))          $innenWert  = round(GetValue($entry["Innen"]["OID"]),1);
+                    //if ($this->debug) echo " Innenwert: $innenWert und Aussenwert: $aussenWert wurden ermittelt.\n";
+                    $size=strtoupper($entry["Size"]);
+                    if ($size == "LARGE") { $aussen="aussen"; $innen="innen"; }
+                    elseif ($size == "MED")  { $aussen="aussenMed"; $innen="innenMed"; }
+                    else { $aussen="aussenSmall"; $innen="innenSmall"; }
+
+                    $wert.='<div class="'.$aussen.'-resp" style="grid-area:span'.$i.'; background-color:#c1c1c1">';
+                    $wert.='    <div>'.$aussenWert.$unitAussen;                // nur class definieren
+                    $wert.='        </div>';
+                    $wert.='    </div>';
+                    $wert.='<div class="'.$innen.'-resp" style="background-color:#ffffff">';
+                    $wert.='    <div>'.$innenWert.$unitInnen;
+                    $wert.='        </div>';
+                    $wert.='    </div>';
+                    if ($count !== false) $count++; 
+                    $i++;                   
+                    }
+                }
+            if ($count===false) return ($wert);
+            else return ($count);
+            }
+
+
+        /* jeder Innen oder Aussenwert kann auf unterschiedliche Weise dargestellt werden 
+         *      Zahl        OID, Wert wird überprüft
+         *      Funktion    FUNCTION, Wert wird überprüft
+         * 
+         */ 
+
+        function analyseEntryResponsive($value,$altText=false,$altClass=false)
+            {
+            $analyze=array();
+            if (is_array($value))           // ist eine Konfiguration
+                {
+                $value["Class"]=$altClass;
+                $analyze["ARRAY"]=$this->evaluateEntryResponsive($value,$altText);
+                if ($this->debug)
+                    {
+                    echo "analyseEntryResponsive ".json_encode($value)."\n";
+                    //print_r($analyze);
+                    }
+                }  
+            elseif (is_numeric($value)) 
+                {
+                if (IPS_ObjectExists ($value)) $analyze["OID"]=$value;
+                //echo "Wert ist Numerisch : \n";
+                }
+            elseif (function_exists($value)) $analyze["FUNCTION"]=$value;
+            else echo "Nicht bekannter Wert, vielleicht IPSHeat ?\n";
+            return ($analyze); 
+            }
+
+        /* getOrfWeatherFromUrl
+         *
+         */
+        function getOrfWeatherFromUrl()
+            {
+            $url = "https://wetter.orf.at/wien/prognose";
+            $result = file_get_contents($url);
+
+            $dom = new DOMDocument;
+            libxml_use_internal_errors(true);               // Header, Nav and Section are html5, may cause a warning, so suppress 
+            $dom->loadHTML($result);
+            $storyWrapper=$dom->getElementById("ss-storyText");            //DOMElement
+            $story = $storyWrapper->childNodes->item(1);
+
+            $html = new App_Convert_XmlToArray();
+            $storytale=$html->innerHTML($story);              
+            /* start at h2, stopp at div */
+            $pos1=strpos($storytale,"<h2");
+            $pos2=strpos($storytale,"<div");
+            $storyWeather=substr($storytale,$pos1,($pos2-$pos1));
+            return ($storyWeather);
+            }
+
+        /* inclOrfWeather
+         *
+         */
+        function inclOrfWeather()
+            {
+            $wert="";  
+            $wert.='<div id="sp-pic-orf">';
+            $wert.=$this->getOrfWeatherFromUrl();
+            $wert.='</div>';
+            return ($wert);
+            }
+
+       /* commandLineResponsive
+         * somme Buttons to control Display with Javascript
+         * 
+         * html5: id=,2 class=
+         */
+	    function commandLineResponsive($count=false)               
+	        {
+	        $wert="";
+            
+            $button=["eins","zwei","drei","vier","fünf","sechs","sieben","acht","neun","null"];
+            $itemMax=sizeof($button);
+            for ($i=0; ($i<$itemMax); $i++)
+                {
+                $item=$i;
+                $wert.='<div id="sp-cmd-item'.$item.'" class="button-resp" style="background-color:"#d1d1d1">'.$button[$item].'</div>';
+                }
+            
+	        return ($wert);
+	        }
+
+        /* additionalTableLinesResponsive
+         * additional Table Lines werden zwischen temperatur und Wetteranzeige eingebaut
+         * es gibt einen Zeilenzähler, wenn dieser gesetzt ist werden anstelle des Wertes nur die Anzahl der Zeilen zurückgeliefert
+         * verwendet aus der class configuration
+         * 
+         * html5: id=weather-addline-item1,2 class=addText-resp
+         */
+			
+	    function additionalTableLinesResponsive($count=false)               
+	        {
+	        $wert=""; $countItems=0;
+            if ($count !== false) $count=0;             // Init es gibt nur 0
+            $configAddLine=array(); 
+            foreach ($this->configuration["Display"]["AddLine"] as $name => $widget)              // alle Widgets Speks durchgehen, können auf mehrere Screens verteilt sein !
+                {
+                configfileParser($widget, $configAddLine[$name], ["TYPE","Type"],"Type" ,$name);  
+                configfileParser($widget, $configAddLine[$name], ["NAME","Name"],"Name" ,$name);  
+                //configfileParser($widget, $configWidget[$name], ["FORMAT","Format"],"Format" ,'{"BGColor":"#1f242e","width":"500px"}'); 
+                //configfileParser($widget, $configWidget[$name], ["SCREEN","Screen"],"Screen" ,1);                  
+                //configfileParser($widget, $configWidget[$name], ["CONFIG","Config"],"Config" ,"[]");                   // output array ist configWidget, input array ist widget
+                //configfileParser($widget, $configWidget[$name], ["POS","Pos"],"Pos" ,null);                            // default keien ANgabe, d.h. der Reihe nach
+                }
+
+	        //if ( (isset($this->configuration["Display"]["AddLine"])) && (sizeof($this->configuration["Display"]["AddLine"])>0) )
+            if (sizeof($configAddLine)>0)
+	            {
+	            foreach($configAddLine as $tablerow)
+	                {
+	                if ($this->debug) 
+                        {
+                        echo "   Eintrag : ".$tablerow["Name"];
+                        if (isset($tablerow["OID"])) echo "  ".$tablerow["OID"];
+                        if (isset($tablerow["Icon"])) echo "  ".$tablerow["Icon"];
+                        echo "\n";
+                        }
+                    switch (strtoupper($tablerow["Type"]))
+                        {
+                        case "INFOFIELD":
+                            $wert.='<div id="weather-addline-item1" class="addText-resp" style="grid-area:add0; background-color:#c1c1c1;">'.$tablerow["Name"].'</div>';
+                            $wert.='<div id="weather-addline-item2" class="addText-resp" bgcolor="#c1c1c1"> </div>';                            
+                            break;
+                        default: 
+                            $wert.='<div id="weather-addline-item1" class="addText-resp" style="grid-area:add0; background-color:#c1c1c1;">'.$tablerow["Name"].'</div>';
+                            $wert.='<div id="weather-addline-item2" class="addText-resp" style="background-gcolor=#c1c1c1:">'.number_format(GetValue($tablerow["OID"]), 1, ",", "" ).'°C</div>';
+                            break;
+                        }
+                    if ($count !== false) $count++;         // wenn false wird nicht gezählt
+                    $countItems++;                          // für die Ausgabe von 0 Zeilen
+	                }
+	            //print_r($cthis->onfiguration["AddLine"]);
+				//$wert.='<tr><td>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+	            //echo $wert;
+	            }
+            if ($count !== false) return $count;
+            //if ($count==0) { $wert.='<div id="weather-addline-item1" class="addText-resp" style="grid-area:span3">empty1</div><div id="weather-addline-item2" class="addText-resp">empty2</div>'; }
+            //if ($countItems==0)  $wert.='<div id="weather-addline-item1" class="addText-resp" style="grid-area:add0"></div>';       // Dummy Zeile nicht mehr notwendig
+	        return ($wert);
+	        }
+
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Wettertabelle
+         * macht 4 Zeilen mit jeweils 2 oder 3 Zellen
+         *
+         **************************************/
+
+		function showWeatherTableResponsive($weather=false)
+            {
+            $wert="";
+            if ($weather==false) $weather=$this->getWeatherData();
+            if ($weather["todayDate"]=="")
+                {
+                $wert.= $this->tempTableLineResponsive($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"]);
+                $wert.= $this->tempTableLineResponsive($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"]);
+                $wert.= $this->tempTableLineResponsive($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"]);
+                $wert.= $this->tempTableLineResponsive($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"]);
+                }
+            else
+                {
+                $wert.= $this->tempTableLineResponsive($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"],$weather["todayDate"]);
+                $wert.= $this->tempTableLineResponsive($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"], $weather["tomorrowDate"]);
+                $wert.= $this->tempTableLineResponsive($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"], $weather["tomorrow1Date"]);
+                $wert.= $this->tempTableLineResponsive($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"], $weather["tomorrow2Date"]);
+                }
+            return ($wert);
+            }
+
+        /********************
+         *
+         * macht eine html Zeile mit zwei oder drei Zellen in der Wettertabelle
+         *
+         **************************************/
+
+		function tempTableLineResponsive($TempMin, $TempMax, $imageSrc, $date="")
+			{
+			$wert="";
+			if ($date=="")
+				{
+				$wert.='<div id="weather"><div class="temperatur-resp">'.number_format($TempMin, 1, ",", "" ).'°C<br>'.number_format($TempMax, 1, ",", "" ).'°C</div></div>';
+				$wert.='<div align="center"> <img src="'.$imageSrc.'" alt="Heute" > </div>';	
+				}
+			else	
+				{
+				$wert.= '<div id="weather-date" class="weather-item-left" style="background-color:#ffffff">';
+                $wert.=     '<div class="datum-resp">'.$date.'</div>';
+                $wert.=     '</div>';
+				$wert.= '<div id="weather-temp" class="weather-item-left" style="background-color:#ffffff">';
+                $wert.=     '<div class="temperatur-resp">'.number_format($TempMin, 1, ",", "" ).'°C<br>'.number_format($TempMax, 1, ",", "" ).'°C</div>';
+                $wert.=     '</div>';
+				$wert.= '<div id="weather-icon" class="weather-item-right" align="center" style="background-color:#ffffff">';
+                $wert.=     '<img src="'.$imageSrc.'" alt="Heute" width="auto">';
+                $wert.=     '</div>';			
+				}
+			return ($wert);
+			}
+
+        /* bottomTableLinesResponsive() nutzt evaluateEntryResponsive
+         *
+         * die Bottom Table Line ist am unteren Ende des Bild und Wetter Bildschirms von Startpage angesiedelt
+         * Darstellung vereinheitlicht mit this->evaluateEntryResponsive,  für Config dort schauen 
+         * nur wenn evaluateEntryResponsive erfolgreich, wird ein Eintrag geschrieben
+         *
+         * html5 Darstellung in einem div mit id ..-index, darin bis zu 3 divs : Icon, Value, AddInfo
+         *
+         *      bottomTableLinesResponsive.evaluateEntryResponsive
+         *
+         * Input pro Eintrag ist immer die Objekt OID, diese kann ein oder mehrere Werte sein, wird immer als array bearbeitet
+         * Konfiguration steht in configuration["Display"]["BottomLine"]
+         *
+         * Parameter für die Darstellung sind
+         *          OID         Einzelwert oder array von OIDs
+         *          Name
+         *          Icon        wird immer dargestellt, zumindest das IPS Icon
+         *          Profile     es gibt ein VAriablenprofil, das kann man auslesen und dann die Darstellung entsprechend nachempfinden
+         *          Property    es wird zusätzlich noch das Datum der letzten Änderung hinzugefügt
+         *          Type        Zusatzinfo über Art der Variable
+         *          Integrate   Anzahl Werte zum integrieren, abhängig vom Type
+         *          UNIT        Einheit am Ende des Wertes, vor addon wie in Property definiert
+         *
+         * die Darstellung erfolgt als Tabelle für jeden Wert für den es einen Konfigurationseintrag gibt
+         * Pro Konfigeintrag gibt es ein OID, wenn OID ein Array ist werden mehrere Werte angezeigt oder eben zusammengefasst
+         *
+         */
+			
+	    function bottomTableLinesResponsive($count=false)
+	        {
+            //$debug=true;
+            if ($this->debug) echo "bottomTableLinesResponsive  mit Debug ".($this->debug?"ein":"aus")." aufgerufen:\n"; 
+	        $wert=""; $typeOfObject="STANDARD"; 
+            $addClass = "addText-resp"; 
+            $addText  = "addText-resp"; // html5 Id 
+	        if ( (isset($this->configuration["Display"]["BottomLine"])) && (sizeof($this->configuration["Display"]["BottomLine"])>0) )
+	            {
+                // $wert.='<table><tr>';            // ein Div über die ganze Zeile
+	            foreach($this->configuration["Display"]["BottomLine"] as $index => $tableEntry)       // jeden Eintrag durchgehen
+	                {
+                    $tableEntry["Class"]=$addClass;   
+                    $configBottomLine = $this->evaluateEntryResponsive($tableEntry, $addText."-".$index, $this->debug);           //addText is used
+                    if ($configBottomLine)
+                        {
+                        //$wert.= '<td>';
+                        $wert.=     '<div class="sp-bot-grid-item" id="sp-bot-grid-'.$index.'" style="display:flex; float:left">';
+                        if ( (isset($configBottomLine["Icon"])) && ($configBottomLine["Icon"] !== false) )  {
+                            $wert.=     '<div style="background-color:7f8f9f;">';                // style="float:left"
+                            $wert.='        <img src="/user/Startpage/user/icons/'.$configBottomLine["Icon"].'.svg" alt="'.$configBottomLine["Icon"].' Icon">';
+                            $wert.=     '</div>';    }
+                        if ( (isset($configBottomLine["Value"])) && ($configBottomLine["Value"] !== false) )  {                 // beinhaltet jede Menge html5 Formatierung
+                            $wert.=     '<div style="display:flex; float:left; background-color:7f8f9f;">'.$configBottomLine["Value"];
+                            $wert.=         '</div>';  }
+                        if ( (isset($configBottomLine["AddInfo"])) && ($configBottomLine["AddInfo"] !== false) ) {              // keine Formatierung nur Wert, daher Referenz auf class
+                            $wert.=     '<div class="'.$addClass.'" style="background-color:7f8f9f;" >    '.$configBottomLine["AddInfo"];
+                            $wert.= '        </div>'; }
+                        $wert.=         '</div>';
+                        if ($count !==false) $count++;
+                        }
+                    }                           // ende foreach Einträge
+	            }               // ende es gibt eine bottom Line
+            if ($count !== false) return ($count);
+	        return ($wert);            
+	        }
+
+        /* die letzte Zeile in der Frame Startpage, verwendet für javascript control
+         * wir haben AddLine, BottomLine, InfoLine -> hier ist es InfoLine
+         * als Parameter kann auch ein Identifier der als Cookie gespeichert wird übergeben werden
+         */
+			
+	    function infoTableLinesResponsive($count=false)
+	        {
+            $config=array();
+            if (is_array($count)) { $config=$count; $count=false; }
+            //$debug=true;
+            if ($this->debug) echo "infoTableLinesResponsive  mit Debug ".($this->debug?"ein":"aus")." aufgerufen:\n"; 
+	        $wert=""; $typeOfObject="STANDARD"; 
+            $addClass = "addText-resp"; 
+            $addText  = "infoText-resp"; // html5 Id 
+	        if ( (isset($this->configuration["Display"]["InfoLine"])) && (sizeof($this->configuration["Display"]["InfoLine"])>0) )
+	            {
+                // $wert.='<table><tr>';            // ein Div über die ganze Zeile
+	            foreach($this->configuration["Display"]["InfoLine"] as $index => $tableEntry)       // jeden Eintrag durchgehen
+	                {
+                    $tableEntry["Class"]=$addClass;   
+                    $configBottomLine = $this->evaluateEntryResponsive($tableEntry, $addText."-".$index, $this->debug);           //addText is used
+                    if ($configBottomLine)
+                        {
+                        //$wert.= '<td>';
+                        $wert.=     '<div id="sp-inf-txt">click here';
+                        $wert.=         '</div>';
+                        if ($count !==false) $count++;
+                        }
+                    }                           // ende foreach Einträge
+	            }               // ende es gibt eine bottom Line
+            if (isset($config["ID"])) 
+            $wert.=     '<div id="sp-inf-cookie-id">'.$config["ID"];
+            $wert.=         '</div>';
+            if ($count !== false) return ($count);
+	        return ($wert);            
+	        }
+
+        /* Zusammenfassen des Parameter checks
+         * für jeden ConfigEintrag tableEntry die Config überprüfen und in $config abspeichern und diese Config verwenden
+         *           
+         */
+        public function checkEntryConfig($tableEntry)
+            {
+            $config=array();        // immer neu anfangen
+            $name="unknown";
+            if (is_array($tableEntry))
+                {
+                configfileParser($tableEntry, $config, ["OID","Oid"],"OID",false);                 //configfile als tableEntry vereinheitlichen, überprüfen, Wert für OID muss vorhanden sein und das Objekt erreichbar
+                configfileParser($tableEntry, $config, ["Type","TYPE","type"],"Type",null);                             // default kein Eintrag wenn kein Eintrag
+                configfileParser($tableEntry, $config, ["UPDATEIGNORE","Updateignore","UpdateIgnore","updateignore"],"UpdateIgnore",(60*24*60*60));             //default 60 Tage
+                // check OID
+                $oid = $config["OID"];
+                if ($oid !== false)
+                    {
+                    if (is_array($oid)) $oidArray=$oid;                     // auch Arrays zulassen, dann sollten zwei Werte nebeneinander stehen
+                    else $oidArray=[$oid];
+                    $config["OID-Requested"]=$oidArray;
+                    /* check ob die Objekte vorhanden sind */
+                    $objectExists=false; $firstOID=false;
+                    $entries=count($oidArray);
+                    foreach ($oidArray as $key => $oid) 
+                        {
+                        if (IPS_ObjectExists($oid)) 
+                            {
+                            $variableProps=IPS_GetVariable($oid);
+                            $diff = $config["UpdateIgnore"] - (time()-$variableProps["VariableChanged"]); 
+                            if ($diff>0) $objectExists=true;         // wenn zumindest eines der Objekte existiert und in letzter Zeit upgedated wurde weitermachen
+                            else unset($oidArray[$key]);                    // dann auch nicht berücksichtigen
+                            if ($firstOID===false) $firstOID=$oid;
+                            }
+                        else unset($oidArray[$key]);
+                        }
+                    if (sizeof($oidArray)) $config["OID"]=$oidArray;
+                    else $config["OID"]=false;
+                    if ($firstOID) $name=IPS_GetName($firstOID);
+                    }
+                configfileParser($tableEntry, $config, ["Name","NAME"],"Name",$name); 
+                configfileParser($tableEntry, $config, ["Icon","ICON"],"Icon","IPS");
+                configfileParser($tableEntry, $config, ["Integrate","INTEGRATE","integrate"],"Integrate",false);
+                configfileParser($tableEntry, $config, ["Property","PROPERTY","property"],"Property",null);            // default kein Eintrag wenn kein Eintrag
+                configfileParser($tableEntry, $config, ["AGGREGATE","Aggregate","aggregate"],"Aggregate",false); 
+                configfileParser($tableEntry, $config, ["PROFILE","Profile","profile"],"Profile",null); 
+                configfileParser($tableEntry, $config, ["UNIT","Unit","unit"],"Unit",""); 
+                configfileParser($tableEntry, $config, ["SHOW","Show","show"],"Show",null);             // Default ist kein Eintrag  
+                configfileParser($tableEntry, $config, ["CLASS","Class","class"],"Class",false);                // keine html Formatierung
+                }
+            else $config["OID"] = $tableEntry;           // ShortCut, Workaround, alles andere bleibt im Default  
+            return($config);           
+            }
+
+        /* evaluateEntryResponsive, Darstellung von einem oder mehreren Werten in einer Tabelle/Zelle, zb Bottom Line mit displayValueResponsive
+         *
+         * Es wird immer nur ein Eintrag bearbeitet, OID kann ein Wert oder ein Array aus Werten sein
+         * für jede oid prüfen ob das Objekt erreichbar ist, sonst aus der Tabelle von oidArray rausnehmen, es muss zumindest einen gültigen Wert geben
+         *
+         * Idee ist das Werte mit dem Parameter Aggregate ähnlich bearbeitet werden 
+         * und das die Bearbeitung gleich mit der Berechnung des Wertes abschliesst
+         *
+         * Grundbedingung, mindestens enthaltene Keys
+         *      OID     wird als oid bzw oidArray weiter bearbeitet
+         *      Type    oder für eine alternative Darstellung ohne OID
+         *
+         * OID wird evaluiert, es wird daraus wieder eine config ausgegeben
+         * es gibt dann noch
+         *      Name
+         *      Icon
+         *      Unit
+         *
+         *      Aggregate       MEANS,MAX,MIN aus mehreren Werte in einem Array
+         *      Integrate       aus einem Wert mit archivierten Werten, kein Aggregate konfiguriert
+         *
+         * Zusatzfunktionen
+         *      Property        nette Darstellung wann letzte Änderung erfolgt ist
+         *      Type
+         *      Profile
+         *      Show            Anzeigen wenn Wertebereich passt
+         *
+         * Ergebnis return ist dieselbe config, erweitert um 
+         *      Value           der Wert als Ergebnis von displayValueResponsive
+         *      altText         Parameter altText wird ein Config Eintrag, wird als id verwendet
+         *      addInfo         wird mit Datum der letzten Änderung von oid gesetzt wenn Property in der Config
+         * 
+         * wert startet mit "", init mit rue, dann wird ein oder mehrere Values in wert dargestellt
+         * die Zusatzfunktionen vorbereiten und weiter an displayValueResponsive
+         *
+         */
+
+        function evaluateEntryResponsive($tableEntry, $altText=false)
+            {
+            if ($this->debug) echo "      evaluateEntryResponsive aufgerufen für ".json_encode($tableEntry).".\n";
+            /* check ob eine oder mehrere OIDs angegeben wurden */
+            $typeOfObject="STANDARD";
+            $wert="";
+            $config = $this->checkEntryConfig($tableEntry); 
+            if (isset($config["Type"]))
+                {
+                if ( (strtoupper($config["Type"])) == "INFOFIELD") return $config;     
+                }
+
+            $oid=$config["OID"];                
+            if ($oid === false) 
+                {
+                if ($this->debug) echo "Konfiguration enthält keinen Key mit Namen OID, ".json_encode($config)."\n";
+                return (false);
+                }
+            if ($oid !== false)         // kein Defaultwert, hier die Bearbeitung beginnen
+                {
+                $oidArray=$oid;
+                $entries=count($config["OID-Requested"]);
+                $entries2=count($oid);
+                if ($this->debug) echo "--------evaluateEntryResponsive ($entries2 valid out of $entries) \n";               // was blieb über nach dem check      
+                // immer so tun als ob mehrere Werte zusammengefasst werden, selbe Routine
+                if ($this->debug) // die Werte der OIDs ausgeben, einer oder mehrere
+                    {
+                    $i=1;
+                    //echo json_encode($oidArray)."\n";
+                    //if (sizeof($oidArray)==1) echo "   Eintrag : Name ".$config["Name"]." OID $oid Icon ".$config["Icon"]." Value ".GetValue($oid)."\n";
+                    foreach ($oidArray as $oid) 
+                        {
+                        echo "   ".$i++.":Eintrag : Name ".$config["Name"].", OID: $oid ,Icon ".$config["Icon"].", Value ".GetValue($oid)." ".IPS_GetName($oid).".\n";
+                        }
+                    }
+
+                if ($altText) $config["altText"]=$altText;
+                $init=true; $addInfo="";                    // zuerst Aggregate bearbeiten wenn angefordert wurde
+                $result=true;                               // result wird false wenn die Darstellung nicht erfolgreich war
+                if ($config["Aggregate"] !== false)
+                    {
+                    // oidarray vor der Darstellung gemäß Type aggregieren
+                    if ($this->debug) echo "   Aggregate ".$config["Aggregate"]." gefunden \n";
+                    switch (strtoupper($config["Aggregate"]))
+                        {
+                        case "MEANS":
+                            $sum=0; $sumCount=0;
+                            foreach ($oidArray as $oid) 
+                                {
+                                $sum += GetValue($oid);
+                                $sumCount++;
+                                }
+                            $value=$sum/$sumCount;
+                            break;
+                        case "MAX":
+                            $max=0;
+                            foreach ($oidArray as $oid) 
+                                {
+                                $value = GetValue($oid);
+                                if ($value > $max) $max=$value;
+                                }
+                            $value=$max;
+                            break;    
+                        case "MIN":
+                            $min=100;
+                            foreach ($oidArray as $oid) 
+                                {
+                                $value = GetValue($oid);
+                                if ($value < $min) $min=$value;
+                                }
+                            $value=$min;
+                            break;    
+                        default:
+                            $value=0;  // unknown pocedure
+                            break;
+                        }
+                    // wert hat bereits den Tabellenbeginn, und eventuell ein Icon, ab hier kommt der Name und der Wert
+                    $result=$this->displayValueResponsive($wert,$value,$config,$init,$oid);          // $wert wird erweitert
+                    $config["Value"]=$wert;
+                    }
+                if ( ($config["Aggregate"] === false) || ($result==false) )            // kein Aggregate or Display failed
+                    {                                
+                    /* Unterschied ob mehrere Werte dargestellt oder vorher zusammengefasst werden sollen
+                        * hier kein Aggregate, aber es können ein oder mehrere Werte sein
+                        * hier wird behandelt
+                        *      Property
+                        *      Type
+                        *      Integrate
+                        *      Show
+                        */
+                    foreach ($oidArray as $oid)         // die Werte der Reihe nach durchgehen, jeder Wert hat einen eigenen Eintrag innerhalb der TAbelle
+                        {
+                        $archiveID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                        if (isset($tableEntry["Property"])) 
+                            {
+                            $variableChanged=IPS_GetVariable($oid)["VariableChanged"];
+                            $timeGone=time()-$variableChanged;
+                            $startOfToday=mktime(0,0,0,date("m"), date("d"), date("Y"));
+                            if ($timeGone<(time()-$startOfToday))                   $addInfo=date("H:i",$variableChanged);
+                            elseif ($timeGone<(time()-($startOfToday-7*24*60*60)))  $addInfo=date("D H:i",$variableChanged);
+                            elseif ($timeGone<(time()-($startOfToday-60*24*60*60))) $addInfo=date("d.m H:i",$variableChanged); 
+                            else                                                    $addInfo=date("d.m.Y H:i",$variableChanged);
+                            if ($addInfo != "") $config["AddInfo"]=$addInfo;
+                            if ($this->debug) 
+                                {
+                                echo "      ".date("d.m.Y H:i:s",$startOfToday)."\n";
+                                echo "      Variable Changed $addInfo, got from Property:".$tableEntry["Property"]."   ".json_encode(IPS_GetVariable($oid))."\n";
+                                $endtime=time();
+                                $starttime=$endtime-$timeGone-(10*60*60);
+                                $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
+                                if ($werteLog===false) ;        // $oid bleibt unverändert
+                                else
+                                    {
+                                    $count=0; $sum=0; $init2=true;
+                                    foreach ($werteLog as $eintrag)
+                                        {
+                                        if ($init2) { $start=$eintrag["Value"]; $init2=false; }
+                                        echo "             ".date("d.m.Y H:i",$eintrag["TimeStamp"])."    ".$eintrag["Value"]."\n";
+                                        $count++;
+                                        }
+                                    }
+                                }               // ende if debug
+                            }
+                        if (isset($config["Type"]))
+                            {
+                            $typeOfObject=strtoupper($config["Type"]);
+                            if ($this->debug) echo "****Type available : $typeOfObject\n";                                    
+                            } 
+                        $value = GetValue($oid);
+                        if ($config["Integrate"]>59)       // nur Werte ab einer Minute integrieren
+                            {
+                            /* Integrate mit einem Wert, es können aber auch mehrere Archive sein
+                                * wir lesen aus dem Archive die Zeitspanne in Sekunden zwischen der Jetztzeit und der Integrate Zeitspanne in Sekunden
+                                * nix machen wenn kein Archive oder keine Werte in der Zeitspanne ausgegeben werden
+                                * Bearbeitung erfolgt anhand von TYPE
+                                *  Standard
+                                *  Raincounter
+                                *  Amis
+                                */
+                            $endtime=time();
+                            $starttime=$endtime-$config["Integrate"];   // die Werte entsprechend dem angegebenen Zeitraum laden
+                            $werteLog  = @AC_GetLoggedValues($archiveID,$oid,$starttime,$endtime,0);                                    
+                            if ( ($werteLog===false) || (sizeof($werteLog)==0) ) ;        // $oid bleibt unverändert
+                            else
+                                {
+                                switch (strtoupper($typeOfObject))
+                                    {
+                                    case "AMIS":
+                                        if ($this->debug) echo "     Integrate ".sizeof($werteLog)." Values from last ".$config["Integrate"]." seconds for Type $typeOfObject. \n";
+                                        IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');                                        
+                                        $amis = new Amis();  
+                                        $data=$amis->getArchiveData($oid, $starttime, $endtime, $config["Unit"], true); 
+                                        if (isset($data["24h"]))
+                                            {
+                                            $value=$data["24h"]["Value"];
+                                            $config["Unit"] .= "h";
+                                            }
+                                        break;
+                                    case "STANDARD":
+                                        $count=0; $sum=0; $max=0; $min=0;
+                                        foreach ($werteLog as $eintrag)
+                                            {
+                                            //If ($this->debug) echo str_pad($count,6).str_pad($eintrag["Value"],15," ",STR_PAD_LEFT)."   ".date("H:i:s",$eintrag["TimeStamp"])."   \n";
+                                            $sum += $eintrag["Value"];
+                                            if ( ($min==0) || ($min>$eintrag["Value"]) ) $min=$eintrag["Value"];
+                                            if             ($max<$eintrag["Value"])   $max=$eintrag["Value"];
+                                            $count++;
+                                            }
+                                        $value = (float)$sum/$count;            // formatEntry erkennt oid (wenn integer) und oid als value 
+                                        if ($this->debug) echo "     Integrate $count Values from last ".$config["Integrate"]." seconds. Results into Value ".number_format($value,0,",",".")." Min ".number_format($min,0,",",".")." Max ".number_format($max,0,",",".")."\n";
+                                        break;
+                                    case "RAINCOUNTER":
+                                        if ($this->debug)
+                                            {
+                                            //print_r($werteLog); 
+                                            echo "RainCounter gefunden :\n";
+                                            $count=0;
+                                            foreach ($werteLog as $eintrag)
+                                                {
+                                                echo str_pad($count,6).str_pad($eintrag["Value"],15," ",STR_PAD_LEFT)."   ".date("d.m.Y H:i",$eintrag["TimeStamp"])."   \n";                                                    
+                                                $count++;
+                                                }
+                                            echo "------------\n";
+                                            }
+                                        $first = reset($werteLog);
+                                        $last  = end($werteLog);
+                                        // print_R($first);  print_R($last);
+                                        $value = $first["Value"]-$last["Value"];
+                                        if ($this->debug) echo "   First : ".$first["Value"]."    ".date("d.m.Y H:i",$first["TimeStamp"])."   Last:  ".$last["Value"]."    ".date("d.m.Y H:i",$last["TimeStamp"])." Wert ergibt sich mit $value.\n";
+                                        break;
+                                    }
+                                }
+                            }
+                        if (isset($config["Show"]))         //rausfinden ob die Anzeige nur wenn Bedingungen erfüllt werden erfolgen soll, wenn keine Anzeige erfolgen soll config=false
+                            {
+                            if ($this->debug) print_R($config);         //neue Konfig Keys auch in displayValueResponsive nachziehen
+                            $min=100; $max=-100;
+                            foreach ($oidArray as $oid) 
+                                {
+                                $value = GetValue($oid);
+                                if ($value < $min) $min=$value;
+                                if ($value > $max) $max=$value;
+                                }                      
+                            if ($this->debug) echo "Show activated Min $min und Max $max\n";          
+                            }    
+                        $result=$this->displayValueResponsive($wert,$value,$config,$init,$oid);          // $wert wird automatisch erweitert                                    
+                        $config["Value"]=$wert;
+                        }                           // ende foreach
+                    }                           // ende ifnot Aggregate
+                }                           // ende OID nicht Default
+            return $config;
+            }
+
+
+        /* einen Wert am Webfront als Html5 Div Eintrag anzeigen , nutzt formatEntry
+         * der Wert wird als value übergeben, die Art der Darstellung steht in config und wert ist die Darstellung innerhalb einer html Tabelle
+         * 
+         *
+
+         * Option Profile/Unit oder none
+         *  wenn $tableEntry.Profile : background color vom aktuellen Association Profil ableiten
+         *  wenn Init                  Name anzeigen und Init zurücksetzen, damit kann man mehrere Werte anzeigen
+         *  
+         * div id=altText style background-color:color Name
+         *
+         * html5:  id=addText-resp oder tableEntry.altText
+         *
+         * tableEntry ist Configuration stored in config["Display"]["BottomLine"] oder config["Temperature"]
+         *
+         * Nachdem nur ein Wert und keine OID übergeben wird, funktioniert die Config ["Unit"]="AUTO" nicht, verwende string GetValueFormattedEx (integer $VariableID, variant $value)
+         * mit &init wird gesteuert on am Anfang der Name ausgegeben werden soll: init=false nein, wenn ja wird nachher auf false gesetzt
+         * Verwendet:  oder 
+         *      Profile     für die Farbkodierung
+         *      Unit        für die Einheit
+         *      altText     übergibt alternative html identifier, sonst
+         *      ---         normales formatEntry, auch in dieser class
+         *
+         * kann folgende Befehle nicht, returns false
+         *
+         */
+
+        function displayValueResponsive(&$wert, float $value, $tableEntry, &$init, $oidAlt=false)
+            {
+            /* zur Darstellung des Wertes */
+            if (isset($tableEntry["altText"])) { $addText=$tableEntry["altText"]; }
+            else $addText='addText-resp';   
+            if (isset($tableEntry["Class"])) { $addClass=$tableEntry["Class"]; }
+            else $addClass='addText-resp';                                                // id statt tag
+            if ($this->debug) echo "   displayValueResponsive mit Konfiguration ".json_encode($tableEntry)." und Wert $value aufgerufen. Init ist ".($init?"aktiv":"nicht aktiv")."\n";
+            //if ( (isset($tableEntry["Property"])) || (isset($tableEntry["Integrate"])) ) return (false);
+            if (isset($tableEntry["Profile"])) 
+                {
+                $profileConfig=IPS_GetVariableProfile ($tableEntry["Profile"]);
+                $color="F1F1F1";                                // default color
+                if (isset($profileConfig["Associations"]))  
+                    {
+                    foreach ($profileConfig["Associations"] as $index => $association)
+                        {
+                        if ($association["Value"]<=$value)                  // Wert groesser 0 color setzen usw.
+                            {
+                            //print_R($association);
+                            $color = "000000".dechex($association["Color"]);
+                            $color = substr($color,-6);
+                            if ($this->debug) echo "     Farbe Association ist #$color  (".$association["Color"].")\n";
+                            //if (hexdec($color) > 1000000) $color="1F2F1F";
+                            }
+                        }
+                    //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
+                    //$result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
+                    }
+                if ($this->debug)
+                    {
+                    //print_R($profileConfig);
+                    echo "displayValueResponsive: Profile, letzte Farbe Association ist #$color\n";
+                    }
+                $ergebnis = $this->formatEntry($value, $tableEntry["Unit"],$oidAlt);
+                $style='background-color:#'.$color.';color:darkgrey;';
+                /*    if ($init) { $wert .='<div id="'.$addText.'" class="'.$addClass.'" style="background-color:#'.$color.';color:darkgrey;">'.$tableEntry["Name"].'   '; $init=false; }
+                    else $wert .= '<div class="'.$addClass.'" style="background-color:#'.$color.';color:darkgrey;">|';                    
+                    //$wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$tableEntry["Name"].'   ';
+                    $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</div>';                   // wenn als float übergeben wird handelt es sich nicht um eine OID */
+                }
+            elseif (isset($tableEntry["Unit"]))                         // es gibt eine Einheitsbezeichnung
+                {
+                $ergebnis = $this->formatEntry($value, $tableEntry["Unit"],$oidAlt);
+                $style="";
+                /*  if ($init) { $wert .= '<div id="'.$addText.'" class="'.$addClass.'">'.$tableEntry["Name"].'   ';$init=false; }
+                    else $wert .= '<div class="'.$addClass.'">|';                    
+                    //$wert .= '<addText>'.$tableEntry["Name"].'   ';
+                    $wert .= $this->formatEntry($value, $tableEntry["Unit"],$oidAlt).'</div>';  */
+                }
+            else                                                        // es gibt nix
+                {
+                $ergebnis = $this->formatEntry($value, "");
+                $style="";
+                /*  if ($init) { $wert .= '<div id="'.$addText.'" class="'.$addClass.'">'.$tableEntry["Name"].'   ';$init=false; }
+                    else $wert .= '<div class="'.$addClass.'">|';                    
+                    //$wert .= '<addText>'.$tableEntry["Name"].'   ';
+                    $wert .= $this->formatEntry($value, "").'</div>';   */
+                }
+            if ($addClass)
+                {
+                if ($init) { $wert .= '<div id="'.$addText.'" class="'.$addClass.'" style="'.$style.'">'.$tableEntry["Name"].'   ';$init=false; }
+                else $wert .= '<div class="'.$addClass.'" style="'.$style.'">|';                    
+                $wert .= $ergebnis.'</div>';
+                }
+            else $wert .= $ergebnis;
+            return (true);
+            }
+
+
+        }
 
 ?>

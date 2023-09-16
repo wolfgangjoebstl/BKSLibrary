@@ -47,9 +47,6 @@
  *
  ********************************/
 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\WebLinks\WebLinks_Configuration.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');  
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");

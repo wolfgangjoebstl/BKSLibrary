@@ -5828,7 +5828,8 @@ class BackupIpsymcon extends OperationCenter
     /*****************************
      *
      * Backup Verzeichnis auslesen und alle Verzeichnisse (angefangene und vollendete Backups ausgeben)
-     *
+     * holt mit getBackupDrive() das Verzeichnis
+     * wenn noch kein Verzeichnis angelegt
      ***********/
 
     function getBackupDirectories($debug=false)
@@ -5853,7 +5854,11 @@ class BackupIpsymcon extends OperationCenter
                     system("net use ".$letter.": \"".$location."\" ".$pass." /user:".$user." /persistent:no>nul 2>&1");
                     if (is_dir("Z:")) echo "jetzt gefunden, erfolgreich.\n";
                     }
-                else die ("Backup nicht möglich, kein Laufwerk zum Speichern vorhanden.");
+                else 
+                    {
+                    echo "Backup nicht möglich, kein Laufwerk zum Speichern vorhanden.\n";                 // vorher war die, etwas zu hart
+                    return (false);
+                    }
                 }   
             }
         else if ($debug) echo "   getBackupDirectories: aufgerufen und verzeichnis $BackupDrive vorhanden.\n";        
@@ -5883,10 +5888,17 @@ class BackupIpsymcon extends OperationCenter
 
     function getBackupLogTable($debug=false)
         {
-        if ($debug) echo "getBackupLogTable aufgerufen.\n";
+        $debug=true;
         $BackupDrive=$this->getBackupDrive();
+        if ($BackupDrive===false) return (false);
         $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+        if ($debug) echo "getBackupLogTable aufgerufen. BackupDrive $BackupDrive \n";
         $dir=$this->readdirToArray($BackupDrive);
+        if ($dir===false) 
+            {
+            echo "   Warning, getBackupLogTable, BackupDrive $BackupDrive not available.\n";
+            return (false);
+            }
         $BackupLogs=array();
         foreach ($dir as $entry)
             {
@@ -5958,12 +5970,18 @@ class BackupIpsymcon extends OperationCenter
         /* mit read werden die Backupdirs einzeln gelesen, kann abhängig von der Anzahl der Backupdirs sehr lange dauern, daher andere Lösung
          * es wird auch das Arra result beschrieben
          */
+        $debug=true;
 
         $BackupDrive=$this->getBackupDrive();
         $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
 
         /* alle Verzeichnisse im Backup */
-        $BackupDirs=$this->getBackupDirectories();        
+        $BackupDirs=$this->getBackupDirectories(); 
+        if ( ($BackupDirs===false) || (sizeof($BackupDirs)==0) )
+            {
+            echo "   Warning, getBackupDirectorySummaryStatus, getBackupDirectories fails.\n";
+            return (false);
+            }       
         if ($debug) { echo "\nBackup Verzeichnisse :\n"; print_r($BackupDirs); }
 
         /* Backup Logfile Array erstellen, wird in gemeinsame Tabelle übernommen */
@@ -6042,6 +6060,11 @@ class BackupIpsymcon extends OperationCenter
             {
             if ($debug) echo "readBackupDirectorySummaryStatus : ".$BackupDrive."SummaryofBackup.csv nicht vorhanden, das Backup verzeichnis auslesen.\n"; 
             $result=$this->getBackupDirectorySummaryStatus($resultfull);
+            if ($result === false) 
+                {
+                echo "Warning, no Backup Target Dir.\n";
+                return (false);
+                }
             }
         if ($debug) print_r($result);
         $this->BackOverviewTable=$result;

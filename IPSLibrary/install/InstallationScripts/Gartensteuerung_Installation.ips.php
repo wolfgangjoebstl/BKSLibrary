@@ -72,15 +72,6 @@
 	
 	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
 
-/*	$WebfrontConfigID=array();
-	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
-	foreach ($alleInstanzen as $instanz)
-		{
-		$result=IPS_GetInstance($instanz);
-		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
-		}  */
-
 /*******************************
  *
  * Webfront Konfiguration aus ini Datei einlesen
@@ -111,77 +102,7 @@
 	if ($WFC10_Enabled==true)		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
 	if ($WFC10User_Enabled==true)   $WFC10User_ConfigId       = $WebfrontConfigID["User"];
   
-    $ipsOps->writeConfigWebfrontAll($configWFront);
-
-    /* noch benötigt ? Ausgabe oben 
-	echo "\n";
-	if ($WFC10_Enabled==true)
-		{
-		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
-		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
-		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
-		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
-		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
-		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
-		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
-		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
-		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
-		echo "WF10 Administrator\n";
-		echo "  Path          : ".$WFC10_Path."\n";
-		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";		
-		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10_TabItem."\n";
-		echo "  TabName       : ".$WFC10_TabName."\n";
-		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10_TabOrder."\n";		
-		}
-		
-	if ($WFC10User_Enabled==true)
-		{
-		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10User');
-		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10User');
-		$WFC10User_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10User');
-		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10User');
-		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10User');
-		$WFC10User_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10User');
-		$WFC10User_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10User');
-		$WFC10User_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10User');
-		$WFC10User_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10User');
-		echo "WF10 User \n";
-		echo "  Path          : ".$WFC10User_Path."\n";
-		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
-		echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10User_TabItem."\n";
-		echo "  TabName       : ".$WFC10User_TabName."\n";
-		echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10User_TabOrder."\n";		
-		}		
-
-	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	if ($Mobile_Enabled==true)
-		{	
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-		echo "Mobile \n";
-		echo "  Path          : ".$Mobile_Path."\n";		
-		}
-	
-	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	if ($Retro_Enabled==true)
-		{	
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
-		echo "  Path          : ".$Retro_Path."\n";		
-		}	        */
+    $ipsOps->writeConfigWebfrontAll($configWFront);             // Ausgabe ini Informationen
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -211,49 +132,9 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	/*$pname="GiessAnlagenProfil";
-	if (IPS_VariableProfileExist1s($pname) == false)
-		{		//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1);           // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, 1, "EinmalEin", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 2,"Auto" , "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil Giessanlagen erstellt;\n";
-		} 
-		
-	$pname="GiessConfigProfil";
-	if (IPS_VariableProfileExists($pname) == false)
-		{		//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 0);       // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
-		//IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	//IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 0, "Morgen", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, 1, "Abend", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil Giessanlagen Konfiguration erstellt;\n";
-		}   		
-
-	$pname="GiessKreisProfil";
-	if (IPS_VariableProfileExists($pname) == false)
-		{		//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1);               // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 1, 6, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 1, "1", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, 2, "2", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 3, "3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-	   	IPS_SetVariableProfileAssociation($pname, 4, "4", "", 0xF6E3CE); //P-Name, Value, Assotiation, Icon, Color=orange
-  	   	IPS_SetVariableProfileAssociation($pname, 5, "5", "", 0x2EFE64); //P-Name, Value, Assotiation, Icon, Color=grassgruen
-  	   	IPS_SetVariableProfileAssociation($pname, 6, "6", "", 0xB40486); //P-Name, Value, Assotiation, Icon, Color=violett		
-	   	echo "Profil GiessKreis erstellt;\n";
-		}       */
-
     echo "Darstellung der benötigten Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("Minuten"=>"update");
     $profileOps->synchronizeProfiles($profilname);
-
-
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *

@@ -675,7 +675,7 @@
 				INIT, Backup Funktionen
 
 	*************************************************************/
-
+    echo "Init und Vorbereitung Backup Funktionen:\n";
 	$categoryId_BackupFunction	= CreateCategory('Backup',   $CategoryIdData, 500);
 	/* Hilfe zur Verwendeung von CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon ); */
 	$StatusSchalterBackupID		       = CreateVariable("Backup-Funktion",1, $categoryId_BackupFunction,100,"AusEinAuto",$scriptIdOperationCenter,null,"");
@@ -697,6 +697,7 @@
     $BackupCenter=new BackupIpsymcon($subnet);
 
     $params=$BackupCenter->getConfigurationStatus("array");
+    print_R($params);
     if (isset($params["BackupDirectoriesandFiles"]) == false) $params["BackupDirectoriesandFiles"]=array("db","media","modules","scripts","webfront","settings.json");
     if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$dosOps->correctDirName($BackupCenter->getSourceDrive());
     if (isset($params["cleanup"])===false) $params["cleanup"]="finished";

@@ -19,6 +19,15 @@
 
     /************************************
      *
+     * Klassen zur Energieberechnung
+     *  Amis    
+     *  AmisSmartmeter extends Amis
+     *
+     */
+
+    /*************************************
+     * class Amis
+     *
      * Zusammenfassung der mit Energieberechnung verwandten Funktionen
      * behandelt Homematic Energiemessgeräte und den AMIS Zähler
      *
@@ -2889,6 +2898,10 @@
      *
      * verwendet getMeterConfig um alle AMIS Register herauszufinden und abzuarbeiten
      *
+     *      __construct
+     *      writeSmartMeterDataToHtml
+     *      writeSmartMeterCsvInfoToHtml
+     *
      */
 	class AmisSmartMeter extends Amis
         {
@@ -2903,8 +2916,9 @@
             }
 
         /* die Register mit Werten von Smart metern gemeinsam als html Tabelle darstellen
+         * für eine ajax Abfrage die Tabelle anders darstellen
          */
-        function writeSmartMeterDataToHtml()
+        function writeSmartMeterDataToHtml($html=true)
             {
             //echo "Button 0";                              // das sind die drei Button links
             $webOps = new webOps();
@@ -2916,6 +2930,11 @@
             $starttime=$endtime-60*60*24*60;            // letzte 60 Tage
 
             $html="";
+            $result=array();        $index=1;
+            /*      Info Source
+             *
+             */
+            
             /*
             $html .= '<style>';
             $html .= '.cuwContainer { width: auto; height: auto; max-height:95%; max-width: 100%; background-color: #1f1f1f; }';
@@ -2933,8 +2952,11 @@
                     {
                     case "DAILYREAD":
                     case "DAILYLPREAD":
-                        $html .= "<td>".$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier."</td>";
-                        if (isset($meter["Source"])) $html .= '<td colspan="4">Quelle der Daten kommt von '.$meter["Source"]."</td>";
+                        $result["Info"]=$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier;
+                        $html .= "<td>".$result["Info"]."</td>";
+                        if (isset($meter["Source"])) $result["Source"]='Quelle der Daten kommt von '.$meter["Source"];
+                        else $result["Source"]="";
+                        $html .= '<td colspan="4">'.$result["Source"]."</td>";
                         $html .= "</tr>";
                         $html .= "<tr>";
                         $html .= "<th>Bezeichnung</th><th>OID</th><th>Anzahl</th><th>Periode</th><th>Intervall</th><th>Erster Eintrag</th><th>Letzter Eintrag</th><th>Pfad</th>";
@@ -2953,11 +2975,28 @@
                             echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyCounterConfig["AggregationType"]?"Zaehler":"Werte")." :",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyCounterConfig["LastTime"])." ID : $variableID . Wert wurde berechnet.";
                             echo " Pfad: ".$this->ipsOps->path($variableID)."  \n";
                             }
+                        
+                        $result["Table"][$index]["Bezeichnung"]="Smart Meter Wirkenergie".($smEnergyCounterConfig["AggregationType"]?"Zaehler":"Werte");
+                        $result["Table"][$index]["OID"]=$variableID;
+                        $result["Table"][$index]["Anzahl"]=$count;
+                        $result["Table"][$index]["Periode"]="";
+                        $result["Table"][$index]["Intervall"]=nf($interval,"s");
+                        $result["Table"][$index]["ErsterEintrag"]=date("d.m.Y H:i",$smEnergyCounterConfig["FirstTime"]);
+                        $result["Table"][$index]["LetzterEintrag"]=date("d.m.Y H:i",$smEnergyCounterConfig["LastTime"]);
+                        $result["Table"][$index]["Pfad"]=$this->ipsOps->path($variableID);
+
                         $html .= "<tr>";
-                        $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyCounterConfig["AggregationType"]?"Zaehler":"Werte")."</td>";
-                        $html .= "<td>$variableID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smEnergyCounterConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smEnergyCounterConfig["LastTime"])."</td>";
-                        $html .= "<td>".$this->ipsOps->path($variableID)."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Bezeichnung"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["OID"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Anzahl"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Periode"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Intervall"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["ErsterEintrag"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["LetzterEintrag"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Pfad"]."</td>";
                         $html .= "</tr>";
+                        $index++;
+
                         /*$archiveID = $smEnergyCounterArchiveOps->getArchiveID();
                         AC_DeleteVariableData ($archiveID, $variableID,strtotime("24.08.2021 00:00"),strtotime("24.10.2021 00:00"));          // $start>$end    
                         AC_ReaggregateVariable ($archiveID, $variableID);
@@ -2975,11 +3014,27 @@
                             echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von ".$meter["Source"].":",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyWebConfig["LastTime"])." ID : $variableLogWienID . Wert wurde berechnet.";
                             echo " Pfad: ".$this->ipsOps->path($variableLogWienID)."  \n";
                             }
+
+                        $result["Table"][$index]["Bezeichnung"]="Smart Meter Wirkenergie".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von ".$meter["Source"];
+                        $result["Table"][$index]["OID"]=$variableLogWienID;
+                        $result["Table"][$index]["Anzahl"]=$count;
+                        $result["Table"][$index]["Periode"]=nf($periode,"s");
+                        $result["Table"][$index]["Intervall"]=nf($interval,"s");
+                        $result["Table"][$index]["ErsterEintrag"]=date("d.m.Y H:i",$smEnergyWebConfig["FirstTime"]);
+                        $result["Table"][$index]["LetzterEintrag"]=date("d.m.Y H:i",$smEnergyWebConfig["LastTime"]);
+                        $result["Table"][$index]["Pfad"]=$this->ipsOps->path($variableLogWienID);
+
                         $html .= "<tr>";
-                        $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von ".$meter["Source"]."</td>";
-                        $html .= "<td>$variableLogWienID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smEnergyWebConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smEnergyWebConfig["LastTime"])."</td>";
-                        $html .= "<td>".$this->ipsOps->path($variableLogWienID)."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Bezeichnung"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["OID"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Anzahl"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Periode"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Intervall"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["ErsterEintrag"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["LetzterEintrag"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Pfad"]."</td>";
                         $html .= "</tr>";
+                        $index++;
 
                         if (isset($meter["LeistungID"])===false) 
                             {
@@ -2999,11 +3054,28 @@
                             echo "    ".str_pad("Smart Meter Wirkleistung ".($smPowerInputConfig["AggregationType"]?"Zaehler":"Werte")." von InputCsv:",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smPowerInputConfig["LastTime"])." ID : $inputID . Wert wurde von File eingelesen.";
                             echo " Pfad: ".$this->ipsOps->path($inputID)."  \n";
                             }
+
+                        $result["Table"][$index]["Bezeichnung"]="Smart Meter Wirkleistung ".($smPowerInputConfig["AggregationType"]?"Zaehler":"Werte")." von InputCsv";
+                        $result["Table"][$index]["OID"]=$inputID;
+                        $result["Table"][$index]["Anzahl"]=$count;
+                        $result["Table"][$index]["Periode"]=nf($periode,"s");
+                        $result["Table"][$index]["Intervall"]=nf($interval,"s");
+                        $result["Table"][$index]["ErsterEintrag"]=date("d.m.Y H:i",$smPowerInputConfig["FirstTime"]);
+                        $result["Table"][$index]["LetzterEintrag"]=date("d.m.Y H:i",$smPowerInputConfig["LastTime"]);
+                        $result["Table"][$index]["Pfad"]=$this->ipsOps->path($inputID);
+
                         $html .= "<tr>";
-                        $html .= "<td>"."Smart Meter Wirkleistung ".($smPowerInputConfig["AggregationType"]?"Zaehler":"Werte")." von InputCsv</td>";
-                        $html .= "<td>$inputID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smPowerInputConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smPowerInputConfig["LastTime"])."</td>";
-                        $html .= "<td>".$this->ipsOps->path($inputID)."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Bezeichnung"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["OID"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Anzahl"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Periode"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Intervall"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["ErsterEintrag"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["LetzterEintrag"]."</td>";
+                        $html .= "<td>".$result["Table"][$index]["Pfad"]."</td>";
                         $html .= "</tr>";
+                        $index++;
+
                         //echo "\n";
                         if (isset($meter["Source"]))
                             {
@@ -3037,12 +3109,27 @@
                                         echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium ".$meter["Source"].":",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyLogWienConfig["LastTime"])." ID : $variableLogWienID . Wert wurde mit Selenium geladen.";
                                         echo " Pfad: ".$this->ipsOps->path($variableLogWienID)."  \n";
                                         }
-                                    $html .= "<tr>";
-                                    $html .= "<td>"."Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium ".$meter["Source"]."</td>";
-                                    $html .= "<td>$variableLogWienID</td><td>$count</td><td>".nf($periode,"s")."</td><td>".nf($interval,"s")."</td><td>".date("d.m.Y H:i",$smEnergyLogWienConfig["FirstTime"])."</td><td>".date("d.m.Y H:i",$smEnergyLogWienConfig["LastTime"])."</td>";
-                                    $html .= "<td>".$this->ipsOps->path($variableLogWienID)."</td>";
-                                    $html .= "</tr>";
 
+                                    $result["Table"][$index]["Bezeichnung"]="Smart Meter Wirkenergie ".($smEnergyLogWienConfig["AggregationType"]?"Zaehler":"Werte")." von Selenium ".$meter["Source"];
+                                    $result["Table"][$index]["OID"]=$variableLogWienID;
+                                    $result["Table"][$index]["Anzahl"]=$count;
+                                    $result["Table"][$index]["Periode"]=nf($periode,"s");
+                                    $result["Table"][$index]["Intervall"]=nf($interval,"s");
+                                    $result["Table"][$index]["ErsterEintrag"]=date("d.m.Y H:i",$smEnergyLogWienConfig["FirstTime"]);
+                                    $result["Table"][$index]["LetzterEintrag"]=date("d.m.Y H:i",$smEnergyLogWienConfig["LastTime"]);
+                                    $result["Table"][$index]["Pfad"]=$this->ipsOps->path($variableLogWienID);
+
+                                    $html .= "<tr>";
+                                    $html .= "<td>".$result["Table"][$index]["Bezeichnung"]."</td>";
+                                    $html .= "<td>".$result["Table"][$index]["OID"]."</td>";
+                                    $html .= "<td>".$result["Table"][$index]["Anzahl"]."</td>";
+                                    $html .= "<td>".$result["Table"][$index]["Periode"]."</td>";
+                                    $html .= "<td>".$result["Table"][$index]["Intervall"]."</td>";
+                                    $html .= "<td>".$result["Table"][$index]["ErsterEintrag"]."</td>";
+                                    $html .= "<td>".$result["Table"][$index]["LetzterEintrag"]."</td>";
+                                    $html .= "<td>".$result["Table"][$index]["Pfad"]."</td>";
+                                    $html .= "</tr>";
+                                    $index++;
                                     break;
                                 case "default":
                                 default:
@@ -3058,38 +3145,65 @@
             $html .= "</table>";
             $html .= "</div>";
             //echo "\n";
-            return ($html);
+            if ($html) return ($html);
+            else return (json_encode($result));
             }
 
         /* es gibt ein csv Verzeichnis, die Dateien darin anzeigen mit den relevanten verfügbaren Informationen
          * es gibt eine Steuerung mit cmd als array oder string, könnte man auch als class variable machen
          * folgende Commands werden unterstützt:
          * Format cmd oder "cmd"=>cmd, "Sort"=sort
+         *      cmd default ist false, sort ist false, html Ausgabe ist true
+         *      wenn cmd ein arra ist gilt
+         *          Sort
+         *          Html
+         *          Cmd
+         *
+         * Cmd kann die folgenden werte annehmen
          *      header          header ist fix und ist die erste Zeile ohne ZwischenBlanks
          *      config          die INPUTCSV Config
          *      files           die files als array
          *      inputDir
-         *      TargetIG
+         *      TargetID
+         *
+         * die Ausgabe als html
+         *      div class="cuw-quick"       siehe css Datei in webfront/skins/SkinDark/webfront.css
+         *
+         * die Ausgabe als json
+         *      header =>
+         *      table  =>
          *
          */
-        function writeSmartMeterCsvInfoToHtml($cmd=false,$config=false)
+        function writeSmartMeterCsvInfoToHtml($cmd=false,$config=false,$debug=false)
             {
-            $sort=false; $headerIndex=array(); $headerSort=array();
-            if ($this->debug) echo "writeSmartMeterCsvInfoToHtml \n";
+            if ($debug===false) $debug=$this->debug;
+            $sort=false; $modeHtml=true; $headerIndex=array(); $headerSort=array();
+            if ($debug) echo "writeSmartMeterCsvInfoToHtml \n";
             if ($config===false) $config = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"];
             if (is_array($cmd))
                 {
+                if ($debug) echo "   Aufruf mit Parameter ".json_encode($cmd)."\n"; 
                 if (isset($cmd["Sort"])) $sort = $cmd["Sort"];
+                if (isset($cmd["Html"]))  $modeHtml = $cmd["Html"];            // wenn false Ausgabe als json
+                //print_R($cmd);
                 if (isset($cmd["Cmd"]))  $cmd  = $cmd["Cmd"];
                 else $cmd=false;
                 }
-            $html = "";
+            if ($debug && $modeHtml) echo "   Ausgabe als html formatierten String.\n"; 
+            $html = ""; $json=array(); $sub=1;
             //$header = array("Verzeichnis","Filename","Size","FileDate","Erster Eintrag","Letzter Eintrag","Anzahl","Interval","Periode","Analyze");
-            $header = array("Filename","Size","FileDate","Erster Eintrag","Letzter Eintrag","Anzahl","Interval","Periode","Analyze");
-            foreach ($header as $index => $entry) 
+            //Verzeichnis - Filename - Size - DateTime - FirstDate - LastDate - Count - Intervall - Periode - Analyze
+            $headerAssign = array("Verzeichnis"=>"Verzeichnis","Filename"=>"Filename","Size"=>"Size","DateTime"=>"FileDate","FirstDate"=>"Erster Eintrag","LastDate"=>"Letzter Eintrag","Count"=>"Anzahl","Interval"=>"Intervall","Periode"=>"Periode","Analyze"=>"Analyze");
+            $headerShow = array("Filename","Size","DateTime","FirstDate","LastDate","Count","Interval","Periode","Analyze");            // keys für Auswahl der Spalten verwenden
+
+            foreach ($headerShow as $index => $entry) 
                 {
-                $headerIndex[$index]=str_replace(" ", "",$entry);
-                $headerSort[$headerIndex[$index]] = $entry;
+                $name = $headerAssign[$entry];
+                $json["Header"][$index]["Column"]=$name;                         // index erhöht sich automatisch, explizite Speicherung damit json_encode kompatible zu javascript
+                $json["Header"][$index]["Key"]=$entry;
+                $headerIndex[$index]=str_replace(" ", "",$name);
+                $headerSort[$headerIndex[$index]] = $name;
+                $header[$index]=$name;                                           // simple list of Column Names in right order
                 }
             //echo json_encode($headerSort);
             if (strtoupper($cmd)=="HEADER") return ($headerIndex);            // Header ausgeben, damit Befehle erkannt werden können
@@ -3123,21 +3237,28 @@
                             $html .= "</tr>"; 
                             break; 
                             }
-                        $html .= "<tr>";
+                        $html .= '</table><br>';
+                        $html .= '<table class="sortierbar">';                            
+                        $html .= "<thead><tr>";
                         //$html .= "<th>Verzeichnis</th><th>Filename</th><th>Size</th><th>FileDate</th><th>Erster Eintrag</th><th>Letzter Eintrag</th><th>Anzahl</th><th>Interval</th><th>Periode</th><th>Analyze</th>";
                         //foreach ($header as $value) $html .= "<th>".$value."</th>";
                         foreach ($header as $value) 
                             {
 							$value1 = str_replace(" ", "",$value);
-                            $html .= '<th><a href="#" onClick=trigger_button(\''.$value1.'\',\'Guthabensteuerung\',\'\')>'.$value."</a></th>"; 
+                            //$html .= '<th><a href="#" onClick=trigger_button(\''.$value1.'\',\'Guthabensteuerung\',\'\')>'.$value."</a></th>"; 
+                            $html .= '<th>'.$value."</th>"; 
                             }
-                        $html .= "</tr>";
+                        $html .= "</tr></thead><tbody>";
+                        // Ausgabe in der Reihenfolge Verzeichnis - Filename - Size - DateTime - FirstDate - LastDate - Count - Intervall - Periode - Analyze
                         foreach ($result as $entry) 
                             {
+                            $json["Table"][$sub]=$entry;
+                            $sub++;
                             $html .= "<tr>";
                             if (in_array("Verzeichnis",$header)) $html .= "<td>".$entry["Verzeichnis"]."</td>";
                             //$html .= "<td>".$entry["Filename"]."</td>";
-                            $html .= '<td><a href="#" onClick=trigger_button(\''.$entry["Filename"].'\',\'Guthabensteuerung\',\'\')>'.$entry["Filename"]."</a></td>";
+                            //$html .= '<td><a href="#" onClick=trigger_button(\''.$entry["Filename"].'\',\'Guthabensteuerung\',\'\')>'.$entry["Filename"]."</a></td>";
+                            $html .= '<td>'.$entry["Filename"]."</td>";
                             $html .= "<td>".$entry["Size"]."</td>";
                             $html .= "<td>".date("d.m.Y H:i",$entry["DateTime"])."</td>";
                             $html .= "<td>".date("d.m.Y H:i",$entry["FirstDate"])."</td>";
@@ -3162,12 +3283,14 @@
                             else 
                             $html .= "</tr>";
                             }
-                        $html .= "</table>";
+                        $html .= "</tbody></table>";
                         $html .= "</div>";
                         break;
                     }
                 }
-            return ($html);
+            if ($modeHtml===true) return ($html);
+            elseif (strtoupper($modeHtml)=="ARRAY")  return ($json);   // ist aber das array
+            else return (json_encode($json));
             }   // ende function
 
 		}  // ende class

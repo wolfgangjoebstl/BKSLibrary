@@ -107,6 +107,7 @@ $cutter=true;
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
 	$wfcHandling = new WfcHandling();		// für die Interoperabilität mit den alten WFC Routinen nocheinmal mit der Instanz als Parameter aufrufen
+    $profileOps = new profileOps();             // Profile verwalten, local geht auch remote
 
 /***********************
  *
@@ -185,12 +186,16 @@ $cutter=true;
  * 
  **************************/	
 
-    echo "Profile Definition für AMIS Modul:\n";
+    echo "Darstellung der benötigten Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
+	$profilname=array("AusEin-Boolean"=>"update","Zaehlt"=>"update","kWh"=>"update","Wh"=>"update","kW"=>"update","Euro"=>"update");
+    $profileOps->synchronizeProfiles($profilname);
+
+    /*echo "Profile Definition für AMIS Modul:\n";
 	$pname="AusEin-Boolean";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_CreateVariableProfile($pname, 0); 
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 		IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
@@ -203,7 +208,7 @@ $cutter=true;
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		IPS_CreateVariableProfile($pname, 0); 
   		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 
 		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
@@ -222,7 +227,7 @@ $cutter=true;
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		IPS_CreateVariableProfile($pname, 2); 
   		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
   		IPS_SetVariableProfileText($pname,'','kWh');
 		echo "Profil ".$pname." erstellt.\n";          
@@ -238,7 +243,7 @@ $cutter=true;
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		IPS_CreateVariableProfile($pname, 2); 
   		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
   		IPS_SetVariableProfileText($pname,'','Wh');
 		echo "Profil ".$pname." erstellt.\n";          
@@ -254,7 +259,7 @@ $cutter=true;
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		IPS_CreateVariableProfile($pname, 2); 
   		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
   		IPS_SetVariableProfileText($pname,'','kW');
 		echo "Profil ".$pname." erstellt.\n";          
@@ -270,7 +275,7 @@ $cutter=true;
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		IPS_CreateVariableProfile($pname, 2); 
   		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
   		IPS_SetVariableProfileText($pname,'','Euro');
 		echo "Profil ".$pname." erstellt.\n";          
@@ -948,6 +953,7 @@ $cutter=true;
     $buttonsId = $webOps->createSelectButtons($pnames,$categoryId_SmartMeter, $scriptIdAmis);
     $statusSmartMeterID = CreateVariableByName($categoryId_SmartMeter, "SmartMeterStatus", 3,'~HTMLBox');
 
+    // function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 	$variableIdInterActiveHTML = CreateVariableByName($categoryId_SmartMeter, "InterActive", 3 , '~HTMLBox', 'Information', 300,  false, '<iframe frameborder="0" width="100%" height="600px"  src="../user/Guthabensteuerung/GuthabensteuerungReceiver.php"</iframe>' );
 
 	$webfront_links=array(

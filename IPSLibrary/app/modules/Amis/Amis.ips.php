@@ -87,7 +87,7 @@ if ($_IPS['SENDER']=="WebFront")
 	{
 	/* vom Webfront aus gestartet 
      *      Update      SmartMeterStatus        $amisSM->writeSmartMeterDataToHtml()
-     *      Cakculate
+     *      Calculate   NewLookandFeel          nur update htmlBox zum Nachladen
      *      Sort        InterActive             html verlinkt auf ein webfront script file, das wird wo anders gesetzt
      *
      * Update erzeugt neue Smart Meter Register Übersicht mit 24h Counter und Tageswerten, den 15min Werten von InputCsv 
@@ -105,6 +105,8 @@ if ($_IPS['SENDER']=="WebFront")
             break;
         case $buttonsId[1]["ID"]:         // Calculate
             $webOps->selectButton(1);
+            $variableIdLookAndFeelHTML = IPS_GetObjectIdByName("NewLookAndFeel",$categoryId_SmartMeter);
+            SetValue($variableIdLookAndFeelHTML,GetValue($variableIdLookAndFeelHTML));
             break;
         case $buttonsId[2]["ID"]:         // Sort
             $webOps->selectButton(2);

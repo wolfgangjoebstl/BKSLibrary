@@ -31,6 +31,56 @@
     *
     * die Wetterfunktion wird bearbeitet und mit aggregateOpenWeather in eine schöne Form gebracht
     *
+    * die Startpage wird umgestellt werden auf in frame Navigation. Eigenes Item Frame eingeführt
+    * verweist auf den iFrame mit src StartpageTopology
+    * iframe ist ein unabhängiger Frame in der Webfront Umgebung mit Höhe und Weite 100%
+    * die Höhe ist responsive, iframe ist in div eingebunden, verwendet inline Formatierungen
+    * die Kommunikation erfolgt über Javascript (jquery und ajax)
+    * der iFrame verwendet seine eigenen css stylesheets
+    * Zur Strukturierung der Webpages nur div styles verwenden, Tables sind zu langsam und nicht responsive 
+    *
+    *
+    * Verschiedene Ansätze
+    * simpel:       Bildlaufleiste wenn Tabelle zu breit und sich nicht teilen lässt <div style="overflow-x:auto;"><table.....
+    * EinsZuEins:   <td> wird zu <div class='table_cell'> <tr> zu <div class='table_row'> usw. die styles mit .table_cell {display: table-cell;
+    * Kompliziert:
+    *
+    * responsive iFrame, iFrame ist eine eigene Webpage, beginne html5 Dokument mit
+    * <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    * * { box-sizing: border-box;}          damit die Größe auf die Box geht und nicht auf den Inhalt
+    * meta kann man nutzen für die Erkennung von kleinen Bildschirmen
+    * @media only screen and (max-width: 768px) { [class*="col-"] { width: 100%; }  bislang hatten alle cols unterschiedliche Breiten
+    * <img src="img_girl.jpg" style="max-width:100%;height:auto;">
+    * Das Bild wird immer auf maximale Breite synchronisiert, 
+    * Wenn mehrere Objekte nebeneinander, irgendwann untereinander darstellen, vorher synchron verkleinern
+    * ist aber in einem Div untergebracht 
+    *
+    * Eigentlich wird der Bildschirm gedrittelt, jedes Drittel wiederum für sich geviertelt 
+    *       3/3 PC
+    *       2/3 Pad
+    *       1/3 Phone
+    *
+    * classes definieren für jedes div, es gibt zumindest die classes
+    *       header, menu (1/3), main (2/3), footer
+    *       big (2/3)  small (1/3)
+    *       section1 section2 section3
+    *       col-span  span 1..12
+    * .menu { width: 25%;   float: left;   padding: 15px;   border: 1px solid red; } 
+    * .col-1 {width: 8.33%;} .col-2 {width: 16.66%;} .col-3 {width: 25%;}
+    * [class*="col-"] { float: left; padding: 15px;  border: 1px solid red; }
+    * .row::after {  content: "";   clear: both;   display: table; }    // Objekte immer nebeneinander, wenn nicht übereinander dargestellt
+    * .menu li:hover {  background-color: #0099cc;}
+    * <div class="row">  <div class="col-3">...</div> <div class="col-9">...</div>   </div>
+    *
+    * Herausforderungen, Stylerules, div im 16/9 Format macht das erste Problem, iFrame nutzt den zur Verfügung gestellten Platz, sonst default size 150x100
+    * <div style="padding-bottom:56.25%; position:relative; display:block; width: 100%">
+    *       <iframe width="100%" height="100%  name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>
+    * Bild und Wettertabelle teilen sich den verfügbaren Platz
+    * das Bild hat einen fixen Bereich reserviert, 75%, die Tabelle 25%
+    * Wettertabelle hat Vorrang, bleibt als Tabelle formatiert
+    * 
+    * aktuell ist die Wettertabelle nicht oben angeordnet, sondern unten
+    *
     **************************************/
 
     if ($_IPS['SENDER']=="Execute") $debug=true;
@@ -64,6 +114,8 @@
         IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
         }
 
+    $webOps = new webOps();
+    $dosOps = new dosOps();
 
     $startpage = new StartpageHandler();
     $configuration=$startpage->getStartpageConfiguration();
@@ -86,8 +138,7 @@
     $showfile=false;            // dann wird auch wenn nicht übergeben es automatisch generiert
 
     /**************************************** Tastendruecke aus dem Webfront abarbeiten *********************************************************/
-
-    $dosOps = new dosOps();
+    
     $Verzeichnis=$dosOps->correctDirName($dosOps->getWorkDirectory());
     $Verzeichnis       = $dosOps->correctDirName($startpage->getPictureDirectory());
     $VerzeichnisBilder = $dosOps->correctDirName($startpage->getPictureDirectory()."SmallPics");
@@ -96,6 +147,10 @@
 	{
 	/* vom Webfront aus gestartet */
     $variableID=$_IPS['VARIABLE'];
+
+    $pname="StartpageControl";
+    $profiles=$webOps->getActionProfileByName($pname,true);     // verkürzt als Array
+
     switch ($variableID)          // Value formatted : Explorer Fullscreen Station Picture Topologoe Off
         {
         case ($switchScreenID):
@@ -105,39 +160,38 @@
              *      1       Full Screen
              *      2       Station             2
              *      3       Media               5
-             *      4       Picture             1
-             *      5       Topologie           3
-             *      6       Hierarchie          4
-             *      7       Off
+             *      4       Frame               22
+             *      5       Picture             1
+             *      6       Topologie           3
+             *      7       Hierarchie          4
+             *      8       Off
              */
-        	switch ($_IPS['VALUE'])
+        	switch ($profiles[$_IPS['VALUE']])
 		        {
-        		case "7":	/* Monitor off/on, Off */
+        		case "Off":	/* Monitor off/on, Off */
 		        	controlMonitor("off",$configuration);
         			break;
-                case "6":   /* Hierarchy, new one with picture drawing of geographical position*/
+                case "Hierarchie":   /* Hierarchy, new one with picture drawing of geographical position*/
         			SetValue($StartPageTypeID,4);
-                    //echo "Set 6 ID to 4";
-					break;
-                case "5":   /* Topologie, new one with picture drawing of geographical position*/
+ 					break;
+                case "Topologie":   /* Topologie, new one with picture drawing of geographical position*/
         			SetValue($StartPageTypeID,3);
-                    //echo "Set 5 ID to 3";
-					break;
-    	        case "4":  	/* Bildschirmschoner, Picture */
+ 					break;
+    	        case "Picture":  	/* Bildschirmschoner, Picture */
         			SetValue($StartPageTypeID,1);
-                    //echo "Set 4 ID to 1";
+ 		        	break;
+    	        case "Frame":  	/* Frame, test javascript framing */
+        			SetValue($StartPageTypeID,22);
 		        	break;
-    	        case "3":  	/* Bildschirmschoner, Media */
+    	        case "Media":  	/* Bildschirmschoner, Media */
         			SetValue($StartPageTypeID,5);
-                    //echo "Set 3 ID to 5";                               // Media taste
-		        	break;
-        		case "2":  	/* Wetterstation, Station */
+ 		        	break;
+        		case "Station":  	/* Wetterstation, Station */
 		        	SetValue($StartPageTypeID,2);
                     SetValue($switchSubScreenID,GetValue($switchSubScreenID)+1);
-                    //echo "Set 2 ID to 2";
         			break;
-        		case "1":  	/* Full Screen ein, Fullscreen */
-		        case "0":  	/* Full Screen aus, Explorer */
+        		case "Fullcreen":  	/* Full Screen ein, Fullscreen */
+		        case "Explorer":  	/* Full Screen aus, Explorer */
 			        controlMonitor("FullScreen",$configuration);
         			//IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);
 		        	break;
@@ -232,8 +286,53 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
     /* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
 
     if ($debug) echo "Aufruf StartpageWrite in Startpage Class Library.\n";
-    SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,$debug));
-    SetValue($mobileContentID,  $startpage->bottomTableLines());                                                        // Mobile Webfron Statuszeile/tabelle
+    $startPageType=GetValue($StartPageTypeID);
+    if ($startPageType<21)
+        {
+        SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,$debug));
+        SetValue($mobileContentID,  $startpage->bottomTableLines());                                                        // Mobile Webfron Statuszeile/tabelle
+        }
+    else 
+        {   //  frameborder=0  width="80%" height="1000"  border:none frameborder:0
+        // Table wird jetzt unten angezeigt, irgendwas mit den beiden styles
+        //SetValue($variableIdHTML,'<div><iframe width="100%" height=200%  name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>');
+        //SetValue($variableIdHTML,'<div style="box-sizing: border-box;"><iframe style="box-sizing: border-box; width:100%; height:100%; " name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>');
+        //SetValue($variableIdHTML,'<div style="box-sizing: border-box;"><iframe width="100%" height="100%";  name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>');
+        //SetValue($variableIdHTML,'<div style="box-sizing: border-box;"><iframe width="100%" height="1000px";  name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>');
+        //SetValue($variableIdHTML,'<div style="padding-bottom:56.25%; position:relative; display:block; width: 100%"><iframe width="100%" height="100%  name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>');
+        //SetValue($variableIdHTML,'<div class="cuw-container"><iframe class="cuw-responsive-iframe" width="100%" height="800px" frameborder:0 src="../user/Startpage/StartpageTopology.php"></iframe></div>');          
+        //SetValue($variableIdHTML,'<div class="cuw-container"><iframe class="cuw-responsive-iframe" style="width:100%; height:800px; border:none;" name="StartPage" src="../user/Startpage/StartpageTopology.php"></iframe></div>'); 
+        $html  = '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>';
+        $html .= '<script type="text/javascript">';
+        /*$html .= '  var intervalId = window.setInterval(function(){
+                        reportWindowSize();
+                        }, 5000);
+                    function reportWindowSize () {
+                        let varheight=(window.innerHeight * 0.9);
+                        document.getElementById("frame-status").innerHTML = "<p>Size " + window.innerHeight + " (" + varheight + ") x " + window.innerWidth + "  " + Date() + "<br>Viewport: " + $(window).width() + " x " + $(window).height() + "</p>";
+                        $("#frame-start").css("height",varheight);
+                        };
+                    window.onresize = reportWindowSize;                     
+                    ';  */
+        $html .= '  function reportWindowSize () {
+                        let varheight=Math.round(window.innerHeight * 0.85);
+                        document.getElementById("frame-status").innerHTML = "Size " + window.innerHeight + " (" + varheight + ") x " + window.innerWidth + "  " + Date();
+                        };
+                    $("#frame-status").on("click", function() {
+                        reportWindowSize ();
+                        });
+                    window.onresize = reportWindowSize;                     
+                    ';                      
+        $html .= '';
+        $html .= '</script>';
+        $html .= '<div style="box-sizing: border-box;">';
+        //$html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="width:100%; height:1000px; position:absolute; top:0; left: 0">';
+        $html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" style="width:100%; height:85vh; ">';
+        $html .= '      </iframe>';
+        $html .= '  </div>';
+        $html .= '<div id="frame-status" style="font-size: 1hm;">Statusangaben hier clicken</div>';        
+        SetValue($variableIdHTML,$html);
+        }
 
     /**************************************** PROGRAM EXECUTE *********************************************************/
 
@@ -246,12 +345,14 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 
 	$pname="StartpageControl";
     echo "Variable SwitchScreen mit Profil \"$pname\" hat OID: $switchScreenID \n";
-	if (IPS_VariableProfileExists($pname) == true)  //Var-Profil erstellen     
-		{
-        $profile=IPS_GetVariableProfile($pname)["Associations"];
-        foreach ($profile as $index => $profil) echo "  ".$index."  ".$profil["Value"]."  ".$profil["Name"]."\n";
-        //print_r($profile);
+    $profiles=$webOps->getActionProfileByName($pname,true);     // verkürzt als Array
+    //print_r($profiles);
+    if ($profiles)
+        {
+        //foreach ($profiles as $index => $profil) echo "  ".$index."  ".$profil["Value"]."  ".$profil["Name"]."\n";
+        foreach ($profiles as $index => $profil) echo "  $index  $profil\n";
         }
+
 	echo "Switch on Monitor, look for :".$configuration["Directories"]["Scripts"].'nircmd.exe'."\n"; 
 	IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);	
 	
@@ -259,35 +360,36 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 	$noweather=!$Config["Active"]; 
     print_r($Config);
 
-    /* Verzeichnisse auslesen für besseren Überblick */
-    
-    $dosOps->writeDirStat($Verzeichnis);
-    $dosOps->writeDirStat($VerzeichnisBilder);
+    if (false) // Verzeichnisse auslesen für besseren Überblick
+        {
+        $dosOps->writeDirStat($Verzeichnis);
+        $dosOps->writeDirStat($VerzeichnisBilder);
 
-    $files = $dosOps->readDirToArray($VerzeichnisBilder);
-    $maxcount=count($files);
-    $files1 = $dosOps->readDirToArray($Verzeichnis);                    // Input Directory
-    $maxcount1=count($files1);
-    echo "Bildanzeige, es gibt insgesamt ".$maxcount."/".$maxcount1." Bilder (Ziel/Quelle) auf dem angegebenen Laufwerk.\n";
+        $files = $dosOps->readDirToArray($VerzeichnisBilder);
+        $maxcount=count($files);
+        $files1 = $dosOps->readDirToArray($Verzeichnis);                    // Input Directory
+        $maxcount1=count($files1);
+        echo "Bildanzeige, es gibt insgesamt ".$maxcount."/".$maxcount1." Bilder (Ziel/Quelle) auf dem angegebenen Laufwerk.\n";
 
-    $fileName=array(); $fileName1=array();
-    foreach ($files as $name)  
-        {
-        if (is_dir($VerzeichnisBilder.$name)===false) $fileName[$name]  = filesize($VerzeichnisBilder.$name);
-        }
-    $maxcount=count($fileName);        
-    foreach ($files1 as $name) 
-        {
-        if (is_dir($Verzeichnis.$name)===false) $fileName1[$name] = filesize($Verzeichnis.$name);
-        }
-    $maxcount1=count($fileName1); 
-    echo "Bildanzeige, es gibt insgesamt ".$maxcount."/".$maxcount1." Bilder (Ziel/Quelle) auf dem angegebenen Laufwerk.\n";           
-    
-    if ($maxcount1>$maxcount)
-        {
-        foreach ($fileName as $name => $size) unset($fileName1[$name]);
-        echo "Files that have not been converted from $Verzeichnis to $VerzeichnisBilder.\n";
-        print_R($fileName1);
+        $fileName=array(); $fileName1=array();
+        foreach ($files as $name)  
+            {
+            if (is_dir($VerzeichnisBilder.$name)===false) $fileName[$name]  = filesize($VerzeichnisBilder.$name);
+            }
+        $maxcount=count($fileName);        
+        foreach ($files1 as $name) 
+            {
+            if (is_dir($Verzeichnis.$name)===false) $fileName1[$name] = filesize($Verzeichnis.$name);
+            }
+        $maxcount1=count($fileName1); 
+        echo "Bildanzeige, es gibt insgesamt ".$maxcount."/".$maxcount1." Bilder (Ziel/Quelle) auf dem angegebenen Laufwerk.\n";           
+        
+        if ($maxcount1>$maxcount)
+            {
+            foreach ($fileName as $name => $size) unset($fileName1[$name]);
+            echo "Files that have not been converted from $Verzeichnis to $VerzeichnisBilder.\n";
+            print_R($fileName1);
+            }
         }
 
     if (false)
@@ -301,6 +403,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
     echo "Erzeugung des Wetter Meteograms:\n";
     $startpage->displayOpenWeather(true);           //true für Debug
 
+    echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
     echo "Durchlauf Startpage Write mit Debug ein:\n";
     $startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,true);      // true für Debug
 
