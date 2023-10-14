@@ -187,6 +187,30 @@
 		 * Abstrahierung der Startpage Konfiguration
 		 * Einlesen aus der Datei und Abspeichern in der Class
          * configInput -> config
+         *
+         * Configuration Struktur:
+         *      Directories
+         *          Pictures
+         *          Images
+         *          Icons
+         *          Scripts
+         *      Display
+         *          Weather
+         *              Weathertable
+         *          BottomLine
+         *          AddLine
+         *          WidgetStyle
+         *              RowMax
+         *              ColMax
+         *              Screens
+         *          MediaObject
+         *
+         *      Monitor
+         *      Widgets Sub
+         * oder
+         *      SpecialRegs
+         *      Temperature
+         *
 		 */
 
 		function setStartpageConfiguration($config=false,$debug=false)
@@ -235,6 +259,7 @@
             configfileParser($configInput["Display"], $config["Display"], ["BottomLine"],"BottomLine","[]"); 
             configfileParser($configInput["Display"], $config["Display"], ["AddLine"],"AddLine","[]"); 
             configfileParser($configInput["Display"], $config["Display"], ["WidgetStyle"],"WidgetStyle",'{"RowMax":2,"ColMax":3,"Screens":1}');             // bereits als json_encode übergeben
+            configfileParser($configInput["Display"], $config["Display"], ["Mediaobject","mediaobject","MEDIAOBJECT","MediaObject"],"MediaObject",null); 
 
             /* Sub Sub Display Weather */
             configfileParser($configInput["Display"]["Weather"], $config["Display"]["Weather"], ["Weathertable"],"Weathertable","Active"); 
@@ -510,8 +535,20 @@
                     //$wert.='<div id=“resp-table” style="padding-bottom: 56%;; width: 100%; display: table;">'; 
                     $wert.='<div id=“resp-table” style="display: table; height:800px; width:auto">'; 
                     $wert .=    '<div class=“resp-table-row” style="display: table-row;">';               
-                    $wert .=        '<div class=“table-body-cell” style="display: table-cell;">';                     
-                    $wert .=            $this->showPictureWidget($showfile);		
+                    $wert .=        '<div class=“table-body-cell” style="display: table-cell;">'; 
+                    if ($PageType==1) 
+                            {
+                            if ($debug) echo "Page Type Style is Picture.\n"; 
+                            $wert .=     $this->showPictureWidget($showfile);	
+                            }
+                        else 
+                            {
+                            if ($debug) echo "Page Type Style is Media.\n";
+                            $switchMediaID = IPS_GetVariableIDByName("SwitchMedia",$this->CategoryIdData);  
+                            $mediaScreen=GetValue($switchMediaID);
+                            $wert.= $this->showMediaWidget($mediaScreen,$debug);                   // wenn mehrere Frames einfach durchschalten
+                            SetValue($switchMediaID,$mediaScreen);  
+                            }	
                     $wert .=			'</div>';
                     $wert .=		'<div class=“table-body-cell” style="display: table-cell; background-color:#202420; vertical-align:top;">';                
                     $wert .= 			$this->showWeatherTemperatureWidget(false,$debug);              // true inline block, false table
@@ -540,7 +577,10 @@
                         else 
                             {
                             if ($debug) echo "Page Type Style is Media.\n";
-                            $wert.= $this->showMediaWidget();
+                            $switchMediaID = IPS_GetVariableIDByName("SwitchMedia",$this->CategoryIdData);  
+                            $mediaScreen=GetValue($switchMediaID);
+                            $wert.= $this->showMediaWidget($mediaScreen,$debug);                   // wenn mehrere Frames einfach durchschalten
+                            SetValue($switchMediaID,$mediaScreen);  
                             }
                         if ( $noweather==false ) 
                             {
@@ -570,6 +610,14 @@
                      *    </div>
                      *
                      * showPictureWidget ergänzt um zwei div frames die eingebettet werden können
+                     *
+                     * Javascript Funktionen
+                     *
+                     * viewportHandler(event)       Darstellung anpassen anhand der Breite des Viewport
+                     *
+                     * enterFullscreen              requestFullscreen für unterschiedliche Browser, teil des Scripts bevor html iFrame gestartet wird, sonst wird nur dieser iFrame gross
+                     *
+                     *
                      *
                      *******ACHTUNG WIRD NICHT VERWENDET, CHECK PHP FILE in WEBFRONT******************/ 
                     $wert.='<div id=“resp-table” style="width: 100%; display: table;">';            // display type Table
@@ -1745,33 +1793,35 @@
 
         /********************
          *
-         * Zelle Tabelleneintrag für die Darstellung eines BestOf Bildes
-         *
+         * Zelle Tabelleneintrag für die Darstellung eines Mediaobjektes
+         * Breite und Höhe für iFrame vorgeben, wird jetzt Teil der Konfig
+         * Showfiile ist jetzt der Parameter welcher Frame angezeigt werden soll
          *
          **************************************/
 
-		function showMediaWidget($showfile=false, $debug=false)
+		function showMediaWidget(&$showfile=false, $debug=false)
 			{
             $wert="";
-            /*$file=$this->readPicturedir();
-            $maxcount=count($file);
-            if ($showfile===false) $showfile=rand(1,$maxcount-1);
-            $filename = 'user/Startpage/user/pictures/SmallPics/'.$file[$showfile];
-            $filegroesse=number_format((filesize(IPS_GetKernelDir()."webfront/".$filename)/1024/1024),2);
-            $info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
-            if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
+            if (isset($this->configuration["Display"]["MediaObject"]))
                 {
-                if ($debug) echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
+                $config=$this->configuration["Display"]["MediaObject"];
+                $max=sizeof($config);
+                if ($debug) echo "ShowMediaWidget $showfile/$max Debug $debug Config ".json_encode($config)."\n";
+                if ($showfile>=$max) $showfile=0; 
+
+                $wert .='<iframe src="'.$config[$showfile]["html"].'" style="width:900px; height:800px; </iframe>';
+
+                $showfile++;
+                if ($showfile>=$max) $showfile=0;                    
                 }
-            //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";   
-            $wert.='<div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
-            $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
-            $wert.='</div>';*/
-            $wert .='<iframe src="https://oe3.orf.at/player" width="900" height="800"
-                     <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
-                        Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
-                        <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
-                     </p></iframe>';
+            else
+                {
+                $wert .='<iframe src="https://oe3.orf.at/player" width="900" height="800"
+                        <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
+                            Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
+                            <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
+                        </p></iframe>';
+                }
             return ($wert);
             }
 
@@ -4095,7 +4145,7 @@
 		}		// ende class
 		
     /* Widgets zusammenfassen, alte Routinen im Handler überschreiben und responsive darstellen
-     * Folgende neue rutinen wurden übernommen
+     * Folgende neue Routinen wurden übernommen
      *  setDebugMode                                Debug ein/ausschalten, ohne Einzelparameter in jeder function
      *  selectPictures                              Auswahl von 1 bis max Bilder aus Smallpics
      *  showPictureWidgetResponsive                 diese anzeigen,1,4 oder 9 Stück
@@ -4239,25 +4289,48 @@
                             echo "Filename $filename vorhanden - Groesse ".$filegroesse." MB.\n";
                             print_r($file);
                             }
-                        if ($i<$single)        // ein Bild
+                        if (false)
+                             {    
+                            if ($i<$single)        // ein Bild
+                                {
+                                //$wert.= '<div id="sp-pic-img-p'.$i.'" style="display:block; width:100%; max-height:700px;">';
+                                $wert.= '<div id="sp-pic-img-p'.$i.'-1" style="display:block;">';
+                                $wert.=     '<img class="image-pic0 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';   // definiert die Größe des Bildes, unbedingt drinnen lassen
+                                $wert.=     '</div>';
+                                }
+                            if ( ($i<($quad+2)) )     // vier/sechs Bilder
+                                {
+                                $wert.= '<div id="sp-pic-img-p'.$i.'-4" ';
+                                if  ($i<$quad)  $wert.=         ' style="display:inline">';   
+                                else            $wert.=         ' style="display:none">';
+                                $wert.=     '<img class="image-pic4 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';
+                                $wert.=     '</div>';
+                                }
+                            if ($i<$ninth)                 // neun Bilder
+                                {
+                                $wert.= '<div id="sp-pic-img-p'.$i.'-9" style="display:inline;";">';
+                                $wert.=     '<img class="image-pic9 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';   // definiert die Größe des Bildes
+                                $wert.=     '</div>';
+                                }
+                             }
+                        if (true)
                             {
-                            //$wert.= '<div id="sp-pic-img-p'.$i.'" style="display:block; width:100%; max-height:700px;">';
-                            $wert.= '<div id="sp-pic-img-p'.$i.'-1" style="display:block;">';
-                            $wert.=     '<img class="image-pic0 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';   // definiert die Größe des Bildes, unbedingt drinnen lassen
-                            $wert.=     '</div>';
-                            }
-                        if ( ($i<($quad+2)) )     // vier/sechs Bilder
-                            {
-                            $wert.= '<div id="sp-pic-img-p'.$i.'-4" ';
-                            if  ($i<$quad)  $wert.=         ' style="display:inline">';   
-                            else            $wert.=         ' style="display:none">';
-                            $wert.=     '<img class="image-pic4 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';
-                            $wert.=     '</div>';
-                            }
-                        if ($i<$ninth)                 // neun Bilder
-                            {
-                            $wert.= '<div id="sp-pic-img-p'.$i.'-9" style="display:inline;";">';
-                            $wert.=     '<img class="image-pic9 image-item-p'.$i.'" src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" >';   // definiert die Größe des Bildes
+                            $wert.= '<div id="sp-pic-img-p'.$i.'" class="';
+                            if ($i<1) $wert.=     'sp-image-item0 sp-image-item2 sp-image-item4 sp-image-item6 sp-image-item9"';
+                            elseif ($i<2) $wert.= '               sp-image-item2 sp-image-item4 sp-image-item6 sp-image-item9"';
+                            elseif ($i<4) $wert.= '                              sp-image-item4 sp-image-item6 sp-image-item9"';
+                            elseif ($i<6) $wert.= '                                             sp-image-item6 sp-image-item9"';
+                            elseif ($i<9) $wert.= '                                                            sp-image-item9"';
+                            else          $wert.= '"';
+                            $wert.= ' style="display:inline;">';
+                            $wert.= '<img class="image-item-p'.$i.' ';
+                            if ($i<1) $wert.=     'sp-image-pic0 sp-image-pic2 sp-image-pic4 sp-image-pic6 sp-image-pic9"';
+                            elseif ($i<2) $wert.= '              sp-image-pic2 sp-image-pic4 sp-image-pic6 sp-image-pic9"';
+                            elseif ($i<4) $wert.= '                            sp-image-pic4 sp-image-pic6 sp-image-pic9"';
+                            elseif ($i<6) $wert.= '                                          sp-image-pic6 sp-image-pic9"';
+                            elseif ($i<9) $wert.= '                                                        sp-image-pic9"';
+                            else          $wert.= '"';
+                            $wert.= ' src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" style="width:33%; max-height:240px; display:inline;">';   // definiert die Größe des Bildes, unbedingt drinnen lassen
                             $wert.=     '</div>';
                             }
                         $i++;
@@ -4296,7 +4369,8 @@
             return ($wert);
             }
 
-        /* Teil von showTemperatureTable für responsive Darstellung
+        /* StartpageWidgets::showTemperatureTableValues
+         * Teil von showTemperatureTable für responsive Darstellung
          */
 
 		function showTemperatureTableValues($count=false)

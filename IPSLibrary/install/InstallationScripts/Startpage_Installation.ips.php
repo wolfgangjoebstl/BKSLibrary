@@ -227,7 +227,7 @@
 
     $switchScreenID=CreateVariableByName($CategoryIdData,"SwitchScreen",1,"StartpageControl",false,0,$scriptIdStartpageWrite);               // $parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false
     $switchSubScreenID=CreateVariableByName($CategoryIdData,"SwitchSubScreen",1);                                                              // Station Screen hat mehrere Sub Screens
-
+    $switchMediaID=CreateVariableByName($CategoryIdData,"SwitchMedia",1);
 
 	IPS_RunScript($scriptIdStartpage);
 	IPS_RunScript($scriptIdStartpageWrite);

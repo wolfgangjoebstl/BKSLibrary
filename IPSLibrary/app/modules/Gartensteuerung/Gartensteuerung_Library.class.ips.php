@@ -53,6 +53,7 @@ class Gartensteuerung
 	
 	protected 	$archiveHandlerID;
 	protected	$debug;
+
 	protected	$tempwerte, $tempwerteLog, $werteLog, $werte;
 	protected	$variableTempID, $variableID;                       // Aussentemperatur und Regensensor
 	protected 	$GartensteuerungConfiguration;
@@ -66,7 +67,7 @@ class Gartensteuerung
 	
 	public 		$log_Giessanlage;									// logging Library class
 
-    protected   $RainRegisterIncrementID;                           // in CustomComponent gibt es einen Incremental Counter
+    protected   $RainRegisterIncrementID,$RainRegisterCounterID;                           // in CustomComponent gibt es einen Incremental Wert und einen Counter, Incremental ist nur die Änderung, Counter die Gesamtzahl seit Beginn
     protected   $categoryRegisterID;                                // die Category für die Regenregister, Counter of CustomComponents
     public      $DauerKalendermonate, $RegenKalendermonate;         // Ausertung Regendauer (wenn inkrementell da) und Regenmenge der letzten 10 Jahre
 
@@ -129,11 +130,11 @@ class Gartensteuerung
 		
 	public function __construct($starttime=0,$starttime2=0,$debug=false)
 		{
+        $dosOps = new dosOps();
+        $ipsOps = new ipsOps();
+
 		$this->debug=$debug;
-        if ($this->debug)
-            {
-            echo "Gartensteuerung: construct aufgerufen. Debug Mode.\n";
-            }
+        if ($this->debug) echo "Gartensteuerung: construct aufgerufen. Debug Mode.\n";
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		if (!isset($moduleManager)) 
 			{
@@ -142,9 +143,9 @@ class Gartensteuerung
 			}
 		$this->installedModules 				= $moduleManager->GetInstalledModules();
 
-
 		if ( isset($this->installedModules["Stromheizung"] ) )
 			{
+            if ($this->debug) echo "    Modul Stromheizung installiert, Schalten Gartenpumpe über dieses Modul möglich.\n";
 			include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");						
 			$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
 			$this->heatManager = new IPSHeat_Manager();
@@ -172,20 +173,22 @@ class Gartensteuerung
 
 		$this->GartensteuerungConfiguration=$this->setGartensteuerungConfiguration();
         
+        $NachrichtenID    = $ipsOps->searchIDbyName("Nachrichtenverlauf-Gartensteuerung",$this->CategoryIdData);                // needle ist Nachricht
+        $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
+
+        $systemDir     = $dosOps->getWorkDirectory();         
+		$this->log_Giessanlage=new Logging($systemDir."Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
+
         if ($this->debug)
             {
-            echo "Gartensteuerung Kategorie Data ist : ".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
-            echo "Gartensteuerung Kategorie Data.Gartensteuerung-Register ist : ".$this->categoryId_Register."   (".IPS_GetName($this->categoryId_Register).")\n";
+            echo "Gartensteuerung Konfiguration :\n";    
+            echo "    Kategorie Data ist : ".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
+            echo "    Kategorie Data.Gartensteuerung-Register ist : ".$this->categoryId_Register."   (".IPS_GetName($this->categoryId_Register).")\n";
+            echo "    NachrichtenInput ID :  $NachrichtenInputID  (".IPS_GetName($NachrichtenInputID)."/".IPS_GetName(IPS_GetParent($NachrichtenInputID)).") \n";
+            echo "    Logging in diesem File : ".$systemDir."Log_Giessanlage2.csv\n";
             //echo "GiesstimeID ist ".$this->GiessTimeID."\n";
             echo "-------\n";
             }        
-		$object2= new ipsobject($this->CategoryIdData);
-		$object3= new ipsobject($object2->osearch("Nachricht"));
-		$NachrichtenInputID=$object3->osearch("Input");
-
-        $dosOps = new dosOps();
-        $systemDir     = $dosOps->getWorkDirectory();         
-		$this->log_Giessanlage=new Logging($systemDir."Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
 
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$endtime=time();
@@ -204,24 +207,29 @@ class Gartensteuerung
 		if ($this->debug)
 			{
 			echo"--------Class Construct Giessdauerberechnung:\n";
+            echo "  Variable im Archive mit Temperaturwerten die Aggregation unterstützt ". $this->variableTempID." (".IPS_GetName($this->variableTempID)."/".IPS_GetName(IPS_GetParent($this->variableTempID)).") \n";
+            echo "  Variable im Archive mit Regenwerten die Aggregation unterstützt ". $this->variableID." (".IPS_GetName($this->variableID)."/".IPS_GetName(IPS_GetParent($this->variableID)).")\n";
 			}
         $this->tempwerteLog = array();
         $this->tempwerte    = array();
         $this->werteLog     = array();
         $this->werte        = array();
+        $this->werteStore   = array();
 
+        /*    
 		If ( ($Server=="") || ($Server==false) )
 			{
   			//$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];             // lokaler ArchiveHandler definiert
             if ($this->variableTempID)
                 {
 			    $this->tempwerteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableTempID, $starttime, $endtime,0);		
-	   		    $this->tempwerte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);	/* Tageswerte agreggiert */
+	   		    $this->tempwerte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);	// Tageswerte agreggiert 
                 }
             if ($this->variableID)
                 {
 			    $this->werteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
-		   	    $this->werte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableID, 1, $starttime2, $endtime,0);	/* Tageswerte agreggiert */
+		   	    $this->werte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableID, 1, $starttime2, $endtime,0);	    // Tageswerte agreggiert
+                print_r($this->werte);
                 }
 			}
 		else
@@ -238,7 +246,7 @@ class Gartensteuerung
 				}
 			}
 
-		/* Letzen Regen ermitteln, alle Einträge der letzten 10 Tage durchgehen n getRainevents*/
+		// Letzen Regen ermitteln, alle Einträge der letzten 10 Tage durchgehen n getRainevents
         $this->regenStatistik = $this->getRainevents($this->werteLog);              // fertige Routine, alle übergebenen Werte bearbeiten. Zweiter Parameter begrenzt Anzahl der gefundenen Events 
 
 		$this->regenStand2h=0;
@@ -252,19 +260,19 @@ class Gartensteuerung
 		   		{ 
 				$regenStand=$wert["Value"];
 				}
-			/* Regenstand innerhalb der letzten 2 Stunden ermitteln */
+			// Regenstand innerhalb der letzten 2 Stunden ermitteln 
 			if (((time()-$wert["TimeStamp"])/60/60)<2)
 				{
 				$this->regenStand2h=$regenStand-$wert["Value"];
 				}
-			/* Regenstand innerhalb der letzten 48 Stunden ermitteln */
+			// Regenstand innerhalb der letzten 48 Stunden ermitteln
 			if (((time()-$wert["TimeStamp"])/60/60)<48)
 				{
 				$this->regenStand48h=$regenStand-$wert["Value"];
 				}
 			}  // Regenwerte der Reihe nach durchgehen
 			
-		if ($this->debug) { echo "\n\n"; }
+		if ($this->debug) { echo "\n\n"; }  */
 		}
 
     /* von CustomComponents die Counter Category finden */
@@ -342,23 +350,57 @@ class Gartensteuerung
      *
      */
 
-	function getConfig_raincounterID($config=false,$debug=false)
+	public function getConfig_raincounterID($config=false,$mode="Increment",$debug=false)
 		{
+        $resultArray=false;  
         if ($debug || $this->debug) $debug=true;   
-        if ($debug) echo "getConfig_raincounterID aufgerufen.\n";            
+        if ($debug) echo "getConfig_raincounterID aufgerufen. Mode is $mode. Config ist ".json_encode($config)."\n";  
+        $CounterAuswertungID=$this->getCategoryRegisterID();          
         if ($config===false) 
             {
             if ($debug) echo "Read Configuration direkt from GartensteuerungConfiguration.\n";
             $Configuration = $this->GartensteuerungConfiguration;
             if (isset($Configuration["Configuration"])) $Configuration = $Configuration["Configuration"];
             }
-        else $Configuration = $config;
+        elseif (is_array($config)) $Configuration = $config;
+        else
+            {   // String Variable, wahrscheinlich im Format Server::VariableName
+            $result = explode("::",$config);
+            $size = sizeof($result);
+            if ($size==2)
+                {
+                $Configuration=array();
+                $remServer	  = RemoteAccessServerTable(2,true);
+                if (isset($remServer[$result[0]])) $url=$remServer[$result[0]]["Url"];
+                else return (false);
+                $rpc = new JSONRPC($url);
+                echo "Server $url : ".$rpc->IPS_GetName(0)."\n";
+                $prgID=$rpc->IPS_GetObjectIDByName("Program",0);
+                $ipsID=$rpc->IPS_GetObjectIDByName("IPSLibrary",$prgID);
+                $dataID=$rpc->IPS_GetObjectIDByName("data",$ipsID);
+                $coreID=$rpc->IPS_GetObjectIDByName("core",$dataID);
+                $compID=$rpc->IPS_GetObjectIDByName("IPSComponent",$coreID);
+                $CounterAuswertungID=$rpc->IPS_GetObjectIDByName("Counter-Auswertung",$compID);
+                $Configuration["RAINCOUNTER"]=$result[1];
+                echo "   ".$Configuration["RAINCOUNTER"]." $CounterAuswertungID/$compID  \n";
+                $RainRegisterIncrementID=@$rpc->IPS_GetObjectIDByName($Configuration["RAINCOUNTER"],$CounterAuswertungID);
+                $RainRegisterCounterID=@$rpc->IPS_GetObjectIDByName($Configuration["RAINCOUNTER"]."_Counter",$CounterAuswertungID);
+                return (["IncrementID"=>$RainRegisterIncrementID,"CounterID"=>$RainRegisterCounterID,"Url"=>$url]);
+                }
+            elseif ($size==1)
+                {
+                $Configuration["RAINCOUNTER"]=$result[0]; 
+                $resultArray=true;  
+                }
+            else return(false);
+            }
 
 		if ( isset($Configuration["RainCounter"])==true) $Configuration["RAINCOUNTER"]=$Configuration["RainCounter"];
 		if ( isset($Configuration["Raincounter"])==true) $Configuration["RAINCOUNTER"]=$Configuration["Raincounter"];
 		if ( isset($Configuration["raincounter"])==true) $Configuration["RAINCOUNTER"]=$Configuration["raincounter"];
 
-        //$this->RainRegisterIncrementID=0;                         // wird nur mehr beim ersten Mal richtig berechnet, dann ist RAINCOUNTER eine OID
+        $this->RainRegisterIncrementID = false;                         // wird nur mehr beim ersten Mal richtig berechnet, dann ist RAINCOUNTER eine OID
+        $this->RainRegisterCounterID   = false;
 		if ( ( (isset($Configuration["RAINCOUNTER"]))==true) && ($Configuration["RAINCOUNTER"]!==false) )
 			{
             /* wenn die Variable in der Config angegeben ist diese nehmen, sonst die eigene Funktion aufrufen */
@@ -366,15 +408,17 @@ class Gartensteuerung
 	    		{
                 /* wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!! */
     			if ($debug) echo "Alternative Erkennung des Regensensors, String als OID Wert für den RAINCOUNTER angegeben: \"".$Configuration["RAINCOUNTER"]."\". Jetzt in CustomComponents schauen ob vorhanden.\n";
-			    $CounterAuswertungID=$this->getCategoryRegisterID();
-                $this->RainRegisterIncrementID=@IPS_GetObjectIDByName($Configuration["RAINCOUNTER"],$CounterAuswertungID);
+                $RainRegisterIncrementID=@IPS_GetObjectIDByName($Configuration["RAINCOUNTER"],$CounterAuswertungID);
 	    		if ($debug) echo "Check : Counter Kategorie   ".$CounterAuswertungID."  Incremental Counter Register  ".$this->RainRegisterIncrementID."\n";
-		    	if ( ($CounterAuswertungID==false) || ($this->RainRegisterIncrementID==false) ) $fatalerror=true;
+		    	if ( ($CounterAuswertungID==false) || ($RainRegisterIncrementID==false) ) $fatalerror=true;
            		
                 $RegisterCounterID=@IPS_GetObjectIDByName($Configuration["RAINCOUNTER"]."_Counter",$CounterAuswertungID);
 	        	if ($debug) echo "Check : Counter Kategorie   ".$CounterAuswertungID."  Counter Register  ".$RegisterCounterID."\n";
     			if ( ($CounterAuswertungID==false) || ($RegisterCounterID==false) ) $fatalerror=true;
-                $variableID=$RegisterCounterID;
+                else $RainRegisterCounterID = $RegisterCounterID;
+
+                if (strtoupper($mode)=="INCREMENT") $variableID = $RainRegisterIncrementID;
+                else $variableID = $RegisterCounterID;
                 }    
 			else $variableID=(integer)$Configuration["RAINCOUNTER"];
 			}
@@ -388,9 +432,28 @@ class Gartensteuerung
                 $variableID=false;
                 }
 			}
-        if (IPS_VariableExists($variableID)) return($variableID); 		
+        if ($resultArray) return (["IncrementID"=>$RainRegisterIncrementID,"CounterID"=>$RainRegisterCounterID]);
+        elseif (IPS_VariableExists($variableID)) 
+            {
+            $this->RainRegisterCounterID=$RainRegisterCounterID;
+            $this->RainRegisterIncrementID=$RainRegisterIncrementID;
+            return($variableID); 		
+            }
         else return (false);
 		}
+    
+    // Register anzeigen und ausgeben
+    function getRainRegisters($index=false,$debug=false)
+        {
+        if ($debug) {
+            echo "Regenregister:\n";
+            echo "   Inkrementelle Werte : ".$this->RainRegisterIncrementID."\n";
+            echo "   Counter       Werte : ".$this->RainRegisterCounterID."\n";
+        }
+        if ($index===false) return (["IncrementID"=>$this->RainRegisterIncrementID,"CounterID"=>$this->RainRegisterCounterID]);
+        elseif (strtoupper("IncrementID")=="Increment") return $this->RainRegisterIncrementID;
+        else return $this->RainRegisterCounterID; 
+        }
 
     /* Wenn einmal der RainCounter ermittelt wurde ist diese Funktion nicht mehr notwendig.
      * nur wenn die OID noch nicht feststeht
@@ -668,7 +731,7 @@ class Gartensteuerung
                 if ($debug) echo"   $i:".$config["Configuration"]["KREIS".$i]."\n";
                 }
 
-            $config["Configuration"]["RainCounter"]=$this->getConfig_raincounterID($config["Configuration"], $debug);
+            $config["Configuration"]["RainCounter"]=$this->getConfig_raincounterID($config["Configuration"], "Increment", $debug);
             $config["Configuration"]["AussenTemp"]=$this->getConfig_aussentempID($config["Configuration"], $debug);
             $config["Configuration"]["RemoteAccessAdr"]=$this->getConfig_RemoteAccess_Address($config["Configuration"], $debug);   
             $config["Configuration"]["WaterPump"]=$this->getConfig_waterPumpID($config["Configuration"], $debug);
@@ -691,7 +754,7 @@ class Gartensteuerung
             }
         else 
             {
-            $configInput["RAINCOUNTER"]=$this->getConfig_raincounterID($configInput, $debug);
+            $configInput["RAINCOUNTER"]=$this->getConfig_raincounterID($configInput, "Counter", $debug);
             $config = $configInput;
             $configInput["RainCounter"] = $configInput["RAINCOUNTER"];
             $configInput["AussenTemp"] = $configInput["AUSSENTEMP"];
@@ -1063,6 +1126,562 @@ class Gartensteuerung
 		return $giessdauerVar;
 		}
 
+
+	/*
+	 *   Ausgabe der Events/Nachrichten über die Giessanlage, wann wie lange eingeschaltet
+	 *
+	 */
+
+	public function listEvents()
+		{
+		return ($this->log_Giessanlage->PrintNachrichten());
+		}
+
+    /*
+     *  einen Regenwert pro Tag als Array zurückgeben
+     *
+     */
+
+    public function getRainValues($debug=false)
+        {
+    	$RegisterCounterID=$this->variableID;
+    	$endtime=time();
+		$starttime2=$endtime-60*60*24*3650;   /* die letzten 3650 Tage Niederschlag */
+        unset($werteLog);
+		$werteLog = AC_GetLoggedValues($this->archiveHandlerID, $RegisterCounterID, $starttime2, $endtime,0);
+        if ($debug) echo "getRainValues, die insgesamt ".sizeof($werteLog)." Counter Werte anschauen und für eine Auswertung nach Kalendermonaten (12 Monate) und eine 1/7/30/30/360/360 Auswertung vorbereiten:\n";
+        /* Regenwert pro Tag ermitteln. Gleiche Werte am selben Tag igorienen, spätester Wert pro Tag bleibt. */ 
+        $zeit=date("d.m.y",time()); $init=true;
+        $regenWerte=array();
+		foreach ($werteLog as $wert)
+			{
+            if ($init) {$init=false; $lastwert=$wert["Value"];}
+            $neuezeit=date("d.m.y",$wert["TimeStamp"]);
+            if ($zeit != $neuezeit)
+                {
+                if ($wert["Value"]>$lastwert)          // da ist was verkehrt
+                     {
+                     if ($debug) echo "*********".$wert["Value"]."*********";
+                     foreach ($regenWerte as $timestamp => $entry) 
+                          {
+                          $regenWerte[$timestamp]+=$wert["Value"];
+                          //echo $date."   ".$regenWerte[$date]."\n";
+                          } 
+                      }
+                //if ($debug) echo "***Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
+                $zeit=$neuezeit; $lastwert=$wert["Value"];
+                $regenWerte[$wert["TimeStamp"]]=$wert["Value"];                 
+                }
+            else
+                {
+                //if ($debug) echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
+                }
+            }
+
+        return ($regenWerte);
+        }
+
+
+	/*******************
+     *
+     * Ausgabe der Regenereignisse (ermittelt mit listrainevents) mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
+	 */
+
+	public function writeKalendermonateHtml()
+		{
+        $html="";
+    	$html.='<table frameborder="1" width="100%">';
+	    $html.="<th> <tr> <td> Regenbeginn </td> <td> Regenende </td> <td> Dauer Min</td> <td> Menge mm </td> <td> max mm/Stunde </td> </tr> </th>";
+	    foreach ($kalendermonate as $regeneintrag)
+		    {
+    		//echo "  Regenbeginn ".date("d.m H:i",$regeneintrag["Beginn"])."  Regenende ".date("d.m H:i",$regeneintrag["Ende"])." mit insgesamt ".number_format($regeneintrag["Regen"], 1, ",", "")." mm Regen. Max pro Stunde ca. ".number_format($regeneintrag["Max"], 1, ",", "")."mm/Std.\n";
+		    $html.="<tr> <td>".date("D d.m H:i",$regeneintrag["Beginn"])."</td> <td>".date("d.m H:i",$regeneintrag["Ende"])."</td> <td>"
+		        .number_format(($regeneintrag["Ende"]-$regeneintrag["Beginn"])/60, 0, ",", "")."</td> <td>".number_format($regeneintrag["Regen"], 1, ",", "")
+    			."</td> <td>".number_format($regeneintrag["Max"], 1, ",", "")."</td> </tr>";
+	    	}
+    	$html.="</table>";
+	    //echo "Und als html Tabelle :\n"; echo $html;	
+        return($html);
+        }
+
+	/*******************
+     *
+     * Ausgabe der Regenmenge/dauer (ermittelt mit listrainevents) als html Tabelle zum speichern in einer hml Box
+	 */
+
+	public function writeOverviewMonthsHtml($monthlyValues=array())
+		{
+        $startjahr=(integer)date("y",time());
+        $minjahr=$startjahr;
+        //print_r($monthlyValues);
+        foreach ($monthlyValues as $date=>$regenmenge)
+            {
+            $MonatJahr=explode(".",$date);
+            if ((integer)$MonatJahr[1]<$minjahr) $minjahr=(integer)$MonatJahr[1];
+            $tabelle[(integer)$MonatJahr[0]][(integer)$MonatJahr[1]]=$regenmenge;
+            }
+        $html="";
+        $html.='<table frameborder="1" width="100%">';
+    	$html.="<th> <tr> <td> Monat </td> ";
+        for ($i=$startjahr;$i>=$minjahr;$i--) {$html.="<td> ".$i." </td>";}
+        $html.= " </tr> </th>";
+	    for ($j=1;$j<=12;$j++)
+            {
+            $html.="<tr> <td>".$j."</td>";
+            for ($i=$startjahr;$i>=$minjahr;$i--) 
+                {
+                if (isset($tabelle[$j][$i])==true) $html.="<td> ".number_format($tabelle[$j][$i],1,",","")." </td>";
+                else $html.="<td> </td>";
+                }
+            $html.= " </tr> ";
+    	    }
+   	    $html.="</table>";
+        return($html);
+        }   
+
+	}  /* Ende class Gartensteuerung */
+
+/************************************************************
+ *
+ * GartensteuerungControl
+ *
+ * Umsetzung von Befehlen
+ *
+ */
+
+class GartensteuerungControl extends Gartensteuerung
+	{
+
+    protected $GiessTimeRemainID,$GiessCountID;
+    protected $timerDawnID,$UpdateTimerID;
+
+    function __construct($debug=false)
+        {
+		$this->debug=$debug;		
+        parent::__construct();          // nicht vergessen den parent construct auch aufrufen
+        $this->GiessTimeRemainID           = @IPS_GetVariableIDByName("GiessTimeRemain", $this->categoryId_Auswertung);                 // sonst ist die category noch nicht bekannt
+        $this->GiessCountID		= @IPS_GetVariableIDByName("GiessCount",$this->categoryId_Register);
+
+        $GartensteuerungScriptID   		= IPS_GetScriptIDByName('Gartensteuerung', $this->CategoryIdApp);
+	    $this->timerDawnID = @IPS_GetEventIDByName("Timer3", $GartensteuerungScriptID);
+	    $this->UpdateTimerID = @IPS_GetEventIDByName("UpdateTimer", $GartensteuerungScriptID);	    
+        }
+
+    public function start()
+        {
+        if ($this->debug) echo "start aufgerufen.\n";
+        echo "here is ".$this->GiessTimeRemainID."\n";
+        SetValue($this->GiessTimeID,10);
+        SetValue($this->GiessTimeRemainID ,0);				
+        IPS_SetEventActive($this->UpdateTimerID,true);				
+        IPS_SetEventCyclicTimeBounds($this->UpdateTimerID,time(),0);  /* damit alle Timer gleichzeitig und richtig anfangen und nicht zur vollen Stunde */
+        IPS_SetEventActive($this->timerDawnID,false);
+        SetValue($this->GiessCountID,1);
+        }
+
+    }
+
+/************************************************************
+ *
+ * GartensteuerungStatistics, Klimaberechnungen
+ *
+ * 
+ *
+ */
+
+class GartensteuerungStatistics extends Gartensteuerung
+	{
+    protected $archiveOps;                              // class for archives, general use
+    protected $werteStore = array();                  // Inputwete für Berechnung, nur einmal erfassen
+
+    function __construct($debug=false)
+        {
+        $this->werteStore = array();
+        $this->archiveOps = new archiveOps();
+        parent::__construct(0,0,$debug);                    // keine Start und Endtime übergeben
+        }
+
+
+    /* nur in dieser class, es gibt einen werte Speicher
+     * und verschiedene Möglichkeitren die Daten dorthin einzulesen
+     */
+    public function setWerteStore($rainregs)
+        {
+        $endtime=time();
+        $starttime=$endtime-60*60*24*100;                // 10 Tage
+        if (is_array($rainregs))
+            {
+            if (isset($rainregs["Url"]))
+                {
+                $url=$rainregs["Url"];
+                echo "setWerteStore, remote Server mit url $url \n";
+                $rpc = new JSONRPC($url);
+			    $archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                if (isset($rainregs["IncrementID"]))
+                    {
+                    $variableID = $rainregs["IncrementID"];
+			        $werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID , $starttime, $endtime,0);
+                    print_R($werteLog);
+                    }
+                }
+            }
+        }
+
+	/* getRainStatistics, verwendet getRainEventsFromIncrements, getRainValuesFromIncrements
+     * beide Routinen ahben selbe Datenbasis, wird nicht mehr upgedated und ist Teil der class
+	 *  Allerlei Auswertungen mit der Regenmenge.
+     *  verwendet getRainEventsFromIncrements, übergibt die Ereignisse in der ersten Variable 
+	 *  Ergebnisse der statistischen Auswertungen werden in der Klasse gespeichert und sind dann auch verfügbar
+     *  Arrays:  $this->RegenKalendermonate, $this->DauerKalendermonate
+     * 
+     *  Beispiel Ausgabe: Auswertung 1: 0,0mm  7: 4,4mm 30: 17,7mm 30: 37,8mm 360: 442,2mm 360: 0,0mm
+     *
+	 */
+
+	public function getRainStatistics($input=array(),$debug=false)
+		{
+        echo "GartensteuerungStatistics::getRainStatistics, getRainEventsFromIncrements wird aufgerufen.\n";            
+        $regenereignis=array();            // regenereignis ist ein pointer, input die Liste der Variablen die in die Statistik eingehen sollen
+        $regenMenge = $this->getRainEventsFromIncrements($regenereignis,$input,false);         // true Debug
+        //print_R($regenereignis);        
+        echo "    Regenmenge im gesamten Zeitraum ist $regenMenge mm. Variablen ausgewertet: ".json_encode($input)."\n";
+        $kalendermonate=array();
+        if (sizeof($regenereignis)==0) 
+            {
+            echo "Fehler, Regenereignis ist leer, alternative Berechnung aus der Parent class.\n";
+            $regenereignis=$this->listRainEvents(1000);          // wir haben hier noch eine Alternativberechungsmethode
+            }
+        foreach ($regenereignis as $eintrag) 
+            {
+            //print_r($eintrag);
+            $dauer = ($eintrag["Ende"]-$eintrag["Beginn"])/60/60;           // Dauer in Stunden
+            $monat=date("m.y",$eintrag["Ende"]);
+            if (isset($kalendermonate[$monat])) $kalendermonate[$monat] += $dauer;
+            else $kalendermonate[$monat] = $dauer;
+                
+            if ($dauer>0)
+                {
+                /* einmalige Ereignise, 03 mm in 2 Stunden ingnorieren */
+                if ($debug > 1) echo "Anfang ".date("D d.m.y H:i",$eintrag["Beginn"])." bis Ende ".date("D d.m H:i",$eintrag["Ende"])." mit insgesamt "
+                        .number_format($eintrag["Regen"], 1, ",", "")." mm Dauer ".number_format($dauer, 1, ",", "")." Stunden  Max :".number_format($eintrag["Max"], 1, ",", "").
+                        " l/Std\n";
+                }
+            }  
+        $this->DauerKalendermonate=$kalendermonate;     // Ergebnis in der Klasse abspeichern
+
+        // from register_Counter, das sind die Zählerstaende, die Regenwerte pro Tag ermiteln, letzer Zählerstand pro Tag            
+        $regenWerte = $this->getRainValuesFromIncrements($regenMenge,$input,$debug);                           
+        if ($debug>1)
+            {
+            echo "Regenwerte in getRainStatiscs ermittelt, insgesamt ".count($regenWerte)." Werte, hier ausgeben:\n";
+            //print_R($regenWerte);
+            foreach ($regenWerte as $time=>$regenWert) echo "   ".date("d.m.Y H:i:s",$time)."  $regenWert mm\n";
+            }
+
+        $init=true; $tageswert=false; $wochenwert=false; $monatswert=false; $monat2wert=false; $jahreswert=false; $jahr2wert=false;
+        $tag=0; $woche=0; $monat=0; $monat2=0; $jahr=0; $jahr2=0;
+        $kalendermonate=array();
+        foreach ($regenWerte as $zeit => $regen)                    // regenwerte sind absolut, ein Wert pro Tag und immer der späteste
+             {
+             if ($init)         // beim ersten Wert, also dem jüngsten, Absprungpunkt ist jetzt und der letzte Regenstand
+                  {
+                  $lasttime=$zeit; $lastwert=$regen; $init=false; 
+                  $inittime=time(); $initwert=$regen;
+                  $startmonat=$regen; $aktmonat=date("m.y",$zeit);
+                  }
+             else
+                  {        
+                  //echo "  ".date("D d.m.y H:i",$lasttime)."   ".number_format(($lastwert-$regen), 1, ",", "");
+                  $dauer=(($inittime-$zeit)/60/60/24);                                      // Dauer in Tagen zwischen zwei Tagesendstaenden
+                  //echo "    Wert für ".number_format((($inittime-$zeit)/60/60/24), 1, ",", "")." Tage ".($initwert-$lastwert);
+                  //echo "\n";
+                  if ( ($dauer>1) && !($tageswert) ) {$tageswert=true; $tag=$initwert-$lastwert; }
+                  if ( ($dauer>7) && !($wochenwert) ) {$wochenwert=true; $woche=$initwert-$lastwert; }
+                  if ( ($dauer>30) && !($monatswert) ) {$monatswert=true; $monat=$initwert-$lastwert; $init2wert=$lastwert; }
+                  if ( ($dauer>60) && !($monat2wert) ) {$monat2wert=true; $monat2=$init2wert-$lastwert;  }
+                  if ( ($dauer>360) && !($jahreswert) ) {$jahreswert=true; $jahr=$initwert-$lastwert; $init2wert=$lastwert; }
+                  if ( ($dauer>720) && !($jahr2wert) ) {$jahr2wert=true; $jahr2=$init2wert-$lastwert;  }
+                  if ($aktmonat != (date("m.y",$zeit))) {$kalendermonate[$aktmonat]=$startmonat-$regen; $startmonat=$regen; $aktmonat=date("m.y",$zeit);    }
+                  $lasttime=$zeit; $lastwert=$regen;
+                  }
+            } 
+        if ($jahr==0) { $jahr=$initwert-$lastwert; $init2wert=$lastwert;}   
+        if ($jahr2==0) { $jahr2=$init2wert-$lastwert; }    
+        $ergebnis="Auswertung 1: ".number_format($tag, 1, ",", "")."mm  7: ".number_format($woche, 1, ",", "")."mm 30: ".number_format($monat, 1, ",", "")."mm 30: "
+                        .number_format($monat2, 1, ",", "")."mm 360: ".number_format($jahr, 1, ",", "")."mm 360: ".number_format($jahr2, 1, ",", "")."mm\n";      
+        $this->RegenKalendermonate=$kalendermonate;
+	    return ($ergebnis);
+        }
+
+
+    /* noch eine Routine um die Regenereignisse herauszuarbeiten
+     * Die Variable die im Namen ein _Counter am Ende hat ist das Input Register mit einem Zählerstand, 
+     * Counter2 sollte der Zählerstand sein der um den rewset des registers durch einen Stromausfall bereinigt ist und den Zählerstand richtig weiterschreibt.
+     *
+     * da das alles viel zu kompliziert ist den incrementellen registerwert nehmen. Im einfachen Registernamen gespeichert:
+     *
+     * rainRegs ist ein array mit Inputregistern die miteinenader die Niederschlagswerte ergeben
+     *
+     * BKS:
+     * 12713 >>> alte Werte von 2016 bis Jänner 2020
+     * 38316  >>> neuer Wert ab August 2020
+     *
+     * Ergebnis sind regenereignis als array und pointer
+     *
+     * den Werte Log durchgehen, wenn Value>0 ist zur Gesamtmenge Regen dazuzaehlen. Bei Value=0 nichts machen
+     * beim ersten Mal ein regenereignis Ende mit diesem timestamp anlegen, dabei sich von der Jetztzeit zurückarbeiten
+     * wenn die Zeit zwischen zwei Regenmesswerten > 60 Minuten betraegt, den Beginn eintragen und ein neues regenereignis beginnen
+     *
+     ***/
+
+    public function getRainEventsFromIncrements(&$regenereignis, $rainRegs=array(),$debug=false)
+        {
+        if ($debug) echo "getRainEventsFromIncrements mit ".json_encode($rainRegs)." Register aufgerufen. Rain Register from class ID ".$this->RainRegisterIncrementID." .\n";
+        //$debug=false;
+        //if ($this->RainRegisterIncrementID>0) $rainRegs[0]=$this->RainRegisterIncrementID;
+        if (($this->RainRegisterIncrementID>0) && (sizeof($rainRegs)==0)) $rainRegs[0]=$this->RainRegisterIncrementID;          // Default register verwenden
+        $init=true;             // beim ersten Mal
+        $i=0;                   // Zaehler Regenereignisse
+        $lasttime=time();       // von der Jetztzeit zurückarbeiten
+        $regenMenge=false;
+        echo "getRainEventsFromIncrements, diese Register als Input verwenden: ".json_encode($rainRegs)."\n";
+
+        $archiveOps = new archiveOps();
+        $archiveHandlerID=$archiveOps->getArchiveID();
+        $config = $archiveOps->getConfig();
+        $configCleanUpData = array();
+        $configCleanUpData["deleteSourceOnError"]=false;
+        $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
+        $config["CleanUpData"] = $configCleanUpData;    
+
+        foreach ($rainRegs as $rainReg)
+            {
+            /* Es gibt ein inkrementales Regenregister in der CustomComponents Auswertung. Da kann ich dann schön die Regendauer pro Monat auswerten
+             * es werden auch die Regenereignisse gefunden.
+    		$endtime=time();
+	    	$starttime2=$endtime-60*60*24*3650;   // die letzten 10 Jahre Niederschlag
+  		    //$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+    		$werteLog = AC_GetLoggedValues($this->archiveHandlerID, $rainReg, $starttime2, $endtime,0);
+            /* Auswertung von Agreggierten Werten funktioniert leider bei inkrementellen Countern nicht */
+
+            if (sizeof($this->werteStore)==0)
+                {
+                echo "ArchiveOps::getValues($rainReg \n";
+                $result = $archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen
+                $this->werteStore = $result["Values"];
+                }
+            else echo "Bereits Werte im Speicher, insgesamt ".sizeof($this->werteStore)."\n";
+            $regen=0;               // Regenmenge während einem Regenereignis
+            $lastwert=0;   $zeit=0;
+            $ende=true; $maxmenge=0;
+			foreach ($this->werteStore as $wert)
+				{
+                if ($wert["Value"]!=0)              // nur positive Regenmengen akzeptieren, Warnung bei größer 10
+                    {
+                    if ($wert["Value"]<0) 
+                        {
+                        echo "   Fehler, negativer Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
+                        }
+                    else
+                        {
+                        if ($wert["Value"]>10) echo "     Warnung, ungewöhnlicher Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
+                        $regen+=$wert["Value"];
+                        if ($init===true)               // beim aller-ersten Mal ist es true, wir starten mit i=0
+                            {
+                            if ($debug>1) echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    ";
+                            //$regenereignis[$i]["Ende"]=$wert["TimeStamp"];
+                            $regenereignisEnde=$wert["TimeStamp"];
+                            $regenMenge=0;          // Unterschied false und 0
+                            $init=false;    
+                            }
+                        else 
+                            {
+                            $zeit= ($lasttime-$wert["TimeStamp"])/60;     // vergangene Zeit zwischen zwei Regenwerten in Minuten messen                    
+                            $menge=60/$zeit*$wert["Value"];
+                            $regenMenge+=$wert["Value"];
+                            if ($menge>$maxmenge) $maxmenge=$menge;
+                            if ($debug>1) 
+                                {
+                                echo number_format($regenMenge,1,",","")."mm | ".number_format($zeit,1,",","")."Min ".number_format($menge,1,",","")."l/Std   ".$regen."\n";
+                                echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    ";                                            // für die naechste Zeile
+                                }
+                            }       
+                        if ((abs($zeit))>60)                                   // Zeit zwischen Regenwerten, 60 Minuten überschritten, ein regenereignis wurde gefunden
+                            {
+                            $regenereignis[$i]["Regen"]=$regen;
+                            $regenereignis[$i]["Max"]=$maxmenge;
+                            if ($zeit>0)
+                                {
+                                $regenereignis[$i]["Beginn"]=$lasttime;     // letzter Wert ist der Beginnwert
+                                $regenereignis[$i]["Ende"]=$regenereignisEnde;
+                                $dauer = ($regenereignis[$i]["Ende"]-$regenereignis[$i]["Beginn"])/60;      // in Minuten
+                                }
+                            else
+                                {
+                                $regenereignis[$i]["Ende"]=$lasttime;     // letzter Wert ist der Beginnwert
+                                $regenereignis[$i]["Beginn"]=$regenereignisEnde;
+                                $dauer = ($regenereignis[$i]["Ende"]-$regenereignis[$i]["Beginn"])/60;      // in Minuten
+                                }
+                            if ( ($debug) && ($regen>1) )           // mehr als 1mm, es gibt viele Einzelwerte
+                                {
+                                echo "Beginn ".date("d.m.Y H:i:s",$regenereignis[$i]["Beginn"])."  Ende ".date("d.m.Y H:i:s",$regenereignis[$i]["Ende"])." Dauer ".nf($dauer,"min",14)." Regen ".nf($regenereignis[$i]["Regen"],"mm")." Max ".nf($regenereignis[$i]["Max"],"mm")."\n";     
+                                }
+                            $regen=0; $i++;
+                            $regenereignisEnde=$wert["TimeStamp"]; 
+                            $maxmenge=0; 
+                            }
+                        $lastwert=$wert["Value"]; 
+                        $lasttime=$wert["TimeStamp"]; 
+                        }
+                    }                                               // ende Werte != 0
+				}                                           // ende foreach werte
+            $regenereignis[$i]["Regen"]=$regen;
+            if ($zeit>0)
+                {
+                $regenereignis[$i]["Beginn"]=$lasttime; 
+                $regenereignis[$i]["Ende"]=$regenereignisEnde;  
+                }
+            else
+                {
+                $regenereignis[$i]["Ende"]=$lasttime; 
+                $regenereignis[$i]["Beginn"]=$regenereignisEnde;  
+                }
+            $regenereignis[$i]["Max"]=$maxmenge;
+            if ($debug) echo "\n";
+    		}                                       // ende foreach rainregs
+        return ($regenMenge);
+        }
+
+    /* getRainAmountSince, verwendet this->werteStor mit Increments also Regenmengen Deltas	
+     * werteStore kann leer sein, dann wird er neu aufgefüllt	
+     * das Regenmengen Increments Register kann mit rainRegs angefragt werden
+     * $this->regenStand2h, $this->regenStand48h ermitteln/updaten
+     *
+     */
+    public function getRainAmountSince()
+        {
+        $rainReg = $this->getRainRegisters("Increment");
+        if (sizeof($this->werteStore)==0)
+            {
+            $config = $this->archiveOps->getConfig();
+            $configCleanUpData = array();
+            $configCleanUpData["deleteSourceOnError"]=false;
+            $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
+            $config["CleanUpData"] = $configCleanUpData;                   
+            echo "ArchiveOps::getValues($rainReg \n";
+            $result = $this->archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen, Werte sind auch in der archiveOps class
+            $this->werteStore = $result["Values"];
+            }
+        else {
+            echo "Werte von ".date("d.m.Y H:i:s",$this->werteStore[array_key_first($this->werteStore)])." bis ".date("d.m.Y H:i:s",$this->werteStore[array_key_last($this->werteStore)])."\n";
+            echo "Bereits Werte im Speicher, insgesamt ".sizeof($this->werteStore)."\n";
+        }
+
+		$this->regenStand2h=0;
+		$this->regenStand48h=0;
+
+        $regenStand=0;			// der erste Regenwerte, also aktueller Stand 
+		$vorwert=0; 
+		foreach ($this->werteStore as $wert)
+			{
+			if ($vorwert==0) $regenStand = $wert["Value"];
+            else $regenStand += $wert["Value"];
+			/* Regenstand innerhalb der letzten 2 Stunden ermitteln */
+			if (((time()-$wert["TimeStamp"])/60/60)<2)
+				{
+				$this->regenStand2h=$regenStand;
+				}
+			/* Regenstand innerhalb der letzten 48 Stunden ermitteln */
+			if (((time()-$wert["TimeStamp"])/60/60)<48)
+				{
+				$this->regenStand48h=$regenStand;
+				}
+			}  // Regenwerte der Reihe nach durchgehen
+
+        } 
+
+
+    /* wie getRainValues nur von den Increments, also nicht Zählerständen
+     * übernimmt die gesamte Regenmenge von zuvor und zählt anhand der Increments wieder zurück
+     *
+     */
+
+    public function getRainValuesFromIncrements($regenMenge,$rainRegs=array(),$debug=false)
+        {
+        if ($debug) echo "getRainValuesFromIncrements, Regenmenge $regenMenge mm , Mit Rain Register : ".json_encode($rainRegs)." als Input aufgerufen. Rain Register from class ID ".$this->RainRegisterIncrementID." .\n";
+        //$debug=false;
+        if (($this->RainRegisterIncrementID>0) && (sizeof($rainRegs)==0)) $rainRegs[0]=$this->RainRegisterIncrementID;            
+    	$endtime=time();
+		$starttime2=$endtime-60*60*24*3650;   /* die letzten 3650 Tage Niederschlag */
+        $init=true;
+        $regenWerte=array();
+        $zeit=date("d.m.y",time()); 
+        
+        echo "getRainValuesFromIncrements, Regenmenge bisher : $regenMenge mm, diese Register als Input verwenden: ".json_encode($rainRegs)."\n";
+        $archiveOps = new archiveOps();
+        $archiveHandlerID=$archiveOps->getArchiveID();
+        $config = $archiveOps->getConfig();
+        $configCleanUpData = array();
+        $configCleanUpData["deleteSourceOnError"]=false;
+        $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
+        $config["CleanUpData"] = $configCleanUpData;    
+
+        foreach ($rainRegs as $rainReg)
+            {
+            if (sizeof($this->werteStore)==0)         // nur Nachladen wenn noch keine Werte im Speicher
+                {            
+                $result = $archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen
+                $this->werteStore = $result["Values"];
+                }
+            else echo "Bereits Werte im Speicher, insgesamt ".sizeof($this->werteStore)."\n";                
+            /*
+            $werteLog = AC_GetLoggedValues($this->archiveHandlerID, $rainReg, $starttime2, $endtime,0);
+            //echo "Die insgesamt ".sizeof($werteLog)." Counter Werte anschauen und auswerten nach Kalendermonaten (12 Monate) und eine 1/7/30/30/360/360 Auswertung:\n";
+            /* Regenwert pro Tag ermitteln. Gleiche Werte am selben Tag igorienen, spätester Wert pro Tag bleibt. */ 
+            foreach ($this->werteStore as $wert)
+                {
+                if ($wert["Value"]>=0)
+                    {
+                    if ($init) 
+                        {
+                        $init=false; 
+                        $neuewert=$regenMenge; $lastwert=$neuewert;
+                        //$lastwert=$wert["Value"];                     // wenn counter
+                        }
+                    $neuewert -= $wert["Value"];
+                    //$neuewert=$wert["Value"]                              // wenn counter
+                    $neuezeit=date("d.m.y",$wert["TimeStamp"]);
+                    if ($zeit != $neuezeit)
+                        {
+                        if ($neuewert>$lastwert)          // da ist was verkehrt
+                            {
+                            if ($debug) echo "*********".$wert["Value"]."*********";
+                            foreach ($regenWerte as $timestamp => $entry) 
+                                {
+                                $regenWerte[$timestamp]+=$neuewert;
+                                //echo $date."   ".$regenWerte[$date]."\n";
+                                } 
+                            }
+                        if ($debug>1) echo "***Wert : ".number_format($neuewert, 1, ",", "")."/".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
+                        $zeit=$neuezeit; 
+                        $lastwert=$neuewert;
+                        $regenWerte[$wert["TimeStamp"]]=$neuewert;                 
+                        }
+                    else                // selber Tag
+                        {
+                        if ($debug>1) echo "   Wert : ".number_format($neuewert, 1, ",", "")."/".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
+                        }
+                    }
+                else
+                    {
+                    echo "Fehler negativer Wert ".$wert["Value"]."\n";    
+                    }
+                }
+            }
+        return ($regenWerte);
+        }
+
+
 	/******************************************************************
 	 *
 	 * Ermittlung und Ausgabe der Regenschauer in den letzten Tagen
@@ -1091,16 +1710,16 @@ class Gartensteuerung
 
 		//$Server=$this->getConfig_RemoteAccess_Address();
         $Server                 = $this->GartensteuerungConfiguration["Configuration"]["RemoteAccessAdr"];
-		if ($debug)
-			{
-			echo "\n";
-			echo"--------Function List RainEvents:\n";
-			}
 		If ($Server=="")
 			{
 			$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
-			}
+            if ($debug)
+                {
+                echo "\n";
+                echo "--------Function listRainEvents from loval OID $variableID : ".sizeof($werteLog)." Werte\n";
+                }		
+        	}
 		else
 			{
 			$rpc = new JSONRPC($Server);
@@ -1108,13 +1727,17 @@ class Gartensteuerung
 			$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
 			if ($this->debug)
 				{
-				echo "   Daten vom Server : ".$Server."\n";
+                echo "\n";
+                echo "--------Function listRainEvents from Server : ".$Server." OID $variableID : ".sizeof($werteLog)." Werte\n";
 				}
 			}
         $regenStatistik = $this->getRainevents($werteLog,$events);
 		return ($regenStatistik);
 		}
 
+    /* die letzten Regentage
+     *
+     */
 	function listRainDays($days=10,$variableID=false,$debug=false)
 		{
         if ($variableID==false) $variableID = $this->variableID;                // nur für die lokalen Variablen
@@ -1124,38 +1747,42 @@ class Gartensteuerung
 
 		//$Server=$this->getConfig_RemoteAccess_Address();
         $Server                 = $this->GartensteuerungConfiguration["Configuration"]["RemoteAccessAdr"];
-		if ($debug)
-			{
-			echo "\n";
-			echo"--------Function List RainEvents:\n";
-			}
 		If ($Server=="")
 			{
 			$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
+    		if ($debug) echo"--------Function List RainDays:   $days  $variableID (".IPS_GetName($variableID).") : ".sizeof($werteLog)." Dateneinträge\n";
 			}
 		else
 			{
 			$rpc = new JSONRPC($Server);
 			$this->archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
-			if ($this->debug)
-				{
-				echo "   Daten vom Server : ".$Server."\n";
-				}
+    		if ($debug) echo"--------Function List RainDays:   $days  $Server ".$this->variableID." (".IPS_GetName($variableID).") : ".sizeof($werteLog)." Dateneinträge\n";
 			}
         $regenStatistik = $this->getRainevents($werteLog);
 		return ($regenStatistik);
 		}
 
-    /* Routinen nur mehr an einem Ort. liefert Regenstatistik und ändert einen class parameter: letzterRegen
-     * benötigt ein inkrementelles Regenregister, Counter mit steigenden Werten
+    /* getRainevents
+     *
+     * Routinen nur mehr an einem Ort. liefert Regenstatistik und ändert einen class parameter: letzterRegen
+     * benötigt ein inkrementelles Regenregister, Counter mit steigenden Werten, array mit [Value,TimeStamp], der erste Wert ist der höchste Wert
      *
      * Rain2h oder 48h extra berechnen.
      *
+     * return Wert (regenStatistik)
+     *  Index ist regenAnfangZeit, kann auch i sein
+     *      Beginn
+     *      Ende
+     *      Regen
+	 *      Max
+     * in der class werden upgedated:
+     *      letzterRegen
+     *
      */
 
-    private function getRainevents($werteLog,$events=0)
+    protected function getRainevents($werteLog,$events=0)
         {
 		/* Letzen Regen ermitteln, alle Einträge der letzten x (default 10) Tage Niederschlag durchgehen */
         $debug=$this->debug;
@@ -1284,7 +1911,7 @@ class Gartensteuerung
 
 	/*******************
      *
-     * Ausgabe der Regenereignisse (ermittelt mit listrainevents) mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
+     * Ausgabe der Regenereignisse (ermittelt mit listRainEvents, getRainevents) mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
 	 */
 
 	public function writeRainEventsHtml($rainevents)
@@ -1305,502 +1932,7 @@ class Gartensteuerung
         return($html);
         }
 
-	/*
-	 *   Ausgabe der Events/Nachrichten über die Giessanlage, wann wie lange eingeschaltet
-	 *
-	 */
-
-	public function listEvents()
-		{
-		return ($this->log_Giessanlage->PrintNachrichten());
-		}
-
-    /* noch eine Routine um die Regenereignisse herauszuarbeiten
-     * Die Variable die ein _Counter am Ende hat ist das Input Register mit einem Zählerstand, Counter2 sollte der Zählerstand sein der um einen Stromausfall bereinigt ist und den Zählerstand richtig weiterschreibt.
-     * da das alles viel zu kompliziert ist den incrementellen registerwert nehmen. Im einfachen Registernamen gespeichert:
-     *
-     * 12713 >>> alte Werte von 2016 bis Jänner 2020
-     * 38316  >>> neuer Wert ab August 2020
-     *
-     * Ergebnis sind regenereignisse
-     * den Werte Log durchgehen, wenn Value>0 ist zur Gesamtmenge regen dazuzaehlen. Bei Value=0 nichts machen
-     * beim ersten Mal ein regenereignis Ende mit diesem timestamp anlegen, dabei sich von der Jetztzeit zurückarbeiten
-     * wenn die Zeit zwischen zwei Regenmesswerten > 60 Minuten betraegt, den Beginn eintragen und ein neues regenereignis beginnen
-     *
-     ***/
-
-    public function getRainEventsFromIncrements(&$regenereignis, $rainRegs=array(),$debug=false)
-        {
-        if ($debug) echo "getRainEvents mit ID ".$this->RainRegisterIncrementID." aufgerufen.\n";
-        $debug=false;
-        if ($this->RainRegisterIncrementID>0) $rainRegs[0]=$this->RainRegisterIncrementID;
-        $init=true;             // beim ersten Mal
-        $i=0;                   // Zaehler Regenereignisse
-        $lasttime=time();       // von der Jetztzeit zurückarbeiten
-        $regenMenge=false;
-        foreach ($rainRegs as $rainReg)
-            {
-            /* Es bibt ein inkrementales regenregister in der CustomComponents Auswertung. Da kann ich dann schön die Regendauer pro Monat auswerten
-             * es werden auch die Regenereignisse gefunden.
-             */
-    		$endtime=time();
-	    	$starttime2=$endtime-60*60*24*3650;   /* die letzten 10 Jahre Niederschlag*/
-  		    //$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-    		$werteLog = AC_GetLoggedValues($this->archiveHandlerID, $rainReg, $starttime2, $endtime,0);
-            /* Auswertung von Agreggierten Werten funktioniert leider bei inkrementellen Countern nicht */
-
-        /*
-        $zeit=date("d.m.y",time()); 
-        $init=true;
-        $regenWerte=array();
-		foreach ($werteLog as $wert)
-			{
-            if ($init) {$init=false; $lastwert=$wert["Value"];}     // lastwert ist der Regenzählerstand
-            $neuezeit=date("d.m.y",$wert["TimeStamp"]);             // der passende Tag zum Zählerstand
-            if ($zeit != $neuezeit)                                 / wir fahren von heute zurück in die Vergangenheit, wenn sich der Tag ändert etwas tun
-                 {
-                 if ($wert["Value"]>$lastwert) 
-                     {
-                     echo "*********".$wert["Value"]."*********";
-                     foreach ($regenWerte as $timestamp => $entry) 
-                          {
-                          $regenWerte[$timestamp]+=$wert["Value"];
-                          //echo $date."   ".$regenWerte[$date]."\n";
-                          } 
-                      }
-                 echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
-                 $zeit=$neuezeit; $lastwert=$wert["Value"];
-                 $regenWerte[$wert["TimeStamp"]]=$wert["Value"];
-                 }
-            } */
-
-            $regen=0;               // Regenmenge während einem Regenereignis
-            $lastwert=0;   $zeit=0;
-            $ende=true; $maxmenge=0;
-			foreach ($werteLog as $wert)
-				{
-                if ($wert["Value"]!=0)
-                    {
-                    if ($wert["Value"]<0) 
-                        {
-                        echo "\n>>>>>>>Fehler negativer Wert: ".$wert["Value"]."\n";
-                        }
-                    else
-                        {
-                        $regen+=$wert["Value"];
-                        if ($init===true) 
-                            {
-                            if ($debug) echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    ";
-                            $regenereignis[$i]["Ende"]=$wert["TimeStamp"];
-                            $regenMenge=0;          // Unterschied false und 0
-                            $init=false;    
-                            }
-                        else 
-                            {
-                            $zeit= ($lasttime-$wert["TimeStamp"])/60;     // vergangene Zeit zwischen zwei Regenwerten in Minuten messen                    
-                            $menge=60/$zeit*$wert["Value"];
-                            $regenMenge+=$wert["Value"];
-                            if ($wert["Value"]<0) echo "Fehler negativer Wert\n";
-                            if ($menge>$maxmenge) $maxmenge=$menge;
-                            if ($debug) 
-                                {
-                                echo number_format($regenMenge,1,",","")."mm | ".number_format($zeit,1,",","")."Min ".number_format($menge,1,",","")."l/Std   ".$regen."\n";
-                                echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    ";                                            // für die naechste Zeile
-                                }
-                            }       
-                        if ($zeit>60) 
-                            {
-                            $regenereignis[$i]["Regen"]=$regen;
-                            $regenereignis[$i]["Beginn"]=$lasttime;
-                            $regenereignis[$i]["Max"]=$maxmenge;
-                            $regen=0; $i++;
-                            $regenereignis[$i]["Ende"]=$wert["TimeStamp"]; $maxmenge=0; 
-                            }
-                        $lastwert=$wert["Value"]; 
-                        $lasttime=$wert["TimeStamp"]; 
-                        }
-                    }
-				}
-            $regenereignis[$i]["Regen"]=$regen;
-            $regenereignis[$i]["Beginn"]=$lasttime;   
-            $regenereignis[$i]["Max"]=$maxmenge;
-            if ($debug) echo "\n";
-    		}
-        return ($regenMenge);
-        }
-
-    /*
-     *  einen Regenwert pro Tag als Array zurückgeben
-     *
-     */
-
-    public function getRainValues($debug=false)
-        {
-    	$RegisterCounterID=$this->variableID;
-    	$endtime=time();
-		$starttime2=$endtime-60*60*24*3650;   /* die letzten 3650 Tage Niederschlag */
-        unset($werteLog);
-		$werteLog = AC_GetLoggedValues($this->archiveHandlerID, $RegisterCounterID, $starttime2, $endtime,0);
-        if ($debug) echo "getRainValues, die insgesamt ".sizeof($werteLog)." Counter Werte anschauen und für eine Auswertung nach Kalendermonaten (12 Monate) und eine 1/7/30/30/360/360 Auswertung vorbereiten:\n";
-        /* Regenwert pro Tag ermitteln. Gleiche Werte am selben Tag igorienen, spätester Wert pro Tag bleibt. */ 
-        $zeit=date("d.m.y",time()); $init=true;
-        $regenWerte=array();
-		foreach ($werteLog as $wert)
-			{
-            if ($init) {$init=false; $lastwert=$wert["Value"];}
-            $neuezeit=date("d.m.y",$wert["TimeStamp"]);
-            if ($zeit != $neuezeit)
-                {
-                if ($wert["Value"]>$lastwert)          // da ist was verkehrt
-                     {
-                     if ($debug) echo "*********".$wert["Value"]."*********";
-                     foreach ($regenWerte as $timestamp => $entry) 
-                          {
-                          $regenWerte[$timestamp]+=$wert["Value"];
-                          //echo $date."   ".$regenWerte[$date]."\n";
-                          } 
-                      }
-                //if ($debug) echo "***Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
-                $zeit=$neuezeit; $lastwert=$wert["Value"];
-                $regenWerte[$wert["TimeStamp"]]=$wert["Value"];                 
-                }
-            else
-                {
-                //if ($debug) echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
-                }
-            }
-
-        return ($regenWerte);
-        }
-
-    /* wie getRainValues nur von den Increments, also nicht Zählerständen
-     *
-     *
-     */
-
-    public function getRainValuesFromIncrements($regenMenge,$rainRegs=array(),$debug=false)
-        {
-        if ($this->RainRegisterIncrementID>0) 
-            {
-            $rainRegs[0]=$this->RainRegisterIncrementID;            
-    	    //$rainRegs[0]=$this->variableID;                           // wenn counter
-            }
-    	$endtime=time();
-		$starttime2=$endtime-60*60*24*3650;   /* die letzten 3650 Tage Niederschlag */
-        $init=true;
-        $regenWerte=array();
-        $zeit=date("d.m.y",time()); 
-        foreach ($rainRegs as $rainReg)
-            {
-            unset($werteLog);
-            $werteLog = AC_GetLoggedValues($this->archiveHandlerID, $rainReg, $starttime2, $endtime,0);
-            //echo "Die insgesamt ".sizeof($werteLog)." Counter Werte anschauen und auswerten nach Kalendermonaten (12 Monate) und eine 1/7/30/30/360/360 Auswertung:\n";
-            /* Regenwert pro Tag ermitteln. Gleiche Werte am selben Tag igorienen, spätester Wert pro Tag bleibt. */ 
-            foreach ($werteLog as $wert)
-                {
-                if ($wert["Value"]>=0)
-                    {
-                    if ($init) 
-                        {
-                        $init=false; 
-                        $neuewert=$regenMenge; $lastwert=$neuewert;
-                        //$lastwert=$wert["Value"];                     // wenn counter
-                        }
-                    $neuewert -= $wert["Value"];
-                    //$neuewert=$wert["Value"]                              // wenn counter
-                    $neuezeit=date("d.m.y",$wert["TimeStamp"]);
-                    if ($zeit != $neuezeit)
-                        {
-                        if ($neuewert>$lastwert)          // da ist was verkehrt
-                            {
-                            if ($debug) echo "*********".$wert["Value"]."*********";
-                            foreach ($regenWerte as $timestamp => $entry) 
-                                {
-                                $regenWerte[$timestamp]+=$neuewert;
-                                //echo $date."   ".$regenWerte[$date]."\n";
-                                } 
-                            }
-                        if ($debug) echo "***Wert : ".number_format($neuewert, 1, ",", "")."/".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
-                        //if ($debug) echo "***Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";              // wenn counter
-                        $zeit=$neuezeit; 
-                        $lastwert=$neuewert;
-                        $regenWerte[$wert["TimeStamp"]]=$neuewert;                 
-                        }
-                    else                // selber Tag
-                        {
-                        if ($debug) echo "   Wert : ".number_format($neuewert, 1, ",", "")."/".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
-                        //if ($debug) echo "   Wert : ".number_format($neuewert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";          // wenn counter
-                        }
-                    }
-                else
-                    {
-                    echo "Fehler negativer Wert ".$wert["Value"]."\n";    
-                    }
-                }
-            }
-        return ($regenWerte);
-        }
-
-
-	/*
-	 *  Allerlei Auswertungen mit der Regenmenge. 
-	 *  Ergebnisse der statistischen Auswertungen werden in der Klasse gespeichert und sind dann auch verfügbar
-     *  Arrays:  $this->RegenKalendermonate, $this->DauerKalendermonate
-     * 
-     *  Beispiel Ausgabe: Auswertung 1: 0,0mm  7: 4,4mm 30: 17,7mm 30: 37,8mm 360: 442,2mm 360: 0,0mm
-     *
-	 */
-
-	public function getRainStatistics($input=array(),$debug=false)
-		{
-        $regenereignis=array();            
-        $regenMenge = $this->getRainEventsFromIncrements($regenereignis,$input,$debug);         // regenereignis ist ein pointer, input die Liste der Variablen die in die Statistik eingehen sollen
-        echo "getRainStatistics, Regenmenge im gesamten Zeitraum ist $regenMenge mm. Variablen ausgewertet: ".json_encode($input)."\n";
-        if (false)
-            {
-            if ($this->RainRegisterIncrementID>0)
-                {
-                /* Es bibt ein inkrementales regenregister in der CustomComponents Auswertung. Da kann ich dann schön die Regendauer pro Monat auswerten
-                * es werden auch die Regenereignisse gefunden.
-                */
-                $endtime=time();
-                $starttime2=$endtime-60*60*24*3650;   /* die letzten 10 Jahre Niederschlag*/
-                //$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-                $werteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->RainRegisterIncrementID, $starttime2, $endtime,0);
-                /* Auswertung von Agreggierten Werten funktioniert leider bei inkrementellen Countern nicht */
-
-                $lasttime=time(); $lastwert=0; $init=true; $regen=0; $zeit=0;
-                $i=0; $ende=true; $maxmenge=0;
-                foreach ($werteLog as $wert)
-                    {
-                    if ($wert["Value"]!=0)
-                    {
-                    $regen+=$wert["Value"];
-                    if ($init) 
-                            {
-                            //echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m H:i",$wert["TimeStamp"])."    ";
-                            $regenereignis[$i]["Ende"]=$wert["TimeStamp"];
-                            $init=false;    
-                            }
-                    else 
-                            {
-                            $zeit= ($lasttime-$wert["TimeStamp"])/60;                         
-                            $menge=60/$zeit*$wert["Value"];
-                            if ($menge>$maxmenge) $maxmenge=$menge;
-                            //echo number_format($zeit,1,",","")."Min ".number_format($menge,1,",","")."l/Std   ".$regen."\n   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m H:i",$wert["TimeStamp"])."    "; 
-                            }       
-                        if ($zeit>60) 
-                            {
-                            $regenereignis[$i]["Regen"]=$regen;
-                            $regenereignis[$i]["Beginn"]=$lasttime;
-                            $regenereignis[$i]["Max"]=$maxmenge;
-                            $regen=0; $i++;
-                            $regenereignis[$i]["Ende"]=$wert["TimeStamp"]; $maxmenge=0; 
-                            }
-                        $lastwert=$wert["Value"]; $lasttime=$wert["TimeStamp"]; 
-                        }
-                    }
-                $regenereignis[$i]["Regen"]=$regen;
-                $regenereignis[$i]["Beginn"]=$lasttime;   
-                $regenereignis[$i]["Max"]=$maxmenge;
-                echo "\n";
-                }
-            }            
-        $kalendermonate=array();
-        if (sizeof($regenereignis)==0) 
-            {
-            echo "Fehler, alternative Berechnung.\n";
-            $regenereignis=$this->listRainEvents(1000);          // wir haben hier noch eine Alternativberechungsmethode
-            }
-        foreach ($regenereignis as $eintrag) 
-            {
-            //print_r($eintrag);
-            $dauer = ($eintrag["Ende"]-$eintrag["Beginn"])/60/60;
-            $monat=date("m.y",$eintrag["Ende"]);
-            if (isset($kalendermonate[$monat])) $kalendermonate[$monat]+= $dauer;
-            else $kalendermonate[$monat] = $dauer;
-                
-            if ($dauer>0)
-                {
-                /* einmalige Ereignise, 03 mm in 2 Stunden ingnorieren */
-                if ($debug && false) echo "Anfang ".date("D d.m.y H:i",$eintrag["Beginn"])." bis Ende ".date("D d.m H:i",$eintrag["Ende"])." mit insgesamt "
-                        .number_format($eintrag["Regen"], 1, ",", "")." mm Dauer ".number_format($dauer, 1, ",", "")." Stunden  Max :".number_format($eintrag["Max"], 1, ",", "").
-                        " l/Std\n";
-                }
-            }  
-        $this->DauerKalendermonate=$kalendermonate;
-
-        if (false)
-            {
-            $RegisterCounterID=$this->variableID;
-            $endtime=time();
-            $starttime2=$endtime-60*60*24*3650;   /* die letzten 3650 Tage Niederschlag */
-            $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-            unset($werteLog);
-            $werteLog = AC_GetLoggedValues($archiveHandlerID, $RegisterCounterID, $starttime2, $endtime,0);
-            //echo "Die insgesamt ".sizeof($werteLog)." Counter Werte anschauen und auswerten nach Kalendermonaten (12 Monate) und eine 1/7/30/30/360/360 Auswertung:\n";
-            /* Regenwert pro Tag ermitteln. Gleiche Werte am selben Tag igorienen, spätester Wert pro Tag bleibt. */ 
-            $zeit=date("d.m.y",time()); $init=true;
-            $regenWerte=array();
-            foreach ($werteLog as $wert)
-                {
-                if ($init) {$init=false; $lastwert=$wert["Value"];}
-                $neuezeit=date("d.m.y",$wert["TimeStamp"]);
-                if ($zeit != $neuezeit)
-                    {
-                    if ($wert["Value"]>$lastwert) 
-                        {
-                        //echo "*********".$wert["Value"]."*********";
-                        foreach ($regenWerte as $timestamp => $entry) 
-                            {
-                            $regenWerte[$timestamp]+=$wert["Value"];
-                            //echo $date."   ".$regenWerte[$date]."\n";
-                            } 
-                        }
-                    //echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.y H:i",$wert["TimeStamp"])."    \n";
-                    $zeit=$neuezeit; $lastwert=$wert["Value"];
-                    $regenWerte[$wert["TimeStamp"]]=$wert["Value"];
-                    }
-                }
-            }
-        $regenWerte = $this->getRainValuesFromIncrements($regenMenge,$input,$debug);                           // from register_Counter, das sind die Zählerstaende, die Regenwerte pro Tag ermiteln, letzer Zählerstand pro Tag
-        echo "Regenwerte in getRainStatiscs ermittelt, insgesamt ".count($regenWerte)." Werte, hier ausgeben:\n";
-        //print_R($regenWerte);
-        foreach ($regenWerte as $time=>$regenWert) echo "   ".date("d.m.Y H:i:s",$time)."  $regenWert mm\n";
-
-        $init=true; $tageswert=false; $wochenwert=false; $monatswert=false; $monat2wert=false; $jahreswert=false; $jahr2wert=false;
-        $tag=0; $woche=0; $monat=0; $monat2=0; $jahr=0; $jahr2=0;
-        $kalendermonate=array();
-        foreach ($regenWerte as $zeit => $regen)                    // regenwerte sind absolut, ein Wert pro Tag und immer der späteste
-             {
-             if ($init)         // beim ersten Wert, also dem jüngsten, Absprungpunkt ist jetzt und der letzte Regenstand
-                  {
-                  $lasttime=$zeit; $lastwert=$regen; $init=false; 
-                  $inittime=time(); $initwert=$regen;
-                  $startmonat=$regen; $aktmonat=date("m.y",$zeit);
-                  }
-             else
-                  {        
-                  //echo "  ".date("D d.m.y H:i",$lasttime)."   ".number_format(($lastwert-$regen), 1, ",", "");
-                  $dauer=(($inittime-$zeit)/60/60/24);                                      // Dauer in Tagen zwischen zwei Tagesendstaenden
-                  //echo "    Wert für ".number_format((($inittime-$zeit)/60/60/24), 1, ",", "")." Tage ".($initwert-$lastwert);
-                  //echo "\n";
-                  if ( ($dauer>1) && !($tageswert) ) {$tageswert=true; $tag=$initwert-$lastwert; }
-                  if ( ($dauer>7) && !($wochenwert) ) {$wochenwert=true; $woche=$initwert-$lastwert; }
-                  if ( ($dauer>30) && !($monatswert) ) {$monatswert=true; $monat=$initwert-$lastwert; $init2wert=$lastwert; }
-                  if ( ($dauer>60) && !($monat2wert) ) {$monat2wert=true; $monat2=$init2wert-$lastwert;  }
-                  if ( ($dauer>360) && !($jahreswert) ) {$jahreswert=true; $jahr=$initwert-$lastwert; $init2wert=$lastwert; }
-                  if ( ($dauer>720) && !($jahr2wert) ) {$jahr2wert=true; $jahr2=$init2wert-$lastwert;  }
-                  if ($aktmonat != (date("m.y",$zeit))) {$kalendermonate[$aktmonat]=$startmonat-$regen; $startmonat=$regen; $aktmonat=date("m.y",$zeit);    }
-                  $lasttime=$zeit; $lastwert=$regen;
-                  }
-            } 
-        if ($jahr==0) { $jahr=$initwert-$lastwert; $init2wert=$lastwert;}   
-        if ($jahr2==0) { $jahr2=$init2wert-$lastwert; }    
-        $ergebnis="Auswertung 1: ".number_format($tag, 1, ",", "")."mm  7: ".number_format($woche, 1, ",", "")."mm 30: ".number_format($monat, 1, ",", "")."mm 30: "
-                        .number_format($monat2, 1, ",", "")."mm 360: ".number_format($jahr, 1, ",", "")."mm 360: ".number_format($jahr2, 1, ",", "")."mm\n";      
-        $this->RegenKalendermonate=$kalendermonate;
-	    return ($ergebnis);
-        }
-
-	/*******************
-     *
-     * Ausgabe der Regenereignisse (ermittelt mit listrainevents) mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
-	 */
-
-	public function writeKalendermonateHtml()
-		{
-        $html="";
-    	$html.='<table frameborder="1" width="100%">';
-	    $html.="<th> <tr> <td> Regenbeginn </td> <td> Regenende </td> <td> Dauer Min</td> <td> Menge mm </td> <td> max mm/Stunde </td> </tr> </th>";
-	    foreach ($kalendermonate as $regeneintrag)
-		    {
-    		//echo "  Regenbeginn ".date("d.m H:i",$regeneintrag["Beginn"])."  Regenende ".date("d.m H:i",$regeneintrag["Ende"])." mit insgesamt ".number_format($regeneintrag["Regen"], 1, ",", "")." mm Regen. Max pro Stunde ca. ".number_format($regeneintrag["Max"], 1, ",", "")."mm/Std.\n";
-		    $html.="<tr> <td>".date("D d.m H:i",$regeneintrag["Beginn"])."</td> <td>".date("d.m H:i",$regeneintrag["Ende"])."</td> <td>"
-		        .number_format(($regeneintrag["Ende"]-$regeneintrag["Beginn"])/60, 0, ",", "")."</td> <td>".number_format($regeneintrag["Regen"], 1, ",", "")
-    			."</td> <td>".number_format($regeneintrag["Max"], 1, ",", "")."</td> </tr>";
-	    	}
-    	$html.="</table>";
-	    //echo "Und als html Tabelle :\n"; echo $html;	
-        return($html);
-        }
-
-	/*******************
-     *
-     * Ausgabe der Regenmenge/dauer (ermittelt mit listrainevents) als html Tabelle zum speichern in einer hml Box
-	 */
-
-	public function writeOverviewMonthsHtml($monthlyValues=array())
-		{
-        $startjahr=(integer)date("y",time());
-        $minjahr=$startjahr;
-        //print_r($monthlyValues);
-        foreach ($monthlyValues as $date=>$regenmenge)
-            {
-            $MonatJahr=explode(".",$date);
-            if ((integer)$MonatJahr[1]<$minjahr) $minjahr=(integer)$MonatJahr[1];
-            $tabelle[(integer)$MonatJahr[0]][(integer)$MonatJahr[1]]=$regenmenge;
-            }
-        $html="";
-        $html.='<table frameborder="1" width="100%">';
-    	$html.="<th> <tr> <td> Monat </td> ";
-        for ($i=$startjahr;$i>=$minjahr;$i--) {$html.="<td> ".$i." </td>";}
-        $html.= " </tr> </th>";
-	    for ($j=1;$j<=12;$j++)
-            {
-            $html.="<tr> <td>".$j."</td>";
-            for ($i=$startjahr;$i>=$minjahr;$i--) 
-                {
-                if (isset($tabelle[$j][$i])==true) $html.="<td> ".number_format($tabelle[$j][$i],1,",","")." </td>";
-                else $html.="<td> </td>";
-                }
-            $html.= " </tr> ";
-    	    }
-   	    $html.="</table>";
-        return($html);
-        }   
-
-	}  /* Ende class Gartensteuerung */
-
-/************************************************************
- *
- * GartensteuerungControl
- *
- * Umsetzung von Befehlen
- *
- */
-
-class GartensteuerungControl extends Gartensteuerung
-	{
-
-    protected $GiessTimeRemainID,$GiessCountID;
-    protected $timerDawnID,$UpdateTimerID;
-
-    function __construct($debug=false)
-        {
-		$this->debug=$debug;		
-        parent::__construct();          // nicht vergessen den parent construct auch aufrufen
-        $this->GiessTimeRemainID           = @IPS_GetVariableIDByName("GiessTimeRemain", $this->categoryId_Auswertung);                 // sonst ist die category noch nicht bekannt
-        $this->GiessCountID		= @IPS_GetVariableIDByName("GiessCount",$this->categoryId_Register);
-
-        $GartensteuerungScriptID   		= IPS_GetScriptIDByName('Gartensteuerung', $this->CategoryIdApp);
-	    $this->timerDawnID = @IPS_GetEventIDByName("Timer3", $GartensteuerungScriptID);
-	    $this->UpdateTimerID = @IPS_GetEventIDByName("UpdateTimer", $GartensteuerungScriptID);	    
-        }
-
-    public function start()
-        {
-        if ($this->debug) echo "start aufgerufen.\n";
-        echo "here is ".$this->GiessTimeRemainID."\n";
-        SetValue($this->GiessTimeID,10);
-        SetValue($this->GiessTimeRemainID ,0);				
-        IPS_SetEventActive($this->UpdateTimerID,true);				
-        IPS_SetEventCyclicTimeBounds($this->UpdateTimerID,time(),0);  /* damit alle Timer gleichzeitig und richtig anfangen und nicht zur vollen Stunde */
-        IPS_SetEventActive($this->timerDawnID,false);
-        SetValue($this->GiessCountID,1);
-        }
 
     }
-
 	
 ?>

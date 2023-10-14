@@ -19,7 +19,7 @@
 	$cookie_name = "identifier-symcon-startpage";
 	$cookie_value = random_string();
 	if(!isset($_COOKIE[$cookie_name])) {
-		setcookie($cookie_name, $cookie_value, time() + (86400 * 30), "/"); // 86400 = 1 day
+		setcookie($cookie_name, $cookie_value, time() + (86400 * 30), "/"); // 86400 = 1 day => 30days
 		}
 		
 	function random_string() {

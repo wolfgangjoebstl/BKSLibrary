@@ -602,9 +602,9 @@
 						else IPS_SetHidden($result,true);	// alle anderen variablen mit _ werden als Hilfsvariablen betrachtet und versteckt 	
 						}
 					}
-				$SchalterFastPoll_ID=CreateVariable("SNMP Fast Poll",0, $fastPollId,100,"~Switch",$scriptIdOperationCenter, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-				$ifTable_ID=CreateVariable("ifTable",3, $fastPollId,150,"~HTMLBox",null, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-				$SchalterSortSnmp_ID=CreateVariable("Tabelle sortieren",1, $fastPollId,110,"SortifTable",$scriptIdOperationCenter,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				$SchalterFastPoll_ID    = CreateVariableByName($fastPollId, "SNMP Fast Poll",   0, "~Switch",     "", 100,$scriptIdOperationCenter);		
+				$ifTable_ID             = CreateVariableByName($fastPollId, "ifTable",          3, "~HTMLBox",    "", 150);		                        
+				$SchalterSortSnmp_ID    = CreateVariableByName($fastPollId, "Tabelle sortieren",1, "SortifTable", "", 110,$scriptIdOperationCenter);		
 				IPS_SetHidden($SchalterFastPoll_ID,false);	
 				IPS_SetHidden($ifTable_ID,false);	
 				IPS_SetHidden($SchalterSortSnmp_ID,false);
@@ -622,9 +622,9 @@
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
-	$NachrichtinputID = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$NachrichtinputID          = CreateVariableByName($categoryId_Nachrichten,"Nachricht_Input",3);
 	$log_OperationCenter=new Logging($systemDir."/Log_OperationCenter.csv",$NachrichtinputID);
-    $MessageTableID           = @IPS_GetObjectIDByName("MessageTable", $NachrichtinputID);
+    $MessageTableID            = @IPS_GetObjectIDByName("MessageTable", $NachrichtinputID);
     IPS_SetHidden($categoryId_Nachrichten,true);            // in der normalen Kategorie Darstellung ausblenden
 
 	if ($_IPS['SENDER']=="Execute")
@@ -643,7 +643,7 @@
 	$categoryId_Route    = CreateCategory('TraceRouteVerlauf',   $CategoryIdData, 20);
 	for ($i=1; $i<=20;$i++)
 	   {
-		$input = CreateVariable("RoutePoint".$i,3,$categoryId_Route, $i*5, "",null,null,""  );  /* Name Type ParentID Position */
+		$input = CreateVariableByName($categoryId_Route,"RoutePoint".$i,3, "", "", $i*5  );  /* ParentID Name Type Profile Identifier Position */
 		}
 
 	/******************************************************
@@ -664,8 +664,8 @@
     $MemoryID				= CreateVariableByName($categoryId_SystemInfo, "Memory", 3, "", "", 50); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	
 	/* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
-    $ipTableHtml      		= CreateVariable("TabelleGeraeteImNetzwerk", 3,  $categoryId_SystemInfo, 500 , '~HTMLBox',null,null,""); // ipTable am Schluss anlegen
-    $sumTableHtmlID      	= CreateVariable("SystemInfoOverview", 3,  $categoryId_SystemInfo, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+    $ipTableHtml      		= CreateVariableByName($categoryId_SystemInfo, "TabelleGeraeteImNetzwerk", 3, '~HTMLBox',"", 500); // ipTable am Schluss anlegen
+    $sumTableHtmlID      	= CreateVariableByName($categoryId_SystemInfo, "SystemInfoOverview",       3, '~HTMLBox',"", 900); // obige Informationen als kleine Tabelle erstellen
 
     IPS_SetHidden($categoryId_SystemInfo, true); 		// in der normalen OperationCenter Kategorie Darstellung die Kategorie verstecken, ist jetzt eh im Webfront
 
@@ -677,18 +677,19 @@
 	*************************************************************/
     echo "Init und Vorbereitung Backup Funktionen:\n";
 	$categoryId_BackupFunction	= CreateCategory('Backup',   $CategoryIdData, 500);
-	/* Hilfe zur Verwendeung von CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon ); */
-	$StatusSchalterBackupID		       = CreateVariable("Backup-Funktion",1, $categoryId_BackupFunction,100,"AusEinAuto",$scriptIdOperationCenter,null,"");
-	$StatusSchalterActionBackupID	   = CreateVariable("Backup-Actions",1, $categoryId_BackupFunction,110,"RepairRestartFullIncrementCleanup",$scriptIdOperationCenter,null,"");
-	$StatusSchalterOverwriteBackupID   = CreateVariable("Backup-Overwrite",1, $categoryId_BackupFunction,120,"KeepOverwriteAuto",$scriptIdOperationCenter,null,"");
-    $StatusSliderMaxcopyID   = CreateVariable("Maxcopy per Session",1, $categoryId_BackupFunction,130,"MaxCopySlider",$scriptIdOperationCenter,null,"");
+	/* Hilfe zur Verwendung von CreateVariable      ($name,$type,$parentid, $position,$profile,$Action,$default,$icon ); verwendet ID zur Wiedererkennung von Variablen nach einer Namensänderung 
+                       function CreateVariableByName($parentid, $name, $type, $profile="", $ident="", $position=0, $action=0)*/
+	$StatusSchalterBackupID		       = CreateVariableByName($categoryId_BackupFunction, "Backup-Funktion"    ,1, "AusEinAuto",                        "", 100, $scriptIdOperationCenter);
+	$StatusSchalterActionBackupID	   = CreateVariableByName($categoryId_BackupFunction, "Backup-Actions"     ,1, "RepairRestartFullIncrementCleanup", "", 110, $scriptIdOperationCenter);
+	$StatusSchalterOverwriteBackupID   = CreateVariableByName($categoryId_BackupFunction, "Backup-Overwrite"   ,1, "KeepOverwriteAuto",                 "", 120, $scriptIdOperationCenter);
+    $StatusSliderMaxcopyID             = CreateVariableByName($categoryId_BackupFunction, "Maxcopy per Session",1, "MaxCopySlider",                     "", 130, $scriptIdOperationCenter);
 
-	$StatusBackupId				= CreateVariable("Status",3, $categoryId_BackupFunction, 20, "", null, null, ""); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-	$ConfigurationBackupId		= CreateVariable("Configuration",3, $categoryId_BackupFunction, 2000, "", null, null, ""); 		/* speichert die konfiguration im json Format */	
-	$TokenBackupId		        = CreateVariable("Token",3, $categoryId_BackupFunction, 2010, "", null, null, ""); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
-	$ErrorBackupId		        = CreateVariable("LastErrorMessage",3, $categoryId_BackupFunction, 2020, "", null, null, ""); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
-	$ExecTimeBackupId		    = CreateVariable("ExecTime",3, $categoryId_BackupFunction, 2050, "", null, null, ""); 		        /* maximale Durchlaufzeit um festzustellen ob Backup noch schneller gemacht werden kann */	
-    $TableStatusBackupId        = CreateVariable("StatusTable",3, $categoryId_BackupFunction, 5000, "~HTMLBox", null,null,"");      /* man kann in einer tabelle alles mögliche darstellen */
+	$StatusBackupId				= CreateVariableByName($categoryId_BackupFunction, "Status"          ,3,  "",         "",   20); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$ConfigurationBackupId		= CreateVariableByName($categoryId_BackupFunction, "Configuration"   ,3,  "",         "", 2000); 		/* speichert die konfiguration im json Format */	
+	$TokenBackupId		        = CreateVariableByName($categoryId_BackupFunction, "Token"           ,3,  "",         "", 2010); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
+	$ErrorBackupId		        = CreateVariableByName($categoryId_BackupFunction, "LastErrorMessage",3,  "",         "", 2020); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
+	$ExecTimeBackupId		    = CreateVariableByName($categoryId_BackupFunction, "ExecTime"        ,3,  "",         "", 2050); 		        /* maximale Durchlaufzeit um festzustellen ob Backup noch schneller gemacht werden kann */	
+    $TableStatusBackupId        = CreateVariableByName($categoryId_BackupFunction, "StatusTable"     ,3,  "~HTMLBox", "", 5000);      /* man kann in einer tabelle alles mögliche darstellen */
 
     IPS_SetHidden($ConfigurationBackupId,true);
     IPS_SetHidden($TokenBackupId,true);
@@ -808,10 +809,9 @@
 		echo "Modul WebCamera/IPSCam installiert. Im Verzeichnis Data die Variablen für Übersichtsdarstellungen Pics und Movies anlegen:\n"; 
 		$CategoryIdDataOverview=CreateCategory("Cams",$CategoryIdData,2000,"");
 		echo $CategoryIdDataOverview."  ".IPS_GetName($CategoryIdDataOverview)."/".IPS_GetName(IPS_GetParent($CategoryIdDataOverview))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview))))."\n";
-		$CamTablePictureID=CreateVariable("CamTablePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
-		$CamMobilePictureID=CreateVariable("CamMobilePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
-
-		$CamTableMovieID=CreateVariable("CamTableMovie",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
+		$CamTablePictureID  = CreateVariableByName($CategoryIdDataOverview,"CamTablePicture", 3, "~HTMLBox");
+		$CamMobilePictureID = CreateVariableByName($CategoryIdDataOverview,"CamMobilePicture",3, "~HTMLBox");
+		$CamTableMovieID    = CreateVariableByName($CategoryIdDataOverview,"CamTableMovie",   3, "~HTMLBox");
         }
 
 	if (isset ($installedModules["IPSCam"]))
@@ -924,8 +924,6 @@
     IPS_SetHidden($SysPingCountID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
     setValue($SysPingCountID,0);
 
-    //$SysPingTableID = CreateVariable("SysPingTable",   3 /*String*/,  $categoryId_SysPing, 6000 , '~HTMLBox',null,null,"");
-
 	$SysPingTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingTable",   3 /*String*/, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 	$SysPingSortTableID = CreateVariableByName($categoryId_SysPingControl, "SortPingTable",   1 /*Integer*/, 'SortifTableNameStateSince', "", 9000, $scriptIdOperationCenter );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
@@ -1029,18 +1027,19 @@
 	$CategoryIdRSSIHardware = CreateCategoryPath('Hardware.HomematicRSSI');
 	
 	$CategoryIdHomematicErreichbarkeit = CreateCategoryPath('Program.IPSLibrary.data.modules.OperationCenter.HomematicRSSI');
-	$HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox',null,null,"");
-	$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*Integer*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp',null,null,"");
+	$HomematicErreichbarkeit = CreateVariableByName($CategoryIdHomematicErreichbarkeit, "ErreichbarkeitHomematic", 3 /*String*/,  '~HTMLBox',       "",  50);
+	$UpdateErreichbarkeit =    CreateVariableByName($CategoryIdHomematicErreichbarkeit, "UpdateErreichbarkeit",    1 /*Integer*/, '~UnixTimestamp', "", 500);
     
-    $ExecuteRefreshID = CreateVariable("UpdateDurchfuehren",   0 /*Boolean*/,  $CategoryIdHomematicErreichbarkeit, 400 , '~Switch',$scriptIdOperationCenter,null,"");
+    $ExecuteRefreshID =        CreateVariableByName($CategoryIdHomematicErreichbarkeit, "UpdateDurchfuehren",      0 /*Boolean*/,  '~Switch',       "", 400, $scriptIdOperationCenter);
 
-	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
-	$HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox',null,null,"");
+	$CategoryIdHomematicGeraeteliste = CreateCategoryPath($CategoryIdHomematicErreichbarkeit,'Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
+	$HomematicGeraeteliste =   CreateVariableByName($CategoryIdHomematicGeraeteliste,   "HomematicGeraeteListe",   3 /*String*/,   '~HTMLBox',      "",  50);
 
 	$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
-	$HomematicInventory = CreateVariable("HomematicInventory",   3 /*String*/,  $CategoryIdHomematicInventory, 60 , '~HTMLBox',null,null,"");
+	$HomematicInventory =      CreateVariableByName($CategoryIdHomematicInventory,      "HomematicInventory",      3 /*String*/,   '~HTMLBox',      "",  60);
 
-    /* EvaluateHarwdare erstellt taeglich um 1:10 eine neue Homematic Liste. 
+    echo "Ergebnisse von EvaluateHardware untersuchen.\n";
+    /* EvaluateHardware erstellt taeglich um 1:10 eine neue Homematic Liste. 
      * Die function Homematic ist in EvaluateHardware_include in der Config gespeichert
      * nur die Geräte die gemeinsam mit Type abgespeichert wurden werden für die RSSI Ermittlung in Betracht gezogen
      *
@@ -1218,8 +1217,8 @@
 
 		$categoryId_DetectMovement    = CreateCategory('DetectMovement',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_DetectMovement, true); 		// in der normalen Viz Darstellung Kategorie verstecken
-		$TableEventsDM_ID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");
-		$SchalterSortDM_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$scriptIdTestMovement,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$TableEventsDM_ID  = CreateVariableByName($categoryId_DetectMovement, "TableEvents",       3,"~HTMLBox",        "");
+		$SchalterSortDM_ID = CreateVariableByName($categoryId_DetectMovement, "Tabelle sortieren", 1,"SortTableEvents", "", 0, $scriptIdTestMovement);		
 		}
 
 	/********************************************************
@@ -1237,11 +1236,11 @@
     IPS_SetHidden($categoryId_DeviceManagement, true); 		// in der normalen Viz Darstellung Kategorie verstecken 
 
     /* Diese Werte wurden schon lange nicht mehr upgedatet, verwendet von AUtosteuerung ? */       
-    $TableEventsDevMan_ID=CreateVariable("TableEvents",3, $categoryId_DeviceManagement,0,"~HTMLBox",null,null,"");
-    $SchalterSortDevMan_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DeviceManagement,0,"SortTableEvents",$scriptIdOperationCenter,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+    $TableEventsDevMan_ID  = CreateVariableByName($categoryId_DeviceManagement, "TableEvents",       3, "~HTMLBox");
+    $SchalterSortDevMan_ID = CreateVariableByName($categoryId_DeviceManagement, "Tabelle sortieren", 1, "SortTableEvents","",0,$scriptIdOperationCenter);		
 
     /* HMI_CreateReport hängt manchmal wenn CCU abstürzt. Diesen Zustand erkennen sonst funktioniert OperationCenter und vieles mehr nicht mehr. */
-    $HMIStatus_DevMan_ID=CreateVariable("HMI_ReportStatus",3, $categoryId_DeviceManagement,100,"",null,null,"");
+    $HMIStatus_DevMan_ID   = CreateVariableByName($categoryId_DeviceManagement, "HMI_ReportStatus",  3, "", "", 100);
 
 	/********************************************************
 	 *
@@ -1262,30 +1261,30 @@
 
 		$categoryId_Autosteuerung    = CreateCategory('Autosteuerung',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_Autosteuerung, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
-		$TableEventsAS_ID=CreateVariable("TableEvents",3, $categoryId_Autosteuerung,0,"~HTMLBox",null,null,"");
-		$SchalterSortAS_ID=CreateVariable("Tabelle sortieren",1, $categoryId_Autosteuerung,0,"SortTableEvents",$scriptIdAutosteuerung,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$TableEventsAS_ID  = CreateVariableByName($categoryId_Autosteuerung, "TableEvents",       3, "~HTMLBox"       );
+		$SchalterSortAS_ID = CreateVariableByName($categoryId_Autosteuerung, "Tabelle sortieren", 1, "SortTableEvents", "", $scriptIdAutosteuerung);
 
 	    echo "===========================================\n";
 	    echo "Alexa Variablen für Webfront anlegen.\n";		
 
 		$categoryId_AutosteuerungAlexa    = CreateCategory('Alexa',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_AutosteuerungAlexa, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
-		$TableEventsAlexa_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungAlexa,0,"~HTMLBox",null,null,"");
-		$SchalterSortAlexa_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEventsAlexa",$scriptIdAutosteuerung,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$TableEventsAlexa_ID  = CreateVariableByName($categoryId_AutosteuerungAlexa, "TableEvents",       3, "~HTMLBox");
+		$SchalterSortAlexa_ID = CreateVariableByName($categoryId_AutosteuerungAlexa, "Tabelle sortieren", 1, "SortTableEventsAlexa", "", $categoryId_AutosteuerungAlexa,0,$scriptIdAutosteuerung);
 
 	    echo "===========================================\n";
 	    echo "Zusammenfassung Taster anzeigen.\n";		
 
 		$categoryId_AutosteuerungButton    = CreateCategory('ButtonTasks',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_AutosteuerungButton, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
-		$TableEventsButton_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungButton,0,"~HTMLBox",null,null,"");
+		$TableEventsButton_ID = CreateVariableByName($categoryId_AutosteuerungButton, "TableEvents", 3, "~HTMLBox");
 
 	    echo "===========================================\n";
 	    echo "Zusammenfassung Timer anzeigen.\n";		
 
 		$categoryId_AutosteuerungSimulation    = CreateCategory('TimerSimulation',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_AutosteuerungSimulation, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
-		$TableEventsButton_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungSimulation,0,"~HTMLBox",null,null,"");
+		$TableEventsButton_ID = CreateVariableByName($categoryId_AutosteuerungSimulation, "TableEvents",3, "~HTMLBox");
 		}
 		
 	/********************************************************
@@ -1786,7 +1785,7 @@
                             $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
                             CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
                             echo "     CreateWFCItemCategory  ($WFC10_ConfigId, Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture, false);\n";
-                            $pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox',null,null,"");
+                            $pictureFieldID = CreateVariableByName($categoryIdCapture, "pictureField",   3 /*String*/, '~HTMLBox', "", 50);
                             $box='<iframe frameborder="0" width="100%">     </iframe>';
                             SetValue($pictureFieldID,$box);
                             $found=true;

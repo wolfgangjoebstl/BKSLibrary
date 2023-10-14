@@ -28,7 +28,7 @@
 		$moduleInfos = $moduleManager->GetModuleInfos($module);
 		$repository  = $moduleInfos['Repository'];
 	}
-	switch ($action) 
+	switch ($id) 
 		{
 
 		default:

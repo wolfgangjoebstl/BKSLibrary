@@ -22,17 +22,24 @@
  *	summary of classes, a few functions are at the end of this script
  *
  *
- *      sqlOperate  extends sqlHandle
+ *      sqlOperate      extends sqlHandle
  *
- *      sql_componentModules extends sqlOperate
- *      sql_serverGateways extends sqlOperate
- *      sql_topologies extends sqlOperate
- *      sql_deviceList extends sqlOperate
- *      sql_instances extends sqlOperate
- *      sql_channels extends sqlOperate
- *      sql_registers extends sqlOperate
- *      sql_valuesOnRegs extends sqlOperate
+ *      sql_auditTrail          extends sqlOperate
+ *      sql_componentModules    extends sqlOperate
+ *      sql_serverGateways      extends sqlOperate
+ *      sql_topologies          extends sqlOperate
+ *      sql_deviceList          extends sqlOperate
+ *      sql_instances           extends sqlOperate
+ *      sql_channels            extends sqlOperate
+ *      sql_registers           extends sqlOperate
+ *      sql_valuesOnRegs        extends sqlOperate
  * 
+ *      sqlHandle
+ *      sqlReturn
+ *
+ * verschiedene functions:
+ *      getfromDatabase
+ *      ...........     
  */
 
     IPSUtils_Include ("EvaluateHardware_Configuration.inc.php","IPSLibrary::config::modules::EvaluateHardware");
@@ -1963,7 +1970,14 @@ class sqlHandle
                 return(false);
                 }
             }
-
+        // oid ist eine mySQL Instanz, Statuscheck
+        $status=IPS_GetInstance($oid)["InstanceStatus"];
+        if ($status != 102) 
+            {
+            if ($debug) echo get_class($this).",sqlHandle: Instanz Konfiguration noch nicht abgeschlossen, oder Instanz fehlerhaft. Status is $status.\n";
+            $this->available=false;
+            return(false);
+            }
         $this->oid = $oid; 
         $this->sqlHandle = MySQL_Open($this->oid);
         if ($this->sqlHandle->connect_error) 

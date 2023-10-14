@@ -33,6 +33,9 @@
  *    $gartensteuerung->control_waterPump(false);               die Pumpe wird ein/ausgeschaltet
  * 
  * die zentrale Steuerung des Giessvorgangs übernimmt UpdateTimer der sobald der Giessvorgang gestartet wurde mit minütlichen Aufrufen agiert
+ * Berechnung der Parameter für Giessen und Giessdauer
+ *          GetValue($GiessTimeID), Immer 5 Minuten vor Giesbeginn die Giessdauer berechnen  SetValue($GiessTimeID,$gartensteuerung->Giessdauer($GartensteuerungConfiguration["Configuration"]))
+ *
  *
  * Abhängig von der Configuration werden zusaetzliche Webfront Tabs aktiviert:
  *      Statistics  für Statistik Auswertungen 
@@ -40,7 +43,6 @@
  *
  ****************************************************************/
  
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -77,7 +79,8 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
         }
 
     if ($debug) echo "Konfiguration der Gartensterung analysieren:\n";
-    $gartensteuerung = new Gartensteuerung(0,0,$debug);   // default, default, debug=false
+    $gartensteuerung           = new Gartensteuerung(0,0,$debug);   // default, default, debug=false
+    $gartensteuerungStatistics = new GartensteuerungStatistics($debug);   // default, default, debug=false          parent clas ist Gartensteuerung
     $GartensteuerungConfiguration =	$gartensteuerung->getConfig_Gartensteuerung();
     $configuration=$GartensteuerungConfiguration["Configuration"];
     if ($debug) 
@@ -336,7 +339,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	$anzahl=count($werteLog);
  	echo "\nGeloggte Werte der Regen-Variable in den letzten 10 Tagen: ".$variableName." mit ".$anzahl." Werte\n\n";
 		
-	foreach ($gartensteuerung->regenStatistik as $regeneintrag)
+	foreach ($gartensteuerungStatistics->regenStatistik as $regeneintrag)
 		{
 		echo "Regenbeginn ".date("d.m H:i",$regeneintrag["Beginn"]).
 		   "  Regenende ".date("d.m H:i",$regeneintrag["Ende"]).
@@ -530,10 +533,13 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
     echo "Statistikomodul wird einmal am Tag von TimerdawnID aufgerufen:\n";
     if (isset($GartensteuerungConfiguration["Configuration"]["RainCounterHistory"])) $input = $GartensteuerungConfiguration["Configuration"]["RainCounterHistory"];
     else $input=[];    
-    $gartensteuerung->getRainStatistics($input);  // die Werte berechnen, die in der nächsten Routine verwendet werden    
-    SetValue($gartensteuerung->StatistikBox1ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerung->RegenKalendermonate));
-    SetValue($gartensteuerung->StatistikBox2ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerung->DauerKalendermonate));
-    SetValue($gartensteuerung->StatistikBox3ID,$gartensteuerung->writeRainEventsHtml($gartensteuerung->listRainEvents(100)));
+    $gartensteuerungStatistics->getRainStatistics($input);  // die Werte berechnen, die in der nächsten Routine verwendet werden    
+    SetValue($gartensteuerung->StatistikBox1ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerungStatistics->RegenKalendermonate));
+    SetValue($gartensteuerung->StatistikBox2ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerungStatistics->DauerKalendermonate));
+    $regenereignis=array();
+    $gartensteuerung->getRainEventsFromIncrements($regenereignis,[],2);             // regenereignis ist der Retourwert
+    SetValue($gartensteuerung->StatistikBox3ID,$gartensteuerung->writeRainEventsHtml($regenereignis));
+    //SetValue($gartensteuerung->StatistikBox3ID,$gartensteuerung->writeRainEventsHtml($gartensteuerung->listRainEvents(100)));
 
     echo "\n";
     echo "======================================================\n";

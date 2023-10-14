@@ -573,6 +573,13 @@ class Logging
             }
         return ($MoveNachrichtenID);
         }
+    
+    /* AuswertungID auslesen
+     */
+    public function getCategoryAuswertung()
+        {
+        return ($this->AuswertungID);
+        }
 
     /***********************************************************************************
      ***********************************************************************************/

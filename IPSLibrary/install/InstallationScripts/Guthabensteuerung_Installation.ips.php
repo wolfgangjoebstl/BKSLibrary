@@ -30,7 +30,7 @@
      * Aus Synology Drive die chromedriver_xxx xxx version katalogisieren
      * über Tastendruck kann Selemium aktualisisert werden, erfordert Aufruf Installation
      *
-     * Zusätzlich werden jetzt aich die letztgültigen chjromedriver versuionen in das Download Verzeichnis geladen
+     * Zusätzlich werden jetzt auch die letztgültigen chromedriver versionen in das Download Verzeichnis geladen
      * erfordert json download der versionierung und link, unzip und Speicherung mit _xxx
      *
      * Allgemeine Funktion Money mit dem Dollarzeichen
@@ -46,6 +46,8 @@
 /********************************************************
  *
  * INIT, generell
+ *
+ * check ob AMIS installiert wurde
  *
  *******************************************************************/
 
@@ -187,6 +189,9 @@
  *
  * Setup Selenium or iMacro Environment
  *
+ * Selenium braucht Zusatzmodule: OperationCenter, Watchdog
+ *
+ *
  *******************************************************************/
 
     echo "\n";
@@ -254,8 +259,9 @@
                     echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
                     print_r($processStart);
                     }
-                $SeleniumStatusID       = CreateVariable("SeleniumStatus",  3, $CategoryId_Mode,120,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
-                $SeleniumOnID           = CreateVariable("SeleniumRunning", 3, $CategoryId_Mode,110,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
+                $SeleniumStatusID       = CreateVariableByName($CategoryId_Mode,"SeleniumStatus",  3, ""        , "", 120);
+                $SeleniumOnID           = CreateVariableByName($CategoryId_Mode,"SeleniumRunning", 3, "",         "", 110);
+                $SeleniumHtmlStatusID   = CreateVariableByName($CategoryId_Mode,"Status",          3, "~HTMLBox", "", 600);
                 $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
                 $nameID=["None"];
                 $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
@@ -384,17 +390,26 @@
              *          erstellen Batchfile zum entpacken 7za
              *          unzip 7za mit Batchfile, dient für entpacken von .zip Files
              *
-             */
+             ***************************************/
 
+            $html = "";
+            $dosOps = new dosOps();
             $sysOps = new sysOps();
             $curlOps = new curlOps();             
 
+            $SeleniumUpdate = new SeleniumUpdate();
+            $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
+            $html .= $result;
+            
+            $dir=$GuthabenAllgConfig["Selenium"]["DownloadDir"];
+
+            /*
             $dosOps->mkdirtree($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
             if (is_dir($GuthabenAllgConfig["Selenium"]["DownloadDir"])) echo "Verzeichnis für Selenium downloads verfügbar: ".$GuthabenAllgConfig["Selenium"]["DownloadDir"]."\n";
 
             $dir = $GuthabenAllgConfig["Selenium"]["DownloadDir"];
             echo "Zieldatei downloaden und abspeichern: $dir\n";
-
+            $html .= "Selenium ChromeDriver Download verzeichnis : $dir <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
             echo "Was ist schon alles im Targetverzeichnis gespeichert $dir:\n";
             $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
             $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
@@ -433,14 +448,18 @@
 
             $filename="7za.exe";
             $file = $dosOps->findfiles($files,$filename,true);       //Debug
-            if ($file) echo "   --> Datei $filename gefunden.\n";
+            if ($file) 
+                {
+                echo "   --> Datei $filename gefunden.\n";
+                $html .= "Unzip Programm available : $filename <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
+                }
             else
                 {
                 $ergebnis = "not started";
                 $commandName="unzip_7za.bat";
                 $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
                 echo "Execute Batch $dir$commandName um File $dir$filename zu erhalten : \"$ergebnis\"\n";
-                }
+                } */
             /*
             $filename="unzip_chromedriver.bat";
             $file = $dosOps->findfiles($files,$filename,true);       //Debug
@@ -550,6 +569,7 @@
                 }  */
 
             echo "ergebnisse abspeichern\n";
+            print_r($result);
             foreach ($result as $version => $entry)
                 {
                 echo "Wir beginnem mit Version $version.\n";
@@ -563,7 +583,11 @@
                     $dosOps->deleteFile($dir.$filename);
                     }
                 $file = $dosOps->findfiles($files,"chromedriver_$version.exe",true);       //Debug
-                if ($file) echo "    --> File $version vorhanden.\n";
+                if ($file) 
+                    {
+                    echo "    --> File $version vorhanden.\n";
+                    $html .= "Chromedriver File available : $version <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
+                    }
                 else
                     {
                     echo "Url laden.\n";
@@ -602,12 +626,14 @@
             //print_R($result);
             if ($copyToSharedDrive)
                 {
+                $html .= "Copy to sharedrive possible : $execDir <br>";                  
                 foreach ($result as $version => $entry)
                     {
                     if (file_exists($execDir."chromedriver_$version.exe")) echo "Version $version bereits vorhhanden, nicht überschreiben.\n";
                     else copy ($dir."chromedriver_$version.exe",$execDir."chromedriver_$version.exe");
                     }
                 }
+            else $html .= "Copy to sharedrive not activated : $execDir <br>";                   
             break;
         case "NONE":
             $DoInstall=false;
@@ -616,7 +642,7 @@
             echo "Guthaben Mode \"".$GuthabenAllgConfig["OperatingMode"]."\" not supported.\n";
             break;
         }
-	
+	SetValue($SeleniumHtmlStatusID,$html);
 
 	/*****************************************************
 	 *
@@ -1004,6 +1030,10 @@
                 $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["NAME"]="Update Chromedriver to";
                 $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["ORDER"]=20;
                 $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["ADMINISTRATOR"]=true;                
+
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["NAME"]="Status Informationen über Selenium";
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["ORDER"]=20;
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["ADMINISTRATOR"]=true;                
                 }
             echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";
             $webDrivers=$guthabenHandler->getSeleniumWebDrivers();   

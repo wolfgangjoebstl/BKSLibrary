@@ -2,7 +2,7 @@ $(document).ready(function(){
 "use strict";
 
 	let pendingUpdate = false;
-	let pic=true, pic0=true, pic1=true, pic2=true;
+	let picture=9, pic0=true, pic1=true, pic2=true;
 	let item=0;
 	var $write = $('#write');					// keine globale Variable ???
 	//var shift = false, capslock = false;
@@ -14,45 +14,72 @@ $(document).ready(function(){
 
 	function viewportHandler(event) {
 		const viewport = event.target;
-		document.getElementById('sp-inf-txt').innerHTML = "infonow+" + Date() + "Viewport Height x Width : "+viewport.height+" x "+viewport.width+"Screen: "+screen.width+" x "+screen.height  ;
-		if (viewport.width<1100) {
-			$(".image-pic9").css("display", "none");
-			$(".image-pic4").css("display", "none");	
-			$(".image-pic0").css("display", "inline");			
-    		 }
+		let picture0Height = Math.round(viewport.height-60);
+		let picture9Height = Math.round(picture0Height/3);
+		document.getElementById('sp-inf-txt').innerHTML = "Viewport Height x Width : "+viewport.height+" x "+ viewport.width + "  " + picture9Height + " " + Date()  ;
+		if (viewport.width<1100) {	picture=0;		}
 		else {
-		if (viewport.width<1400) {
-			$(".image-pic9").css("display", "none");
-			$(".image-pic4").css("display", "inline");
-			$(".image-pic0").css("display", "none");			
+			if (viewport.width<1400) {   picture=4;			}
+			else {						picture=9;			} 
 			}
-		else {			
-			$(".image-pic0").css("display", "none");			
-			$(".image-pic4").css ("display", "none"); 
-			$(".image-pic9").css("display", "inline");
-			} }
-		if (pendingUpdate) return;
-		pendingUpdate = true;
+		updatePictureStyle(picture);	
+		}
+		
+	function updatePictureStyle(pic) {
+		let picture0Height = Math.round(window.innerHeight-60);
+		let picture4Height = Math.round(picture0Height/2);
+		let picture9Height = Math.round(picture0Height/3);
+		if (pic==9) {
+			$(".sp-image-pic0").css ("display", "none");
+			$(".sp-image-pic4").css ("display", "none");
+			$(".sp-image-pic9").css ("display", "inline").css("width","33%").css("max-height",picture9Height); 	}
+		if (pic==4) {
+			$(".sp-image-pic9").css ("display", "none");
+			$(".sp-image-pic0").css ("display", "none");
+			$(".sp-image-pic4").css ("display", "inline").css("width","100%").css("max-height",picture4Height);			}
+		if (pic==0) {
+			$(".sp-image-pic9").css ("display", "none");
+			$(".sp-image-pic4").css ("display", "none");
+			$(".sp-image-pic0").css ("display", "inline").css("width","100%").css("max-height",picture0Height);			}
+		}
+		
+	function trigger_ajax(id, action, module, info) {
+		//$.ajax({type: "POST", url: "/user/Startpage/StartpageTopology_Receiver.php", data: "&id="+id+"&action="+action+"&module="+module+"&info="+info});
+		action=readCookie('identifier-symcon-startpage');
+		$.post('/user/Startpage/StartpageTopology_Receiver.php', {id:id,action:action,module:module,info:info});
+			};	
+			
+	function createCookie(name, value, days) {
+		var expires;
 
-		requestAnimationFrame(() => {								// das ist eine window animation
-			pendingUpdate = false;
-			const layoutViewport = document.getElementById("sp");					// id ganze frame, default layoutViewport
+		if (days) {
+			var date = new Date();
+			date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+			expires = "; expires=" + date.toGMTString();
+		} else {
+			expires = "";
+		}
+		document.cookie = encodeURIComponent(name) + "=" + encodeURIComponent(value) + expires + "; path=/";
+		};
 
-			// Since the bar is position: fixed we need to offset it by the
-			// visual viewport's offset from the layout viewport origin.
-			const viewport = event.target;
-			const offsetLeft = viewport.offsetLeft;
-			const offsetTop =
-			  viewport.height -
-			  layoutViewport.getBoundingClientRect().height +
-			  viewport.offsetTop;
+	function readCookie(name) {
+		var nameEQ = encodeURIComponent(name) + "=";
+		var ca = document.cookie.split(';');
+		for (var i = 0; i < ca.length; i++) {
+			var c = ca[i];
+			while (c.charAt(0) === ' ')
+				c = c.substring(1, c.length);
+			if (c.indexOf(nameEQ) === 0)
+				return decodeURIComponent(c.substring(nameEQ.length, c.length));
+			}
+		return null;
+		};
 
-			// You could also do this by setting style.left and style.top if you
-			// use width: 100% instead.
-			//bottomBar.style.transform = `translate(${offsetLeft}px, ${offsetTop}px) scale(${1 / viewport.scale })`;
-			document.getElementById('sp-inf-txt').innerHTML = "requestAnimationFrame+" + Date();
-			});
-	}		 
+	function eraseCookie(name) {
+		createCookie(name, "", -1);
+		};
+		
+	
 		 
   $("#phide").click(function(){ 
 	 $(this).hide('slow'); 
@@ -62,23 +89,23 @@ $(document).ready(function(){
 
 		});
 	
+	//Button eins, toggle 1/4/9 pictures
 	$("#sp-cmd-item0").click(function(){ 
-		document.getElementById('sp-inf-txt').innerHTML = "empty image picture 0";
-		if (pic) { 
-			$("#sp-pic-img-p0").css ("display", "none");
-			$("#sp-pic-img-p1").css ("display", "none");
-			$("#sp-pic-img-p2").css ("display", "none");
-			$("#sp-pic-img-p3").css ("display", "none");
-			$("#sp-pic-img-full").css ("display", "inline"); 
-			pic=false; }
+		if (picture==9) { 
+			document.getElementById('sp-inf-txt').innerHTML = "show image picture 0";
+			picture=4; }
 		else {
-		$("#sp-pic-img-full").css ("display", "none");
-		$("#sp-pic-img-p0").css ("display", "inline"); 
-		$("#sp-pic-img-p1").css ("display", "inline");
-		$("#sp-pic-img-p2").css ("display", "inline");
-		$("#sp-pic-img-p3").css ("display", "inline"); 
-		pic=true; }
-		
+			if (picture==4) {	
+				document.getElementById('sp-inf-txt').innerHTML = "show image picture 4";
+				picture=0; }
+			else {
+				if (picture==0) {	
+					document.getElementById('sp-inf-txt').innerHTML = "show image picture 9";
+					picture=9; }
+				}
+			}
+		updatePictureStyle(picture);
+		trigger_ajax("button-eins", "Toggle", "module", picture);			// Ajax Request kommt in StartpageTopologyReceiver an als   id, action, module, info
 		});
 	
 	// Button fuenf	

@@ -51,7 +51,8 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
  *
  *************************************************************/
 
-    Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    //Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
     IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
@@ -92,7 +93,8 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         {
         IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
         echo "OperationCenter ist installiert.\n";
-        $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library
+        //$DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library
+        $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library
         //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
         echo $DeviceManager->HomematicFehlermeldungen()."\n";
         //echo "  Homematic Serialnummern erfassen:\n";
@@ -106,8 +108,19 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
 
     $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
 
+    $oidResult = $modulhandling->getInstances('MySQL');
+    if (sizeof($oidResult)>0) 
+        {
+        $oid=$oidResult[0];           // ersten treffer new_checkbox_tree_get_multi_selection
+        echo "sqlHandle: new $oid (".IPS_GetName($oid).") for MySQL Database found.\n";
+        }
+    else 
+        {
+        echo "sqlHandle: OID einer Instance MySQL not found.\n";
+        }
+
     $sqlHandle = new sqlHandle();           // default MySQL Instanz
-    if ($sqlHandle !==false)
+    if ($sqlHandle->available !==false)
         {
         $sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
         $tables = $sqlHandle->showTables();     // SHOW TABLES

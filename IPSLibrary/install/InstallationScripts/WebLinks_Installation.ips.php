@@ -21,6 +21,16 @@
 	 *
 	 * Script zur Erstellung von WebLinks
      *
+     * HTMLBoxen sind in folgender Reihenfolge
+     *
+     *  Weblinks        $WebLinkID              FavouriteWebLinks
+     *  AstroTest       $AstroLinkID            htmlAstroTable
+     *  ChartTest       $ChartLinkID            htmlChartTable
+     *  ClockTest       $ClockLinkID            htmlClockTable
+     *  FrameTest       $FrameLinkID            htmlFrameTable
+     *  WidgetGraph     $ChartSmallLinkID       htmlChartSmallTable
+     *  JavaTest        $TestLinkID             htmlTestTable
+     *
      * testet auch verschiedene Varianten der Komunikation mit den Scripts in webfront/user/
      * $FrameLinkID  = '<iframe frameborder="0" width="100%" height="600px"  src="../user/Startpage/StartpageTopology.php"</iframe>';
 	 * 			function trigger_button(action, module, info) {
@@ -34,6 +44,8 @@
      *	$id       = $_POST['id']; 	$action   = $_POST['action']; 	$module   = $_POST['module']; 	$info     = $_POST['info'];
      *  $result = Startpage_SetPage($action, $module, $info);
      *  es können Variablen gesetzt werden, aber auch functions aufgerufen werden
+     *
+     * _Receiver verwendet Startpage_Include
      *
      *
 	 * @file          WebLinks_Installation.ips.php

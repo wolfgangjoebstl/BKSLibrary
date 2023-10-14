@@ -54,7 +54,7 @@
 	 */
 	function Startpage_SetPage($action, $module='', $info='') {
 		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId), $action);
+		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId), $action);               // Verschiedene Variablen in data :  Action
 		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_MODULE, $baseId), $module);
 		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_INFO, $baseId), $info);
 		$typeId = IPS_GetObjectIDByName("Startpagetype", $baseId);

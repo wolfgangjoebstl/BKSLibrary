@@ -322,7 +322,33 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
                         reportWindowSize ();
                         });
                     window.onresize = reportWindowSize;                     
-                    ';                      
+                    ';   
+        $html .= '  function reportBrowserVersion() {
+                        var Sys = {};  
+                        var ua = navigator.userAgent.toLowerCase();  
+                        var s;  
+                        (s = ua.match(/msie ([\d.]+)/)) ? Sys.ie = s[1] :  
+                        (s = ua.match(/firefox\/([\d.]+)/)) ? Sys.firefox = s[1] :  
+                        (s = ua.match(/chrome\/([\d.]+)/)) ? Sys.chrome = s[1] :  
+                        (s = ua.match(/opera.([\d.]+)/)) ? Sys.opera = s[1] :  
+                        (s = ua.match(/version\/([\d.]+).*safari/)) ? Sys.safari = s[1] : 0; 
+                        if (Sys.ie) return ("IE: " + Sys.ie);  
+                        if (Sys.firefox) return ("Firefox: " + Sys.firefox);  
+                        if (Sys.chrome) return ("Chrome: " + Sys.chrome);  
+                        if (Sys.opera) return ("Opera: " + Sys.opera);  
+                        if (Sys.safari) return ("Safari: " + Sys.safari); 
+                        }                 
+                    $("#frame-browser").on("click", function() {
+                        document.getElementById("frame-browser").innerHTML = reportBrowserVersion ();
+                        });  ';
+        $html .= '  var fullScreen=0;
+                    function toggleFullScreen(elem) {
+                        if (fullScreen==0) { elem.requestFullscreen(); fullScreen=1; return ("Full Screen"); }
+                        else { document.exitFullscreen(); fullScreen=0; return ("Standard Screen"); } 
+                        }    
+                    $("#frame-fullscreen").on("click", function() {
+                        document.getElementById("frame-fullscreen").innerHTML =  toggleFullScreen(document.documentElement);
+                        });  ';                        
         $html .= '';
         $html .= '</script>';
         $html .= '<div style="box-sizing: border-box;">';
@@ -330,7 +356,9 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         $html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" style="width:100%; height:85vh; ">';
         $html .= '      </iframe>';
         $html .= '  </div>';
-        $html .= '<div id="frame-status" style="font-size: 1hm;">Statusangaben hier clicken</div>';        
+        $html .= '<div id="frame-status" style="font-size: 1hm; display:inline; float:left;">Statusangaben hier clicken</div>';        
+        $html .= '<div id="frame-browser" style="font-size: 1hm; display:inline; padding: 5px;">Browser hier clicken</div>';        
+        $html .= '<div id="frame-fullscreen" style="font-size: 1hm; display:inline; float:right;">Fullscreen hier clicken</div>';  
         SetValue($variableIdHTML,$html);
         }
 
