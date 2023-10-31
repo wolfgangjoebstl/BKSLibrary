@@ -6586,6 +6586,15 @@ class SeleniumChromedriver extends OperationCenter
         return($this->execDir);    
         }
 
+    /* update_ExecDirContent
+     * damit getListAvailableChromeDriverVersion arbeiten kann
+     */
+    public function update_ExecDirContent()
+        {
+        $this->execDirContent = $this->dosOps->readdirToArray($this->execDir);
+        return($this->execDirContent);    
+        }
+
     /* SeleniumChromedriver, erstellt anhand des gespeicherten Inhalt des execdir Verzeichnis eine sortierte Liste von Chromdrivern mit Name und Filegröße
      * die Filegröße kann zum bestimmen der Versionsnummer verwendet werden
      */
@@ -6868,7 +6877,8 @@ class DeviceManagement
             $componentHandling=new ComponentHandling();
             if ($debug) echo "Geräte mit getComponent suchen, geht jetzt mit HarwdareList und DeviceList.\n";
             //$result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],"Install");
-            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            if (function_exists("deviceList")) $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            else $result = array();
             $count=(sizeof($result));				
             //echo "Insgesamt $count Register für die Temperature Component Installation gefunden.\n";
             //foreach ($result as $oid) echo "   ".$oid."    ".IPS_GetName($oid)."   \n";           // wenn kein Install
@@ -6898,7 +6908,8 @@ class DeviceManagement
                 //print_R($Key);
                 }
 
-            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_HUMIDITY","REGISTER" => "HUMIDITY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            if (function_exists("deviceList")) $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_HUMIDITY","REGISTER" => "HUMIDITY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            else $result = array();
             $count=(sizeof($result));				
             $resulttext.="Alle Feuchtigkeitswerte ausgeben ($count):\n";            
             foreach ($result as $Key) 
@@ -6914,9 +6925,12 @@ class DeviceManagement
                         "Reach"       => $result,
                         );
                 }
-
-            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BRIGHTNESS"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
-            $result += $componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "BRIGHTNESS"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            if (function_exists("deviceList")) 
+                {
+                $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BRIGHTNESS"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+                $result += $componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "BRIGHTNESS"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+                }
+            else $result = array();
             $count=(sizeof($result));				
             $resulttext.="Alle Helligkeitswerte ausgeben ($count):\n";            
             foreach ($result as $Key) 
@@ -6933,7 +6947,8 @@ class DeviceManagement
                         );
                 }
 
-            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "MOTION"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            if (function_exists("deviceList")) $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "MOTION"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            else $result = array();
             $count=(sizeof($result));				
             $resulttext.="Alle Bewegungsmelder ausgeben ($count):\n";            
             foreach ($result as $Key) 
@@ -6950,7 +6965,8 @@ class DeviceManagement
                         );
                 }
 
-            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            if (function_exists("deviceList")) $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            else $result = array();
             $count=(sizeof($result));				
             $resulttext.="Alle Kontakte ausgeben ($count):\n";            
             foreach ($result as $Key) 
@@ -6967,7 +6983,8 @@ class DeviceManagement
                         );
                 }
 
-            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_POWER","REGISTER" => "ENERGY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            if (function_exists("deviceList")) $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_POWER","REGISTER" => "ENERGY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            else $result = array();
             $count=(sizeof($result));				
             $resulttext.="Alle Energieregister ausgeben ($count):\n";            
             foreach ($result as $Key) 
@@ -6984,7 +7001,8 @@ class DeviceManagement
                         );
                 }
 
-            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_THERMOSTAT","REGISTER" => "SET_TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            if (function_exists("deviceList")) $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_THERMOSTAT","REGISTER" => "SET_TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            else $result = array();
             $count=(sizeof($result));				
             $resulttext.="Alle Sollwerte Thermostate ausgeben ($count):\n";            
             foreach ($result as $Key) 
@@ -7001,7 +7019,8 @@ class DeviceManagement
                         );
                 }
 
-            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_ACTUATOR","REGISTER" => "VALVE_STATE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            if (function_exists("deviceList")) $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_ACTUATOR","REGISTER" => "VALVE_STATE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            else $result = array();
             $count=(sizeof($result));				
             $resulttext.="Alle Stellwerte Aktuatoren ausgeben ($count):\n";            
             foreach ($result as $Key) 
@@ -9185,7 +9204,7 @@ class DeviceManagement_Homematic extends DeviceManagement
 				else
 				    {
             		$ccu_name=IPS_GetName($id);
-            		$alleHM_Errors.="\nHomatic Socket ID ".$id." / ".$ccu_name."   ".sizeof($this->HomematicSerialNumberList[$ccu_name])." Endgeräte angeschlossen.\n";  
+            		if (isset($this->HomematicSerialNumberList[$ccu_name])) $alleHM_Errors.="\nHomatic Socket ID ".$id." / ".$ccu_name."   ".sizeof($this->HomematicSerialNumberList[$ccu_name])." Endgeräte angeschlossen.\n";  
 					$msgs = @HM_ReadServiceMessages($id);
 					if($msgs === false)
 					    {

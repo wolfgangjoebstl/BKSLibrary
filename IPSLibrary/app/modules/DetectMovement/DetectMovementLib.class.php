@@ -2890,9 +2890,9 @@
 	 *
 	 * Class Definitionen DetectDeviceHandler 
      *
-     * erzegugt die Config Liste IPSDetectDeviceHandler_GetEventConfiguration in scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php
+     * erzeugt die Config Liste IPSDetectDeviceHandler_GetEventConfiguration in scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php
      * das ist die config Liste die die Topology und Gewerke zu Instanzen und Registern herstellt, etwas mühsam zum Eingeben, da es oft mehrere Instanzen in einem Gerät gibt
-     * für die Zuordnung Geräte zu Topolgie siehe:            IPSDetectDeviceListHandler_GetEventConfiguration 
+     * für die Zuordnung Geräte zu Topologie siehe:            IPSDetectDeviceListHandler_GetEventConfiguration 
      *
      * Verwendung in: EvaluateHardware
      *
@@ -3220,7 +3220,9 @@
 			}
             		
 
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+		/* DetectDeviceListHandler::Get_EventConfigurationAuto()
+         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
+         */
 
 		public function Get_EventConfigurationAuto()
 			{

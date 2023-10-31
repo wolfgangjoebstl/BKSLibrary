@@ -389,11 +389,12 @@
                         }
                     else            // wirklich ein Counter der nach oben zählt
                         {
-                        $value = $value-
+                        $value = $value+GetValue($this->counterOffsetLogID);            // Offset dazuzählen damit Stromausfälle und Resets berücksichtigt werden können
                         $diff=$value-GetValue($this->counterLogID);
                         if ($debug)                 // im Debug Mode falsche Werte einschleusen
                             {
-                            echo "Counter_LogValue mit $value aufgerufen. Vergleichen mit ".$this->counterLogID." ".IPS_GetName($this->counterLogID)." = ".GetValueIfFormatted($this->counterLogID)."\n";                    
+                            echo "Counter_LogValue mit $value aufgerufen. Vergleichen mit ".$this->counterLogID." ".IPS_GetName($this->counterLogID)." = ".GetValueIfFormatted($this->counterLogID)."\n";    
+                            echo "Differenz ist berechnet $diff .\n";                   
                             }
                         }
                     }
@@ -428,7 +429,8 @@
 					}
 				else
 					{
-					SetValue($this->counterOffsetLogID,GetValue($this->counterOffsetLogID)-$diff);
+					//SetValue($this->counterOffsetLogID,GetValue($this->counterOffsetLogID)-$diff);
+                    SetValue($this->counterOffsetLogID,-$diff);
 					}						
                 
                 /*$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);

@@ -118,7 +118,10 @@
  * AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
  *
  * werden mittlerweile groestenteils haendisch angelegt, es geht aber auch automatisch, zB für Standardvariablen
- *
+ *      __construct
+ *      set_Configuration               Konfigurationsmanagement, function Autosteuerung_Setup in Autosteuerung_Configuration.inc.php
+ *      get_Configuration               LogDirectory, HeatControl
+ 
  *      Get_EventConfigurationAuto
  *      Set_EventConfigurationAuto
  *      CreateEvent
@@ -1420,61 +1423,94 @@ class AutosteuerungOperator
      * bearbeitet die Geofency Informationen wenn Geofency Hooks installiert wurden
      * alles soweit möglich automatisiert herausfinden
      * die geofency Adressen auch gleich mit Archivierung setzen damit grafische Auswertungen ebenfalls möglich sind.
+     *
+     *
      */
     function getGeofencyInformation($debug=false)
         {
+        if ($debug) echo "getGeofencyInformation aufgerufen:\n";
         $geofencyAddresses=array();
 	    $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
     	//$modulhandling->printLibraries();
-	    if ($debug) echo "\n";
-
     	//$modulhandling->printModules('Misc Modules');
-	    if ($debug) $modulhandling->printInstances('Geofency');
+
+	    if ($debug>1) $modulhandling->printInstances('Geofency');
     	$Geofencies=$modulhandling->getInstances('Geofency');
         if (sizeof($Geofencies)>0)
             {
+            if ($debug>1) echo "Anzahl Geofency Module Instanzen: ".sizeof($Geofencies)."\n";
             foreach ($Geofencies as $Geofency)
                 {
                 /*sollte nur ein Modul sein und unter dem Modul verschiedene Geräte */
                 $devices=IPS_GetChildrenIDs($Geofency);
                 if (sizeof($devices)>0) 
                     {
+                    if ($debug>1) echo "Anzahl Geofency Devices: ".sizeof($devices)."\n";
                     foreach ($devices as $device)
                         {
-                        if ($debug) echo "Instanz $Geofency (".IPS_GetName($Geofency).") mit Gerät $device (".IPS_GetName($device).").\n";
+                        if ($debug) echo "  Gerät $device (".IPS_GetName($device).").\n";
                         $childrens=IPS_GetChildrenIDs($device);
                         $foundAdresse=0;
                         foreach ($childrens as $children)
                             {
-                            if (IPS_GetVariable($children)["VariableType"]==0) 
+                            if (IPS_GetVariable($children)["VariableType"]==0)          // nach Boolean Variablen suchen, alle auflisten
                                 {
-                                if ($foundAdresse==0) 
-                                    {
-                                    $foundAdresse=$children;
-                                    $geofencyAddresses[$foundAdresse]=IPS_GetName($foundAdresse);
-                                    }
-                                else echo "**Fehler, zwei Adressen gefunden.\n";
+                                $geofencyAddresses[$device][$foundAdresse]["OID"]=$children;
+                                $geofencyAddresses[$device][$foundAdresse]["Name"]=IPS_GetName($children);
+                                if ($debug) echo "    ".$foundAdresse." $children ".str_pad("(".IPS_GetName($children).")",30)."  ".(GetValue($children)?"Anwesend":"Abwesend")."\n";
+                                $foundAdresse++;
                                 }
                             //echo "    ".$children." (".IPS_GetName($children).")  ".IPS_GetVariable($children)["VariableType"]."\n";
                             }
-                        if ($foundAdresse) echo "    ".$foundAdresse." (".IPS_GetName($foundAdresse).")  \n";
+                        //echo "    ".$foundAdresse." (".IPS_GetName($foundAdresse).")  \n";
                         }
                     //print_r($devices);
-            	    if ($debug) echo "\n";
+            	    //if ($debug) echo "\n";
                     }
                 }
             }
-        if ($debug) print_r($geofencyAddresses);
+        if ($debug>1) print_r($geofencyAddresses);
+        return ($geofencyAddresses);
+        }
 
+    /* aufgeteilt, die obige Routine getGeofencyInformation findet und diese Routine parameteriert die Archive
+     */
+    function setGeofencyAddressesToArchive($geofencies, $debug=false)
+        {
         $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-        foreach ($geofencyAddresses as $geofencyAddress => $Address)
+        foreach ($geofencies as $geofency => $devices)
             {
-            echo "Archive Handler setzen für Variable $geofencyAddress. \n";
-    		AC_SetLoggingStatus($archiveHandlerID,$geofencyAddress,true);
-	    	AC_SetAggregationType($archiveHandlerID,$geofencyAddress,0);      /* normaler Wwert */
+            foreach ($devices as $device => $address)
+                {
+                echo "Archive Handler setzen für Variable ".$address["OID"].":\n";
+                AC_SetLoggingStatus($archiveHandlerID,$address["OID"],true);
+                AC_SetAggregationType($archiveHandlerID,$address["OID"],0);      /* normaler Wwert */
+                }
             }
         IPS_ApplyChanges($archiveHandlerID);
-        return($geofencyAddresses);
+        return(true);
+        }
+
+    /* aufgeteilt, die obige Routine getGeofencyInformation findet und diese Routine parameteriert die Links in der Anwesenheitserkennung der Autosteuerung
+     */
+    function linkGeofencyAddresses($geofencies, $categoryId_Anwesenheit, $debug=false)
+        {
+        if (sizeof($geofencies)>0)
+            {
+            $order=100; 
+            foreach ($geofencies as $device => $addresses)
+                {
+                echo "  Gerät $device (".IPS_GetName($device).").\n";   
+                $categoryId  = CreateVariableByName($categoryId_Anwesenheit, IPS_GetName($device),0, "", "", $order);      // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+                $order+=10;
+                foreach ($addresses as $index => $entry)
+                    {
+                    echo "    $index ".str_pad("(".$entry["Name"].")",30)."  ".(GetValue($entry["OID"])?"Anwesend":"Abwesend")."\n";
+                    CreateLinkByDestination($entry["Name"], $entry["OID"],    $categoryId, $index);
+                    }
+                }
+            }
+        return(true);
         }
 
 	} /* ende class */
@@ -3905,6 +3941,7 @@ class Autosteuerung
                     //IPSLogger_Inf(__file__, 'Autosteuerung, evalCondition, setNewStatusBounce : Bounce erkannt, Befehl IF:BOUNCE:'.$interval.' with decision no switch.');					
                     }            
             case "ON":
+            case "TRUE":
                 if ($state)     // normal
                     {
                     /* nur Schalten wenn  Statusvariable true ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
@@ -3925,6 +3962,7 @@ class Autosteuerung
                     }
                 break;
             case "OFF":
+            case "FALSE":
                 if ($state)     // normal
                     {
                     /* nur Schalten wenn  Statusvariable false ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */

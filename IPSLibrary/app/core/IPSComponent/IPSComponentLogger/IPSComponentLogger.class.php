@@ -158,8 +158,8 @@ class Logging
         $this->constructFirst();                            // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
 		$this->prefix=$prefix;
-		//$this->log_File=$logfile;
-		$this->log_File=str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // alles wegloeschen das einem korrekten Filenamen widerspricht
+		$this->log_File=$logfile;     // es kommt das Verzeichnis mit, nicht bearbeiten
+		//$this->log_File=str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // alles wegloeschen das einem korrekten Filenamen widerspricht
 		$this->nachrichteninput_Id=$nachrichteninput_Id;
         $this->config["Prefix"]=$prefix;
         //if ($this->configuration["BasicConfigs"]["LogStyle"] == "html") $html=true;
@@ -179,6 +179,7 @@ class Logging
 			}
 		else
 			{			
+            //echo "Ein Logfile $logfile anlegen.\n";
             $this->config["Logfile"]=$logfile;
 			if (!file_exists($this->log_File))
 				{

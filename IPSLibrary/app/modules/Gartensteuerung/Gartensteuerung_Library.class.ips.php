@@ -98,6 +98,8 @@ class Gartensteuerung
      *
      *  getConfig_aussentempID                      tempId aus dem Ergebnis der Auswertung von setGartensteuerungConfiguration
      *  getConfig_raincounterID                     siehe oben
+     *  getRainRegisters
+     *  getConfig_xID
      *  getConfig_waterPumpID
      *  getConfig_valveControlIDs
      *  getConfig_RemoteAccess_Address
@@ -105,7 +107,9 @@ class Gartensteuerung
      *  setGartensteuerungConfiguration
      *  getConfig_Gartensteuerung
      *
+     *  control_xID
      *  control_waterPump
+     *  getKreisfromCount
      *  control_waterValves
      *
      *  fromdusktilldawn
@@ -275,8 +279,9 @@ class Gartensteuerung
 		if ($this->debug) { echo "\n\n"; }  */
 		}
 
-    /* von CustomComponents die Counter Category finden */
-	
+    /* Gartensteuerung::getCategoryRegisterID
+     * von CustomComponents die Counter Category finden 
+     */
      public function getCategoryRegisterID($find="Counter")
         {
         $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
@@ -285,7 +290,7 @@ class Gartensteuerung
         }               
 
 	/******************************************************************
-	 *
+	 * Gartensteuerung::getConfig_aussentempID
 	 * Einlesen der Konfiguration, manche Parameter können auch komplizierter als Funktion (customizing) 
 	 * berechnet oder eingelesen werden. Wenn kein Eintrag in der Konfiguration dann Funktion aufrufen
 	 *
@@ -1183,7 +1188,7 @@ class Gartensteuerung
 
 
 	/*******************
-     *
+     * writeKalendermonateHtml
      * Ausgabe der Regenereignisse (ermittelt mit listrainevents) mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
 	 */
 
@@ -1205,27 +1210,103 @@ class Gartensteuerung
         }
 
 	/*******************
-     *
-     * Ausgabe der Regenmenge/dauer (ermittelt mit listrainevents) als html Tabelle zum speichern in einer hml Box
+     * writeOverviewMonthsHtml
+     * Ausgabe der Regenmenge/dauer (ermittelt mit listrainevents) als html Tabelle Jahre versus Monate zum speichern/anzeigen in einer hml Box
+     * Input ist ein Array mit Index MM.JJ oder Index und Value/Timestamp
 	 */
-
-	public function writeOverviewMonthsHtml($monthlyValues=array())
+	public function writeOverviewMonthsHtml($monthlyValues=array(),$mode=1,$debug=false)
 		{
-        $startjahr=(integer)date("y",time());
+        // umgestellt auf intern 4stellige Jahreszahlen
+        $startjahr=(integer)date("Y",time());
         $minjahr=$startjahr;
         //print_r($monthlyValues);
-        foreach ($monthlyValues as $date=>$regenmenge)
+        $summe=array();
+        if (is_array($mode))
             {
-            $MonatJahr=explode(".",$date);
-            if ((integer)$MonatJahr[1]<$minjahr) $minjahr=(integer)$MonatJahr[1];
-            $tabelle[(integer)$MonatJahr[0]][(integer)$MonatJahr[1]]=$regenmenge;
+            if (isset($mode["type"])) $type = $mode["type"];
+            else $type="sum";
+            if (isset($mode["mode"])) $mode = $mode["mode"];
+            else $mode=1;
             }
+        echo "writeOverviewMonthsHtml Mode $mode Type $type \n";
+        if ($mode==1)           // Index ist bereits MM.YY
+            {
+            foreach ($monthlyValues as $date=>$regenmenge)
+                {
+                $MonatJahr=explode(".",$date);
+                $monat=(integer)$MonatJahr[0]; $jahr=(integer)$MonatJahr[1];
+                if ($jahr<100) $jahr += 2000;
+                if ($jahr<$minjahr) $minjahr=$jahr;
+                $tabelle[$monat][$jahr]=$regenmenge;
+
+                if (isset($summe[$jahr])) 
+                    {
+                    $summe[$jahr]["value"] += $regenmenge;
+                    $summe[$jahr]["count"]++;
+                    }
+                else 
+                    {
+                    $summe[$jahr]["value"] = $regenmenge;
+                    $summe[$jahr]["count"] = 1;
+                    }
+                }
+            }
+        elseif ($mode==2)                // Index ist ein aufsteigender Wert
+            {
+            foreach ($monthlyValues as $index=>$entry)
+                {
+                $date=date("m.Y",$entry["TimeStamp"]);
+                $regenmenge=$entry["Value"];
+                $MonatJahr=explode(".",$date);              // index 0 ist Monat, 1 ist Jahr
+                $monat=(integer)$MonatJahr[0]; $jahr=(integer)$MonatJahr[1];
+                if ($jahr<$minjahr) $minjahr=$jahr;
+                $tabelle[$monat][$jahr]=$regenmenge;                
+                
+                if (isset($summe[$jahr])) 
+                    {
+                    $summe[$jahr]["value"] += $regenmenge;
+                    $summe[$jahr]["count"]++;
+                    }
+                else 
+                    {
+                    $summe[$jahr]["value"] = $regenmenge;
+                    $summe[$jahr]["count"] = 1;
+                    }
+                }
+            }
+        else            // Index ist ein aufsteigender Wert, aber es gibt noch einen Kanal identifier danach
+            {
+            foreach ($monthlyValues as $index=>$entry)
+                {
+                foreach ($entry as $channel=>$subentry)
+                    {
+                    $date=date("m.Y",$subentry["TimeStamp"]);
+                    $regenmenge=$subentry["Value"];
+                    $MonatJahr=explode(".",$date);              // index 0 ist Monat, 1 ist Jahr
+                    $monat=(integer)$MonatJahr[0]; $jahr=(integer)$MonatJahr[1];
+                    if ($jahr<$minjahr) $minjahr=$jahr;
+                    $tabelle[$monat][$jahr]=$regenmenge;                
+                    
+                    if (isset($summe[$jahr])) 
+                        {
+                        $summe[$jahr]["value"] += $regenmenge;
+                        $summe[$jahr]["count"]++;
+                        }
+                    else 
+                        {
+                        $summe[$jahr]["value"] = $regenmenge;
+                        $summe[$jahr]["count"] = 1;
+                        }
+                    }
+                }
+            }
+        if ($debug) print_R($tabelle);
         $html="";
         $html.='<table frameborder="1" width="100%">';
     	$html.="<th> <tr> <td> Monat </td> ";
         for ($i=$startjahr;$i>=$minjahr;$i--) {$html.="<td> ".$i." </td>";}
         $html.= " </tr> </th>";
-	    for ($j=1;$j<=12;$j++)
+	    for ($j=1;$j<=12;$j++)          // Monate sind die zeilen
             {
             $html.="<tr> <td>".$j."</td>";
             for ($i=$startjahr;$i>=$minjahr;$i--) 
@@ -1235,6 +1316,23 @@ class Gartensteuerung
                 }
             $html.= " </tr> ";
     	    }
+        // Summe/Mean
+        $html.="<tr> <td>Summe</td>";
+        for ($i=$startjahr;$i>=$minjahr;$i--) 
+            {
+            if ($type=="sum")
+                {
+                if (isset($summe[$i])==true) $html.="<td> ".number_format($summe[$i]["value"],1,",","")." </td>";
+                else $html.="<td> </td>";
+                }
+            else
+                {
+                if (isset($summe[$i])==true) $html.="<td> ".number_format(($summe[$i]["value"]/$summe[$i]["count"]),1,",","")." </td>";
+                else $html.="<td> </td>";
+                }
+            }
+        $html.= " </tr> ";
+
    	    $html.="</table>";
         return($html);
         }   
@@ -1305,7 +1403,7 @@ class GartensteuerungStatistics extends Gartensteuerung
     /* nur in dieser class, es gibt einen werte Speicher
      * und verschiedene Möglichkeitren die Daten dorthin einzulesen
      */
-    public function setWerteStore($rainregs)
+    public function setWerteStore($rainregs,$mode="INCREMENT")
         {
         $endtime=time();
         $starttime=$endtime-60*60*24*100;                // 10 Tage
@@ -1317,12 +1415,17 @@ class GartensteuerungStatistics extends Gartensteuerung
                 echo "setWerteStore, remote Server mit url $url \n";
                 $rpc = new JSONRPC($url);
 			    $archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-                if (isset($rainregs["IncrementID"]))
+                if ( (strtoupper($mode)=="INCREMENT") && (isset($rainregs["IncrementID"])) )
                     {
                     $variableID = $rainregs["IncrementID"];
-			        $werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID , $starttime, $endtime,0);
-                    print_R($werteLog);
                     }
+                elseif (isset($rainregs["CounterID"]))
+                    {
+                    $variableID = $rainregs["CounterID"];
+                    }
+                echo "get Werte from Remote Server, last 100 days, data $archiveHandlerID, $variableID , $starttime, $endtime \n";
+                $werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID , $starttime, $endtime,0);
+                print_R($werteLog);
                 }
             }
         }

@@ -35,6 +35,8 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 
     // max. Scriptlaufzeit definieren
     $dosOps = new dosOps();
+    $ipsOps = new ipsOps();
+
     $dosOps->setMaxScriptTime(500); 
     $startexec=microtime(true);
 
@@ -42,12 +44,36 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
-	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	//IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
-
     IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager))
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+
+		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+		$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
+		}
+
+    $installedModules = $moduleManager->GetInstalledModules();
+    if (isset($installedModules["DetectMovement"])) 
+        {
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        
+        IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+        IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
+
+        IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+        IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+        IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+
+    	$debug=false;
+		$testMovement = new TestMovement($debug);
+        }
 
     $componentHandling=new ComponentHandling();
 	$commentField="zuletzt Konfiguriert von EvaluateHomematic um ".date("h:i am d.m.Y ").".";
@@ -64,7 +90,7 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
     if (function_exists('deviceList'))
         {
         echo "Temperatur Sensoren von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
-        $debug=false;
+        $debug=true;
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField, $debug);				/* true ist Debug, Temperatursensoren und Homematic Thermostat */
         //print_r($result);
         }
@@ -82,9 +108,57 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
         {
         echo "Luftfeuchtigkeit Sensoren von verschiedenen Geräten werden registriert.\n";
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField,false);				/* true ist Debug, Feuchtigkeitssensoren und Homematic Thermostat */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_HUMIDITY","REGISTER" => "HUMIDITY"],'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField,false);				/* true ist Debug, Feuchtigkeitssensoren und Homematic Thermostat */
         //print_r($result);
         }
-   
+
+    // Create Events zum Abschluss, dekonstruierte Routine um eventuell mitzählen zu können
+    $messageHandler = new IPSMessageHandler();
+    //$messageHandler->CreateEvents();
+    $count=0; $countCust=0;
+    $configuration = IPSMessageHandler_GetEventConfiguration();
+    foreach ($configuration as $variableId=>$params) 
+        {
+        //echo "CreateEvent $variableId, ".$params[0],"\n";
+        $count++;
+        $messageHandler->CreateEvent($variableId, $params[0]);
+        }
+    $configuration = IPSMessageHandler_GetEventConfigurationCust();
+    foreach ($configuration as $variableId=>$params) 
+        {
+        //echo "CreateCustEvent $variableId, ".$params[0],"\n";
+        $countCust++;
+        $messageHandler->CreateEvent($variableId, $params[0]);
+        }
+    echo "Summary, CreateEvent $count CreateCustEvent $countCust\n";
+
+    // oder etwas professioneller mit testMovement von DetectMovememt
+    if (isset($testMovement)) 
+        {
+        echo "DetectMovement Module installiert. Class TestMovement für Auswertungen verwenden:\n";
+        //echo "--------\n";
+        $eventListforDeletion = $testMovement->getEventListforDeletion();
+        if (count($eventListforDeletion)>0) 
+            {
+            echo "Ergebnis TestMovement construct: Es müssen ".count($eventListforDeletion)." Events in der Config Datei \"IPSMessageHandler_GetEventConfiguration\" gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
+            echo "                                 und es müssen auch diese Events hinterlegt beim IPSMessageHandler_Event geloescht werden \"Bei Änderung Event Ungültig\".\n";
+            print_R($eventListforDeletion);
+            }
+        else 
+            {
+            echo "Events von IPS_MessageHandler mit Konfiguration abgeglichen. TestMovement sagt alles ist in Ordnung.\n";
+            echo "\n";
+            }
+        $filter="IPSMessageHandler_Event";
+        $resultEventList = $testMovement->getEventListfromIPS($filter,true);
+        //$ipsOps->intelliSort($resultEventList,"OID");                           // Event ID
+        $ipsOps->intelliSort($resultEventList,"Name");                           // Device Event ID
+        $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,true);
+        echo $html;
+
+        }
+
+
     echo "Aktuelle Laufzeit ".exectime($startexec)." Sekunden.\n"; 
 
 

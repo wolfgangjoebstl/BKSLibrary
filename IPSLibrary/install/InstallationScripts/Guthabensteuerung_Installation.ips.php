@@ -277,7 +277,8 @@
                 }
             $categoryDreiID = $seleniumOperations->getCategory("DREI");                
             echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";  
-            if (isset($installedModules["OperationCenter"]))
+
+            if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
                 {
                 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
                 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -287,52 +288,13 @@
                 $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
                 $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
                 $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
-                /*
-                $subnet="10.255.255.255";                               // dont know no longer why
-                $OperationCenter=new OperationCenter($subnet);
-                $OperationCenterSetup = $OperationCenter->getSetup();                       // die Verzeichnisse
-                $cloudDir=$dosOps->correctDirName($OperationCenterSetup["Cloud"]["CloudDirectory"]);
-                $execDir=$dosOps->correctDirName($cloudDir.$OperationCenterSetup["Cloud"]["Executes"]);         // alle chromedriver für die interne Verteilung)
-                echo "Cloud Verzeichnis für IP Symcon ist hier          : $cloudDir \n";
-                echo "Cloud Verzeichnis für IP Symcon Executes ist hier : $execDir \n";
-                $dosOps->writeDirStat($execDir);                    // Ausgabe eines Verzeichnis 
-                $execDirContent = $dosOps->readdirToArray($execDir);                   // Inhalt Verzeichnis als Array
-                $version=array();
-                foreach ($execDirContent as $fileName)
-                    {
-                    //$posNumeric=strpos()
-                    $match=array();
-                    $status=preg_match("/[0-9]{1,4}/", $fileName, $match);      // regex encoding [0-9] eine Ziffer, /^[0-9]{1,4}+\$/
-                    if ( ($status) && (count($match)==1) ) 
-                        {
-                        $matchFound=number_format($match[0]);
-                        if (strpos($fileName,"chromedriver")===0)
-                            {
-                            //echo "Gefunden in $fileName : $matchFound\n";
-                            $version[$matchFound]["Name"]=$fileName;
-                            $version[$matchFound]["Size"]=filesize($execDir.$fileName);
-                            }
-                        }
-                    }
-                ksort($version);
-                //print_r($version);   */
+                //print_R($version);          // Version Nummer, Filename, Size in Bytes
+
                 $latestVersion=array_key_last($version);
                 $cdVersion=(string)$latestVersion;
                 $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
                 if ($actualVersion != $latestVersion) echo "Update with latest available Chromedriver version \"$cdVersion\" recommended. Actual version is \"$actualVersion\".\n";
- 
-                /*
-                $latestChromeDriver = "chromedriver_".$cdVersion.".exe";
-                $foundNew = $dosOps->findfiles($execDirContent,$latestChromeDriver);
-                if ($foundNew)
-                    {
-                    echo "Check if missing and then move ".$foundNew[0]." to Selenium Directory.\n";
-                    $sourceFile=$execDir.$foundNew[0];   
-                    }
-                else $sourceFile=false;  */
 
-
-                //print_R($configWatchdog);
                 if (isset($configWatchdog["Software"]["Selenium"]["Directory"]))
                     {
                     $selDir=$dosOps->correctDirName($configWatchdog["Software"]["Selenium"]["Directory"]);
@@ -349,29 +311,6 @@
                     $found = $dosOps->findfiles($selDirContent,"chromedriver.exe");
                     if ($found)
                         {
-                        if (false)
-                            {
-                            echo "Aktuelles chromedriver.exe gefunden. Version vergleichen.\n";   
-                            $size=filesize($selDir."chromedriver.exe");
-                            foreach ($version as $index => $info)
-                                {
-                                if ($info["Size"]==$size) break;
-                                }
-                            $tab=array();                       // für chromedriver update Button
-                            if ($latestVersion==$index) 
-                                {
-                                echo "Version ist die letzte Version mit Index $index \n";
-                                }
-                            else // need update by manual request
-                                {
-                                echo "Version aktuelles chromedriver.exe ist $index. Es sollte auf $latestVersion upgedated werden. \n";
-                                foreach ($version as $num => $entry)
-                                    {
-                                    if ($num>$index) $tab[]=(string)$num;         
-                                    }
-                                print_R($tab);
-                                }
-                            }
                         $SeleniumUpdate = new SeleniumUpdate();
                         $tabs=$SeleniumUpdate->findTabsfromVersion($version, $actualVersion);
 
@@ -382,258 +321,113 @@
                     }                   // aktuellen Selenium Driver rausfinden 
                 }               // OperationCenter ist installiert 
                 
-            /**************************** es werden chromedriver Versionen automatisch geladen, 
-             * hier das Verzeichnis download dafür machen, Target verzeichnis                   
-             * im target Verzeichnis 7zip installieren, implizierte Statemaschine duch mehrmaliges Aufrufen
-             *          download 7zr 
-             *          download 7za Archiv
-             *          erstellen Batchfile zum entpacken 7za
-             *          unzip 7za mit Batchfile, dient für entpacken von .zip Files
-             *
-             ***************************************/
-
-            $html = "";
-            $dosOps = new dosOps();
-            $sysOps = new sysOps();
-            $curlOps = new curlOps();             
-
-            $SeleniumUpdate = new SeleniumUpdate();
-            $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
-            $html .= $result;
-            
-            $dir=$GuthabenAllgConfig["Selenium"]["DownloadDir"];
-
-            /*
-            $dosOps->mkdirtree($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
-            if (is_dir($GuthabenAllgConfig["Selenium"]["DownloadDir"])) echo "Verzeichnis für Selenium downloads verfügbar: ".$GuthabenAllgConfig["Selenium"]["DownloadDir"]."\n";
-
-            $dir = $GuthabenAllgConfig["Selenium"]["DownloadDir"];
-            echo "Zieldatei downloaden und abspeichern: $dir\n";
-            $html .= "Selenium ChromeDriver Download verzeichnis : $dir <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
-            echo "Was ist schon alles im Targetverzeichnis gespeichert $dir:\n";
-            $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
-            $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-            //print_R($files);
-
-            $filename="7zr.exe";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
-            if ($file) echo "   --> Datei $filename gefunden.\n";
-            else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$dir);    
-
-            $filename="7z2301-extra.7z";
-            $file7 = $dosOps->findfiles($files,$filename,true);       //Debug
-            if ($file) echo "   --> Datei $filename gefunden.\n";
-            else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$dir);    
-
-            $filename="unzip_7za.bat";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
-            if ($file) 
+            if ( (isset($GuthabenAllgConfig["Selenium"]["getChromeDriver"])) && ($GuthabenAllgConfig["Selenium"]["getChromeDriver"]) )
                 {
-                echo "   --> Datei $filename gefunden.\n";
-                //$lines = file($dir."unzip_7za.bat");
-                //foreach ($lines as $line) echo $line;        
-                }
-            else
-                {
-                $filenameProcess = "7z2301-extra.7z";
-                echo "Schreibe Batchfile zum automatischen Unzip der 7za Version.\n";
-                $handle2=fopen($dir."unzip_7za.bat","w");        
-                fwrite($handle2,'echo written '.date("H:m:i d.m.Y")."\r\n");
-                $command='7zr.exe x '.$filenameProcess."\r\n";
-                fwrite($handle2,$command);
-                //$command="pause\r\n";
-                //fwrite($handle2,$command);
-                fclose($handle2);
-                }
+                echo "Chromedriver automatisch und manuell von Webpage laden.\n";
+                $pname="GetChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+                $nameID=["Get"];
+                $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+                $getChromedriverID          = CreateVariableByName($CategoryId_Mode,"GetChromeDriver", 1,$pname,"",125,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
-            $filename="7za.exe";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
-            if ($file) 
-                {
-                echo "   --> Datei $filename gefunden.\n";
-                $html .= "Unzip Programm available : $filename <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
-                }
-            else
-                {
-                $ergebnis = "not started";
-                $commandName="unzip_7za.bat";
-                $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
-                echo "Execute Batch $dir$commandName um File $dir$filename zu erhalten : \"$ergebnis\"\n";
-                } */
-            /*
-            $filename="unzip_chromedriver.bat";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
-            if ($file) echo "   --> Datei $filename gefunden.\n";
-            else
-                {
-                $filesFiltered = $dosOps->findfiles($files,"*.zip",true);       //Debug
-                echo "Schreibe Batchfile $filename zum automatischen Unzip der Chromedriver Versionen.\n";
-                $handle2=fopen($dir.$filename,"w");        
-                fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
-                foreach ($filesFiltered as $index => $filename)
+                $configChromedriverID       = CreateVariableByName($CategoryId_Mode,"ConfigChromeDriver", 3,"","",124);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
+
+                /**************************** es werden chromedriver Versionen automatisch geladen, 
+                * hier das Verzeichnis download dafür machen, Target verzeichnis                   
+                * im target Verzeichnis 7zip installieren, implizierte Statemaschine duch mehrmaliges Aufrufen
+                *          download 7zr 
+                *          download 7za Archiv
+                *          erstellen Batchfile zum entpacken 7za
+                *          unzip 7za mit Batchfile, dient für entpacken von .zip Files
+                *
+                ***************************************/
+
+                $html = "";
+                $dosOps = new dosOps();
+                $sysOps = new sysOps();
+                $curlOps = new curlOps();             
+
+                $SeleniumUpdate = new SeleniumUpdate();
+                $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
+                $html .= $result;
+                
+                $dir=$GuthabenAllgConfig["Selenium"]["DownloadDir"];
+
+                $execDir=$seleniumChromedriver->get_ExecDir();
+                echo "Bestehende chromedriver Versionen ausgeben. Verzeichnis Synology/Shared Drive : ".$execDir."\n";
+                $dosOps->writeDirStat($execDir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+
+                //verfügbare chromedriver versionen herunterladen
+                $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
+
+                echo "Ergebnisse mit detaillierten Informationen über den Inhalt der Downloadpage abspeichern:\n";
+                print_r($result);
+
+                foreach ($result as $version => $entry)
                     {
-                    $command='7za.exe x '.$filename."\r\n";
-                    fwrite($handle2,$command);
-                    echo "   Befehl ist jetzt : $command";
-                    }
-                fclose($handle2);
-                }        
-
-            $dirname=$dir."chromedriver-win64/";
-            if (is_dir($dirname))
-                {
-                echo "Process result of unzip in $dirname.\n";
-                $files = $dosOps->writeDirToArray($dirname);        // bessere Funktion
-                $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-                $dosOps->rrmdir($dirname);
-                $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
-                echo "    -> finished, result and $dirname deleted.\n";
-                }
-            else echo "Dir $dirname not found.\n"; 
-
-            $filename="chromedriver-win64.zip";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
-            if ($file) 
-                {
-                echo "   --> Datei $filename gefunden.\n";
-                $commandName="unzip_chromedriver.bat";
-                $ergebnis = "not started";
-                //$ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
-                $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName);
-                echo "Execute Batch $dir$commandName \"$ergebnis\"\n";
-                echo "Delete File $dir$filename \n";
-                $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
-                $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-                $dosOps->deleteFile($dir.$filename);
-                $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
-                }
-            */
-
-            $execDir=$seleniumChromedriver->get_ExecDir();
-            echo "Bestehende chromedriver Versionen ausgeben. Verzeichnis Synology/Shared Drive : ".$execDir."\n";
-            $dosOps->writeDirStat($execDir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-
-            //verfügbare chromedriver versionen herunterladen
-            $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
-
-            /*
-            $url = "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json";
-            $type="chromedriver";           // oder chrome
-            $platform="win64";              // oder win32 oder linux64
-
-            $versions = file_get_contents($url);
-            //echo $versions;
-            $versionData=array();
-            $versionData=json_decode($versions,true);
-            //print_R($versionData);                        // Rodaten, alle Versionen
-
-            // original versions daten durchsuchen. Sie beginnt mit timestamp als scalar und versions als array
-            $debug=false;
-            $result=array(); // nach Versionsnummer indexiert
-            foreach ($versionData as $intro => $fulldata)
-                {
-                if (is_array($fulldata)) 
-                    {
-                    $count=sizeof($fulldata);
-                    //echo " $intro   ($count)\n";              // intro versions
-                    foreach ($fulldata as $index => $data)      // index von 0 bis n
-                        {
-                        if (is_array($data)) 
-                            {
-                            $count=sizeof($data);    
-                            $version=explode(".",$data["version"]);                                             // version index 0..3, 0 is major version
-                            if ($debug) echo " ".str_pad($index,3)."   ($count)   ".str_pad($data["version"],20)."  ".str_pad(json_encode($version),30);
-                            if (isset(($data["downloads"][$type])))
-                                {
-                                if ($debug) echo "$type\n";
-                                foreach ($data["downloads"][$type] as $indexSub => $dataSub)
-                                    {
-                                    if ( (isset($dataSub["platform"])) && ($dataSub["platform"]==$platform) )
-                                        {
-                                        $result[$version[0]]["version"]=$data["version"];
-                                        $result[$version[0]]["url"]=$dataSub["url"];
-                                        if ($version[3]>0) 
-                                            {
-                                            $url = $dataSub["url"];                                 // defaultwert ist immer die letzte freigegebene Version
-                                            $downloadVersion=$data["version"];
-                                            }
-                                        } 
-                                    }           // ende foreach
-                                }                   // ende isset choromedriver
-                            elseif ($debug)  echo "chrome only, $type not available\n";
-                            }                   // ende is_array
-                        else echo " $index   $data  Fehler ? \n";                 // Scalar Ausgabe 
-                        }                   // ende foreach
-                    }                   // ende is_array
-                elseif ($debug)  echo " $intro   $fulldata \n";                 // timestamp Ausgabe
-                }  */
-
-            echo "ergebnisse abspeichern\n";
-            print_r($result);
-            foreach ($result as $version => $entry)
-                {
-                echo "Wir beginnem mit Version $version.\n";
-                $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
-                $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-                $filename="chromedriver-win64.zip";
-                $file = $dosOps->findfiles($files,$filename,true);       //Debug
-                if ($file) 
-                    {
-                    echo "    ---> delete file.\n";
-                    $dosOps->deleteFile($dir.$filename);
-                    }
-                $file = $dosOps->findfiles($files,"chromedriver_$version.exe",true);       //Debug
-                if ($file) 
-                    {
-                    echo "    --> File $version vorhanden.\n";
-                    $html .= "Chromedriver File available : $version <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
-                    }
-                else
-                    {
-                    echo "Url laden.\n";
-                    $curlOps->downloadFile($entry["url"],$dir);
+                    echo "Wir beginnem mit Version $version.\n";
                     $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                    $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+                    $filename="chromedriver-win64.zip";
                     $file = $dosOps->findfiles($files,$filename,true);       //Debug
                     if ($file) 
                         {
-                        echo "   --> Datei $filename für version $version gefunden.\n";
-                        $commandName="unzip_chromedriver.bat";
-                        $ergebnis = "not started";
-                        $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
-                        echo "Execute Batch $dir$filename \"$ergebnis\"\n";
-                        $dirname=$dir."chromedriver-win64/";
-                        if (is_dir($dirname))
-                            {
-                            echo "Process result of unzip in $dirname.\n";
-                            $files = $dosOps->writeDirToArray($dirname);        // bessere Funktion
-                            $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-                            echo "moveFile ".$dirname."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
-                            //$dosOps->moveFile($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
-                            copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
-                            //echo "rename  ".$dir."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
-                            //rename($dir."chromedriver.exe",$dir."chromedriver_".$version.".exe");
-                            $dosOps->rrmdir($dirname);
-                            echo "    -> finished, result and $dirname deleted.\n";
-                            }
-                        else echo "Dir $dirname not found.\n"; 
-                    
+                        echo "    ---> delete file.\n";
                         $dosOps->deleteFile($dir.$filename);
+                        }
+                    $file = $dosOps->findfiles($files,"chromedriver_$version.exe",true);       //Debug
+                    if ($file) 
+                        {
+                        echo "    --> File $version vorhanden.\n";
+                        $html .= "Chromedriver File available : $version <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
+                        }
+                    else
+                        {
+                        echo "Url laden.\n";
+                        $curlOps->downloadFile($entry["url"],$dir);
                         $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                        $file = $dosOps->findfiles($files,$filename,true);       //Debug
+                        if ($file) 
+                            {
+                            echo "   --> Datei $filename für version $version gefunden.\n";
+                            $commandName="unzip_chromedriver.bat";
+                            $ergebnis = "not started";
+                            $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
+                            echo "Execute Batch $dir$filename \"$ergebnis\"\n";
+                            $dirname=$dir."chromedriver-win64/";
+                            if (is_dir($dirname))
+                                {
+                                echo "Process result of unzip in $dirname.\n";
+                                $files = $dosOps->writeDirToArray($dirname);        // bessere Funktion
+                                $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+                                echo "moveFile ".$dirname."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
+                                //$dosOps->moveFile($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
+                                copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
+                                //echo "rename  ".$dir."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
+                                //rename($dir."chromedriver.exe",$dir."chromedriver_".$version.".exe");
+                                $dosOps->rrmdir($dirname);
+                                echo "    -> finished, result and $dirname deleted.\n";
+                                }
+                            else echo "Dir $dirname not found.\n"; 
+                        
+                            $dosOps->deleteFile($dir.$filename);
+                            $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                            }
+                        }
+                    }       // ende foreach
+
+                //print_R($result);
+                if ($copyToSharedDrive)
+                    {
+                    $html .= "Copy to sharedrive possible : $execDir <br>";                  
+                    foreach ($result as $version => $entry)
+                        {
+                        if (file_exists($execDir."chromedriver_$version.exe")) echo "Version $version bereits vorhhanden, nicht überschreiben.\n";
+                        else copy ($dir."chromedriver_$version.exe",$execDir."chromedriver_$version.exe");
                         }
                     }
-                }       // ende foreach
-
-            //print_R($result);
-            if ($copyToSharedDrive)
-                {
-                $html .= "Copy to sharedrive possible : $execDir <br>";                  
-                foreach ($result as $version => $entry)
-                    {
-                    if (file_exists($execDir."chromedriver_$version.exe")) echo "Version $version bereits vorhhanden, nicht überschreiben.\n";
-                    else copy ($dir."chromedriver_$version.exe",$execDir."chromedriver_$version.exe");
-                    }
-                }
-            else $html .= "Copy to sharedrive not activated : $execDir <br>";                   
+                else $html .= "Copy to sharedrive not activated : $execDir <br>";  
+                }                 
             break;
         case "NONE":
             $DoInstall=false;
@@ -1034,6 +828,12 @@
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["NAME"]="Status Informationen über Selenium";
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["ORDER"]=20;
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["ADMINISTRATOR"]=true;                
+                }
+            if ($getChromedriverID)          // Chromedriver versionen nachladen in Synology Drive nicht auf jedem PC 
+                {
+                $webfront_links["Selenium"]["Auswertung"][$getChromedriverID]["NAME"]="Load New Chromedriver Versions from Webpage";
+                $webfront_links["Selenium"]["Auswertung"][$getChromedriverID]["ORDER"]=700;
+                $webfront_links["Selenium"]["Auswertung"][$getChromedriverID]["ADMINISTRATOR"]=true;                
                 }
             echo "Konfigurierte Webdriver, überpüfen ob vorhanden und aktiv :\n";
             $webDrivers=$guthabenHandler->getSeleniumWebDrivers();   

@@ -18,8 +18,11 @@
      */
 	 
     /*
-     * Klasse GuthabenHandler
-     * Klasse yahooApi
+     * Klassen, die hier abgebildet sind 
+     *  GuthabenHandler     macht Guthabenabfragen mit Selenium und ien paar Routinen auch mit iMacro
+     *  yahooApi            verwendet yahoo finance API, aber es gibt Einschränkungen
+     *  zamgApi             versucht sich an historischen Wetterdaten (schrecklich ungenau) von Geosphere/zamg Austria
+     *
      *
      */
 
@@ -177,6 +180,7 @@
                     configfileParser($configSelenium["Selenium"], $config["Selenium"], ["DownloadDir","downloadDir","DownLoadDir","Downloaddir","DOWNLOADDIR","downloaddir" ],"DownloadDir" , "/download/");
                     if (strpos($config["Selenium"]["DownloadDir"],"C:/Scripts/")===0) $config["Selenium"]["DownloadDir"]=substr($config["Selenium"]["Scripts"],10);      // Workaround für C:/Scripts"
                     $config["Selenium"]["DownloadDir"] = $this->dosOps->correctDirName($systemDir.$config["Selenium"]["DownloadDir"]);                    //print_r($config);
+                    configfileParser($configSelenium["Selenium"], $config["Selenium"], ["GETCHROMEDRIVER","getchromedrive","getChromedriver","getChromeDriver" ],"getChromeDriver" , false);
                     }
                 elseif  ( (strtoupper($config["OperatingMode"]))=="IMACRO")
                     {
@@ -1407,7 +1411,7 @@
 
     /* class API von YahooFinance
      *  __construct
-     *  extractModule                               allgemeine Funktion
+     *  extractModule                               allgemeine Funktion, extract Modul data from larger array
      *  extractIncomeStatementHistory
      *  extractIncomeStatementHistoryQuarterly
      *  extractPrice
@@ -1416,6 +1420,11 @@
      *  getDataYahooApi
      *
      *  calcAddColumnsOfHistoryQuarterly
+     *  combineTablesOfHistory
+     *  copyLatestEndDateOfHistory
+     *  addTransformColumnsfromtables
+     *  doRatingOfTables
+     *  rating
      *
      */
 
@@ -1642,7 +1651,11 @@
             return ($inputData);
             }
 
-        /* die Daten von der Yahoo Api holen
+        /* getDataYahooApi
+         * die Daten von der Yahoo Api holen
+         *  data        array aus Tickersymbolen
+         *  modul       array aus Modulen
+         *  connfig
          *
             $modules = [
                 'assetProfile', 'balanceSheetHistory', 'balanceSheetHistoryQuarterly', 'calendarEvents',
@@ -1652,6 +1665,10 @@
                 'institutionOwnership', 'majorDirectHolders', 'majorHoldersBreakdown', 'netSharePurchaseActivity', 'price', 'quoteType',
                 'recommendationTrend', 'secFilings', 'sectorTrend', 'summaryDetail', 'summaryProfile', 'symbol', 'upgradeDowngradeHistory',
                 'fundProfile', 'topHoldings', 'fundPerformance'];
+        *
+        * es gibt probleme mit Authorisierung. Workaround 1: https://query1.finance.yahoo.com/v1/test/getcrumb zusätzlicher Parameter :   &crumb=crumb_that_i_just_got
+        * https://github.com/ranaroussi/yfinance/issues/1592
+        *
         */
 
 
@@ -1940,5 +1957,265 @@
 
         }       // ende class yahooApi
 
+    /* class API von Zamg, Geosphere
+     *  __construct
+     *
+     *  getDataZamgApi
+     *
+     *
+     */
+
+    class zamgApi
+        {
+
+        protected $data=array();
+
+        /* zamgApi::getDataZamgApi
+         * stores as data in class, analysis takes place in other functions
+         *
+         *
+         * die Daten von der Zamg Api holen
+         *  data        array aus Tickersymbolen
+         *  modul       array aus Modulen
+         *  config
+         *
+         */
+        function getDataZamgApi($data,$modul,$config=false,$debug=false)
+            {
+            if ($debug) echo "getDataZamgApi(\n";
+            if (isset($config["StartTime"])) $start = "&start=".date("Y-m-d\TH:i:s.000\Z",$config["StartTime"]);
+            else $start = "&start=2022-01-01T00:00:00.000Z";
+            if (isset($config["EndTime"]))   $end =   "&end=".date("Y-m-d\TH:i:s.000\Z",$config["EndTime"]);
+            else $end =   "&end=".date("Y-m-d\TH:i:s.000\Z");
+
+            $url='https://dataset.api.hub.geosphere.at/v1'.$modul;
+            //parameters=RR&parameters=SA&parameters=TN&parameters=TX
+            $parameters="?";
+            foreach ($data as $data) $parameters .= "&parameters=".$data;
+            //$ch = curl_init('https://dataset.api.hub.geosphere.at/v1/grid/historical/spartacus-v2-1d-1km?parameters=RR&parameters=SA&parameters=TN&parameters=TX&start=2022-02-01T00%3A00%3A00.000Z&end=2023-10-22T00%3A00%3A00.000Z&bbox=48.25%2C16.30%2C48.39%2C16.37&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
+            //$ch = curl_init($url.'?parameters=RR&parameters=SA&parameters=TN&parameters=TX&start=2022-02-01T00%3A00%3A00.000Z&end=2023-10-22T00%3A00%3A00.000Z&bbox=48.25%2C16.30%2C48.39%2C16.37&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
+            //$ch = curl_init($url.'?'.$parameters.'&start=2022-02-01T00%3A00%3A00.000Z&end=2023-10-22T00%3A00%3A00.000Z&bbox=48.25%2C16.30%2C48.39%2C16.37&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
+            $ch = curl_init($url.'?'.$parameters.$start.$end.'&bbox=48.25%2C16.30%2C48.39%2C16.37&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $result = curl_exec($ch);
+            curl_close($ch);
+            $this->data=json_decode($result,true);
+            return($result);
+            }
+
+        /* when grid da ist fetched, it is possible to find the index of the grid based data bear our pos
+         */
+        function getIndexNearPosOfGrid(&$pos1)
+            {
+            foreach ($this->data as $index=>$entry) 
+                {
+                $d=0; $dmax=2;
+                if ( ($index=="features") )     // der Reihe nach die Punkte
+                    {
+                    foreach ($entry as $subindex => $subentry)
+                        {
+                        //echo "$subindex ".$subentry["type"]."\n";
+                        foreach ($pos1 as $posIndex => $pos)
+                            {
+                            $abstand = abs($subentry["geometry"]["coordinates"][1]-$pos1[$posIndex]["north"])+abs($subentry["geometry"]["coordinates"][0]-$pos1[$posIndex]["east"]);
+                            if (( (isset($pos1[$posIndex]["diff"]["min"])) && ($abstand<$pos1[$posIndex]["diff"]["min"]) ) || (isset($pos1[$posIndex]["diff"]["min"])===false) )
+                                {
+                                $pos1[$posIndex]["diff"]["min"]=$abstand;
+                                $pos1[$posIndex]["diff"]["subindex"]=$subindex;
+                                }
+                            }
+                        //echo "$subindex ".$subentry["geometry"]["type"]." N".nf($subentry["geometry"]["coordinates"][1],4)."  E".nf($subentry["geometry"]["coordinates"][0],4);
+                        //echo "     $abstand    ".$pos1["north"]."  ".$pos1["east"]."   ".($subentry["geometry"]["coordinates"][1]-$pos1["north"])." * ".($subentry["geometry"]["coordinates"][0]-$pos1["east"]);
+                        //echo "\n";
+                        }
+                    //echo "\n";
+                    }
+                }
+            return (true);
+            }
+
+        /* zamg hat einen Überblick über alle Module
+         */
+        function getAvailableModules()
+            {
+            $ch = curl_init('https://dataset.api.hub.geosphere.at/v1/datasets');
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            $result = curl_exec($ch);
+            curl_close($ch);
+            $config = json_decode($result,true);
+            return($config);                
+            }
+
+        /* einen Überblick bekommen über die gespeicherten Daten
+         */
+        function showData()
+            {
+            echo "showData fetched from web:\n";
+            $pos1=array();
+            //print_r($this->data);             // zu gross
+            foreach ($this->data as $index=>$entry)             // modul /grid/historical/spartacus-v2-1d-1km
+                {
+                echo "$index ";
+                if ( ($index=="media_type") || ($index=="type") || ($index=="version") || ($index=="bbox") )
+                    {
+                    print_R($entry);
+                    }
+                echo "\n";
+                }
+            // creates timeSeries
+            foreach ($this->data as $index=>$entry) 
+                {
+                $d=0; $dmax=10;
+                if ( ($index=="timestamps") )
+                    {
+                    echo "$index \n";
+                    foreach ($entry as $subindex => $subentry)
+                        {
+                        $timeSeries[$subindex]["TimeStamp"]=strtotime($subentry);
+                        if ($d<$dmax) 
+                            {
+                            echo "   $subindex ";
+                            print_R($subentry);
+                            echo "\n";
+                            }
+                        if ($d==$dmax) echo "   ....\n";
+                        $d++;
+                        }
+                    echo "\n";        
+                    }
+                }
+            // creates posSeries    
+            foreach ($this->data as $index=>$entry) 
+                {
+                $d=0; $dmax=2;
+                if ( ($index=="features") )     // der Reihe nach die Punkte
+                    {
+                    echo "$index [n] geometry\n";
+                    foreach ($entry as $subindex => $subentry)          // number, Grid Position, alle Positionen durchgehen
+                        {
+                        //echo "$subindex ".$subentry["type"]."\n";
+                        $posSeries[$subindex]["north"]=$subentry["geometry"]["coordinates"][1];
+                        $posSeries[$subindex]["east"]=$subentry["geometry"]["coordinates"][0];
+                        foreach ($pos1 as $posIndex => $pos)
+                            {
+                            $abstand = abs($subentry["geometry"]["coordinates"][1]-$pos1[$posIndex]["north"])+abs($subentry["geometry"]["coordinates"][0]-$pos1[$posIndex]["east"]);
+                            if (( (isset($pos1[$posIndex]["diff"]["min"])) && ($abstand<$pos1[$posIndex]["diff"]["min"]) ) || (isset($pos1[$posIndex]["diff"]["min"])===false) )
+                                {
+                                $pos1[$posIndex]["diff"]["min"]=$abstand;
+                                $pos1[$posIndex]["diff"]["subindex"]=$subindex;
+                                }
+                            }
+                        echo "$subindex ".$subentry["geometry"]["type"]." N".nf($subentry["geometry"]["coordinates"][1],4)."  E".nf($subentry["geometry"]["coordinates"][0],4);
+                        //echo "     $abstand    ".$pos1["north"]."  ".$pos1["east"]."   ".($subentry["geometry"]["coordinates"][1]-$pos1["north"])." * ".($subentry["geometry"]["coordinates"][0]-$pos1["east"]);
+                        echo "\n";
+                        }
+                    echo "\n";
+                    }
+                }
+
+            foreach ($this->data as $index=>$entry) 
+                {
+                $d=0; $dmax=2;
+                if ( ($index=="features") )     // der Reihe nach die Punkte
+                    {
+                    echo "$index [n] properties parameters\n";
+                    $once=true;
+                    foreach ($entry as $subindex => $subentry)
+                        {
+                        //echo "    $subindex \n";              // Grid Position
+                        if ($once)
+                            {
+                            foreach ($subentry["properties"]["parameters"] as $ref => $refentry) 
+                                {
+                                echo "     $ref\n";
+                                foreach ($refentry as $subref=>$subrefdata) 
+                                    {
+                                    echo "         $subref  ";
+                                    if ( ($subref == "name") || ($subref == "unit") ) echo   $subrefdata;
+                                    echo "\n";
+                                    }                           
+                                }
+                            $once=false;
+                            }
+                        }
+                    }       // endif
+                }
+
+            }
+        
+        /* getDataAsTimeSeries, aus internem Speicher analysieren und ausgeben
+         * data format, wir brauchen nur die folgenden indexe
+         *      timestamps->subindex
+         *      features  ->subindex->properties->parameters->RR->data->ref->value      // monthly Table
+         *
+         */
+        function getDataAsTimeSeries($data,$indexToFetch,$debug=false) 
+            {
+            if ($data=="") $data=["RR"];
+            // creates timeSeries
+            $timeSeries=array();
+            foreach ($this->data as $index=>$entry) 
+                {
+                if ( ($index=="timestamps") )
+                    {
+                    foreach ($entry as $subindex => $subentry)
+                        {
+                        $timeSeries[$subindex]["TimeStamp"]=strtotime($subentry);
+                        }
+                    }
+                }
+            $series=array();            //return data as series
+            if ($debug) 
+                {
+                echo "getDataAsTimeSeries Data ".json_encode($data)." Index ".json_encode($indexToFetch)."\n";
+                echo "  Dataformat Overview:\n";
+                foreach ($this->data as $index=>$entry) echo "   $index \n";
+                }
+            foreach ($this->data as $index=>$entry) 
+                {
+                $d=0; $dmax=2;
+                if ( ($index=="features") )     // der Reihe nach die Punkte
+                    {
+                    if ($debug) echo "$index \n";
+                    foreach ($data as $dataSelected)
+                        {
+                        if ($debug) echo "Select $dataSelected from stored Database:\n";
+                        foreach ($entry as $subindex => $subentry)
+                            {
+                            foreach ($subentry["properties"]["parameters"][$dataSelected]["data"] as $ref => $value) 
+                                {
+                                foreach ($indexToFetch as $subref => $subindexToSearch)
+                                    {
+                                    if ( $subindex==$subindexToSearch )
+                                        {
+                                        $series[$dataSelected][$subindex][$ref]["Value"]=$value;   
+                                        $series[$dataSelected][$subindex][$ref]["TimeStamp"]=$timeSeries[$ref]["TimeStamp"];
+                                        if ($debug)
+                                            {
+                                            echo "------------------------------------------------\n";
+                                            echo "    $subindex \n";
+                                            }
+                                        if ( ($d<$dmax) && $debug)
+                                            {
+                                            print_R($subentry["properties"]["parameters"][$dataSelected]["data"]);
+                                            echo "\n";
+                                            }
+                                        $d++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    if ($debug) echo "\n";
+                    }       // endif
+                }
+            return($series);
+            }
+
+
+
+        }
 
 ?>

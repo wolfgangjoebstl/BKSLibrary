@@ -28,7 +28,7 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-    $noinstall=true;                        /* true, keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen */
+    $noinstall=true;                        /* true, keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen, macht RemoteAccess on the fly mit installComponenFull */
     $evaluateHardware=false;                /* false, keine EvaluateHardware aufgerufen für die Aktualisierung */
     $excessiveLog=true;                    /* true für mehr echo Logging when doing install */ 
 
@@ -156,7 +156,8 @@
 		}
 	else
 		{
-		echo "Modul RemoteAccess ist NICHT installiert.\n";
+		echo "Modul RemoteAccess ist NICHT installiert. Variablen selbst hier installieren, möglicherweise nicht alle, check !\n";
+        $noinstall=false;
 		}
 	if (isset ($installedModules["IPSCam"])) { 				echo "Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
 	if (isset ($installedModules["OperationCenter"])) { 	echo "Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }

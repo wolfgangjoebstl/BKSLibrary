@@ -370,23 +370,14 @@
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);				
                 
-                /* Geofency Variables */
-                $geofencies=$operate->getGeofencyInformation();    
-                if (sizeof($geofencies)>0)
-                    {
-                    $order=100;
-                    foreach ($geofencies as $geofency => $Address)
-                        {
-                        CreateLinkByDestination("Geofency-".IPS_GetName($geofency), $geofency,    $AutosteuerungID, $order);
-                        $order+=10;
-                        }
-                    }
-					
-				/* einfache Visualisierung der Bewegungswerte, testweise */
+  				/* einfache Visualisierung der Bewegungswerte, testweise */
 				$StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AutosteuerungID, 1010, '~HTMLBox');
 
                 $operate=new AutosteuerungOperator();
                 $geofencies=$operate->getGeofencyInformation();
+                $operate->setGeofencyAddressesToArchive($geofencies,true);  // true für Debug
+                $operate->linkGeofencyAddresses($geofencies, $AutosteuerungID,true);
+
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {
     				$webfront_links[$AutosteuerungID]["OID_R"]=$inputAnwe;				

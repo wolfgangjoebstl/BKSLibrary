@@ -2538,7 +2538,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
     /*****************************************************************
     *
-    * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein
+    * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabelle ein
     * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
     *
     *****************************************************************************/
@@ -2553,7 +2553,11 @@ function send_status($aktuell, $startexec=0, $debug=false)
                 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");	
                 if (isset ($result["OperationCenter"]))
                     {
-                    if ($debug) echo "RemoteAccessServerTable aufgerufen, Modul RemoteAccess und OperationCenter sind installiert.\n"; 
+                    if ($debug)  
+                        {
+                        echo "RemoteAccessServerTable aufgerufen, Modul RemoteAccess und OperationCenter sind installiert.\n"; 
+                        echo "    check RemoteAccess_GetServerConfig() in RemoteAccess_Configuration.inc.php.\n";
+                        }
                     $moduleManager_DM = new IPSModuleManager('OperationCenter');     /*   <--- change here */
                     $CategoryIdData   = $moduleManager_DM->GetModuleCategoryID('data');
                     $Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
@@ -2563,7 +2567,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
                     foreach ($remServer as $Name => $Server)
                         {
                         $UrlAddress=$Server["ADRESSE"];
-                        if ($debug) echo "   Server Name ".str_pad($Name,20)." : ".str_pad($UrlAddress,50);
+                        if ($debug) echo "   Server Name ".str_pad($Name,20)." : ".str_pad($UrlAddress,70);
                         if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
                             {                    
                             if ( ( ($mode==1) && (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") ) ||
@@ -2576,10 +2580,12 @@ function send_status($aktuell, $startexec=0, $debug=false)
                                 if (GetValue($IPS_UpTimeID)==0)
                                     {
                                     $RemoteServer[$Name]["Status"]=false;
+                                    if ($debug) echo "not available";
                                     }
                                 else
                                     {
                                     $RemoteServer[$Name]["Status"]=true;
+                                    if ($debug) echo "    available";
                                     }
                                 }
                             else { if ($debug) echo "STATUS and LOGGING do not fit to requirement fo Mode $mode : ACTIVE/ENABLED";    }
@@ -3068,7 +3074,7 @@ class profileOps
      *
      */
 
-	function createKnownProfilesByName($pname,$debug)
+	function createKnownProfilesByName($pname,$debug=false)
         {
         echo "      profileOps::createKnownProfilesByName, Profil ".$pname." existiert nicht, oder Aufforderung zum update. ";
         if ($this->rpc) echo "Durchführung remote für Server ".$this->rpc."\n";
@@ -3445,7 +3451,7 @@ class profileOps
             elseif ($masterName == "new") echo "   Profil ".$pname." existiert bereits, nichts weiter machen.\n";          // wenn das Profil existiert kommt man hier vorbei
             elseif (IPS_VariableProfileExists($masterName) == false)            
                 {
-                if ($this>VariableProfileExists($pname)) 
+                if ($this->VariableProfileExists($pname)) 
                     {
                     $target=IPS_GetVariableProfile ($pname);
                     $master=array();
@@ -3618,9 +3624,9 @@ class webOps
      *
      */
 
-    function createActionProfileByName($pname,$nameIDs,$style=1,$colorSet=false)
+    function createActionProfileByName($pname,$nameIDs,$style=1,$colorSet=false,$debug=false)
         {
-        // Farben für die Bittons annehmen, fehlende oder nicht zueinander passende Werte schätzen
+        // Farben für die Buttons annehmen, fehlende oder nicht zueinander passende Werte schätzen
         if (($colorSet===false) || (is_array($colorSet)==false))
             {
             $i=0;
@@ -3663,10 +3669,13 @@ class webOps
             $profile[$i]=array("Value"=>$i,"Name"=>$name,"Icon"=>"","Color"=>$color[$index],);
             $i++;       // sonst wird letzter Wert überschrieben
             }
-        print_r($profile);
-        $profileOps->UpdateVariableProfileAssociations($pname,$profile);            
-        if ($create) echo "Aktions Profil ".$pname." erstellt.\n";
-        else echo "Aktions Profil ".$pname." überarbeitet.\n";		
+        $profileOps->UpdateVariableProfileAssociations($pname,$profile); 
+        if ($debug)          
+            {
+            //print_r($profile);
+            if ($create) echo "Aktions Profil ".$pname." erstellt.\n";
+            else echo "Aktions Profil ".$pname." überarbeitet.\n";		
+            }
         }
 
     /* die umgekehrte Funktion, Profil analysieren, zuordnung Einzelbuttons aus dem Profil
@@ -3826,7 +3835,9 @@ class webOps
  *
  * versammelt Archive Operationen in einer Klasse
  * die Klasse kann bei der Erzeugung auf die Bearbeitung einer Variable eingeschränkt werden
- * abhängig davon wird eine Liste aller archivierten Vriablen oder die Konfiguration eines Wertes ausgegeben
+ * abhängig davon wird eine Liste aller archivierten Variablen oder die Konfiguration eines Wertes ausgegeben
+ * verwendet class statistics
+ *  setConfiguration        Abgleich der Konfiguration
  *
  * dann kommen die archive operations, functions für die bearbeitung der Daten in den Archiven
  *
@@ -4046,7 +4057,29 @@ class archiveOps
         return ($result);    
         }
 
-    /* Ausgabe, echo von historischen Werten, funktioniert für aggregated und geloggten Werten
+    function quickStore($data,$debug=false)
+        {
+        foreach ($data as $oid => $result)
+            {
+            if ($debug)
+                {
+                if (@IPS_getName($oid)) echo "Datenspeicher $oid (".IPS_getName($oid).")\n";                // oid muss nicht immer einen Namen haben
+                else echo "Datenspeicher $oid \n"; 
+                }
+            foreach ($result as $function => $entries)    
+                {
+                if ($debug) echo "  $function   ";
+                $f=0;
+                if ($function==="Values")  $this->result[$oid][$function]=$data[$oid][$function];
+                else $this->result[$oid]["Values"]=$data[$oid];       
+                }
+            }
+        //$this->result=$data;                   // ist nur der üointer   
+        }
+
+
+    /* archiveOps::showValues
+     * Ausgabe, echo von historischen Werten, funktioniert für aggregated und geloggten Werten
      * es werden die Werte in $werte oder die internen Werte genopmmen
      *
      * Ausgabe von historischen Werte mit Berücksichtigung von Duration
@@ -4130,16 +4163,18 @@ class archiveOps
                     {
                     echo "  $function   ";
                     $f=0;
-                    if ($function=="Values")                    // nur den Unterpunkt Values bearbeiten, Means, Info etc nicht
+                    if ($function==="Values")                    // nur den Unterpunkt Values bearbeiten, Means, Info etc nicht
                         {
                         //print_r($entries);
                         foreach ($entries as $index => $entry) 
                             {
+                            if (isset($entry["TimeStamp"])==false) { echo "warning, unexpected format ".json_encode($entry)."\n"; }
                             $timestamp=$entry["TimeStamp"];
                             if  (isset($config["ShowTable"]))
                                 {
                                 if  (isset($config["ShowTable"]["align"]))    // nur bearbeiten wenn Parameter gesetzt, timestamp auf ganze Tage, Stunden, Minuten runden
                                     {
+                                    if ($config["ShowTable"]["align"]=="monthly")  $timestamp = strtotime(date("1.m.Y",$timestamp));
                                     if ($config["ShowTable"]["align"]=="daily")  $timestamp = strtotime(date("d.m.Y",$timestamp));
                                     if ($config["ShowTable"]["align"]=="hourly")  $timestamp = strtotime(date("d.m.Y H:00",$timestamp));
                                     if ($config["ShowTable"]["align"]=="minutely")  $timestamp = strtotime(date("d.m.Y H:i",$timestamp));
@@ -4156,11 +4191,17 @@ class archiveOps
                                         }
                                     }
                                 }
+                            if (isset($tabelle[$timestamp][$oid])) 
+                                {
+                                //echo "Doppelter Wert: ".date("d.m.Y H:i",$entry["TimeStamp"])."\n";   
+                                $entry["Value"] += $tabelle[$timestamp][$oid]["Value"];
+                                }
                             $tabelle[$timestamp][$oid]=$entry;              // Value/Timestamp ist der Originalwert, die nicht die alignte Variante
                             $f++;
                             }   
                         echo "count $f"; 
                         }
+                    else echo "warning, unexpected category, $function ";
                     echo "\n";
                     }
                 }
@@ -4305,7 +4346,8 @@ class archiveOps
         return ($tabelle);
         }
 
-    /* es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
+    /* archiveOps::getArchivedValues
+     * es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
      * Zwischen Start udn Endtime werden Werte aus dem Archiv getLogged geholt, es gibt keine 10.000er Begrenzung, allerdings wird der Speicher schnell knapp
      * es gibt eine manuelle Aggregation die sowohl die Summe als auch den Average und Max/Min berechnen kann. Die Funktion kann auch die Übergabe von einer 10.000 Tranche zurnächsten
      * es wird meansCalc verwendet
@@ -4322,9 +4364,36 @@ class archiveOps
         {
         //$debug=true;
         // Konfiguration vorbereiten
+        $remOID=false;  	                // anstelle lokaler Archive, die Archive von einem Remote Server abfragen
         $statistics = new statistics();        
         $config = $statistics->setConfiguration($configInput);
-        $aggType = AC_GetAggregationType($this->archiveID, $oid);
+        if (is_numeric($oid)) $aggType = AC_GetAggregationType($this->archiveID, $oid);
+        else
+            {
+            echo "getArchivedValues($oid, benötigt Analyse.\n"; // String Variable, wahrscheinlich im Format Server::VariableName
+            $result = explode("::",$oid);
+            $size = sizeof($result);
+            if ($size==2)
+                {
+                $Configuration=array();
+                $remServer	  = RemoteAccessServerTable(2,true);
+                if (isset($remServer[$result[0]])) $url=$remServer[$result[0]]["Url"];
+                else return (false);
+                $rpc = new JSONRPC($url);
+                echo "Server $url : ".$rpc->IPS_GetName(0)." Search for Name at Program.IPSLibrary.data.core.IPSComponent.Counter-Auswertung\n";
+                $prgID=$rpc->IPS_GetObjectIDByName("Program",0);
+                $ipsID=$rpc->IPS_GetObjectIDByName("IPSLibrary",$prgID);
+                $dataID=$rpc->IPS_GetObjectIDByName("data",$ipsID);
+                $coreID=$rpc->IPS_GetObjectIDByName("core",$dataID);
+                $compID=$rpc->IPS_GetObjectIDByName("IPSComponent",$coreID);
+                $CounterAuswertungID=$rpc->IPS_GetObjectIDByName("Counter-Auswertung",$compID);
+                $remOID=@$rpc->IPS_GetObjectIDByName($result[1],$CounterAuswertungID);
+                if ($remOID===false) return(false);
+                $archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                $aggType = $rpc->AC_GetAggregationType($archiveHandlerID,$remOID);
+                }
+            else return (false);
+            }
         //print_R($config);
         if ($debug) 
             {
@@ -4335,9 +4404,7 @@ class archiveOps
 
         $werteTotal=array(); 
         //print_R($config);   
-        $starttime=$config["StartTime"];
-        $endtime=$config["EndTime"];
-
+        $this->configStartEndTime($config);         // transforms config Start/Endtime to Unixtime 
         /* Mittelwertberechnung von analyseValues verwenden und vorbereiten */
         $means=array();                                          // Speicherplatz im Ergebnis zur Verfügung stellen
         $config["Means"]["Full"]   = new meansCalc($means, "Full");       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
@@ -4348,7 +4415,11 @@ class archiveOps
         $config["counter"]=$aggType;                        // aufpassen Aggregation ist anders
 
         do  {   // es könnten mehr als 10.000 Werte sein,   Abfrage generisch lassen
-            $werte = @AC_GetLoggedValues($this->archiveID, $oid, $starttime, $endtime, 0);
+            if ($remOID) 
+                {
+                $werte = @$rpc->AC_GetLoggedValues($archiveHandlerID, $remOID, $config["StartTime"], $config["EndTime"], 0);
+                }
+            else $werte = @AC_GetLoggedValues($this->archiveID, $oid, $config["StartTime"], $config["EndTime"], 0);
             if ( ($werte !== false) && (count($werte)>0) )
                 {
                 //print_r($werte);
@@ -4361,7 +4432,7 @@ class archiveOps
                 }
             else 
                 {
-                Echo "Warning, retrieving Logging Data for $oid from $starttime to $endtime results to empty or fail.\n";
+                Echo "Warning, retrieving Logging Data for $oid from ".$config["StartTime"]." to ".$config["EndTime"]." results to empty or fail.\n";
                 $werte=array();
                 }
             } while (count($werte)==10000);
@@ -4381,6 +4452,36 @@ class archiveOps
             }
 
         return($werteTotal);
+        }
+
+    /* archiveOps::getArchivedAggregates
+     * es gibt keine Funktion die Werte holt, also rund um AC_getAggregated was machen
+     *
+     *  aus der Config werden benötigt
+     *      StartTime
+     *      EndTime
+     *      Aggregate
+     *
+     * statt TimeStamp Value gibt es mehr Informationen
+     *      [Duration] => 57554                             // Dauer bis zum nächsten Wert oder aktueller Uhrzeit
+            [TimeStamp] => 1698098400
+            [Avg] => 14,463310977517
+            [MinTime] => 1698103676
+            [Min] => 13,7
+            [MaxTime] => 1698147028
+            [Max] => 15,2
+     *
+     */
+    public function getArchivedAggregates($oid,$configInput=array(),$debug=false)
+        {
+        $remOID=false;  	                // anstelle lokaler Archive, die Archive von einem Remote Server abfragen
+        $statistics = new statistics();                
+        $config = $statistics->setConfiguration($configInput);
+        $aggreg=$this->configAggregated($config["Aggregated"]); 
+        $this->configStartEndTime($config);         // transforms config Start/Endtime to Unixtime
+        $werte   = @AC_GetAggregatedValues($this->archiveID, $oid, $aggreg, $config["StartTime"], $config["EndTime"], 0);             // 0 unlimited  
+        //print_r($werte);
+        return ($werte);
         }
 
     /* zum Check die Datenflut als Tageswerte zusammenzählen 
@@ -4707,7 +4808,6 @@ class archiveOps
         // Konfiguration vorbereiten
         $statistics = new statistics();
         $config = $statistics->setConfiguration($logs);                     // aus logs die config generieren, durch den generellen check gehen und abspeichern
-        $maxLogsperInterval = $config["maxLogsperInterval"];                // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten
         
         // Orientierung mit Debug
         if ($debug>1) 
@@ -4715,14 +4815,17 @@ class archiveOps
             echo "archiveOps::getValues(";
             if (is_array($oid)) echo "array,";
             elseif (is_numeric($oid)) echo "$oid (".IPS_GetName($oid)."),";
-            else echo "$oid mit lookfor Name,";                                          // braucht Zusatzinformation
+            else echo "$oid mit lookfor Name, config";                                          // braucht Zusatzinformation
             echo json_encode($config)."...  aufgerufen.\n";
             echo "   Memorysize from Start onwards: ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";
             //print_R($config);
             }
-        
+
         // Default Ergebnis festlegen 
         $result=array();
+
+        /****************************** Verarbeitung und Vorbereitung Konfiguration */
+        $maxLogsperInterval = $config["maxLogsperInterval"];                // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten
 
         // Wertebereich festlegen, Vorwerte einlesen, Fehler erkennen und bearbeiten 
         if  ($config["DataType"]=="Array")
@@ -4736,15 +4839,24 @@ class archiveOps
             if ($debug>1) $debug1=true; else $debug1=false;
             //$werte = @AC_GetLoggedValues($this->archiveID, $oid, $config["StartTime"], $config["EndTime"], 0);          // kann nur 10000 Werte einlesen
             $werte = $this->getArchivedValues($oid,$config,$debug1);                //hat keine Begrenzung, bedeutet aber doppelte Speicherung der Daten im memory, kann auch online Aggregierung
+            if ($werte===false) $werte=array();
             if (isset($werte["Description"])) print_R($werte["Description"]);
             }
         else
             {
+            if ($debug>1) $debug1=true; else $debug1=false;
             $aggreg=$this->configAggregated($config["Aggregated"]);         // convert String in Config to integer
-            $werte   = @AC_GetAggregatedValues($this->archiveID, $oid, $aggreg, $config["StartTime"], $config["EndTime"], 0);             // 0 unlimited  
+            //$werte   = @AC_GetAggregatedValues($this->archiveID, $oid, $aggreg, $config["StartTime"], $config["EndTime"], 0);             // 0 unlimited  
+            $werte = $this->getArchivedAggregates($oid,$config,$debug1);                //hat keine Begrenzung, wie getArchivedValues nur mit Aggregates
             $aggType = AC_GetAggregationType($this->archiveID, $oid);
-            if ($debug>1) echo "    Aggregated is configured with ".$config["Aggregated"]." converted to $aggreg. Aggregation Type ist $aggType\n";
+            if ($debug>1) 
+                {
+                echo "    Aggregated is configured with ".$config["Aggregated"]." converted to $aggreg. Aggregation Type ist ";
+                if ($aggType==0) echo "Standard"; else echo "Counter";
+                echo " Range is ".$config["StartTime"]." to ".$config["EndTime"]."\n";
+                }
             }
+
         if ($werte === false)             
             {
             if ($debug) echo "    $oid (".IPS_GetName($oid).") Ergebnis : no logs available, Value has no history\n";  
@@ -4790,7 +4902,12 @@ class archiveOps
         $config["maxLogsperInterval"]=$maxLogsperInterval;              // Eintrag überschreiben
         //if (isset($config["Split"])) $debug=true; else $debug=false;
 
-        // Vorverarbeitung, Analyse der Werte
+        /****************************** Vorverarbeitung, Analyse der Werte 
+         *  Reihenfolge
+         *  CleanUp mit Preprocess wie zB calculateSplitOnData
+         *  Process
+         *
+         */
         $resultIntervals = $this->countperIntervalValues($werte,$debug);        // true Debug
         if ($resultIntervals===false) return (false);                            // spätestens hier abbrechen, eigentlich schon vorher wenn wir draufkommen dass es kein Array mit historischen Werten gibt
         //print_r($result);
@@ -4801,8 +4918,9 @@ class archiveOps
             }
         $this->cleanupStoreValues($werte,$oid,$config,$debug);          // Werte bereinigen und in this->result[$oid][Values] abpeichern, config übernimmt maxLogsperInterval            
         $this->processOnData($oid,$config,$debug);                        // Werte bearbeiten 
-        //$this->calculateSplitOnData($oid,$config,$debug);             // Split wird oben schon mitgemacht
         if ($debug>1) echo "Memorysize after calculateSplitOnData: ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";
+
+        /******************************************* Analyse */
         /* maxminCalc macht Max Min und Means für den gesamten Zeitbereich */
         $maxmin=array();         // Speicherplatz zur Verfügung stellen
         $maxminFull   = new maxminCalc($maxmin);       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
@@ -5384,17 +5502,26 @@ class archiveOps
         return ($aggreg);
         }
 
-    /* convert config cleanupData
+    /* transform start/endtime to numeric unix time
+     * change directly in config array
      */
-    private function configCleanUpData($configInput)
+    private function configStartEndTime(&$config,$debug=false)
         {
-        /* Wertebereich festlegen */
-        $config = array();
-
-        configfileParser($configInput, $config, ["range","RANGE","Range"],"Range",null);
-        configfileParser($configInput, $config, ["maxLogsperInterval"],"maxLogsperInterval",10000);         // wird vor Aufruf cleanup angepasst auf Länge array
-        configfileParser($configInput, $config, ["deleteSourceOnError"],"deleteSourceOnError",true);
-        return ($config);
+        $starttime=$config["StartTime"];
+        if (is_numeric($starttime)===false) 
+            {
+            $starttime=strtotime($starttime);
+            if ($debug) echo "Starttime is not 0 or a number. Converted from String : $starttime (".date("d.m.Y H:i:s",$starttime).")\n";
+            $config["StartTime"]=$starttime;
+            }        
+        $endtime=$config["EndTime"];
+        if (is_numeric($endtime)===false) 
+            {
+            $endtime=strtotime($endtime);
+            if ($debug) echo "Endtime is not 0 or a number. Converted from String : $endtime (".date("d.m.Y H:i:s",$endtime).")\n";
+            $config["EndTime"]=$endtime;
+            }  
+        return(true);
         }
 
     /* archiveOps::cleanupStoreValues, Werte bereinigen und in this->result[oid][Values] abpeichern 
@@ -5426,7 +5553,7 @@ class archiveOps
         if (isset($config["cleanupData"])) 
             {
             if ($debug) echo "   cleanupStoreValues aufgerufen. Konfiguration cleanupData gesetzt.\n";
-            $configCleanUp=$this->configCleanUpData($config["cleanupData"]);
+            $configCleanUp=$statistics->configCleanUpData($config["cleanupData"]);
             print_R($configCleanUp);
             if (isset($configCleanUp["Range"])) $config["Range"]=$configCleanUp["Range"];
             else $config["Range"]=false; 
@@ -5652,16 +5779,23 @@ class archiveOps
 
 
     /* archiveOps::processOnData
-        * so wie calculateSplitOnData eine allgemeine Process Function schaffen
-        * Funktion arbeitet bereits auf Basis this->result, alternative Funktion für on the fly Daten
-        *
-        */
+     * so wie calculateSplitOnData als Preprocess bevor die Daten gespeichert werden eine allgemeine Post Process Function auf Basis der gespeicherten Daten schaffen
+     * Funktion arbeitet bereits auf Basis this->result.$oid.Values, alternative Funktion für on the fly Daten
+     * zuerst Anzahl gespeicherter Daten feststellen, Go wenn >1
+     *  Funktionen:
+     *      Delta
+     *
+     */
     private function processOnData($oid,$config,$debug=false)
         {
         //$debug=true;
         // check ob genug Daten da sind 
         $count = @count($this->result[$oid]["Values"]);
         //if ($count<40) print_r($this->result[$oid]["Values"]);
+        if (isset($config["processOnData"])) $configPoD=$config["processOnData"];
+        else $configPoD=array();
+        if ( (isset($configPoD["Range"]["max"])) && (isset($configPoD["Range"]["min"])) ) echo "We have active Range Check ".$configPoD["Range"]["max"]."<=>".$configPoD["Range"]["min"]."\n";
+
         if ($count===false) 
             {
             if ($debug) 
@@ -5672,25 +5806,38 @@ class archiveOps
             }
         else        // mit den Daten in this->result arbeiten wenn ein ProcessOnData config Eintrag vorhanden ist
             {
-            if (isset($config["processOnData"]))
-                {
                 if ($debug) 
                     {
                     //print_r($config);
-                    echo "processOnData aufgerufen. Config ist ".json_encode($config["processOnData"])."\n";
+                    echo "processOnData aufgerufen. Config ist ".json_encode($configPoD)."\n";
                     }
-                if (isset($config["processOnData"]["Delta"]))                    
+                if (isset($configPoD["Delta"]))                    
                     {
                     $oldValue=false; $diff=false;
+                    $d=0; $displayMax=10; 
                     foreach ($this->result[$oid]["Values"] as $index => $entry)
                         {
                         if ($oldValue !==false ) $diff=$entry["Value"]-$oldValue;
                         $oldValue=$entry["Value"];
-                        if ($diff !==false) $this->result[$oid]["Values"][$index]["Value"]=$diff;           // wirklich Update der Variable
+                        $delete=false;
+                        if ($diff !==false) 
+                            {
+                            // Range check
+                           if ($configPoD["Range"])     // grösser max und kleiner min , damit 0 nicht dabei ist muss ein kleiner positiver Wert angegeben werden
+                                {
+                                if (( (isset($configPoD["Range"]["max"])) && ($diff>$configPoD["Range"]["max"]) ) || ( (isset($configPoD["Range"]["min"])) && ($diff<$configPoD["Range"]["min"]) ))
+                                    {
+                                    if ( ($d<$displayMax) && $debug2) echo str_pad($index,7)."  $diff (für ".$entry["Value"]."   ".date("d.m.Y H:i:s",$entry["TimeStamp"]).") Eintrag ausserhalb der Grenzen\n";
+                                    //$deleteIndex[$index]=$entry["TimeStamp"];
+                                    $delete=true;
+                                    $d++;
+                                    }  
+                                }
+                            if ($delete===false) $this->result[$oid]["Values"][$index]["Value"]=$diff;           // wirklich Update der Variable
+                            }
                         //echo date("d.m.y H:i:s",$entry["TimeStamp"])."   $oldValue => $diff \n";
                         }
                     }
-                }
             }
         }
 
@@ -5847,7 +5994,11 @@ class archiveOps
                 //echo "Erster  : ".date("H:i:s d.m.Y",$werte[$erster]['TimeStamp'])."  ";
                 //echo "Letzter : ".date("H:i:s d.m.Y",$werte[$letzter]['TimeStamp'])."  ";
                 echo "$count Werte im Scale $scale verfügbar. Erster Werte am ".date("d.m.Y H:i:s",$anfang)." bis ".date("d.m.Y H:i:s",$ende)." Span durchschnittlich ".nf($span,"s")."\n";
-                if ($debug>1) echo "     Info, Timestamp Value mit Key: $erster : ".date("d.m.Y H:i:s",$termin1)." Wert ".$werte[$erster]['Value']." und $letzter : ".date("d.m.Y H:i:s",$termin2)." Wert ".$werte[$letzter]['Value']."\n";
+                if ($debug>1) // egal ob aggregated oder logged Values, aber für Debug wichtig
+                    {
+                    if (isset($werte[$erster]['Value'])) echo "     Info, Timestamp Value mit Key: $erster : ".date("d.m.Y H:i:s",$termin1)." Wert ".$werte[$erster]['Value']." und $letzter : ".date("d.m.Y H:i:s",$termin2)." Wert ".$werte[$letzter]['Value']."\n";
+                    else echo "     Info, Timestamp Value mit Key: $erster : ".date("d.m.Y H:i:s",$termin1)." Wert ".$werte[$erster]['Avg']." und $letzter : ".date("d.m.Y H:i:s",$termin2)." Wert ".$werte[$letzter]['Avg']."\n";
+                    }
                 //echo "\n";
                 }
             return($result);
@@ -6020,6 +6171,31 @@ class statistics
 
     protected $config;
 
+    /* convert config cleanupData
+     */
+    public function configCleanUpData($configInput)
+        {
+        /* Wertebereich festlegen */
+        $config = array();
+
+        configfileParser($configInput, $config, ["range","RANGE","Range"],"Range",null);
+        configfileParser($configInput, $config, ["maxLogsperInterval"],"maxLogsperInterval",10000);         // wird vor Aufruf cleanup angepasst auf Länge array
+        configfileParser($configInput, $config, ["deleteSourceOnError"],"deleteSourceOnError",true);
+        return ($config);
+        }
+
+    /* convert config processOnData
+     */
+    public function configProcessOnData($configInput)
+        {
+        /* Wertebereich festlegen */
+        $config = array();
+
+        configfileParser($configInput, $config, ["range","RANGE","Range"],"Range",null);
+        configfileParser($configInput, $config, ["delta","DELTA","Delta"],"Delta",null);         
+        return ($config);
+        }        
+
     /* einheitliche Konfiguration mit Variablen für die Nutzung in den Statistikfunktionen
         *      EventLog            true
         *      DataType            Archive, Aggregated, Logged
@@ -6069,6 +6245,9 @@ class statistics
 
         configfileParser($logInput, $config, ["processondata","PROCESSONDATA","ProcessOnData","processOnData"],"processOnData",null);           // sub Config
         configfileParser($logInput, $config, ["cleanupdata","CLEANUPDATA","CleanupData","CleanUpData","cleanupData"],"cleanupData",null);                         // sub Config
+
+        if (isset($config["cleanupData"])) $config["cleanupData"]=$this->configCleanUpData($config["cleanupData"]);
+        if (isset($config["processOnData"])) $config["processOnData"]=$this->configProcessOnData($config["processOnData"]);
 
         configFileParser($logInput, $config, ["returnResult","RETURNRESULT","returnresult","ReturnResult"],"returnResult",false);   // Description
 
@@ -11660,6 +11839,9 @@ class timerOps
  * curlOps
  *
  * curl Routinen zusammengefasst
+ *  
+ *  downloadFile
+ *  getJsonConfig
  *
  *
  *
@@ -12267,7 +12449,7 @@ class ComponentHandling
 
     /* ComponentHandling, Zuweisung von Orientierungshilfen für das Anlegen der Variablen. addOnKeyName wird von folgenden Routinen aufgerufen:   getComponent
      *
-     *   Index          DetectMovement
+     *  Index           DetectMovement
      *  HeatSet 
      *  Temperatur      Temperatur
      *  Humidity        Feuchtigkeit
@@ -12422,6 +12604,14 @@ class ComponentHandling
                 $index="Klima";         /* Struktur am Remote Server, muss schon vorher angelegt sein */
                 $indexNameExt="_Rain";								/* gemeinsam mit den CO2 Werten abspeichern */                
                 $profile="Rainfall";        /* profile am Remote Server, ähnlich wie für Mirror Register, umgestellt auf gemeinsames Custom Profile */
+                $update="OnUpdate";
+                break;           
+            case "RAINING":
+                $detectmovement="Weather";          // macht nur true wenn es zu regnen anfangt und false wenn es aufhört
+                $variabletyp=0; 		            // Boolean, Typ Variable am remote Server 	
+                $index="Klima";                     // Struktur am Remote Server, muss schon vorher angelegt sein
+                $indexNameExt="_Raining";			// gemeinsam mit den CO2 Werten abspeichern                 
+                $profile="Raining";                 // profile am Remote Server, ähnlich wie für Mirror Register, umgestellt auf gemeinsames Custom Profile abgeleitet von ~Raining
                 $update="OnUpdate";
                 break;           
             case "KEYSTATE":
@@ -14832,10 +15022,21 @@ class WfcHandling
  * __construct	 		speichert bereits alle Libraries und Module bereits in Klassenvariablen ab
  *   printrLibraries	gibt die gespeicherte Variable für die Library aus
  *   printrModules		gibt die gespeicherte Variable für die Module aus, alle Module für alle Libraries
+ *   printLibraries
+ *   getLibrary
  *   printModules		Alle Module die einer bestimmten Library zugeordnet sind als echo ausgeben
  *   printInstances		Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben
  *   getInstances		Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben
+ *   getDiscovery
+ *   getModules
+ *   addNonDiscovery
+ *   getInstancesByType
+ *   getInstancesByName
+ *   getFunctions
+ *   getFunctionAsArray
+ *   
  *   get_string_between($input,'{','}')		Unterstützungsfunktion um den json_decode zu unterstützen
+ *   selectConfiguration
  *
  *
  ******************************************************************/
@@ -15101,7 +15302,7 @@ class ModuleHandling
 
 	public function getDiscovery($debug=false)
 		{
-        return ($this->getInstancesByType(5,$debug));
+        return ($this->getInstancesByType(5,false,$debug));
         }
 
     /* Alle Module die einer bestimmten Library zugeordnet sind ausgeben 
@@ -15168,11 +15369,19 @@ class ModuleHandling
         return ($discovery);
         }
 
-    /* Alle installierten Discovery Instanzen ausgeben
-     *
+    /* Alle installierten Instanzen mit einem bestimmten Typ ausgeben
+     * WERT	BESCHREIBUNG
+     *  0	Kern
+     *  1	I/O
+     *  2	Splitter
+     *  3	Geräte
+     *  4	Konfigurator
+     *  5	Discovery
+     *  6	Visualisierung
      */
-	public function getInstancesByType($type,$debug=false)
+	public function getInstancesByType($type,$settings=false,$debug=false)
 		{
+        if ($settings===false) $settings=array();
         $configurator=array();
         if ($debug) echo "getDiscovery aufgerufen :\n"; 
         $discovery2=IPS_GetInstanceListByModuleType($type);
@@ -15191,15 +15400,20 @@ class ModuleHandling
         $i=0;
         foreach ($result as $entry)
             {
-            $configurator[$i]=$entry;
             $getModule=@IPS_GetModule($entry["ModuleID"]);
             if ($getModule === false) echo "FEHLER: ".$entry["ModuleName"]." eingetragen, aber nicht mehr installiert. Gehe zum Store.\n";
             else
                 {
                 $libraryID=$getModule["LibraryID"];
                 $libraryName=$this->getLibrary($libraryID);
+                $filter=true;
+                if ( (isset($settings["Library"])) && ($settings["Library"]!=$libraryName) ) $filter=false;
                 echo "   ".$entry["OID"]."   ".str_pad($entry["Name"],32)."    ".str_pad($entry["ModuleName"],32)."    ".$libraryName."\n";    
-                $configurator[$i]["Library"]=$libraryName;
+                if ($filter) 
+                    {
+                    $configurator[$i]=$entry;
+                    $configurator[$i]["Library"]=$libraryName;
+                    }
                 }
             $i++;
             }
