@@ -46,6 +46,8 @@
  *  constructFirst
  *  GetComponentParams
  *  GetComponent
+ *  GetNachrichtenInputID
+ *  SetNachrichtenInputID
  *
  *  SetDebugInstance
  *  SetDebugInstanceRemain
@@ -61,6 +63,7 @@
  *
  *  CreateCategoryAuswertung
  *  CreateCategoryNachrichten
+ *  getCategoryAuswertung
  *
  *  do_init_motion
  *  do_init_brightness
@@ -1333,6 +1336,18 @@ class Logging
                 }            
             return ($NachrichtenID);    // damit die Nachrichtenanzeige richtig aufgesetzt wird 
             }
+
+    /* gekapselte Variablen für Debugzwecke ausgeben
+     */
+    public function getVariableID()
+        {
+        return ($this->variable);
+        }
+        
+    public function getVariableLogID()
+        {
+        return ($this->variableLogID);
+        }
 
     /* Logging:getVariableName
      *

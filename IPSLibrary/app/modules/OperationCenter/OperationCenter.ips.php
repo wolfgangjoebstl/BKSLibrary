@@ -62,6 +62,10 @@ $installedModules = $moduleManager->GetInstalledModules();
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
+$scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
+
 $scriptId           = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
 $backupScriptId     = @IPS_GetObjectIDByIdent('UpdateBackupLogs', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
 if ($backupScriptId !== false) 
@@ -121,10 +125,10 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
     $tim9ID  = @IPS_GetEventIDByName("Reserved", $scriptId);
     $tim10ID = @IPS_GetEventIDByName("Maintenance",$scriptId);						/* Starte Maintennance Funktionen */	
     $tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintenance Funktion: Move Log Files */	
-    $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptId);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
+    $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptIdFastPollShort);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
 
     $tim13ID = @IPS_GetEventIDByName("CleanUpEndofDay",$scriptId);                  /* CleanUp für Backup starten, sollte alte Backups loeschen */
-    $tim14ID  = @IPS_GetEventIDByName("UpdateStatus", $scriptId);                   /* rausfinden welche Module ein Update benötigen, war früher bei FleStatus Timer dabei. */ 
+    $tim14ID = @IPS_GetEventIDByName("UpdateStatus", $scriptId);                   /* rausfinden welche Module ein Update benötigen, war früher bei FleStatus Timer dabei. */ 
 
 /*********************************************************************************************/
 
@@ -1325,13 +1329,12 @@ if ($_IPS['SENDER']=="TimerEvent")
                 IPS_SetEventActive($tim11ID,false);
                 }
 			break;
-		case $tim12ID:			// High Speed Polling, alle 10 Sekunden
-            /* benötigt ein fehlendes STATUS oder ein STATUS mit ACTIVE und ein READMODE mit SNMP
+		/* case $tim12ID:			// High Speed Polling, alle 10 Sekunden
+             * benötigt ein fehlendes STATUS oder ein STATUS mit ACTIVE und ein READMODE mit SNMP
              * im data gibt es ein Kategorie mit Router_RouterName, und eine Variable SnmpFastPoll
              * wenn nicht ebenfalls Bearbeitung abbrechen, unter der Variable SnmpFastPoll gibt es zwei Variablen ifTable, SNMP Fast Poll
              * wenn die Variablen nicht vorhanden sind oder SNMP Fast Poll nicht auf true steht Abbruch
-             */
-			foreach ($OperationCenterConfig['ROUTER'] as $router)
+             foreach ($OperationCenterConfig['ROUTER'] as $router)
 				{
                 if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
                     {
@@ -1383,7 +1386,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 						}   	// if snmp fast poll active
                     }       // if active
                 }   // foreach
-			break;
+			break;  */
 		case $tim13ID:          // Maintenance EndofDay Intervall, Backup Dateien zusammenräumen, CleanUp
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance EndofDay Intervall, Backup Dateien zusammenräumen, CleanUp");    // Dbg is less than inf
             /* jeden Abend die Backup Verzeichnisse zusammenräumen */

@@ -181,6 +181,7 @@
 
 	$scriptIdOperationCenter  = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 	$scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
+    $scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
 
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
@@ -271,9 +272,14 @@
 	$tim11ID=$timer->CreateTimerSync("MoveLogFiles",150);						/* Maintanenance Funktion: Move Log Files, Backup Funktion */	
 	$tim2ID=$timer->CreateTimerSync("MoveCamFiles",150);
 	$tim3ID=$timer->CreateTimerSync("RouterExectimer",150);
-	$tim12ID=$timer->CreateTimerSync("HighSpeedUpdate",10);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
 
+    // Timer12, change to new script
+	//$tim12ID=$timer->CreateTimerSync("HighSpeedUpdate",10);					                    /* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
+    $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptIdOperationCenter);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
+    IPS_SetEventActive($tim12ID,false);
 
+    $timerOps = new timerOps();
+    $tim12ID=$timerOps->CreateTimerSync("HighSpeedUpdate",10, $scriptIdFastPollShort);
 
 	/*******************************
 	 *
@@ -1499,6 +1505,8 @@
         $configWF = $configWFront["Administrator"];
         print_r($configWF); print_r($resultStream);
         installWebfrontMon($configWF,$resultStream); 
+        $configWF["TabItem"]="RadioStatus";
+        installWebfrontRadio($configWF,$resultStream);
 		}
 
     if (isset($configWFront["User"]))
@@ -1952,13 +1960,13 @@
 
     function installWebfrontMon($configWF,$resultStream, $emptyWebfrontRoot=false)
         {
-        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["TabItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
             {
             $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
             $wfcHandling->read_WebfrontConfig($configWF["ConfigId"]);         // register Webfront Confígurator ID  
 
 
-            $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
+            $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.OperationCenter
             
             echo "installWebfrontMon,Path ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
             echo "----------------------------------------------------------------------------------------------------------------------------------\n";
@@ -1976,6 +1984,8 @@
             IPS_SetHidden($categoryId_WebFrontMonitor, true);                                                      // nicht im OperationCenter anzeigen, eigener Tab
 			$status=@EmptyCategory($categoryId_WebFrontMonitor);				        // ausleeren und neu aufbauen, die Geschichte ist gelöscht !
             if ($status) echo "   -> erfolgreich.\n";
+
+            $wfcHandling->DeleteWFCItems("SystemStatus");           // delete all webfront items starting with SystemStatus
 
             /* Kategorien neu anlegen, aktuell Bezeichnung individuell */
             $categoryIdLeftDn    = CreateCategory('SystemNachrichten',      $categoryId_WebFrontMonitor, 0);             
@@ -2060,6 +2070,54 @@
             $wfcHandling->write_WebfrontConfig($configWF["ConfigId"]);
             } // Config vollstaendig			
         }    
+
+    /* zusätzliches Webfront TabItem
+     */
+    function installWebfrontRadio($configWF,$resultStream, $emptyWebfrontRoot=false)
+        {
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["TabItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
+            {
+            echo "Install Webfront Radio :\n";
+            $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+            $wfcHandling->read_WebfrontConfig($configWF["ConfigId"]);         // register Webfront Confígurator ID  
+            $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
+            //echo "Webfront Category Path :".$configWF["Path"]."\n";
+            echo "installWebfrontMon,Path ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
+            echo "----------------------------------------------------------------------------------------------------------------------------------\n";
+
+            if ($emptyWebfrontRoot)         // für OperationCenter zB nicht loeschen, es gibt noch andere sub-Webfronts
+                {
+                echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
+                $status=@EmptyCategory($categoryId_WebFront);
+                if ($status) echo "   -> erfolgreich.\n";
+                IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+                }
+            else echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt wird nicht gelöscht.\n";
+            echo "Create Sub-Category ".$configWF["TabItem"]." in ".IPS_GetName($categoryId_WebFront)." and empty it.\n";
+
+            $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
+            IPS_SetHidden($categoryId_WebFrontMonitor, true);                                                      // nicht im OperationCenter anzeigen, eigener Tab
+			$status=@EmptyCategory($categoryId_WebFrontMonitor);				        // ausleeren und neu aufbauen, die Geschichte ist gelöscht !
+            if ($status) echo "   -> erfolgreich.\n";
+
+            /* Kategorien neu anlegen, aktuell Bezeichnung individuell */
+            $categoryIdRight     = CreateCategory('Right',      $categoryId_WebFrontMonitor, 0);             
+            $categoryIdLeft      = CreateCategory('Left',  $categoryId_WebFrontMonitor, 0);             
+
+            //CreateWFCItemTabPane   ($configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // OperationCenter Tabpane
+            echo "Create Webfront TabPane ".$configWF["TabPaneItem"]." , ".$configWF["TabPaneParent"]." , ".$configWF["TabPaneOrder"]." , ".$configWF["TabPaneName"]." , ".$configWF["TabPaneIcon"]." already done.\n";
+            //$wfcHandling->CreateWFCItemTabPane($configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // OperationCenter Tabpane
+            echo "Create Webfront SplitPane ".$configWF["TabItem"]." , ".$configWF["TabPaneItem"]." , ". ($configWF["TabOrder"]+500)." , RadioStatus ,  Intensity \n";
+            $wfcHandling->CreateWFCItemSplitPane ($configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+500), "RadioStatus", "Intensity", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
+            // vorangegangenes SplitPane sollte abgeschlossen werden, sonst finden die beiden Category Befehle das Tab Item nicht  
+            $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"]."_Left", $configWF["TabItem"],  10, "","",$categoryIdLeft /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+            $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"]."_Right", $configWF["TabItem"],  10, "","",$categoryIdRight /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+
+            $wfcHandling->write_WebfrontConfig($configWF["ConfigId"]);
+            }
+
+
+        }
 
     /* Create HomaticModule Instance with Name Address, Channel, Protocol
      * Teil des Aufrufs bei dem Homematic RSSI Variablen für stromversorgte Homematic Devices angelegt werden

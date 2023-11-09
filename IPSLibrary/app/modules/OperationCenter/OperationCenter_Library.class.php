@@ -7384,8 +7384,9 @@ class DeviceManagement
 		else return($resultarray);
 		}
 
-    /* DeviceManagement:: einheitliche Überprüfung ob schon länger keine Änderung mehr war */
-
+    /* DeviceManagement::checkVariableChanged
+     * einheitliche Überprüfung ob schon länger keine Änderung mehr war 
+     */
     private function checkVariableChanged(&$result,&$index,$Key)
         {
         if ((time()-IPS_GetVariable($Key["COID"])["VariableChanged"])>(60*60*24*2)) 
@@ -7400,8 +7401,10 @@ class DeviceManagement
         return (true);
         }
 
-    /* DeviceManagement:: da die Überprüfung private ist hier die Ausgabe public machen */
-
+    /* DeviceManagement::writeCheckStatus
+     * da die Überprüfung private ist hier die Ausgabe public machen 
+     * Input ist ein array mit [COID] als Parameter
+     */
     public function writeCheckStatus($result)
         {
         $resulttext="";
@@ -8611,6 +8614,16 @@ class DeviceManagement
             $resultReg[$i]["LOCKSTATE"]="LOCK_STATE";
             $resultReg[$i]["KEYSTATE"]="WP_OPTIONS";                // Aktuator
             }                      
+        /*-------CCU3  ["DUTY_CYCLE_LEVEL"]--------------------------------*/
+        elseif  (array_search("DUTY_CYCLE_LEVEL",$registerNew) !== false)    /* HomematicIP Tuerschloss, Aktuator WP_OPTIONS 0,1,2 Status LOCK_STATE  */
+            {
+            $result[0] = "CCU3";
+            $result[1]="IP Funk CCU3";              // HomematicIP 
+
+            $i=0;                                               // kann auch weitere Funktionen beinhalten
+            $resultType[$i]="TYPE_CCU";
+            $resultReg[$i]["DUTY_CYCLE_LEVEL"]="DUTY_CYCLE_LEVEL";
+            }                      
         else 
             {
             $found=false;
@@ -8863,6 +8876,7 @@ class DeviceManagement
 
                     case "HM-WDS100-C6-O":
                     case "HmIP-SWO-PR":                    
+                    case "HmIP-SWO-PL":                             // ohne Windrichtungserfassung
                         $result="Wetterstation";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -9835,6 +9849,9 @@ class TimerHandling
 		return($timID);
 		}
 
+    /* TimerHandling::CreateTimerSync
+     *
+     */
 	function CreateTimerSync($name,$sekunden)
 		{
 		$timID = @IPS_GetEventIDByName($name, $this->ScriptsUsed["OperationCenter"]);

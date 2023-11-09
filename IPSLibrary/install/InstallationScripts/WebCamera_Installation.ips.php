@@ -21,8 +21,10 @@
 	 *
 	 * Script zur Erstellung von WebCamera Anzeigen
      *
-     * noch kein eigenständiges Modul. Verwendet aber bereits eigenes Webfront für die Darstellung
-     * 
+     * noch kein vollständig eigenständiges Modul. Verwendet aber bereits eigenes Webfront für die Darstellung
+     * die Config kommt von OperationCenter und IPSCam
+     *
+     *
      *
      * Verwendung von Activity für regelmaessige Timeraufrufe und Library für gemeinsame Routine und eine Class
      *
@@ -101,8 +103,29 @@
 
 	$Heute=time();
 	$HeuteString=date("dmY",$Heute);
-	echo "Heute  Datum ".$HeuteString." für das Logging der OperationCenter Installation.\n";
-	
+	echo "Heute  Datum ".$HeuteString." für das Logging der WebCamera Installation.\n";
+
+	/******************************************************
+	 *
+	 *				Gibt es Blink Kameras
+     *
+     ********************************************************/    
+
+	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+	//$modulhandling->printLibraries();
+    $index = $modulhandling->getLibrary("{EE71140D-C02C-AB00-F456-D934270CC4A5}",false);       // treu für Debug
+    if ($index) 
+        {
+        echo "Library Blink Home System installiert.\n";
+        $result = $modulhandling->getInstancesByType(3,["Library"=>"Blink Home System"]);
+        }
+
+	/******************************************************
+	 *
+	 *				Die anderen Kameras suchen
+     *
+     ********************************************************/    
+
 	if (isset ($installedModules["OperationCenter"])) 
 		{
         IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
@@ -153,7 +176,7 @@
 
         /********************************************************************
         *
-        * auch IPSCam Installation mit betrachten
+        * auch IPSCam Installation mit betrachten, kann man testweise aussparen
         *
         *****************************************************************/
 
@@ -215,6 +238,7 @@
         *
         * Überblick der Webcams angeführt nach den einzelnen IPCams in deren OperationCenter Konfiguration 
         * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
+        * verwendet $camConfig
         *
         ******************************************************************************************************/
 
@@ -279,7 +303,8 @@
             *
             *******************************************************************************************************/
 
-            if ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) 
+            //if ( ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) && ( (isset($cam_config["STATUS"])) && (strtoupper($cam_config["STATUS"])!="ENABLED") ) )
+            if ( ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) && ( ! ((isset($cam_config["STATUS"])) && (strtoupper($cam_config["STATUS"])=="DISABLED") ) ) )
                 {
                 $cam_streamId=@IPS_GetObjectIDByName("CamStream_".$cam_name,$cam_categoryId);                  
                 if ($cam_streamId===false)
@@ -430,6 +455,11 @@
         /*----------------------------------------------------------------------------------------------------------------------------
         *
         * WebFront Administrator Installation
+        *
+        * Motion            resultstream
+        * CamPicture
+        * CamCapture
+        * Blink
         *
         * ----------------------------------------------------------------------------------------------------------------------------*/
         

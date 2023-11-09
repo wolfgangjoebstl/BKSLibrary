@@ -879,6 +879,7 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
  *
  * Routinen für den Betrieb
  *      getConfig
+ *      getConfigDelayed
  *      MonitorStatus
  *      getLogicMonitorConf
  *      Anwesend
@@ -917,8 +918,9 @@ class AutosteuerungOperator
 		$this->setLogicAnwesend();              // Config auslesen und logicAnwesend abspeichern
 		}
 
-	/* Ausgabe der privaten Config Variable, das ist die Config aus dem include File in ein allgemeines Format gebracht */
-
+	/* AutosteuerungOperator::getConfig
+     * Ausgabe der privaten Config Variable, das ist die Config aus dem include File in ein allgemeines Format gebracht 
+     */
 	public function getConfig()
 		{
 		return($this->logicAnwesend);
@@ -926,7 +928,6 @@ class AutosteuerungOperator
 
     /* Delayed Einträge als indexierte Liste ausgeben
      */
-
 	public function getConfigDelayed()
 		{
         $delayed=array();
@@ -940,13 +941,13 @@ class AutosteuerungOperator
 		return($delayed);
 		}
 
-    /*
+    /* AutosteuerungOperator::MonitorStatus
      * Im Configfile gibt es eine Möglichkeit den gewünschten  Status des Monitors (Ein/Aus) aus einer OR und AND Verknüpfung von  Statuswerten zu ermitteln.
+     * Überprüfung der Config mit getLogicMonitorConf
      * Das ist die schnellste Art Monitor Ein/Aus zu ermitteln. Wird im Autosteuerungs Handler alle 60 Sekunden aufgerufen.
      *
      *
      */
-
 	public function MonitorStatus($debug=false)
         {
 		$result=false;
@@ -1019,14 +1020,16 @@ class AutosteuerungOperator
 		return ($result);				
         }
 
-    /* get Logic Monitor Configuration
-     * Analyse der entsprechenden Konfiguration und abspeichern in einem class object
+    /* AutosteuerungOperator::getLogicMonitorConf get Logic Monitor Configuration aus function Autosteuerung_MonitorMode
+     * Analyse der entsprechenden Konfiguration in "Condition" und abspeichern der Config in einem class object
+     * Folgende Operatoren werden unterstützt:
+     *      OR
+     *      AND
      * Switchname und Condition müssen mindestens vorhanden sein 
      * dient zur Entkopplung der Konfiguration von den internen Prozessen
      * keine automatische Delayed Funktion, Objekt muss dezidiert angegeben werden
      *
      */ 
-
 	public function getLogicMonitorConf($debug=false)
 		{
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
@@ -1080,6 +1083,185 @@ class AutosteuerungOperator
         return ($config);
         }
 
+    /* 
+     * Ermittung Zutritt und Auswertung Geofency, ähnlich wie Anwesend und MonitorStatus
+     * Beispiel für Eintrag Konfiguration
+      	function Autosteuerung_Zutritt() { $logic = array(
+            'Condition' => array(   'OR' => array(   
+                36912  => array("x" => 5,"y" => 1,"ShortName" => "AZ"),			// x,y,,"ShortName" => "AZ"
+                                ),
+                'AND' => array(    ),
+							),              // Ende Condition
+			"Config" =>	array(			), 
+			"Geofency" =>	array(  "Home" => array (
+                    "Wolfgang"  => array(   "Name" => "Wolfgang",   "OID"  => 1234,   ),          // Wolfgang @ Home
+                    "Caudia"  => array(  "Name" => "Claudia",      "OID"  => 1234,   ),          // Claudia @ Home
+                                ),                      // Home
+                        ),           );
+		return $logic;	}
+     * Auswertung der OR Verknüpfungen Zutritt Informationen, der letzte Zutritt zählt, wann war zuletzt 1 für Türe offen    
+     * AND Verknüpfung später hinzufügen
+     */
+    public function Zutritt($debug)
+        {
+        $config=array();
+        if (function_exists("Autosteuerung_Zutritt"))
+            {
+            $configZutritt=Autosteuerung_Zutritt();
+            configfileParser($configZutritt, $configParsed, ["Condition","CONDITION","condition" ],"Condition" ,null); 
+            configfileParser($configZutritt, $configParsed, ["Geofency","GEOFENCY","geofency" ],"Geofency" ,null); 
+
+
+            // Vervollständigung der Konfiguration 
+            if ($debug) echo "Autosteuerung Zutritt Konfiguration vorhanden, analysieren:\n";
+            if (isset($configParsed["Condition"]) )
+                {
+                $configCondition=$configParsed["Condition"];
+                //print_r($configCondition);
+                foreach($configCondition as $type => $operation)
+                    {
+                    switch (strtoupper($type))
+                        {
+                        case "or":
+                        case "Or":
+                        case "OR":              // nur OR, jeder Eintrag ist eine Zutrittsmöglichkeit
+                            foreach ($operation as $index => $oid)
+                                {
+                                if (is_array($oid))             // array("x" => 1,"y" => 1,"ShortName" => "AZ")
+                                    {
+                                    //$name=IPS_GetName($index);
+                                    if ($debug) echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index))).").\n";
+                                    //$config[$type][$index] = $oid;
+                                    foreach ($oid as $pos => $entry) 
+                                        {
+                                        $config["OR"][$index][$pos] = $entry;
+                                        }
+                                    $oidEntry=$index;
+                                    }
+                                else
+                                    {               // wenn kein array definiert nix übernehmen
+                                    $oidEntry=$oid;
+                                    if ($debug) 
+                                        {
+                                        echo " --> kein Array, Topology hinzufuegen.\n";
+                                        echo " --> Index $oid (".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).").\n";	
+                                        }
+                                    $config["OR"][$oid]=array();
+                                    $config["OR"][$oid]["OID"]=$oid;
+                                    }
+                                if (is_array($oid) && (isset($oid["Name"])===false)) $config["OR"][$oidEntry]["Name"]=$oid["Name"];
+                                else $config["OR"][$oidEntry]["Name"]=IPS_GetName($oidEntry)."/".IPS_GetName(IPS_GetParent($oidEntry))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oidEntry)));
+                                }
+
+                            break;
+                        case "AND":
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                }
+            if ($debug) echo "Autosteuerung Zutritt Konfiguration vorhanden, analysieren:\n";
+            if (isset($configParsed["Geofency"]) )
+                {
+                $configGeofency=$configParsed["Geofency"];
+                foreach($configGeofency as $type => $operation)
+                    {
+                    switch (strtoupper($type))
+                        {
+                        case "home":
+                        case "Home":
+                        case "HOME":              // nur OR, jeder Eintrag ist eine Zutrittsmöglichkeit
+                        case IPS_GetName(0):
+                            foreach ($operation as $index => $entry)
+                                {
+                                $config["HOME"][$entry["OID"]]=$entry;
+                                if (isset($entry["Name"])===false) $config["HOME"][$entry["OID"]]["Name"]=$index;
+                                }
+                            break;
+                        }
+                    }
+                }                
+            print_r($config);
+            // Umsetzung Konfiguration
+            $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            $endtime=time();
+            //$starttime=mktime(date("h", $jetzt),date("i", $jetzt),date("s", $jetzt),date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));  // mktime(int $hour,int $minute,int $second, int $month, int $day, int $year): int|false
+            //$starttime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));       // heute 00:00
+            $starttime = $endtime-24*60*60;         // vor 24 Stunden
+            $logging=array();
+            foreach ($config as $type => $operation)
+                {
+                switch (strtoupper($type))
+                    {
+                    case "OR":              // nur OR, jeder Eintrag ist eine Zutrittsmöglichkeit  
+                    case "HOME":
+                        //print_r($operation);  
+                        foreach ($operation as $oid => $entry)
+                            {
+                            $logged = AC_GetLoggingStatus($archiveHandlerID,$oid);
+                            echo "    ".$oid." ".str_pad("(".IPS_GetName($oid).")",30)."  ".(GetValue($oid)?"Offen":"Geschlossen")."   ";
+                            echo "(".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")   ".($logged?"Logged":"Static")."\n";
+                            $werte = AC_GetLoggedValues($archiveHandlerID, $oid, $starttime, $endtime, 0);
+                            echo "Insgesamt ".sizeof($werte)."  Eintraege.\n";
+                            //print_r($werte);
+                            foreach ($werte as $index => $wert) 
+                                {
+                                //echo "   $index ".$wert["Value"]."   ".date("H:i:s",$wert["TimeStamp"])."\n";
+                                $logging[$wert["TimeStamp"]][$oid]=$wert;
+                                $logging[$wert["TimeStamp"]][$oid]["Type"]=$type;
+                                if ($entry["Name"]) $logging[$wert["TimeStamp"]][$oid]["Name"]=$entry["Name"];
+                                else $logging[$wert["TimeStamp"]][$oid]["Name"]="unknown";
+                                }
+                            // Geofency mitberücksichtigen
+                            }
+                        break;
+                    }
+                }
+            // Auswertung Logging, Ergebnis sollte sein: Wolfgang ist um 7:44 weggegangen, Wolfgang ist um 18:44 zurückgekommen
+            $status=array(); 
+            krsort($logging);           // von jetzt in die Vergangenheit
+            foreach ($logging as $timestamp => $entries) 
+                {
+                foreach ($entries as $oid => $entry)
+                    {
+                    echo "   ".date("H:i:s",$timestamp)."  ".str_pad($oid,8).str_pad($entry["Value"],7).str_pad($entry["Type"],8).str_pad($entry["Name"],30)." \n";
+                    if ($entry["Type"]=="HOME") 
+                        {
+                        //print_R($entry);
+                        $name=$entry["Name"];
+                        if (isset($status[$name])==false) 
+                            {
+                            $status[$name]["Geofency"]["TimeStamp"]=$timestamp;
+                            $status[$name]["Geofency"]["Value"]=GetValue($oid);
+                            }
+                        }
+                    if ($entry["Type"]=="OR") 
+                        {
+                        foreach ($status as $name => $statusentry)
+                            {
+                            if (isset($status[$name]["Contact"])==false) 
+                                {
+                                $status[$name]["Contact"]["TimeStamp"]=$timestamp;
+                                $status[$name]["Contact"]["Value"]=GetValue($oid);;
+                                }
+                            }
+                        }
+                    }
+                }
+            // Zusammenfassung Status
+            print_R($status);
+            foreach ($status as $name => $entry) 
+                {
+                echo "$name has ";
+                echo ($entry["Geofency"]["Value"]?"entered":"left");
+                echo " the building on ".date("H:i:s d.m.Y",$entry["Contact"]["TimeStamp"])." ";
+                echo " Information from Geofency was dated with ".date("H:i:s d.m.Y",$entry["Geofency"]["TimeStamp"])."  \n";
+                }
+            }
+        else echo "Autosteuerung Zutritt Konfiguration NICHT vorhanden.:\n";
+        return($config);
+        }
 
     /*
      * Im Configfile gibt es eine Möglichkeit die Anwesenheit aus einer OR und AND Verknüpfung von  Statuswerten zu ermitteln.
@@ -1087,7 +1269,6 @@ class AutosteuerungOperator
      *
      *
      */
-
 	public function Anwesend()
 		{
 		$result=false;
@@ -1233,6 +1414,8 @@ class AutosteuerungOperator
 
     /* AutosteuerungOperator::getLogicAnwesend   das ist die passende Debug Funktion zu Anwesend()
      * hier ausgeben wie berechnet wurde. Könnte als Zusatzinfo in Autosteuerung Anwesenheitserkennung gemacht werden.
+     *
+     * Verarbeitet die Informationen aus function Autosteuerung_Anwesend
      *
      * zwei Ausgabemöglichkeiten, html oder als Array
      * es wird das Array logicAnwesend au der Config durchgegangen und nach Index OR oder AND durchsucht, 
@@ -1457,7 +1640,11 @@ class AutosteuerungOperator
                                 {
                                 $geofencyAddresses[$device][$foundAdresse]["OID"]=$children;
                                 $geofencyAddresses[$device][$foundAdresse]["Name"]=IPS_GetName($children);
-                                if ($debug) echo "    ".$foundAdresse." $children ".str_pad("(".IPS_GetName($children).")",30)."  ".(GetValue($children)?"Anwesend":"Abwesend")."\n";
+                                if ($debug) 
+                                    {
+                                    echo "    ".$foundAdresse." $children ".str_pad("(".IPS_GetName($children).")",30)."  ".(GetValue($children)?"Anwesend":"Abwesend")."   ";
+                                    echo "(".date("d.m H:i",IPS_GetVariable($children)["VariableChanged"]).")\n";
+                                    }
                                 $foundAdresse++;
                                 }
                             //echo "    ".$children." (".IPS_GetName($children).")  ".IPS_GetVariable($children)["VariableType"]."\n";
