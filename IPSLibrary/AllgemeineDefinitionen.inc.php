@@ -12007,7 +12007,7 @@ class ComponentHandling
     private $remote, $messageHandler;
     //private $congigMessage;
 
-    /* Klasse initialisiseren 
+    /* ComponentHandling Klasse initialisiseren 
      * kann archiveHandlerID und archiveSDQL_HandlerID
      * wenn Modul vorhanden auch RemoteAccess
      *
@@ -12041,7 +12041,8 @@ class ComponentHandling
         return($this->archiveSDQL_HandlerID);
         }
 
-    /* Liste der remote Server ausgeben 
+    /* ComponentHandling::listOfRemoteServer
+     * Liste der remote Server ausgeben 
      */
     public function listOfRemoteServer($debug=false)
         {
@@ -12062,8 +12063,9 @@ class ComponentHandling
         return($remServer);
         } 
 
-    /* ComponentHandling, die Remote Struktur für das Keyword auslesen 
-    */
+    /* ComponentHandling::getStructureofROID
+     * die Remote Struktur für das Keyword auslesen 
+     */
     public function getStructureofROID($keyword,$debug=false)
         {
         $struktur=array();
@@ -12084,7 +12086,7 @@ class ComponentHandling
         return($struktur);
         }
 
-    /* ComponentHandling, register Event
+    /* ComponentHandling::register Event
      */
     public function registerEvent($oid,$update,$component,$module,$commentField)
         {
@@ -12297,7 +12299,7 @@ class ComponentHandling
         return (false);             // Ergebnis wird schon vorher zurückgemeldet, abhängig von write
 		}	
 
-    /* ComponentHandling
+    /* ComponentHandling::workOnDeviceList
      * Handle Keys and Keywords on deviceList 
      *      Key         Eintrag eines Gerätes/device
      *      keywords    etwas wie ["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"]
@@ -12413,13 +12415,15 @@ class ComponentHandling
         return $keyName;            // ohne Index zurückgeben
         }
 
-    /* Handle Keys and Keywords on homematicList 
+    /* ComponentHandling::workOnHomematicList
+     * Handle Keys and Keywords on homematicList 
      * von getComponent aufgerufen, zur Vereinfachung der Darstellung
      *
      */
 
     function workOnHomematicList($Key, $keywords, $debug=false)
         {
+        if ($debug) echo "workOnHomematicList mit Keywords ".json_encode($keywords)." aufgerufen.\n";
         $keyName=array();       // wenn nix gefunden wurde istz das Array leer            
         $count=0; $countNo=0; $max=0; $maxNo=0; $found=false;             
         if ( is_array($keywords) == true )      // Übergabe Array mit Keywords für die Hardware Liste, kann auch NOT
@@ -12446,7 +12450,12 @@ class ComponentHandling
                 $found=true; 
                 //echo "**gefunden\n";
                 }
-            $keyword=$keywords[0];	
+            if (isset($keywords[0])==false) 
+                {
+                echo "workOnHomematicList, Error, Keywords do not make sense to us:\n";
+                print_R($keywords);
+                }
+            else $keyword=$keywords[0];	
             }	
         else                                    // Übergabe Keyword
             {
@@ -12682,6 +12691,12 @@ class ComponentHandling
                 $variabletyp=1; 		/* Integer */	
                 $index="PowerLock";
                 $profile="PowerlockStatus";            
+                break;          
+            case "DUTY_CYCLE_LEVEL":
+                // kein detectmovement, false ist default
+                $variabletyp=1; 		/* Integer */	
+                $index="System";
+                $profile="";                    // kein Profil
                 break;                   
             default:	
                 $variabletyp=0; 		/* Boolean */	
@@ -15400,11 +15415,14 @@ class ModuleHandling
         * {DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8} = NetatmoWeatherConfig
         *
         */
-        $input["ModuleID"] = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
+        $input["ModuleID"]   = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
         $input["ModuleName"] = "AmazonEchoConfigurator";
         $discovery[]=$input;
-        $input["ModuleID"] = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
+        $input["ModuleID"]   = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
         $input["ModuleName"] = "NetatmoWeatherConfig";
+        $discovery[]=$input;
+        $input["ModuleID"]   = "{91624C6F-E67E-47DA-ADFE-9A5A1A89AAC3}";
+        $input["ModuleName"] = "HomeMatic RF Interface Configurator";
         $discovery[]=$input;
 
         /* wenn keine Konfiguratoren verfügbar dann die GUIDs der Instanzen eingeben

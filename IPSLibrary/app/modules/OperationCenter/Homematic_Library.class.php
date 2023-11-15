@@ -88,16 +88,21 @@ class Homematic_OperationCenter
 		 */
 		public function RefreshRSSIValues($debug=false) 
 			{
+            if ($debug) echo "RefreshRSSIValues aufgerufen.\n";
+            //$delay=100000;
+            $delay=100;
 			$error=true;
 			$instanceIdList = $this->GetMaintainanceInstanceList();
 			foreach ($instanceIdList as $instanceId) 
 				{
 				$error1=true; $error2=true;
-				if ($debug) echo "RefreshRSSIValues: ".$instanceId."   ".IPS_GetName($instanceId);
+				if ($debug) echo "   Evaluate ".$instanceId."   ".str_pad(IPS_GetName($instanceId),44);
 				$variableId = @IPS_GetVariableIDByName('RSSI_DEVICE', $instanceId);
 				if ($variableId!==false) 
 					{
-					usleep(100000);
+                    //echo "Variable $variableId ".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId)).".\n";
+                    echo "   ".GetValue($variableId)."   ";
+					usleep($delay);
 					//set_time_limit(HM_TIMEOUT_REFRESH);
 					$error1=$error1 && @HM_RequestStatus($instanceId, 'RSSI_DEVICE');
 					}
@@ -105,7 +110,8 @@ class Homematic_OperationCenter
 				$variableId = @IPS_GetVariableIDByName('RSSI_PEER', $instanceId);
 				if ($variableId!==false) 
 					{
-					usleep(100000);
+                    echo "   ".GetValue($variableId)."   ";
+					usleep($delay);
 					//set_time_limit(HM_TIMEOUT_REFRESH);
 					$error1=$error1 && @HM_RequestStatus($instanceId, 'RSSI_DEVICE');
 					}
@@ -113,14 +119,14 @@ class Homematic_OperationCenter
 				$error=$error && $error1 && $error2;
 				if ($error2==false)
 					{
-					echo "RefreshRSSIValues: ".$instanceId."   ".IPS_GetName($instanceId);
+					//echo "    ".$instanceId."   ".IPS_GetName($instanceId);
 					echo "   ->RSSI Instanz nicht verfügbar.\n";
 					}
 				else
 					{
 					if ($error1==false)
 						{
-						echo "RefreshRSSIValues: ".$instanceId."   ".IPS_GetName($instanceId);
+						echo "     ".$instanceId."   ".IPS_GetName($instanceId);
 						echo "   ->Fehler, RSSI Instanz nicht erreichbar.\n";
 						}
 					else
@@ -137,7 +143,7 @@ class Homematic_OperationCenter
 		 *
 		 * Refreshed alle RSSI HTML Listen
 		 */
-		public function RefreshRSSIHtml() 
+		public function RefreshRSSIHtml($debug=false) 
 			{
 			$instanceIdList = $this->GetMaintainanceInstanceList();
 			$rssiDeviceList = array();
@@ -175,6 +181,7 @@ class Homematic_OperationCenter
 			$variableIdRssiPeer   = IPS_GetObjectIDByIdent(HM_CONTROL_RSSIPEER, $categoryIdHtml);
 
 			$str = "<table width='90%' align='center'>"; 
+            $str .= '<th><td colspan="3"><b>Rssi Device</b><td><th>';
 			$str .= "<tr><td><b>Gerätname</b></td><td><b>GeräteID</b></td><td><b>Empfangsstärke</b></td></tr>";
 			foreach($rssiDeviceList as $instanceId=>$value) {
 				$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".IPS_GetProperty($instanceId,'Address')."</td><td>".$value."</td></tr>";
@@ -188,6 +195,7 @@ class Homematic_OperationCenter
 			SetValue($variableIdRssiDevice, $str);
 
 			$str = "<table width='90%' align='center'>"; 
+            $str .= '<th><td colspan="3"><b>Rssi Peer</b><td><th>';
 			$str .= "<tr><td><b>Gerätname</b></td><td><b>GeräteID</b></td><td><b>Empfangsstärke</b></td></tr>";
 			foreach($rssiPeerList as $instanceId=>$value) {
 				$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".IPS_GetProperty($instanceId,'Address')."</td><td>".$value."</td></tr>";
@@ -196,12 +204,14 @@ class Homematic_OperationCenter
 			SetValue($variableIdRssiPeer, $str);
 
 			$str = "<table width='90%' align='center'>"; 
-			$str .= "<tr><td><b>Gerätname</b></td><td><b>GeräteID</b></td><td><b>Empfangsstärke</b></td></tr>";
+            $str .= '<th><td colspan="4"><b>Rssi</b><td><th>';
+			$str .= "<tr><td><b>Gerätname</b></td><td><b>GeräteID</b></td><td><b>RSSI Device</b></td><td><b>RSSI Peer</b></td></tr>";
 			$idx = 0;
 			foreach($rssiDeviceList as $instanceId=>$value) {
 				$idx++;
+                $value2=$rssiPeerList[$instanceId];
 				if ($idx<=10) {
-					$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".IPS_GetProperty($instanceId,'Address')."</td><td>".$value."</td></tr>";
+					$str .= "<tr><td>".IPS_GetName($instanceId)."</td><td>".IPS_GetProperty($instanceId,'Address')."</td><td>".$value."</td><td>".$value2."</td></tr>";
 				}
 			}
 			$str .= "</table>";
@@ -214,9 +224,9 @@ class Homematic_OperationCenter
 		 *
 		 * Refresh Variablen und HTML der Empfangsstärken
 		 */
-		public function RefreshRSSI() {
-			$this->RefreshRSSIValues();
-			$str=$this->RefreshRSSIHtml();
+		public function RefreshRSSI($debug=false) {
+			$this->RefreshRSSIValues($debug);
+			$str=$this->RefreshRSSIHtml($debug);
 			return($str);
 		}
 		

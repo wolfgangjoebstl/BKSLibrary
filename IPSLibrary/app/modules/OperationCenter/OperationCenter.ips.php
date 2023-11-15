@@ -122,7 +122,7 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
     $tim6ID  = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
     $tim7ID  = @IPS_GetEventIDByName("FileStatus", $scriptId);
     $tim8ID  = @IPS_GetEventIDByName("SystemInfo", $scriptId);
-    $tim9ID  = @IPS_GetEventIDByName("Reserved", $scriptId);
+    $tim9ID  = @IPS_GetEventIDByName("Homematic", $scriptId);
     $tim10ID = @IPS_GetEventIDByName("Maintenance",$scriptId);						/* Starte Maintennance Funktionen */	
     $tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintenance Funktion: Move Log Files */	
     $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptIdFastPollShort);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
@@ -903,8 +903,8 @@ if ($_IPS['SENDER']=="Variable")
  *
  * Timer Aufrufe gestaffelt
  *
- * 1 Router auslesen starten
- * 2 Webcam Files zusammenräumen
+ * 1 Router auslesen starten, einmal am tag
+ * 2 Webcam Files zusammenräumen, alle 150 Sekunden
  * 3 Router auswerten, wird von 1 gestartet
  * 4 Sysping alle Geräte, alle 5 Minuten, wenn nicht anders konfiguriert exec alle 60 Minuten
  * 5 automatisches Update der App Routinen, immer am 12. des Monats

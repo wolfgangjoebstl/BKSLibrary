@@ -75,6 +75,7 @@
 
 	IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+    IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 	IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -162,6 +163,10 @@
 
 	if (isset ($installedModules["EvaluateHardware"])) 
 		{     
+        IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+        IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
+    	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+
         $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
         $CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
         $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
@@ -287,6 +292,8 @@
 	 *
 	 ********************************/
 
+    echo "\n";
+    echo "Profile werden vorbereitet:\n";
     /* für Backup Funktionen */
 
 	$pname="AusEinAuto";
@@ -394,22 +401,23 @@
 
 
     /* welche SNMP Module sind verfügbar, gibt es das IPSSNMP Modul von Babenschneider, dann können kurze Request-Response Timings implementiert werden */
-
+    echo "\n";
+    echo "Evaluierung der SNMP Module, welche werden verwendet:\n";
     if (false)          // nur zum lokalen Debuggung
         {
-        echo "Ausgabe der geladenen Bibliotheken:\n"; 
+        echo "   Ausgabe der geladenen Bibliotheken:\n"; 
         $modulhandling->printrLibraries();
-        echo "Ausgabe der Symcon Module aus der Babenschneider Bibliothek:\n"; 
+        echo "   Ausgabe der Symcon Module aus der Babenschneider Bibliothek:\n"; 
         $modulhandling->printModules("Babenschneider Symcon Modules");
-        echo "Diese SNMP Instanzen sind bereits instaliert:\n";
+        echo "   Diese SNMP Instanzen sind bereits instaliert:\n";
         $modulhandling->printInstances("IPSSNMP");
-        echo "mit folgenden Funktionen:\n";
+        echo "   mit folgenden Funktionen:\n";
         $modulhandling->getFunctions("IPSSNMP");
         }
     $modules=$modulhandling->getModules("Babenschneider Symcon Modules");
-    if (count($modules)>0) echo "IPSSNMP Module können installiert werden. Klären ob benötigt.\n";
+    if (count($modules)>0) echo "   IPSSNMP Module können installiert werden. Klären ob benötigt.\n";
     $instances=$modulhandling->getInstances("IPSSNMP");
-    if (count($instances)==0) echo "IPSSNMP Module müssen erst installiert werden. Klären ob benötigt.\n";
+    if (count($instances)==0) echo "   IPSSNMP Module müssen erst installiert werden. Klären ob benötigt.\n";
     $instanceTable=array();
     foreach ($instances as $instance) $instanceTable[IPS_GetName($instance)]=$instance;
     //print_R($instanceTable);
@@ -916,8 +924,14 @@
 	echo "===========================================\n";
 	echo "Sysping Variablen anlegen.\n";
 
-	$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
-    $categoryId_SysPingControl    = CreateCategory('SysPingControl',   $categoryId_SysPing, 200);
+	$categoryId_SysPing           = CreateCategoryByName($CategoryIdData,'SysPing',    200);
+    $categoryId_SysPingControl    = CreateCategoryByName($categoryId_SysPing, 'SysPingControl', 200);
+    $categoryId_Sockets           = CreateCategoryByName($categoryId_SysPing, "SocketStatus",300);
+    echo "Socket Status on OID $categoryId_Sockets, SysPingControl on $categoryId_SysPingControl.\n";
+
+   /* Standardvariablen für den Betrieb von Socketstatus in TabPane Radisostatus setzen
+    */  
+    $variableSocketHtmlId    = CreateVariableByName($categoryId_Sockets,"StatusCCUConnected",3, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0));      // als String, leichter lesbar
 
     /* Standardvariablen für den Betrieb von Sysping setzen 
      * Exectime
@@ -1026,9 +1040,6 @@
 	echo "=====================================================================\n";
 	echo "Homematic RSSI Variablen für stromversorgte Homematic Devices anlegen.\n";
 
-	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
-	IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-	
 	$CategoryIdHardware = CreateCategoryPath('Hardware.Homematic');
 	$CategoryIdRSSIHardware = CreateCategoryPath('Hardware.HomematicRSSI');
 	
@@ -1037,6 +1048,11 @@
 	$UpdateErreichbarkeit =    CreateVariableByName($CategoryIdHomematicErreichbarkeit, "UpdateErreichbarkeit",    1 /*Integer*/, '~UnixTimestamp', "", 500);
     
     $ExecuteRefreshID =        CreateVariableByName($CategoryIdHomematicErreichbarkeit, "UpdateDurchfuehren",      0 /*Boolean*/,  '~Switch',       "", 400, $scriptIdOperationCenter);
+
+    $categoryId_DeviceManagement    = IPS_GetObjectIDByName('DeviceManagement',$CategoryIdData);
+    $HMI_ReportStatusID       = IPS_GetObjectIDByName("HMI_ReportStatus",$categoryId_DeviceManagement);
+    echo "Found HMI Creator Status $HMI_ReportStatusID in DeviceManagement.\n ";
+
 
 	$CategoryIdHomematicGeraeteliste = CreateCategoryPath($CategoryIdHomematicErreichbarkeit,'Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
 	$HomematicGeraeteliste =   CreateVariableByName($CategoryIdHomematicGeraeteliste,   "HomematicGeraeteListe",   3 /*String*/,   '~HTMLBox',      "",  50);
@@ -1298,8 +1314,9 @@
 	 *		INIT HUE Module Geraete Darstellung und Bedienung vom HUE Modul 
 	 *
 	 ***************************************************/
-		
-
+	
+    echo "\n";	
+    echo "Hue Bridge Instanzen suchen:\n";
 	$HUE=$modulhandling->getInstances('HUEBridge');	
 	$countHue = sizeof($HUE);
 	echo "Es gibt insgesamt ".$countHue." SymCon Hue Instanzen.\n";
@@ -1316,79 +1333,123 @@
 	 *
 	 ***************************************************/
     
-    /* Config des Homematic inventory creators für die Formattierung der Homematic tabellen 
-        0 - HM address (default)
-        1 - HM device type
-        2 - HM channel type
-        3 - IPS device name
-        4 - HM device name	                                            */
+	if (isset ($installedModules["EvaluateHardware"])) 
+		{ 
+        echo "HM Inventory Homematic Geraete Darstellung:\n";
+        /* Config des Homematic inventory creators für die Formattierung der Homematic tabellen 
+            0 - HM address (default)
+            1 - HM device type
+            2 - HM channel type
+            3 - IPS device name
+            4 - HM device name	                                            */
 
-	$pname="SortTableHomematic";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-        echo "Profil ".$pname." erstellt;\n";
+        $pname="SortTableHomematic";
+        if (IPS_VariableProfileExists($pname) == false)
+            {
+            //Var-Profil erstellen
+            IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+            IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+            echo "Profil ".$pname." erstellt;\n";
+            }
+        IPS_SetVariableProfileValues($pname, 0, 7, 0); //PName, Minimal, Maximal, Schrittweite
+        IPS_SetVariableProfileAssociation($pname, 0, "Adresse", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+        IPS_SetVariableProfileAssociation($pname, 1, "DeviceType", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+        IPS_SetVariableProfileAssociation($pname, 2, "ChannelType", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
+        IPS_SetVariableProfileAssociation($pname, 3, "Pfad", "", 		0x4e7127); //P-Name, Value, Assotiation, Icon, Color
+        IPS_SetVariableProfileAssociation($pname, 4, "IPSDeviceName", "", 		0x1ef1f7); //P-Name, Value, Assotiation, Icon, Color
+        IPS_SetVariableProfileAssociation($pname, 5, "DeviceName", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color
+        IPS_SetVariableProfileAssociation($pname, 6, " ", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color		
+        IPS_SetVariableProfileAssociation($pname, 7, "Update", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color		
+
+        echo "Anzahl Homematic Sockets ermitteln, dann schauen ob es gleich viel Inventories gibt:\n";
+        $modulhandling = new ModuleHandling();              // neu initialisiseren, filter entfernen
+        $discovery = $modulhandling->getDiscovery();
+        $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Module hinzufügen
+        $topologyLibrary = new TopologyLibraryManagement(true);                     // in EvaluateHardware Library, neue Form des Topology Managements, true für Debug
+        print_R($discovery);
+        echo "Auswertung der SocketList (I/O Instanzen).\n";
+        $socket=array();
+        $socket = $topologyLibrary->get_SocketList($discovery);
+        print_r($socket);
+        $countSocket=0;
+        foreach ($socket as $modul => $module) 
+            {
+            switch ($modul)
+                {
+                case "Homematic":
+                    foreach ($module as $name => $entry) 
+                        {
+                        echo "Homematic Socket $name .\n";
+                        $countSocket++;
+                        }
+                    break;
+                default:
+                    echo "$modul Socket.\n";
+                    break;
+                }
+            }
+
+        $order=1000;	
+        $HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
+        $countHMI = sizeof($HMIs);
+        echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs : $countSocket.\n";
+        if ($countSocket != $countHMI) echo "Fehler, check amount of Homematic Inventory Creators.\n";
+        if ($countHMI>0)
+            {		
+            /* Webfront Darstellung erfolgt im User Verzeichnis, dieses erstellen */
+            $Verzeichnis="user/OperationCenter/Homematics/";
+            $Verzeichnis=IPS_GetKernelDir()."webfront/".$Verzeichnis;
+            $Verzeichnis = str_replace('\\','/',$Verzeichnis);
+            if ( is_dir ( $Verzeichnis ) == false ) $dosOps->mkdirtree($Verzeichnis);
+            
+            $CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+            $ipsOps->emptyCategory($CategoryIdHomematicInventory,["deleteCategories" => true,]);		
+            
+            foreach ($HMIs as $HMI)
+                {
+                $configHMI=IPS_GetConfiguration($HMI);
+                echo "\n-----------------------------------\n";
+                echo "Konfiguration für HMI Report Creator : ".$HMI."\n";
+                echo $configHMI."\n";
+                $configStruct=json_decode($configHMI,true);
+                //print_r($configStruct);
+                $aktVerzeichnis=IPS_GetProperty($HMI,"OutputFile");
+                $neuVerzeichnis=$Verzeichnis.$HMI.'/HM_inventory.html';
+                if ( is_dir ( $Verzeichnis.$HMI.'/' ) == false ) 
+                    {
+                    echo "Verzeichnis $neuVerzeichnis existiert noch nicht. Daher erstellen:\n";
+                    $dosOps->mkdirtree($Verzeichnis.$HMI.'/');
+                    }
+                echo "Ausgabe Speicher Verzeichnis :".$aktVerzeichnis."\n";
+                if ( $aktVerzeichnis != $neuVerzeichnis)
+                    {
+                    echo "Verzeichnis auf Webfront verschieben. In das Verzeichnis ".$neuVerzeichnis."\n";
+                    IPS_SetProperty($HMI,"OutputFile",$neuVerzeichnis);
+                    IPS_ApplyChanges($HMI);
+                    }
+                $CategoryIdHomematicCCU=CreateCategory("HomematicInventory_".$HMI,$CategoryIdHomematicInventory,$order+5);
+                // function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0, $action=0)
+                $HomematicInventory = CreateVariableByName($CategoryIdHomematicCCU,IPS_GetName($HMI),3,"~HTMLBox","",$order+5);		// String
+                $SortInventory = CreateVariableByName($CategoryIdHomematicCCU,"Sortieren",1,"SortTableHomematic","",$order,$scriptIdOperationCenter);		// String
+                $html='<iframe frameborder="0" width="100%" height="4000px"  src="../user/OperationCenter/Homematics/'.$HMI.'/HM_inventory.html"</iframe>';
+                HMI_CreateReport($HMI);	
+                SetValue($HomematicInventory,$html);	
+
+                if ($configStruct["SaveDeviceListInVariable"]) echo "   SaveDeviceListInVariable   \n";
+                if ($configStruct["ShowHMConfiguratorDeviceNames"]) echo "   ShowHMConfiguratorDeviceNames   \n";
+                if ($configStruct["ShowLongIPSDeviceNames"]) echo "   ShowLongIPSDeviceNames   \n";
+                if ($configStruct["ShowMaintenanceEntries"]) echo "   ShowMaintenanceEntries   \n";
+                if ($configStruct["ShowNotUsedChannels"]) echo "   ShowNotUsedChannels   \n";
+                if ($configStruct["ShowVirtualKeyEntries"]) echo "   ShowVirtualKeyEntries   \n";
+
+                $aktInterval=IPS_GetProperty($HMI,"UpdateInterval");
+                if ( ($aktInterval < 60*60*48) && ($aktInterval > 60*60*12) ) echo "Aktualisierung im richtigen Interval.\n";
+
+                $order +=10;
+                }
+            }
         }
-    IPS_SetVariableProfileValues($pname, 0, 7, 0); //PName, Minimal, Maximal, Schrittweite
-    IPS_SetVariableProfileAssociation($pname, 0, "Adresse", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-    IPS_SetVariableProfileAssociation($pname, 1, "DeviceType", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-    IPS_SetVariableProfileAssociation($pname, 2, "ChannelType", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
-    IPS_SetVariableProfileAssociation($pname, 3, "Pfad", "", 		0x4e7127); //P-Name, Value, Assotiation, Icon, Color
-    IPS_SetVariableProfileAssociation($pname, 4, "IPSDeviceName", "", 		0x1ef1f7); //P-Name, Value, Assotiation, Icon, Color
-    IPS_SetVariableProfileAssociation($pname, 5, "DeviceName", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color
-    IPS_SetVariableProfileAssociation($pname, 6, " ", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color		
-    IPS_SetVariableProfileAssociation($pname, 7, "Update", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color		
-
-	$order=1000;	
-	$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
-	$countHMI = sizeof($HMIs);
-	echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
-	if ($countHMI>0)
-		{		
-		/* Webfront Darstellung erfolgt im User Verzeichnis, dieses erstellen */
-		$Verzeichnis="user/OperationCenter/Homematics/";
-		$Verzeichnis=IPS_GetKernelDir()."webfront/".$Verzeichnis;
-		$Verzeichnis = str_replace('\\','/',$Verzeichnis);
-		if ( is_dir ( $Verzeichnis ) == false ) $dosOps->mkdirtree($Verzeichnis);
-		
-		$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
-        $ipsOps->emptyCategory($CategoryIdHomematicInventory,["deleteCategories" => true,]);		
-		
-		foreach ($HMIs as $HMI)
-			{
-			$configHMI=IPS_GetConfiguration($HMI);
-			echo "\n-----------------------------------\n";
-			echo "Konfiguration für HMI Report Creator : ".$HMI."\n";
-			echo $configHMI."\n";
-			$configStruct=json_decode($configHMI,true);
-			//print_r($configStruct);
-			$aktVerzeichnis=IPS_GetProperty($HMI,"OutputFile");
-			$neuVerzeichnis=$Verzeichnis.$HMI.'/HM_inventory.html';
-			if ( is_dir ( $Verzeichnis.$HMI.'/' ) == false ) 
-				{
-				echo "Verzeichnis $neuVerzeichnis existiert noch nicht. Daher erstellen:\n";
-				$dosOps->mkdirtree($Verzeichnis.$HMI.'/');
-				}
-			echo "Ausgabe Speicher Verzeichnis :".$aktVerzeichnis."\n";
-			if ( $aktVerzeichnis != $neuVerzeichnis)
-				{
-				echo "Verzeichnis auf Webfront verschieben. In das Verzeichnis ".$neuVerzeichnis."\n";
-				IPS_SetProperty($HMI,"OutputFile",$neuVerzeichnis);
-				IPS_ApplyChanges($HMI);
-				}
-			$CategoryIdHomematicCCU=CreateCategory("HomematicInventory_".$HMI,$CategoryIdHomematicInventory,$order+5);
-			// function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0, $action=0)
-			$HomematicInventory = CreateVariableByName($CategoryIdHomematicCCU,IPS_GetName($HMI),3,"~HTMLBox","",$order+5);		// String
-			$SortInventory = CreateVariableByName($CategoryIdHomematicCCU,"Sortieren",1,"SortTableHomematic","",$order,$scriptIdOperationCenter);		// String
-            $html='<iframe frameborder="0" width="100%" height="4000px"  src="../user/OperationCenter/Homematics/'.$HMI.'/HM_inventory.html"</iframe>';
-			HMI_CreateReport($HMI);	
-            SetValue($HomematicInventory,$html);			
-			$order +=10;
-			}
-		}
-	
+        
     /* easySetupWebfront braucht im einfachsten Fall folgende Struktur
      * Tabpane 
      *   Subtabpane Auswertung
@@ -1477,26 +1538,39 @@
     echo "\n===================================================================================\n";
     echo "Webfront Installation für den Systatus Monitor (Doctorbag):\n";
 	$resultStream=array();
-    if ($sumTableHtmlID !== false) 
+    if ($sumTableHtmlID !== false)              // stream 2 ist rechts oben
         {
-        $resultStream[0]["Stream"]["Name"]="SysInfo";
-        $resultStream[0]["Stream"]["OID"]=$sumTableHtmlID;
+        $resultStream[2]["Stream"]["Name"]="SysInfo";
+        $resultStream[2]["Stream"]["OID"]=$sumTableHtmlID;
         }
-    if ($MessageTableID !== false) 
+    if ($MessageTableID !== false)              // stream 1 Mitte
         {
         $resultStream[1]["Stream"]["Name"]="Nachrichten";
         $resultStream[1]["Stream"]["OID"]=$MessageTableID;
         }
-    if ($SysPingActivityTableID !== false) 
+    if ($SysPingActivityTableID !== false)      // stream 0 ist rechts unten
         {
-        $resultStream[2]["Stream"]["Name"]="SyspingActivityTabelle";
-        $resultStream[2]["Stream"]["OID"]=$SysPingActivityTableID;
+        $resultStream[0]["Stream"]["Name"]="SyspingActivityTabelle";
+        $resultStream[0]["Stream"]["OID"]=$SysPingActivityTableID;
         }
-    if ($SysPingTableID !== false) 
+    if ($SysPingTableID !== false)              // stream 4 ist links
         {
         $resultStream[4]["Stream"]["Name"]="SysPingTable";
         $resultStream[4]["Stream"]["OID"]=$SysPingTableID;
         $resultStream[4]["Data"]["Sort"]=$SysPingSortTableID;
+        }
+
+    echo "\n===================================================================================\n";
+    echo "Webfront Installation für den SocketConnect Status in RadioStation, Tab Doctorbag:\n";
+	$resultStreamRadio=array();
+    if ($variableSocketHtmlId !== false) 
+        {
+        $resultStreamRadio[0]["Stream"]["Name"]="CCUSocketConnect";
+        $resultStreamRadio[0]["Stream"]["OID"]=$variableSocketHtmlId;                       // CCU Socket Status
+        $resultStreamRadio[0]["Data"]["Available"]=$HomematicErreichbarkeit;                // RSSI Level - Erreichbarkeit
+        $resultStreamRadio[0]["Data"]["LastUpdateTime"]=$UpdateErreichbarkeit;
+        $resultStreamRadio[0]["Data"]["Refresh"]=$ExecuteRefreshID;
+        $resultStreamRadio[0]["Data"]["Homematic Inventory Report"]=$HMI_ReportStatusID;
         }
 
     if (isset($configWFront["Administrator"]))
@@ -1505,8 +1579,9 @@
         $configWF = $configWFront["Administrator"];
         print_r($configWF); print_r($resultStream);
         installWebfrontMon($configWF,$resultStream); 
+        
         $configWF["TabItem"]="RadioStatus";
-        installWebfrontRadio($configWF,$resultStream);
+        installWebfrontRadio($configWF,$resultStreamRadio);
 		}
 
     if (isset($configWFront["User"]))
@@ -2112,6 +2187,26 @@
             // vorangegangenes SplitPane sollte abgeschlossen werden, sonst finden die beiden Category Befehle das Tab Item nicht  
             $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"]."_Left", $configWF["TabItem"],  10, "","",$categoryIdLeft /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
             $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"]."_Right", $configWF["TabItem"],  10, "","",$categoryIdRight /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+
+            if ($resultStream !== false)        
+                {
+                $resultStream[0]["Stream"]["Link"]=$categoryIdRight;
+
+                $count=sizeof($resultStream);           // spaetestens jetzt sind es immer 5 Eintraege
+                echo "Jetzt diese Kategorien zuordnen: ".json_encode($resultStream)."\n";
+                //print_r($resultStream);               // Name, OID, Link
+                for ($i=0;$i<$count;$i++) 
+                    {
+                    if (isset($resultStream[$i]["Stream"]["Name"]))
+                        {
+                        CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);        // Name, OID und Parent für Link
+                        if (isset($resultStream[$i]["Data"]))
+                            { 
+                            foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $resultStream[$i]["Stream"]["Link"], 1000+$i*10);
+                            }
+                        }
+                    }
+                }
 
             $wfcHandling->write_WebfrontConfig($configWF["ConfigId"]);
             }

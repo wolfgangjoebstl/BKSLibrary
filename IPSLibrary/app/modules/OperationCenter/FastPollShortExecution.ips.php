@@ -29,36 +29,35 @@
     $dosOps = new dosOps();
     $startexec=microtime(true);
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager))
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('OperationCenter',$repository);
-	}
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    if (!isset($moduleManager))
+        {
+        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+        $moduleManager = new IPSModuleManager('OperationCenter',$repository);
+        }
 
-$installedModules = $moduleManager->GetInstalledModules();
+    $installedModules = $moduleManager->GetInstalledModules();
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
-$scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
+    $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
+    $scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
 
-if ($debug)
-    {
-    echo "Script ID Operation Center        : $scriptIdOperationCenter \n";
-    echo "Script ID FastPoll ShortExecution : $scriptIdFastPollShort \n";
-    }
+    if ($debug)
+        {
+        echo "Script ID Operation Center        : $scriptIdOperationCenter \n";
+        echo "Script ID FastPoll ShortExecution : $scriptIdFastPollShort \n";
+        }
 
-
+    $timerOps = new timerOps();
     $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptIdFastPollShort);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
-
 
 /*********************************************************************************************/
 
-$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+    $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
-$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+    $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 
 	$pname="MByte";
 	if (IPS_VariableProfileExists($pname) == false)
@@ -173,6 +172,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 if ($_IPS['SENDER']=="Execute")            // selbe Routine wie timer oben
     {
+    echo "Status of Timer for fastPoll :\n";
+    $timerOps->getEventData($tim12ID);        
             /* benötigt ein fehlendes STATUS oder ein STATUS mit ACTIVE und ein READMODE mit SNMP
              * im data gibt es ein Kategorie mit Router_RouterName, und eine Variable SnmpFastPoll
              * wenn nicht ebenfalls Bearbeitung abbrechen, unter der Variable SnmpFastPoll gibt es zwei Variablen ifTable, SNMP Fast Poll

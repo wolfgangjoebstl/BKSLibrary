@@ -965,6 +965,7 @@ class OperationCenter
         else $ipsEvent="";
 
         $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$this->categoryId_SysPing);
+        $categoryId_Sockets        = @IPS_GetObjectIdByName("SocketStatus",$categoryId_SysPing);
 		
 		$SysPingStatusID = IPS_GetObjectIDByName("SysPingExectime",$categoryId_SysPingControl); /* exec time zum besseren Überwachen der Funktion */
 		SetValue($SysPingStatusID,time());
@@ -991,13 +992,23 @@ class OperationCenter
         $SysPingActivityTableID = @IPS_GetObjectIDByName("SysPingActivityTable",$categoryId_SysPingControl); 
         $SysPingResult=array();
 
+        if ($categoryId_Sockets && $hourPassed)
+            {
+            $variableSocketHtmlId=IPS_GetObjectIdByName("StatusCCUConnected",$categoryId_Sockets );
+
+            $socketHtml = $this->sysStatusSockets($log_OperationCenter, $debug);
+            SetValue($variableSocketHtmlId,$socketHtml);
+            }
+
 		/************************************************************************************
 		 * Erreichbarkeit IPCams
 		 *************************************************************************************/
 		 
 		if ( (isset ($this->installedModules["IPSCam"])) && $hourPassed )
 			{
-   			//IPSLogger_Inf(__file__, "SysPingAllDevices: Check the Cams.");
+            $this->syspingCams($OperationCenterConfig['CAM'],$log_OperationCenter, $debug);    
+   			/*
+            //IPSLogger_Inf(__file__, "SysPingAllDevices: Check the Cams.");
 			$mactable=$this->get_macipTable($this->subnet);
 			//print_r($mactable);
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
@@ -1005,7 +1016,7 @@ class OperationCenter
                 if ( (isset($cam_config['IPADRESSE']) ) || (isset($cam_config['MAC'])) )
                     {
                    // echo "IPADRESSE oder MAC Adresse sollte bekannt sein.\n";
-                    $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+                    $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); // 0 Boolean 1 Integer 2 Float 3 String 
                     $ipadresse=""; $macadresse="";
                     if (isset($cam_config['IPADRESSE'])) $ipadresse=$cam_config['IPADRESSE'];
                     if (isset($mactable[$cam_config['MAC']])) 
@@ -1025,7 +1036,7 @@ class OperationCenter
                             {
                             echo "--->  Kamera wird erreicht.\n";
                             if (GetValue($CamStatusID)==false)
-                                {  /* Statusänderung */
+                                {  // Statusänderung 
                                 $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
                                 $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
                                 SetValue($CamStatusID,true);
@@ -1035,19 +1046,20 @@ class OperationCenter
                             {
                             echo "---> Kamera wird NICHT erreicht   !\n";
                             if (GetValue($CamStatusID)==true)
-                                {  /* Statusänderung */
+                                {  // Statusänderung 
                                 $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
                                 $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
                                 SetValue($CamStatusID,false);
                                 }
                             }
                         }
-                    else  /* mac adresse nicht bekannt */
+                    else  // mac adresse nicht bekannt 
                         {
                         echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
                         }
                     }   // nur die Einträge in der Konfiguration, bei denen es auch eine MAC Adresse gibt bearbeiten
-				} /* Ende foreach */
+				} // Ende foreach 
+                */
 			}
 
 		/************************************************************************************
@@ -1179,6 +1191,111 @@ class OperationCenter
             }            
         return($SysPingResult);
 		}
+
+    /* Routinen von Syspingalldevices übersichtlicher machen
+     */
+    public function syspingCams($config, $log_OperationCenter, $debug=false)
+        {
+        if ($debug) echo "syspingCams aufgerufen, Sys_ping Kamera :\n";
+        $mactable=$this->get_macipTable($this->subnet);            
+        foreach ($config as $cam_name => $cam_config)
+            {
+            if ( (isset($cam_config['IPADRESSE']) ) || (isset($cam_config['MAC'])) )
+                {
+                if (! ( (isset($cam_config["STATUS"])) && (strtoupper($cam_config["STATUS"])!="ENABLED") ) )            
+                    {
+                    // echo "IPADRESSE oder MAC Adresse sollte bekannt sein.\n";
+                    $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+                    $ipadresse=""; $macadresse="";
+                    if (isset($cam_config['IPADRESSE'])) $ipadresse=$cam_config['IPADRESSE'];
+                    if (isset($mactable[$cam_config['MAC']])) 
+                        {
+                        $macadresse=$cam_config['MAC'];
+                        if ($ipadresse == "") $ipadresse=$mactable[$macadresse];
+                        elseif ($ipadresse != $mactable[$macadresse]) echo "Mactable check, kenn mich nicht aus, zwei unterschiedliche IP Adressen.\n";
+                        }
+                    if ($ipadresse != "")
+                        {    
+                        if ($debug) echo str_pad("    ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse $ipadresse",110);
+                        if ($macadresse != "") echo " vs ".$mactable[$cam_config['MAC']]."    ";
+                        else echo "                  ";
+                        $status=Sys_Ping($ipadresse,1000);
+                        $SysPingResult[IPS_getName($CamStatusID)]=$status;
+                        if ($status)
+                            {
+                            echo "--->  Kamera wird erreicht.\n";
+                            if (GetValue($CamStatusID)==false)
+                                {  /* Statusänderung */
+                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+                                SetValue($CamStatusID,true);
+                                }
+                            }
+                        else
+                            {
+                            echo "---> Kamera wird NICHT erreicht   !\n";
+                            if (GetValue($CamStatusID)==true)
+                                {  /* Statusänderung */
+                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+                                SetValue($CamStatusID,false);
+                                }
+                            }
+                        }
+                    else  /* mac adresse nicht bekannt */
+                        {
+                        echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
+                        }
+                    }   
+                else echo "    ".$cam_name." wurde deaktiviert, nicht abfragen.\n";
+                }   // nur die Einträge in der Konfiguration, bei denen es auch eine MAC Adresse gibt bearbeiten
+            
+            } /* Ende foreach */
+        if ($debug) echo "Kameras wurden abgefragt.\n";
+        return($SysPingResult);
+        }
+
+    /* Routinen von Syspingalldevices übersichtlicher machen, hier ockets Homematic analysieren und ein html machen
+     */
+    public function sysStatusSockets($log_OperationCenter, $debug=false)
+        {
+        if ($debug) echo "sysStatusSockets aufgerufen, alle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
+        $socketHtml="";
+        $categoryId_Sockets = @IPS_GetObjectIDByName("SocketStatus",$this->categoryId_SysPing);
+        if ($categoryId_Sockets)
+            {
+            $modulhandling = new ModuleHandling();
+
+            $discovery = $modulhandling->getDiscovery();
+            $topologyLibrary = new TopologyLibraryManagement();                     // in EvaluateHardware Library, neue Form des Topology Managements
+            $socket=array();
+            $socket = $topologyLibrary->get_SocketList($discovery);
+            //print_r($socket);
+            $socketHtml .= "<table>";
+            foreach ($socket as $modul => $module) 
+                {
+                switch ($modul)
+                    {
+                    case "Homematic":
+                        $socketHtml .=  '<tr><th>'.$modul." CCU Status".'</th><th>OID</th><th>Status</th><th>last changed</th></tr>';
+                        // Homematic CCU I/O Sockets, die gehen auf fail=false wenn es Probleme gibt
+                        foreach ($module as $name => $entry) 
+                            {
+                            $status=(IPS_GetProperty($entry["OID"], "Open")?"active":"failure");
+                            $variableId=CreateVariableByName($categoryId_Sockets,$name."_"."Connected",3);      // als String, leichter lesbar
+                            SetValue($variableId,$status);
+                            $changed = date("H:i:s d.m.Y",IPS_GetVariable($variableId)["VariableChanged"]);
+                            $socketHtml .=  '<tr><td>'.$name.'</td><td>'.$entry["OID"].'</td><td>';
+                            $socketHtml .=  $status.'</td><td>'.$changed.'</td></tr>'; //Ist die I/O Instanz aktiv?
+
+                            }
+                        break;
+                    }
+                }
+            $socketHtml .= "</table>";
+            }
+        return ($socketHtml);
+        }
 
 	/*************************************************************************************************************
 	 *
@@ -6809,42 +6926,18 @@ class DeviceManagement
 		$this->log_OperationCenter=new Logging($this->systemDir."Log_OperationCenter.csv",$input);
 
 		$categoryId_DeviceManagement    = IPS_GetObjectIDByName('DeviceManagement',$this->CategoryIdData);
-        $this->HMI_ReportStatusID       = IPS_GetObjectIDByName("HMI_ReportStatus",$categoryId_DeviceManagement);
-        if ($debug) echo "DeviceManagement: found category DeviceManagement $categoryId_DeviceManagement mit dem HMI_ReportStatus : ".$this->HMI_ReportStatusID."\n";
         
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		
         $this->oc_Configuration = OperationCenter_Configuration();
 		$this->oc_Setup = OperationCenter_SetUp();
 		
-		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt 
-		if (isset($this->oc_Setup['DropboxDirectory'])===false) {$this->oc_Setup['DropboxDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/';}
-		if (isset($this->oc_Setup['DropboxStatusDirectory'])===false) {$this->oc_Setup['DropboxStatusDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/';}
-		if (isset($this->oc_Setup['CONFIG'])===false) 
-			{
-			$this->oc_Setup['CONFIG']= array("MOVELOGS"  => true,"PURGELOGS" => true,"PURGESIZE"  => 10,);
-			}		
-		else
-			{
-			if (isset($this->oc_Setup['CONFIG']['MOVELOGS'])===false) {$this->oc_Setup['CONFIG']['MOVELOGS']=true;}
-			if (isset($this->oc_Setup['CONFIG']['PURGELOGS'])===false) {$this->oc_Setup['CONFIG']['PURGELOGS']=true;}
-			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
-			}  */
         if ($debug) 
             { 
             echo "Aufbau des OperationCenter Setups. Fehlende Werte in der Konfiguration ersetzen.\n";
             print_r($this->oc_Setup);
+            echo "DeviceManagement Modul vollständig initialisiert.\n";
             }
-
-        $this->getHomematicSerialNumberList();
-
-        if ($debug) echo "ModulHandling aufrufen:\n";
-		$modulhandling = new ModuleHandling();
-		$this->HMIs=$modulhandling->getInstances('HM Inventory Report Creator');	
-
-        if ($debug) echo "getHomematicAddressList aufrufen:\n";
-        $this->HomematicAddressesList=$this->getHomematicAddressList(false,$debug,true);         // false für no Create Report, nimmt die HMIs aus der class, kommt in einen eigenen Timer, true wenn kein echo für eine Zusammenfassung erforderlich ist
-        if ($debug) echo "DeviceManagement Modul vollständig initialisiert.\n";
 		}
 		
     /****************************************************************************************************************/
@@ -6875,14 +6968,16 @@ class DeviceManagement
 			//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
             IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
             $componentHandling=new ComponentHandling();
-            if ($debug) echo "Geräte mit getComponent suchen, geht jetzt mit HarwdareList und DeviceList.\n";
+            if ($debug) echo "   Geräte mit getComponent suchen, geht jetzt mit HarwdareList und DeviceList.\n";
             //$result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],"Install");
             if (function_exists("deviceList")) $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
             else $result = array();
             $count=(sizeof($result));				
-            //echo "Insgesamt $count Register für die Temperature Component Installation gefunden.\n";
-            //foreach ($result as $oid) echo "   ".$oid."    ".IPS_GetName($oid)."   \n";           // wenn kein Install
-            $resulttext.="Alle Temperaturwerte ausgeben ($count):\n";            
+            if ($debug>1)
+                {
+                echo "   Insgesamt $count Register für die Temperature Component Installation gefunden.\n";
+                foreach ($result as $entry) echo "   ".$entry["OID"]."    ".IPS_GetName($entry["OID"])."   \n";             $resulttext.="Alle Temperaturwerte ausgeben ($count):\n";            
+                }
             foreach ($result as $Key) 
                 {
                 //echo "   ".json_encode($Key)."   \n";
@@ -7541,6 +7636,7 @@ class DeviceManagement
 	/********************************************************************
 	 * DeviceManagement::getHomematicSerialNumberList
 	 * erfasst alle Homematic Geräte anhand der Seriennummer und erstellt eine gemeinsame liste 
+     *
      * wird bei construct bereits gestartet als gemeinsames Datenobjekt
 	 *
 	 *****************************************************************************/
@@ -7655,77 +7751,7 @@ class DeviceManagement
                         }
 
                     }
-        /*		$configHMI=IPS_GetConfiguration($HMI);
-				if ($debug)             // no information available in configuration wether creation of report as variable is activated
-					{
-					echo "\n-----------------------------------\n";
-					echo "Konfiguration für HMI Report Creator : ".$HMI." (".IPS_GetName($HMI).")\n";
-					echo $configHMI."\n";
-					}
-	            $childrens=IPS_GetChildrenIDs($HMI);
-    	        if (isset($childrens[0]))
-        	        {
-                    if (IPS_GetName($childrens[0]) != "Device Liste") echo "   Name of HMI_CreateReport children not \"Device Liste\", is \"".IPS_GetName($childrens[0])."\"   \n";
-                    else
-                        {
-                        $lastUpdate=IPS_GetVariable($childrens[0])["VariableChanged"];
-                        $noUpdate=time()-$lastUpdate;
-                        if ( $noUpdate > (48*60*60) )           // Abfragen für Fehlermeldungen etwas entschärft
-                            {
-                            if ( $noUpdate > (100*60*60) )           // schwerer Fehler, wenn das Update mehrere Tage lang nicht durchgeht
-                                {
-                                IPSLogger_Err(__file__, "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". CCU might had crashed. Please check.");
-                                }
-                            else
-                                {
-                                $message = "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". Do right now.";
-                                if ($debug) echo "     $message\n";
-                                if ( $noUpdate > (25*60*60) )
-                                    {
-                                    SetValue($this->HMI_ReportStatusID,$message);
-                                    $callCreateReport=true;
-                                    }
-                                else
-                                    {
-                                    $hoursnok=round($noUpdate/60/60);
-                                    if (GetValue($this->HMI_ReportStatusID)==$message) IPSLogger_Err(__file__, "HMI_CreateReport did not execute for $hoursnok hours. CCU might had crashed. Please check.");
-                                    else 
-                                        {
-                                        SetValue($this->HMI_ReportStatusID,$message);
-                                        $callCreateReport=true;
-                                        }
-                                    }
-                                }
-                            }
-                        else
-                            {
-                            if ($debug) echo "    HMI_CreateReport wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.\n";
-                            SetValue($this->HMI_ReportStatusID,"HMI_CreateReport wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.");
-                            }
-                        //print_r($childrens);
-                        //echo GetValue($childrens[0]);
-                        $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
-                        if ( ( ( (is_array($HomeMaticEntries)) && (sizeof($HomeMaticEntries)>0) ) === false) || $callCreateReport)
-                            {
-                            if ($debug) echo "     HMI_CreateReport($HMI) aufrufen:";   
-                            HMI_CreateReport($HMI);  
-                            if ($debug) echo "  --> done\n";                  
-                            }                    
-
-                        $HomeMaticEntries=json_decode(GetValue($childrens[0]),true); 
-                        foreach ($HomeMaticEntries as $HomeMaticEntry)
-                            {
-                            if (isset($HomeMaticEntry["HM_address"])) 
-                                {
-                                if ($debug) echo "Addresse: ".$HomeMaticEntry["HM_address"]." Type ".$HomeMaticEntry["HM_device"]." Devicetyp ".$HomeMaticEntry["HM_devtype"]."\n";
-                                $addresses[$HomeMaticEntry["HM_address"]]=$HomeMaticEntry["HM_device"];
-                                //print_r($HomeMaticEntry);
-                                }
-                            }
-                        }
-                	}
-	            else echo "HM Inventory, Abspeicherung in einer Variable wurde nicht konfiguriert\n";   */
-
+                else echo  "DeviceListe $HMI NICHT erzeugt\n";
 				}       // ende foreach					
 			}
 		if ($debug)
@@ -8017,15 +8043,17 @@ class DeviceManagement
 	 *
 	 *****************************************************************************/
 
-	function tableHomematicSerialNumberList($columns=array(),$sort=array())
+	function tableHomematicSerialNumberList($columns=array(),$sort=array(),$debug=false)
 		{
 		//print_r($columns);
+        if ($debug) echo "tableHomematicSerialNumberList aufgerufen, fuer ".sizeof($this->HomematicSerialNumberList)." CCUs:\n";
 		if (isset($columns["Channels"])==true) $showChannels=$columns["Channels"]; else $showChannels=false;
 		if (isset($sort["Serials"])==true) $sortSerials=$sort["Serials"]; else $sortSerials=false;
 		$str="";
 		$ccuNum=1;	
 		foreach ($this->HomematicSerialNumberList as $ccu => $geraete)
  			{
+            if ($debug) echo "   $ccu ".sizeof($geraete)."  :\n";
 			$str .= "<table width='90%' align='center'>"; 
 			$str .= "<tr><td><b>".$ccu."</b></td></tr>";
 			$str .= "<tr><td><b>Seriennummer</b></td>";
@@ -8034,9 +8062,10 @@ class DeviceManagement
 			if ($sortSerials) ksort($geraete);
 			foreach ($geraete as $name => $geraet)
 				{
+                if ($debug) echo "       $name ";
 				$str .= "<tr><td>".$name."</td>";			// Name ist die Seriennummer
 				if ($showChannels) $str .= "<td></td>";		// eventuell Platz lassen für Kanalnummer	
-				if (isset($geraet["Typ"])==true)
+				if (isset($geraet["Typ"])==true)                        // wir haben nur Type
 					{
 					if (isset($geraet["RSSI"])==true)
 						{
@@ -8072,6 +8101,7 @@ class DeviceManagement
 					foreach ($strChannel as $index => $line) { $str .= $line; }					
 					}
 				}		
+            $str .= "</table>"; // Tabelle abschliessen    
 			$ccuNum++;
 			}
 		echo $str; 
@@ -8177,6 +8207,7 @@ class DeviceManagement
     	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
 	    $HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox');
 	    SetValue($HomematicGeraeteliste,$str);
+        return ($str);
 		}
 
     /*****************************************************
@@ -8494,6 +8525,17 @@ class DeviceManagement
                 $resultReg[0]["CONTACT"]="STATE";                
                 }
             }
+        /*-----RGBW Ansteuerung --------------------------------*/
+        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("LEVEL_STATUS",$registerNew) !== false) && ( array_search("HUE",$registerNew) !== false) )/* RGBW Ansteuerung */
+            {
+            $result[0] = "RGBW";
+            $result[1] = "Funk-RGBW";
+            $resultType[0] = "TYPE_RGBW"; 
+            $resultReg[0]["LEVEL"]="LEVEL";                       
+            $resultReg[0]["HUE"]="HUE";                       
+            $resultReg[0]["SATURATION"]="SATURATION";
+            $resultReg[0]["COLOR_TEMPERATURE"]="COLOR_TEMPERATURE";
+            }
         /*-----Dimmer--------------------------------*/
         elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) && ( array_search("ERROR_OVERLOAD",$registerNew) !== false) )/* Dimmer */
             {
@@ -8615,14 +8657,24 @@ class DeviceManagement
             $resultReg[$i]["KEYSTATE"]="WP_OPTIONS";                // Aktuator
             }                      
         /*-------CCU3  ["DUTY_CYCLE_LEVEL"]--------------------------------*/
-        elseif  (array_search("DUTY_CYCLE_LEVEL",$registerNew) !== false)    /* HomematicIP Tuerschloss, Aktuator WP_OPTIONS 0,1,2 Status LOCK_STATE  */
+        elseif  (array_search("DUTY_CYCLE_LEVEL",$registerNew) !== false)    /* HomematicIP CCU3 Performance  */
             {
-            $result[0] = "CCU3";
-            $result[1]="IP Funk CCU3";              // HomematicIP 
+            $result[0] = "CCU";
+            $result[1]="IP Funk CCU";              // HomematicIP 
 
             $i=0;                                               // kann auch weitere Funktionen beinhalten
             $resultType[$i]="TYPE_CCU";
             $resultReg[$i]["DUTY_CYCLE_LEVEL"]="DUTY_CYCLE_LEVEL";
+            }                      
+        /*-------CCU  ["DUTY_CYCLE","CONNECTED"] von HomematicExtended--------------------------------*/
+        elseif  ( (array_search("DUTY_CYCLE",$registerNew) !== false)   && ( array_search("CONNECTED",$registerNew) !== false) )  /* HomematicExtended CCU Parameter, getrennt für RF und HmIP   */
+            {
+            $result[0] = "CCU";
+            $result[1]="IP Funk CCU";              // HomematicIP 
+
+            $i=0;                                               // kann auch weitere Funktionen beinhalten
+            $resultType[$i]="TYPE_CCU";
+            $resultReg[$i]["DUTY_CYCLE_LEVEL"]="DUTY_CYCLE";
             }                      
         else 
             {
@@ -8862,9 +8914,14 @@ class DeviceManagement
                         $matrix=[0,2,1,2,1,1,1,1];                        
                         break;
 
-                    case "HM-LC-Bl1-FM"                        :
+                    case "HM-LC-Bl1-FM":
                         $result="Rolladensteuerung";
                         $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HmIP-RGBW":
+                        $result="RGBW Steuerung";
+                        $matrix=[0,2,1,1,1,1];                        
                         break;
 
                     case "HM-WDS10-TH-O":
@@ -8902,7 +8959,12 @@ class DeviceManagement
                         $result="Tuerschloss";                  
                         $matrix=[0,2,1,1,1,1,1,1];      // Standard Matrix, Infos in Kanal 1
                         break;
-                        
+
+                    case "HmIP-CCU3":
+                        $result="CCU Performance";                  
+                        $matrix=[2];                // Infos in Kanal 0
+                        break;
+
                     case "-":
                         echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz))." Gerät wurde gelöscht. Bitte auch manuell in IP Symcon loeschen.\n";
                         return(false);          // nicht hier weiter machen
@@ -9157,9 +9219,30 @@ class DeviceManagement_FS20 extends DeviceManagement
 
     } /* ende class DeviceManagement_FS20 */
 
+/* Hardware spezifische Device management Class
+ * für Homeematic wenig Routinen bereits rausgelöst
+ */
 class DeviceManagement_Homematic extends DeviceManagement
 	{
 
+    function __construct($debug=false)
+        {
+        parent::__construct($debug);
+        
+		$categoryId_DeviceManagement    = IPS_GetObjectIDByName('DeviceManagement',$this->CategoryIdData);
+        $this->HMI_ReportStatusID       = IPS_GetObjectIDByName("HMI_ReportStatus",$categoryId_DeviceManagement);
+        if ($debug) echo "DeviceManagement_Homematic: found category DeviceManagement $categoryId_DeviceManagement mit dem HMI_ReportStatus : ".$this->HMI_ReportStatusID."\n";
+
+        $this->getHomematicSerialNumberList();
+
+        if ($debug) echo "ModulHandling aufrufen:\n";
+		$modulhandling = new ModuleHandling();
+		$this->HMIs=$modulhandling->getInstances('HM Inventory Report Creator');	
+
+        if ($debug) echo "getHomematicAddressList aufrufen:\n";
+        $this->HomematicAddressesList=$this->getHomematicAddressList(false,$debug,true);         // false für no Create Report, nimmt die HMIs aus der class, kommt in einen eigenen Timer, true wenn kein echo für eine Zusammenfassung erforderlich ist
+
+        }
 
     /*****************************************************************
     *
