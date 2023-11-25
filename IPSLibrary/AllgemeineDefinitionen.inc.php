@@ -1,4 +1,4 @@
-<?
+<?php
 
  	/*
 	 * This file is part of the IPSLibrary.
@@ -1009,7 +1009,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 				$ergebnisRegen.="\nIn den letzten 20 Tagen hat es zu folgenden Zeitpunkten geregnet:\n";
 				/* wenn die Gartensteuerung installiert ist, gibt es einen Regensensor der die aktuellen Regenmengen der letzten 10 Tage erfassen kann */
 				IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');
-				$gartensteuerung = new Gartensteuerung();
+				$gartensteuerung = new GartensteuerungStatistics();
 				$rainResults=$gartensteuerung->listRainEvents(20);
 				foreach ($rainResults as $regeneintrag)
 					{
@@ -1114,7 +1114,9 @@ function send_status($aktuell, $startexec=0, $debug=false)
 			$OperationCenter=new OperationCenter($subnet);
             echo "DeviceManagement initialisiern:\n";
             $DeviceManager = new DeviceManagement_Homematic($debug);
-			
+            
+            $pingOperation       = new PingOperation();
+
 			$ergebnisOperationCenter.="Lokale IP Adresse im Netzwerk : \n";
             echo "Lokale IP Adresse im Netzwerk suchen.\n";
 			$result=$OperationCenter->ownIPaddress($debug);
@@ -1195,7 +1197,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 				}		// ende foreach
 			$ergebnisOperationCenter.="\n";
 			
-			$ergebnisOperationCenter.=$OperationCenter->writeSysPingActivity();         // Angaben über die Verfügbarkeit der Internetfähigen Geräte
+			$ergebnisOperationCenter.=$pingOperation->writeSysPingActivity();         // Angaben über die Verfügbarkeit der Internetfähigen Geräte
 			
 			$ergebnisOperationCenter.="\n\nErreichbarkeit der Hardware Register/Instanzen, zuletzt erreicht am .... :\n\n"; 
 			$ergebnisOperationCenter.=$DeviceManager->HardwareStatus(true);
@@ -3848,21 +3850,26 @@ class webOps
  *  getStatus               in einer lesbaren Zeile den Status aus der Archive Config einer Variable ausgeben
  *
  *  getComponentValues      für alle oder einzelne Archive anzeigen wieviele Daten in einer Zeitspanne gelogged wurden
+ *  quickStore
  *  showValues              ein oder mehrere Archive als echo ausgeben
  *  lookforValues           nach einem historischen Wert mit einem bestimmten Zeitstempel suchen
  *  getArchivedValues       die Daten eines Archivs holen, Zeitspanne oder alle, keine Restriktionen, inklusive manueller Aggregation
  *  manualDailyAggregate    tägliche Aggregation von geloggten Daten, aktuell Energiedaten
+ *  manualDailyEvaluate
  *  getValues               holt sich die Daten und analysiert sie, die generelle Funktion
  *  analyseValues           holt sich die Daten und analysiert sie, hier geht man bereits von einer geordneten Struktur aus
  *
  *  alignScaleValues
  *  addInfoValues
  *  configAggregated
+ *  configStartEndTime
  *
  *  cleanupStoreValues      Daten entsprechend der Config analysieren und bereinigen
+ *  processOnData
  *  calculateSplitOnData
  *  prepareSplit
  *  countperIntervalValues
+ *  setConfigForAddValues
  *  filterNewData
  *  addValuesfromCsv
  *
@@ -4057,6 +4064,9 @@ class archiveOps
         return ($result);    
         }
 
+    /* speichern wie wenn sie ein Archive wären
+     *
+     */
     function quickStore($data,$debug=false)
         {
         foreach ($data as $oid => $result)
@@ -4074,7 +4084,7 @@ class archiveOps
                 else $this->result[$oid]["Values"]=$data[$oid];       
                 }
             }
-        //$this->result=$data;                   // ist nur der üointer   
+        //$this->result=$data;                   // ist nur der Pointer   
         }
 
 
@@ -5811,7 +5821,7 @@ class archiveOps
                 }
             if ( ($maxLogsperInterval) && ($logCount>$maxLogsperInterval) )
                 {
-                echo "max logs per Interval reached : $maxLogsperInterval .Break.\n";                    
+                echo "cleanupStoreValues, max logs per Interval reached : $maxLogsperInterval .Break.\n";                    
                 break;
                 }
             }  
@@ -8602,7 +8612,7 @@ class ipsOps
         }
         
 
-    /* ipsOps, Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items
+    /* ipsOps::readWebfrontConfig, Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items
      *
      */
 
@@ -8670,7 +8680,7 @@ class ipsOps
         return ($directory);
         }           
 
-    /* ipsOps, Mit Medialist arbeiten. Sind alle Objekte mit Typ Media, Nutzung der zusätzlichen Features 
+    /* ipsOps::getMediaListbyType, Mit Medialist arbeiten. Sind alle Objekte mit Typ Media, Nutzung der zusätzlichen Features 
      */
 
     function getMediaListbyType($type, $debug=false)
@@ -8725,20 +8735,35 @@ class ipsOps
 
     /***************
      *
-     * ipsOps, das Ini File auslesen und als Array zur verfügung stellen, es wird nur der modulManager benötigt 
-     *
+     * ipsOps::configWebfront, das Ini File auslesen und als Array zur verfügung stellen, es wird nur der modulManager benötigt 
+     * die Zuweisung ist Fix 
+     *          Administrator   ->  WFC10
+     *          User            ->  WFC10user
+     *          Mobile          ->  Mobile
+     *          Retro           ->  Retro
+     * die Kachelvisualisiserung hat noch keine Ini Dateien
+     *          
      ******************************/
 
     function configWebfront($moduleManager, $debug=false)
         {
         $result=array();
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        $alleInstanzen = $modulhandling->getInstancesByType(6);                 // alle Visualisiserungen
+        foreach ($alleInstanzen as $index => $instanz)
+            {
+            $instance=IPS_GetInstance($instanz["OID"]);
+            $result[IPS_GetName($instanz["OID"])]["ConfigId"]=$instance["InstanceID"];
+            if ($debug) echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz["OID"]),25)." ID : ".$instance["InstanceID"]."  (".$instanz["OID"].")\n";
+            }
+        /*echo "done.\n";
         $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
         foreach ($alleInstanzen as $instanz)
             {
             $instance=IPS_GetInstance($instanz);
             $result[IPS_GetName($instanz)]["ConfigId"]=$instance["InstanceID"];
             if ($debug) echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$instance["InstanceID"]."  (".$instanz.")\n";
-            }
+            } */
         $RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis', false);
         if ($RemoteVis_Enabled)
             {
@@ -8767,7 +8792,7 @@ class ipsOps
             $TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10',false);              // TabItem="Monitor" nächste Reihe, Gliederung der Funktionen
             if ($TabItem !== false) $result["Administrator"]["TabItem"] = $TabItem;
             $TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10',false);              // TabName
-            if ($TabName !== false) $result["Administrator"]["TabName"] = $TabItem;
+            if ($TabName !== false) $result["Administrator"]["TabName"] = $TabName;
             $TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10',false);              // TabIcon="Window"
             if ($TabIcon !== false) $result["Administrator"]["TabIcon"] = $TabIcon;
             $TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10',false);              
@@ -10031,7 +10056,7 @@ class dosOps
         $fileContent = file_get_contents($fileNameFull, true);
         //echo $fileContent;
 
-        $search1='<?';
+        $search1='<?php';
         $search2='?>';
         $pos1 = strpos($fileContent, $search1);
         $pos2 = strpos($fileContent, $search2);
@@ -11983,6 +12008,7 @@ class errorAusgabe
  * getArchiveSDQL_HandlerID
  * listOfRemoteServer
  * getStructureofROID
+ *
  * registerEvent
  * getComponent
  * workOnDeviceList
@@ -11991,6 +12017,8 @@ class errorAusgabe
  * getKeyword
  * installComponent  (DEPRICIATED)
  * installComponentFull
+ *
+ *
  * setLogging
  * getLoggingStatus
  *
@@ -12012,7 +12040,6 @@ class ComponentHandling
      * wenn Modul vorhanden auch RemoteAccess
      *
      */
-
 	public function __construct($debug=false)
         {
         $this->debug=$debug;
@@ -13036,9 +13063,8 @@ class ComponentHandling
         return ($struktur);
 		}	
 
-    /* ComponentHandling
+    /* ComponentHandling::setLogging
      */
-
     function setLogging($oid, $debug=false)
         {
         $archiveID = $this->getArchiveSDQL_HandlerID();
@@ -13060,7 +13086,7 @@ class ComponentHandling
             }        
         }
 
-    /* ComponentHandling
+    /* ComponentHandling::getLoggingStatus
      */
 
     function getLoggingStatus($oid, $debug=false)
@@ -13201,10 +13227,10 @@ class ComponentHandling
  *  read_WebfrontConfig         IPS_GetConfiguration und update internal memory of class
  *  write_WebfrontConfig        IPS_SetConfiguration from internal memory und IPS_ApplyChanges
  *  GetItems
- *  GetItem
+ *      GetItem
  *  update_itemListWebfront
  *  UpdateItems
- *  UpdateItem
+ *      UpdateItem
  *  AddItem
  *  ReloadAllWebFronts
  *  GetWFCIdDefault
@@ -13220,7 +13246,7 @@ class ComponentHandling
  *  UpdateParentID
  *  UpdatePosition
  *  DeleteWFCItems
- *  DeleteWFCItem
+ *      DeleteWFCItem
  *
  *  installWebfront             die beiden Webfronts anlegen und das Standard Webfront loeschen, WebfrontConfigID als return
  *  easySetupWebfront           Aufbau des Webfronts, Standardroutine
@@ -13314,14 +13340,22 @@ class WfcHandling
         $this->WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
 	    //echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n\n";
     	$this->WebfrontConfigID=array();
-	    $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug        
+        $alleInstanzen = $modulhandling->getInstancesByType(6);                 // alle Visualisiserungen
+        foreach ($alleInstanzen as $index => $instanz)
+            {
+            $instance=IPS_GetInstance($instanz["OID"]);
+            $this->WebfrontConfigID[IPS_GetName($instanz["OID"])]=$instance["InstanceID"];
+            //if ($debug) echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz["OID"]),25)." ID : ".$instance["InstanceID"]."  (".$instanz["OID"].")\n";
+            }        
+	    /*$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
     	foreach ($alleInstanzen as $instanz)
 	    	{
 		    $result=IPS_GetInstance($instanz);
     		$this->WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
 	    	//echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
     		}
-	    //echo "\n";        
+	    //echo "\n"; */       
         }
 
     /* Abfrage als Tabelle alle Webfronts mit dem Namen als ID
@@ -13496,6 +13530,18 @@ class WfcHandling
     	//echo "\n";
         $resultWebfront=array();
 	    $WebfrontConfigID=array();
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug        
+        $alleInstanzen = $modulhandling->getInstancesByType(6);                 // alle Visualisiserungen
+        foreach ($alleInstanzen as $index => $instanz)
+            {
+            $webfront=IPS_GetName($instanz["OID"]);   
+
+            $instance=IPS_GetInstance($instanz["OID"]);
+            $WebfrontConfigID[IPS_GetName($instanz["OID"])]=$instance["InstanceID"];
+            //if ($debug) echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz["OID"]),25)." ID : ".$instance["InstanceID"]."  (".$instanz["OID"].")\n";
+            $resultWebfront[$webfront] = $this->read_wfcByInstance($instanz["OID"],$level);            // funktioniert noch nicht für die Kacheln
+            }        
+        /*
     	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
 	    foreach ($alleInstanzen as $instanz)
 		    {
@@ -13509,7 +13555,7 @@ class WfcHandling
                 $resultWebfront[$webfront] = $this->read_wfcByInstance($instanz,$level);
                 }
             else
-    			{   /* false if debug Auslesen der aktuellen detaillierten Einträge pro Webfront Configurator */
+    			{   // false if debug Auslesen der aktuellen detaillierten Einträge pro Webfront Configurator 
 	    		//echo "    ".IPS_GetConfiguration($instanz)."\n";
 		    	//$config=json_decode(IPS_GetConfiguration($instanz));
 			    //$config->Items = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
@@ -13525,13 +13571,13 @@ class WfcHandling
 	    			    {
     	    			if ($entry["ParentID"] != "")
 	    	    			{
-                            /* Liste der Einträge ist flat es gibt immer einen entry und einen parent */
+                            // Liste der Einträge ist flat es gibt immer einen entry und einen parent 
 		    		    	//echo "   WFC Eintrag:    ".$entry["ParentID"]." (Parent)  ".$entry["ID"]." (Eintrag)\n";
     			    		$result = $this->search_wfc($wfc_tree,$entry["ParentID"],"");
 	    			    	//echo "  search_wfc: ".$entry["ParentID"]." mit Ergebnis \"".$result."\"  ".substr($result,1,strlen($result)-2)."\n";
 		    			    if ($result == "")
 			    			    {
-                                if ( ($root != "") && ($entry["ParentID"]==$root) ) /* parent not found, unclear if root */
+                                if ( ($root != "") && ($entry["ParentID"]==$root) ) // parent not found, unclear if root 
                                     {
     					    	    $wfc_tree[$entry["ParentID"]][$entry["ID"]]=array();
 	    					        $wfc_tree[$entry["ParentID"]]["."]=$entry["ParentID"];
@@ -13583,30 +13629,6 @@ class WfcHandling
 			    	    				}								
 				    	    		}	
 					    	    }						
-        					/* Routine sucht nach ParentID Eintrag, schreibt Struktur mit unter der dieser Eintrag gefunden wurde */
-	        				/*$found="";
-		        			foreach ($wfc_tree as $key => $wfc_entry)
-			        			{
-				        		$skey=$wfc_entry["."]; 
-					        	echo $skey." ".sizeof($wfc_entry)." : ";
-						        foreach ($wfc_entry as $index => $result)
-							        {
-    							    if ($result["."] == $entry["ParentID"]) 
-    	    							{ 
-	    	    						$found=$result["."]; 
-		    	    					$fkey=$skey; 
-			    	    				echo "-> ".$fkey."/".$found." found.\n";break;
-				    	    			}
-					    	    	}
-    					    	}
-    	    				if ($found != "")
-	    	    				{	
-		    	    			//print_r($wfc_tree);
-			    	    		echo "Create : ".$fkey."/".$entry["ParentID"]."/".$entry["ID"]."\n";
-				    	    	$wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]=array();
-					    	    $wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    					    	}
-	    				    */
     		    			}
 	    		    	else        // Root Eintrag, parent ist leer
 		    		    	{
@@ -13628,12 +13650,12 @@ class WfcHandling
 			        //print_r($wfc_tree);
     			    $this->write_wfc($wfc_tree,"",$level);	
 	    		    //echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		    	    /* alle Instanzen dargestellt */
+		    	    // alle Instanzen dargestellt 
 			        //echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
     			    //print_r($result);
                     }
-	    		}   // ende debug
-		    }       // ende foreach
+	    		}   // ende debug       
+		    }       // ende foreach     -- bereits oben    */
         return ($resultWebfront);    
     	}   // ende function
 
@@ -14277,31 +14299,48 @@ class WfcHandling
         //print_r($wfcTree);	
         if ($debug) echo "-----------------------------\n";
         $WebfrontConfigID=array();
-        $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug        
+        $alleInstanzen = $modulhandling->getInstancesByType(6);                 // alle Visualisiserungen
+        foreach ($alleInstanzen as $index => $instanz)
+            {
+            $instance=IPS_GetInstance($instanz["OID"]);
+            $WebfrontConfigID[IPS_GetName($instanz["OID"])]=$instance["InstanceID"];
+            echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz["OID"]),25)." ID : ".$instance["InstanceID"]."  (".$instanz["OID"].")\n";
+            $config=json_decode(IPS_GetConfiguration($instanz["OID"]));
+
+        /* $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
         foreach ($alleInstanzen as $instanz)
             {
             $result=IPS_GetInstance($instanz);
             $WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
             echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
-            $config=json_decode(IPS_GetConfiguration($instanz));
+            $config=json_decode(IPS_GetConfiguration($instanz)); 
             if ($debug) 
                 {
                 print_r($config);
                 $configItems = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
                 print_r($configItems);
-                }
+                }           */
+
+            if ($debug) 
+                {
+                print_r($config);
+                if (isset($config->Items))          // funktioniert auch für Kachelvisualisiserung
+                    {
+                    $configItems = json_decode(json_decode(IPS_GetConfiguration($instanz["OID"]))->Items);
+                    print_r($configItems);
+                    }
+                }            
             echo "  Remote Access Webfront Password set : (".$config->Password.")\n";
-            echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
-            if (isset($config->RetroID)) echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";			
+            if (isset($config->MobileID)) echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
+            if (isset($config->RetroID))  echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";                
             }
         //print_r($WebfrontConfigID);
         
         /* webfront Configuratoren anlegen, wenn noch nicht vorhanden */
         if ( isset($WebfrontConfigID["Administrator"]) == false )
-        //$AdministratorID = @IPS_GetInstanceIDByName("Administrator", 0);
-        //if(!IPS_InstanceExists($AdministratorID))
             {
-            echo "\nWebfront Configurator Administrator  erstellen !\n";
+            echo "\nWebfront Configurator \"Administrator\"  erstellen !\n";
             $AdministratorID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
             IPS_SetName($AdministratorID, "Administrator");
             $config = IPS_GetConfiguration($AdministratorID);
@@ -14309,23 +14348,21 @@ class WfcHandling
             IPS_SetConfiguration($AdministratorID,'{"MobileID":-1}');
             IPS_ApplyChanges($AdministratorID);	
             $WebfrontConfigID["Administrator"]=$AdministratorID;
-            echo "Webfront Configurator Administrator aktiviert : ".$AdministratorID." \n";
+            echo "Webfront Configurator \"Administrator\" aktiviert : ".$AdministratorID." \n";
             }
         else
             {
             $AdministratorID = $WebfrontConfigID["Administrator"];
-            echo "Webfront Configurator Administrator bereits vorhanden : ".$AdministratorID." \n";
+            echo "Webfront Configurator \"Administrator\" bereits vorhanden : ".$AdministratorID." \n";
             /* kein Mobile Access für Administratoren */
             IPS_SetConfiguration($AdministratorID,'{"MobileID":-1}');
             IPS_ApplyChanges($AdministratorID);			
-
             }		
-
         if ( isset($WebfrontConfigID["User"]) == false )
             //$UserID = @IPS_GetInstanceIDByName("User", 0);
             //if(!IPS_InstanceExists($UserID))
             {
-            echo "\nWebfront Configurator User  erstellen !\n";
+            echo "\nWebfront Configurator \"User\"  erstellen !\n";
             $UserID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
             IPS_SetName($UserID, "User");
             $config = IPS_GetConfiguration($UserID);
@@ -14334,19 +14371,41 @@ class WfcHandling
             IPS_SetConfiguration($UserID,'{"MobileID":'.$categoryId_Mobile.'}');
             IPS_ApplyChanges($UserID);
             $WebfrontConfigID["User"]=$UserID;
-            echo "Webfront Configurator User aktiviert : ".$UserID." \n";
+            echo "Webfront Configurator \"User\" aktiviert : ".$UserID." \n";
             }
         else
             {
             $UserID = $WebfrontConfigID["User"];
-            echo "Webfront Configurator User bereits vorhanden : ".$UserID." \n";
+            echo "Webfront Configurator \"User\" bereits vorhanden : ".$UserID." \n";
             $categoryId_Mobile         = CreateCategoryPath("Visualization.Mobile");		
             //$config = IPS_GetConfiguration($UserID);
             //echo "Konfig : ".$config."\n";
             IPS_SetConfiguration($UserID,'{"MobileID":'.$categoryId_Mobile.'}');
             IPS_ApplyChanges($UserID);			
             }	
+		$version = IPS_GetKernelVersion();
+		$versionArray = explode('.', $version);
+		if ($versionArray[0] < 7) 
+            {                         // für sehr alte IP Symcon Versionen
+            echo "IPS Version unterstützt keine Kachel Visualisierung.\n";
+		    }
+        else    
+            {            
+            if ( isset($WebfrontConfigID["Kachel Visualisierung"]) == false )
+                {
+                echo "\nWebfront Configurator \"Kachel Visualisierung\"  erstellen !\n";
+                $KachelID = IPS_CreateInstance("{B5B875BB-9B76-45FD-4E67-2607E45B3AC4}"); // Kachel Visualisiserung Configurator anlegen
+                IPS_SetName($KachelID, "Kachel Visualisierung");
 
+                $WebfrontConfigID["Kachel Visualisierung"]=$KachelID;
+                echo "Webfront Configurator \"Kachel Visualisierung\" aktiviert : ".$KachelID." \n";
+                }
+            else
+                {
+                $KachelID = $WebfrontConfigID["Kachel Visualisierung"];
+                echo "Webfront Configurator \"Kachel Visualisierung\" bereits vorhanden : ".$KachelID." \n";
+                }
+            }
         echo "\n";
 
         /* check nach weiteren Webfront Konfiguratoren */
@@ -15094,7 +15153,7 @@ class WfcHandling
  * __construct	 		speichert bereits alle Libraries und Module bereits in Klassenvariablen ab
  *   printrLibraries	gibt die gespeicherte Variable für die Library aus
  *   printrModules		gibt die gespeicherte Variable für die Module aus, alle Module für alle Libraries
- *   printLibraries
+ *   printLibraries     echo Ausgabe der verfügbaren Bibliotheken, das sind die externen Libraries wie Astronomy
  *   getLibrary
  *   printModules		Alle Module die einer bestimmten Library zugeordnet sind als echo ausgeben
  *   printInstances		Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben
@@ -15102,7 +15161,7 @@ class WfcHandling
  *   getDiscovery
  *   getModules
  *   addNonDiscovery
- *   getInstancesByType
+ *   getInstancesByType Alle installierten Instanzen mit einem bestimmten Typ aös Array ausgeben
  *   getInstancesByName
  *   getFunctions
  *   getFunctionAsArray
@@ -15260,6 +15319,7 @@ class ModuleHandling
                     3	Gerät Instanz
                     4	Konfigurator Instanz
                     5	Discovery Instanz
+                    6   
                 */
                 case 0:
                     $pair[$module['ModuleName']]["Type"] = "Kern";
@@ -15279,6 +15339,9 @@ class ModuleHandling
                 case 5:
                     $pair[$module['ModuleName']]["Type"] = "Discovery";
                     break;
+                case 6:
+                    $pair[$module['ModuleName']]["Type"] = "Visualization";             // neu hinzugekommen, Webfront
+                    break;                    
                 default:
                     $pair[$module['ModuleName']]["Type"] = $module['ModuleType'];
                     break;

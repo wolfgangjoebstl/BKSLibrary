@@ -1,4 +1,4 @@
-<?
+<?php
 
 /* kontrolliertes herunterfahren
  * unter Kern Instanzen, Events, sind Start und Stop Watchdog als Scripts eingetragen

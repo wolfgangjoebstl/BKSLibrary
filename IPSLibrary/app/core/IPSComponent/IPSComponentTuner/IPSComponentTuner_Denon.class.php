@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * @file          IPSComponentTuner_Denon.class.php
 	 * @author        Wolfgang Jöbstl

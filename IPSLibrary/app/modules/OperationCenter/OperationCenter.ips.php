@@ -1,4 +1,4 @@
-<?
+<?php
 
 /***********************************************************************
  *
@@ -109,7 +109,14 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
         if ($tim2ID > 0)  {	IPS_SetEventActive($tim2ID,false);  }
         }
 	if (isset ($installedModules["EvaluateHardware"])) 
-		{     
+		{ 
+        IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+        IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
+        IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+
+        echo "EvaluateHardware, Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+        IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+
         $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
         $CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
         $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
@@ -117,7 +124,7 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
 
     $tim1ID  = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
     $tim3ID  = @IPS_GetEventIDByName("RouterExectimer", $scriptId);
-    $tim4ID  = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
+    $tim4ID  = @IPS_GetEventIDByName("SysPingTimer", $scriptId);                // alle 5 Minuten aufgerufen, Variable für hour passed und four hour passed
     $tim5ID  = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
     $tim6ID  = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
     $tim7ID  = @IPS_GetEventIDByName("FileStatus", $scriptId);
@@ -348,7 +355,11 @@ if ($_IPS['SENDER']=="WebFront")
 		}
     }
 
-/*********************************************************************************************/
+/*******************************************************************************************
+ * 
+ *      EXECUTE, nur machen wenn am Amnfanmg der Scriptdatei freigegeben
+ *
+ ***/
 
 if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	{
@@ -541,12 +552,13 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
                 {
                 $webCamera = new webCamera();       // eigene class starten
                 $camConfig = $webCamera->getStillPicsConfiguration();
-
+                
+                $camOperation = new CamOperation();
                 /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
                 echo "   --> Show CamCapture files:\n";
-                $OperationCenter->showCamCaptureFiles($camConfig,true);  
+                $camOperation->showCamCaptureFiles($camConfig,true);  
                 echo "   --> Show CamSnapshots files:\n";
-                $OperationCenter->showCamSnapshots($camConfig,true);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
+                $camOperation->showCamSnapshots($camConfig,true);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
                 }
 				} /* Ende isset */        
 
@@ -816,7 +828,14 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	**********************************************************/
 
 	//SysPingAllDevices($OperationCenter,$log_OperationCenter);
-	$OperationCenter->SysPingAllDevices($log_OperationCenter);
+	//$OperationCenter->SysPingAllDevices($log_OperationCenter);
+
+    $pingOperation       = new PingOperation();
+    $homematicOperation  = new HomematicOperation();
+			
+    $homematicOperation->ccuSocketStatus($log_OperationCenter,true);        // true für Debug
+    $homematicOperation->ccuSocketDutyCycle($log_OperationCenter,true);      // called every hour, internal controled by variable in count5mins
+    $pingOperation->SysPingAllDevices($log_OperationCenter);          
 
 	echo "============================================================================================================\n";
 
@@ -1018,6 +1037,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/********************************************************
 		     * nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
 			 **********************************************************/
+            $camOperation = new CamOperation();
 			$count=0;
 			if (isset ($OperationCenterConfig['CAM']))
 				{
@@ -1045,9 +1065,9 @@ if ($_IPS['SENDER']=="TimerEvent")
                     $camConfig = $webCamera->getStillPicsConfiguration();
 
                     /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
-                    $OperationCenter->showCamCaptureFiles($camConfig);
+                    $camOperation->showCamCaptureFiles($camConfig);
 
-                    $OperationCenter->showCamSnapshots($camConfig);	            // sonst werden die Objekte der IPSCam verwendet, sind viel weniger
+                    $camOperation->showCamSnapshots($camConfig);	            // sonst werden die Objekte der IPSCam verwendet, sind viel weniger
                     }
 				} /* Ende isset */
 			if ($count>0)
@@ -1100,19 +1120,24 @@ if ($_IPS['SENDER']=="TimerEvent")
 			break;
 			
 		case $tim4ID:       // SysPingAllDevices
-			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices called");
 			/********************************************************
 			 *
 			 * Alle 5 bzw. 60 Minuten: Sys_Ping durchführen basierend auf ermittelter mactable, 
              * für die Verfügbarkeit wird größere Auflösung gefahren
 			 *
 			 **********************************************************/
-			$OperationCenter->SysPingAllDevices($log_OperationCenter);
+            $OperationCenter->count5mins();
+            $pingOperation       = new PingOperation();
+            $homematicOperation  = new HomematicOperation();
+            $homematicOperation->ccuSocketStatus($log_OperationCenter);         // called every hour, internal controled by variable in count5mins
+            $homematicOperation->ccuSocketDutyCycle($log_OperationCenter);      // called every hour, internal controled by variable in count5mins
+            $pingOperation->SysPingAllDevices($log_OperationCenter);            // called every 5mins, hour and 4 hour,  internal controled by variable in count5mins
 			break;
 		case $tim5ID:       // CyclicUpdate
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CyclicUpdate");
 			/************************************************************************************
-	   	 *
+	   	     *
 			 * Einmal am 12.Tag des Monates: CyclicUpdate, alle Module automatisch updaten
 			 *
 			 *************************************************************************************/

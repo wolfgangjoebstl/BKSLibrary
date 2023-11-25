@@ -1,4 +1,4 @@
-<?
+<?php
 
     /*
      * This file is part of the IPSLibrary.
@@ -22,9 +22,10 @@
 	 * Script zur Erstellung von WebCamera Anzeigen
      *
      * noch kein vollständig eigenständiges Modul. Verwendet aber bereits eigenes Webfront für die Darstellung
-     * die Config kommt von OperationCenter und IPSCam
+     * die Config kommt von OperationCenter und IPSCam, ohne OperationCenter erfolgt keine Installation der Webfronts
+     * In IPSCam und OperationCenter das Install der Wenfronts noch deaktivieren
      *
-     *
+     * CamCapture liefert alle 5 Minuten ein Standbild
      *
      * Verwendung von Activity für regelmaessige Timeraufrufe und Library für gemeinsame Routine und eine Class
      *
@@ -113,7 +114,7 @@
 
 	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 	//$modulhandling->printLibraries();
-    $index = $modulhandling->getLibrary("{EE71140D-C02C-AB00-F456-D934270CC4A5}",false);       // treu für Debug
+    $index = $modulhandling->getLibrary("{EE71140D-C02C-AB00-F456-D934270CC4A5}",false);       // true für Debug
     if ($index) 
         {
         echo "Library Blink Home System installiert.\n";
@@ -123,6 +124,9 @@
 	/******************************************************
 	 *
 	 *				Die anderen Kameras suchen
+     *
+     * OperationCenter liefert in seiner Kategorie den Speicherort Cams
+     * nutzt die Webcamera class
      *
      ********************************************************/    
 
@@ -412,13 +416,14 @@
         //echo "------StillPics View aufbauen, so wie auch im Timer\n";
         $zielVerzeichnis = $webCamera->zielVerzeichnis();
         $webCamera->DownloadImageFromCams($camConfig, $zielVerzeichnis);            // von allen Cameras ein Bild herunterladen, wenn zwei Kameras nicht erreichbar sind abbrechen
-                
+        
+        $camOperation = new CamOperation();
         echo "-------showCamSnapshots  \n";
-        $OperationCenter->showCamSnapshots($camConfig,true);	
+        $camOperation->showCamSnapshots($camConfig,true);	
         
         /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
         echo "-------showCamCaptureFiles  \n";
-        $OperationCenter->showCamCaptureFiles($OperationCenterConfig['CAM'],true);
+        $camOperation->showCamCaptureFiles($OperationCenterConfig['CAM'],true);
 
         /************************************************************************************************************** 
         *
@@ -456,6 +461,14 @@
         *
         * WebFront Administrator Installation
         *
+        *       Monitor                                                     Path ist TabItem.Path
+        *           CreateWFCItemTabPane    TabPaneItem in TabPaneParent
+        *           CreateWFCItemSplitPane  TabItem in TabPaneItem
+        *       CamPicture                                                  Path ist CamPicture.Path
+        *           CreateWFCItemCategory   "CamPicture" in TabPaneItem
+        *       CamCapture                                                  Path ist von IPSCam
+        *           CreateWFCItemCategory   "CamCapture" in TabPaneItem
+        *
         * Motion            resultstream
         * CamPicture
         * CamCapture
@@ -481,7 +494,7 @@
             echo "    Webcamera Kategorie installieren als: ".$config["Path"]." und Inhalt löschen und dann verstecken.\n";
             $categoryId_WebFront         = CreateCategoryPath($config["Path"]);
             $configEmptyCategory=array(); 
-            $configEmptyCategory["deleteCategories"]=treu; 
+            $configEmptyCategory["deleteCategories"]=true; 
             $ipsOps->emptyCategory($categoryId_WebFront,$configEmptyCategory);
             IPS_SetHidden($categoryId_WebFront, true); 		/* in der normalen Viz Darstellung verstecken */
 
@@ -491,10 +504,10 @@
 
             /* Kategorien neu anlegen, aktuell Bezeichnung individuell */
             $categoryIdOverview  = CreateCategory('Overview',  $categoryId_WebFrontMonitor, 0);             // links davon, um die Cam Bilder in die richtige Größe zu bringen, für Summaries
-            $categoryIdLeftUp    = CreateCategory('LeftUp',  $categoryId_WebFrontMonitor, 10);
-            $categoryIdRightUp   = CreateCategory('RightUp', $categoryId_WebFrontMonitor, 20);						
-            $categoryIdLeftDn    = CreateCategory('LeftDn',  $categoryId_WebFrontMonitor, 30);
-            $categoryIdRightDn   = CreateCategory('RightDn', $categoryId_WebFrontMonitor, 40);	
+            $categoryIdLeftUp    = CreateCategory('LeftUp',    $categoryId_WebFrontMonitor, 10);
+            $categoryIdRightUp   = CreateCategory('RightUp',   $categoryId_WebFrontMonitor, 20);						
+            $categoryIdLeftDn    = CreateCategory('LeftDn',    $categoryId_WebFrontMonitor, 30);
+            $categoryIdRightDn   = CreateCategory('RightDn',   $categoryId_WebFrontMonitor, 40);	
 
             $wfcHandling->CreateWFCItemTabPane  ($config["TabPaneItem"],   $config["TabPaneParent"],   $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]);
             $wfcHandling->CreateWFCItemSplitPane ($config["TabItem"],           $config["TabPaneItem"], ($config["TabOrder"]+200), "Monitor", $config["TabIcon"], 1 /*Vertical*/, 20 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
@@ -534,26 +547,33 @@
             //--------------------------------------------------
             $config["TabItem"]="CamPicture";                          // different path item from WebCamera, local override for regularily loaded Pictures
             echo "Create Sub-Category ".$config["TabItem"]." in ".IPS_GetName($categoryId_WebFront)." and empty it.\n";
-            $categoryId_WebFrontMonitor  = CreateCategory($config["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
-            IPS_SetHidden($categoryId_WebFrontMonitor, true); 
-            $wfcHandling->CreateWFCItemCategory  ($config["TabItem"], $config["TabPaneItem"],   ($config["TabOrder"]+300), $config["TabItem"], $config["TabIcon"], $categoryId_WebFrontMonitor /*BaseId*/, 'false' /*BarBottomVisible*/ );
+            $categoryId_WebFrontPicture  = CreateCategory($config["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
+            IPS_SetHidden($categoryId_WebFrontPicture, true); 
+            $wfcHandling->CreateWFCItemCategory  ($config["TabItem"], $config["TabPaneItem"],   ($config["TabOrder"]+300), $config["TabItem"], $config["TabIcon"], $categoryId_WebFrontPicture /*BaseId*/, 'false' /*BarBottomVisible*/ );
             // definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") {
-            CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontMonitor,  10,"");								
+            CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontPicture,  10,"");								
 
             //--------------------------------------------------
             $config["TabItem"]="CamCapture";                          // different path item from WebCamera, local override for captured selected Pictures
             //no need for new category, use the one from IPSCam
-            $categoryId_WebFrontMonitor = $CamTableCaptureID["Base"];
-            //$wfcHandling->DeleteWFCItems("Cam_");         // bvorerst Easy Display ohne Sub Webfronts
+            $categoryId_WebFrontCapture = $CamTableCaptureID["Base"];
+            //$wfcHandling->DeleteWFCItems("Cam_");         // vorerst Easy Display ohne Sub Webfronts
             //$wfcHandling->DeleteWFCItems("CamCapture");
             echo "Create Sub-Category ".$config["TabItem"]." in ".IPS_GetName($categoryId_WebFront)." and link it to existing Category $categoryId_WebFrontMonitor.\n";
-            $wfcHandling->CreateWFCItemCategory  ($config["TabItem"], $config["TabPaneItem"],   ($config["TabOrder"]+600), $config["TabItem"], $config["TabIcon"], $categoryId_WebFrontMonitor /*BaseId*/, 'false' /*BarBottomVisible*/ );
+            $wfcHandling->CreateWFCItemCategory  ($config["TabItem"], $config["TabPaneItem"],   ($config["TabOrder"]+600), $config["TabItem"], $config["TabIcon"], $categoryId_WebFrontCapture /*BaseId*/, 'false' /*BarBottomVisible*/ );
 
             $wfcHandling->write_WebfrontConfig($config["ConfigId"]);
             }
 
         print_r($configWFront);
 
+        if (isset($configWFront["Administrator"]))
+            {
+            $configWF = $configWFront["Administrator"];            
+            $configWF["TabItem"]="CamCapture";                          // different path item from WebCamera, local override for captured selected Pictures
+            $configWF["TabIcon"]="Window";                              // different Icon
+            installWebfrontCaptures($configWF,$CamTableCaptureID,true);
+            }
         if (isset($configWFront["User"]))
             {
             $configWF = $configWFront["User"];            
@@ -758,7 +778,7 @@
     /************************
      *
      * Anlegen des Capture Overviews von allen Kameras, ähnlich wie im OperationCenter
-     * Ziel ist es die Anzeige aus den IPSCam Webfroint Tab in das WebCamera Webfron hinüberzubringen
+     * Ziel ist es die Anzeige aus den IPSCam Webfront Tab in das WebCamera Webfront hinüberzubringen
      *
      * einzelne Tabs pro Kamera mit den interessantesten Bildern der letzten Stunden oder Tage
      * die Daten werden aus den FTP Verzeichnissen gesammelt.
@@ -767,64 +787,69 @@
 							
     function installWebfrontCaptures($configWF,$CamTableCaptureID, $debug=false)
         {
+        echo "installWebfrontCaptures:\n";
         $full=false;
         $ipsOps=new ipsOps();
         if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) && (isset($CamTableCaptureID["Base"])) )
             {
-            /* im TabPane entweder eine Kategorie oder ein SplitPane mit Unterkategorien anlegen */
-            $categoryId_WebFrontMonitor = $CamTableCaptureID["Base"];
-            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"],   ($configWF["TabOrder"]+600), $configWF["TabItem"], $configWF["TabIcon"], $categoryId_WebFrontMonitor /*BaseId*/, 'false' /*BarBottomVisible*/ );
+            if (false) /* im TabPane entweder eine Kategorie oder ein SplitPane mit Unterkategorien anlegen */
+                {
+                $categoryId_WebFrontMonitor = $CamTableCaptureID["Base"];
+                CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"],   ($configWF["TabOrder"]+600), $configWF["TabItem"], $configWF["TabIcon"], $categoryId_WebFrontMonitor /*BaseId*/, 'false' /*BarBottomVisible*/ );
+                }
+            else
+                {    
+                echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: \"".$configWF["Path"]."_Capture\"\n";			
+                $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]."_Capture");
+                EmptyCategory($categoryId_WebFrontAdministrator);
+                IPS_SetHidden($categoryId_WebFrontAdministrator, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 
-        if (false)
-            {    
-			echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: \"".$configWF["Path"]."_Capture\"\n";			
-			$categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]."_Capture");
-			EmptyCategory($categoryId_WebFrontAdministrator);
-			IPS_SetHidden($categoryId_WebFrontAdministrator, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+                //CreateWFCItemTabPane   (ConfigId, TabPaneItem, TabPaneParent,  TabPaneOrder, TabPaneName, TabPaneIcon);
+                CreateWFCItemTabPane  ($configWF["ConfigId"], "CamCapture", $configWF["TabPaneItem"], ($configWF["TabOrder"]+1000), 'CamCapture', $configWF["TabIcon"]);
 
-			//CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
-			CreateWFCItemTabPane  ($WFC10_ConfigId, "CamCapture", $WFC10Cam_TabPaneItem, ($WFC10Cam_TabOrder+1000), 'CamCapture', $WFC10Cam_TabIcon);
-			if (isset ($OperationCenterConfig['CAM']))
-				{
-				$i=0;
-				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
-					{
-					$i++; $found=false;
-                    if (isset ($cam_config['FTPFOLDER']))         
+                if (isset ($OperationCenterConfig['CAM']))
+                    {
+                    $i=0;
+                    foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
                         {
-                        if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                        $i++; $found=false;
+                        if (isset ($cam_config['FTPFOLDER']))         
                             {
-                            echo "  Webfront Tabname für ".$cam_name." \n";
-                            $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
-                            if ($cam_categoryId==false)
+                            if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
                                 {
-                                $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-                                IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-                                IPS_SetParent($cam_categoryId,$CategoryIdData);
+                                echo "  Webfront Tabname für ".$cam_name." \n";
+                                $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                                if ($cam_categoryId==false)
+                                    {
+                                    $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                                    IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+                                    IPS_SetParent($cam_categoryId,$CategoryIdData);
+                                    }
+                                $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
+                                CreateWFCItemCategory  ($configWF["ConfigId"], "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $configWF["TabIcon"], $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
+                                echo "     CreateWFCItemCategory  (".$configWF["ConfigId"].", Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,  ".$configWF["TabIcon"].", $categoryIdCapture, false);\n";
+                                $pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox',null,null,"");
+                                $box='<iframe frameborder="0" width="100%">     </iframe>';
+                                SetValue($pictureFieldID,$box);
+                                $found=true;
                                 }
-                            $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
-                            CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
-                            echo "     CreateWFCItemCategory  ($WFC10_ConfigId, Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture, false);\n";
-                            $pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox',null,null,"");
-                            $box='<iframe frameborder="0" width="100%">     </iframe>';
-                            SetValue($pictureFieldID,$box);
-                            $found=true;
                             }
-                        }
-                    if (!$found)
-                        {
-                        echo "  Webfront Tabname für ".$cam_name." wird nicht mehr benötigt, loeschen.\n";
-                        $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
-                        if ($cam_categoryId !== false)
+                        if (!$found)
                             {
-                            DeleteWFCItems($WFC10_ConfigId, "Cam_".$cam_name);    
+                            echo "  Webfront Tabname für ".$cam_name." wird nicht mehr benötigt, loeschen.\n";
+                            $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                            if ($cam_categoryId !== false)
+                                {
+                                DeleteWFCItems($configWF["ConfigId"], "Cam_".$cam_name);    
+                                }
                             }
                         }
-					}
-				}
-            }  // false
+                    }           // OperationCenter Config Cam
+                }  // false
 
             }
+        else echo "configWF not fully declared as input :".(isset($configWF["Path"]))."+".(isset($configWF["TabPaneItem"]))."+".(isset($configWF["TabItem"]))."+".((isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)))."\n";
+
         }
 
 

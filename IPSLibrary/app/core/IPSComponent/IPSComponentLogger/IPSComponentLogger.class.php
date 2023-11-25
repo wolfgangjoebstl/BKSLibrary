@@ -1,4 +1,4 @@
-<?
+<?php
 
    /**
     * @class IPSComponentLogger
@@ -222,7 +222,7 @@ class Logging
                 $this->config["MessageTable"]=$sumTableID;
                 $this->config["MessageInputID"]=$nachrichteninput_Id;
 
-                if ($debug) echo "      SetHidden ".$this->nachrichteninput_Id." ";
+                if ($debug) echo "      SetHidden ".$this->nachrichteninput_Id." ";         // Workaround für alte zeilenbasierte Nachrichten als Variablen
                 for ($i=1;$i<=16;$i++)
                     {
                     $zeileId = @IPS_GetObjectIdByName("Zeile".str_pad($i, 2 ,'0', STR_PAD_LEFT),$this->nachrichteninput_Id);
@@ -231,6 +231,7 @@ class Logging
                         IPS_SetHidden($zeileId,true);
                         if ($debug) echo "*";
                         }
+                    else break;                 // wir kürzen ab, wenn Zeile01 nicht da dann auch nicht den Rest suchen
                     }    
                 if ($debug) echo "\n";                
                 }

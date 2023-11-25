@@ -1,4 +1,4 @@
-<?
+<?php
 	/**@addtogroup ipscomponent
 	 * @{
 	 *
@@ -12,7 +12,7 @@
    /**
     * @class IPSComponentDimmer_Homematic
     *
-    * Definiert ein IPSComponentDimmer_Homematic Object, das ein IPSComponentDimmer Object für Homematic implementiert.
+    * Definiert ein IPSComponentDimmer_Homematic Object, das ein IPSComponentDimmer Object fÃ¼r Homematic implementiert.
     *
     * @author Andreas Brauneis
     * @version
@@ -42,7 +42,7 @@
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
@@ -57,7 +57,7 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 * @param integer $variable ID der auslösenden Variable
+		 * @param integer $variable ID der auslÃ¶senden Variable
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleDimmer $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
@@ -69,8 +69,8 @@
 		 *
 		 * Zustand Setzen 
 		 *
-		 * @param integer $power Geräte Power
-		 * @param integer $level Wert für Dimmer Einstellung (Wertebereich 0-100)
+		 * @param integer $power GerÃ¤te Power
+		 * @param integer $level Wert fÃ¼r Dimmer Einstellung (Wertebereich 0-100)
 		 */
 		public function SetState($power, $level) {
 			//echo "Adresse:".$this->rpcADR."\n";
@@ -100,7 +100,7 @@
 		 *
 		 * Liefert aktuellen Power Zustand des Dimmers
 		 *
-		 * @return boolean Gerätezustand On/Off des Dimmers
+		 * @return boolean GerÃ¤tezustand On/Off des Dimmers
 		 */
 		public function GetPower() {
 			return GetValue(IPS_GetVariableIDByName('LEVEL', $this->instanceId)) > 0;

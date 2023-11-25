@@ -1,4 +1,4 @@
-<?
+<?php
 
 /*
  * SNMP Objekte auslesen. eine Klasse pro Router

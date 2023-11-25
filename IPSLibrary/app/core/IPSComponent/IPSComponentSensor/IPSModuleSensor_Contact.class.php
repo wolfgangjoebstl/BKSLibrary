@@ -1,4 +1,4 @@
-<?
+<?php
 	/**@addtogroup ipscomponent
 	 * @{
 	 *
@@ -12,7 +12,7 @@
 	/**
 	 * @class IPSModuleSensor_IPSShadowing
 	 *
-	 * Definiert ein IPSModuleSensor Object, das als Wrapper für Sensoren in der IPSLibrary
+	 * Definiert ein IPSModuleSensor Object, das als Wrapper fÃ¼r Sensoren in der IPSLibrary
 	 * verwendet werden kann.
 	 *
 	 * @author Andreas Brauneis
@@ -45,7 +45,7 @@
 		/**
 		 * @public
 		 *
-		 * Ermöglicht die Synchronisation von Sensorwerten mit Modulen
+		 * ErmÃ¶glicht die Synchronisation von Sensorwerten mit Modulen
 		 *
 		 * @param string $value Sensorwert
 		 * @param IPSComponentSensor $component Sensor Komponente
@@ -57,7 +57,7 @@
 		/**
 		 * @public
 		 *
-		 * Ermöglicht das Verarbeiten eines Taster Signals
+		 * ErmÃ¶glicht das Verarbeiten eines Taster Signals
 		 *
 		 */
 		public function ExecuteButton () {

@@ -1,4 +1,4 @@
-<?
+<?php
 	/**@addtogroup ipscomponent
 	 * @{
 	 *
@@ -12,7 +12,7 @@
    /**
     * @class IPSComponentSwitch_FS20
     *
-    * Definiert ein IPSComponentSwitch_FS20 Object, das ein IPSComponentSwitch Object für FS20 implementiert.
+    * Definiert ein IPSComponentSwitch_FS20 Object, das ein IPSComponentSwitch Object fÃ¼r FS20 implementiert.
     *
     * @author Andreas Brauneis
     * @version
@@ -42,7 +42,7 @@
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
@@ -57,7 +57,7 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 * @param integer $variable ID der auslösenden Variable
+		 * @param integer $variable ID der auslÃ¶senden Variable
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleSwitch $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
@@ -70,7 +70,7 @@
 		 *
 		 * Zustand Setzen 
 		 *
-		 * @param boolean $value Wert für Schalter
+		 * @param boolean $value Wert fÃ¼r Schalter
 		 * @param integer $onTime Zeit in Sekunden nach der der Aktor automatisch ausschalten soll
 		 */
 		public function SetState($value, $onTime=false) {

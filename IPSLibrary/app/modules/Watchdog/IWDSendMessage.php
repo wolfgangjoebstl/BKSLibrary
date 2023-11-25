@@ -1,4 +1,4 @@
-<?
+<?php
 
 // Dieses Skript übermittelt Nachrichten und Befehle an IPSWatchDog
 // (c) 2011 by Andreas Pieroth

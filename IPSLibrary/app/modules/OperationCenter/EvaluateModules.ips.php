@@ -1,8 +1,9 @@
-<?
+<?php
 
+/* rausfinden welche Module instaliert sind
+ *
+ */
 
-    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-    //include_once IPS_GetKernelDir().'scripts\\IPSLibrary\\app\\core\\IPSUtils\\IPSUtils.inc.php';   
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ('IPSUtils.inc.php', 'IPSLibrary::app::core::IPSUtils');
  

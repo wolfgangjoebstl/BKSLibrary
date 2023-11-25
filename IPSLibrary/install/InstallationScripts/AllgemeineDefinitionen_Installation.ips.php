@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/**@defgroup ipstwilight IPSTwilight
 	 * @ingroup modules_weather

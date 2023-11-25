@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -217,14 +217,40 @@
 	if ($excessiveLog) echo "Custom Component Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
 
     /* check if Administrator and User Webfronts already available */
-    
+    $VisualizationID   = CreateCategoryByName(0, "Visualization",3000);       // Kategorie anlegen
+    $webfrontID        = CreateCategoryByName($VisualizationID, "WebFront");
+    $webfrontAdminID   = CreateCategoryByName($webfrontID, "Administrator");
+    $webfrontUserID    = CreateCategoryByName($webfrontID, "User");
+    $webfrontTileID    = CreateCategoryByName($webfrontID, "Tiles");
+
+
     $wfcHandling =  new WfcHandling();
     /* Workaround wenn im Webfront die Root fehlt */
     $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
-    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["Administrator"],"roottp","",0,"IP-Symcon","IPS");         // roottp im Administrator Webfront anlegen
-    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["User"],"roottp","",0,"IP-Symcon","IPS");                  // roottp im User Webfront anlegen
+    //$wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["Administrator"],"roottp","",0,"IP-Symcon","IPS");         // roottp im Administrator Webfront anlegen
+    //$wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["User"],"roottp","",0,"IP-Symcon","IPS");                  // roottp im User Webfront anlegen
+    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["Administrator"],"roottp","",$webfrontAdminID,"IP-Symcon","IPS");         // roottp im Administrator Webfront anlegen
+    $wfcHandling->CreateWFCItemRootTabPane($WebfrontConfigID["User"],"roottp","",$webfrontUserID,"IP-Symcon","IPS");                  // roottp im User Webfront anlegen
+
     /* Standard Config überprüfen */    
     $WebfrontConfigID = $wfcHandling->installWebfront();            // die beiden Webfronts anlegen und das Standard Webfront loeschen
+
+    if (isset($WebfrontConfigID["Kachel Visualisierung"]))
+        {
+        $KachelID = $WebfrontConfigID["Kachel Visualisierung"];
+        echo "Webfront Configurator \"Kachel Visualisierung\" bereits vorhanden : ".$KachelID." \n";
+        $config=json_decode(IPS_GetConfiguration($KachelID));
+        if (isset($config->BaseID))
+            {
+            $BaseID=IPS_GetProperty($KachelID, "BaseID");
+            if ($BaseID != $webfrontTileID)
+                {
+                echo "BaseID $BaseID nicht gleich $webfrontTileID \n"; 
+                IPS_SetProperty($KachelID, "BaseID", $webfrontTileID);
+                IPS_ApplyChanges($KachelID);
+                }
+            }
+        }
 
     /*******************************
     *

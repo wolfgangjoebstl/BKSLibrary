@@ -1,4 +1,4 @@
-<?
+<?php
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 

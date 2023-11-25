@@ -1,4 +1,4 @@
-<?
+<?php
 
 /***************************************************************************************
  * Dieses Skript erstellt die Alive-Datei zur Übermittlung der Alive-Meldung an IPSWatchDog per Datei

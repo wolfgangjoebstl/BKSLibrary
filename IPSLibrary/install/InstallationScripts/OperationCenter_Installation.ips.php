@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/*
      * This file is part of the IPSLibrary.
@@ -931,7 +931,8 @@
 
    /* Standardvariablen für den Betrieb von Socketstatus in TabPane Radisostatus setzen
     */  
-    $variableSocketHtmlId    = CreateVariableByName($categoryId_Sockets,"StatusCCUConnected",3, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0));      // als String, leichter lesbar
+    $variableSocketCCUHtmlId             = CreateVariableByName($categoryId_Sockets,"StatusCCUConnected",3, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0));      // als String, leichter lesbar
+    $variableSocketCCUDutyCycleHtmlId    = CreateVariableByName($categoryId_Sockets,"StatusCCUDutyCycle",3, '~HTMLBox', "", 6010, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0));      // als String, leichter lesbar
 
     /* Standardvariablen für den Betrieb von Sysping setzen 
      * Exectime
@@ -1563,11 +1564,12 @@
     echo "\n===================================================================================\n";
     echo "Webfront Installation für den SocketConnect Status in RadioStation, Tab Doctorbag:\n";
 	$resultStreamRadio=array();
-    if ($variableSocketHtmlId !== false) 
+    if ($variableSocketCCUHtmlId !== false) 
         {
         $resultStreamRadio[0]["Stream"]["Name"]="CCUSocketConnect";
-        $resultStreamRadio[0]["Stream"]["OID"]=$variableSocketHtmlId;                       // CCU Socket Status
+        $resultStreamRadio[0]["Stream"]["OID"]=$variableSocketCCUHtmlId;                       // CCU Socket Status
         $resultStreamRadio[0]["Data"]["Available"]=$HomematicErreichbarkeit;                // RSSI Level - Erreichbarkeit
+        $resultStreamRadio[0]["Data"]["DutyCycle"]=$variableSocketCCUDutyCycleHtmlId;
         $resultStreamRadio[0]["Data"]["LastUpdateTime"]=$UpdateErreichbarkeit;
         $resultStreamRadio[0]["Data"]["Refresh"]=$ExecuteRefreshID;
         $resultStreamRadio[0]["Data"]["Homematic Inventory Report"]=$HMI_ReportStatusID;
@@ -1831,14 +1833,22 @@
 			echo "Es werden im Snapshot Overview der Stream von insgesamt ".$anzahl." Live Cameras (lokal und remote) angezeigt.\n";
 
 			print_r($result);
-									
+
+
+            $ipsOps = new ipsOps();
+            $configWF=$ipsOps->configWebfront($moduleManagerCam);
+            //$ipsOps->writeConfigWebfrontAll($configWF);
+            //print_R($configWF);
+
+            installWebfrontCam($configWF["Administrator"],$OperationCenterConfig,$CategoryIdData);
+
 			/************************
 			 *
 			 * Anlegen des Capture Overviews von allen Kameras
 			 * einzelne Tabs pro Kamera mit den interessantesten Bildern der letzten Stunden oder Tage
 			 * die Daten werden aus den FTP Verzeichnissen gesammelt.
 			 *
-			 ************************/
+			 ***********************
 							
 			echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: \"".$WFC10Cam_Path."_Capture\"\n";			
 			$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path."_Capture");
@@ -1866,9 +1876,9 @@
                                 IPS_SetParent($cam_categoryId,$CategoryIdData);
                                 }
                             $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
-                            CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
+                            CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture , 'false' );
                             echo "     CreateWFCItemCategory  ($WFC10_ConfigId, Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture, false);\n";
-                            $pictureFieldID = CreateVariableByName($categoryIdCapture, "pictureField",   3 /*String*/, '~HTMLBox', "", 50);
+                            $pictureFieldID = CreateVariableByName($categoryIdCapture, "pictureField",   3 , '~HTMLBox', "", 50);
                             $box='<iframe frameborder="0" width="100%">     </iframe>';
                             SetValue($pictureFieldID,$box);
                             $found=true;
@@ -1884,7 +1894,7 @@
                             }
                         }
 					}
-				}
+				}  */
 				
 			/************************
 			 *
@@ -1892,14 +1902,14 @@
 			 * ein Tab für alle Kameras, es wird nicht der Livestream 
 			 * sondern Bilder die regelmäßig per Button aktualisiert werden müssen in einer gemeinsamen html Tabelle angezeigt
 			 *
-			 ************************/
+			 ************************
 													
 			echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: \"".$WFC10Cam_Path.".Pictures\"\n";
 			$categoryId_WebFrontPictures         = CreateCategoryPath($WFC10Cam_Path."Pictures");
 			EmptyCategory($categoryId_WebFrontPictures);				// ausleeren und neu aufbauen, die Geschichte ist gelöscht !
 			IPS_SetHidden($categoryId_WebFrontPictures, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 				
-			/* TabPaneItem anlegen und wenn vorhanden vorher loeschen */
+			// TabPaneItem anlegen und wenn vorhanden vorher loeschen 
 			$tabItem = $WFC10Cam_TabPaneItem.$WFC10Cam_TabItem."Pics";
 			if ( exists_WFCItem($WFC10_ConfigId, $WFC10Cam_TabPaneItem."Pics") )
 		 		{
@@ -1912,12 +1922,12 @@
 				}	
 			echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10Cam_TabPaneItem." in ".$WFC10Cam_TabPaneParent."\n";
 			//CreateWFCItemTabPane   ($WFC10_ConfigId,"CamPictures" ,$WFC10Cam_TabPaneItem, $WFC10Cam_TabPaneOrder, $WFC10Cam_TabPaneName, $WFC10Cam_TabPaneIcon);
-			CreateWFCItemCategory  ($WFC10_ConfigId, "CamPictures" ,$WFC10Cam_TabPaneItem,   10, 'CamPictures', $WFC10Cam_TabPaneIcon, $categoryId_WebFrontPictures   /*BaseId*/, 'false' /*BarBottomVisible*/);
-			/* im TabPane entweder eine Kategorie oder ein SplitPane und Kategorien anlegen */
-			//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem,   "CamPictures",   10, '', '', $categoryId_WebFrontPictures   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			CreateWFCItemCategory  ($WFC10_ConfigId, "CamPictures" ,$WFC10Cam_TabPaneItem,   10, 'CamPictures', $WFC10Cam_TabPaneIcon, $categoryId_WebFrontPictures   , 'false' );
+			// im TabPane entweder eine Kategorie oder ein SplitPane und Kategorien anlegen 
+			//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem,   "CamPictures",   10, '', '', $categoryId_WebFrontPictures   , 'false' );
 
 			// definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") {
-			CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontPictures,  10,"");								
+			CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontPictures,  10,"");			*/					
 
 			/************************
 			 *
@@ -2146,7 +2156,7 @@
             } // Config vollstaendig			
         }    
 
-    /* zusätzliches Webfront TabItem
+    /* zusätzliches Webfront TabItem für Radio im Status DoctorBag
      */
     function installWebfrontRadio($configWF,$resultStream, $emptyWebfrontRoot=false)
         {
@@ -2210,9 +2220,117 @@
 
             $wfcHandling->write_WebfrontConfig($configWF["ConfigId"]);
             }
-
-
         }
+
+    /* zusätzliches Webfront TabItem für IPSCam
+     */
+    function installWebfrontCam($configWF,$OperationCenterConfig,$CategoryIdData)
+        {
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["TabItem"])) && ( (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false))) )
+            {            
+			/************************
+			 *
+			 * Anlegen des Capture Overviews von allen Kameras
+			 * einzelne Tabs pro Kamera mit den interessantesten Bildern der letzten Stunden oder Tage
+			 * die Daten werden aus den FTP Verzeichnissen gesammelt.
+             *    Path      Path_Capture
+			 *
+			 ************************/
+							
+			echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: \"".$configWF["Path"]."_Capture\"\n";			
+			$categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]."_Capture");
+			EmptyCategory($categoryId_WebFrontAdministrator);
+			IPS_SetHidden($categoryId_WebFrontAdministrator, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+            //DeleteWFCItems($configWF["ConfigId"], "CamCapture");    
+
+			//CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
+			CreateWFCItemTabPane  ($configWF["ConfigId"], "CamCapture", $configWF["TabPaneItem"], ($configWF["TabOrder"]+1000), 'CamCapture', $configWF["TabIcon"]);
+			if (isset ($OperationCenterConfig['CAM']))
+				{
+				$i=0;
+				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+					{
+					$i++; $found=false;
+                    if (isset ($cam_config['FTPFOLDER']))         
+                        {
+                        if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                            {
+                            echo "  Webfront Tabname für ".$cam_name." \n";
+                            $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                            if ($cam_categoryId==false)
+                                {
+                                $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                                IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+                                IPS_SetParent($cam_categoryId,$CategoryIdData);
+                                }
+                            $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
+                            CreateWFCItemCategory  ($configWF["ConfigId"], "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $configWF["TabIcon"], $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
+                            echo "     CreateWFCItemCategory  (".$configWF["ConfigId"].", Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,  ".$configWF["TabIcon"].", $categoryIdCapture, false);\n";
+                            $pictureFieldID = CreateVariableByName($categoryIdCapture, "pictureField",   3 /*String*/, '~HTMLBox', "", 50);
+                            $box='<iframe frameborder="0" width="100%">     </iframe>';
+                            SetValue($pictureFieldID,$box);
+                            $found=true;
+                            }
+                        }
+                    if (!$found)
+                        {
+                        echo "  Webfront Tabname für ".$cam_name." wird nicht mehr benötigt, loeschen.\n";
+                        $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                        if ($cam_categoryId !== false)
+                            {
+                            DeleteWFCItems($configWF["ConfigId"], "Cam_".$cam_name);    
+                            }
+                        }
+					}
+				}
+
+
+			/************************
+			 *
+			 * Anlegen des Picture Overviews von allen Kameras
+			 * ein Tab für alle Kameras, es wird nicht der Livestream 
+			 * sondern Bilder die regelmäßig per Button aktualisiert werden müssen in einer gemeinsamen html Tabelle angezeigt
+			 *
+			 ************************/
+
+            echo "\n"; 
+            echo "=====================================================================================\n"; 
+            echo "Modul WebCamera/IPSCam installiert. Im Verzeichnis Data die Variablen für Übersichtsdarstellungen Pics und Movies anlegen:\n"; 
+            $CategoryIdDataOverview=CreateCategory("Cams",$CategoryIdData,2000,"");
+            echo $CategoryIdDataOverview."  ".IPS_GetName($CategoryIdDataOverview)."/".IPS_GetName(IPS_GetParent($CategoryIdDataOverview))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview))))."\n";
+            $CamTablePictureID  = CreateVariableByName($CategoryIdDataOverview,"CamTablePicture", 3, "~HTMLBox");
+            $CamMobilePictureID = CreateVariableByName($CategoryIdDataOverview,"CamMobilePicture",3, "~HTMLBox");
+            $CamTableMovieID    = CreateVariableByName($CategoryIdDataOverview,"CamTableMovie",   3, "~HTMLBox");
+
+			echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: \"".$configWF["Path"]."Pictures\"\n";
+			$categoryId_WebFrontPictures         = CreateCategoryPath($configWF["Path"]."Pictures");
+			EmptyCategory($categoryId_WebFrontPictures);				// ausleeren und neu aufbauen, die Geschichte ist gelöscht !
+			IPS_SetHidden($categoryId_WebFrontPictures, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+				
+			/* TabPaneItem anlegen und wenn vorhanden vorher loeschen */
+			$tabItem = $configWF["TabPaneItem"].$configWF["TabItem"]."Pics";
+			if ( exists_WFCItem($configWF["ConfigId"], $configWF["TabPaneItem"]."Pics") )
+		 		{
+				echo "Webfront ".$configWF["ConfigId"]." (".IPS_GetName($configWF["ConfigId"]).")  löscht TabItem : ".$configWF["TabPaneItem"].".Pics\n";
+				DeleteWFCItems($configWF["ConfigId"], $configWF["TabPaneItem"]."Pics");
+				}
+			else
+				{
+				echo "Webfront ".$configWF["ConfigId"]." (".IPS_GetName($configWF["ConfigId"]).")  TabItem : ".$configWF["TabPaneItem"].".Pics nicht mehr vorhanden.\n";
+				}	
+			echo "Webfront ".$configWF["ConfigId"]." erzeugt TabItem :".$configWF["TabPaneItem"]." in ".$configWF["TabPaneParent"]."\n";
+			//CreateWFCItemTabPane   ($WFC10_ConfigId,"CamPictures" ,$WFC10Cam_TabPaneItem, $WFC10Cam_TabPaneOrder, $WFC10Cam_TabPaneName, $WFC10Cam_TabPaneIcon);
+			CreateWFCItemCategory  ($configWF["ConfigId"], "CamPictures" ,$configWF["TabPaneItem"],   10, 'CamPictures', $configWF["TabPaneIcon"], $categoryId_WebFrontPictures   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			/* im TabPane entweder eine Kategorie oder ein SplitPane und Kategorien anlegen */
+			//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem,   "CamPictures",   10, '', '', $categoryId_WebFrontPictures   /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+			// definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") {
+			CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontPictures,  10,"");	
+
+            }
+        else echo "configWF not fully declared as input :".(isset($configWF["Path"]))."+".(isset($configWF["TabPaneItem"]))."+".(isset($configWF["TabItem"]))."+".((isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)))."\n";
+        }
+
 
     /* Create HomaticModule Instance with Name Address, Channel, Protocol
      * Teil des Aufrufs bei dem Homematic RSSI Variablen für stromversorgte Homematic Devices angelegt werden

@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/*
 	 * This file is part of the IPSLibrary.
@@ -33,6 +33,10 @@
  * OperationCenter
  *      BackupIpsymcon          extend OperationCenter
  *      LogFileHandler          extend OperationCenter
+ *      SeleniumChromedriver    extend OperationCenter
+ *      HomematicOperation      extend OperationCenter
+ *      PingOperation           extend OperationCenter
+ *
  * DeviceManagement
  * statusDisplay
  * parsefile
@@ -46,28 +50,33 @@
 
 /***************************************************************************************************************
  *
- * Routinen für Klasse  OperationCenter
+ * Routinen für Klasse  OperationCenter, nachtraeglich aufgeteilt auf child classes
+ * Übersicht über enthaltene Funktionen
+ *      __construct
+ *      setSetup
+ *      getSetup
+ *      setConfiguration
+ *      getConfiguration
+ *      getCAMConfiguration, getLEDConfiguration, getINTERNETConfiguration, getROUTERConfiguration, getDENONConfiguration
+ *
  *
  * Herausfinden der eigenen externen und lokalen IP Adresse
  *   whatismyIPaddress1   verwendet http://whatismyipaddress.com/
  *   whatismyIPaddress2
  *   ownIPaddress
  *
- * sys device ping IP Adresse von LED Modul oder DENON Receiver
- * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
- * Erreichbarkeit der Remote Server zum Loggen
- *
- *   device_ping  
- *   server_ping
- *   writeServerPingResults
- *
- *   SysPingAllDevices
- *   writeSysPingResults
  *
  * systeminfo 			systeminfo vom PC auslesen und lokal die relevanten Daten speichern
  * readSystemInfo		die lokalen Daten als text ausgeben
  *
- * device_checkReboot	wenn device_ping zu oft gescheitert ist
+ * sys device ping IP Adresse von LED Modul oder DENON Receiver
+ * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
+ * Erreichbarkeit der Remote Server zum Loggen
+ *
+ *      device_ping  
+ *      server_ping
+ *      writeServerPingResults
+ *      device_checkReboot	wenn device_ping zu oft gescheitert ist
  *
  * create_macipTable 	Verwalten einer MAC-IP Tabelle
  * get_macipTable
@@ -109,6 +118,7 @@
 
 class OperationCenter
 	{
+    static $hourPassed,$fourHourPassed;
 
     protected $dosOps,$sysOps;                        // verwendete andere Klassen 
     protected $ipsTables;                   // verwendete andere Klassen
@@ -183,20 +193,12 @@ class OperationCenter
 		$this->oc_Setup = $this->setSetUp();
         //if ($debug) { echo "OperationCenter Konfigurationen: \n"; print_R($this->oc_Configuration); print_R($this->oc_Setup); }
 
-        if (isset($this->installedModules["IPSCam"]))
-            {
-            /* wird zB von copyCamSnapshot verwendet */
-    		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-	    	$this->moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);            
-            }
-        else $this->moduleManagerCam=false;
-
 		$this->AllHostnames = LogAlles_Hostnames();
 		}
 		
     /****************************************************************************************************************/
 
-    /* Setup Konfiguration schreiben
+    /* OperationCenter::Setup Konfiguration schreiben
      * dazu OperationCenter_SetUp() aus dem Config File OperationCenter_Configuration.inc.php einlesen
      *
      *
@@ -284,7 +286,10 @@ class OperationCenter
         //$this->oc_Setup = $config;       
         return ($config);
         }
-
+    
+    /* OperationCenter::getSetup
+     * Setup Config abfragen
+     */
     public function getSetup()
         {
         return ($this->oc_Setup);
@@ -922,56 +927,34 @@ class OperationCenter
 		return($result);	
 		}
 
-	/*************************************************************************************************************
-	 *
-	 * function SysPingAllDevices
-	 *
-	 * Pingen von IP Geräten, Timer wird alle 5 Minuten aufgerufen, aber im Normalfall nur alle 60 Minuten ausgeführt
+    /* set SysPingCount for Debug Prúrposes
      *
-     * Die Geräte sind aufgelistet im Konfigurationsfile:
-	 *
-	 * CAM config file, ping mit sysping
-	 *
-	 * LED config File, ping mit device_ping
-	 *
-	 * Denon
-	 *
-	 * Router, ping mit device_ping (echtes sys_ping aus IP Symcon Funktionsliste)
-	 *				OperationCenterConfig['ROUTER']
-	 *
-	 * Wunderground
-	 *
-	 * localAccess Server, wie für die Remote Abfrage, den lokalen Wert setzen
-	 *
-	 * RemoteAccess Server, rpc call ping mit function server_ping
-	 *	Aufruf von function server_ping()
-	 *				RemoteAccess_Configuration.inc.php : RemoteAccess_GetServerConfig() wenn set to Active
-	 *				
-	 *
-	 *
-	 *
-	 * in Data/OperationCenter/Sysping/ pro Gerät ein Status angelegt
-	 * in Data/OperationCenter/RebootCounter/ pro Gerät ein Reboot Request Counter angelegt
-	 *
-	 ********************************************************************************************************************/
-
-	function SysPingAllDevices($log_OperationCenter, $debug=false)
-		{
-		echo "Sysping All Devices. Subnet : ".$this->subnet."\n";
-
-		$OperationCenterConfig = $this->oc_Configuration;
-		//print_r($OperationCenterConfig);
-        if (isset($_IPS['EVENT'])) $ipsEvent="TimerEvent from :".$_IPS['EVENT']." ";
-        else $ipsEvent="";
-
+     */
+     public function setSysPingCount($SysPingCount)
+        {
         $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$this->categoryId_SysPing);
-        $categoryId_Sockets        = @IPS_GetObjectIdByName("SocketStatus",$categoryId_SysPing);
-		
+        if ($categoryId_SysPingControl===false) return (false);
+        $SysPingCountID = IPS_GetObjectIDByName("SysPingCount",$categoryId_SysPingControl); /* count 0f 5 Mins */
+        SetValue($SysPingCountID,$SysPingCount);
+        }
+
+    /* count 5 Minutes
+     *
+     */
+    public function count5mins($debug=false)
+        {
+        $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$this->categoryId_SysPing);
+        if ($categoryId_SysPingControl===false) return (false);
+
 		$SysPingStatusID = IPS_GetObjectIDByName("SysPingExectime",$categoryId_SysPingControl); /* exec time zum besseren Überwachen der Funktion */
 		SetValue($SysPingStatusID,time());
-        $hourPassed=false; $fourHourPassed=false;
-        if ($debug) { $hourPassed=true; $fourHourPassed=true; }
-        $SysPingCountID = IPS_GetObjectIDByName("SysPingCount",$categoryId_SysPingControl); /* exec time zum besseren Überwachen der Funktion */
+        self::$hourPassed=false; self::$fourHourPassed=false;
+        if ($debug) 
+            { 
+            self::$hourPassed=true; 
+            self::$fourHourPassed=true; 
+            }
+        $SysPingCountID = IPS_GetObjectIDByName("SysPingCount",$categoryId_SysPingControl); /* count 0f 5 Mins */
         $SysPingCount   = GetValue($SysPingCountID);
         $SysPingCount++;
         if (($SysPingCount%12)==0)                           // alle 60 Minuten, 0,1,2,3,4,5,6,7,8,9,10,
@@ -979,631 +962,38 @@ class OperationCenter
             if ($SysPingCount>=48) 
                 {
                 $SysPingCount=0;
-                $fourHourPassed=true;
-       			if ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices every four hour.");
+                self::$fourHourPassed=true;
+       			if ($debug==false) IPSLogger_Inf(__file__, "SysPingAllDevices every four hour.");
                 }
-   			elseif ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices every hour.");
-            $hourPassed=true;
+   			elseif ($debug==false) IPSLogger_Inf(__file__, "SysPingAllDevices every hour.");
+            self::$hourPassed=true;
             }
-        //elseif ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices: $SysPingCount every 5 Minutes");
+        if ($debug) 
+            {
+            echo "count5min, $SysPingStatusID is actual time of execution. $SysPingCountID is actual count : $SysPingCount . Hour passed: ". self::$hourPassed." Four Hours passed : ".self::$fourHourPassed."\n";
+            }
         SetValue($SysPingCountID,$SysPingCount);
-
-        $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
-        $SysPingActivityTableID = @IPS_GetObjectIDByName("SysPingActivityTable",$categoryId_SysPingControl); 
-        $SysPingResult=array();
-
-        if ($categoryId_Sockets && $hourPassed)
-            {
-            $variableSocketHtmlId=IPS_GetObjectIdByName("StatusCCUConnected",$categoryId_Sockets );
-
-            $socketHtml = $this->sysStatusSockets($log_OperationCenter, $debug);
-            SetValue($variableSocketHtmlId,$socketHtml);
-            }
-
-		/************************************************************************************
-		 * Erreichbarkeit IPCams
-		 *************************************************************************************/
-		 
-		if ( (isset ($this->installedModules["IPSCam"])) && $hourPassed )
-			{
-            $this->syspingCams($OperationCenterConfig['CAM'],$log_OperationCenter, $debug);    
-   			/*
-            //IPSLogger_Inf(__file__, "SysPingAllDevices: Check the Cams.");
-			$mactable=$this->get_macipTable($this->subnet);
-			//print_r($mactable);
-			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
-				{
-                if ( (isset($cam_config['IPADRESSE']) ) || (isset($cam_config['MAC'])) )
-                    {
-                   // echo "IPADRESSE oder MAC Adresse sollte bekannt sein.\n";
-                    $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); // 0 Boolean 1 Integer 2 Float 3 String 
-                    $ipadresse=""; $macadresse="";
-                    if (isset($cam_config['IPADRESSE'])) $ipadresse=$cam_config['IPADRESSE'];
-                    if (isset($mactable[$cam_config['MAC']])) 
-                        {
-                        $macadresse=$cam_config['MAC'];
-                        if ($ipadresse == "") $ipadresse=$mactable[$macadresse];
-                        elseif ($ipadresse != $mactable[$macadresse]) echo "Kenn mich nicht aus, zwei unterschiedliche IP Adressen.\n";
-                        }
-                    if ($ipadresse != "")
-                        {    
-                        echo str_pad("Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse $ipadresse",110);
-                        if ($macadresse != "") echo " vs ".$mactable[$cam_config['MAC']]."    ";
-                        else echo "                  ";
-                        $status=Sys_Ping($ipadresse,1000);
-                        $SysPingResult[IPS_getName($CamStatusID)]=$status;
-                        if ($status)
-                            {
-                            echo "--->  Kamera wird erreicht.\n";
-                            if (GetValue($CamStatusID)==false)
-                                {  // Statusänderung 
-                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-                                SetValue($CamStatusID,true);
-                                }
-                            }
-                        else
-                            {
-                            echo "---> Kamera wird NICHT erreicht   !\n";
-                            if (GetValue($CamStatusID)==true)
-                                {  // Statusänderung 
-                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-                                SetValue($CamStatusID,false);
-                                }
-                            }
-                        }
-                    else  // mac adresse nicht bekannt 
-                        {
-                        echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
-                        }
-                    }   // nur die Einträge in der Konfiguration, bei denen es auch eine MAC Adresse gibt bearbeiten
-				} // Ende foreach 
-                */
-			}
-
-		/************************************************************************************
-		 * Erreichbarkeit LED Ansteuerungs WLAN Geräte
-		 *************************************************************************************/
-		if ( (isset ($this->installedModules["LedAnsteuerung"])) && $hourPassed )
-			{
-			//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
-            IPSUtils_Include ("LedAnsteuerung_Configuration.inc.php","IPSLibrary::config::modules::LedAnsteuerung");
-			$device_config=LedAnsteuerung_Config();
-			$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
-			$SysPingResult += $this->device_ping($device_config, $device, $identifier, $hourPassed, $debug);                  // debug setzt weiter oben auch hourspassed
-			$this->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier, $debug);
-			}
-
-		/************************************************************************************
-		 * Erreichbarkeit Denon Receiver
-		 *************************************************************************************/
-		if ( (isset ($this->installedModules["DENONsteuerung"])) && $hourPassed )
-			{
-			//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
-            IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");            
-			$device_config=Denon_Configuration();
-			$deviceConfig=array();
-			foreach ($device_config as $name => $config)
-				{
-				if ( $name != "Netplayer" ) { $deviceConfig[$name]=$config; }
-				if ( isset ($config["TYPE"]) ) { if ( strtoupper($config["TYPE"]) == "DENON" ) $deviceConfig[$name]=$config; }
-				}
-			$device="DENON"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-			$SysPingResult += $this->device_ping($deviceConfig, $device, $identifier, $hourPassed, $debug);
-			$this->device_checkReboot($OperationCenterConfig['DENON'], $device, $identifier, $debug);
-			}
-
-        if (isset($OperationCenterConfig['INTERNET'])) 
-            {
-            /************************************************************************************
-            * Erreichbarkeit Internet, alle 5 Minuten aufrufen, Routine ignoriert selbst wenn nur jede Stunde notwendig
-            *************************************************************************************/
-            $device="Internet"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-            $SysPingResult += $this->device_ping($OperationCenterConfig['INTERNET'], $device, $identifier, $hourPassed, $debug);
-            $this->device_checkReboot($OperationCenterConfig['INTERNET'], $device, $identifier, $debug);
-            }
-
-        if ( $hourPassed )
-            {
-            /************************************************************************************
-            * Erreichbarkeit Router
-            *************************************************************************************/
-            $device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-            $SysPingResult += $this->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier, $hourPassed, $debug);
-            $this->device_checkReboot($OperationCenterConfig['ROUTER'], $device, $identifier, $debug);
-            
-            /********************************************************
-                Sys Uptime lokaler Server ermitteln
-            **********************************************************/
-
-            echo "\nSind die LocalAccess Server erreichbar ....\n";
-
-            $Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$this->CategoryIdData);
-            if ($Access_categoryId==false)
-                {
-                $Access_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-                IPS_SetName($Access_categoryId, "AccessServer"); // Kategorie benennen
-                IPS_SetParent($Access_categoryId,$this->CategoryIdData);
-                }
-            $IPS_UpTimeID = CreateVariableByName($Access_categoryId, IPS_GetName(0)."_IPS_UpTime", 1);
-            IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
-            SetValue($IPS_UpTimeID,IPS_GetKernelStartTime());
-            echo "   Server : ".IPS_GetName(0)." zuletzt rebootet am: ".date("d.m H:i:s",GetValue($IPS_UpTimeID)).".\n";
-
-            }
-
-		/************************************************************************************
-		 * Überprüfen ob Wunderground noch funktioniert.
-		 *************************************************************************************/
-		if ( (isset ($this->installedModules["IPSWeatherForcastAT"])) && $hourPassed )
-			{
-			echo "\nWunderground API überprüfen.\n";
-			IPSUtils_Include ("IPSWeatherForcastAT_Constants.inc.php",     "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
-			IPSUtils_Include ("IPSWeatherForcastAT_Configuration.inc.php", "IPSLibrary::config::modules::Weather::IPSWeatherForcastAT");
-			IPSUtils_Include ("IPSWeatherForcastAT_Utils.inc.php",         "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
-			$urlWunderground      = 'http://api.wunderground.com/api/'.IPSWEATHERFAT_WUNDERGROUND_KEY.'/forecast/lang:DL/q/'.IPSWEATHERFAT_WUNDERGROUND_COUNTRY.'/'.IPSWEATHERFAT_WUNDERGROUND_TOWN.'.xml';
-			IPSLogger_Trc(__file__, 'Load Weather Data from Wunderground, URL='.$urlWunderground);
-			$urlContent = @Sys_GetURLContent($urlWunderground);
-			$ServerStatusID = CreateVariableByName($this->categoryId_SysPing, "Server_Wunderground", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			if ($urlContent===false)
-				{
-				echo "Wunderground Key ist defekt oder überlastet.\n";
-				if (GetValue($ServerStatusID)==true)
-					{  /* Statusänderung */
-					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
-					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
-					SetValue($ServerStatusID,false);
-					}
-				}
-			else
-				{
-				echo "  -> APP ist okay !.\n";
-				if (GetValue($ServerStatusID)==false)
-					{  /* Statusänderung */
-					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
-					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
-					SetValue($ServerStatusID,true);
-					}
-				}
-			$api = @simplexml_load_string($urlContent);
-			//print_r($api);
-			}
-
-		/********************************************************
-		Die entfernten logserver auf Erreichbarkeit prüfen
-		**********************************************************/
-
-		if ( (isset ($this->installedModules["RemoteAccess"])) )            // alle 5 Minuten überprüfen um die Anzahl der Fehlermeldungen zu reduzieren
-			{
-			echo "\nSind die RemoteAccess Server erreichbar ....\n";
-			$result=$this->server_ping();
-			}
-        $this->writeSysPingStatistics($this->categoryId_SysPing,$debug);
-        if ($fourHourPassed)
-            {
-            echo "\n\n";
-            echo "Zusammenfassung SyspingAllDevices als Activity Table:\n";
-            $actual=false;
-            $html=$this->writeSysPingActivity($actual, true, $debug);
-            echo $this->writeSysPingActivity($actual, false, false);
-            SetValue($SysPingActivityTableID,$html);                
-            }            
-        return($SysPingResult);
-		}
-
-    /* Routinen von Syspingalldevices übersichtlicher machen
-     */
-    public function syspingCams($config, $log_OperationCenter, $debug=false)
-        {
-        if ($debug) echo "syspingCams aufgerufen, Sys_ping Kamera :\n";
-        $mactable=$this->get_macipTable($this->subnet);            
-        foreach ($config as $cam_name => $cam_config)
-            {
-            if ( (isset($cam_config['IPADRESSE']) ) || (isset($cam_config['MAC'])) )
-                {
-                if (! ( (isset($cam_config["STATUS"])) && (strtoupper($cam_config["STATUS"])!="ENABLED") ) )            
-                    {
-                    // echo "IPADRESSE oder MAC Adresse sollte bekannt sein.\n";
-                    $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-                    $ipadresse=""; $macadresse="";
-                    if (isset($cam_config['IPADRESSE'])) $ipadresse=$cam_config['IPADRESSE'];
-                    if (isset($mactable[$cam_config['MAC']])) 
-                        {
-                        $macadresse=$cam_config['MAC'];
-                        if ($ipadresse == "") $ipadresse=$mactable[$macadresse];
-                        elseif ($ipadresse != $mactable[$macadresse]) echo "Mactable check, kenn mich nicht aus, zwei unterschiedliche IP Adressen.\n";
-                        }
-                    if ($ipadresse != "")
-                        {    
-                        if ($debug) echo str_pad("    ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse $ipadresse",110);
-                        if ($macadresse != "") echo " vs ".$mactable[$cam_config['MAC']]."    ";
-                        else echo "                  ";
-                        $status=Sys_Ping($ipadresse,1000);
-                        $SysPingResult[IPS_getName($CamStatusID)]=$status;
-                        if ($status)
-                            {
-                            echo "--->  Kamera wird erreicht.\n";
-                            if (GetValue($CamStatusID)==false)
-                                {  /* Statusänderung */
-                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-                                SetValue($CamStatusID,true);
-                                }
-                            }
-                        else
-                            {
-                            echo "---> Kamera wird NICHT erreicht   !\n";
-                            if (GetValue($CamStatusID)==true)
-                                {  /* Statusänderung */
-                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-                                SetValue($CamStatusID,false);
-                                }
-                            }
-                        }
-                    else  /* mac adresse nicht bekannt */
-                        {
-                        echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
-                        }
-                    }   
-                else echo "    ".$cam_name." wurde deaktiviert, nicht abfragen.\n";
-                }   // nur die Einträge in der Konfiguration, bei denen es auch eine MAC Adresse gibt bearbeiten
-            
-            } /* Ende foreach */
-        if ($debug) echo "Kameras wurden abgefragt.\n";
-        return($SysPingResult);
         }
-
-    /* Routinen von Syspingalldevices übersichtlicher machen, hier ockets Homematic analysieren und ein html machen
-     */
-    public function sysStatusSockets($log_OperationCenter, $debug=false)
-        {
-        if ($debug) echo "sysStatusSockets aufgerufen, alle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
-        $socketHtml="";
-        $categoryId_Sockets = @IPS_GetObjectIDByName("SocketStatus",$this->categoryId_SysPing);
-        if ($categoryId_Sockets)
-            {
-            $modulhandling = new ModuleHandling();
-
-            $discovery = $modulhandling->getDiscovery();
-            $topologyLibrary = new TopologyLibraryManagement();                     // in EvaluateHardware Library, neue Form des Topology Managements
-            $socket=array();
-            $socket = $topologyLibrary->get_SocketList($discovery);
-            //print_r($socket);
-            $socketHtml .= "<table>";
-            foreach ($socket as $modul => $module) 
-                {
-                switch ($modul)
-                    {
-                    case "Homematic":
-                        $socketHtml .=  '<tr><th>'.$modul." CCU Status".'</th><th>OID</th><th>Status</th><th>last changed</th></tr>';
-                        // Homematic CCU I/O Sockets, die gehen auf fail=false wenn es Probleme gibt
-                        foreach ($module as $name => $entry) 
-                            {
-                            $status=(IPS_GetProperty($entry["OID"], "Open")?"active":"failure");
-                            $variableId=CreateVariableByName($categoryId_Sockets,$name."_"."Connected",3);      // als String, leichter lesbar
-                            SetValue($variableId,$status);
-                            $changed = date("H:i:s d.m.Y",IPS_GetVariable($variableId)["VariableChanged"]);
-                            $socketHtml .=  '<tr><td>'.$name.'</td><td>'.$entry["OID"].'</td><td>';
-                            $socketHtml .=  $status.'</td><td>'.$changed.'</td></tr>'; //Ist die I/O Instanz aktiv?
-
-                            }
-                        break;
-                    }
-                }
-            $socketHtml .= "</table>";
-            }
-        return ($socketHtml);
-        }
-
-	/*************************************************************************************************************
-	 *
-	 * writeSysPingStatistics() als html Tabelle die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
-	 *
-	 * es werden die Dateneintraege analysiert und ausgegeben
-	 *   Erreichbarkeit IPCams
-	 *	 writeServerPingResults()
-     *   etc.
+    
+    /* count 5 Minutes Status, no irregular debug activation
      *
-	 *
-	 *
-	 **************************************************************************************************************/
+     */
+    public function count5minsStatus()
+        {
+        $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$this->categoryId_SysPing);
+        if ($categoryId_SysPingControl===false) return (false);
+        
+		$SysPingStatusID = IPS_GetObjectIDByName("SysPingExectime",$categoryId_SysPingControl); 
+        $SysPingCountID  = IPS_GetObjectIDByName("SysPingCount",$categoryId_SysPingControl); 
+        $SysPingCount    = GetValue($SysPingCountID);
+        if (($SysPingCount%12)==0) self::$hourPassed=true;
+        if ($SysPingCount==0)      self::$fourHourPassed=true;
 
-	function writeSysPingStatistics($categoryId_SysPing=0,$debug=false)
-		{
-        if ($debug) echo "writeSysPingStatistics aufgerufen für Darstellung der Erreichbarkeit der IP fähigen Geräte:\n";
-        if ($categoryId_SysPing==0) $categoryId_SysPing=$this->categoryId_SysPing;        
-        $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$categoryId_SysPing);
-        $SysPingTableID            = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
-        $SysPingSortTableID        = @IPS_GetObjectIDByName("SortPingTable",$categoryId_SysPingControl);
-
-        if ($SysPingTableID !== false)
-            {
-            $ipsOps = new ipsOps();
-            $sysPing=array();
-
-            $PrintHtml="";
-            $PrintHtml.='<style>'; 
-            $PrintHtml.='.sturdy table,td {align:center;border:1px solid white;border-collapse:collapse;}';
-            $PrintHtml.='.sturdy table    {table-layout: fixed; width: 100%; }';
-            $PrintHtml.='.sturdy td:nth-child(1) { width: 70%; }';
-            $PrintHtml.='.sturdy td:nth-child(2) { width: 10%; }';
-            $PrintHtml.='.sturdy td:nth-child(3) { width: 20%; }';
-            $PrintHtml.='</style>';        
-            $PrintHtml.='<table class="sturdy"><tr><td>Name</td><td>State</td><td>Since</td></tr>';
-
-            $childrens = IPS_GetChildrenIds($categoryId_SysPing);           // alle Status Variablen
-            foreach ($childrens as $children)
-                {
-                $varname=IPS_GetName($children);
-                switch ($varname)
-                    {
-                    case "SysPingTable":                                // ignore known entries that are not relevant for statistics
-                    case "SysPingActivityTable":
-                    case "SysPingExectime":
-                    case "SysPingCount":
-                    case "SysPingControl":                
-                        break;    
-                    default:
-                        if ($debug) 
-                            {
-                            echo "   ".str_pad($varname,40)."    ";
-                            if (isset($result[$varname])) echo "*";
-                            else echo " ";
-                            }
-                        $timeChanged=IPS_GetVariable($children)["VariableChanged"];
-                        $time=date("d.m.Y H:i:s",$timeChanged);
-                        $timeDelay=(time()-IPS_GetVariable($children)["VariableChanged"]);
-                        if ($debug) echo "     ".str_pad((GetValue($children)?"Ja":"Nein"),10)."$time  ".str_pad(nf($timeDelay,"s"),12);
-                        if ($timeChanged==0) 
-                            {
-                            if ($debug) echo "   --> delete\n";
-                            IPS_DeleteVariable($children);
-                            } 
-                        else 
-                            {
-                            if ($debug) echo "    \n";
-                            $sysPing[$varname]["VarName"]=$varname;
-                            $sysPing[$varname]["Status"]=GetValue($children);
-                            $sysPing[$varname]["Delay"]=$timeDelay;
-                            //$PrintHtml.='<tr><td>'.$varname.'</td><td>'.(GetValue($children)?"Ja":"Nein")."</td><td>".nf($timeDelay,"s")."</td></tr>";    
-                            }
-                        break;
-                    }
-                }
-
-            if ($SysPingSortTableID !== false)
-                {
-                switch (GetValueIfFormatted($SysPingSortTableID))
-                    {
-                    case "Name":
-                        $sortTable="VarName";
-                        break;
-                    case "State":
-                        $sortTable="Status";
-                        break;
-                    case "Since":
-                        $sortTable="Delay";
-                        break;
-                    default:
-                        echo "not known.";
-                        $sortTable="VarName";                        
-                        break;
-                    }
-                }
-            else $sortTable="VarName";
-            //echo "Lookup Sort $SysPingSortTableID : ".GetValueIfFormatted($SysPingSortTableID)." => $sortTable   ";
-            $ipsOps->intelliSort($sysPing,$sortTable);
-            //$ipsOps->intelliSort($sysPing,"Delay");
-            foreach ($sysPing as $entry)
-                {
-                $PrintHtml.='<tr><td>'.$entry["VarName"].'</td><td>'.($entry["Status"]?"Ja":"Nein")."</td><td>".nf($entry["Delay"],"s")."</td></tr>";    
-                }
-            $PrintHtml.='<tr><td align="right" colspan="3"><font size="-1">last update on '.date("d.m.Y H:i:s").'</font></td></tr>';    
-            $PrintHtml.='</table>';    
-            SetValue($SysPingTableID,$PrintHtml);
-            return($PrintHtml);
-            }
-        else return (false);
+        echo "count5min, $SysPingStatusID is actual time of execution. $SysPingCountID is actual count : $SysPingCount .\n"; 
+        echo "Hour passed: ".(self::$hourPassed?"Yes":"No")." Four Hours passed : ".(self::$fourHourPassed?"Yes":"No")."\n";
+		echo "last time executed : ".date("d.m.Y H:i:s",GetValue($SysPingStatusID))."\n";
+        return (["Count"=>$SysPingCount,1=>self::$hourPassed,4=>self::$fourHourPassed]);
         }
-
-	/*************************************************************************************************************
-	 *
-	 * writeSysPingActivity() , in Textform die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
-	 *
-	 * es werden die Dateneintraege analysiert und ausgegeben
-	 *   Erreichbarkeit IPCams
-	 *	 writeServerPingResults()
-     *
-     * Parameter actual wird nur bei den IPSCams verwendet
-	 *
-	 *
-	 **************************************************************************************************************/
-
-	function writeSysPingActivity($actual=true, $html=false, $debug=false)
-		{
-		$result=""; 
-        //$eDebug=$debug;
-        $eDebug=false;
-
-		$OperationCenterConfig = $this->oc_Configuration;
-		//print_r($OperationCenterConfig);
-		
-        //$SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$this->categoryId_SysPing);
-        //$SysPingActivityTableID = @IPS_GetObjectIDByName("SysPingActivityTable",$this->categoryId_SysPing);        
-
-		/************************************************************************************
-		 * Erreichbarkeit IPCams
-		 *************************************************************************************/
-		$result .= "Erreichbarkeit der IPCams:\n\n";
-		 
-		if (isset ($this->installedModules["IPSCam"]))
-			{
-			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
-				{
-                $CamStatusID = @IPS_GetObjectIDByName( "Cam_".$cam_name,$this->categoryId_SysPing);
-				if ($CamStatusID==false) $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-				if ( GetValue($CamStatusID)==true )
-					{
-					$result .= str_pad($cam_name,30)."erreichbar\n";
-					}
-				else
-					{
-					$result .= str_pad($cam_name,30)."abwesend\n";
-					}
-				if ( (AC_GetLoggingStatus($this->archiveHandlerID,$CamStatusID)) && ($actual==false) )
-		   			{
-					/* schauen ob sich etwas in der Vergangenheit getan hat */
-					//echo "Loggingstatus aktiv.\n";
-        			$werte = AC_GetLoggedValues($this->archiveHandlerID,$CamStatusID, time()-30*24*60*60, time(),1000);
-					//print_r($werte);
-					}
-				} /* Ende foreach */
-			}
-
-		$result .= "\nAusfallsstatistik der konfigurierten Geraete:\n\n";			
-		$childrens=$this->getLoggedValues($this->categoryId_SysPing);
-		if ($debug) echo "Sysping Statusdaten liegen in der Kategorie SysPing unter der OID: ".$this->categoryId_SysPing." \n";
-		$result1=array();
-		foreach($childrens as $oid)
-			{
-			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))          // sollten schon ausgefiltert sein, sicherheitshalber
-		   		{
-        		$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
-		   		//print_r($werte);
-				$status=getValue($oid); $first=true; $timeok=time(); 
-                $max=0; $count=0;   // keine Ausgabe der gespeicherte Log EIntraege wenn $max kleiner gleich 1 ist
-                $offTime=0; $onTime=0;
-                $maxend=time()-(30*24*60*60);
-                $size=sizeof($werte);
-		   		if ($debug) echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen (bis ".date("d.m. H:i:s",$maxend).") $size Werte. Aktueller Status Available:".($status?"Yes":"No")."\n";
-                if ($size==0)
-                    {
-                    $lastWert=$status;
-                    $lastTime=time();
-                    }
-		   		foreach ($werte as $wert)
-		   	   		{
-                    if ($count++ < $max) print_r($wert);            // Debugausgabe von Werten zur Orientierung
-                    $dauer=$this->Dauer($timeok,$wert["TimeStamp"],$maxend);
-                    if ($status!==$wert["Value"])
-						{
-						if ($first==true)
-							{
-                            echo "             ******************* Aenderung erster Eintrag im Logging zum aktuellem Status - Passen nicht zusammen..\n";
-                            If ($wert["Value"]==true) $onTime += $dauer; 
-                            If ($wert["Value"]==false) $offTime += $dauer;
-                            if ( $debug && $eDebug)
-                                {
-                                echo "       !! Wert im Logging noch nicht aktualisiert.\n";
-                                If ($wert["Value"]==true) echo "         Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
-                                If ($wert["Value"]==false) echo "        Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
-                                echo " Unverändert seit ".((time()-$wert["TimeStamp"])/60)." Minuten.\n";
-                                }
-							$first=false;
-							}
-						else
-							{
-                            /* hier ist die Routine eigentlich immer */
-							If ($wert["Value"]==true) 
-								{
-                                $onTime += $dauer;
-								if ($debug && $eDebug) echo "        Wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer online ".number_format($dauer,2)." Minuten. ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
-								}
-							If ($wert["Value"]==false) 
-								{
-                                $offTime += $dauer;
-								if ($debug && $eDebug) echo "      Ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer offline ".number_format($dauer,2)." Minuten.  ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
-								if ($dauer>100)	$result .= "          Ausfall länger als 100 Minuten am ".date("D d.m H:i:s",$wert["TimeStamp"])." fuer ".number_format($dauer,2)." Minuten.\n";
-								}
-                            //echo "  Check : ".$this->MinOrHoursOrDays($onTime+$offTime)."  und  ".$this->MinOrHoursOrDays((time()-$wert["TimeStamp"])/60)."   \n";
-							}	
-						$status=$wert["Value"];
-						}
-					else
-						{
-						if ($first==true)
-							{
-    						//echo "            *********************** keine Aenderung, erster Eintrag im Logfile, so sollte es sein.\n";
-                            $dauer=$this->Dauer(time(),$wert["TimeStamp"],$maxend);
-							If ($wert["Value"]==true) 
-								{
-                                $onTime += $dauer;                                    
-								if ($debug && $eDebug) echo "       Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
-								$result .= IPS_GetName($oid).": Verbindung zuletzt wiederhergestellt am ".date("D d.m H:i:s",$wert["TimeStamp"])."\n";
-								}
-							If ($wert["Value"]==false) 
-                                {
-                                $offTime += $dauer;
-                                if ($debug && $eDebug) echo "       Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
-                                }
-                            if ($debug && $eDebug) echo " Unverändert seit $dauer Minuten.\n";
-							$first=false;
-							}
-                        else echo "      *************** hier sollte niemand vorbeikommen, sonst fehlen die Zeiten.\n";
-						}	
-					$timeok=$wert["TimeStamp"];
-		   	   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
-		   	   		//echo "       Wert : ".str_pad(($wert["Value"] ? "Ein" : "Aus"),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
-                    $lastTime=$wert["TimeStamp"]; $lastWert=$wert["Value"];
-		   	   		}
-                $dauer=$this->Dauer($lastTime,$maxend,$maxend);
-                echo "Dauer ".$this->MinOrHoursOrDays($dauer)."  Check ".(($onTime+$offTime+$dauer)/60/24)."\n";
-                If ($lastWert==true) $onTime += $dauer; 
-                If ($lastWert==false) $offTime += $dauer;                
-				$result1[IPS_GetName($oid)]["OID"]=$oid;
-                $available=round((1-($offTime/($onTime+$offTime)))*100,1);
-                echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime $onTime offtime $offTime Availability $available %.  Check ".(($onTime+$offTime)/60/24)."\n";
-                $result1[IPS_GetName($oid)]["AVAILABILITY"]=$available;
-                $result1[IPS_GetName($oid)]["ONTIME"]=$this->MinOrHoursOrDays($onTime);
-                $result1[IPS_GetName($oid)]["OFFTIME"]=$this->MinOrHoursOrDays($offTime);
-                echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime ".$result1[IPS_GetName($oid)]["ONTIME"]." offtime ".$result1[IPS_GetName($oid)]["OFFTIME"]." Availability ".$available."%.\n";
-		   		}
-			else
-		    	{
-				echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
-		    	}
-			}
-		//print_r($result1);	//Ergebnis für html Tabelle
-							
-		$result .= "\n";
-
-		/************************************************************************************
-		 * Erreichbarkeit Remote Access Server, für die html Auswertung nicht Berücksichtigen
-		 *************************************************************************************/
-		
-		if ($html)
-            {
-            ksort($result1);
-            $PrintHtml="";
-            $PrintHtml.='<style>';             
-            $PrintHtml.='.staty table,td {align:center;border:1px solid white;border-collapse:collapse;}';
-            $PrintHtml.='.staty table    {table-layout: fixed; width: 100%; }';
-            $PrintHtml.='.staty td:nth-child(1) { width: 60%; }';
-            $PrintHtml.='.staty td:nth-child(2) { width: 15%; }';
-            $PrintHtml.='.staty td:nth-child(3) { width: 15%; }';
-            $PrintHtml.='.staty td:nth-child(4) { width: 10%; }';
-            $PrintHtml.='</style>';        
-            $PrintHtml.='<table class="staty">';
-            $PrintHtml.='<tr><td>Gerät</td><td>Ontime</td><td>Offtime</td><td>Availability</td></tr>';
-            foreach ($result1 as $name => $entry)
-                {
-                $PrintHtml.='<tr><td>'.$name.'</td><td>'.$entry["ONTIME"].'</td><td>'.$entry["OFFTIME"].'</td><td>'.$entry["AVAILABILITY"].'%</td></tr>';
-                }
-            $PrintHtml.='<tr><td align="right" colspan="4"><font size="-1">last update on '.date("d.m.Y H:i:s").'</font></td></tr>';    
-            $PrintHtml.='</table>';
-    		return($PrintHtml);
-            }
-        else
-            {
-            if (isset ($this->installedModules["RemoteAccess"]))
-                {		
-                $result .= $this->writeServerPingResults();
-                }
-    		return($result);
-            }
-		}
 
     /****************************************************************************************
      * 
@@ -1622,7 +1012,7 @@ class OperationCenter
                 {
                 if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)) 
                     {
-                    $result[]=$oid;
+                    $result[]=$oid;  
                     //echo "    $oid (".IPS_GetName($oid).")\n";
                     }
                 }
@@ -3131,614 +2521,9 @@ class OperationCenter
 			IPS_SetPosition($oid,$i);
 			$i+=10;
 			}
-		}
-
-
-	/******************************
-	 *
-	 * es werden Snapshots pro Kamera erstellt, muss in IPSCam eingeschaltet sein
-	 * diese werden wenn aufgerufen (regelmaessig) für ein Overview Webfront in das webfront/user Verzeichnis kopiert
-     *  IPS_KernelDir/Cams/0-x als Quellverzeichnis 
-     *  IPS_KernelDir/webfront/user/OperationCenter/AllPics/ als Zielverzeichnis
-	 * 
-	 * Übergabeparameter ist IPSCam Configfile aus IPSCam
-	 */
+        }
 	
-	function copyCamSnapshots($camConfig=array(), $debug=false)
-		{
-        if ($debug) echo "copyCamSnapshots aufgerufen.\n";
-        $status=false;  // Rückmeldecode
-        if (isset($this->installedModules["IPSCam"]))
-            {
-            if (sizeof($camConfig)==0)
-                {
-                if ($debug) echo "Kein Configarray als Übergabeparameter, sich selbst eines überlegen.\n";
-                IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
-                IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
-                $camConfig = IPSCam_GetConfiguration();			
-                }
-            $categoryIdCams     		= CreateCategory('Cams',    $this->CategoryIdData, 20);
-        
-            $camVerzeichnis=IPS_GetKernelDir()."Cams/";
-            $camVerzeichnis = str_replace('\\','/',$camVerzeichnis);
-
-            /* Zielverzeichnis ermitteln */
-            $picVerzeichnis="user/OperationCenter/AllPics/";
-            $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
-            $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
-            if ($debug) 
-                {
-                echo "copyCamSnapshots: Aufruf mit folgender Konfiguration:\n";
-                print_r($camConfig);
-                echo "Bilderverzeichnis der Kamera Standbilder: Quellverzeichnis ".$camVerzeichnis."   Zielverzeichnis ".$picVerzeichnisFull."\n";
-                echo "---------------------------------------------------------\n";                
-                }
-            if ( is_dir ( $picVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($picVerzeichnisFull);
-
-            foreach ($camConfig as $index=>$data) 
-                {
-                $PictureTitleID=CreateVariable("CamPictureTitle".$index,3, $categoryIdCams,100,"",null,null,"");        // string
-                $PictureTimeID =CreateVariable("CamPictureTime".$index,1, $categoryIdCams,101,"",null,null,"");         // integer, time
-                $filename=$camVerzeichnis.$index."/Picture/Current.jpg";
-                //if ($debug) echo "       Kamera ".$data["Name"]." bearbeite Filename $filename   ".date ("F d Y H:i:s.", filemtime($filename))."\n";
-                if ( file_exists($filename) == true )
-                    {
-                    $filemtime=filemtime($filename);
-                    if ($debug) echo "      Kamera ".$data["Name"]." :  copy ".$filename." nach ".$picVerzeichnisFull." File Datum vom ".date ("F d Y H:i:s.", $filemtime)."\n";	
-                    copy($filename,$picVerzeichnisFull."Cam".$index.".jpg");
-                    SetValue($PictureTitleID,$data["Name"]."   ".date ("F d Y H:i:s.", $filemtime));
-                    SetValue($PictureTimeID,$filemtime);
-                    }
-                }
-            $status=true;			
-            }
-        if ($debug) echo"\n";
-        return ($status);
-		}
-
-	/******************************
-	 *
-	 * es wird die Visualisierung für die Snapshots pro Kamera erstellt, muss in IPSCam eingeschaltet sein
-     *
-     *
-	 */
-	function showCamSnapshots($camConfig=array(), $debug=false)
-		{
-        if ($debug) echo "showCamSnapshots aufgerufen für insgesamt ".sizeof($camConfig)." Kameras.\n";            
-        $status=false;  // Rückmeldecode
-        if (isset($this->installedModules["IPSCam"]))
-            {
-            if (sizeof($camConfig)==0)
-                {
-                IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
-                IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
-                $camConfig = IPSCam_GetConfiguration();			
-                //if ($debug) echo "Kein Configarray als Übergabeparameter, sich selbst eines überlegen: ".json_encode($camConfig)."\n";
-                }
-            if ($debug) echo "IPSCam installiert. showCamSnapshots aufgerufen mit ".json_encode($camConfig).".\n";            
-            $categoryIdCams     		= CreateCategory('Cams',    $this->CategoryIdData, 20);
-        
-            /* Zielverzeichnis für Anzeige ermitteln */
-            $picVerzeichnis="user/OperationCenter/AllPics/";
-            $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
-            $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
-
-            $anzahl=sizeof($camConfig);
-            $rows=(integer)(($anzahl/2)+1);
-            if ($debug) 
-                {
-                $ipsOps = new ipsOps();                    
-                echo "Es werden im Picture Overview insgesamt ".$anzahl." Bilder in ".$rows." Zeilen mal 2 Spalten aus $categoryIdCams (".$ipsOps->path($categoryIdCams).") angezeigt.\n";	
-                //print_r($camConfig);                 // das sind die Cams die durchgegangen werden
-                }	
-            $CamTablePictureID=IPS_GetObjectIDbyName("CamTablePicture",$categoryIdCams);
-            $CamMobilePictureID=IPS_GetObjectIDbyName("CamMobilePicture",$categoryIdCams);
-
-            $html="";
-            $html.='<style> 
-                        table {width:100%}
-                        table,td {align:center;border:1px solid white;border-collapse:collapse;}
-                        .bildmittext {border: 5px solid darkslategrey; position: relative;}
-                        .bildmittext img {display:block;}
-                        .bildmittext span {background-color: darkslategrey; position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
-                        .bildmittext spanRed {background-color:darkred; position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
-                        </style>';
-
-            $htmlWeb='<table>';
-            $count=0; 
-            if ($anzahl>6) $columns=3;
-            else $columns=2;
-            foreach ($camConfig as $index=>$data) 
-                {
-                If ( ($count % $columns) == 0) $htmlWeb.="<tr>";
-                // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)  sicherheitshalber einmal erzeugen
-                $PictureTitleID = CreateVariableByName($categoryIdCams,"CamPictureTitle".$index, 3, "", "", 100, null);        // string
-                $PictureTimeID  = CreateVariableByName($categoryIdCams,"CamPictureTime".$index, 1, "", "", 101, null);         // integer, time
-                //$PictureTitleID = IPS_GetObjectIDByName("CamPictureTitle".$index,$categoryIdCams);        // string
-                //$PictureTimeID  = IPS_GetObjectIDByName("CamPictureTime".$index,$categoryIdCams);         // integer, time
-                $text      = GetValue($PictureTitleID);
-                $filemtime = GetValue($PictureTimeID);
-                /* Parameter imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span") */
-                if ((time()-$filemtime)>60) $htmlWeb.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text,"spanRed").' </td>'; 			
-                else $htmlWeb.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text).' </td>';
-                If ( ($count % $columns) == ($columns-1) ) $htmlWeb.="</tr>";
-                $count++;
-                }
-            If ( ($count % $columns) == 0) $htmlWeb.="<td> </td> </tr>";
-            $htmlWeb.="<tr><td colspan=\"".$columns."\">Aktualisierte Snapshots direkt von der Cam, zuletzt aktualisiert ".date("d.m.Y H:i:s")."</td></tr>";
-            $htmlWeb.="</table>";	
-
-            $htmlMob='<table>';
-            $count=0; $columns=1;
-            foreach ($camConfig as $index=>$data) 
-                {
-                If ( ($count % $columns) == 0) $htmlMob.="<tr>";
-                $PictureTitleID = IPS_GetObjectIDByName("CamPictureTitle".$index,$categoryIdCams);        // string
-                $PictureTimeID  = IPS_GetObjectIDByName("CamPictureTime".$index,$categoryIdCams);         // integer, time
-                $text      = GetValue($PictureTitleID);
-                $filemtime = GetValue($PictureTimeID);
-                /* Parameter imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span") */
-                if ((time()-$filemtime)>60) $htmlMob.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text,"spanRed").' </td>'; 			
-                else $htmlMob.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text).' </td>';
-                If ( ($count % 2) == 1) $htmlMob.="</tr>";
-                $count++;
-                }
-            If ( ($count % $columns) == 0) $htmlMob.="<td> </td> </tr>";
-            $htmlMob.="</table>";
-
-            SetValue($CamTablePictureID,$html.$htmlWeb);
-            SetValue($CamMobilePictureID,$html.$htmlMob);
-
-            $status=true;			
-            }
-        return ($status);
-		}
-
-
-	/******************************
-	 *
-	 * es werden von den ftp Verzeichnissen ausgewählte Dateien in das Webfront/user verzeichnis für die Darstellung im Webfront kopiert
-     *  Zielverzeichnis:  IPS_KernelDir/webfront/user/OperationCenter/Cams/"Cam_name"/
-	 * 
-	 */
-	
-	function showCamCaptureFiles($ocCamConfig,$debug=false)
-		{
-        $status=false;
-        if ($this->moduleManagerCam)
-            {
-            /*
-            $WFC10Cam_Path        	 = $this->moduleManagerCam->GetConfigValue('Path', 'WFC10');
-            $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path."_Capture");
-            if ($debug) echo "showCamCaptureFiles: started, Webfont Path of IPSCam Module in $WFC10Cam_Path\n";
-            */
-            $categoryId_WebFrontAdministrator=$this->getWebfrontID();
-            $childrens = IPS_GetChildrenIDs($categoryId_WebFrontAdministrator);
-            $camsFound=array();
-            foreach ($childrens as $children)
-                {
-                $camsFound[$children]=true;
-                if ($debug) echo "   $children  ".IPS_GetName($children)."\n";
-                }
-            //if ($debug) print_r($childrens);         // alle Unterobjekte, Cameras ausgeben, nicht mehr verwendete muessen gelöscht werden
-
-            $count=0; $index=0;		
-            foreach ($ocCamConfig as $indexName => $cam_config)
-                {
-                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
-                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
-                if (isset ($cam_config['FTPFOLDER']))         
-                    {  
-                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
-                        {                        
-                        $index++;
-                        if ($debug)
-                            {
-                            echo "\n  ---------------------------------------------------------\n";
-                            echo "  Webfront Tabname für ".$cam_name." erstellen.\n";
-                            }
-                        $heute=date("Ymd", time());
-                        //echo "    Heute      : ".$heute."    Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
-
-                        /* in data/OperationCenter/ jeweils pro Camera eine Kategorie mit Cam_Name anlegen 
-                        * sollte bereits vorhanden sein, hier werden die Infos über letzte Bewegung und Anzahl Capture Bilder gesammelt
-                        *
-                        */
-                        $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$this->CategoryIdData);
-                        if ($cam_categoryId==false)
-                            {
-                            $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-                            IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-                            IPS_SetParent($cam_categoryId,$this->CategoryIdData);
-                            }
-
-                        /* im Webfront visualization/adminstrator/ eine IPSCam_Capture Kategorie mit jeweils pro Kamera eigener Kategorie anlegen 
-                        * dort wird die Variable für die html box gespeichert
-                        *  ändern auf Link, damit später auch link von user geht
-                        */	
-                        $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$index);
-                        if (isset($camsFound[$categoryIdCapture])) 
-                            {
-                            echo "  Camera Cam_$cam_name ($categoryIdCapture) in ".IPS_GetName($categoryId_WebFrontAdministrator)." ($categoryId_WebFrontAdministrator) found.\n";
-                            unset ($camsFound[$categoryIdCapture]);
-                            IPS_SetHidden($categoryIdCapture, false);
-                            }
-                    
-                        /* hmtl box in Vizualization anlegen statt in data und einen Link darauf setzen $pictureFieldID = CreateVariable("pictureField",   3 ,  $categoryIdCapture, 50 , '~HTMLBox'); */
-                        $pictureFieldID = $this->createVariablePictureField($categoryIdCapture);
-                        /*$html.='<style> 
-                                table {width:100%}
-                                td {width:50%}						
-                                table,td {align:center;border:1px solid white;border-collapse:collapse;}
-                                .bildmittext {border: 5px solid red;position: relative;}
-                                .bildmittext img {display:block;}
-                                .bildmittext span {background-color: red;position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
-                                </style>';
-                        $html.='<table>'; */
-                    
-                        $box="";
-                        $box.='<style> 
-                                table {width:100%}
-                                td {width:20%}						
-                                table,td {align:center;border:1px solid white;border-collapse:collapse;}
-                                .bildmittext {border: 5px solid green;position: relative;}
-                                .bildmittext img {display:block;}
-                                .bildmittext span {background-color: grey;position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
-                                </style>';
-                        $box.='<table>';		
-                        /* $box.='<style> .container { position: relative; text-align: center; color: white; } 
-                        .bottom-left { position: absolute; bottom: 8px; left: 16px; } 
-                        .top-left {position: absolute; top: 8px; left: 16px; } 
-                        .top-right { position: absolute; top: 8px; right: 16px; } 
-                        .bottom-right { position: absolute; bottom: 8px; right: 16px; } 
-                        .centered { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); } </style>';
-                        $box.='<table frameborder="1" width="100%">'; */
-
-                        $verzeichnis=$cam_config['FTPFOLDER'].$heute;
-                    
-                        /* Kamerabilderverzeichnis muss innerhalb Webfront entstehen, daher Bilder dorthin kopieren */
-                        $imgVerzeichnis="user/OperationCenter/Cams/".$cam_name."/";
-                        $imgVerzeichnisFull=IPS_GetKernelDir()."webfront/".$imgVerzeichnis;
-                        $imgVerzeichnisFull = str_replace('\\','/',$imgVerzeichnisFull);
-                        //echo "Quellverzeichnis : ".$verzeichnis."   Zielverzeichnis : ".$imgVerzeichnisFull."\n";
-                        if ( is_dir ( $imgVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($imgVerzeichnisFull);
-                    
-                        $picdir=$this->readdirToArray($verzeichnis,false,-500);
-                        if ($debug) 
-                            {
-                            echo "Files aus dem Verzeichnis $verzeichnis werden kopiert.\n";
-                            //print_r($picdir);         // doppelte Ausgabe, nicht notwendig
-                            }
-                        if ($picdir !== false)			// ignorieren wenn picdir kein verzeichnis ist
-                            {
-                            //$mode="standard";       // jedes 6te Bild
-                            $mode="time";         // ein Bild alle 120 Sekunden
-                            $logdir= $this->selectFilesfromList($picdir, $verzeichnis,$mode, $debug);
-                                
-                            /* 
-                            //Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht 
-                            $size=sizeof($picdir);
-                            $j=0;$k=0;$l=0; $timeWindow=0;
-                            $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
-                            for ($i=0;$i<$size;$i++)
-                                {
-                                //if ($debug) echo "   ".$picdir[$i];           // so sieht man die avi files auch
-                                $path_parts = pathinfo($picdir[$i]);
-                                if ($path_parts['extension']=="jpg")
-                                    {
-                                    if ($debug) echo "   ".str_pad($verzeichnis."\\".$picdir[$i],50)."   ".str_pad($sysOps->getNiceFileSize(filesize($verzeichnis."\\".$picdir[$i])),16)."    ".
-                                                        date("H:i:s",filemtime($verzeichnis."\\".$picdir[$i]));
-                                    $timeFile=filemtime($verzeichnis."\\".$picdir[$i]);
-                                    if ($timeWindow==0) $timeWindow=$timeFile;      // initialisieren
-                                    if ($timeFile<($timeWindow-60))             // es geht rückwärts also 60 Sekundenfenster vorsehen
-                                        {
-                                        if ($debug) echo "   ";   
-                                        $timeWindow=$timeFile;
-                                        $l=0;
-                                        }
-                                    else
-                                        {
-                                        $l++;
-                                        if ($debug) 
-                                            {
-                                            if ($l==3) echo "  +"; 
-                                            else echo "  |";
-                                            }
-                                        }
-                                    //echo "       Dirname: ".$path_parts['dirname'], "\n";
-                                    //echo "       Basename: ".$path_parts['basename'], "\n";
-                                    //echo "       Extension: ".$path_parts['extension'], "\n";
-                                    //echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
-                                    if (($k % 6)==2) 
-                                        { 
-                                        $logdir[$j++]=$picdir[$i]; 
-                                        if ($debug) echo "  *"; 
-                                        };
-                                    $k++;		// eigener Index, da manche Files übersprungen werden
-                                    if ($debug) echo "\n";
-                                    } 
-                                //if ($debug) echo "\n";
-                                }
-                            echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
-                            echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
-                            //print_r($logdir);	*/
-                            $check=array();
-                            $handle=opendir ($imgVerzeichnisFull);
-                            while ( false !== ($datei = readdir ($handle)) )
-                                {
-                                if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($imgVerzeichnisFull.$datei) == false)) 
-                                    {
-                                    $check[$datei]=true;
-                                    }
-                                }
-                            closedir($handle);
-                            /* im array check steht für vorhandene Dateien ein true, wenn sie auch im Quellverzeichnis sind wird nicht kopiert */
-                            $c=0;
-                            foreach ($logdir as $filename)
-                                {
-                                if ( isset($check[$filename]) == true )
-                                    {
-                                    $check[$filename]=false;
-                                    //if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen.\n";
-                                    }
-                                else
-                                    {	
-                                    echo "copy ".$verzeichnis."\\".$filename." nach ".$imgVerzeichnisFull.$filename." \n";	
-                                    copy($verzeichnis."\\".$filename,$imgVerzeichnisFull.$filename);
-                                    $c++;
-                                    }
-                                }		
-                            if ($debug) echo "Verzeichnis für Anzeige im Webfront: ".$imgVerzeichnisFull."\n";	
-                            $i=0; $d=0;
-                            foreach ($check as $filename => $delete)
-                                {
-                                if ($delete == true)
-                                    {
-                                    //if ($debug) echo "Datei ".$filename." wird gelöscht.\n";
-                                    unlink($imgVerzeichnisFull.$filename);
-                                    $d++;
-                                    }
-                                else
-                                    {
-                                    //if ($debug) echo "   ".$filename."\n";
-                                    $i++;		
-                                    }	
-                                }	
-                            echo "insgesamt ".$i." Dateien im Zielverzeichnis. Dazu wurden ".$c." Dateien kopiert und ".$d." Dateien im Zielverzeichnis ".$imgVerzeichnisFull." geloescht.\n";
-                
-                            /* ein schönes Tablearray machen mit 5 Spalten */
-                            $end=sizeof($logdir);
-                            if ($end>100) $end=100;		
-                            for ($j=1; $j<$end;$j++)
-                                {
-                                /* nutzt imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span")
-                                 */
-                                //echo "Suche Datei hier: ".$imgVerzeichnisFull.$logdir[$j-1].":\n";
-                                //$timeFile=@filemtime($imgVerzeichnisFull.$logdir[$j-1]);            // Fehlermeldung unterdrücken wenn es Datei zb nicht mehr gibt
-                                echo "Suche Datei hier: ".$verzeichnis."\\".$logdir[$j-1].":";
-                                $timeFile=@filemtime($verzeichnis."\\".$logdir[$j-1]);            // nicht die kopierte, sondern die originale Datei evaluieren
-                                if ($timeFile) 
-                                    {
-                                    $timeToDisplay=date("d.m.Y H:i:s",$timeFile);
-                                    echo "   ok      $j\n";
-                                    }
-                                else 
-                                    {
-                                    $timeToDisplay=$this->extractTime($logdir[$j-1]);
-                                    echo "   extract $j\n";
-                                    }
-                                if (($j % 5)==0) { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"Wolfgang",$timeToDisplay).' </td> </tr>'; }
-                                elseif (($j % 5)==1) { $box.='<tr> <td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"Claudia",$timeToDisplay).' </td>'; }
-                                else { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"WeissNicht",$timeToDisplay).' </td>'; }
-                                }
-                
-                            $box.='</table>';
-                            SetValue($pictureFieldID,$box);
-                            //echo $box;		
-                            }                   /* ende ftp enabled */
-                        }                   /* ende ftpfolder */
-                    }
-                }           // ende foreach
-            echo "Bilder für alle Kameras wurden kopiert. Die folgenden Kameras blieben unbehandelt und werden geloescht oder versteckt.\n";
-            //print_r($camsFound);
-            foreach ($camsFound as $camFound => $status)
-                {
-                if ($debug) echo "   $camFound  ".IPS_GetName($camFound)." wird versteckt.\n";
-                IPS_SetHidden($camFound, true);
-                }
-            
-            }
-        return ($status);
-		}	
-
-    /*                     */
-    
-    public function getWebfrontID($debug=false)
-        {
-        $WFC10Cam_Path        	 = $this->moduleManagerCam->GetConfigValue('Path', 'WFC10');
-        if ($debug) echo "getWebfrontID from Webfont Path of IPSCam Module in $WFC10Cam_Path\n";
-        return (CreateCategoryPath($WFC10Cam_Path."_Capture"));
-        }
-
-    /*                     */
-
-    public function createVariablePictureField($categoryIdCapture)
-        {
-        return ( CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox'));            
-        }
-
-    /*                     */
-    
-    public function getPictureFieldIDs($ocCamConfig, $debug=false)
-        {
-        $pictureFieldIDs=array(); $index=0;
-        if ($this->moduleManagerCam)
-            {
-            $categoryId_WebFrontAdministrator=$this->getWebfrontID(); 
-            $pictureFieldIDs["Base"] = $categoryId_WebFrontAdministrator;      
-            if ($debug) echo "getPictureFieldIDs aufgerufen. Bearbeite die Kategorie ".IPS_GetName($categoryId_WebFrontAdministrator)."  ($categoryId_WebFrontAdministrator)\n";
-            foreach ($ocCamConfig as $indexName => $cam_config)
-                {
-                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
-                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
-                if (isset ($cam_config['FTPFOLDER']))         
-                    { 
-                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
-                        {                                    
-                        $categoryIdCapture  = IPS_GetObjectIdByName("Cam_".$cam_name, $categoryId_WebFrontAdministrator);
-                        $fieldID = $this->createVariablePictureField($categoryIdCapture);
-                        $pictureFieldIDs[$index]["Data"] = $fieldID;
-                        if ($debug) echo "   Camera $cam_name hat PictureFieldID $fieldID  \n";
-                        $index++;
-                        }
-                    }           // ende isset ftpfolder
-                }           // ende foreach
-            }           // ende IPSCam
-        return ($pictureFieldIDs);
-        }        
-
-    /* get Category IDS like they are instances
-     *
-     *
-     */
-    
-    public function getPictureCategoryIDs($ocCamConfig=false, $debug=false)
-        {
-        if ($ocCamConfig===false) $ocCamConfig=$this->getCAMConfiguration();
-        $pictureIDs=array(); $index=0;
-        if ($this->moduleManagerCam)
-            {
-            foreach ($ocCamConfig as $indexName => $cam_config)
-                {
-                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
-                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
-                if (isset ($cam_config['FTPFOLDER']))         
-                    { 
-                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
-                        {                                    
-                        $categoryIdCapture  = IPS_GetObjectIdByName("Cam_".$cam_name, $this->CategoryIdData);
-                        $pictureIDs[$index] = $categoryIdCapture;
-                        if ($debug) echo "   Camera $cam_name hat PictureCategoryID $categoryIdCapture  \n";
-                        $index++;
-                        }
-                    }           // ende isset ftpfolder
-                }           // ende foreach
-            }           // ende IPSCam
-        return ($pictureIDs);
-        }   
-
-
-    /**************************
-     *
-     * aus einer Liste nach dem Mode ein paar Dateien aussuchen
-     * picdir Fileliste die kopiert werden soll, hier für die Auswahl relevant
-     *
-     ********************************************/
-
-    private function selectFilesfromList($picdir, $verzeichnis,$mode="standard", $debug=false)
-        {
-        $sysOps = new sysOps();
-        if ($mode=="") $mode="standard";        // default mode
-        $span=120;                              // Zeitspanne innerhalb der ein Bild ausgesucht wird
-        /* picdir Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht */
-        $size=sizeof($picdir);      // input ist picdir array, output ist logdir, parameter sind verzeichnis
-        if ($debug) echo "selectFilesfromList, Liste mit $size Dateien übergeben. mode $mode.\n";
-
-        /* picdir sortiern, entweder nach den Dateinamen, oder dem tatsächlichen File Create Datum */
-        $datesort=array();
-        foreach ($picdir as $pic) $datesort[filemtime($verzeichnis."\\".$pic)]=$pic;
-        krsort($datesort); 
-        //foreach ($datesort as $time => $pic) echo "    ".date("H:i:s",$time)."   $pic\n";
-
-        $j=0;$k=0;$l=0; $timeWindow=0;
-        $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
-        foreach ($datesort as $time => $pic)
-            {
-            $path_parts = pathinfo($pic);
-            if ($path_parts['extension']=="jpg")
-                {
-                if ($debug) echo "   ".str_pad($verzeichnis."\\".$pic,50)."   ".str_pad($sysOps->getNiceFileSize(filesize($verzeichnis."\\".$pic)),16)."    ".
-                                    date("H:i:s",$time);
-                if ($timeWindow==0) 
-                    {
-                    $timeWindow=$time;      // initialisieren, erstes Foto immer anzeigen
-                    if ($debug) echo "  + init";  
-                    $oldpic=$pic; 
-                    $logdir[$j]=$pic;
-                    $j++;
-                    }
-                elseif ($time<($timeWindow-$span))             // es geht rückwärts, 60 Sekundenfenster vorsehen, ausserhalb
-                    {
-                    if ($l<3) 
-                        {
-                        if ($debug) echo "  +";
-                        if ($mode=="time")
-                            {
-                            $logdir[$j]=$oldpic;
-                            $j++;
-                            } 
-                        }
-                    else
-                        {
-                        if ($debug) echo "  \\";
-                        }   
-                    $timeWindow=$time;
-                    $l=0;
-                    }
-                else                                            // im 60 Sekundenfenster
-                    {
-                    $l++;
-                    if ($l==3)  
-                        {
-                        if ($debug) echo "  +"; 
-                        if ($mode=="time")
-                            {
-                            $logdir[$j]=$pic;
-                            $j++;
-                            } 
-                        }
-                    else 
-                        {
-                        if ($debug) echo "  |";
-                        }
-                    }
-                //echo "       Dirname: ".$path_parts['dirname'], "\n";
-                //echo "       Basename: ".$path_parts['basename'], "\n";
-                //echo "       Extension: ".$path_parts['extension'], "\n";
-                //echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
-                if (($k % 6)==2) 
-                    { 
-                    if ($mode=="standard")
-                        {
-                        $logdir[$j]=$pic;
-                        $j++;
-                        } 
-                    if ($debug) echo "  *"; 
-                    };
-                $k++;		// eigener Index, da manche Files übersprungen werden
-                if ($debug) echo "\n";
-                $oldpic=$pic;           // manchmal wird das vorige Bild benötigt
-                }       // if jpeg
-            //if ($debug) echo "\n";
-            }    // foreach
-        echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
-        echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
-
-        return($logdir);	
-        }
-
-	/*
-	 * Bei jedem Bild als html Verzeichnis und alternativem Bildtitel darstellen
-     * nutzt class bildmittext bild ist $imgVerzeichnis.$filename
-	 *
-	 */
-
-	private function imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span")
-		{
-		return ('<div class="bildmittext"> <img src="'.$imgVerzeichnis.$filename.'" title="'.$title.'" alt="'.$filename.'" width=100%> <'.$span.'>'.$text.'</'.$span.'></div>');
-		//return ('<div class="bildmittext"> <img src="'.$imgVerzeichnis."\\".$filename.'" title="'.$title.'" alt="'.$filename.'" width=100%> <span>'.$text.'</span></div>');
-		}						
-			
+		
 	private function extractTime($filename)
 		{
 		$time="default";
@@ -3950,7 +2735,7 @@ class OperationCenter
 	 *
 	 */
 	
-	public function readdirToArray($dir,$recursive=false,$newest=0)
+	public function readdirToArray($dir,$recursive=false,$newest=0, $debug=false)
 		{
 	   	$result = array();
 
@@ -4047,7 +2832,7 @@ class OperationCenter
 		//print_r($alleSkripte);
 
 		/* ein includefile mit allen Dateien erstellen, als Inhaltsverzeichnis */
-		$includefile='<?'."\n".'$fileList = array('."\n";
+		$includefile='<?php'."\n".'$fileList = array('."\n";
 
 		echo "Alle Scriptfiles werden vom IP Symcon Scriptverzeichnis auf ".$DIR_copyscriptsdropbox." kopiert und in einen Dropbox lesbaren Filenamen umbenannt.\n";
 		echo "\n";
@@ -6478,9 +5263,9 @@ class BackupIpsymcon extends OperationCenter
  * extends OperationCenter because it is using same config file
  * works with the generated logfiles and backups them and deletes them after some time
  *
- *  MoveFiles
- *  MoveCamFiles
- *
+ *      MoveFiles
+ *      MoveCamFiles
+ *      flattenYearMonthDayDirectory
  *
  **************************************************************************************************************************/
 
@@ -6820,6 +5605,1482 @@ class SeleniumChromedriver extends OperationCenter
         }
 
     }
+
+/********************************************************************************************************
+ *
+ * HomematicOperation of OperationCenter
+ *
+ * extends OperationCenter because it is using same config file
+ * provides information of homematic devices
+ *
+ *      get_CCUDevices
+ *      ccuSocketStatus         CCU status availability
+ *      ccuSocketDutyCycle
+ *      sysStatusSockets
+ *
+ *
+ **************************************************************************************************************************/
+
+class HomematicOperation extends OperationCenter
+	{
+
+    protected $componentHandling;           // module
+
+	public function __construct($subnet='10.255.255.255',$debug=false)
+		{
+        if ($debug) echo "class HomematicOperation, Construct Parent class OperationCenter.\n";
+        $this->debug=$debug; 
+        $this->componentHandling = new ComponentHandling();
+  
+        parent::__construct($subnet,$debug);                       // sonst sind die Config Variablen noch nicht eingelesen
+        }
+
+    /* get_CCUDevices
+     */
+    public function get_CCUDevices()
+        {
+        $this->CCUDevices=$this->componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_CCU","REGISTER" => "DUTY_CYCLE_LEVEL"],"Install",false);                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+        return($this->CCUDevices);    
+        }
+
+    /* CCU socket Status 
+    */
+    public function ccuSocketStatus($log_OperationCenter=false, $debug=false)
+        {
+        if ($log_OperationCenter===false) return(false);
+        echo "ccuSocketStatus Hour passed: ".(parent::$hourPassed?"Yes":"No")." Four Hours passed : ".(parent::$fourHourPassed?"Yes":"No")."\n";
+        $socketHtml="";
+        $categoryId_Sockets = @IPS_GetObjectIDByName("SocketStatus",$this->categoryId_SysPing);
+        if ($categoryId_Sockets && (parent::$hourPassed || $debug))
+            {
+            $variableSocketCCUHtmlId=IPS_GetObjectIdByName("StatusCCUConnected",$categoryId_Sockets );
+
+            $socketHtml = $this->sysStatusSockets($log_OperationCenter, $debug);
+            SetValue($variableSocketCCUHtmlId,$socketHtml);
+            }
+        return ($socketHtml);
+        }
+
+    /* CCU socket DutyCycle 
+    */
+    public function ccuSocketDutyCycle($log_OperationCenter=false, $debug=false)
+        {
+        if ($log_OperationCenter===false) return(false);
+        echo "ccuSocketStatus Hour passed: ".(parent::$hourPassed?"Yes":"No")." Four Hours passed : ".(parent::$fourHourPassed?"Yes":"No")."\n";
+        $archiveOps = new archiveOps();
+        $archiveHandlerID=$archiveOps->getArchiveID();
+        $html="";
+        $categoryId_Sockets = @IPS_GetObjectIDByName("SocketStatus",$this->categoryId_SysPing);
+        if ($categoryId_Sockets && (parent::$hourPassed || $debug))
+            {
+            $variableSocketCCUHtmlId=IPS_GetObjectIdByName("StatusCCUConnected",$categoryId_Sockets );
+            $variableSocketCCUDutyCycleHtmlId    = @IPS_GetObjectIDByName("StatusCCUDutyCycle",$categoryId_Sockets);
+
+            $description=array();
+            $config = array();
+            //$config["StartTime"]="1.10.2023";
+            $config["StartTime"]=time()-72*60*60;       // 72 Stunden zurück
+
+            $configCleanUpData = array();
+            $configCleanUpData["deleteSourceOnError"]=false;
+            $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
+            $config["CleanUpData"] = $configCleanUpData;    
+            
+            $result=$this->get_CCUDevices();
+            foreach ($result as $name => $entry)
+                {
+                $oid = $entry["COID"];
+                $this->componentHandling->setLogging($oid);          // eigentlich Teil des Installs
+
+                echo str_pad($name,45)."$oid   ".GetValueFormatted($oid)."\n";
+                echo $archiveOps->getStatus($oid)."\n";
+                $ergebnis = $archiveOps->getValues($oid,$config,false);          // true Debug
+                $description[$oid] = $ergebnis["Description"];
+                //foreach ($ergebnis["Description"] as $index=>$eintrag) echo "$index    \n";
+                echo "done.\n";
+                }
+
+            $result = $archiveOps->showValues(false,$config,true);                   // true Debug
+            
+
+            //print_R($result);
+            //foreach ($result as $index=>$entry) echo "$index    \n";
+
+            //print_R($description);
+            $html  = "";
+            $html .= '<table>'; 
+            //echo "MaxMin DutyCycle der letzten 72 Stunden: \n";
+            $html .= '<tr><th colspan=5>MaxMin DutyCycle der letzten 72 Stunden, act ist '.date("D H:i:s").':</th></tr>';
+            $html .= '<tr><th>OID</th><th>Name</th><th>Act</th><th>Max</th><th>Max Date</th><th>Min</th><th>Min Date</th></tr>';
+            foreach ($description as $oid => $entry)
+                {
+                $maxmin = $entry["MaxMin"];
+                //echo "   $oid  Max ".str_pad($maxmin["Max"]["Value"],12)." (".date("D H:i:s",$maxmin["Max"]["TimeStamp"]).") Min ".str_pad($maxmin["Min"]["Value"],12)." (".date("D H:i:s",$maxmin["Min"]["TimeStamp"]).")\n";
+                $html .= '<tr><td>'.$oid.'</td><td>'.IPS_GetName(IPS_GetParent($oid)).'</td><td>'.GetValue($oid).'</td><td>'.$maxmin["Max"]["Value"].'</td><td>'.date("D H:i:s",$maxmin["Max"]["TimeStamp"]).'</td><td>'.$maxmin["Min"]["Value"].'</td><td>'.date("D H:i:s",$maxmin["Min"]["TimeStamp"]).'</td></tr>';
+                }
+            $html .= '</table>';
+
+            SetValue($variableSocketCCUDutyCycleHtmlId,$html);
+            }
+        return ($html);
+        }
+
+
+    /* Routinen von Syspingalldevices übersichtlicher machen, hier Sockets Homematic analysieren und ein html machen
+     */
+    public function sysStatusSockets($log_OperationCenter, $debug=false)
+        {
+        if ($debug) echo "sysStatusSockets aufgerufen, alle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
+        $socketHtml="";
+        $categoryId_Sockets = @IPS_GetObjectIDByName("SocketStatus",$this->categoryId_SysPing);
+        if ($categoryId_Sockets)
+            {
+            $modulhandling = new ModuleHandling();
+
+            $discovery = $modulhandling->getDiscovery();
+            $topologyLibrary = new TopologyLibraryManagement();                     // in EvaluateHardware Library, neue Form des Topology Managements
+            $socket=array();
+            $socket = $topologyLibrary->get_SocketList($discovery);
+            //print_r($socket);
+            $socketHtml .= "<table>";
+            foreach ($socket as $modul => $module) 
+                {
+                switch ($modul)
+                    {
+                    case "Homematic":
+                        $socketHtml .=  '<tr><th>'.$modul." CCU Status".'</th><th>OID</th><th>Status</th><th>last changed</th></tr>';
+                        // Homematic CCU I/O Sockets, die gehen auf fail=false wenn es Probleme gibt
+                        foreach ($module as $name => $entry) 
+                            {
+                            $status=(IPS_GetProperty($entry["OID"], "Open")?"active":"failure");
+                            $variableId=CreateVariableByName($categoryId_Sockets,$name."_"."Connected",3);      // als String, leichter lesbar
+                            SetValue($variableId,$status);
+                            $changed = date("H:i:s d.m.Y",IPS_GetVariable($variableId)["VariableChanged"]);
+                            $socketHtml .=  '<tr><td>'.$name.'</td><td>'.$entry["OID"].'</td><td>';
+                            $socketHtml .=  $status.'</td><td>'.$changed.'</td></tr>'; //Ist die I/O Instanz aktiv?
+
+                            }
+                        break;
+                    }
+                }
+            $socketHtml .= "</table>";
+            $socketHtml .= "last updated on ".date("d.m.y H:i:s");
+            }
+        return ($socketHtml);
+        }
+
+
+
+    }
+
+/********************************************************************************************************
+ *
+ * PingOperation of OperationCenter
+ *
+ * extends OperationCenter because it is using same config file
+ * provides information of Sysping devices
+ *
+ *      SysPingAllDevices
+ *      syspingCams
+ *      writeSysPingStatistics
+ *      writeSysPingActivity
+ *
+ * sys device ping IP Adresse von LED Modul oder DENON Receiver
+ * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
+ * Erreichbarkeit der Remote Server zum Loggen
+ *
+ *   device_ping  
+ *   server_ping
+ *   writeServerPingResults
+ *
+ *
+ **************************************************************************************************************************/
+
+class PingOperation extends OperationCenter
+	{
+
+	public function __construct($subnet='10.255.255.255',$debug=false)
+		{
+        if ($debug) echo "class HomematicOperation, Construct Parent class OperationCenter.\n";
+        $this->debug=$debug;   
+        parent::__construct($subnet,$debug);                       // sonst sind die Config Variablen noch nicht eingelesen
+        }
+
+	/*************************************************************************************************************
+	 *
+	 * function SysPingAllDevices
+	 *
+	 * Pingen von IP Geräten, Timer wird alle 5 Minuten aufgerufen, aber im Normalfall nur alle 60 Minuten ausgeführt
+     *
+     * Die Geräte sind aufgelistet im Konfigurationsfile:
+	 *
+	 * CAM config file, ping mit sysping
+	 *
+	 * LED config File, ping mit device_ping
+	 *
+	 * Denon
+	 *
+	 * Router, ping mit device_ping (echtes sys_ping aus IP Symcon Funktionsliste)
+	 *				OperationCenterConfig['ROUTER']
+	 *
+	 * Wunderground
+	 *
+	 * localAccess Server, wie für die Remote Abfrage, den lokalen Wert setzen
+	 *
+	 * RemoteAccess Server, rpc call ping mit function server_ping
+	 *	Aufruf von function server_ping()
+	 *				RemoteAccess_Configuration.inc.php : RemoteAccess_GetServerConfig() wenn set to Active
+	 *				
+	 *
+	 *
+	 *
+	 * in Data/OperationCenter/Sysping/ pro Gerät ein Status angelegt
+	 * in Data/OperationCenter/RebootCounter/ pro Gerät ein Reboot Request Counter angelegt
+	 *
+	 ********************************************************************************************************************/
+
+	function SysPingAllDevices($log_OperationCenter=false, $debug=false)
+		{
+        if ($log_OperationCenter===false) return(false);
+		echo "Sysping All Devices. Subnet : ".$this->subnet."\n";
+
+		$OperationCenterConfig = $this->oc_Configuration;
+		//print_r($OperationCenterConfig);
+        if (isset($_IPS['EVENT'])) $ipsEvent="TimerEvent from :".$_IPS['EVENT']." ";
+        else $ipsEvent="";
+
+        $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$this->categoryId_SysPing);
+        $categoryId_Sockets        = @IPS_GetObjectIdByName("SocketStatus",$categoryId_SysPing);
+
+        $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
+        $SysPingActivityTableID = @IPS_GetObjectIDByName("SysPingActivityTable",$categoryId_SysPingControl); 
+        $SysPingResult=array();
+
+		/************************************************************************************
+		 * Erreichbarkeit IPCams
+		 *************************************************************************************/
+		 
+		if ( (isset ($this->installedModules["IPSCam"])) && parent::$hourPassed )
+			{
+            $this->syspingCams($OperationCenterConfig['CAM'],$log_OperationCenter, $debug);    
+   			/*
+            //IPSLogger_Inf(__file__, "SysPingAllDevices: Check the Cams.");
+			$mactable=$this->get_macipTable($this->subnet);
+			//print_r($mactable);
+			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+				{
+                if ( (isset($cam_config['IPADRESSE']) ) || (isset($cam_config['MAC'])) )
+                    {
+                   // echo "IPADRESSE oder MAC Adresse sollte bekannt sein.\n";
+                    $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); // 0 Boolean 1 Integer 2 Float 3 String 
+                    $ipadresse=""; $macadresse="";
+                    if (isset($cam_config['IPADRESSE'])) $ipadresse=$cam_config['IPADRESSE'];
+                    if (isset($mactable[$cam_config['MAC']])) 
+                        {
+                        $macadresse=$cam_config['MAC'];
+                        if ($ipadresse == "") $ipadresse=$mactable[$macadresse];
+                        elseif ($ipadresse != $mactable[$macadresse]) echo "Kenn mich nicht aus, zwei unterschiedliche IP Adressen.\n";
+                        }
+                    if ($ipadresse != "")
+                        {    
+                        echo str_pad("Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse $ipadresse",110);
+                        if ($macadresse != "") echo " vs ".$mactable[$cam_config['MAC']]."    ";
+                        else echo "                  ";
+                        $status=Sys_Ping($ipadresse,1000);
+                        $SysPingResult[IPS_getName($CamStatusID)]=$status;
+                        if ($status)
+                            {
+                            echo "--->  Kamera wird erreicht.\n";
+                            if (GetValue($CamStatusID)==false)
+                                {  // Statusänderung 
+                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+                                SetValue($CamStatusID,true);
+                                }
+                            }
+                        else
+                            {
+                            echo "---> Kamera wird NICHT erreicht   !\n";
+                            if (GetValue($CamStatusID)==true)
+                                {  // Statusänderung 
+                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+                                SetValue($CamStatusID,false);
+                                }
+                            }
+                        }
+                    else  // mac adresse nicht bekannt 
+                        {
+                        echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
+                        }
+                    }   // nur die Einträge in der Konfiguration, bei denen es auch eine MAC Adresse gibt bearbeiten
+				} // Ende foreach 
+                */
+			}
+
+		/************************************************************************************
+		 * Erreichbarkeit LED Ansteuerungs WLAN Geräte
+		 *************************************************************************************/
+		if ( (isset ($this->installedModules["LedAnsteuerung"])) && parent::$hourPassed )
+			{
+			//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+            IPSUtils_Include ("LedAnsteuerung_Configuration.inc.php","IPSLibrary::config::modules::LedAnsteuerung");
+			$device_config=LedAnsteuerung_Config();
+			$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
+			$SysPingResult += $this->device_ping($device_config, $device, $identifier, parent::$hourPassed, $debug);                  // debug setzt weiter oben auch hourspassed
+			$this->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier, $debug);
+			}
+
+		/************************************************************************************
+		 * Erreichbarkeit Denon Receiver
+		 *************************************************************************************/
+		if ( (isset ($this->installedModules["DENONsteuerung"])) && parent::$hourPassed )
+			{
+			//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+            IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");            
+			$device_config=Denon_Configuration();
+			$deviceConfig=array();
+			foreach ($device_config as $name => $config)
+				{
+				if ( $name != "Netplayer" ) { $deviceConfig[$name]=$config; }
+				if ( isset ($config["TYPE"]) ) { if ( strtoupper($config["TYPE"]) == "DENON" ) $deviceConfig[$name]=$config; }
+				}
+			$device="DENON"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+			$SysPingResult += $this->device_ping($deviceConfig, $device, $identifier, parent::$hourPassed, $debug);
+			$this->device_checkReboot($OperationCenterConfig['DENON'], $device, $identifier, $debug);
+			}
+
+        if (isset($OperationCenterConfig['INTERNET'])) 
+            {
+            /************************************************************************************
+            * Erreichbarkeit Internet, alle 5 Minuten aufrufen, Routine ignoriert selbst wenn nur jede Stunde notwendig
+            *************************************************************************************/
+            $device="Internet"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+            $SysPingResult += $this->device_ping($OperationCenterConfig['INTERNET'], $device, $identifier, parent::$hourPassed, $debug);
+            $this->device_checkReboot($OperationCenterConfig['INTERNET'], $device, $identifier, $debug);
+            }
+
+        if ( parent::$hourPassed )
+            {
+            /************************************************************************************
+            * Erreichbarkeit Router
+            *************************************************************************************/
+            $device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+            $SysPingResult += $this->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier, parent::$hourPassed, $debug);
+            $this->device_checkReboot($OperationCenterConfig['ROUTER'], $device, $identifier, $debug);
+            
+            /********************************************************
+                Sys Uptime lokaler Server ermitteln
+            **********************************************************/
+
+            echo "\nSind die LocalAccess Server erreichbar ....\n";
+
+            $Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$this->CategoryIdData);
+            if ($Access_categoryId==false)
+                {
+                $Access_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                IPS_SetName($Access_categoryId, "AccessServer"); // Kategorie benennen
+                IPS_SetParent($Access_categoryId,$this->CategoryIdData);
+                }
+            $IPS_UpTimeID = CreateVariableByName($Access_categoryId, IPS_GetName(0)."_IPS_UpTime", 1);
+            IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
+            SetValue($IPS_UpTimeID,IPS_GetKernelStartTime());
+            echo "   Server : ".IPS_GetName(0)." zuletzt rebootet am: ".date("d.m H:i:s",GetValue($IPS_UpTimeID)).".\n";
+
+            }
+
+		/************************************************************************************
+		 * Überprüfen ob Wunderground noch funktioniert.
+		 *************************************************************************************/
+		if ( (isset ($this->installedModules["IPSWeatherForcastAT"])) && parent::$hourPassed )
+			{
+			echo "\nWunderground API überprüfen.\n";
+			IPSUtils_Include ("IPSWeatherForcastAT_Constants.inc.php",     "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
+			IPSUtils_Include ("IPSWeatherForcastAT_Configuration.inc.php", "IPSLibrary::config::modules::Weather::IPSWeatherForcastAT");
+			IPSUtils_Include ("IPSWeatherForcastAT_Utils.inc.php",         "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
+			$urlWunderground      = 'http://api.wunderground.com/api/'.IPSWEATHERFAT_WUNDERGROUND_KEY.'/forecast/lang:DL/q/'.IPSWEATHERFAT_WUNDERGROUND_COUNTRY.'/'.IPSWEATHERFAT_WUNDERGROUND_TOWN.'.xml';
+			IPSLogger_Trc(__file__, 'Load Weather Data from Wunderground, URL='.$urlWunderground);
+			$urlContent = @Sys_GetURLContent($urlWunderground);
+			$ServerStatusID = CreateVariableByName($this->categoryId_SysPing, "Server_Wunderground", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			if ($urlContent===false)
+				{
+				echo "Wunderground Key ist defekt oder überlastet.\n";
+				if (GetValue($ServerStatusID)==true)
+					{  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
+					SetValue($ServerStatusID,false);
+					}
+				}
+			else
+				{
+				echo "  -> APP ist okay !.\n";
+				if (GetValue($ServerStatusID)==false)
+					{  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
+					SetValue($ServerStatusID,true);
+					}
+				}
+			$api = @simplexml_load_string($urlContent);
+			//print_r($api);
+			}
+
+		/********************************************************
+		Die entfernten logserver auf Erreichbarkeit prüfen
+		**********************************************************/
+
+		if ( (isset ($this->installedModules["RemoteAccess"])) )            // alle 5 Minuten überprüfen um die Anzahl der Fehlermeldungen zu reduzieren
+			{
+			echo "\nSind die RemoteAccess Server erreichbar ....\n";
+			$result=$this->server_ping();
+			}
+        $this->writeSysPingStatistics($this->categoryId_SysPing,$debug);
+        
+        if (parent::$fourHourPassed)
+            {
+            echo "\n\n";
+            echo "Zusammenfassung SyspingAllDevices als Activity Table:\n";
+            $actual=false;
+            $html=$this->writeSysPingActivity($actual, true, $debug);
+            echo $this->writeSysPingActivity($actual, false, false);
+            SetValue($SysPingActivityTableID,$html);                
+            }            
+        return($SysPingResult);
+		}
+
+    /* Routinen von Syspingalldevices übersichtlicher machen
+     */
+    public function syspingCams($config, $log_OperationCenter, $debug=false)
+        {
+        if ($debug) echo "syspingCams aufgerufen, Sys_ping Kamera :\n";
+        $mactable=$this->get_macipTable($this->subnet);            
+        foreach ($config as $cam_name => $cam_config)
+            {
+            if ( (isset($cam_config['IPADRESSE']) ) || (isset($cam_config['MAC'])) )
+                {
+                if (! ( (isset($cam_config["STATUS"])) && (strtoupper($cam_config["STATUS"])!="ENABLED") ) )            
+                    {
+                    // echo "IPADRESSE oder MAC Adresse sollte bekannt sein.\n";
+                    $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+                    $ipadresse=""; $macadresse="";
+                    if (isset($cam_config['IPADRESSE'])) $ipadresse=$cam_config['IPADRESSE'];
+                    if (isset($mactable[$cam_config['MAC']])) 
+                        {
+                        $macadresse=$cam_config['MAC'];
+                        if ($ipadresse == "") $ipadresse=$mactable[$macadresse];
+                        elseif ($ipadresse != $mactable[$macadresse]) echo "Mactable check, kenn mich nicht aus, zwei unterschiedliche IP Adressen.\n";
+                        }
+                    if ($ipadresse != "")
+                        {    
+                        if ($debug) echo str_pad("    ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse $ipadresse",110);
+                        if ($macadresse != "") echo " vs ".$mactable[$cam_config['MAC']]."    ";
+                        else echo "                  ";
+                        $status=Sys_Ping($ipadresse,1000);
+                        $SysPingResult[IPS_getName($CamStatusID)]=$status;
+                        if ($status)
+                            {
+                            echo "--->  Kamera wird erreicht.\n";
+                            if (GetValue($CamStatusID)==false)
+                                {  /* Statusänderung */
+                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+                                SetValue($CamStatusID,true);
+                                }
+                            }
+                        else
+                            {
+                            echo "---> Kamera wird NICHT erreicht   !\n";
+                            if (GetValue($CamStatusID)==true)
+                                {  /* Statusänderung */
+                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+                                SetValue($CamStatusID,false);
+                                }
+                            }
+                        }
+                    else  /* mac adresse nicht bekannt */
+                        {
+                        echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
+                        }
+                    }   
+                else echo "    ".$cam_name." wurde deaktiviert, nicht abfragen.\n";
+                }   // nur die Einträge in der Konfiguration, bei denen es auch eine MAC Adresse gibt bearbeiten
+            
+            } /* Ende foreach */
+        if ($debug) echo "Kameras wurden abgefragt.\n";
+        return($SysPingResult);
+        }
+
+
+	/*************************************************************************************************************
+	 *
+	 * writeSysPingStatistics() als html Tabelle die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
+	 *
+	 * es werden die Dateneintraege analysiert und ausgegeben
+	 *   Erreichbarkeit IPCams
+	 *	 writeServerPingResults()
+     *   etc.
+     *
+	 *
+	 *
+	 **************************************************************************************************************/
+
+	function writeSysPingStatistics($categoryId_SysPing=0,$debug=false)
+		{
+        if ($debug) echo "writeSysPingStatistics aufgerufen für Darstellung der Erreichbarkeit der IP fähigen Geräte:\n";
+        if ($categoryId_SysPing==0) $categoryId_SysPing=$this->categoryId_SysPing;        
+        $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$categoryId_SysPing);
+        $SysPingTableID            = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
+        $SysPingSortTableID        = @IPS_GetObjectIDByName("SortPingTable",$categoryId_SysPingControl);
+
+        if ($SysPingTableID !== false)
+            {
+            $ipsOps = new ipsOps();
+            $sysPing=array();
+
+            $PrintHtml="";
+            $PrintHtml.='<style>'; 
+            $PrintHtml.='.sturdy table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+            $PrintHtml.='.sturdy table    {table-layout: fixed; width: 100%; }';
+            $PrintHtml.='.sturdy td:nth-child(1) { width: 70%; }';
+            $PrintHtml.='.sturdy td:nth-child(2) { width: 10%; }';
+            $PrintHtml.='.sturdy td:nth-child(3) { width: 20%; }';
+            $PrintHtml.='</style>';        
+            $PrintHtml.='<table class="sturdy"><tr><td>Name</td><td>State</td><td>Since</td></tr>';
+
+            $childrens = IPS_GetChildrenIds($categoryId_SysPing);           // alle Status Variablen
+            if ($debug) echo "alle ".sizeof($childrens)." Variablen in der Kategorie $categoryId_SysPing ausgeben:\n";
+            foreach ($childrens as $children)
+                {
+                $varname=IPS_GetName($children);
+                switch ($varname)
+                    {
+                    case "SysPingTable":                                // ignore known entries that are not relevant for statistics
+                    case "SysPingActivityTable":
+                    case "SysPingExectime":
+                    case "SysPingCount":
+                    case "SysPingControl":                
+                    case "SocketStatus":
+                        break;    
+                    default:
+                        if ($debug) 
+                            {
+                            echo "   ".str_pad($varname,40)."    ";
+                            if (isset($result[$varname])) echo "*";
+                            else echo " ";
+                            }
+                        $timeChanged=IPS_GetVariable($children)["VariableChanged"];
+                        $time=date("d.m.Y H:i:s",$timeChanged);
+                        $timeDelay=(time()-IPS_GetVariable($children)["VariableChanged"]);
+                        if ($debug) echo "     ".str_pad((GetValue($children)?"Ja":"Nein"),10)."$time  ".str_pad(nf($timeDelay,"s"),12);
+                        if ($timeChanged==0) 
+                            {
+                            if ($debug) echo "   --> delete\n";
+                            IPS_DeleteVariable($children);
+                            } 
+                        else 
+                            {
+                            if ($debug) echo "    \n";
+                            $sysPing[$varname]["VarName"]=$varname;
+                            $sysPing[$varname]["Status"]=GetValue($children);
+                            $sysPing[$varname]["Delay"]=$timeDelay;
+                            //$PrintHtml.='<tr><td>'.$varname.'</td><td>'.(GetValue($children)?"Ja":"Nein")."</td><td>".nf($timeDelay,"s")."</td></tr>";    
+                            }
+                        break;
+                    }
+                }
+
+            if ($SysPingSortTableID !== false)
+                {
+                switch (GetValueIfFormatted($SysPingSortTableID))
+                    {
+                    case "Name":
+                        $sortTable="VarName";
+                        break;
+                    case "State":
+                        $sortTable="Status";
+                        break;
+                    case "Since":
+                        $sortTable="Delay";
+                        break;
+                    default:
+                        echo "not known.";
+                        $sortTable="VarName";                        
+                        break;
+                    }
+                }
+            else $sortTable="VarName";
+            //echo "Lookup Sort $SysPingSortTableID : ".GetValueIfFormatted($SysPingSortTableID)." => $sortTable   ";
+            $ipsOps->intelliSort($sysPing,$sortTable);
+            //$ipsOps->intelliSort($sysPing,"Delay");
+            foreach ($sysPing as $entry)
+                {
+                $PrintHtml.='<tr><td>'.$entry["VarName"].'</td><td>'.($entry["Status"]?"Ja":"Nein")."</td><td>".nf($entry["Delay"],"s")."</td></tr>";    
+                }
+            $PrintHtml.='<tr><td align="right" colspan="3"><font size="-1">last update on '.date("d.m.Y H:i:s").'</font></td></tr>';    
+            $PrintHtml.='</table>';    
+            SetValue($SysPingTableID,$PrintHtml);
+            return($PrintHtml);
+            }
+        else return (false);
+        }
+
+	/*************************************************************************************************************
+	 *
+	 * writeSysPingActivity() , in Textform die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
+	 *
+	 * es werden die Dateneintraege analysiert und ausgegeben
+	 *   Erreichbarkeit IPCams
+	 *	 writeServerPingResults()
+     *
+     * Parameter actual wird nur bei den IPSCams verwendet
+	 *
+	 *
+	 **************************************************************************************************************/
+
+	function writeSysPingActivity($actual=true, $html=false, $debug=false)
+		{
+		$result=""; 
+        //$eDebug=$debug;
+        $eDebug=false;
+
+		$OperationCenterConfig = $this->oc_Configuration;
+		//print_r($OperationCenterConfig);
+		
+        //$SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$this->categoryId_SysPing);
+        //$SysPingActivityTableID = @IPS_GetObjectIDByName("SysPingActivityTable",$this->categoryId_SysPing);        
+
+		/************************************************************************************
+		 * Erreichbarkeit IPCams
+		 *************************************************************************************/
+		$result .= "Erreichbarkeit der IPCams:\n\n";
+		 
+		if (isset ($this->installedModules["IPSCam"]))
+			{
+			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+				{
+                $CamStatusID = @IPS_GetObjectIDByName( "Cam_".$cam_name,$this->categoryId_SysPing);
+				if ($CamStatusID==false) $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+				if ( GetValue($CamStatusID)==true )
+					{
+					$result .= str_pad($cam_name,30)."erreichbar\n";
+					}
+				else
+					{
+					$result .= str_pad($cam_name,30)."abwesend\n";
+					}
+				if ( (AC_GetLoggingStatus($this->archiveHandlerID,$CamStatusID)) && ($actual==false) )
+		   			{
+					/* schauen ob sich etwas in der Vergangenheit getan hat */
+					//echo "Loggingstatus aktiv.\n";
+        			$werte = AC_GetLoggedValues($this->archiveHandlerID,$CamStatusID, time()-30*24*60*60, time(),1000);
+					//print_r($werte);
+					}
+				} /* Ende foreach */
+			}
+
+		$result .= "\nAusfallsstatistik der konfigurierten Geraete:\n\n";			
+		$childrens=$this->getLoggedValues($this->categoryId_SysPing);
+		if ($debug) echo "Sysping Statusdaten liegen in der Kategorie SysPing unter der OID: ".$this->categoryId_SysPing." \n";
+		$result1=array();
+		foreach($childrens as $oid)
+			{
+            $type=IPS_GetObject($oid)["ObjectType"];
+			if ( ($type==2) && (AC_GetLoggingStatus($this->archiveHandlerID,$oid)) )         // sollten schon ausgefiltert sein, sicherheitshalber
+		   		{
+        		$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
+		   		//print_r($werte);
+				$status=getValue($oid); $first=true; $timeok=time(); 
+                $max=0; $count=0;   // keine Ausgabe der gespeicherte Log EIntraege wenn $max kleiner gleich 1 ist
+                $offTime=0; $onTime=0;
+                $maxend=time()-(30*24*60*60);
+                $size=sizeof($werte);
+		   		if ($debug) echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen (bis ".date("d.m. H:i:s",$maxend).") $size Werte. Aktueller Status Available:".($status?"Yes":"No")."\n";
+                if ($size==0)
+                    {
+                    $lastWert=$status;
+                    $lastTime=time();
+                    }
+		   		foreach ($werte as $wert)
+		   	   		{
+                    if ($count++ < $max) print_r($wert);            // Debugausgabe von Werten zur Orientierung
+                    $dauer=$this->Dauer($timeok,$wert["TimeStamp"],$maxend);
+                    if ($status!==$wert["Value"])
+						{
+						if ($first==true)
+							{
+                            echo "             ******************* Aenderung erster Eintrag im Logging zum aktuellem Status - Passen nicht zusammen..\n";
+                            If ($wert["Value"]==true) $onTime += $dauer; 
+                            If ($wert["Value"]==false) $offTime += $dauer;
+                            if ( $debug && $eDebug)
+                                {
+                                echo "       !! Wert im Logging noch nicht aktualisiert.\n";
+                                If ($wert["Value"]==true) echo "         Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                If ($wert["Value"]==false) echo "        Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                echo " Unverändert seit ".((time()-$wert["TimeStamp"])/60)." Minuten.\n";
+                                }
+							$first=false;
+							}
+						else
+							{
+                            /* hier ist die Routine eigentlich immer */
+							If ($wert["Value"]==true) 
+								{
+                                $onTime += $dauer;
+								if ($debug && $eDebug) echo "        Wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer online ".number_format($dauer,2)." Minuten. ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
+								}
+							If ($wert["Value"]==false) 
+								{
+                                $offTime += $dauer;
+								if ($debug && $eDebug) echo "      Ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer offline ".number_format($dauer,2)." Minuten.  ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
+								if ($dauer>100)	$result .= "          Ausfall länger als 100 Minuten am ".date("D d.m H:i:s",$wert["TimeStamp"])." fuer ".number_format($dauer,2)." Minuten.\n";
+								}
+                            //echo "  Check : ".$this->MinOrHoursOrDays($onTime+$offTime)."  und  ".$this->MinOrHoursOrDays((time()-$wert["TimeStamp"])/60)."   \n";
+							}	
+						$status=$wert["Value"];
+						}
+					else
+						{
+						if ($first==true)
+							{
+    						//echo "            *********************** keine Aenderung, erster Eintrag im Logfile, so sollte es sein.\n";
+                            $dauer=$this->Dauer(time(),$wert["TimeStamp"],$maxend);
+							If ($wert["Value"]==true) 
+								{
+                                $onTime += $dauer;                                    
+								if ($debug && $eDebug) echo "       Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+								$result .= IPS_GetName($oid).": Verbindung zuletzt wiederhergestellt am ".date("D d.m H:i:s",$wert["TimeStamp"])."\n";
+								}
+							If ($wert["Value"]==false) 
+                                {
+                                $offTime += $dauer;
+                                if ($debug && $eDebug) echo "       Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                }
+                            if ($debug && $eDebug) echo " Unverändert seit $dauer Minuten.\n";
+							$first=false;
+							}
+                        else echo "      *************** hier sollte niemand vorbeikommen, sonst fehlen die Zeiten.\n";
+						}	
+					$timeok=$wert["TimeStamp"];
+		   	   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
+		   	   		//echo "       Wert : ".str_pad(($wert["Value"] ? "Ein" : "Aus"),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+                    $lastTime=$wert["TimeStamp"]; $lastWert=$wert["Value"];
+		   	   		}
+                $dauer=$this->Dauer($lastTime,$maxend,$maxend);
+                echo "Dauer ".$this->MinOrHoursOrDays($dauer)."  Check ".(($onTime+$offTime+$dauer)/60/24)."\n";
+                If ($lastWert==true) $onTime += $dauer; 
+                If ($lastWert==false) $offTime += $dauer;                
+				$result1[IPS_GetName($oid)]["OID"]=$oid;
+                $available=round((1-($offTime/($onTime+$offTime)))*100,1);
+                echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime $onTime offtime $offTime Availability $available %.  Check ".(($onTime+$offTime)/60/24)."\n";
+                $result1[IPS_GetName($oid)]["AVAILABILITY"]=$available;
+                $result1[IPS_GetName($oid)]["ONTIME"]=$this->MinOrHoursOrDays($onTime);
+                $result1[IPS_GetName($oid)]["OFFTIME"]=$this->MinOrHoursOrDays($offTime);
+                echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime ".$result1[IPS_GetName($oid)]["ONTIME"]." offtime ".$result1[IPS_GetName($oid)]["OFFTIME"]." Availability ".$available."%.\n";
+		   		}
+			else
+		    	{
+				echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
+		    	}
+			}
+		//print_r($result1);	//Ergebnis für html Tabelle
+							
+		$result .= "\n";
+
+		/************************************************************************************
+		 * Erreichbarkeit Remote Access Server, für die html Auswertung nicht Berücksichtigen
+		 *************************************************************************************/
+		
+		if ($html)
+            {
+            ksort($result1);
+            $PrintHtml="";
+            $PrintHtml.='<style>';             
+            $PrintHtml.='.staty table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+            $PrintHtml.='.staty table    {table-layout: fixed; width: 100%; }';
+            $PrintHtml.='.staty td:nth-child(1) { width: 60%; }';
+            $PrintHtml.='.staty td:nth-child(2) { width: 15%; }';
+            $PrintHtml.='.staty td:nth-child(3) { width: 15%; }';
+            $PrintHtml.='.staty td:nth-child(4) { width: 10%; }';
+            $PrintHtml.='</style>';        
+            $PrintHtml.='<table class="staty">';
+            $PrintHtml.='<tr><td>Gerät</td><td>Ontime</td><td>Offtime</td><td>Availability</td></tr>';
+            foreach ($result1 as $name => $entry)
+                {
+                $PrintHtml.='<tr><td>'.$name.'</td><td>'.$entry["ONTIME"].'</td><td>'.$entry["OFFTIME"].'</td><td>'.$entry["AVAILABILITY"].'%</td></tr>';
+                }
+            $PrintHtml.='<tr><td align="right" colspan="4"><font size="-1">last update on '.date("d.m.Y H:i:s").'</font></td></tr>';    
+            $PrintHtml.='</table>';
+    		return($PrintHtml);
+            }
+        else
+            {
+            if (isset ($this->installedModules["RemoteAccess"]))
+                {		
+                $result .= $this->writeServerPingResults();
+                }
+    		return($result);
+            }
+		}
+
+
+    }
+
+/********************************************************************************************************
+ *
+ * PingOperation of OperationCenter
+ *
+ * extends OperationCenter because it is using same config file
+ * provides information of Sysping devices
+ *
+ *      
+ *      
+ *      
+ *      
+ *
+ *
+ **************************************************************************************************************************/
+
+class CamOperation extends OperationCenter
+	{
+
+	public function __construct($module="IPSCam",$subnet='10.255.255.255',$debug=false)
+		{
+        if ($debug) echo "class CamOperation, Construct Parent class OperationCenter.\n";
+        $this->debug=$debug;   
+        parent::__construct($subnet,$debug);                       // sonst sind die Config Variablen noch nicht eingelesen
+        
+        if (($module=="IPSCam") && (isset($this->installedModules["IPSCam"])))
+            {
+            /* wird zB von copyCamSnapshot verwendet */
+    		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+	    	$this->moduleManagerCam = new IPSModuleManager("IPSCam",$repositoryIPS);            
+            }
+        elseif (isset($this->installedModules[$module]))
+            {
+            /* wird zB von copyCamSnapshot verwendet */
+            $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	    	$this->moduleManagerCam = new IPSModuleManager($module,$repository);            
+            }            
+        else $this->moduleManagerCam=false;
+        }
+
+    /**************************
+     *
+     * aus einer Liste nach dem Mode ein paar Dateien aussuchen
+     * picdir Fileliste die kopiert werden soll, hier für die Auswahl relevant
+     *
+     ********************************************/
+
+    private function selectFilesfromList($picdir, $verzeichnis,$mode="standard", $debug=false)
+        {
+        $sysOps = new sysOps();
+        if ($mode=="") $mode="standard";        // default mode
+        $span=120;                              // Zeitspanne innerhalb der ein Bild ausgesucht wird
+        /* picdir Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht */
+        $size=sizeof($picdir);      // input ist picdir array, output ist logdir, parameter sind verzeichnis
+        if ($debug) echo "selectFilesfromList, Liste mit $size Dateien übergeben. mode $mode.\n";
+
+        /* picdir sortiern, entweder nach den Dateinamen, oder dem tatsächlichen File Create Datum */
+        $datesort=array();
+        foreach ($picdir as $pic) $datesort[filemtime($verzeichnis."\\".$pic)]=$pic;
+        krsort($datesort); 
+        //foreach ($datesort as $time => $pic) echo "    ".date("H:i:s",$time)."   $pic\n";
+
+        $j=0;$k=0;$l=0; $timeWindow=0;
+        $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
+        foreach ($datesort as $time => $pic)
+            {
+            $path_parts = pathinfo($pic);
+            if ($path_parts['extension']=="jpg")
+                {
+                if ($debug) echo "   ".str_pad($verzeichnis."\\".$pic,50)."   ".str_pad($sysOps->getNiceFileSize(filesize($verzeichnis."\\".$pic)),16)."    ".
+                                    date("H:i:s",$time);
+                if ($timeWindow==0) 
+                    {
+                    $timeWindow=$time;      // initialisieren, erstes Foto immer anzeigen
+                    if ($debug) echo "  + init";  
+                    $oldpic=$pic; 
+                    $logdir[$j]=$pic;
+                    $j++;
+                    }
+                elseif ($time<($timeWindow-$span))             // es geht rückwärts, 60 Sekundenfenster vorsehen, ausserhalb
+                    {
+                    if ($l<3) 
+                        {
+                        if ($debug) echo "  +";
+                        if ($mode=="time")
+                            {
+                            $logdir[$j]=$oldpic;
+                            $j++;
+                            } 
+                        }
+                    else
+                        {
+                        if ($debug) echo "  \\";
+                        }   
+                    $timeWindow=$time;
+                    $l=0;
+                    }
+                else                                            // im 60 Sekundenfenster
+                    {
+                    $l++;
+                    if ($l==3)  
+                        {
+                        if ($debug) echo "  +"; 
+                        if ($mode=="time")
+                            {
+                            $logdir[$j]=$pic;
+                            $j++;
+                            } 
+                        }
+                    else 
+                        {
+                        if ($debug) echo "  |";
+                        }
+                    }
+                //echo "       Dirname: ".$path_parts['dirname'], "\n";
+                //echo "       Basename: ".$path_parts['basename'], "\n";
+                //echo "       Extension: ".$path_parts['extension'], "\n";
+                //echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
+                if (($k % 6)==2) 
+                    { 
+                    if ($mode=="standard")
+                        {
+                        $logdir[$j]=$pic;
+                        $j++;
+                        } 
+                    if ($debug) echo "  *"; 
+                    };
+                $k++;		// eigener Index, da manche Files übersprungen werden
+                if ($debug) echo "\n";
+                $oldpic=$pic;           // manchmal wird das vorige Bild benötigt
+                }       // if jpeg
+            //if ($debug) echo "\n";
+            }    // foreach
+        echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
+        echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
+
+        return($logdir);	
+        }
+
+
+	/******************************
+	 *
+	 * es werden Snapshots pro Kamera erstellt, muss in IPSCam eingeschaltet sein
+	 * diese werden wenn aufgerufen (regelmaessig) für ein Overview Webfront in das webfront/user Verzeichnis kopiert
+     *  IPS_KernelDir/Cams/0-x als Quellverzeichnis 
+     *  IPS_KernelDir/webfront/user/OperationCenter/AllPics/ als Zielverzeichnis
+	 * 
+	 * Übergabeparameter ist IPSCam Configfile aus IPSCam
+	 */
+	
+	function copyCamSnapshots($camConfig=array(), $debug=false)
+		{
+        if ($debug) echo "copyCamSnapshots aufgerufen.\n";
+        $status=false;  // Rückmeldecode
+        if (isset($this->installedModules["IPSCam"]))
+            {
+            if (sizeof($camConfig)==0)
+                {
+                if ($debug) echo "Kein Configarray als Übergabeparameter, sich selbst eines überlegen.\n";
+                IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+                IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
+                $camConfig = IPSCam_GetConfiguration();			
+                }
+            $categoryIdCams     		= CreateCategory('Cams',    $this->CategoryIdData, 20);
+        
+            $camVerzeichnis=IPS_GetKernelDir()."Cams/";
+            $camVerzeichnis = str_replace('\\','/',$camVerzeichnis);
+
+            /* Zielverzeichnis ermitteln */
+            $picVerzeichnis="user/OperationCenter/AllPics/";
+            $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
+            $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
+            if ($debug) 
+                {
+                echo "copyCamSnapshots: Aufruf mit folgender Konfiguration:\n";
+                print_r($camConfig);
+                echo "Bilderverzeichnis der Kamera Standbilder: Quellverzeichnis ".$camVerzeichnis."   Zielverzeichnis ".$picVerzeichnisFull."\n";
+                echo "---------------------------------------------------------\n";                
+                }
+            if ( is_dir ( $picVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($picVerzeichnisFull);
+
+            foreach ($camConfig as $index=>$data) 
+                {
+                $PictureTitleID=CreateVariable("CamPictureTitle".$index,3, $categoryIdCams,100,"",null,null,"");        // string
+                $PictureTimeID =CreateVariable("CamPictureTime".$index,1, $categoryIdCams,101,"",null,null,"");         // integer, time
+                $filename=$camVerzeichnis.$index."/Picture/Current.jpg";
+                //if ($debug) echo "       Kamera ".$data["Name"]." bearbeite Filename $filename   ".date ("F d Y H:i:s.", filemtime($filename))."\n";
+                if ( file_exists($filename) == true )
+                    {
+                    $filemtime=filemtime($filename);
+                    if ($debug) echo "      Kamera ".$data["Name"]." :  copy ".$filename." nach ".$picVerzeichnisFull." File Datum vom ".date ("F d Y H:i:s.", $filemtime)."\n";	
+                    copy($filename,$picVerzeichnisFull."Cam".$index.".jpg");
+                    SetValue($PictureTitleID,$data["Name"]."   ".date ("F d Y H:i:s.", $filemtime));
+                    SetValue($PictureTimeID,$filemtime);
+                    }
+                }
+            $status=true;			
+            }
+        if ($debug) echo"\n";
+        return ($status);
+		}
+
+	/******************************
+	 *
+	 * es wird die Visualisierung für die Snapshots pro Kamera erstellt, muss in IPSCam eingeschaltet sein
+     *
+     *
+	 */
+	function showCamSnapshots($camConfig=array(), $debug=false)
+		{
+        if ($debug) echo "showCamSnapshots aufgerufen für insgesamt ".sizeof($camConfig)." Kameras.\n";            
+        $status=false;  // Rückmeldecode
+        if (sizeof($camConfig)==0)
+            {
+            if (isset($this->installedModules["IPSCam"]))
+                {
+                IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+                IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
+                $camConfig = IPSCam_GetConfiguration();			
+                //if ($debug) echo "Kein Configarray als Übergabeparameter, sich selbst eines überlegen: ".json_encode($camConfig)."\n";
+                }
+            }
+        if ($debug) echo "IPSCam installiert. showCamSnapshots aufgerufen mit ".json_encode($camConfig).".\n";            
+        $categoryIdCams     		= CreateCategory('Cams',    $this->CategoryIdData, 20);
+    
+        /* Zielverzeichnis für Anzeige ermitteln */
+        $picVerzeichnis="user/OperationCenter/AllPics/";
+        $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
+        $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
+
+        $anzahl=sizeof($camConfig);
+        $rows=(integer)(($anzahl/2)+1);
+        if ($debug) 
+            {
+            $ipsOps = new ipsOps();                    
+            echo "Es werden im Picture Overview insgesamt ".$anzahl." Bilder in ".$rows." Zeilen mal 2 Spalten aus $categoryIdCams (".$ipsOps->path($categoryIdCams).") angezeigt.\n";	
+            //print_r($camConfig);                 // das sind die Cams die durchgegangen werden
+            }	
+        $CamTablePictureID=IPS_GetObjectIDbyName("CamTablePicture",$categoryIdCams);
+        $CamMobilePictureID=IPS_GetObjectIDbyName("CamMobilePicture",$categoryIdCams);
+
+        $html="";
+        $html.='<style> 
+                    table {width:100%}
+                    table,td {align:center;border:1px solid white;border-collapse:collapse;}
+                    .bildmittext {border: 5px solid darkslategrey; position: relative;}
+                    .bildmittext img {display:block;}
+                    .bildmittext span {background-color: darkslategrey; position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
+                    .bildmittext spanRed {background-color:darkred; position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
+                    </style>';
+
+        $htmlWeb='<table>';
+        $count=0; 
+        if ($anzahl>6) $columns=3;
+        else $columns=2;
+        foreach ($camConfig as $index=>$data) 
+            {
+            If ( ($count % $columns) == 0) $htmlWeb.="<tr>";
+            // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)  sicherheitshalber einmal erzeugen
+            $PictureTitleID = CreateVariableByName($categoryIdCams,"CamPictureTitle".$index, 3, "", "", 100, null);        // string
+            $PictureTimeID  = CreateVariableByName($categoryIdCams,"CamPictureTime".$index, 1, "", "", 101, null);         // integer, time
+            //$PictureTitleID = IPS_GetObjectIDByName("CamPictureTitle".$index,$categoryIdCams);        // string
+            //$PictureTimeID  = IPS_GetObjectIDByName("CamPictureTime".$index,$categoryIdCams);         // integer, time
+            $text      = GetValue($PictureTitleID);
+            $filemtime = GetValue($PictureTimeID);
+            /* Parameter imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span") */
+            if ((time()-$filemtime)>60) $htmlWeb.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text,"spanRed").' </td>'; 			
+            else $htmlWeb.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text).' </td>';
+            If ( ($count % $columns) == ($columns-1) ) $htmlWeb.="</tr>";
+            $count++;
+            }
+        If ( ($count % $columns) == 0) $htmlWeb.="<td> </td> </tr>";
+        $htmlWeb.="<tr><td colspan=\"".$columns."\">Aktualisierte Snapshots direkt von der Cam, zuletzt aktualisiert ".date("d.m.Y H:i:s")."</td></tr>";
+        $htmlWeb.="</table>";	
+
+        $htmlMob='<table>';
+        $count=0; $columns=1;
+        foreach ($camConfig as $index=>$data) 
+            {
+            If ( ($count % $columns) == 0) $htmlMob.="<tr>";
+            $PictureTitleID = IPS_GetObjectIDByName("CamPictureTitle".$index,$categoryIdCams);        // string
+            $PictureTimeID  = IPS_GetObjectIDByName("CamPictureTime".$index,$categoryIdCams);         // integer, time
+            $text      = GetValue($PictureTitleID);
+            $filemtime = GetValue($PictureTimeID);
+            /* Parameter imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span") */
+            if ((time()-$filemtime)>60) $htmlMob.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text,"spanRed").' </td>'; 			
+            else $htmlMob.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text).' </td>';
+            If ( ($count % 2) == 1) $htmlMob.="</tr>";
+            $count++;
+            }
+        If ( ($count % $columns) == 0) $htmlMob.="<td> </td> </tr>";
+        $htmlMob.="</table>";
+
+        SetValue($CamTablePictureID,$html.$htmlWeb);
+        SetValue($CamMobilePictureID,$html.$htmlMob);
+
+        $status=true;	
+
+        return ($status);
+		}
+
+
+	/******************************
+	 *
+	 * es werden von den ftp Verzeichnissen ausgewählte Dateien in das Webfront/user verzeichnis für die Darstellung im Webfront kopiert
+     *  Zielverzeichnis:  IPS_KernelDir/webfront/user/OperationCenter/Cams/"Cam_name"/
+	 * 
+	 */
+	
+	function showCamCaptureFiles($ocCamConfig,$debug=false)
+		{
+        $box=false;
+        if ($this->moduleManagerCam)            // IPSCam oder eigenes Module wie WebCamera
+            {
+            $categoryId_WebFrontAdministrator=$this->getWebfrontCategoryID();           // erzeugt eine Kategorie im Webfront Visualisiserung
+            $childrens = IPS_GetChildrenIDs($categoryId_WebFrontAdministrator);
+            $camsFound=array();
+            if ($debug) echo "Look for Webfront categories in ".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator))."\n";
+            foreach ($childrens as $children)
+                {
+                $camsFound[$children]=true;
+                if ($debug) echo "   $children  ".IPS_GetName($children)."\n";
+                }
+            //if ($debug) print_r($childrens);         // alle Unterobjekte, Cameras ausgeben, nicht mehr verwendete muessen gelöscht werden
+
+            $count=0; $index=0;		
+            foreach ($ocCamConfig as $indexName => $cam_config)
+                {
+                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
+                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
+                if (isset ($cam_config['FTPFOLDER']))         
+                    {  
+                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                        {                        
+                        $index++;
+                        if ($debug)
+                            {
+                            echo "\n  ---------------------------------------------------------\n";
+                            echo "  Webfront Tabname für ".$cam_name." erstellen.\n";
+                            }
+                        $heute=date("Ymd", time());
+                        //echo "    Heute      : ".$heute."    Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+
+                        /* in data/OperationCenter/ jeweils pro Camera eine Kategorie mit Cam_Name anlegen 
+                        * sollte bereits vorhanden sein, hier werden die Infos über letzte Bewegung und Anzahl Capture Bilder gesammelt
+                        *
+                        */
+                        $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$this->CategoryIdData);
+                        if ($cam_categoryId==false)
+                            {
+                            $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                            IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+                            IPS_SetParent($cam_categoryId,$this->CategoryIdData);
+                            }
+
+                        /* im Webfront visualization/adminstrator/ eine IPSCam_Capture Kategorie mit jeweils pro Kamera eigener Kategorie anlegen 
+                        * dort wird die Variable für die html box gespeichert
+                        *  ändern auf Link, damit später auch link von user geht
+                        */	
+                        $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$index);
+                        if (isset($camsFound[$categoryIdCapture])) 
+                            {
+                            echo "  Camera Cam_$cam_name ($categoryIdCapture) in ".IPS_GetName($categoryId_WebFrontAdministrator)." ($categoryId_WebFrontAdministrator) found.\n";
+                            unset ($camsFound[$categoryIdCapture]);
+                            IPS_SetHidden($categoryIdCapture, false);
+                            }
+                    
+                        /* hmtl box in Vizualization anlegen statt in data und einen Link darauf setzen $pictureFieldID = CreateVariable("pictureField",   3 ,  $categoryIdCapture, 50 , '~HTMLBox'); */
+                        $pictureFieldID = $this->createVariablePictureField($categoryIdCapture);
+                        /*$html.='<style> 
+                                table {width:100%}
+                                td {width:50%}						
+                                table,td {align:center;border:1px solid white;border-collapse:collapse;}
+                                .bildmittext {border: 5px solid red;position: relative;}
+                                .bildmittext img {display:block;}
+                                .bildmittext span {background-color: red;position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
+                                </style>';
+                        $html.='<table>'; */
+                    
+                        $box="";
+                        $box.='<style> 
+                                table {width:100%}
+                                td {width:20%}						
+                                table,td {align:center;border:1px solid white;border-collapse:collapse;}
+                                .bildmittext {border: 5px solid green;position: relative;}
+                                .bildmittext img {display:block;}
+                                .bildmittext span {background-color: grey;position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
+                                </style>';
+                        $box.='<table>';		
+                        /* $box.='<style> .container { position: relative; text-align: center; color: white; } 
+                        .bottom-left { position: absolute; bottom: 8px; left: 16px; } 
+                        .top-left {position: absolute; top: 8px; left: 16px; } 
+                        .top-right { position: absolute; top: 8px; right: 16px; } 
+                        .bottom-right { position: absolute; bottom: 8px; right: 16px; } 
+                        .centered { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); } </style>';
+                        $box.='<table frameborder="1" width="100%">'; */
+
+                        $verzeichnis=$cam_config['FTPFOLDER'].$heute;
+                    
+                        /* Kamerabilderverzeichnis muss innerhalb Webfront entstehen, daher Bilder dorthin kopieren */
+                        $imgVerzeichnis="user/OperationCenter/Cams/".$cam_name."/";
+                        $imgVerzeichnisFull=IPS_GetKernelDir()."webfront/".$imgVerzeichnis;
+                        $imgVerzeichnisFull = str_replace('\\','/',$imgVerzeichnisFull);
+                        if ( is_dir ( $imgVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($imgVerzeichnisFull);
+                    
+                        $picdir=$this->dosOps->readdirToArray($verzeichnis,false,-500);
+                        if ($debug) 
+                            {
+                            echo "   Files aus dem Verzeichnis $verzeichnis werden in das Zielverzeichnis : ".$imgVerzeichnisFull." kopiert.\n";
+                            }
+                        if ($picdir !== false)			// ignorieren wenn picdir kein verzeichnis ist
+                            {
+                            //$mode="standard";       // jedes 6te Bild
+                            $mode="time";         // ein Bild alle 120 Sekunden
+                            $logdir= $this->selectFilesfromList($picdir, $verzeichnis,$mode, $debug);
+                                
+                            /* 
+                            //Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht 
+                            $size=sizeof($picdir);
+                            $j=0;$k=0;$l=0; $timeWindow=0;
+                            $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
+                            for ($i=0;$i<$size;$i++)
+                                {
+                                //if ($debug) echo "   ".$picdir[$i];           // so sieht man die avi files auch
+                                $path_parts = pathinfo($picdir[$i]);
+                                if ($path_parts['extension']=="jpg")
+                                    {
+                                    if ($debug) echo "   ".str_pad($verzeichnis."\\".$picdir[$i],50)."   ".str_pad($sysOps->getNiceFileSize(filesize($verzeichnis."\\".$picdir[$i])),16)."    ".
+                                                        date("H:i:s",filemtime($verzeichnis."\\".$picdir[$i]));
+                                    $timeFile=filemtime($verzeichnis."\\".$picdir[$i]);
+                                    if ($timeWindow==0) $timeWindow=$timeFile;      // initialisieren
+                                    if ($timeFile<($timeWindow-60))             // es geht rückwärts also 60 Sekundenfenster vorsehen
+                                        {
+                                        if ($debug) echo "   ";   
+                                        $timeWindow=$timeFile;
+                                        $l=0;
+                                        }
+                                    else
+                                        {
+                                        $l++;
+                                        if ($debug) 
+                                            {
+                                            if ($l==3) echo "  +"; 
+                                            else echo "  |";
+                                            }
+                                        }
+                                    //echo "       Dirname: ".$path_parts['dirname'], "\n";
+                                    //echo "       Basename: ".$path_parts['basename'], "\n";
+                                    //echo "       Extension: ".$path_parts['extension'], "\n";
+                                    //echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
+                                    if (($k % 6)==2) 
+                                        { 
+                                        $logdir[$j++]=$picdir[$i]; 
+                                        if ($debug) echo "  *"; 
+                                        };
+                                    $k++;		// eigener Index, da manche Files übersprungen werden
+                                    if ($debug) echo "\n";
+                                    } 
+                                //if ($debug) echo "\n";
+                                }
+                            echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
+                            echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
+                            //print_r($logdir);	*/
+                            $check=array();
+                            $handle=opendir ($imgVerzeichnisFull);
+                            while ( false !== ($datei = readdir ($handle)) )
+                                {
+                                if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($imgVerzeichnisFull.$datei) == false)) 
+                                    {
+                                    $check[$datei]=true;
+                                    }
+                                }
+                            closedir($handle);
+                            /* im array check steht für vorhandene Dateien ein true, wenn sie auch im Quellverzeichnis sind wird nicht kopiert */
+                            $c=0;
+                            foreach ($logdir as $filename)
+                                {
+                                if ( isset($check[$filename]) == true )
+                                    {
+                                    $check[$filename]=false;
+                                    //if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen.\n";
+                                    }
+                                else
+                                    {	
+                                    echo "copy ".$verzeichnis."\\".$filename." nach ".$imgVerzeichnisFull.$filename." \n";	
+                                    copy($verzeichnis."\\".$filename,$imgVerzeichnisFull.$filename);
+                                    $c++;
+                                    }
+                                }		
+                            if ($debug) echo "Verzeichnis für Anzeige im Webfront: ".$imgVerzeichnisFull."\n";	
+                            $i=0; $d=0;
+                            foreach ($check as $filename => $delete)
+                                {
+                                if ($delete == true)
+                                    {
+                                    //if ($debug) echo "Datei ".$filename." wird gelöscht.\n";
+                                    unlink($imgVerzeichnisFull.$filename);
+                                    $d++;
+                                    }
+                                else
+                                    {
+                                    //if ($debug) echo "   ".$filename."\n";
+                                    $i++;		
+                                    }	
+                                }	
+                            echo "insgesamt ".$i." Dateien im Zielverzeichnis. Dazu wurden ".$c." Dateien kopiert und ".$d." Dateien im Zielverzeichnis ".$imgVerzeichnisFull." geloescht.\n";
+                
+                            /* ein schönes Tablearray machen mit 5 Spalten */
+                            $end=sizeof($logdir);
+                            if ($end>100) $end=100;		
+                            for ($j=1; $j<$end;$j++)
+                                {
+                                /* nutzt imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span")
+                                 */
+                                //echo "Suche Datei hier: ".$imgVerzeichnisFull.$logdir[$j-1].":\n";
+                                //$timeFile=@filemtime($imgVerzeichnisFull.$logdir[$j-1]);            // Fehlermeldung unterdrücken wenn es Datei zb nicht mehr gibt
+                                echo "Suche Datei hier: ".$verzeichnis."\\".$logdir[$j-1].":";
+                                $timeFile=@filemtime($verzeichnis."\\".$logdir[$j-1]);            // nicht die kopierte, sondern die originale Datei evaluieren
+                                if ($timeFile) 
+                                    {
+                                    $timeToDisplay=date("d.m.Y H:i:s",$timeFile);
+                                    echo "   ok      $j\n";
+                                    }
+                                else 
+                                    {
+                                    $timeToDisplay=$this->extractTime($logdir[$j-1]);
+                                    echo "   extract $j\n";
+                                    }
+                                if (($j % 5)==0) { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"Wolfgang",$timeToDisplay).' </td> </tr>'; }
+                                elseif (($j % 5)==1) { $box.='<tr> <td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"Claudia",$timeToDisplay).' </td>'; }
+                                else { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"WeissNicht",$timeToDisplay).' </td>'; }
+                                }
+                
+                            $box.='</table>';
+                            SetValue($pictureFieldID,$box);
+                            //echo $box;		
+                            }                   /* ende ftp enabled */
+                        else 
+                            {
+                            echo "Fehler Verzeichnis leer. Keine Bilder wurden heute kopiert.\n";
+                            $this->dosOps->writeDirStat($cam_config['FTPFOLDER']);
+                            $box.='<tr> <td frameborder="1">no pictures from today</td></tr>';
+                            $box.='</table>';
+                            SetValue($pictureFieldID,$box);
+                            }
+                        }                   /* ende ftpfolder */
+                    }
+                }           // ende foreach
+            echo "Bilder für alle Kameras wurden kopiert. Die folgenden Kameras blieben unbehandelt und werden geloescht oder versteckt.\n";
+            //print_r($camsFound);
+            foreach ($camsFound as $camFound => $status)
+                {
+                if ($debug) echo "   $camFound  ".IPS_GetName($camFound)." wird versteckt.\n";
+                IPS_SetHidden($camFound, true);
+                }
+            
+            }
+        return ($box);
+		}	
+
+
+    /*   erzeugt einen Category Pfad, $WFC10Cam_Path."_Capture"
+     *   Name function ist iritierend
+     */
+    public function getWebfrontCategoryID($debug=false)
+        {
+        $WFC10Cam_Path        	 = $this->moduleManagerCam->GetConfigValue('Path', 'WFC10');
+        if ($debug) echo "getWebfrontCategoryID from Webfont Path of IPSCam Module in $WFC10Cam_Path\n";
+        return (CreateCategoryPath($WFC10Cam_Path."_Capture"));
+        }
+
+    /*                     */
+
+    public function createVariablePictureField($categoryIdCapture)
+        {
+        return ( CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox'));            
+        }
+
+    /*  schöne Zusammenfassung als array, input is ocCamConfig
+     *
+     */
+    public function getPictureFieldIDs($ocCamConfig, $debug=false)
+        {
+        $pictureFieldIDs=array(); $index=0;
+        if ($this->moduleManagerCam)
+            {
+            $categoryId_WebFrontAdministrator=$this->getWebfrontCategoryID(); 
+            $pictureFieldIDs["Base"] = $categoryId_WebFrontAdministrator;      
+            if ($debug) echo "getPictureFieldIDs aufgerufen. Bearbeite die Kategorie ".IPS_GetName($categoryId_WebFrontAdministrator)."  ($categoryId_WebFrontAdministrator)\n";
+            foreach ($ocCamConfig as $indexName => $cam_config)
+                {
+                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
+                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
+                if (isset ($cam_config['FTPFOLDER']))         
+                    { 
+                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                        {                                    
+                        $categoryIdCapture  = IPS_GetObjectIdByName("Cam_".$cam_name, $categoryId_WebFrontAdministrator);
+                        $fieldID = $this->createVariablePictureField($categoryIdCapture);
+                        $pictureFieldIDs[$index]["Data"] = $fieldID;
+                        if ($debug) echo "   Camera $cam_name hat PictureFieldID $fieldID  \n";
+                        $index++;
+                        }
+                    }           // ende isset ftpfolder
+                }           // ende foreach
+            }           // ende IPSCam
+        return ($pictureFieldIDs);
+        }        
+
+    /* get Category IDS like they are instances
+     *
+     *
+     */
+    
+    public function getPictureCategoryIDs($ocCamConfig=false, $debug=false)
+        {
+        if ($ocCamConfig===false) $ocCamConfig=$this->getCAMConfiguration();
+        $pictureIDs=array(); $index=0;
+        if ($this->moduleManagerCam)
+            {
+            foreach ($ocCamConfig as $indexName => $cam_config)
+                {
+                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
+                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
+                if (isset ($cam_config['FTPFOLDER']))         
+                    { 
+                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                        {                                    
+                        $categoryIdCapture  = IPS_GetObjectIdByName("Cam_".$cam_name, $this->CategoryIdData);
+                        $pictureIDs[$index] = $categoryIdCapture;
+                        if ($debug) echo "   Camera $cam_name hat PictureCategoryID $categoryIdCapture  \n";
+                        $index++;
+                        }
+                    }           // ende isset ftpfolder
+                }           // ende foreach
+            }           // ende IPSCam
+        return ($pictureIDs);
+        }   
+
+
+	/*
+	 * Bei jedem Bild als html Verzeichnis und alternativem Bildtitel darstellen
+     * nutzt class bildmittext bild ist $imgVerzeichnis.$filename
+	 *
+	 */
+
+	private function imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span")
+		{
+		return ('<div class="bildmittext"> <img src="'.$imgVerzeichnis.$filename.'" title="'.$title.'" alt="'.$filename.'" width=100%> <'.$span.'>'.$text.'</'.$span.'></div>');
+		//return ('<div class="bildmittext"> <img src="'.$imgVerzeichnis."\\".$filename.'" title="'.$title.'" alt="'.$filename.'" width=100%> <span>'.$text.'</span></div>');
+		}						
+
+
+    }
+
 
 /********************************************************************************************************
  *
@@ -9574,7 +9835,7 @@ class DeviceManagement_Homematic extends DeviceManagement
             }  
         //print_R($storedError_Log);   
 
-        $statusDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
+        $statusDevices     = '<?php'."\n";             // für die php Devices and Gateways, neu
         $statusDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
         $statusDevices     .= " *  \n";
         $statusDevices     .= " * Please do not edit, file will be overwritten on a regular base.     \n";
