@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/**@defgroup EvaluateHardware
 	 * @ingroup modules_weather
@@ -13,18 +13,33 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    /* EvaluateHardware macht die Evaluierung aller Geräte und ihrer Möglichkeiten
+     *
+     * Routine geht davon aus dass OperationCenter und DetectMovement installiert sind
+     * es werden fünf verschiedene Tabellen angelegt:
+     *      StatusDevice            StatusOverview.EvaluateHardware.SystemTP
+     *      StatusEvaluateHardware  Auswertung.EvaluateHardware.SystemTP
+     *      LogEvaluateHardware     Nachrichten.EvaluateHardware.SystemTP
+     *
+     *      ValuesTable             Werte.HardwareStatus                    DeviceManager->showHardwareStatus  nette Tabelle per Typ, Update onDemand ImproveDeviceDetection
+     *      MessageTable            MessageList.SystemTP                               $testMovement->getComponentEventListTable, Update onDemand ImproveDeviceDetection
+     *      TableEvents             MessageTabellen.SystemTP                 $html=$detectMovement->writeEventlistTable($detectMovement->eventlist), Kategorie data.DetectMovement
+     *
+     * Erweiterung um einfache Visualisierungen im Webfront zur Analyse, Darstellung im DoctorBag und Schraubenschlüssel
+     *
+     *
+     */
 
-    // max. Scriptlaufzeit definieren
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+
     $dosOps = new dosOps();
-    $dosOps->setMaxScriptTime(400); 
+    $dosOps->setMaxScriptTime(400);                 // max. Scriptlaufzeit definieren
     $startexec=microtime(true);
 
-	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
 	}
@@ -58,7 +73,6 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$scriptIdImproveDeviceDetection   = IPS_GetScriptIDByName('ImproveDeviceDetection', $CategoryIdApp);
 
-    $dosOps = new dosOps();
     $ipsOps = new ipsOps();
     $webOps = new webOps();
 
@@ -70,10 +84,10 @@
 
 	echo "\n";
 	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";	
-
+    echo "DetectDeviceMessages Tabelle erstellen.\n";
     $categoryId_DetectDevice        = CreateCategory('DetectDevice',        $CategoryIdData, 20);
     $pname="DetectDeviceMessages";                                         // keine Standardfunktion, da Inhalte Variable
-    $nameID=["Sort1","Sort2", "Sort3"];
+    $nameID=["Module","LastRun","Sort1","Sort2", "Sort3"];
     $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable
     $actionSortMessageTableID          = CreateVariableByName($categoryId_DetectDevice,"SortTableBy", 1,$pname,"",1010,$scriptIdImproveDeviceDetection);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
     $messageTableID          = CreateVariable("MessageTable", 3, $categoryId_DetectDevice,1010,"~HTMLBox",null,null,"");
@@ -93,6 +107,8 @@
         $CategoryIdAppDM      = $moduleManagerDM->GetModuleCategoryID('app');
         $testMovementscriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);  
 		$SchalterSortID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$testMovementscriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+    
+    	$DetectDeviceHandler = new DetectDeviceHandler();
         }
 
     /* check if Administrator and User Webfronts are already available */
@@ -125,6 +141,7 @@
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * WebFront Administrator Installation
+     * wir nutzen SystemTPA (Werkzeugschlüsel, Tabpane ist EvaluateHardware)
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
@@ -143,7 +160,6 @@
     if (isset($configWFrontGUI["Administrator"]))
         {
         $tabPaneParent=$configWFrontGUI["Administrator"]["TabPaneItem"];
-        echo "EvaluateHardware Module Überblick im Administrator Webfront $tabPaneParent abspeichern.\n";
         //print_r($configWFrontGUI["Administrator"]);   
 
         /* es gibt kein Module mit passenden ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
@@ -153,6 +169,8 @@
         $configWF["TabPaneParent"]=$tabPaneParent;
         $configWF["TabPaneItem"]="EvaluateHardware"; 
         $configWF["TabPaneOrder"]=1050;                                          
+        echo "====================================================================================================\n";
+        echo "EvaluateHardware Module Überblick im Administrator Webfront $tabPaneParent.".$configWF["TabPaneItem"]." abspeichern.\n";
         }
     else echo "EvaluateHardware Module Überblick im Administrator Standard Webfront $tabPaneParent abspeichern.\n";         
     $webfront_links=array();
@@ -182,18 +200,22 @@
                     ),
                 );	           
     $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
-    $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",false);            //true für Debug
+    $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
     $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
 
-    // MessageHandler
+    // MessageHandler Webfront, verwendet einfaches easysetupWebfront
 
    if (  (isset($installedModules["OperationCenter"])) && (isset($installedModules["DetectMovement"]))  )
         {    
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
 
         /* es gibt kein Module mit passenden ini Dateien, daher etwas improvisieren und fixe Namen nehmen */
         $configWF["Path"]="Visualization.WebFront.Administrator.MessageHandler";
         $configWF["TabPaneItem"]="MessageHandler"; 
         $configWF["TabPaneOrder"]=2000;                                          
+
+        echo "====================================================================================================\n";
+        echo "Webfront TabPaneItem $tabPaneParent.".$configWF["TabPaneItem"]." erzeugen:\n";
 
         $webfront_links=array(
             "MessageTabellen" => array(
@@ -212,6 +234,22 @@
                         "MOBILE"			=> false,
                             ),
             
+                "CONFIG" => array("type" => "link"),
+                        ),
+                    );	           
+
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,["Scope" => "Administrator","EmptyCategory"=>true],true);            //true für Debug
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+
+        $configWF["TabPaneItem"]="MessageList"; 
+        $configWF["TabPaneOrder"]=2010;                                          
+
+        echo "====================================================================================================\n";
+        echo "Webfront TabPaneItem $tabPaneParent.".$configWF["TabPaneItem"]." erzeugen:\n";
+
+        $webfront_links=array(
+            "MessageLists" => array(
                 $actionSortMessageTableID => array(
                         "NAME"				=> "Sortieren",
                         "ORDER"				=> 200,
@@ -230,9 +268,9 @@
                         ),
                     );	           
 
-        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
-        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,["Scope" => "Administrator","EmptyCategory"=>false],true);            //true für Debug
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+
         }
     /*-------------*/
 
@@ -252,19 +290,28 @@
 
         $configWF = $configWFront["Administrator"];
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		echo "Webfront TabPane mit Parameter : ".$WFC10_ConfigId." ".$configWF["TabPaneItem"]." ".$configWF["TabPaneParent"]." ".$configWF["TabPaneOrder"]." ".$configWF["TabPaneIcon"]."\n";
+		echo "Webfront TabPane mit Parameter : ".$configWF["TabPaneItem"]." -> HouseTPA -> ".$configWF["TabPaneParent"]." Order ".$configWF["TabPaneOrder"]." Icon ".$configWF["TabPaneIcon"]."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, "HouseTPA", $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"], "HouseTPA",  20, $configWF["TabPaneName"], $configWF["TabPaneIcon"]);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
-		
-		echo "\nWebportal Datenstruktur installieren in: ".$configWF["Path"]." \n";
+
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+		echo "\nWebportal Topology Datenstruktur installieren in: ".$configWF["Path"]." \n";
         $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]);
 		IPS_SetHidden($categoryId_WebFrontAdministrator,true);
-		$worldID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
+		$worldID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);           // Wird nicht mehr neu benannt, wenn schon einmal verhonden
 	    //EmptyCategory($worldID);                                                              // die wird nicht mehr erzeugt
+        $wfcHandling->DeleteWFCItems("World");
+		$wfcHandling->CreateWFCItemCategory  ('WorldTPA', $configWF["TabPaneItem"],   10, 'World', 'Wellness', $worldID   /*BaseId*/, 'true' /*BarBottomVisible*/);
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
 
-		CreateWFCItemCategory  ($WFC10_ConfigId, 'World', $configWF["TabPaneItem"],   10, 'World', 'Wellness', $worldID   /*BaseId*/, 'true' /*BarBottomVisible*/);
-
-		
+        if (isset($DetectDeviceHandler))		// Die Kategorie World wird in DetectMovement_Installation mit Werten befüllt
+            {
+            $DetectDeviceHandler->create_Topology(true, true);            // true für init - bedeutet World kategorie wird gelöscht, true für Debug
+            $topology=$DetectDeviceHandler->Get_Topology();
+            $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+            $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,false);        // true for Debug
+            $DetectDeviceHandler->updateLinks($topologyPlusLinks);
+            }
 		}
 
 	/*----------------------------------------------------------------------------------------------------------------------------

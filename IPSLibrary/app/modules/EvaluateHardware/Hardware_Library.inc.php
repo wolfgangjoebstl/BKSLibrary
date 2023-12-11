@@ -1,4 +1,4 @@
-<?
+<?php
 
 /*
  * This file is part of the IPSLibrary.
@@ -2135,7 +2135,7 @@ class HardwareOpCentCam extends Hardware
         if (isset($this->installedModules["OperationCenter"])) 
             {
             IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
-            $this->operationCenter = new OperationCenter(); 
+            $this->operationCenter = new CamOperation();            // chold vom OperationCenter
             }
 
         parent::__construct($debug);        

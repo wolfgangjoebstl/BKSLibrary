@@ -1,4 +1,4 @@
-<?
+<?php
 
 /*
  * @defgroup Monitor_onoff Startpage

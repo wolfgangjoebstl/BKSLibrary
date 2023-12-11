@@ -439,7 +439,7 @@
         
         //print_r($resultStream);           // für die Live Streams
         //echo $CamTablePictureID;          // für die regelmaessig upgedateten Pictures
-        $CamTableCaptureID=$OperationCenter->getPictureFieldIDs($OperationCenterConfig['CAM'],true);
+        $CamTableCaptureID=$camOperation->getPictureFieldIDs($OperationCenterConfig['CAM'],true);
         print_R($CamTableCaptureID);
 
         $wfcHandling =  new WfcHandling(); 

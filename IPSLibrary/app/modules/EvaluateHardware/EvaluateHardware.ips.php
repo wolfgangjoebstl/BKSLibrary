@@ -1,4 +1,4 @@
-<?
+<?php
 
 /*
  * This file is part of the IPSLibrary.
@@ -18,7 +18,9 @@
  */ 
 
 /* EvaluateHardware
- *
+ * evalualiert vorhandene Informationen und beschreibt die beiden Dateiein vollstaendig neu:
+ *      EvaluateHardware_Devicelist.inc.php
+ *      EvaluateHardware_Include.inc.php
  * Herausfinden welche Hardware verbaut ist und in IPSComponent und IPSHomematic bekannt machen
  * Define Files und Array function notwendig
  *
@@ -247,7 +249,7 @@ IPS_SetEventActive($tim1ID,true);
         $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
         echo "\n";
 
-        $includefileDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
+        $includefileDevices     = '<?php'."\n";             // für die php Devices and Gateways, neu
         $includefileDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
         $includefileDevices     .= " *  \n";
         $includefileDevices     .= " * Please do not edit, file will be overwritten on a regular base.     \n";
@@ -323,8 +325,8 @@ IPS_SetEventActive($tim1ID,true);
         ******************************************/
         if ( (isset($installedModules["OperationCenter"])) )                // wenn nich nicht installiert gibt es kein Devicemanagement
             {
-            //$includefile='<?'."\n".'$fileList = array('."\n";
-            $includefile            = '<?'."\n";             // für die php IP Symcon Runtime
+            //$includefile='<?php'."\n".'$fileList = array('."\n";
+            $includefile            = '<?php'."\n";             // für die php IP Symcon Runtime
             $includefile            .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").". */\n\n";
             $summary = array();
             $includefile            .= '/* These are the Homematic Sockets: */'."\n\n";

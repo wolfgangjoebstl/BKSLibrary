@@ -1,4 +1,17 @@
-<?
+<?php
+
+
+/* EvaluateHardware_Library
+ *
+ * class 	
+ *  TopologyLibraryManagement           zum erstellen der DeviceList
+ *  ImproveDeviceDetection
+ *  EvaluateHardware
+ *
+ *
+ *
+ */
+
 
 /*
  * This file is part of the IPSLibrary.
@@ -17,19 +30,6 @@
  * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
  */ 
 
-/* EvaluateHardware Library
- *
- * class 	
- *  TopologyLibraryManagement           zum erstellen der DeviceList
- *  ImproveDeviceDetection
- *  EvaluateHardware
- *
- *
- *
- */
-
-
-
 /**********************************************************************************************
  *
  * class TopologyLibraryManagement mit folgenden Funktionen:
@@ -42,7 +42,7 @@
  *      get_DeviceList
  *      createTopologyInstances
  *      createTopologyInstance
- *      sortTopologyInstances
+ *      sortTopologyInstances                   Topologie in DeviceList einsortieren
  *
  *
  */
@@ -424,14 +424,20 @@ class TopologyLibraryManagement
         else return (false);
         }
 
-    /* sortTopologyInstances
+    /* sortTopologyInstances, update der deviceList um Topology
+     * benötigt Modul DetectMovement
      *
-     * einsortieren der $devicelist Geräte, check mit $deviceEventList, update der deviceList um Topology
+     * einsortieren der Geräte in das übergebene Array $devicelist, check mit $deviceEventList
      * verwendet deviceInstances für die Identifikation eines Gerätes
+     *
      * das Gerät muss in der Devicelist Instances haben
      * beim ersten Mal aufrufen werden die Geräte in der Topology ohne Raumzuordnung angelegt
      * bei zweiten Mal von allen Instanzen die Räume auslesen, müssen gleich sein wenn sie nicht leer sind 
      * danach den Raum des Gerätes abgleichen, übernehmen wenn Raum aus den Instanzen bereits ermitteltz wurde
+     *
+     * verwendet aus der class
+     *  topID
+     *  deviceInstances
      *
      */
 
@@ -445,6 +451,7 @@ class TopologyLibraryManagement
         foreach ($deviceList as $name => $entry)
             {
             //echo "$i   $name\n";
+            $topRoom=false; $topGroup=false;
             if (isset($entry["Instances"]))
                 {
                 $instances=$entry["Instances"];
@@ -498,7 +505,6 @@ class TopologyLibraryManagement
                                 $room = $deviceEventList[$InstanzID][1];
                                 }
                             }
-                        $topRoom=false; $topGroup=false;
                         if (isset($this->roomInstances[$room]))
                             {
                             //echo "Vergleiche ".IPS_GetParent($InstanzID)." mit ".$roomInstances[$room]."\n";

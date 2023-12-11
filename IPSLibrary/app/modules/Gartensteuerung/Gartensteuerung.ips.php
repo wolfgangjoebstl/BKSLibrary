@@ -1,4 +1,4 @@
-<?
+<?php
 
 /*
  *
@@ -278,7 +278,8 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	$Server=RemoteAccess_Address();
 	If ($Server=="")
 		{
-		echo "Regen und Temperaturdaten, lokale Daten: \n\n";		
+		echo "Regen und Temperaturdaten, lokale Daten: Temp $variableTempID Rain $variableID \n\n";		
+        //AC_ReAggregateVariable ($archiveHandlerID, $variableID);  
 		//$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);                // 1 für tägliche Aggregation der Temperaturwerte
 		$tempwerteLog = AC_GetLoggedValues($archiveHandlerID, $variableTempID, $starttime, $endtime,0);		
@@ -287,7 +288,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 		$werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);	/* Tageswerte agreggiert */
 		$werteStd = AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);	/* Stundenwerte agreggiert */
 		$variableName = IPS_GetName($variableID);
-        if (count($tempwerte)<2) AC_ReAggregateVariable ($archiveHandlerID, $variableTempID);    
+        if (count($tempwerte)<2) AC_ReAggregateVariable ($archiveHandlerID, $variableTempID);  
 		}
 	else
 		{
@@ -339,7 +340,14 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	$anzahl=count($werteLog);
  	echo "\nGeloggte Werte der Regen-Variable in den letzten 10 Tagen: ".$variableName." mit ".$anzahl." Werte\n\n";
 		
-	foreach ($gartensteuerungStatistics->regenStatistik as $regeneintrag)
+	//foreach ($gartensteuerungStatistics->regenStatistik as $regeneintrag)
+    $regenStatistik = $gartensteuerungStatistics->listRainEvents();
+    print_R($regenStatistik);
+    $rainRegs=$gartensteuerungStatistics->getRainRegisters();
+    print_r($rainRegs);
+    $gartensteuerungStatistics->getRainAmountSince();
+
+    foreach ($regenStatistik as $regeneintrag)     // Register regenStatistik wird nicht mehr vom construct geschrieben
 		{
 		echo "Regenbeginn ".date("d.m H:i",$regeneintrag["Beginn"]).
 		   "  Regenende ".date("d.m H:i",$regeneintrag["Ende"]).
@@ -348,8 +356,8 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 		}	
 		
 	echo "\n";			
-	echo "Regenstand 2h : ".$gartensteuerung->regenStand2h." 48h : ".$gartensteuerung->regenStand48h."\n";
-	echo "Letzter Regen vor ".number_format((time()-$gartensteuerung->letzterRegen)/60/60, 1, ",", ""). " Stunden.\n";
+	echo "Regenstand 2h : ".$gartensteuerungStatistics->regenStand2h." 48h : ".$gartensteuerungStatistics->regenStand48h."\n";
+	echo "Letzter Regen vor ".number_format((time()-$gartensteuerungStatistics->letzterRegen)/60/60, 1, ",", ""). " Stunden.\n";
 
 	/*
 	echo "\nAggregierte Stunden Regenwerte:\n";
@@ -534,11 +542,11 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
     if (isset($GartensteuerungConfiguration["Configuration"]["RainCounterHistory"])) $input = $GartensteuerungConfiguration["Configuration"]["RainCounterHistory"];
     else $input=[];    
     $gartensteuerungStatistics->getRainStatistics($input);  // die Werte berechnen, die in der nächsten Routine verwendet werden    
-    SetValue($gartensteuerung->StatistikBox1ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerungStatistics->RegenKalendermonate));
-    SetValue($gartensteuerung->StatistikBox2ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerungStatistics->DauerKalendermonate));
+    SetValue($gartensteuerungStatistics->StatistikBox1ID,$gartensteuerungStatistics->writeOverviewMonthsHtml($gartensteuerungStatistics->RegenKalendermonate));
+    SetValue($gartensteuerungStatistics->StatistikBox2ID,$gartensteuerungStatistics->writeOverviewMonthsHtml($gartensteuerungStatistics->DauerKalendermonate));
     $regenereignis=array();
-    $gartensteuerung->getRainEventsFromIncrements($regenereignis,[],2);             // regenereignis ist der Retourwert
-    SetValue($gartensteuerung->StatistikBox3ID,$gartensteuerung->writeRainEventsHtml($regenereignis));
+    $gartensteuerungStatistics->getRainEventsFromIncrements($regenereignis,[],2);             // regenereignis ist der Retourwert
+    SetValue($gartensteuerungStatistics->StatistikBox3ID,$gartensteuerungStatistics->writeRainEventsHtml($regenereignis));
     //SetValue($gartensteuerung->StatistikBox3ID,$gartensteuerung->writeRainEventsHtml($gartensteuerung->listRainEvents(100)));
 
     echo "\n";
@@ -612,10 +620,10 @@ if($_IPS['SENDER'] == "TimerEvent")
 				}
             if (isset($GartensteuerungConfiguration["Configuration"]["RainCounterHistory"])) $input = $GartensteuerungConfiguration["Configuration"]["RainCounterHistory"];
             else $input=[];    
-            $gartensteuerung->getRainStatistics($input);  // die Werte berechnen, die in der nächsten Routine verwendet werden   
-            SetValue($gartensteuerung->StatistikBox1ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerung->RegenKalendermonate));
-            SetValue($gartensteuerung->StatistikBox2ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerung->DauerKalendermonate));
-            SetValue($gartensteuerung->StatistikBox3ID,$gartensteuerung->writeRainEventsHtml($gartensteuerung->listRainEvents(100)));
+            $gartensteuerungStatistics->getRainStatistics($input);  // die Werte berechnen, die in der nächsten Routine verwendet werden   
+            SetValue($gartensteuerungStatistics->StatistikBox1ID,$gartensteuerungStatistics->writeOverviewMonthsHtml($gartensteuerungStatistics->RegenKalendermonate));
+            SetValue($gartensteuerungStatistics->StatistikBox2ID,$gartensteuerungStatistics->writeOverviewMonthsHtml($gartensteuerungStatistics->DauerKalendermonate));
+            SetValue($gartensteuerungStatistics->StatistikBox3ID,$gartensteuerungStatistics->writeRainEventsHtml($gartensteuerungStatistics->listRainEvents(100)));
 			break;
 
 		/*

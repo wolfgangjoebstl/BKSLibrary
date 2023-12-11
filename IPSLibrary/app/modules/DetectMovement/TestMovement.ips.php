@@ -1,15 +1,24 @@
-<?
+<?php
+
+/* eigentlich ein testprogramm, hat aber bereits eine Aufgabe bekommen
+ *
+ * Webfront: Sortierfunktion für die grosse Tabelle, MessageTabellen im Werkzeugkasten SystemTP
+ * TestMovement->writeEventlistTable($detectMovement-> sortEventList("OID"));
+ * die anderen Routinen für Webfront tabellen Update sind bei ImproveDeviceDetection 
+ */
+
 
 $startexec=microtime(true);
 $fatalerror=false;
 $debug=false;
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-//include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
-//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+    Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
-IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+
+    IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+
 
 /******************************************************
 
@@ -17,7 +26,6 @@ IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::m
 
 *************************************************************/
 
-//$repository = 'https://10.0.1.6/user/repository/';
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager))
 	{
@@ -31,14 +39,10 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdApp);
 
 /*
-
-Es wird für jeden Bewegungsmelder ein Event registriert. Das führt beim Message handler dazu das die class function handle event aufgerufen woird
-
-Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server zusaetzlich geloggt
-
-Wird von CustomComponents, RemoteAccess und DetectMovement genutzt.
-
-*/
+ * Es wird für jeden Bewegungsmelder ein Event registriert. Das führt beim Message handler dazu das die class function handle event aufgerufen woird
+ * Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server zusaetzlich geloggt
+ * Wird von CustomComponents, RemoteAccess und DetectMovement genutzt.
+ */
 
 IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
@@ -53,7 +57,7 @@ $CategoryIdDataOC   = $moduleManagerOC->GetModuleCategoryID('data');
 $categoryId_DetectMovement    = CreateCategory('DetectMovement',   $CategoryIdDataOC, 150);
 $TableEventsID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");		
 
-$detectMovement = new TestMovement($debug);
+$testMovement = new TestMovement($debug);         // eigentlich TestMovement
 
 /****************************************************************************************************************/
 /*                                                                                                              */
@@ -69,37 +73,37 @@ if ($_IPS['SENDER']=="WebFront")
 	switch ($_IPS['VALUE'])
 		{
 		case 0:
-			$html=$detectMovement->writeEventlistTable($detectMovement->eventlist);
+			$html=$testMovement->writeEventlistTable($testMovement->eventlist);
 			break;
 		case 1:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("OID"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("OID"));
 			break;
 		case 2:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Name"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Name"));
 			break;
 		case 3:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Pfad"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Pfad"));
 			break;
 		case 4:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("NameEvent"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("NameEvent"));
 			break;
 		case 5:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Instanz"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Instanz"));
 			break;
 		case 6:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Typ"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Typ"));
 			break;
 		case 7:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Config"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Config"));
 			break;
 		case 8:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Homematic"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Homematic"));
 			break;
 		case 9:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("DetectMovement"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("DetectMovement"));
 			break;
 		case 10:
-			$html=$detectMovement->writeEventlistTable($detectMovement-> sortEventList("Autosteuerung"));
+			$html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Autosteuerung"));
 			break;
 		default;
 			break;	
@@ -215,7 +219,12 @@ if ($_IPS['SENDER']=="Execute")
 		$autosteuerung_config=Autosteuerung_GetEventConfiguration();
 	
 		/* IPSComponent mit CustomComponent */ 	
- 		$eventlistConfig = IPSMessageHandler_GetEventConfiguration();
+        $messageHandler = new IPSMessageHandlerExtended();      /* auch delete von Events moeglich */
+
+        $eventConf = IPSMessageHandler_GetEventConfiguration();
+        $eventCust = IPSMessageHandler_GetEventConfigurationCust();
+        $eventlistConfig = $eventConf + $eventCust;
+
 		if ($debug==true)
 			{
 			echo "\n";
@@ -228,22 +237,22 @@ if ($_IPS['SENDER']=="Execute")
 			}
 		
 		/* Check ob für alle erkannten Bewegungsmelder auch ein Event registriert ist */
-		$motionDevice=$detectMovement->findMotionDetection();								
+		$motionDevice=$testMovement->findMotionDetection();								
 		//print_r($motionDevice);
 
 		if ($debug)
 			{
 			echo "\n";
 			echo "Eventlist aus Evaluierung der (Event) Children des IPSMessageHandler:\n";
-			print_r($detectMovement->eventlist);
+			print_r($testMovement->eventlist);
 			}
 
 		echo "EventList Konfiguration hat ".sizeof($eventlistConfig)." Einträge. \n";
 		//print_r($eventlistConfig);
 					
 		echo "Für die folgenden Events des IPSMessageHandler ist eine Lösung zu finden :\n";
-		//print_r($detectMovement->eventlistDelete);
-		foreach ($detectMovement->eventlistDelete as $eventID_str => $state)
+		//print_r($testMovement->eventlistDelete);
+		foreach ($testMovement->eventlistDelete as $eventID_str => $state)
 			{
 			$eventID=(integer)$eventID_str;
 			//print_r($state);
@@ -311,10 +320,35 @@ if ($_IPS['SENDER']=="Execute")
 				//echo "ParentID:".IPS_GetParent(intval($log->EreignisID))." Name :","Gesamtauswertung_".$params[1]."\n";
 				//$erID=CreateVariable("Gesamtauswertung_".$params[1],1,IPS_GetParent(intval($log->EreignisID)));
 				}
-			
-		$html=$detectMovement->writeEventListTable();
+		/* verschiedene Möglichkieten der Ausgabe der Eventdateien */	
+
+		$html=$testMovement->writeEventListTable();
 		echo $html;
 		SetValue($TableEventsID,$html);
+
+        echo "\n";
+        echo "getComponentEventListTable ausprobieren:\n";
+        $testMovement->syncEventList(true);                     // true für Debug, wird schon im construct aufgerufen
+        $ipsOps = new ipsOps();
+        $filter="IPSMessageHandler_Event";
+        $resultEventList = $testMovement->getEventListfromIPS($filter,false);                           // false no Debug, filter ist der Parent des Events
+        foreach ($resultEventList as $index => $entry)
+            {
+            $trigger = $entry["TriggerVariableID"];
+            if (isset($eventlistConfig[$trigger])) 
+                {
+                $resultEventList[$index]["Component"]=$eventlistConfig[$trigger][1];
+                $resultEventList[$index]["Module"]=$eventlistConfig[$trigger][2];
+                }
+            }
+        //$sort = "Module";
+        $sort = "LastRun";
+        $ipsOps->intelliSort($resultEventList,$sort);
+        $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,false);             // false no Debug, wenn file IPSMessage_Handler ist gibt es detailliertere Informationen
+		echo $html;
+
+
+
 		} 		// ende kein fatal error			
 	}
 

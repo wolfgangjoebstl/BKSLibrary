@@ -2064,6 +2064,45 @@ function send_status($aktuell, $startexec=0, $debug=false)
         return $vid;
         }
 
+	/** Anlegen eines Kategorie Pfades. Kopiert from IPSInstaller CreateCategoryPath
+	 *
+	 * Eine Liste von Kategorien, die durch einen '.' voneinander separiert sind, können als String übergeben
+	 * werden.
+	 *
+	 *  $Path Kategorie Pfad (zB. 'Program.IPSInstaller'), Achtung geht in die verkehrte richtung, neue Categorie links, 
+	 * 
+	 *  return integer ID der Kategorie
+	 *
+	 */
+	function CreateCategoryPathFromOid($Path, $ParentId=0, $debug=false) {
+		$CategoryListInput = explode('.',$Path);
+        $CategoryList=array();
+        $count=count($CategoryListInput)-1; $count1=$count;
+		foreach ($CategoryListInput as $Idx=>$Category) 
+            {
+            $CategoryList[$count]=$Category;
+            $count--;
+            }
+        $count++;
+        ksort($CategoryList);
+        if ($debug) echo "CreateCategoryPathFromOid ";
+		foreach ($CategoryList as $Idx=>$Category) {
+            if ( ($Idx==0) && ($Category == IPS_GetName($ParentId)) ) 
+                { 
+                if ($debug) echo "$Idx ".IPS_GetName($ParentId)." : $ParentId  "; 
+                }
+            else 
+                {
+                if ($debug) echo "$Idx $Category : ";
+                $ParentId = CreateCategoryByName ($ParentId, $Category);
+                if ($debug) echo $ParentId."  ";
+                }
+			}
+        if ($debug) echo "\n";
+		return $ParentId;
+	}
+
+
     /*****************************************************************
     function CreateVariableByName2($name, $type, $profile, $action, $visible)
         {
@@ -9046,14 +9085,14 @@ class ipsOps
 	 * @param integer $CategoryId ID der Kategory
 	 *
 	 */
-	function emptyCategory($CategoryId,$config=false) 
+	function emptyCategory($CategoryId,$config=false,$debug=false) 
         {
         if ($config===false) $config=array();
-        echo "ipsOps:emptyCategory aufgerufen mit $CategoryId (".IPS_GetName($CategoryId)."). Config ist ".json_encode($config)."\n";
+        if ($debug) echo "ipsOps:emptyCategory aufgerufen mit $CategoryId (".IPS_GetName($CategoryId)."). Config ist ".json_encode($config)."\n";
 		if ($CategoryId==0) 
             {
-            echo "Root Category could NOT be deleted!!!\n";    
-			Error ("Root Category could NOT be deleted!!!");
+            echo "ipsOps:emptyCategory, Error, its not allowed to  delete Root Category 0 of IP Symcon Tree!!!\n";    
+			Error ("Root Category CANNOT be deleted!!!");
 		    }
 
 		$ChildrenIds = IPS_GetChildrenIDs($CategoryId);
@@ -9062,7 +9101,7 @@ class ipsOps
             $subchildren=IPS_GetChildrenIDs($ObjectId);    
             if (sizeof($subchildren)>0 )
                 {
-                echo "Subchildren found,\n";
+                if ($debug) echo "Subchildren found, recursively delete\n";
                 $this->emptyCategory($ObjectId) ;
                 }
             if (IPS_GetObject($ObjectId)["ObjectType"]==0) 
@@ -14529,9 +14568,23 @@ class WfcHandling
      *      Path                muss vorhandens ein
      */
 
-    public function easySetupWebfront($configWF,$webfront_links, $scope, $debug=false)
+    public function easySetupWebfront($configWF,$webfront_links, $config, $debug=false)
         {
         $active=true;           // false for debugging purposes, true to execute
+        if (is_array($config))
+            {
+            if (isset($config["Scope"])) $scope=$config["Scope"];
+            else $scope="Administrator";
+            if (isset($config["EmptyCategory"])) $empty=$config["EmptyCategory"];
+            else $empty=true;    
+            if (isset($config["Active"])) $active=$config["Active"];
+            else $active=true;    
+            }
+        else 
+            {
+            $scope=$config;
+            $empty=true;
+            }
         $status=false;
         $ipsOps = new ipsOps();
         $this->configWF=$configWF;                                              /* mitnehmen in die anderen Routinen */
@@ -14620,7 +14673,7 @@ class WfcHandling
                     echo "Webfront für ".IPS_GetName($categoryId_WebFront)." ($categoryId_WebFront) Kategorie im Pfad ".$this->configWF["Path"]." erstellen.\n";
                     echo "Kategorie $categoryId_WebFront (".$ipsOps->path($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";  
                     }            
-                if ($active) $status=@EmptyCategory($categoryId_WebFront);
+                if ($active && $empty) $status=@EmptyCategory($categoryId_WebFront);
                 if (($debug)  && ($status)) echo "   -> erfolgreich.\n";  
 		        IPS_SetHidden($categoryId_WebFront, true); //Objekt verstecken
                 if ($this->configWF["TabPaneParent"] != "roottp") 
@@ -15719,6 +15772,133 @@ class ModuleHandling
 
 	}           // ende class ModuleHandling
 
+
+/******************************************************************
+ *
+ * Unique ID
+ *  v3
+ *  v4 
+ *  v5
+ *
+ * The following class generates VALID RFC 4211 COMPLIANT Universally Unique IDentifiers (UUID) version 3, 4 and 5.
+ * Version 3 and 5 UUIDs are named based. They require a namespace (another valid UUID) and a value (the name). Given the same namespace and name, the output is always the same.
+ * Version 4 UUIDs are pseudo-random.
+ * UUIDs generated below validates using OSSP UUID Tool, and output for named-based UUIDs are exactly the same. This is a pure PHP implementation.
+ * Ausgabe als '%08s-%04s-%04x-%04x-%12s' : zB
+ *
+ ******************************************************************/
+
+class UUID 
+    {
+    public static function v3($namespace, $name) 
+        {
+        if(!self::is_valid($namespace)) return false;
+
+        // Get hexadecimal components of namespace
+        $nhex = str_replace(array('-','{','}'), '', $namespace);
+
+        // Binary Value
+        $nstr = '';
+
+        // Convert Namespace UUID to bits
+        for($i = 0; $i < strlen($nhex); $i+=2) 
+            {
+            $nstr .= chr(hexdec($nhex[$i].$nhex[$i+1]));
+            }
+
+        // Calculate hash value
+        $hash = md5($nstr . $name);
+
+        return sprintf('%08s-%04s-%04x-%04x-%12s',
+
+            // 32 bits for "time_low"
+            substr($hash, 0, 8),
+
+            // 16 bits for "time_mid"
+            substr($hash, 8, 4),
+
+            // 16 bits for "time_hi_and_version",
+            // four most significant bits holds version number 3
+            (hexdec(substr($hash, 12, 4)) & 0x0fff) | 0x3000,
+
+            // 16 bits, 8 bits for "clk_seq_hi_res",
+            // 8 bits for "clk_seq_low",
+            // two most significant bits holds zero and one for variant DCE1.1
+            (hexdec(substr($hash, 16, 4)) & 0x3fff) | 0x8000,
+
+            // 48 bits for "node"
+            substr($hash, 20, 12)
+            );
+        }
+
+    public static function v4() 
+        {
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+
+            // 32 bits for "time_low"
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+
+            // 16 bits for "time_mid"
+            mt_rand(0, 0xffff),
+
+            // 16 bits for "time_hi_and_version",
+            // four most significant bits holds version number 4
+            mt_rand(0, 0x0fff) | 0x4000,
+
+            // 16 bits, 8 bits for "clk_seq_hi_res",
+            // 8 bits for "clk_seq_low",
+            // two most significant bits holds zero and one for variant DCE1.1
+            mt_rand(0, 0x3fff) | 0x8000,
+
+            // 48 bits for "node"
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            );
+        }
+
+  public static function v5($namespace, $name) {
+    if(!self::is_valid($namespace)) return false;
+
+    // Get hexadecimal components of namespace
+    $nhex = str_replace(array('-','{','}'), '', $namespace);
+
+    // Binary Value
+    $nstr = '';
+
+    // Convert Namespace UUID to bits
+    for($i = 0; $i < strlen($nhex); $i+=2) {
+      $nstr .= chr(hexdec($nhex[$i].$nhex[$i+1]));
+    }
+
+    // Calculate hash value
+    $hash = sha1($nstr . $name);
+
+    return sprintf('%08s-%04s-%04x-%04x-%12s',
+
+      // 32 bits for "time_low"
+      substr($hash, 0, 8),
+
+      // 16 bits for "time_mid"
+      substr($hash, 8, 4),
+
+      // 16 bits for "time_hi_and_version",
+      // four most significant bits holds version number 5
+      (hexdec(substr($hash, 12, 4)) & 0x0fff) | 0x5000,
+
+      // 16 bits, 8 bits for "clk_seq_hi_res",
+      // 8 bits for "clk_seq_low",
+      // two most significant bits holds zero and one for variant DCE1.1
+      (hexdec(substr($hash, 16, 4)) & 0x3fff) | 0x8000,
+
+      // 48 bits for "node"
+      substr($hash, 20, 12)
+    );
+  }
+
+  public static function is_valid($uuid) {
+    return preg_match('/^\{?[0-9a-f]{8}\-?[0-9a-f]{4}\-?[0-9a-f]{4}\-?'.
+                      '[0-9a-f]{4}\-?[0-9a-f]{12}\}?$/i', $uuid) === 1;
+  }
+}
 
 /******************************************************************
 

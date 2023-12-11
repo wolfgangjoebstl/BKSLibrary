@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/*
 	 * This file is part of the IPSLibrary.
@@ -260,6 +260,7 @@
             configfileParser($configInput["Display"], $config["Display"], ["AddLine"],"AddLine","[]"); 
             configfileParser($configInput["Display"], $config["Display"], ["WidgetStyle"],"WidgetStyle",'{"RowMax":2,"ColMax":3,"Screens":1}');             // bereits als json_encode übergeben
             configfileParser($configInput["Display"], $config["Display"], ["Mediaobject","mediaobject","MEDIAOBJECT","MediaObject"],"MediaObject",null); 
+            configfileParser($configInput["Display"], $config["Display"], ["Topology","topology","TOPOLOGY"],"Topology","[]");          // leeres array ist default
 
             /* Sub Sub Display Weather */
             configfileParser($configInput["Display"]["Weather"], $config["Display"]["Weather"], ["Weathertable"],"Weathertable","Active"); 
@@ -473,7 +474,9 @@
                     $wert.= $this->showPictureWidget($showfile);
                     $wert.='</td>';
 
-                    $wert.= $this->showTopology($debug);
+                    $configTopology=$this->getStartpageDisplayConfiguration()["Topology"];
+                    
+                    $wert.= $this->showTopology(false,$configTopology,$debug);          // false internes topology array erzeugen, debug
                     $wert.='</tr></table>';
                     break;
                 case 2:   //echo "NOWEATHER false. PageType 2. NoPicture.\n";  
@@ -909,14 +912,25 @@
          *
          **************************************/
 
-		function showTopology($debug=false)
+		function showTopology($topologyWithLinks=false,$configInput=false, $debug=false)
 			{
+            if ($debug) echo "showTopology aufgerufen:\n";
             $wert="";
             
-            $config=array();
-            $config["Cell"]="Table";
-            $config["Headline"]="";
-            //$config["Scale"]=2;
+            if (is_array($configInput))
+                {
+                configfileParser($configInput, $config, ["Cell","cell","CELL"],"Cell","Table");          // leeres array ist default
+                configfileParser($configInput, $config, ["Headline","headline","HEADLINE"],"Headline","");          // leeres array ist default
+                configfileParser($configInput, $config, ["Baseline","baseline","BASELINE"],"Baseline",false);          // leeres array ist default
+                }
+            else
+                {
+                $config=array();
+                $config["Cell"]="Table";
+                $config["Headline"]="";
+                $config["Baseline"]=false;
+                //$config["Scale"]=2;
+                }
 
             IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
             IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
@@ -924,24 +938,30 @@
             IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
             IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');            
 
-            /* Get Topology Liste aus EvaluateHardware_Configuration */
-            $DetectDeviceHandler = new DetectDeviceHandler();
-            $topology           = $DetectDeviceHandler->Get_Topology();
-            $eventConfiguration = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+            if (is_array($topologyWithLinks))
+                {
+                $topologyPlusLinks=$topologyWithLinks;
+                }
+            else
+                {              // Get Topology Liste aus EvaluateHardware_Configuration and add information needed
+                $DetectDeviceHandler = new DetectDeviceHandler();
+                $topology           = $DetectDeviceHandler->Get_Topology();
+                $eventConfiguration = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
 
-            /* die Topologie mit den Geräten anreichen:
-             *    wir starten mit Name, Parent, Type, OID, Children  
-             * Es gibt Links zu Chíldren, INSTANCE und OBJECT 
-             *    Children, listet die untergeordneten Eintraege
-             *    OBJECT sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
-             *    INSTANCE ist der vollständigkeit halber für die Geräte
-             *
-             * Damit diese Tabelle funktioniert muss der DetDeviceHandler fleissig register definieren
-             */
+                /* die Topologie mit den Geräten anreichen:
+                *    wir starten mit Name, Parent, Type, OID, Children  
+                * Es gibt Links zu Chíldren, INSTANCE und OBJECT 
+                *    Children, listet die untergeordneten Eintraege
+                *    OBJECT sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
+                *    INSTANCE ist der vollständigkeit halber für die Geräte
+                *
+                * Damit diese Tabelle funktioniert muss der DetDeviceHandler fleissig register definieren
+                */
 
-            $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$eventConfiguration,$debug);
+                $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$eventConfiguration,$debug);
+                }
 
-            if ($debug) 
+            if ($debug>1) 
                 {
                 echo "=====================================================================================\n";
                 print_r($topologyPlusLinks);
@@ -953,57 +973,83 @@
              * Zusatzkonfigurationen, wie die Position und Groesse auf der Anzeige, jetzt übernehmen
              * INSTANCE wird ignoriert, es wird nur OBJECT ausgewertet
              * OBJECT wird 1:1 aus der vorigen Struktur übernommen
+             *
+             * key => Type
+             *        Configuration
+             *
+             * topologyStatus 
+             *      y,x => Size
+             *
              */
 
             $topologyStatus=array();
-            foreach ($topologyPlusLinks as $name => $place)
+            foreach ($topologyPlusLinks as $key => $place)
                 {
-                if ( (isset($place["x"])) && (isset($place["y"])) ) 
+                if (isset($place["Configuration"])) $configuration = $place["Configuration"];
+                elseif (isset($place["Config"])) $configuration = $place["Config"];
+                else $configuration = $place;
+                //print_R($configuration);
+                if ( (isset($configuration["x"])) && (isset($configuration["y"])) ) 
                     {
-                    $x=$place["x"]; $y=$place["y"];
-                    if ( isset($place["l"]) ) $l=$place["l"]; else $l=1;
-                    if ( isset($place["h"]) ) $h=$place["h"]; else $h=1;
-                    $topologyStatus[$y][$x]["Size"]=["l"=>$l,"h"=>$h];
-                    if ($debug) echo "$name is located on $x und $y. Size is $l x $h.\n"; 
-                    if (isset($place["ShortName"])) $topologyStatus[$y][$x]["ShortName"]=$place["ShortName"];
-                    if (isset($place["Background"])) $topologyStatus[$y][$x]["Background"]=$place["Background"];                    
-                    if (isset($place["OBJECT"])) 
+                    $goodtogo=true;
+                    if (isset($place["Path"])) 
                         {
-                        $topologyStatus[$y][$x]["Status"]=$place["OBJECT"];
-                        if ($debug)             /* eigentlich nur die Anzeige in diesem Status, die auf hierarchische Gewerk Strukturen angepasst wurde */
+                        if ($config["Baseline"])
                             {
-                            foreach ($place["OBJECT"] as $type => $objName) 
+                            $pos1 = strpos($place["Path"], $config["Baseline"]);
+                            if ($pos1===false) $goodtogo=false;
+                            }
+                        }
+                    if ($goodtogo)
+                        {
+                        if ($debug) echo str_pad($place["Path"],55);
+                        $x=$configuration["x"]; $y=$configuration["y"];
+                        if ( isset($configuration["l"]) ) $l=$configuration["l"]; else $l=1;
+                        if ( isset($configuration["h"]) ) $h=$configuration["h"]; else $h=1;
+                        $topologyStatus[$y][$x]["Size"]=["l"=>$l,"h"=>$h];
+                        if (isset($place["Name"])) $name=$place["Name"]; 
+                        else $name=$key;
+                        if ($debug) echo "$name is located on $x und $y. Size is $l x $h.\n";           // name ist eigentlich der Index
+                        if (isset($configuration["ShortName"])) $topologyStatus[$y][$x]["ShortName"]=$configuration["ShortName"];
+                        if (isset($configuration["Background"])) $topologyStatus[$y][$x]["Background"]=$configuration["Background"];                    
+                        if (isset($place["OBJECT"])) 
+                            {
+                            $topologyStatus[$y][$x]["Status"]=$place["OBJECT"];
+                            if ($debug)             /* eigentlich nur die Anzeige in diesem Status, die auf hierarchische Gewerk Strukturen angepasst wurde */
                                 {
-                                echo "  $type : ";
-                                switch ($type)
+                                foreach ($place["OBJECT"] as $type => $objName) 
                                     {
-                                    case "Weather":         // Überbegriff, mögliche Hierarchie 
-                                        foreach ($objName as $subtype => $objName2)
-                                            {
-                                            foreach ($objName2 as $oid => $name) echo "  $subtype:$oid (".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName($oid).") => $name  ";    
-                                            }
-                                        break;
-                                    default:    
-                                        foreach ($objName as $oid => $name) echo "  $oid (".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName($oid).") => $name  ";
-                                        break;
+                                    echo "  $type : ";
+                                    switch ($type)
+                                        {
+                                        case "Weather":         // Überbegriff, mögliche Hierarchie 
+                                            foreach ($objName as $subtype => $objName2)
+                                                {
+                                                foreach ($objName2 as $oid => $name) echo "  $subtype:$oid (".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName($oid).") => $name  ";    
+                                                }
+                                            break;
+                                        default:    
+                                            foreach ($objName as $oid => $name) echo "  $oid (".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName($oid).") => $name  ";
+                                            break;
+                                        }
+                                    echo "\n";
                                     }
                                 echo "\n";
-                                }
-                            echo "\n";
-                            }           // Ende Debug
-                        }
+                                }           // Ende Debug
+                            }
+                        }           // ende goodtogo
                     }
                 }  // ende foreach
 
 
+            ksort($topologyStatus);         // nach x Koordinaten
             if ($debug) 
                 {
                 echo "=====================================================================================\n";
-                echo "Status Topologie für Ausgabe vorbereitet:\n";
-                //print_r($topologyStatus);
+                echo "Status Topologie für Ausgabe mit writeTable vorbereitet:\n";
+                print_r($topologyStatus);
                 }
 
-            ksort($topologyStatus);
             $wert.="<style>";
             //$wert.="#topology { border-collapse: collapse; border: 1px solid #ddd;   }";
             //$wert.="#topology td, #topology th { border: 1px solid #ddd; text-align: center; height: 50px; width: 50px; }";
@@ -1022,9 +1068,9 @@
             return ($wert);
             }
 
-        /* DEPRECIATED, see DeviceManagementLib
+        /* DEPRECATED, see DeviceManagementLib
          *
-         * Verbindung der Topologie mit der Object und instamnzen Konfiguration
+         * Verbindung der Topologie mit der Object und Instanzen Konfiguration
          * es können jetzt auch mehrstufige hierarchische Gewerke aufgebaut werden
          * zB Weather besteht aus Temperatur und Feuchtigkeit
          */
@@ -1171,7 +1217,7 @@
         * Für besondere Konfigurationen wird ein eigenes array verwendet. $config
         *   $config["Scale"]   Faktor zum vergrößern der Tabelle. statt einer zellgröße von 1x1 wird mit Scale=3 eine Zelle von 3x3.
         *
-        * Übergeben wir $topologyStatus als zweidimensionales array [y][x]  y sind die Zeilen, x sind die Spalten
+        * Übergeben wir $topologyStatus als zweidimensionales array [y][x]  y sind die Zeilen, x sind die Spalten, immer [1..n], 0 nicht
         *    Elemente sind  Size mit l,h   ShortName, Status mit Humidity,Temperature, 
         *
         * zuerst max Spalten und Zeilenanzahl ermitteln
@@ -1190,20 +1236,24 @@
             $topologyStatus=array();
             if (isset($config["Scale"])) $scale=$config["Scale"]; 
             else $scale=1;
+            /* Scale anwenden : Zeilen von 1..3 auf (0..2*scale)+1 anpassen , Spalten ebenfalls gleich anpassen
+             * 
+             */
+            if ($debug) echo "Tabellengroesse mit $scale multiplizieren.\n";
             foreach ($topologyStatusInput as $y=>$line)
                 {
                 $yNew=($y-1)*$scale+1;            /*   1..1, 2..3, 3..5 usw */
                 foreach ($line as $x => $status) 
                     {
                     $xNew=($x-1)*$scale+1;            /*   1..1, 2..3, 3..5 usw */
-                    if ($debug) echo "New Index :  $y x $x transformed to $yNew x $xNew :\n";
+                    if ($debug) echo "  New Index :  $y x $x transformed to $yNew x $xNew :\n";
                     foreach ($status as $key=>$entry)
                         {
-                        if ($debug) echo "    ".$key."\n";
+                        if ($debug>1) echo "    ".$key."\n";              // Status ist Size, ShortName etc. Size auch mit Scale barbeiten
                         switch ($key)
                             {
                             case "Size":
-                                if ($debug) print_r($entry);
+                                if ($debug>2) print_r($entry);
                                 $lNew=1; $hNew=1;
                                 if (isset($entry["l"])) $lNew=$entry["l"]*$scale;
                                 if (isset($entry["h"])) $hNew=$entry["h"]*$scale;
@@ -1247,6 +1297,9 @@
                 }
             if ($debug) { echo "Evaluierung mit übergrossen Zellen\n"; print_r($lsum); }
 
+            /* Tabelle zeilenweise zeichnen von minx bis maxx und miny bis maxy
+             *
+             */
             $html="";
             $html.="<table id=topology>";
             $html.='<tr><td colspan="'.$maxx.'">Info-Überschrift '."$maxy x $maxx".'</td></tr>';

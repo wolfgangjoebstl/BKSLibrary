@@ -1,4 +1,4 @@
-<?
+<?php
 
  //Fügen Sie hier Ihren Skriptquellcode ein
 $startexec=microtime(true);

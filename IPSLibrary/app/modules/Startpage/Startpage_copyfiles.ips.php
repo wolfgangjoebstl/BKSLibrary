@@ -1,4 +1,4 @@
-<?
+<?php
 
     /*
 	 * @defgroup Startpage Copy Files

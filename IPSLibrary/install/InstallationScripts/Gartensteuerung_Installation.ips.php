@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/**@defgroup Gartensteuerung
 	 *
@@ -148,7 +148,7 @@
 	$scriptIdGartensteuerung   		= IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	$scriptIdWebfrontControl   		= IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 
-	$includefile="<?";                      //  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht , verwendet von CreateVariable3
+	$includefile="<?php";                      //  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht , verwendet von CreateVariable3
 	$includefile.="\n".'function ParamList() {
 		return array('."\n";
 

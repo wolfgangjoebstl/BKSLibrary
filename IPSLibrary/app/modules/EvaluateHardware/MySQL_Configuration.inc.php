@@ -1,4 +1,4 @@
-<?
+<?php
 
 
     /* Die Datenbank Konfiguration der mySQL, MariaDB Datenbank ipsymcon sollte in einem Configfile stehen.

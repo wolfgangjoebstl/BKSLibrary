@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -21,7 +21,7 @@
 	 * @ingroup ipstwilight
 	 * @{
 	 *
-	 * Konfigurations File für IPSTwilight
+	 * Konfigurations File fÃ¼r IPSTwilight
 	 *
 	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl

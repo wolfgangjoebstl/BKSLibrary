@@ -1,13 +1,13 @@
-<?
+<?php
 
 /*
-	 * @defgroup Gartensteuerung
+	 * @defgroup Gartensteuerung_Library
 	 * @{
 	 *
 	 * Script zur Ansteuerung der Giessanlage in BKS
 	 *
 	 *
-	 * @file          Gartensteuerung.ips.php
+	 * @file          Gartensteuerung_library.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.52, 07.08.2014<br/>
@@ -1400,7 +1400,8 @@ class GartensteuerungStatistics extends Gartensteuerung
         }
 
 
-    /* nur in dieser class, es gibt einen werte Speicher
+    /* GartensteuerungStatistics::
+     * nur in dieser class, es gibt einen werte Speicher
      * und verschiedene Möglichkeitren die Daten dorthin einzulesen
      */
     public function setWerteStore($rainregs,$mode="INCREMENT")
@@ -1430,7 +1431,8 @@ class GartensteuerungStatistics extends Gartensteuerung
             }
         }
 
-	/* getRainStatistics, verwendet getRainEventsFromIncrements, getRainValuesFromIncrements
+	/* GartensteuerungStatistics::getRainStatistics
+     * verwendet getRainEventsFromIncrements, getRainValuesFromIncrements
      * beide Routinen ahben selbe Datenbasis, wird nicht mehr upgedated und ist Teil der class
 	 *  Allerlei Auswertungen mit der Regenmenge.
      *  verwendet getRainEventsFromIncrements, übergibt die Ereignisse in der ersten Variable 
@@ -1834,8 +1836,8 @@ class GartensteuerungStatistics extends Gartensteuerung
                 echo "--------Function listRainEvents from Server : ".$Server." OID $variableID : ".sizeof($werteLog)." Werte\n";
 				}
 			}
-        $regenStatistik = $this->getRainevents($werteLog,$events);
-		return ($regenStatistik);
+        $this->regenStatistik = $this->getRainevents($werteLog,$events);
+		return ($this->regenStatistik);
 		}
 
     /* die letzten Regentage

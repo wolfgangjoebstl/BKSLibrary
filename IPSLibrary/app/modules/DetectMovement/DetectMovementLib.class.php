@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -19,7 +19,7 @@
     /*********************
      *
      * Detect Movement Library
-     *
+     * Weiterverarbeitung und Auswertung von Events aller Art, begonnen wurde mit Motion/Movement Auswertungen deshalb der Name
      * Folgende Klassen stehen zur Verfügung:
      *
      * abstract class DetectHandler
@@ -34,8 +34,9 @@
      * DetectHeatControlHandler extends DetectHandler
      * DetectHeatSetHandler extends DetectHandler
      *
-     * DetectDeviceHandler extends DetectHandler, writes function IPSDetectDeviceHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php	 
-     * DetectDeviceListHandler extends DetectHandler, writes function IPSDetectDeviceListHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php
+     * DetectHandlerTopology extends DetectHandler 
+     * DetectDeviceHandler extends DetectHandlerTopology, writes function IPSDetectDeviceHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php	 
+     * DetectDeviceListHandler extends DetectHandlerTopology, writes function IPSDetectDeviceListHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php
      *
      * TestMovement, ausarbeiten einer aussagekraeftigen Tabelle basierend auf den Event des MessageHandlers
      *
@@ -163,14 +164,14 @@
 
 			if ($pos1 === false or $pos2 === false) 
 				{
-				echo "================================================\n";
+				/* echo "================================================\n";
 				echo "Function not inserted in config file. Insert now.\n";
-				$comment=0; $posn=false;	/* letzte Klammer finden und danach einsetzen */
+				$comment=0; $posn=false;	// letzte Klammer finden und danach einsetzen 
 				for ($i=0;$i<strlen($fileContent);$i++)
 					{
 					switch ($fileContent[$i])
 						{
-						/* comment : 0 ok 1 / erkannt 2 /* erkannt 3 // erkannt */
+						// comment : 0 ok 1 / erkannt 2 / * erkannt 3 // erkannt 
 						case '/':
 							if ( ($comment==2) && ($star==1) ) $comment=0;
 							elseif ($comment==1) $comment=3;
@@ -190,8 +191,9 @@
 							break;
 						}		
 					}
-				// $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren
-				
+				// $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren   */
+				$posn = $this->insertNewFunction($fileContent);
+
 				if ( $posn === false )
 					{
 					throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
@@ -211,6 +213,56 @@
 			$this->Set_EventConfigurationAuto($configuration);
 			}
 
+        /* FileContent in eine Datei neu schreiben, gemeinsame function
+         * die Position zurückmelden, wo die neue Function eingefügt werden kann
+        */
+        protected function insertNewFunction($fileContent,$debug=false)
+            {
+            if ($debug)
+                {
+				echo "================================================\n";
+				echo "Function not inserted in config file. Insert now.\n";
+                }
+            $comment=0; $posn=false;	// letzte Klammer finden und danach einsetzen, den ganzen String durchgehen
+            for ($i=0;$i<strlen($fileContent);$i++)
+                {
+                switch ($fileContent[$i])           // der reihe nach auswerten // zeilenkommentar und /* kommentar erkennen
+                    {
+                    /* comment : 0 ok 1 / erkannt 2 /* erkannt 3 // erkannt */
+                    case '/':
+                        if ( ($comment==2) && ($star==1) ) $comment=0;
+                        elseif ($comment==1) $comment=3;
+                        else $comment=1;
+                        $star=0;
+                    case '*':
+                        if ($comment==1) $comment=2;
+                        $star=1;	
+                        break;
+                    case '}':
+                    if ($comment <2 ) $posn=$i;	
+                    case chr(10):
+                    case chr(13):
+                        if ($comment==3) $comment=0;		
+                    default:
+                        $star=0;
+                        break;
+                    }		
+                }
+            // $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren
+            
+            if ( $posn === false )
+                {
+                if (strlen($fileContent) > 6 )
+                    {
+                    $posn = strrpos($fileContent, '?>')-1;
+                    echo "Weit und breit keine Klammer. Auf Pos $posn function einfügen.\n";
+                    }
+                else throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
+                }
+            //echo $fileContent."\n  Position last } : ".$posn."   ".substr($fileContent, $posn,5)."\n";	
+
+            return ($posn);
+            }
 
 		/**
 		 * @public, DetectHandler
@@ -2629,8 +2681,12 @@
 	 *	
 	 * zusaetzlich gemeinsam definiert
      *
-     * create_topology			
-     *
+     *  create_Topology	
+     *  create_TopologyChildrens                erzeugt die topologie, rekursiv zu verwenden		
+     *  create_TopologyConfigurationFile        die entsprechende function im Config File für die Topologie erstellen : $getTopology User muss einsortieren und die Topologie definieren
+     *  create_UnifiedTopologyConfigurationFile  das ergebnis ebenfalls im Configuration File abspeichern, zur kontrolle, kann nicht editiert werden
+     *  mergeTopologyObjects
+     *  evalTopology
      */
 
     class DetectHandlerTopology extends DetectHandler
@@ -2664,11 +2720,35 @@
 
         /* Functions that are common 
          * Topology in webfront als Kategorien entsprechend topology config anlegen
-         * wenn init true vorher die World Topologie loeschen
+         * wenn init true vorher die World Topologie loeschen, Übergabe alternativ als config array
+         *
+         * Topology Format ist flat, keine Hierarchie, index ist der Name !!! es braucht mehrere Durchläufe
+         *      World
+         *          OID     wenn category angelegt wird
+         *          Name
+         *          Parent
+         *          Type
+         *          Children array of all parents refering to it
+         *
+         * es gibt die Möglichkeit die Config abzusetzen mit Childrens, rekursiv aufrufen
+         *
          */
 
-        public function create_Topology($init=false,$debug=false)
+        public function create_Topology($input=false,$debug=false)
             {
+            if ($debug) echo "create_Topology aufgerufen: Config ".json_encode($input)."\n";
+            if (is_array($input)) 
+                {
+                if (isset($input["Init"])) $init=$input["Init"];
+                else $init=false;
+                if (isset($input["ID"])) $ID=$input["ID"];
+                else $ID=false;
+                }
+            else
+                {
+                $init=$input;    
+                $ID=false;
+                }
             $ipsOps=new ipsOps();                
 			if (function_exists("get_Topology") === false)
 				{
@@ -2677,36 +2757,155 @@
                 }
             else
                 {
-
-                $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-                if (!isset($moduleManager))
+                if ($ID==false)
                     {
-                    IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-                    $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+                    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+                    if (!isset($moduleManager))
+                        {
+                        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+                        $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+                        }
+                    $installedModules = $moduleManager->GetInstalledModules();
+                    //print_r($installedModules); 
+                    $WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
+                    if ($debug) echo "   Webportal EvaluateHardware Datenstruktur installieren in: ".$WFC10_Path." \n";
+                    $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
+                    $this->ID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
                     }
-                $installedModules = $moduleManager->GetInstalledModules();
-                //print_r($installedModules); 
-                $WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-                if ($debug) echo "create_Topology: Webportal EvaluateHardware Datenstruktur installieren in: ".$WFC10_Path." \n";
-                $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
-                $this->ID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
-                if ($init) $ipsOps->emptyCategory($this->ID);
-
-				$this->topology=get_Topology();
-				$this->topology["World"]["OID"]=$this->ID;        // Startpunkt
-				foreach ( $this->topology as $category => $entry)
-	        		{
-					if ( (isset($this->topology[$this->topology[$category]["Parent"]]["OID"]) == true) && ($category != "World") )
-						{
-        				$parentID=$this->topology[$this->topology[$category]["Parent"]]["OID"];
-	        			$this->topology[$category]["OID"]=CreateCategory($category,  $parentID, 10);
-		        		$this->topology[$this->topology[$category]["Parent"]]["Children"][$category]=$category;
-				        }
-    	    		}
+                else 
+                    {
+                    $this->ID=$ID; 
+                    if ($debug) echo "   Webportal Topology installieren in: $ID \n";
+                    }               
+                
+                if ($init) 
+                    {
+                    if ($debug) echo "   Voher Kategorie ".$this->ID." loeschen. nur wenn init true.\n";
+                    $ipsOps->emptyCategory($this->ID);
+                    }
+                $this->topology=array();
+                $topology = get_Topology();         //get_Topology ist die Datei im Config File
+				$topology["World"]["OID"]=$this->ID;        // Startpunkt, das ist die ID von World, fpür die Erzeugung von CreateCategoryPath
+                $this->create_TopologyChildrens($this->topology,$topology,$debug);           
                 }
             return($this->topology);
             }
 
+        /* entry ist die Sub Topologie die jetzt eingeordnet werden muss
+         * gleiche Indexe nicht überschreiben sondern erweitern mit __# # ist eine aufsteigende Zahl
+         * es wird nicht mehr vorher alles rüberkopiert, Schritt für Schritt prüfen
+         * für jede Input Category wird überprüft
+         *      keine __ im Index die werden nur automatisch bei redundanten categories für den Index erzeugt
+         *      schon im Zielarray unter selben Index bekannt, daher neuen Category Index vergeben, Übersetzungsarray Eintrag anlegen
+         *      hat einen Parent Eintrag
+         *
+         */
+        private function create_TopologyChildrens(&$topology,$input, $debug=false)
+            {
+            if ($debug) echo "create_TopologyChildrens aufgerufen.\n";
+            $translation=array();
+            foreach ($input as $category => $entry)
+                {
+                $oid=false;
+                if ($debug>1)
+                    {
+                    echo "  process  $category";
+                    if (isset($input[$category]["Parent"])) echo ".".$input[$category]["Parent"]; 
+                    if (isset($topology[$category])) echo " redundant ";
+                    echo "\n";
+                    }
+                if (strpos($category,"__")) echo "Warning, found extension characters \"__\" in Index of array. Please avoid.\n";
+                
+                // zu bearbeitende Category schon im Zielarray unter selben Index bekannt, neuen Index vergeben, der Rest bleibt gleich
+                if (isset($topology[$category]))                
+                    {
+                    $i=0;
+                    do {
+                        $i++;
+                        $categoryIndex = $category."__$i";          
+                    } while (isset($topology[$categoryIndex]));                // Category schon im Zielarray bekannt
+                    $translation[$category]=$categoryIndex;                     
+                    }
+                else $categoryIndex=$category;                    // wenn keine neue categorie Index notwendig, trotzdem beide führen
+
+                if (isset($entry["Parent"])) 
+                    {
+                    $parent = $entry["Parent"];                                      // Input Array gibt den Parent Index vor
+                    if (isset($translation[$parent])) $parentIndex = $translation[$parent];          // eventuell umbenennen, wenn doppelt, translation Tabelle wachst innerhalb einer for routine und gibt an die Childrens weiter
+                    else $parentIndex = $parent;
+                    $topology[$categoryIndex]["Parent"]=$parentIndex;
+                    if ( (isset($topology[$parentIndex]["OID"]) == true) && ($category != "World") )
+                        {
+                        $parentID=$topology[$parentIndex]["OID"];
+                        //$topology[$category]["OID"]=CreateCategoryByName($parentID,$input[$category]["Name"], 10);          // keinen identifier schreiben, ist überfordert mit __
+                        if (isset($topology[$parentIndex]["Path"])) $topology[$categoryIndex]["Path"]=$parent.".".$topology[$parentIndex]["Path"];
+                        else $topology[$categoryIndex]["Path"]=$parent;
+                        if ($debug) 
+                            {
+                            //echo "CreateCategoryPathFromOid(".$input[$category]["Name"].".".$topology[$category]["Path"].",".$this->ID.")\n";
+                            echo "     ".str_pad($input[$category]["Name"].".".$topology[$categoryIndex]["Path"],120)." $categoryIndex \n";
+                            }
+                        $oid = CreateCategoryPathFromOid($input[$category]["Name"].".".$topology[$categoryIndex]["Path"],$this->ID,false);              // true für Debug
+
+                        $topology[$parentIndex]["Children"][$categoryIndex]=$categoryIndex;                   // den neuen Index nehmen, soll ja ein verweis sein
+                        if ($debug>1) echo "      ".$topology[$categoryIndex]["Path"]."\n";
+                        }
+                    }
+                else echo "Warning, no Parent definiert für $category.\n";
+                if (isset($entry["OID"])===false) $topology[$categoryIndex]["OID"]=$oid;
+                else $topology[$categoryIndex]["OID"]=$entry["OID"];                             // unwahrscheinlich dass schon die OID übergeben wird
+                if (isset($entry["Name"])===false) $topology[$categoryIndex]["Name"]=$category;
+                else $topology[$categoryIndex]["Name"]=$entry["Name"];
+                if (isset($entry["Type"])===false) echo "Warning no Type definiert für $category.\n;";
+                else $topology[$categoryIndex]["Type"]=$entry["Type"];
+                if (isset($entry["Config"])) $topology[$categoryIndex]["Config"]=$entry["Config"];
+                else $topology[$categoryIndex]["Config"] = $this->copyUnknownIndexes($entry,["Name","Type","OID","Parent","Childrens"]);
+                if (isset($entry["Childrens"]))
+                    {
+                    if (true)               // auch den Parent Index anpassen
+                        {
+                        $subinput=array(); $translate=false;
+                        foreach ($entry["Childrens"] as $subcategory => $subentry)
+                            {
+                            // translate index
+                            //if (isset($translation[$subcategory])) $subinput[$translation[$subcategory]]=$subentry;
+                            //else $subinput[$subcategory]=$subentry;
+                            $subinput[$subcategory]=$subentry;
+                            $parent = $subinput[$subcategory]["Parent"];
+                            if (isset($translation[$parent])) 
+                                {
+                                $subinput[$subcategory]["Parent"]=$translation[$parent];
+                                $translate=true;
+                                }
+                            //else $subinput[$subcategory]=$subentry;
+                            }    
+                        if ($translate) print_r($subinput);
+                        }
+                    else $subinput=$entry["Childrens"];
+                    $this->create_TopologyChildrens($topology,$subinput,$debug) ;
+                    } 
+
+                }
+
+            }
+
+        private function copyUnknownIndexes($entry,$excludes)
+            {
+            $result=array();
+            foreach ($entry as $index => $item)
+                {
+                $found=false;
+                foreach ($excludes as $exclude) { if ($exclude==$index) $found=true; }
+                if ($found==false) $result[$index] = $item;
+                }
+            return ($result);
+            }
+
+        /* DetectHandlerTopology::create_TopologyConfigurationFile
+         * Filename kommt von Get_ConfigFilename also self::$configFileName für Topology : IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php'
+         * File mit Filename wird eingelesen und $getTopology gesucht
+         *
+         */
         public function create_TopologyConfigurationFile($debug=false)
             {
 			$fileNameFull = $this->Get_ConfigFileName();
@@ -2723,14 +2922,14 @@
 
             if ($pos1 === false or $pos2 === false) 
                 {
-                echo "================================================\n";
+                $posn = $this->insertNewFunction($fileContent);
+                /* echo "================================================\n";
                 echo "Function get_Topology noch nicht im Config File angelegt. ".$this->Get_Configtype()." nicht gefunden. Neu schreiben.\n";
-                $comment=0; $posn=false;	/* letzte Klammer finden und danach einsetzen */
+                $comment=0; $posn=false;	// letzte Klammer finden und danach einsetzen 
                 for ($i=0;$i<strlen($fileContent);$i++)
                     {
                     switch ($fileContent[$i])
                         {
-                        /* comment : 0 ok 1 / erkannt 2 /* erkannt 3 // erkannt */
                         case '/':
                             if ( ($comment==2) && ($star==1) ) $comment=0;
                             elseif ($comment==1) $comment=3;
@@ -2750,23 +2949,68 @@
                             break;
                         }		
                     }
-                // $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren
+                // $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren   */
             
-                if ( $posn === false )
+                if ( $posn !== false )
                     {
-                    if (strlen($fileContent) > 6 )
-                        {
-                        $posn = strrpos($fileContent, '?>')-1;
-                        echo "Weit und breit keine Klammer. Auf Pos $posn function einfügen.\n";
-                        $configString="\n	 function get_Topology() {\n        ".'$getTopology'." = array(\n".'			"World" 			=>	array("Name" => "World","Parent"	=> "World"),'."\n         );\n       return ".'$getTopology'.";\n	}\n\n";
-                        $fileContentNew = substr($fileContent, 0, $posn+1).$configString.substr($fileContent, $posn+1);
-                        file_put_contents($fileNameFull, $fileContentNew);							
-                        }
-                    else throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
+                    $configString="\n	 function get_Topology() {\n        ".'$getTopology'." = array(\n".'			"World" 			=>	array("Name" => "World","Parent"	=> "World"),'."\n         );\n       return ".'$getTopology'.";\n	}\n\n";
+                    $fileContentNew = substr($fileContent, 0, $posn+1).$configString.substr($fileContent, $posn+1);
+                    file_put_contents($fileNameFull, $fileContentNew);							
                     }
+                else throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
                 }
             $this->create_Topology();           // input parameter false no init/empty category false no debug
             }
+
+        /* DetectHandlerTopology::create_UnifiedTopologyConfigurationFile
+         * Filename kommt von Get_ConfigFilename also self::$configFileName für Topology : IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php'
+         * File mit Filename wird eingelesen und $get_UnifiedTopology gesucht
+         * während get_Topology der allgemeine input des users ist, ist $getUnifiedTopology die übergeordnete Topologie, ähnlich der Function devicelist
+         *
+         */
+        public function create_UnifiedTopologyConfigurationFile($debug=false)
+            {
+            $ipsOps=new ipsOps();                
+			$fileNameFull = $this->Get_ConfigFileName();
+            if ($debug) echo "create_UnifiedTopologyConfigurationFile: Filename for function get_UnifiedTopology is $fileNameFull\n";
+            if (!file_exists($fileNameFull)) 
+                {
+                throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+                }
+            $fileContent = file_get_contents($fileNameFull, true);
+            $configString="";
+            $ipsOps->serializeArrayAsPhp($this->topology, $configString, 0, 10, false);          // true mit Debug, ConfigString mit Zusatzinformationen anreichern, mit ident 10 anfangen
+            $search1='$getUnifiedTopology = array(';
+            $search2='return $getUnifiedTopology;';
+            $pos1 = strpos($fileContent, $search1);
+            $pos2 = strpos($fileContent, $search2);
+
+            if ($pos1 === false or $pos2 === false)                 // kommt noch nicht vor, guten Platz zum Einfügen suchen
+                {
+                if ($debug) 
+                    {
+                    echo "Not found, new function to be inserted: Search Item \"$search1\" found at $pos1 and Search Item \"$search2\" found at $pos2. \n";
+                    }                    
+                $posn = $this->insertNewFunction($fileContent);
+                if ( $posn !== false )
+                    {
+                    $configString ="\n	 function get_UnifiedTopology() {\n        ".'$getUnifiedTopology'." = ".$configString."\n       return ".'$getUnifiedTopology'.";\n	}\n\n";
+                    $fileContentNew = substr($fileContent, 0, $posn+1).$configString.substr($fileContent, $posn+1);
+                    }
+                else throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
+                }
+			else
+				{	
+                if ($debug) 
+                    {
+                    echo "Search Item \"$search1\" found at $pos1 and Search Item \"$search2\" found at $pos2. \n";
+                    }
+				$fileContentNew = substr($fileContent, 0, $pos1).'$getUnifiedTopology = '.$configString.substr($fileContent, $pos2);
+				}
+			file_put_contents($fileNameFull, $fileContentNew);
+
+            }
+
 
         /*
          * Verbindung der Topologie mit der Object und instanzen Konfiguration
@@ -2777,19 +3021,37 @@
          *  topology            die tatsächliche Topologies aus der config in EvaluateHardware_configuration
          *  objectsConfig       die Object/register Config aus dem DetectDeviceHandler, das sind nicht die Geräte sondern die Register
          *                      es gibt dort auch Gesamt register die definiert wirden
-         *
+         * in der objectsConfig gilt:
+         *   0 Topology  1 Array of Rooms seperated by , 2 Array seperated by , 
          */
 
         function mergeTopologyObjects($topology, $objectsConfig, $debug=false)
             {
-            if ($debug) echo "mergeTopologyObjects mit informationen aus einer DetectDeviceHandler Configuration aufgerufen:\n";
+            if ($debug>1) echo "mergeTopologyObjects mit informationen aus einer DetectDeviceHandler Configuration aufgerufen, in die Topologie einsortieren:\n";
+            /* place name kann jetzt redundant sein, index eindeutig aber nicht unbedingt passend zur User Angabe, User nimmt immer den ersten Wert
+                * ausser es wird die Baseline mit ~ angegben, name~baseline bedeutet wir suchen einen index dessen Pfad name und baseline enthält
+                * reference ist der key der 
+                */
+            $references=array();
+            foreach ($topology as $topindex => $topentry)
+                {
+                if (!( (isset($topentry["Name"])) && (isset($topentry["Path"])) )) 
+                    {
+                    if ($debug>1) 
+                        {
+                        echo "Warning, incomplete array on $topindex:\n";
+                        print_R($topentry);          // Eintrag fehlt
+                        }
+                    }
+                else $references[$topentry["Name"]][$topentry["Path"]] = $topindex;               // für einen namen alle Einträge durvhgehen, der wo die bvaseline im key ist den index übernehmen
+                }
             $text="";                
-            $topologyPlusLinks=$topology;
+            $topologyPlusLinks=$topology;               // Topologie übernhemen
             foreach ($objectsConfig as $index => $entry)
                 {
-                if ($debug) 
+                if ($debug>1) 
                     {
-                    $newText=$entry[0]."|".$entry[1]."|".$entry[2];
+                    $newText=$entry[0]."|".$entry[1]."|".$entry[2];                 //entry 0 ist immer Topology, gar nicht erst einmal kontrollieren
                     if ($newText != $text) echo "$index   \"$newText\"\n";
                     $text=$newText;
                     }
@@ -2799,11 +3061,34 @@
 
                 if ( ($entry[1]!="") && (sizeof($entry1)>0) )           // es wurden ein oder mehrere Räume definiert
                     {
-                    foreach ($entry1 as $place)
+                    foreach ($entry1 as $entryplace)         // alle Räume durchgehen
                         {
+                        $placeName=explode("~",$entryplace);
+                        if (sizeof($placeName)>1) 
+                            {
+                            if ($debug>1) echo "Name reference with Baseline Identifier found : $entryplace detected as ".$placeName[0]."~".$placeName[1]."\n";
+                            //print_R($references);
+                            if (isset($references[$placeName[0]]))
+                                {
+                                //print_r($references[$placeName[0]]);
+                                $found=$placeName[0]; $foundpos=false;
+                                foreach ($references[$placeName[0]] as $refname => $reference) 
+                                    {
+                                    $pos1 = strpos($refname,$placeName[1]); 
+                                    if ($debug>1) echo "$refname $pos1  ";
+                                    if ($pos1 !==false) 
+                                        {
+                                        if ( ($foundpos && ($pos1<$foundpos)) || ($foundpos===false)) { $foundpos=$pos1; $found=$reference; }
+                                        }
+                                    }
+                                $place=$found;
+                                if ($debug>1) echo "  => $place\n";
+                                }
+                            }
+                        else $place=$entryplace;
                         if ( isset($topology[$place]["OID"]) != true ) 
                             {
-                            if ($debug) echo "   Fehler, zumindest erst einmal die Kategorie \"$place\" anlegen.\n";
+                            if ($debug) echo "   Fehler, zumindest erst einmal die Kategorie \"$place\" in function get_Topology() von EvaluateHardware_Configuration anlegen.\n";
                             }
                         else
                             {
@@ -2813,20 +3098,20 @@
                             if ($entry2[0]=="") $size=0;
                             if ($size == 1) 
                                 {	/* es wurde ein Gewerk angeben, zB Temperatur, vorne einsortieren */
-                                if ($debug) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
                                 //CreateLinkByDestination($name, $index, $oid, 10);	
                                 $topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
                                 }
                             elseif ($size == 2)
                                 {
                                 /* eine zusätzliche Hierarchie einführen, der zweite Wert ist die Übergruppe */
-                                if ($debug) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
                                 //CreateLinkByDestination($name, $index, $oid, 10);	
                                 $topologyPlusLinks[$place]["OBJECT"][$entry2[1]][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
                                 } 
                             else
                                 {	/* eine Instanz, dient nur der Vollstaendigkeit */
-                                if ($debug) echo "   erzeuge INSTANCE Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
+                                if ($debug>1) echo "   erzeuge INSTANCE Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
                                 //CreateLinkByDestination($name, $index, $oid, 1000);						
                                 $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
                                 }
@@ -2836,8 +3121,19 @@
                     }
                 else 
                     {
-                    echo "    ***$index, ";
-                    echo IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))." hat keinen Ort:\"".$entry[1]."\"\n";                    
+                    $parent = IPS_GetName(IPS_GetParent($index));
+                    switch ($parent)
+                        {
+                        case "HomematicRSSI":               // suppress some known parentIds
+                            break;
+                        default:
+                            if ($debug)
+                                {
+                                echo "    ***$index, ";
+                                echo IPS_GetName($index)."/$parent hat keinen Ort:\"".$entry[1]."\"\n";                    
+                                }
+                            break;
+                        }
                     }
                 }  // ende foreach
             return ($topologyPlusLinks);
@@ -2894,13 +3190,18 @@
      * das ist die config Liste die die Topology und Gewerke zu Instanzen und Registern herstellt, etwas mühsam zum Eingeben, da es oft mehrere Instanzen in einem Gerät gibt
      * für die Zuordnung Geräte zu Topologie siehe:            IPSDetectDeviceListHandler_GetEventConfiguration 
      *
+     *  Geräte
+     *      Instanzen
+     *          Register
+     *
      * Verwendung in: EvaluateHardware
      *
      *      $topology            = $DetectDeviceHandler->Get_Topology();
      *      $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();        
      *      $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();     
      *      $topologyLibrary->createTopologyInstances($topology);           
-     *       $topologyLibrary->sortTopologyInstances($deviceList,$channelEventList,$deviceEventList);     *
+     *       $topologyLibrary->sortTopologyInstances($deviceList,$channelEventList,$deviceEventList);           Topologie in Devicelist einsortieren
+     *
      *
      * in einem eigenen Bereich von EvaluateHardware werden die Register angelegt
      *
@@ -2924,21 +3225,20 @@
 		protected $topology;
         protected $ID;
 
-		/**
-		 * @public
-		 *
-		 * Initialisierung des DetectDeviceHandler Objektes
+		/* Initialisierung des DetectDeviceHandler Objektes
+		 * wir brauchen das config file EvaluateHardware_Configuration mit function get_topology()
+		 * wird mit create_Topology eingelesen, wenn die Function noch nicht da ist diese erstellen
+		 * create_Topology legt auch gleich die entsprechenden Kategorien an. Default ist in EvaluateHardware entsprechend WFC10_Path
 		 *
 		 */
 		public function __construct()
 			{
 			self::$configtype = '$deviceTopology';
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php';
-            if ($this->create_Topology()===false)           // berechnet topology und ID, false wenn get_topology nicht definiert
+            if ($this->create_Topology()===false)           // berechnet topology und ID, false wenn get_topology nicht definiert, ID kommt aus Module EvaluateHradware WFC10_Path
                 {
                 $this->create_TopologyConfigurationFile();          //true for Debug                    
 				}
-            //print_r($this->topology);*/
 	        parent::__construct();
 			}
 
@@ -2959,8 +3259,9 @@
 			}
             		
 
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-
+		/* DetectDeviceHandler::Get_EventConfigurationAuto
+         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
+         */
 		public function Get_EventConfigurationAuto()
 			{
 			if (self::$eventConfigurationAuto == null)
@@ -2975,7 +3276,7 @@
 			return self::$eventConfigurationAuto;
 			}
 
-		/**
+		/* DetectDeviceHandler::Set_EventConfigurationAuto
 		 *
 		 * Setzen der aktuellen Event Konfiguration
 		 *
@@ -2985,14 +3286,15 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 
-        /* DetectDeviceHandler, nur da damit keine Fehlermeldung, eigentlich egal */
-
+        /* DetectDeviceHandler::CreateMirrorRegister
+         * nur da damit keine Fehlermeldung, eigentlich egal 
+         */
 		public function CreateMirrorRegister($variableId,$debug=false)
 			{
 			}
 
-        /* update registerEvent according to deviceList
-         *
+        /* DetectDeviceHandler::UpdateRegisterEvent 
+         * according to deviceList
          */
 
         public function UpdateRegisterEvent($DetectHandler, $deviceList, $debug=false)
@@ -3139,7 +3441,8 @@
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php';
             if ($this->create_Topology()===false)           // berechnet topology und ID, false wenn get_topology nicht definiert, input parameter false no init/empty category false no debug
 				{
-                $this->create_TopologyConfigurationFile(true);          //true for Debug                       
+                $this->create_TopologyConfigurationFile(true);          //true for Debug 
+                /*  schon in obiger Routine enthalten, doppelt                    
 				echo "DetectDeviceListHandler: Function get_Topology neu anlegen.\n";
 				$fileNameFull = $this->Get_ConfigFileName();
 				if (!file_exists($fileNameFull)) 
@@ -3156,12 +3459,12 @@
 					{
 					echo "================================================\n";
 					echo "Function get_Topology noch nicht im Config File angelegt. ".$this->Get_Configtype()." nicht gefunden. Neu schreiben.\n";
-					$comment=0; $posn=false;	/* letzte Klammer finden und danach einsetzen */
+					$comment=0; $posn=false;	// letzte Klammer finden und danach einsetzen 
 					for ($i=0;$i<strlen($fileContent);$i++)
 						{
 						switch ($fileContent[$i])
 							{
-							/* comment : 0 ok 1 / erkannt 2 /* erkannt 3 // erkannt */
+							// comment : 0 ok 1 erkannt 2 erkannt 3 erkannt 
 							case '/':
 								if ( ($comment==2) && ($star==1) ) $comment=0;
 								elseif ($comment==1) $comment=3;
@@ -3198,7 +3501,7 @@
 					
 					}
 				$this->topology=array();
-				$this->topology["World"]["OID"]=$ID;				
+				$this->topology["World"]["OID"]=$ID;	*/			
 				}
 	        parent::__construct();
 			}
@@ -3314,6 +3617,7 @@
  *      Config, ist die Config aus dem MessageHandler
  *      Homematic, ist das Object eine Homematic Instanz und wenn ja welche
  *
+ *  syncEventList                   von construct aufgerufen, obige Tabelle erstellen oder updaten
  *  getEventListforDeletion
  *  getEventListfromIPS
  *  getComponentEventListTable
@@ -3348,6 +3652,34 @@ class TestMovement
 		{	
 		$this->debug=$debug;
 		if ($debug) echo "TestMovement Construct, Debug Mode, zusätzliche Checks bei der Eventbearbeitung:\n";
+        $this->syncEventList($debug);       // speichert eventList und eventListDelete
+		}	
+
+
+		/* EventList erzeugen
+         *  ScriptID von IPSMessageHandler_Event rausfinden und die darunter angelegten Children, Events rausfinden
+         *  sortiert dabei auch gleich die Events nach Ihrer EventID
+         *
+         *  Abgleich mit vorhandenen Konfigurationen und Darstellung in der Eventlist
+         *
+         * Folgende tabelleneintraege gibt es bereits in der Grundausstattung 
+		 *   OID Objekt OID vom IP Symcon Event
+		 *   Name des IP Symcon Events
+		 *   OID des auslösendes Registers, eigentlichem Event
+		 *   Fehler eventueller Eintrag wenn etwas nicht stimmt
+		 *   Pfad des auslösenden Registers
+		 *   NameEvent Name des auslösenden Registers 
+		 *   Instanz sollte der Parent des auslösenden registers eine Instanz sein, diese hier anführen. ZB Homematic Device
+		 *   Typ, wird in der Tabelle als Funktion ausgegeben, Wenn das auslösende Register in einer der detectMovement Konfigurationen steht, hier einen entsprechenden Eintrag machen
+		 *
+		 * Bearbeitet folgende class Variablen
+         *  eventlist
+         *  eventlistDelete
+         *
+		 */
+
+    function syncEventList($debug=false)
+        {
 
 		/* Autosteuerung */
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
@@ -3435,27 +3767,16 @@ class TestMovement
             }
 		else $heatcontrol_config=array();
 
-		$delete=0;			// mitzaehlen wieviele events geloescht werden muessen 
 
-		/* EventList erzeugen, Folgende tabelleneintraege gibt es bereits in der Grundausstattung 
-		 *   OID Objekt OID vom IP Symcon Event
-		 *   Name des IP Symcon Events
-		 *   OID des auslösendes Registers, eigentlichem Event
-		 *   Fehler eventueller Eintrag wenn etwas nicht stimmt
-		 *   Pfad des auslösenden Registers
-		 *   NameEvent Name des auslösenden Registers 
-		 *   Instanz sollte der Parent des auslösenden registers eine Instanz sein, diese hier anführen. ZB Homematic Device
-		 *   Typ, wird in der Tabelle als Funktion ausgegeben, Wenn das auslösende Register in einer der detectMovement Konfigurationen steht, hier einen entsprechenden Eintrag machen
-		 *
-		 *
-		 */
 
 		$i=0;
+		$delete=0;			// mitzaehlen wieviele events geloescht werden muessen 
 		$eventlist=array();
 		$this->eventlistDelete=array();		// Sammlung der Events für die es kein Objekt mehr dazu gibt
+
 		$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
 
-		if ($debug) echo " EventID  ".str_pad("Name",75)." Type Parent Instanz   \n";
+		if ($debug) echo " EventID  ".str_pad("Name",75)." Type       Parent Instanz   \n";          // Ueberschrift tabelle
 
 		$children=IPS_GetChildrenIDs($scriptId);		// alle Events des IPSMessageHandler erfassen
 		foreach ($children as $childrenID)
@@ -3611,7 +3932,7 @@ class TestMovement
                 }
             }
         // return ($this->eventlistDelete);      // kein return von einem construct
-		}	
+        }
 
 	/**********************************
 	 * TestMovement, getEventListforDeletion Werte ausgeben die beim construct bereits erstellt wurden
@@ -3671,12 +3992,19 @@ class TestMovement
         return ($resultEventList);
         }
 
-    /* Ausgabe als html Tabelle
+    /* Ausgabe als html Tabelle, ermittelt löschbare Items und löscht sie auch gleich
      *
+     * das Ergebnis der Events in resultEventList auswerten 
+     * erwartetes Format, Tabelle indexiert
+     *      OID
+     *      Name
+     *      LastRun
+     *      Pfad
+     *      Type
+     *      Script
      */
     public function getComponentEventListTable($resultEventList,$filter="",$htmlOutput=false,$debug=false)
         {
-        /* das Ergebnis der Events in resultEventList auswerten */
 		$html="";
 		$html.="<style>";
 		$html.='#customers { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; font-size: 12px; color:black; border-collapse: collapse; width: 100%; }';
@@ -3688,8 +4016,14 @@ class TestMovement
 		$html.="</style>";
 	
 		$html.='<table id="customers" >';
-		$html.="<tr><th>#</th><th>OID</th><th>Name</th><th>ObjektID</th><th>Objektpfad/Fehler</th><th>Objektname</th><th>Module</th><th>Funktion</th><th>Konfiguration</th><th>Homematic</th><th>Detect Movement</th><th>Autosteuerung</th></tr>";
-
+        if ($filter == "IPSMessageHandler_Event")
+            {
+		    $html.="<tr><th>#</th><th>OID</th><th>Name</th><th>ObjektID</th><th>Objektpfad/Fehler</th><th>Component</th><th>Module</th><th>LastRun</th><th>Pfad</th><th>Type</th><th>Script</th></tr>";
+            }
+        else
+            {
+		    $html.="<tr><th>#</th><th>OID</th><th>Name</th><th>Funktion</th><th>Konfiguration</th><th>Homematic</th><th>Detect Movement</th><th>Autosteuerung</th></tr>";
+            }
         $result=array();
         if ($htmlOutput) $echo=false;
         else $echo=true;
@@ -3719,7 +4053,7 @@ class TestMovement
                 else 
                     {
                     if ($echo) echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
-                    $html.="<td>==> Variable nicht mehr vorhanden.</td>";
+                    $html.='<td colspan="2">==> Variable nicht mehr vorhanden.</td>';
                     $delete[$entry["OID"]]=true;
                     }
                 if (isset($entry["Component"])) 
@@ -3743,7 +4077,7 @@ class TestMovement
                     $html.="<td>------</td>";
                     }
                 }
-            else 
+            else        // filter nicht bekannt
                 {
                 if ($echo) echo str_pad($entry["Name"],40)." ";
                 $html.="<td>".$entry["Name"]."</td>";

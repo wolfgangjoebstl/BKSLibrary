@@ -6466,7 +6466,7 @@ class CamOperation extends OperationCenter
         else $this->moduleManagerCam=false;
         }
 
-    /**************************
+    /*  CamOperation::selectFilesfromList
      *
      * aus einer Liste nach dem Mode ein paar Dateien aussuchen
      * picdir Fileliste die kopiert werden soll, hier für die Auswahl relevant
@@ -6566,7 +6566,7 @@ class CamOperation extends OperationCenter
         }
 
 
-	/******************************
+	/* CamOperation::copyCamSnapshots
 	 *
 	 * es werden Snapshots pro Kamera erstellt, muss in IPSCam eingeschaltet sein
 	 * diese werden wenn aufgerufen (regelmaessig) für ein Overview Webfront in das webfront/user Verzeichnis kopiert
@@ -6628,7 +6628,7 @@ class CamOperation extends OperationCenter
         return ($status);
 		}
 
-	/******************************
+	/* CamOperation::showCamSnapshots
 	 *
 	 * es wird die Visualisierung für die Snapshots pro Kamera erstellt, muss in IPSCam eingeschaltet sein
      *
@@ -6728,7 +6728,7 @@ class CamOperation extends OperationCenter
 		}
 
 
-	/******************************
+	/* CamOperation::showCamCaptureFiles
 	 *
 	 * es werden von den ftp Verzeichnissen ausgewählte Dateien in das Webfront/user verzeichnis für die Darstellung im Webfront kopiert
      *  Zielverzeichnis:  IPS_KernelDir/webfront/user/OperationCenter/Cams/"Cam_name"/
@@ -6987,7 +6987,9 @@ class CamOperation extends OperationCenter
 		}	
 
 
-    /*   erzeugt einen Category Pfad, $WFC10Cam_Path."_Capture"
+    /* CamOperation::getWebfrontCategoryID
+     * 
+     *  erzeugt einen Category Pfad, $WFC10Cam_Path."_Capture"
      *   Name function ist iritierend
      */
     public function getWebfrontCategoryID($debug=false)
@@ -6997,14 +6999,19 @@ class CamOperation extends OperationCenter
         return (CreateCategoryPath($WFC10Cam_Path."_Capture"));
         }
 
-    /*                     */
-
+    /* CamOperation::createVariablePictureField
+     *
+     * create Variable picturefield
+     *
+     */
     public function createVariablePictureField($categoryIdCapture)
         {
         return ( CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox'));            
         }
 
-    /*  schöne Zusammenfassung als array, input is ocCamConfig
+    /* CamOperation::getPictureFieldIDs 
+     *
+     * schöne Zusammenfassung als array, input is ocCamConfig
      *
      */
     public function getPictureFieldIDs($ocCamConfig, $debug=false)
@@ -7035,9 +7042,9 @@ class CamOperation extends OperationCenter
         return ($pictureFieldIDs);
         }        
 
-    /* get Category IDS like they are instances
+    /* CamOperation::getPictureCategoryIDs
      *
-     *
+     * get Category IDS like they are instances
      */
     
     public function getPictureCategoryIDs($ocCamConfig=false, $debug=false)

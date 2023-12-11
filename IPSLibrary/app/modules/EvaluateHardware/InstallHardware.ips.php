@@ -1,4 +1,4 @@
-<?
+<?php
 
 /* installiert die Hardware auf einem neuen System basierend auf einem includefile dass auf einem anderen PC erstellt wurde
  *

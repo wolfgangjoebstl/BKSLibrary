@@ -1,4 +1,4 @@
-<?
+<?php
 
  	/*
 	 * This file is part of the IPSLibrary.
@@ -19,8 +19,12 @@
 
     /* Teil des Evaluate Hardware Moduls
      *
+     * Webfront: Bearbeitung der Buttons für das Webfront Werte in LocalData
+     *
+     * Execute:  Analyse der Konfigurationsdateien und Abgleich mit der gespeicherten Parametrierung
+     *
      * verbessert und überprüft die aktuelle Systemkonfiguration
-     * mit dem Durchlauf des Scripts sollten Anomalien sichtbar gemacht werden.
+     * mit dem Durchlauf des Scripts sollten Anomalien in der Parametrierung des Systems sichtbar gemacht werden.
      * in der DetectDeviceHandler Configuration werden zusätzliche neue Register angelegt.
      *
      */
@@ -39,11 +43,22 @@
     IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
     $startexec=microtime(true);
+    $executeExecute=true;                  // false den Execute Teil nicht ausführen, wie wenn Webfront aufgerufen wird
 
     /***************************************************************************
      * 
      * INIT
      *
+     * Zwei Webfront Tabellen. Eine in SystemTP, die andere in LocalData
+     *
+     * EvaluateHardware
+     *      DetectDevice
+     *          SortTableBy
+     *          MessageTable
+     * CustomComponent
+     *      HardwareStatus
+     *          ShowTablesBy
+     *          ValuesTable
      *
      ****************************/
 
@@ -76,7 +91,10 @@
 
     /***************************************************************************
      * 
-     * alle Events auslesen und danach etwas besser strukturieren
+     * alle Events aus dem IPSMessageHandler auslesen und danach etwas besser strukturieren und abgleichen mit
+     *  CustomComponent     IPSMessageHandler
+     *  DetectMovement      TestMovement
+     *  OperationCenter     DeviceManagement_Homematic
      *
      *
      ****************************/
@@ -113,17 +131,29 @@
 
     if (isset($installedModules["OperationCenter"])) 
         {    
-        echo "OperationCenter ist installiert.\n";
+        //echo "OperationCenter ist installiert.\n";
         IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
         $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library
         }
 
+    /* Sortierfunktionen für zwei tabellen
+     *
+     * getComponentEventListTable
+     * showHardwareStatus
+     */
+
     if ($_IPS['SENDER']=="WebFront")
 	    {
-    	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
         switch ($_IPS['VARIABLE'])
             {
             case $actionSortMessageTableID:
+                if ($_IPS['VALUE'] == GetValue($_IPS['VARIABLE'])) 
+                    {
+                    $sort=SORT_DESC;
+                    echo "same";
+                    }
+                else $sort=SORT_ASC;
+            	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
                 if ($messageTableID)
                     {
                     $filter="IPSMessageHandler_Event";
@@ -137,13 +167,24 @@
                             $resultEventList[$index]["Module"]=$eventlist[$trigger][2];
                             }
                         }
-                    $ipsOps->intelliSort($resultEventList,"Module");
+                    switch ($_IPS['VALUE'])
+                        {
+                        case 0:
+                            $ipsOps->intelliSort($resultEventList,"Module",$sort);
+                            break;
+                        case 1:
+                            $ipsOps->intelliSort($resultEventList,"LastRun",$sort);
+                            break;
+                        default:
+                            break;
+                        }
                     $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,false);             // false no Debug, wenn file IPSMessage_Handler ist gibt es detailliertere Informationen
                     setValue($messageTableID,$html);
                     }
                 else echo "Table not found.\n";
                 break;
             case $actionDeviceTableID:
+            	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
                 if (isset($DeviceManager))
                     {
                     $hwStatus = $DeviceManager->HardwareStatus("array");           // Ausgabe als Array
@@ -191,258 +232,271 @@
             }
         }
 
-
-    if ($_IPS['SENDER']=="Execute")
-        {
-
-    if (isset($installedModules["OperationCenter"])) 
-        {
-        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
-        echo "OperationCenter ist installiert. HMI_CreateReport updaten, wenn in den letzten 24h nicht erfolgt.\n\n";
-        $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library, getHomematicAddressList wird auch im construct aufgerufen
-        //$HomematicAddressesList = $DeviceManager->getHomematicAddressList(true);        // noch einmal aufrufen mit Debug
-        //print_r($HomematicAddressesList);
-        //echo "    --done---\n";
-        }  
-
-    if (isset($testMovement)) 
-        {
-        echo "DetectMovement Module installiert. Class TestMovement für Auswertungen verwenden:\n";
-        //echo "--------\n";
-        $eventListforDeletion = $testMovement->getEventListforDeletion();
-        if (count($eventListforDeletion)>0) 
-            {
-            echo "Ergebnis TestMovement construct: Es müssen ".count($eventListforDeletion)." Events in der Config Datei \"IPSMessageHandler_GetEventConfiguration\" gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
-            echo "                                 und es müssen auch diese Events hinterlegt beim IPSMessageHandler_Event geloescht werden \"Bei Änderung Event Ungültig\".\n";
-            print_R($eventListforDeletion);
-            }
-        else 
-            {
-            echo "Events von IPS_MessageHandler mit Konfiguration abgeglichen. TestMovement sagt alles ist in Ordnung.\n";
-            echo "\n";
-            }
-        $filter="IPSMessageHandler_Event";
-        $resultEventList = $testMovement->getEventListfromIPS($filter,true);
-        //$ipsOps->intelliSort($resultEventList,"OID");                           // Event ID
-        $ipsOps->intelliSort($resultEventList,"Name");                           // Device Event ID
-        $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,true);
-        echo $html;
-
-        }
-
-	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
-
-    $TopologyLibrary=$modulhandling->printModules('TopologyMappingLibrary');
-    if (empty($TopologyLibrary)) echo "TopologyMappingLibrary noch nicht installiert.  \n";
-    echo "\n";   
-
-
-    /**********************************************************************************
+    /* nur bei manuellem Aufruf des Scriptes ausführen
+     * verwendet testMovement
      *
-     * Topology Mapping, check Libraries
-     *
-     *
-     **********************************/
-
-    /*
-	$modulhandling->printLibraries();
-    echo "\n";
-    $modulhandling->printInstances('TopologyDevice');
-    $deviceInstances = $modulhandling->getInstances('TopologyDevice');
-    $modulhandling->printInstances('TopologyRoom');        
-    $roomInstances = $modulhandling->getInstances('TopologyRoom');
-    */
-
-	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
-    //print_R($eventlist);
-
-    if ( (isset($installedModules["DetectMovement"])) && (isset($installedModules["EvaluateHardware"])) && !(empty($TopologyLibrary)) )
+     */
+    if ( ($_IPS['SENDER']=="Execute") && $executeExecute)
         {
-        IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");          // neues EvaluateHardware Include File
-        IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
-        IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
-        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-
-        echo "\n\n";
-        echo "Module DetectMovement und EvaluateHardware sind installiert. TopologyMappingLibrary Instanzen sind vorhanden.\n";
-
-        $hardwareTypeDetect = new Hardware();
-        $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
-
-        $DetectDeviceHandler = new DetectDeviceHandler();
-        $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
-
-        echo "   Die devicelist von EvaluateHardware_DeviceList.inc.php einlesen.\n";
-
-        /* alle Instanzen aus der Topolgie auslesen */
-        $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
-        $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-        $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-        $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-
-        echo "   Die Topologie Instanzen aus dem IP Symcon Inventory einlesen.\n";
-        /* die Konfiguration herauslesen und eventuell hinsichtlich Topologie ergänzen */
-        $topology       = $DetectDeviceHandler->Get_Topology();
-        echo "   Die Channel EventList aus dem DetectDeviceHandler einlesen.\n";
-        $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();        
-        echo "   Die Device EventList aus dem DetectDeviceListHandler für die Geräte einlesen.\n";
-        $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto(); 
-
-        /* aus der devicelist von Configuration::EvaluateHardware_Include die Devices registrieren, es fehlt die device OID aus der Topologie
-         * Aktuell sind zwei Durchläufe erforderlich, einmal Instanz anlegen und das zweite Mal Event registrieren 
-         * Es wird dann auch die Topologie erstellt, momentat noch in CheckTopology
-         * Anordnung von devicelist nach Namen ohne Subname nach dem :
-         *
-         */
-
-        $topID=@IPS_GetObjectIDByName("Topology", 0 );
-        if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da
-
-        //if (false)              /* für das Anlegen der TopologyDevices */
+        if (isset($installedModules["OperationCenter"])) 
             {
-            $i=0;
-            $onlyOne=true;      // schön vorsichtig, nur eine Instanz nach der anderen anschauen
-            $parent=$topID;
+            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+            echo "OperationCenter ist installiert.\n"; 
+            //echo "HMI_CreateReport updaten, wenn in den letzten 24h nicht erfolgt.\n";
+            $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library, getHomematicAddressList wird auch im construct aufgerufen
+            //$HomematicAddressesList = $DeviceManager->getHomematicAddressList(true);        // noch einmal aufrufen mit Debug
+            //print_r($HomematicAddressesList);
+            //echo "    --done---\n";
+            }  
 
-            echo "\nDie EvaluateHardware_Devicelist devicelist() jetzt Gerät für Gerät durchgehen und wenn noch nicht vorhanden ein Topology Device anlegen:\n\n";
-            foreach ($deviceList as $name => $entry)
+        if (isset($testMovement)) 
+            {
+            echo "DetectMovement Module installiert. Class TestMovement für Auswertungen verwenden:\n";
+            //echo "--------\n";
+            $eventListforDeletion = $testMovement->getEventListforDeletion();
+            if (count($eventListforDeletion)>0) 
                 {
-                $instances=$entry["Instances"];
-                if ($onlyOne)
+                echo "Ergebnis TestMovement construct: Es müssen ".count($eventListforDeletion)." Events in der Config Datei \"IPSMessageHandler_GetEventConfiguration\" gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
+                echo "                                 und es müssen auch diese Events hinterlegt beim IPSMessageHandler_Event geloescht werden \"Bei Änderung Event Ungültig\".\n";
+                print_R($eventListforDeletion);
+                }
+            else 
+                {
+                echo "Events von IPS_MessageHandler mit Konfiguration abgeglichen. TestMovement sagt alles ist in Ordnung.\n";
+                echo "\n";
+                }
+            $filter="IPSMessageHandler_Event";
+            $resultEventList = $testMovement->getEventListfromIPS($filter,true);
+            //$ipsOps->intelliSort($resultEventList,"OID");                           // Event ID
+            $ipsOps->intelliSort($resultEventList,"Name");                           // Device Event ID
+            $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,true);
+            echo $html;
+
+            }
+
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+
+        $TopologyLibrary=$modulhandling->printModules('TopologyMappingLibrary');
+        if (empty($TopologyLibrary)) echo "TopologyMappingLibrary noch nicht installiert.  \n";
+        echo "\n";   
+
+
+        /**********************************************************************************
+        *
+        * Topology Mapping, check Libraries
+        *
+        *
+        **********************************/
+
+        /*
+        $modulhandling->printLibraries();
+        echo "\n";
+        $modulhandling->printInstances('TopologyDevice');
+        $deviceInstances = $modulhandling->getInstances('TopologyDevice');
+        $modulhandling->printInstances('TopologyRoom');        
+        $roomInstances = $modulhandling->getInstances('TopologyRoom');
+        */
+
+        echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
+        //print_R($eventlist);
+
+        if ( (isset($installedModules["DetectMovement"])) && (isset($installedModules["EvaluateHardware"])) && !(empty($TopologyLibrary)) )
+            {
+            IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");          // neues EvaluateHardware Include File
+            IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+            IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+
+            echo "\n\n";
+            echo "Module DetectMovement und EvaluateHardware sind installiert. TopologyMappingLibrary Instanzen sind vorhanden.\n";
+
+            $hardwareTypeDetect = new Hardware();
+            $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
+
+            $DetectDeviceHandler = new DetectDeviceHandler();
+            $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
+
+            echo "   Die devicelist von EvaluateHardware_DeviceList.inc.php einlesen.\n";
+
+            /* alle Instanzen aus der Topolgie auslesen */
+            $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
+            $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+            $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+            $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+
+            echo "   Die Topologie Instanzen aus dem IP Symcon Inventory einlesen.\n";
+            /* die Konfiguration herauslesen und eventuell hinsichtlich Topologie ergänzen */
+            $topology       = $DetectDeviceHandler->Get_Topology();
+            echo "   Die Channel EventList aus dem DetectDeviceHandler einlesen.\n";
+            $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();        
+            echo "   Die Device EventList aus dem DetectDeviceListHandler für die Geräte einlesen.\n";
+            $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto(); 
+
+            /* aus der devicelist von Configuration::EvaluateHardware_Include die Devices registrieren, es fehlt die device OID aus der Topologie
+            * Aktuell sind zwei Durchläufe erforderlich, einmal Instanz anlegen und das zweite Mal Event registrieren 
+            * Es wird dann auch die Topologie erstellt, momentat noch in CheckTopology
+            * Anordnung von devicelist nach Namen ohne Subname nach dem :
+            *
+            * die devicelist aus EvaluateHardware_Devicelist Eintrag für Eintrag durchgehen
+            * es muss Instances angelegt sein, es kann eine oder mehrere in einem Gerät sein (Taster, Schalter, Energiemessung)
+            * mit der aktuellen Topologie abgleichen:         
+            *      $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
+            *      $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+            *      $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+            *      $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+            *
+            *
+            */
+
+            $topID=@IPS_GetObjectIDByName("Topology", 0 );
+            if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da
+
+            //if (false)              /* für das Anlegen der TopologyDevices */
+                {
+                $i=0;
+                $onlyOne=true;      // schön vorsichtig, nur eine Instanz nach der anderen anschauen
+                $parent=$topID;
+
+                echo "\nDie EvaluateHardware_Devicelist devicelist() jetzt Gerät für Gerät durchgehen und wenn noch nicht vorhanden ein Topology Device anlegen:\n\n";
+                foreach ($deviceList as $name => $entry)
                     {
-                    if ( (isset($deviceInstances[$name])) === false )
+                    $instances=$entry["Instances"];
+                    if ($onlyOne)
                         {
-                        echo str_pad($i,4)."Eine Topology Device Instanz in der Kategorie Topology mit dem Namen $name unter ".IPS_GetName($parent)." ($parent) erstellen:\n";
-                        /* $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen 
-                        if ($InsID !== false)
+                        if ( (isset($deviceInstances[$name])) === false )
                             {
-                            IPS_SetName($InsID, $name); // Instanz benennen
-                            IPS_SetParent($InsID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
-                            
-                            //Konfiguration
-                            //IPS_SetProperty($InsID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
-                            IPS_ApplyChanges($InsID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
-                            }
-                        else echo "Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n"; */
-                        }
-                    else
-                        {
-                        /* wenn schon angelegt die DeviceList() auf die richtige Topology setzen */
-                        $InstanzID = $deviceInstances[$name];    
-                        if ($debug) echo str_pad($i,4)."Eine Topology Device Instanz mit dem Namen $name unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es bereits und lautet: ". $InstanzID."   \n";
-                        $room="";
-                        $writeChannels=false;
-                        $writeDevices=false;
-                        /* die Instanzen aus der devicelist() durchgehen und schauen ob die Channels in der DetectDeviceHandler class angelegt sind und sich im selben Raum befinden */
-                        foreach ($instances as $instance)
-                            {
-                            $config="";
-                            //print_r($channelEventList[$instance["OID"]]);
-                            if (isset($channelEventList[$instance["OID"]])) 
+                            echo str_pad($i,4)."Eine Topology Device Instanz in der Kategorie Topology mit dem Namen $name unter ".IPS_GetName($parent)." ($parent) erstellen:\n";
+                            /* $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen 
+                            if ($InsID !== false)
                                 {
-                                $config=json_encode($channelEventList[$instance["OID"]]);
-                                if ($room == "") $room=$channelEventList[$instance["OID"]][1];  // Parameter 1 ist der Raum
-                                elseif ($room != $channelEventList[$instance["OID"]][1]) 
+                                IPS_SetName($InsID, $name); // Instanz benennen
+                                IPS_SetParent($InsID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
+                                
+                                //Konfiguration
+                                //IPS_SetProperty($InsID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
+                                IPS_ApplyChanges($InsID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
+                                }
+                            else echo "Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n"; */
+                            }
+                        else
+                            {
+                            /* wenn schon angelegt die DeviceList() auf die richtige Topology setzen */
+                            $InstanzID = $deviceInstances[$name];    
+                            if ($debug) echo str_pad($i,4)."Eine Topology Device Instanz mit dem Namen $name unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es bereits und lautet: ". $InstanzID."   \n";
+                            $room="";
+                            $writeChannels=false;
+                            $writeDevices=false;
+                            /* die Instanzen aus der devicelist() durchgehen und schauen ob die Channels in der DetectDeviceHandler class angelegt sind und sich im selben Raum befinden */
+                            foreach ($instances as $instance)
+                                {
+                                $config="";
+                                //print_r($channelEventList[$instance["OID"]]);
+                                if (isset($channelEventList[$instance["OID"]])) 
                                     {
-                                    echo "        !!!Fehler, die Channels sind in der DetectDeviceHandler->Get_EventConfigurationAuto() in unterschiedlichen Räumen.\n";
+                                    $config=json_encode($channelEventList[$instance["OID"]]);
+                                    if ($room == "") $room=$channelEventList[$instance["OID"]][1];  // Parameter 1 ist der Raum
+                                    elseif ($room != $channelEventList[$instance["OID"]][1]) 
+                                        {
+                                        echo "        !!!Fehler, die Channels sind in der DetectDeviceHandler->Get_EventConfigurationAuto() in unterschiedlichen Räumen.\n";
+                                        $writeChannels=true;
+                                        }
+                                    }
+                                if ($debug) echo "     Channel ".$instance["OID"]." (".IPS_GetName($instance["OID"]).") mit Configuration :    $config  \n";
+                                }
+                            if ($debug) echo "     Raum \"$room\" in der Config der Channel Instances gefunden.\n";
+                            if (isset($deviceEventList[$InstanzID]))
+                                {
+                                //print_r($deviceEventList[$InstanzID]);
+                                if ($room != $deviceEventList[$InstanzID][1]) 
+                                    {
+                                    if (($deviceEventList[$InstanzID][1])!="")
+                                        {
+                                        echo "      !!!Fehler, die Channels und das Gerät $InstanzID (".IPS_GetName($InstanzID).") sind in unterschiedlichen Räumen: \"$room\" \"".$deviceEventList[$InstanzID][1]."\" Zweiten Begriff übernehmen.\n";
+                                        $room = $deviceEventList[$InstanzID][1];
+                                        }
+                                    else echo "     !!!Fehler, Definition Raum für das Gerät $InstanzID (".IPS_GetName($InstanzID).") ist nicht vollstaendig.\n";
                                     $writeChannels=true;
                                     }
                                 }
-                            if ($debug) echo "     Channel ".$instance["OID"]." (".IPS_GetName($instance["OID"]).") mit Configuration :    $config  \n";
-                            }
-                        if ($debug) echo "     Raum \"$room\" in der Config der Channel Instances gefunden.\n";
-                        if (isset($deviceEventList[$InstanzID]))
-                            {
-                            //print_r($deviceEventList[$InstanzID]);
-                            if ($room != $deviceEventList[$InstanzID][1]) 
+                            if (isset($roomInstances[$room]))
                                 {
-                                if (($deviceEventList[$InstanzID][1])!="")
+                                //echo "Vergleiche ".IPS_GetParent($InstanzID)." mit ".$roomInstances[$room]."\n";
+                                if ( IPS_GetParent($InstanzID) != $roomInstances[$room])
                                     {
-                                    echo "      !!!Fehler, die Channels und das Gerät $InstanzID (".IPS_GetName($InstanzID).") sind in unterschiedlichen Räumen: \"$room\" \"".$deviceEventList[$InstanzID][1]."\" Zweiten Begriff übernehmen.\n";
-                                    $room = $deviceEventList[$InstanzID][1];
+                                    if ($debug) echo "    -> Instanz Room vorhanden. Parent auf $room setzen.\n";
+                                    //IPS_SetParent($InstanzID,$roomInstances[$room]);
                                     }
-                                else echo "     !!!Fehler, Definition Raum für das Gerät $InstanzID (".IPS_GetName($InstanzID).") ist nicht vollstaendig.\n";
-                                $writeChannels=true;
                                 }
-                            }
-                        if (isset($roomInstances[$room]))
-                            {
-                            //echo "Vergleiche ".IPS_GetParent($InstanzID)." mit ".$roomInstances[$room]."\n";
-                            if ( IPS_GetParent($InstanzID) != $roomInstances[$room])
+                            elseif (isset($devicegroupInstances[$room]))    
                                 {
-                                if ($debug) echo "    -> Instanz Room vorhanden. Parent auf $room setzen.\n";
-                                //IPS_SetParent($InstanzID,$roomInstances[$room]);
+                                if ( IPS_GetParent($InstanzID) != $devicegroupInstances[$room])
+                                    {
+                                    if ($debug) echo "    -> Instanz DeviceGroup vorhanden. Parent $room setzen.\n";
+                                    //IPS_SetParent($InstanzID,$devicegroupInstances[$room]);
+                                    }
                                 }
-                            }
-                        elseif (isset($devicegroupInstances[$room]))    
-                            {
-                            if ( IPS_GetParent($InstanzID) != $devicegroupInstances[$room])
-                                {
-                                if ($debug) echo "    -> Instanz DeviceGroup vorhanden. Parent $room setzen.\n";
-                                //IPS_SetParent($InstanzID,$devicegroupInstances[$room]);
-                                }
-                            }
 
-                        $configTopologyDevice=IPS_GetConfiguration($InstanzID);
-                        //echo "  Hier ist die abgespeicherte Konfiguration:    $configTopologyDevice \n";
-                        /*
-                        $oldconfig=json_decode($configTopologyDevice,true);
-                        print_r($oldconfig);
-                        $oldconfig["UpdateInterval"]=10;
-                        $newconfig=json_encode($oldconfig);
-                        echo "Neue geplante Konfiguration wäre : $newconfig \n";
-                        IPS_SetConfiguration($InstanzID,$newconfig);
-                        */
-                        if ($debug) echo "   TOPD_SetDeviceList($InstanzID,".json_encode($instances).")\n";
-                        if (isset($installedModules["DetectMovement"]))  
-                            {
-                            //echo "     RegisterEvent DetectDeviceListHandler $InstanzID,'Topology',$room,''\n";
-                            //$DetectDeviceListHandler->RegisterEvent($InstanzID,'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
-                            foreach ($instances as $instance)
+                            $configTopologyDevice=IPS_GetConfiguration($InstanzID);
+                            //echo "  Hier ist die abgespeicherte Konfiguration:    $configTopologyDevice \n";
+                            /*
+                            $oldconfig=json_decode($configTopologyDevice,true);
+                            print_r($oldconfig);
+                            $oldconfig["UpdateInterval"]=10;
+                            $newconfig=json_encode($oldconfig);
+                            echo "Neue geplante Konfiguration wäre : $newconfig \n";
+                            IPS_SetConfiguration($InstanzID,$newconfig);
+                            */
+                            if ($debug) echo "   TOPD_SetDeviceList($InstanzID,".json_encode($instances).")\n";
+                            if (isset($installedModules["DetectMovement"]))  
                                 {
-                                if ($writeChannels)
+                                //echo "     RegisterEvent DetectDeviceListHandler $InstanzID,'Topology',$room,''\n";
+                                //$DetectDeviceListHandler->RegisterEvent($InstanzID,'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
+                                foreach ($instances as $instance)
                                     {
-                                    if (isset($channelEventList[$instance["OID"]])) echo "  Channel ".$instance["OID"]." update Eventliste DetectDeviceHandler->RegisterEvent(".$instance["OID"].",'Topology',$room,'')\n";
-                                    else echo "   Channel ".$instance["OID"]." nicht Bestandteil der Eventliste. DetectDeviceHandler->RegisterEvent(".$instance["OID"].",'Topology',$room,'')\n";
-                                    $DetectDeviceHandler->RegisterEvent($instance["OID"],'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
-                                    }
-                                }       // ende foreach
+                                    if ($writeChannels)
+                                        {
+                                        if (isset($channelEventList[$instance["OID"]])) echo "  Channel ".$instance["OID"]." update Eventliste DetectDeviceHandler->RegisterEvent(".$instance["OID"].",'Topology',$room,'')\n";
+                                        else echo "   Channel ".$instance["OID"]." nicht Bestandteil der Eventliste. DetectDeviceHandler->RegisterEvent(".$instance["OID"].",'Topology',$room,'')\n";
+                                        $DetectDeviceHandler->RegisterEvent($instance["OID"],'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
+                                        }
+                                    }       // ende foreach
+                                }
                             }
+                        //$onlyOne=false;
+                        $i++;    
                         }
-                    //$onlyOne=false;
-                    $i++;    
-                    }
-                }      // end foreach
+                    }      // end foreach
+                }
+
+            /*****************************************************************
+            *
+            * statistische Auswertungen
+            *
+            *  
+            **********************************************************/
+
+            echo "========================================================================\n";    
+            echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
+            $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList,false);                // false keine Warnings ausgeben
+            print_r($statistic);
+
+
+            echo "========================================================================\n";    
+            echo "Auflisten aller Devices mit dem Device Typ:\n";
+            $i=0;
+            foreach ($deviceList as $name => $entry)
+                {
+                if (isset($entry ["Information"])) echo str_pad($i,3).str_pad($name,40).str_pad($entry ["Type"],20).str_pad($entry ["Information"],25)."\n";
+                else echo str_pad($i,3).str_pad($name,40).str_pad($entry ["Type"],20)."unknown -------------------\n";
+                $i++;
+                }
+
+            echo "--------------------\n";   
+
             }
-
-        /*****************************************************************
-        *
-        * statistische Auswertungen
-        *
-        *  
-        **********************************************************/
-
-        echo "========================================================================\n";    
-        echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
-        $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList,false);                // false keine Warnings ausgeben
-        print_r($statistic);
-
-
-        echo "========================================================================\n";    
-        echo "Auflisten aller Devices mit dem Device Typ:\n";
-        $i=0;
-        foreach ($deviceList as $name => $entry)
-            {
-            if (isset($entry ["Information"])) echo str_pad($i,3).str_pad($name,40).str_pad($entry ["Type"],20).str_pad($entry ["Information"],25)."\n";
-            else echo str_pad($i,3).str_pad($name,40).str_pad($entry ["Type"],20)."unknown -------------------\n";
-            $i++;
-            }
-
-        echo "--------------------\n";   
-
-        }
     echo "\n";
             
 
@@ -736,7 +790,8 @@
         }	
         echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
 
-        }       // nur wenn Script Execute
+    }       // nur wenn Script Execute
+//else echo "kein Execute";             // Test ob das das Ende von Execute ist
 
 /**********************************************************************************************/
 
