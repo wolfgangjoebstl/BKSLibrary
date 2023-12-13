@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/*
      * This file is part of the IPSLibrary.
@@ -259,6 +259,7 @@
                     echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
                     print_r($processStart);
                     }
+                    
                 $SeleniumStatusID       = CreateVariableByName($CategoryId_Mode,"SeleniumStatus",  3, ""        , "", 120);
                 $SeleniumOnID           = CreateVariableByName($CategoryId_Mode,"SeleniumRunning", 3, "",         "", 110);
                 $SeleniumHtmlStatusID   = CreateVariableByName($CategoryId_Mode,"Status",          3, "~HTMLBox", "", 600);
@@ -266,6 +267,12 @@
                 $nameID=["None"];
                 $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                 $updateChromedriverID          = CreateVariableByName($CategoryId_Mode,"UpdateChromeDriver", 1,$pname,"",120,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
+                $pname="StartStoppChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+                $nameID=["Start","Stopp","Reset"];
+                $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+                $startstoppChromedriverID      = CreateVariableByName($CategoryId_Mode,"StartStoppChromeDriver", 1,$pname,"",200,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
                 if (isset($processStart["selenium"])) 
                     {
                     if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active");
@@ -321,6 +328,8 @@
                     }                   // aktuellen Selenium Driver rausfinden 
                 }               // OperationCenter ist installiert 
                 
+            $html = "";                     // Init, auch wenn kein get from google download vorhanden
+            $getChromedriverID=false;   
             if ( (isset($GuthabenAllgConfig["Selenium"]["getChromeDriver"])) && ($GuthabenAllgConfig["Selenium"]["getChromeDriver"]) )
                 {
                 echo "Chromedriver automatisch und manuell von Webpage laden.\n";
@@ -328,11 +337,14 @@
                 $nameID=["Get"];
                 $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                 $getChromedriverID          = CreateVariableByName($CategoryId_Mode,"GetChromeDriver", 1,$pname,"",125,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-
+                // vorhandene Versionen, Details über heruntergeladene Version hier speichern
                 $configChromedriverID       = CreateVariableByName($CategoryId_Mode,"ConfigChromeDriver", 3,"","",124);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
 
                 /**************************** es werden chromedriver Versionen automatisch geladen, 
+                * geht auch über GetChromeDriver Taste Get und Guthabensteuerung Script, siehe Zeile if ($getChromedriver)
+                * Funktion über Taste ist optimiert und verwendet das Array in json Variable ConfigChromeDriver um die aktuelle gespeicherten Versionen herauszufinden
+                *
                 * hier das Verzeichnis download dafür machen, Target verzeichnis                   
                 * im target Verzeichnis 7zip installieren, implizierte Statemaschine duch mehrmaliges Aufrufen
                 *          download 7zr 
@@ -427,7 +439,8 @@
                         }
                     }
                 else $html .= "Copy to sharedrive not activated : $execDir <br>";  
-                }                 
+                }
+            else $html .= "Get from Googles Chromedriver Downloadpage not activated, set Selenium->getChromeDriver <br>";                 
             break;
         case "NONE":
             $DoInstall=false;
@@ -822,12 +835,16 @@
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumStatusID]["ADMINISTRATOR"]=true;
 
                 $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["NAME"]="Update Chromedriver to";
-                $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["ORDER"]=20;
+                $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["ORDER"]=30;
                 $webfront_links["Selenium"]["Auswertung"][$updateChromedriverID]["ADMINISTRATOR"]=true;                
 
                 $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["NAME"]="Status Informationen über Selenium";
-                $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["ORDER"]=20;
-                $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["ADMINISTRATOR"]=true;                
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["ORDER"]=40;
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumHtmlStatusID]["ADMINISTRATOR"]=true;     
+
+                $webfront_links["Selenium"]["Auswertung"][$startstoppChromedriverID]["NAME"]="StartStopp Chromedriver";
+                $webfront_links["Selenium"]["Auswertung"][$startstoppChromedriverID]["ORDER"]=800;
+                $webfront_links["Selenium"]["Auswertung"][$startstoppChromedriverID]["ADMINISTRATOR"]=true;           
                 }
             if ($getChromedriverID)          // Chromedriver versionen nachladen in Synology Drive nicht auf jedem PC 
                 {

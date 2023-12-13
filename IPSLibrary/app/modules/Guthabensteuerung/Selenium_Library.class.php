@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/*
 	 * This file is part of the IPSLibrary.
@@ -6157,7 +6157,7 @@ class SeleniumUpdate
             //print_R($files);
 
             $filename="7zr.exe";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
             if ($file) 
                 {
                 if ($debug) echo "   --> Datei $filename gefunden.\n";
@@ -6165,7 +6165,7 @@ class SeleniumUpdate
             else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$targetDir);    
 
             $filename="7z2301-extra.7z";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
             if ($file) 
                 {
                 if ($debug) echo "   --> Datei $filename gefunden.\n";
@@ -6173,7 +6173,7 @@ class SeleniumUpdate
             else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$targetDir);    
 
             $filename="unzip_7za.bat";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
             if ($file) 
                 {
                 if ($debug) echo "   --> Datei $filename gefunden.\n";
@@ -6194,7 +6194,7 @@ class SeleniumUpdate
                 }
 
             $filename="7za.exe";
-            $file = $dosOps->findfiles($files,$filename,true);       //Debug
+            $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
             if ($file) 
                 {
                 if ($debug) echo "   --> Datei $filename gefunden.\n";

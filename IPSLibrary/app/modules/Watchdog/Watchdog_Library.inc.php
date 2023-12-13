@@ -466,30 +466,38 @@ class seleniumChromedriverUpdate extends watchDog
      */
     function stoppSelenium($debug=false)
         {
+        $status=false;
         $processDir = $this->getprocessDir();
         $command = $processDir."stopp_Selenium.bat";
         if ($debug) 
             {
             echo "Stopp Selenium. Start cmd file stopp_Selenium.bat in $processDir.\n";
-            $dosOps->readFile($processDir."stopp_Selenium.bat");
+            $this->dosOps->readFile($processDir."stopp_Selenium.bat");
             }
-        $status = $this->sysOps->ExecuteUserCommand($command,"",false,true);                   // false do not show true wait
+        if ($debug<2) $status = $this->sysOps->ExecuteUserCommand($command,"",true,false);                   // false do not show, true wait wir brauchen es aber andersrum, sonst bleibt das script hängen
         return ($status);
         }
 
 
-    /* ein Script aufrufen mit dem Selenium gestartet wird.
+    /* ein Script aufrufen mit dem Selenium gestartet wird. 
+     * Wenn Debug 2 dann das Exe nicht aufrufen, erweiterte Fehlersuche
      */
     function startSelenium($debug=false)
         {
+        $status=false;
         $processDir = $this->getprocessDir();
         $command = $processDir."start_Selenium.bat";
         if ($debug) 
             {
-            echo "Start Selenium. Execute cmd file startz_Selenium.bat in $processDir.\n";
-            $dosOps->readFile($processDir."start_Selenium.bat");
+            echo "Start Selenium. Execute cmd file start_Selenium.bat in $processDir.\n";
+            $this->dosOps->readFile($processDir."start_Selenium.bat");
+            echo "Command File: $command.\n";
             }
-        $status = $this->sysOps->ExecuteUserCommand($command,"",false,true);                   // false do not show true wait
+        if ($debug<2)       // true ist nicht kleiner zwei, muss 1 sein
+            {
+            echo "execute show and do not wait\n";
+            $status = $this->sysOps->ExecuteUserCommand($command,"",true,false,-1,$debug);                   // false do not show true wait, heoir andersrum da selenium offen bleibt  $command,$parameter="",$show=true,$wait=false,$session=-1,$debug=false
+            }
         return ($status);
         }
 

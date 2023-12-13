@@ -1,4 +1,4 @@
-<?
+<?php
 
 
  	/*
@@ -117,9 +117,10 @@
             IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
             //echo "Do Init for Operating Mode Selenium.\n";
             $seleniumOperations = new SeleniumOperations();        
-            $CategoryId_Mode        = CreateCategory('Selenium',        $CategoryIdData, 20);
-            $startImacroID          = IPS_GetObjectIdByName("StartSelenium", $CategoryId_Mode);	
-            $SeleniumStatusID       = IPS_GetObjectIdByName("SeleniumStatus", $CategoryId_Mode);
+            $CategoryId_Mode        = CreateCategory('Selenium',                $CategoryIdData, 20);
+            $startImacroID          = IPS_GetObjectIdByName("StartSelenium",    $CategoryId_Mode);	
+            $SeleniumStatusID       = IPS_GetObjectIdByName("SeleniumStatus",   $CategoryId_Mode);
+            $SeleniumHtmlStatusID   = IPS_GetObjectIdByName("Status",           $CategoryId_Mode);          // html Darstellung der geladenen verfügbaren Chromedriver Versionen
             $sessionID      = $guthabenHandler->getSeleniumSessionID();
             $config=array(
                         "DREI"       =>  array (
@@ -163,10 +164,16 @@
     $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     //$testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMacro,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     
-    $startActionID              = IPS_GetObjectIdByName("StartAction", $CategoryId_Mode);	
-    $startActionGroupID         = IPS_GetObjectIdByName("StartGroupCall", $CategoryId_Mode);
-    $updateChromedriverID       = IPS_GetObjectIdByName("UpdateChromeDriver", $CategoryId_Mode);
-    $getChromedriverID          = IPS_GetObjectIdByName("GetChromeDriver",$CategoryId_Mode);
+    $startActionID              = IPS_GetObjectIdByName("StartAction",              $CategoryId_Mode);	
+    $startActionGroupID         = IPS_GetObjectIdByName("StartGroupCall",           $CategoryId_Mode);
+    $updateChromedriverID       = IPS_GetObjectIdByName("UpdateChromeDriver",       $CategoryId_Mode);
+    $startstoppChromedriverID   = IPS_GetObjectIdByName("StartStoppChromeDriver",   $CategoryId_Mode); 
+
+    if ( (isset($GuthabenAllgConfig["Selenium"]["getChromeDriver"])) && ($GuthabenAllgConfig["Selenium"]["getChromeDriver"]) )
+        {
+        $getChromedriverID          = IPS_GetObjectIdByName("GetChromeDriver",      $CategoryId_Mode);
+        }
+    else $getChromedriverID=false;
 
     // Wenn YahooApi aufgebaut wird
     if (isset($GuthabenAllgConfig["Api"]))
@@ -181,7 +188,7 @@
         }
     else 
         {
-        $updateApiTableID=false;                // Defaultwerte für die verarbeitung    
+        $updateApiTableID=false;                // Defaultwerte für die Verarbeitung    
         }
         
     $ScriptCounterID      = CreateVariableByName($CategoryIdData,"ScriptCounter",1);                    // wir zählen die erfolgreichen Aufrufe von Timer2
@@ -510,16 +517,19 @@ if ($configTabs)
  *				Webfront
  *
  * es gibt verschiedene Taster die hier zusammengeführt werden.                
- *      Macro
- *
- *
+ *      $startImacroID          "StartSelenium",    $CategoryId_Mode
+ *      $startActionID          "StartAction",      $CategoryId_Mode
+ *      $startActionGroupID     "StartGroupCall",   $CategoryId_Mode
+ *      $updateApiTableID       "Update",           $CategoryId_Finance
+ *      $updateChromedriverID   "UpdateChromeDriver",   "119","120","121"   $CategoryId_Mode
+ *      $getChromedriverID      "GetChromeDriver",      "Get"               $CategoryId_Mode    
  *
  *************************************************************/
 
 $reguestedAction    = false;               // Vereinheitlichung der Actions
 $reguestedActionApi = false;               // Vereinheitlichung der Actions
 $updateChromedriver = false;                // gleich gelöst, wäre aber nicht notwendig
-$getChromedriver    = false;                // gleich gelöst, damit nich unübersichtlich im Case
+$getChromedriver    = false;                // gleich gelöst, damit nicht unübersichtlich im Case
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -531,6 +541,23 @@ if ($_IPS['SENDER']=="WebFront")
         {
         switch ($variable)
             {
+            case ($startstoppChromedriverID):            //Start , Stopp , Update Chromedriver
+                $action=GetValueFormatted($startstoppChromedriverID); 
+                echo "Requested Action $action";               
+                switch ($action)
+                    {
+                    case "Start":
+                        $seleniumChromedriverUpdate->startSelenium(); 
+                        break;
+                    case "Stopp":
+                        $seleniumChromedriverUpdate->stoppSelenium(); 
+                        break;
+                    case "Reset":
+                        $seleniumChromedriverUpdate->stoppSelenium(); 
+                        $seleniumChromedriverUpdate->startSelenium(); 
+                        break;
+                    }
+                break;
             case ($startImacroID):                      // StartSelenium in eigenem Webfron Guthabensteuerung
                 //echo "Taste Macro gedrückt";
                 switch ($value)
@@ -626,8 +653,7 @@ if ($_IPS['SENDER']=="WebFront")
                 $updateChromedriver=GetValueFormatted($updateChromedriverID);
                 //echo "go for $updateChromedriver";
                 break;
-            case $getChromedriverID:
-                //echo "get new Chromedriver Versions\n";
+            case $getChromedriverID:                                        //echo "get new Chromedriver Versions\n";
                 $getChromedriver    = true;
                 break;
             default:
@@ -911,10 +937,19 @@ if ($_IPS['SENDER']=="WebFront")
 
         }
 
-    if ($getChromedriver)
+    /* letzte verfügbare Chromedriver Version von ftp Server laden
+     *      dazu rausfinden welche Versionen es am Server gibt mit und in result speichern
+     *      dann mit der aktuell eingesetzten Version vergleichen, nur die größeren Versionsnummern vergleichen
+     */
+    if ($getChromedriver)               
         {
+        $html="";
         if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
             {
+            $SeleniumUpdate = new SeleniumUpdate();
+            $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
+            $html .= $result;
+
             $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
             $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
             $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
@@ -925,108 +960,122 @@ if ($_IPS['SENDER']=="WebFront")
             $configChromedriverID       = IPS_GetObjectIdByName("ConfigChromeDriver",$CategoryId_Mode); 
             $sysOps = new sysOps();
             $curlOps = new curlOps();             
-                //verfügbare chromedriver versionen herunterladen
-                $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
-                //print_r($result);
+            //verfügbare chromedriver versionen herunterladen
+            $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
+            //print_r($result);
+            $html .= '<table>';
+            //foreach ($result as $id => $entry) $html .= '<tr><td>'.$entry["version"].'</td></tr>';
 
-                //$actualVersionRegister = GetValueFormatted($updateChromedriverID);
-                //echo "Aktuelle Version hier im Einsatz: $actualVersionRegister \n";
-                $config=array();
-                $configOld=json_decode(GetValue($configChromedriverID),true);           // array
-                $configNew=array();             // die neu Konfiguration auf Basis von Old
-                $log_Guthabensteuerung->LogNachrichten("Vorhandene Chromedriver Versionen ".GetValue($configChromedriverID).". Actual Version $actualVersion.");
-                //print_R($configOld);
-                foreach ($result as $version => $entry)
+            //$actualVersionRegister = GetValueFormatted($updateChromedriverID);
+            //echo "Aktuelle Version hier im Einsatz: $actualVersionRegister \n";
+            $config=array();
+            $configOld=json_decode(GetValue($configChromedriverID),true);           // array
+            $configNew=array();             // die neu Konfiguration auf Basis von Old
+            $log_Guthabensteuerung->LogNachrichten("Vorhandene Chromedriver Versionen ".GetValue($configChromedriverID).". Actual Version $actualVersion.");
+            //print_R($configOld);
+            foreach ($result as $version => $entry)
+                {
+                $html .= '<tr><td>'.$version.'</td>';
+                if ($version >= $actualVersion)
                     {
-                    if ($version >= $actualVersion)
+                    //print_R($entry);
+                    $configNew[$version]["version"]=$entry["version"];
+                    if (isset($configOld[$version]["version"])) 
                         {
-                        //print_R($entry);
-                        $configNew[$version]["version"]=$entry["version"];
-                        if (isset($configOld[$version]["version"])) 
-                            {
-                            if ($entry["version"] !== $configOld[$version]["version"])
-                                {
-                                $config[$version]["version"]=$entry["version"];
-                                //echo "Wir beginnen mit Version $version und neuer Revision ".$configOld[$version]["version"]." -> ".$entry["version"]."\n";
-                                }    
-                            else 
-                                {
-                                //echo "Die Version $version und Revision ".$entry["version"]." wurde bereits geladen\n";
-                                }
-                            }
-                        else            // gane neue Version
+                        if ($entry["version"] !== $configOld[$version]["version"])
                             {
                             $config[$version]["version"]=$entry["version"];
-                            //echo "Wir beginnen mit neuer Version $version und Revision ".$config[$version]["version"]."\n";
+                            //echo "Wir beginnen mit Version $version und neuer Revision ".$configOld[$version]["version"]." -> ".$entry["version"]."\n";
+                            }    
+                        else 
+                            {
+                            //echo "Die Version $version und Revision ".$entry["version"]." wurde bereits geladen\n";
                             }
+                        $html .= '<td>'.$configOld[$version]["version"].'</td><td>'.$entry["version"].'</td>';
+                        }
+                    else            // ganz neue Version
+                        {
+                        $config[$version]["version"]=$entry["version"];
+                        //echo "Wir beginnen mit neuer Version $version und Revision ".$config[$version]["version"]."\n";
+                        $html .= '<td>n.a.</td><td>'.$entry["version"].'</td>';
                         }
                     }
-                $dir=$GuthabenAllgConfig["Selenium"]["DownloadDir"];  
-                $execDir=$seleniumChromedriver->get_ExecDir();
-                //echo "Bestehende chromedriver Versionen ausgeben. Verzeichnis Synology/Shared Drive : ".$execDir."\n";
+                else $html .= '<td>'.$entry["version"].'</td><td>n.a.</td>';
+                }
+            $html .= '</table>';
+    
+            $dir=$GuthabenAllgConfig["Selenium"]["DownloadDir"];  
+            $execDir=$seleniumChromedriver->get_ExecDir();
+            //echo "Bestehende chromedriver Versionen ausgeben. Verzeichnis Synology/Shared Drive : ".$execDir."\n";
 
-                $filename="chromedriver-win64.zip";  
-                $success=true;
-                if (sizeof($config)==0) $success=false;
-                foreach ($config as $version => $entry)
+            $filename="chromedriver-win64.zip";  
+            $success=true;
+            if (sizeof($config)==0) 
+                {
+                $html .= "No copy to sharedrive : $execDir ".'<br>';    
+                $success=false;
+                }
+            foreach ($config as $version => $entry)
+                {
+                //echo "Version $version bearbeiten : \n";
+                if ($success==false) echo "no success !\n";
+                if (isset($result[$version]["url"]))
                     {
-                    //echo "Version $version bearbeiten : \n";
-                    if ($success==false) echo "no success !\n";
-                    if (isset($result[$version]["url"]))
+                    $log_Guthabensteuerung->LogNachrichten("Url ".$result[$version]["url"]." laden");
+                    $curlOps->downloadFile($result[$version]["url"],$dir);
+                    $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                    $file = $dosOps->findfiles($files,$filename,true);       //Debug
+                    if ($file) 
                         {
-                        $log_Guthabensteuerung->LogNachrichten("Url ".$result[$version]["url"]." laden");
-                        $curlOps->downloadFile($result[$version]["url"],$dir);
-                        $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
-                        $file = $dosOps->findfiles($files,$filename,true);       //Debug
-                        if ($file) 
+                        //echo "   --> Datei $filename für version $version gefunden.\n";
+                        $commandName="unzip_chromedriver.bat";
+                        $ergebnis = "not started";
+                        $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
+                        //echo "Execute Batch $dir$filename \"$ergebnis\"\n";
+                        $dirname=$dir."chromedriver-win64/";
+                        if (is_dir($dirname))
                             {
-                            //echo "   --> Datei $filename für version $version gefunden.\n";
-                            $commandName="unzip_chromedriver.bat";
-                            $ergebnis = "not started";
-                            $ergebnis = $sysOps->ExecuteUserCommand($dir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
-                            //echo "Execute Batch $dir$filename \"$ergebnis\"\n";
-                            $dirname=$dir."chromedriver-win64/";
-                            if (is_dir($dirname))
-                                {
-                                //echo "Process result of unzip in $dirname.\n";
-                                $files = $dosOps->writeDirToArray($dirname);        // bessere Funktion
-                                $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-                                //echo "moveFile ".$dirname."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
-                                copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
-                                $dosOps->rrmdir($dirname);
-                                //echo "    -> finished, result and $dirname deleted.\n";
-                                }
-                            else 
-                                {
-                                //echo "Dir $dirname not found.\n"; 
-                                $success=false;
-                                }
-                            $dosOps->deleteFile($dir.$filename);
-                            $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
+                            //echo "Process result of unzip in $dirname.\n";
+                            $files = $dosOps->writeDirToArray($dirname);        // bessere Funktion
+                            $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+                            //echo "moveFile ".$dirname."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
+                            copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
+                            $dosOps->rrmdir($dirname);
+                            //echo "    -> finished, result and $dirname deleted.\n";
                             }
-                        else $success=false;
+                        else 
+                            {
+                            //echo "Dir $dirname not found.\n"; 
+                            $success=false;
+                            }
+                        $dosOps->deleteFile($dir.$filename);
+                        $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
                         }
                     else $success=false;
                     }
-                if ($success)
-                    {
-                    $log_Guthabensteuerung->LogNachrichten("Update Config.Succesful Operation");
-                    $configString = json_encode($configNew);
-                    SetValue($configChromedriverID,$configString);  
-                    foreach ($config as $version => $entry)
-                        { 
-                        if (file_exists($execDir."chromedriver_$version.exe")) echo "Version $version bereits vorhanden, wird auf neueste Version überschrieben.\n";
-                        copy ($dir."chromedriver_$version.exe",$execDir."chromedriver_$version.exe"); 
-                        }
-                    $seleniumChromedriver->update_ExecDirContent();
-                    $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis execdir erfassen 
-                    $SeleniumUpdate = new SeleniumUpdate();
-                    $tabs=$SeleniumUpdate->findTabsfromVersion($version, $actualVersion);
-                    SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
-                    $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
-                    $webOps->createActionProfileByName($pname,$tabs,0);
-                    }  
+                else $success=false;
+                }
+            if ($success)
+                {
+                $log_Guthabensteuerung->LogNachrichten("Update Config.Succesful Operation");
+                $configString = json_encode($configNew);
+                SetValue($configChromedriverID,$configString);  
+                $html .= "Copy to sharedrive : $execDir <br>";                  
+                foreach ($config as $version => $entry)
+                    { 
+                    if (file_exists($execDir."chromedriver_$version.exe")) echo "Version $version bereits vorhanden, wird auf neueste Version überschrieben.\n";
+                    copy ($dir."chromedriver_$version.exe",$execDir."chromedriver_$version.exe"); 
+                    $html .= "    chromedriver_$version.exe<br>";                  
+                    }
+                $seleniumChromedriver->update_ExecDirContent();
+                $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis execdir erfassen 
+                $tabs=$SeleniumUpdate->findTabsfromVersion($version, $actualVersion);
+                SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
+                $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+                $webOps->createActionProfileByName($pname,$tabs,0);
+                }  
             }
+        SetValue($SeleniumHtmlStatusID,$html);          // Status Window update
         }
 
 /******************************************************

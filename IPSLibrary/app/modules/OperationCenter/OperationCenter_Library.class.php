@@ -5547,6 +5547,10 @@ class SeleniumChromedriver extends OperationCenter
         return ($sourceFile);                
         }
 
+    /* SeleniumChromedriver::getListDownloadableChromeDriverVersion
+     * get actual chromedriver versions with actual revision from google download page
+     *
+     */
     function getListDownloadableChromeDriverVersion()
         {
         $url = "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json";

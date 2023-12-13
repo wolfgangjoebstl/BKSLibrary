@@ -9247,6 +9247,7 @@ class sysOps
 
     public function ExecuteUserCommand($command,$parameter="",$show=false,$wait=false,$session=-1,$debug=false)
         {
+        if ($debug) echo "ExecuteUserCommand $command \n";
             $result=@IPS_ExecuteEx($command, $parameter, $show, $wait, $session); 
             if ($result===false) 
                 {

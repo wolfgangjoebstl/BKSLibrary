@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -21,7 +21,7 @@
 	 * @ingroup DetectMovement
 	 * @{
 	 *
-	 * Konfigurations File für DetectMovement
+	 * Konfigurations File fÃ¼r DetectMovement
 	 *
 	 * @file          Guthabensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
