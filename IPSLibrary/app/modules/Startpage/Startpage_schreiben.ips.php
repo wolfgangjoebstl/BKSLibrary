@@ -160,11 +160,12 @@
              *      1       Full Screen
              *      2       Station             2
              *      3       Media               5
-             *      4       Frame               22
+             *      4       Frame               22   html box wird anders beschrieben
              *      5       Picture             1
              *      6       Topologie           3
              *      7       Hierarchie          4
-             *      8       Off
+             *      8       Graph               6
+             *      9       Off
              */
         	switch ($profiles[$_IPS['VALUE']])
 		        {
@@ -182,6 +183,9 @@
  		        	break;
     	        case "Frame":  	/* Frame, test javascript framing */
         			SetValue($StartPageTypeID,22);
+		        	break;
+    	        case "Graph":  	/* Frame, test svg drawing */
+        			SetValue($StartPageTypeID,6);
 		        	break;
     	        case "Media":  	/* Bildschirmschoner, Media */
         			SetValue($StartPageTypeID,5);

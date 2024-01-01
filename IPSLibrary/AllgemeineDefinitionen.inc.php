@@ -10721,27 +10721,39 @@ class dosOps
 		$len=strlen($verzeichnis); 
         $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");          // letzte Position bekommen
         $pos3=strpos($verzeichnis,"\\"); $pos4=strpos($verzeichnis,"/");          // erste Position bekommen
+        $pos5=strpos($verzeichnis,":");
+
+        $dos=false; $linux=false;
+        if ($pos1 && $pos2) 
+            {
+            if (($pos3===0) || ($pos5==1) ) $dos=true;;
+            if ($pos4===0) $linux=true;
+            }            
 
 		if ($debug) 
             {
             echo "correctDirName Auswertungen: Len:$len pos1:$pos1 pos2:$pos2 pos3:$pos3 pos4:$pos4\n";			// am Schluss muss ein Backslash oder Slash sein !
-            if ($pos1 && $pos2) 
-                {
-                echo "   mixed usage of / und \\ , ";
-                if ($pos3===0) echo "DOS System.\n";
-                if ($pos4===0) echo "LINUX System.\n";                
-                echo "            Positions of \\ $pos3 and of / $pos4.\n";
-                }            
+            if ($pos1 && $pos2) echo "   mixed usage of / und \\ , Positions of \\ $pos3 and of / $pos4.\n";
+            if ($dos) echo "DOS System.\n";
+            if ($linux) echo "LINUX System.\n";                
             }
 		if ( ($pos1) && ($pos1<($len-1)) )   $verzeichnis .= "\\";          // Backslash kommt im String ausser auf Pos 0 vor, wenn nicht am Ende mit Backslash am Ende erweitern
 		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		        // Slash kommt im String ausser auf Pos 0 vor, wenn nicht am Ende mit Slash am Ende erweitern
 
         if ($pos3) $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // wenn ein Doppelzeichen ausser am Anfang ist dieses vereinfachen
         if ($pos4) $verzeichnis = str_replace("//","/",$verzeichnis);
-
-        if ($pos3==0) $verzeichnis = str_replace("/","\\",$verzeichnis);
-        if ($pos4==0) $verzeichnis = str_replace("\\","/",$verzeichnis);
-                
+        
+        // finish to correct dir seperator according to Operating System dos/linux
+        if ($dos) 
+            {
+            $verzeichnis = str_replace("/","\\",$verzeichnis);          // Backslash wins
+            $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // aus den Kombis \/ und /\ wird ein Doppel \ dieses auch vereinfachen
+            }
+        if ($linux) 
+            {
+            $verzeichnis = str_replace("\\","/",$verzeichnis);              // Slash wins
+            $verzeichnis = str_replace("//","/",$verzeichnis);
+            }    
 		return ($verzeichnis);
 		}
 

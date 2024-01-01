@@ -63,12 +63,31 @@
      * showAstronomyWidget
      * showAstronomy
      * showTopology
-     * mergeTopologyObjectsSP
+     * mergeTopologyObjectsSP               Deprectaed, siehe AllgemeineDefinitionen
      * transformConfigWidget
      * writeTable
      * transformStatus
      * writeCell
      * writeValue
+     * writeMovement
+     * writeTemperature
+     * writeHumidity
+     *
+     * showGraphWidget
+     *
+     * showHierarchy
+     * drawTable
+     * drawCell
+     * totalChildren
+     * countChildren
+     *
+     * showMediaWidget
+     *
+     * showPictureWidget
+     *
+     * showWeatherTable
+     *
+     *
      *
      * tempTableLine
      *
@@ -461,7 +480,7 @@
                     $wert.='<table id="startpage">';
                     $wert.='<tr>';
                     //$wert.= $this->showPictureWidget($showfile);
-                    $wert.= $this->showHierarchy();
+                    $wert.= $this->showHierarchy($debug);
                     $wert.='</tr></table>';
                     $wert.='</div>';
                     break;
@@ -471,7 +490,7 @@
                     $wert.='<table id="startpage">';
                     $wert.='<tr>';
                     $wert.='<td>';
-                    $wert.= $this->showPictureWidget($showfile);
+                    $wert.= $this->showPictureWidget($showfile,$debug);
                     $wert.='</td>';
 
                     $configTopology=$this->getStartpageDisplayConfiguration()["Topology"];
@@ -600,7 +619,7 @@
                         $wert.='</table>';
                         }
                     break;
-                case 6:             // Frame
+                case 6:             // Graph
                     /*******************************************
                      *
                      * Bild und Wetterstation als zweispaltige Tabelle mit responsive Mode und Formatierung als Div Frames
@@ -626,7 +645,8 @@
                     $wert.='<div id=“resp-table” style="width: 100%; display: table;">';            // display type Table
                     $wert.='<div class=“resp-table-row” style="display: table-row;">';                // display type  Row
                     $wert.='<div class=“table-body-cell” style="width: 70%; display: table-cell;">';                 // display type Cell
-                    $wert.= $this->showPictureWidget($showfile);
+                    //$wert.= $this->showPictureWidget($showfile);
+                    $wert.= $this->showGraphWidget($debug);
                     $wert.='</div>';
                     $wert.='<div class=“table-body-cell” style="width: 30%; display: table-cell;">';                 // Cell
                     $wert.= $this->showWeatherTemperatureWidget(true,$debug);                   // responsive Design
@@ -903,9 +923,13 @@
             return ($htmlAstro);
             }
 
-        /********************
+        /* showTopology, Darstellung der Topoologie als Tabelle 
          *
-         * Zelle Tabelleneintrag für die Darstellung der Topologie mit aktuellen Werten
+         * Übernimmt $topologyWithLinks für die Darstellung der Topologie mit aktuellen Werten, sonst werden die Werte direkt aus EvaluateHardware_Configuration erzeugt
+         * Zusatzparameter im configInput
+         *  Cell
+         *  Headline    erste Zeile in der Tabelle
+         *  Baseline    topology beginnt mit diesem Place für die Visualisierung
          *
          * Get Topology Liste aus EvaluateHardware_Configuration
          * die Topologie mit den Geräten anreichen. Es gibt Links zu INSTANCES and OBJECTS 
@@ -916,21 +940,12 @@
 			{
             if ($debug) echo "showTopology aufgerufen:\n";
             $wert="";
-            
-            if (is_array($configInput))
-                {
-                configfileParser($configInput, $config, ["Cell","cell","CELL"],"Cell","Table");          // leeres array ist default
-                configfileParser($configInput, $config, ["Headline","headline","HEADLINE"],"Headline","");          // leeres array ist default
-                configfileParser($configInput, $config, ["Baseline","baseline","BASELINE"],"Baseline",false);          // leeres array ist default
-                }
-            else
-                {
-                $config=array();
-                $config["Cell"]="Table";
-                $config["Headline"]="";
-                $config["Baseline"]=false;
-                //$config["Scale"]=2;
-                }
+
+            $config=array();
+            if (is_array($configInput)===false) $configInput=array(); 
+            configfileParser($configInput, $config, ["Cell","cell","CELL"],"Cell","Table");          // leeres array ist default
+            configfileParser($configInput, $config, ["Headline","headline","HEADLINE"],"Headline","");          // empty string ist default
+            configfileParser($configInput, $config, ["Baseline","baseline","BASELINE"],"Baseline",false);          // false ist default
 
             IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
             IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
@@ -944,7 +959,7 @@
                 }
             else
                 {              // Get Topology Liste aus EvaluateHardware_Configuration and add information needed
-                $DetectDeviceHandler = new DetectDeviceHandler();
+                $DetectDeviceHandler = new DetectDeviceHandler($debug);
                 $topology           = $DetectDeviceHandler->Get_Topology();
                 $eventConfiguration = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
 
@@ -961,10 +976,13 @@
                 $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$eventConfiguration,$debug);
                 }
 
-            if ($debug>1) 
+            if ($debug) 
                 {
-                echo "=====================================================================================\n";
-                print_r($topologyPlusLinks);
+                if ($debug>1)
+                     {
+                     echo "=====================================================================================\n";
+                     print_r($topologyPlusLinks);
+                     } 
                 echo "=====================================================================================\n";
                 echo "Berechnung Topology Status, dann Ausgabe:\n";
                 }
@@ -973,6 +991,7 @@
              * Zusatzkonfigurationen, wie die Position und Groesse auf der Anzeige, jetzt übernehmen
              * INSTANCE wird ignoriert, es wird nur OBJECT ausgewertet
              * OBJECT wird 1:1 aus der vorigen Struktur übernommen
+             * nur übernehmen wenn Baseline in der Path Struktur enthalten
              *
              * key => Type
              *        Configuration
@@ -1577,16 +1596,243 @@
             return ("<span>".GetValue($valueID)." %</span>"); 
             }
     
-
-          /********************
+        /* showGraphWidget
          *
-         * Zelle Tabelleneintrag für die Darstellung der Topologie mit aktuellen Werten
+         * neuer Versuch der Darstellung in der html box mit SVG Objekten
+         * diese sollen interactive sein, Achtung das Naming der id muss unique sein, sonst werden andere Routinen aufgerufen
+         *
+         * Tabelleneintrag für die Darstellung der Hierarchie mit aktuellen Werten
+         * Bestandteil einer übergeordneten Tabelle für die Darstellung in der Startpage
+         * verwendet Get Topology Liste aus EvaluateHardware_Configuration
+         * drawTable zeichnet die Topologie mit rekursiven Aufrufen von drawCell als Hierarchie
+         *
+         *
+         **************************************/
+
+		function showGraphWidget($debug=false)
+			{
+            if ($debug) echo "showGraphWidget mit Debug aufgerufen.\n";
+
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+            IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+            IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');   
+
+			/* get Category Visualization.EvaluateHardware.World for perfect structure of Topology */
+
+			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+			$moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+	        $WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+    		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');            
+            $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
+    		$worldID=IPS_GetObjectIDByName("World",  $categoryId_WebFrontAdministrator);
+            
+            /* Get Topology Liste aus EvaluateHardware_Configuration */
+            $DetectDeviceHandler = new DetectDeviceHandler();
+            $topology=$DetectDeviceHandler->Get_Topology();
+            //$eventConfiguration = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+            //$topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$eventConfiguration,$debug);
+
+            /* Javascript in der html Box, es kann nur das Internet javascript eingebunden werden, da sonst Zugriffsschwierigkeiten auf lokale Resourcen
+             * update onclick id frame-status, id frame-browser, id frame-fullscreen
+             */
+
+            $wert  = "";
+            $wert .= '<style>';
+            $wert .= '.static { 
+                        cursor: not-allowed;
+                        }
+                      .draggable {
+                        cursor: move;
+                        }';     
+            $wert .= '</style>';            
+            $wert .= '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>';
+            $wert .= '<script type="text/javascript">';
+            $wert .= '  document.addEventListener("DOMContentLoaded", function () {
+                            alert("dom content loaded");
+                            });   ';
+            $wert .= '  function onloadSvgShowAlert() {
+                            const svgElem = document.getElementById("svgObj");
+                            const event = new Date();
+                            svgElem.addEventListener("click", (evt) => { 
+                               if (evt.target.classList.contains("draggable")) {
+                                    selectedElement = evt.target;
+                                    document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " onloadSvgShowAlert click " + "<br>";
+                                    }
+                                else alert("click svg not draggable");
+                                });
+                            svgElem.addEventListener("mousedown", (evt) => { 
+                               if (evt.target.classList.contains("draggable")) {
+                                    selectedElement = evt.target;
+                                    document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " onloadSvgShowAlert mousedown " + "<br>";
+                                    }
+                                });
+                            svgElem.addEventListener("mousemove", (evt) => { 
+                               if (evt.target.classList.contains("draggable")) {
+                                    selectedElement = evt.target;
+                                    document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " onloadSvgShowAlert mousemove " + "<br>";
+                                    }
+                                });
+                            svgElem.addEventListener("mouseup", (evt) => { 
+                               if (evt.target.classList.contains("draggable")) {
+                                    selectedElement = evt.target;
+                                    document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " onloadSvgShowAlert mouseup " + "<br>";
+                                    }
+                                });
+
+                            }
+                        window.onload = onloadSvgShowAlert; ';  
+            $wert .= '  function makeDraggable(evt) {
+                            var svg = evt.target;
+                            svg.addEventListener("mousedown", startDrag);
+                            svg.addEventListener("mousemove", drag);
+                            svg.addEventListener("mouseup", endDrag);
+                            svg.addEventListener("mouseleave", endDrag);
+                            var selectedElement = false;
+                            alert("show svg");
+
+                            function startDrag(evt) {
+                                if (evt.target.classList.contains("draggable")) {
+                                    selectedElement = evt.target;
+                                    }                                
+                                }
+                            function drag(evt) {
+                                if (selectedElement) {
+                                    evt.preventDefault();
+                                    var x = parseFloat(selectedElement.getAttributeNS(null, "x"));
+                                    selectedElement.setAttributeNS(null, "x", x + 0.1);
+                                    }                                
+                                }
+                            function endDrag(evt) {
+                                selectedElement = null;
+                                }
+                            }';    
+            $wert .= '  function reportWindowSizeGraph () {
+                            let varheight=Math.round(window.innerHeight * 0.85);
+                            const event = new Date();
+                            document.getElementById("graph-status").innerHTML = "Size " + window.innerHeight + " (" + varheight + ") x " + window.innerWidth + "  " + Date();
+                            document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " show windows size " +  "<br>";
+                            };
+                        $("#graph-status").on("click", function() {
+                            reportWindowSizeGraph ();
+                            });
+                        $("#graph-circle").on("click", function() {
+                            reportWindowSizeGraph ();
+                            onloadSvgShowAlert ();
+                            });                            
+
+                        window.onresize = reportWindowSizeGraph;                     
+                    ';   
+            $wert .= '  function reportBrowserVersionGraph() {
+                            var Sys = {};  
+                            var ua = navigator.userAgent.toLowerCase();  
+                            var s;  
+                            (s = ua.match(/msie ([\d.]+)/)) ? Sys.ie = s[1] :  
+                            (s = ua.match(/firefox\/([\d.]+)/)) ? Sys.firefox = s[1] :  
+                            (s = ua.match(/chrome\/([\d.]+)/)) ? Sys.chrome = s[1] :  
+                            (s = ua.match(/opera.([\d.]+)/)) ? Sys.opera = s[1] :  
+                            (s = ua.match(/version\/([\d.]+).*safari/)) ? Sys.safari = s[1] : 0; 
+                            if (Sys.ie) return ("IE: " + Sys.ie);  
+                            if (Sys.firefox) return ("Firefox: " + Sys.firefox);  
+                            if (Sys.chrome) return ("Chrome: " + Sys.chrome);  
+                            if (Sys.opera) return ("Opera: " + Sys.opera);  
+                            if (Sys.safari) return ("Safari: " + Sys.safari); 
+                            Window.alert("Report Browser Version"); 
+                            }                 
+                        $("#graph-browser").on("click", function() {
+                            document.getElementById("graph-browser").innerHTML = reportBrowserVersionGraph ();
+                            });  
+                    ';
+            $wert .= '  var fullScreen=0;
+                        function toggleFullScreen(elem) {
+                            if (fullScreen==0) { elem.requestFullscreen(); fullScreen=1; return ("Full Screen"); }
+                            else { document.exitFullscreen(); fullScreen=0; return ("Standard Screen"); } 
+                            }    
+                        $("#graph-fullscreen").on("click", function() {
+                            document.getElementById("graph-fullscreen").innerHTML =  toggleFullScreen(document.documentElement);
+                            });  
+                        $(".draggable").on("click", function() {
+                            document.getElementById("graph-browser").innerHTML = "draggable";
+                            });  
+                    ';                        
+            $wert .= '';
+            $wert .= '</script>';
+            //$wert .= '<script type="text/javascript">';
+
+            //$wert .= '</script>';             
+            $wert .= '<div>';
+            //$wert .= ' <svg id="frame-circle" width="100" height="100">';
+            //$wert .= ' <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" onload="makeDraggable(evt)">';
+            //$wert .= ' <svg viewBox="0 0 200 100" onload="alert(\'show svg\')" xmlns="http://www.w3.org/2000/svg">';
+            $wert .= ' <svg id="svgObj" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">';
+      /*    $wert .= '<style>';
+            $wert .= '.static { 
+                        cursor: not-allowed;
+                        }
+                      .draggable {
+                        cursor:move;
+                        }';  
+            $wert .= '</style>';  
+            $wert .= '<script type="text/javascript">';            
+            $wert .= '  const svgElm = document.getElementById("svgObj");
+                            svgElm.addEventListener("load", () => { 
+                            alert("load svg");
+                            });';
+            /*$wert .= '<![CDATA[';
+            $wert .= '  function makeDraggable(evt) {
+                            var svg = evt.target;
+                            svg.addEventListener("mousedown", startDrag);
+                            svg.addEventListener("mousemove", drag);
+                            svg.addEventListener("mouseup", endDrag);
+                            var selectedElement = null;
+
+                            function startDrag(evt) {
+                                if (evt.target.classList.contains("draggable")) {
+                                    selectedElement = evt.target;
+                                    }                                
+                                }
+                            function drag(evt) {
+                                if (selectedElement) {
+                                    evt.preventDefault();
+                                    var x = parseFloat(selectedElement.getAttributeNS(null, "x"));
+                                    selectedElement.setAttributeNS(null, "x", x + 1);
+                                    }                                
+                                }
+                            function endDrag(evt) {
+                                selectedElement = null;
+                                }
+                            } ';
+            //$wert .= '    ]]>'; 
+            $wert .= '</script>';   */
+            $wert .= '   <rect x="0" y="0" width="200" height="100" fill="#fafafa"/>';
+            $wert .= '   <rect class="draggable" x="40" y="50" width="8" height="10" fill="#007bff"/>';
+            $wert .= '   <rect class="static" x="58" y="50" width="8" height="10"   fill="#888"/>';
+            $wert .= '   <circle id="graph-circle" class="draggable" cx="10" cy="10" r="8" stroke="green" stroke-width="2" fill="yellow" />';
+            $wert .= ' </svg>';
+            $wert .= '</div>';
+            $wert .= '<div id="graph-status" style="font-size: 1hm; display:inline; float:left;">Statusangaben hier clicken</div>';        
+            $wert .= '<div id="graph-browser" style="font-size: 1hm; display:inline; padding: 5px;">Browser hier clicken</div>';        
+            $wert .= '<div id="graph-fullscreen" style="font-size: 1hm; display:inline; float:right;">Fullscreen hier clicken</div>';
+            $wert .= '<div id="graph-log" style="font-size: 1hm; display:inline; float:left;"><br>Log evolves here<br></div>';        
+
+            return ($wert);
+            }
+
+
+        /* showHierarchy
+         *
+         * Tabelleneintrag für die Darstellung der Hierarchie mit aktuellen Werten
+         * Bestandteil einer übergeordneten Tabelle für die Darstellung in der Startpage
+         * verwendet Get Topology Liste aus EvaluateHardware_Configuration
+         * drawTable zeichnet die Topologie mit rekursiven Aufrufen von drawCell als Hierarchie
          *
          *
          **************************************/
 
 		function showHierarchy($debug=false)
 			{
+            if ($debug) echo "showHierarchy mit Debug aufgerufen.\n";
             $wert="";
 
             IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
@@ -1607,6 +1853,8 @@
             /* Get Topology Liste aus EvaluateHardware_Configuration */
             $DetectDeviceHandler = new DetectDeviceHandler();
             $topology=$DetectDeviceHandler->Get_Topology();
+            //$eventConfiguration = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+            //$topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$eventConfiguration,$debug);
 
             $wert  = "";
             $wert .= "<style>";
@@ -1626,7 +1874,7 @@
             $config["StyleFont"]=["Decrease"=>true,"Start"=>20,"Stopp"=>10];
             $config["ValueFormatted"]=true;
 
-            $wert .= $this->drawTable($worldID, $config);            
+            $wert .= $this->drawTable($worldID, $config, $debug);            
 
             return ($wert);
             }
@@ -1635,12 +1883,12 @@
          * Tabelle mit Topologie zeichnen. Einstiegsroutine für rekursiven Aufruf von drawCell
          */
 
-        function drawTable($oid,&$config)
+        function drawTable($oid,&$config, $debug=false)
             {
             $html = "";
             $level=0;
 
-            $this->drawCell($oid,$html,$level,$config);
+            $this->drawCell($oid,$html,$level,$config, $debug);
 
             return($html);
             }
@@ -1655,9 +1903,8 @@
          *
          */
 
-        function drawCell($oid,&$html,$level,&$config)
+        function drawCell($oid,&$html,$level,&$config, $debug=false)
             {
-            $debug=false;
             $ipsOps=new ipsOps();
             $entries=IPS_getChildrenIDs($oid);
             $count=count($entries);
@@ -1671,7 +1918,7 @@
                 if ($debug)
                     {
                     for ($a=0;$a<$level;$a++) echo " ";
-                    echo "drawTable: Aufruf mit $oid (".IPS_GetName($oid).") $level:$totalcount --> $count   \n";
+                    echo "drawTable: Aufruf mit $oid (".IPS_GetName($oid).") $level:$totalcount --> ".json_encode($count)."   \n";
                     }
                 //$html .= '<table id=topology><tr><th style="colspan:100%;">'.IPS_GetName($oid)." ($level:$totalcount)</th></tr>";  
                 //$html .= '<table id=topology><caption>'.IPS_GetName($oid)." ($level:$totalcount)</caption>";  
@@ -1887,29 +2134,44 @@
 
 		function showPictureWidget($showfile=false, $debug=false)
 			{
+            if ($debug) echo "showPictureWidget mit Parameter ShowFile $showfile aufgerufen.\n";
             $wert="";
+            $verzeichnisWeb = "/user/Startpage/user/pictures/SmallPics/";
             $file=$this->readPicturedir();
             $maxcount=count($file);
-            if ($showfile===false) $showfile=rand(1,$maxcount-1);
-            $filename = $file[$showfile];
-            $verzeichnisWeb = "/user/Startpage/user/pictures/SmallPics/";
-            $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb);
-            $filegroesse=number_format((filesize($verzeichnis.$filename)/1024/1024),2);
-            $info=getimagesize($verzeichnis.$filename);     // Index 3 ist eine Zeichenkette mit dem Attributen Breite und Höhe in der Form height="yyy" width="xxx" zur Verwendung in einem IMG-Tag.
-            if (file_exists($verzeichnis.$filename)) 
+            if ($maxcount==0) 
                 {
-                if ($debug) echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
+                $wert.= '<div style="width:100%; background-color:#202024;">';
+                $bilderverzeichnis = $this->configuration["Directories"]["Pictures"];
+                $fileInput=$this->readPicturedir($bilderverzeichnis);
+                $maxcountInput=count($fileInput);
+                $wert.= '<p>SynologyDrive Source '.$bilderverzeichnis.' with '.$maxcountInput.' Files</p>';   // definiert die Größe des Bildes
+                $wert.= '<p>Image Source '.$verzeichnisWeb.' empty</p>';   // definiert die Größe des Bildes
+                $wert.= '</div>';
                 }
-            //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";   
-            //$wert.= '<div class="container" style="background:darkgrey;"'.$info[3].'>';
-            //$wert.= '<div class="container" style="width:auto; background-color:#202024;">';
-            $wert.= '<div style="width:100%; background-color:#202024;">';
-            //$wert.=     '<img src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" class="image" '.$info[3].'>';   // definiert die Größe des Bildes
-            $wert.=     '<img src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" style="width:100%; max-height:740px;">';   // definiert die Größe des Bildes
-            //$wert.=     '<div class="middle">';                                                                                               // Position unklar
-            //$wert.=         '<div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
-            //$wert.=         '</div>';
-            $wert.=     '</div>';
+            else
+                {
+                if ($showfile===false) $showfile=rand(1,$maxcount-1);
+                $filename = $file[$showfile];
+                $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb, $debug);
+                if ($debug) echo "showPictureWidget, Kernel Dir ".IPS_GetKernelDir()." Filename Dir $verzeichnis ,Filename $filename untersuchen.\n";
+                if (file_exists($verzeichnis.$filename)) 
+                    {
+                    $filegroesse=number_format((filesize($verzeichnis.$filename)/1024/1024),2);
+                    $info=getimagesize($verzeichnis.$filename);     // Index 3 ist eine Zeichenkette mit dem Attributen Breite und Höhe in der Form height="yyy" width="xxx" zur Verwendung in einem IMG-Tag.
+                    if ($debug) echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
+                    }
+                //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";   
+                //$wert.= '<div class="container" style="background:darkgrey;"'.$info[3].'>';
+                //$wert.= '<div class="container" style="width:auto; background-color:#202024;">';
+                $wert.= '<div style="width:100%; background-color:#202024;">';
+                //$wert.=     '<img src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" class="image" '.$info[3].'>';   // definiert die Größe des Bildes
+                $wert.=     '<img src="'.$verzeichnisWeb.$filename.'" alt="'.$filename.'" style="width:100%; max-height:740px;">';   // definiert die Größe des Bildes
+                //$wert.=     '<div class="middle">';                                                                                               // Position unklar
+                //$wert.=         '<div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
+                //$wert.=         '</div>';
+                $wert.=     '</div>';
+                }
             return ($wert);
             }
 
@@ -1925,19 +2187,22 @@
             {
             $wert="";
             if ($weather==false) $weather=$this->getWeatherData();
-            if ($weather["todayDate"]=="")
-                {
-                $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"]);
-                $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"]);
-                $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"]);
-                $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"]);
-                }
-            else
-                {
-                $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"],$weather["todayDate"]);
-                $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"], $weather["tomorrowDate"]);
-                $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"], $weather["tomorrow1Date"]);
-                $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"], $weather["tomorrow2Date"]);
+            if (isset($weather["todayDate"]))
+                { 
+                if ($weather["todayDate"]=="")
+                    {
+                    $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"]);
+                    $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"]);
+                    }
+                else
+                    {
+                    $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"],$weather["todayDate"]);
+                    $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"], $weather["tomorrowDate"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"], $weather["tomorrow1Date"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"], $weather["tomorrow2Date"]);
+                    }
                 }
             return ($wert);
             }
@@ -3027,7 +3292,7 @@
             $wert="";
             $weather=$this->getWeatherData();
 
-            if ($weather["todayDate"] != "") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
+            if ( (isset($weather["todayDate"])) && ($weather["todayDate"] != "") ) { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
             else { $tableSpare=''; $colspan=""; }
 
             if ($useTable)

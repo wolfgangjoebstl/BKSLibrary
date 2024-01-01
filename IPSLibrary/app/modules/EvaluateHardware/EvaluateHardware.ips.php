@@ -300,7 +300,7 @@ IPS_SetEventActive($tim1ID,true);
                 $topologyLibrary->createTopologyInstances($topology);           // Topologie TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup in Kategorie Topologie erstellen
                 echo "----------------------------------------\n";
                 echo "SortTopologyInstances wird aufgerufen um die einzelnen Geräte in die topologie einzusortieren:\n";
-                $topologyLibrary->sortTopologyInstances($deviceList,$channelEventList,$deviceEventList);
+                $topologyLibrary->sortTopologyInstances($deviceList,$topology, $channelEventList,$deviceEventList);
                 echo "----------------------------------------\n";
                 }           // end isset DetectMovement
             }               // end TopologyMappingLibrary

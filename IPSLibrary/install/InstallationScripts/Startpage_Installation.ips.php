@@ -203,8 +203,8 @@
 
     // ButtonProfil anpassen : \n";
 	$pname="StartpageControl";
-    $tabs=["Explorer","FullScreen","Station","Media", "Frame",  "Picture","Topologie","Hierarchie","Off"];
-    $color=[0xc0c0c0,   0x00f0c0,  0xf040f0, 0xf04040, 0xc0c040, 0xf0c000, 0xc0f0c0,   0x40f0f0,   0xf0f0f0];
+    $tabs=["Explorer","FullScreen","Station","Media", "Frame",  "Picture","Topologie","Hierarchie","Graph","Off"];
+    $color=[0xc0c0c0,   0x00f0c0,  0xf040f0, 0xf04040, 0xc0c040, 0xf0c000, 0xc0f0c0,   0x40f0f0,  0x80a0c0,  0xf0f0f0];
     $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
 
 /*******************************

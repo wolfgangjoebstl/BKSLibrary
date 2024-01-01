@@ -1055,7 +1055,7 @@
     echo "Found HMI Creator Status $HMI_ReportStatusID in DeviceManagement.\n ";
 
 
-	$CategoryIdHomematicGeraeteliste = CreateCategoryPath($CategoryIdHomematicErreichbarkeit,'Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
+	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
 	$HomematicGeraeteliste =   CreateVariableByName($CategoryIdHomematicGeraeteliste,   "HomematicGeraeteListe",   3 /*String*/,   '~HTMLBox',      "",  50);
 
 	$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');

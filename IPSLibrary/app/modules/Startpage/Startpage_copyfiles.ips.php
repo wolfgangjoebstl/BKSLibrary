@@ -206,6 +206,9 @@ if (false)
 
     function copyIfNeeded($bilderverzeichnis,$picturedir,$debug=false)
         {
+        $dosOps=new dosOps();    
+        $bilderverzeichnis = $dosOps->correctDirName($bilderverzeichnis); 
+        
         $bilderverzeichnis = str_replace(['\\','//','\\\\','\/'],'/',$bilderverzeichnis);
         $picturedir = str_replace(['\\','//','\\\\','\/'],'/',$picturedir);
 
