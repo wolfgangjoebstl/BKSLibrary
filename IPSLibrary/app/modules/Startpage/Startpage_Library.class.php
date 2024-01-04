@@ -642,18 +642,26 @@
                      *
                      *
                      *******ACHTUNG WIRD NICHT VERWENDET, CHECK PHP FILE in WEBFRONT******************/ 
-                    $wert.='<div id=“resp-table” style="width: 100%; display: table;">';            // display type Table
-                    $wert.='<div class=“resp-table-row” style="display: table-row;">';                // display type  Row
-                    $wert.='<div class=“table-body-cell” style="width: 70%; display: table-cell;">';                 // display type Cell
-                    //$wert.= $this->showPictureWidget($showfile);
-                    $wert.= $this->showGraphWidget($debug);
-                    $wert.='</div>';
-                    $wert.='<div class=“table-body-cell” style="width: 30%; display: table-cell;">';                 // Cell
-                    $wert.= $this->showWeatherTemperatureWidget(true,$debug);                   // responsive Design
-                    $wert.='</div>';                                                                    // ende Cell
-                    $wert.='</div>';                                                                    // Ende Row
-                    
-                    $wert.='</div>';
+                    $style="full";
+                    if ($style=="full")
+                        {
+                        $wert .= '<div id=“resp-table” style="width: 100%; display: table;">';            // display type Table
+                        $wert .=            $this->showGraphWidget($style, $debug);
+                        $wert .= '</div>';
+                        }
+                    else    
+                        {
+                        $wert .= '<div id=“resp-table” style="width: 100%; display: table;">';            // display type Table
+                        $wert .= '   <div class=“resp-table-row” style="display: table-row;">';                // display type  Row
+                        $wert .= '      <div class=“table-body-cell” style="width: 70%; display: table-cell;">';                 // display type Cell
+                        $wert .=            $this->showGraphWidget($style, $debug);
+                        $wert .= '      </div>';
+                        $wert .= '      <div class=“table-body-cell” style="width: 30%; display: table-cell;">';                 // Cell
+                        $wert .=            $this->showWeatherTemperatureWidget(true,$debug);                   // responsive Design
+                        $wert .= '      </div>';                                                                    // ende Cell
+                        $wert .= '    </div>';                                                                    // Ende Row
+                        $wert .= '</div>';
+                        }
                     break; 
                 default:
                     break;    
@@ -1601,15 +1609,20 @@
          * neuer Versuch der Darstellung in der html box mit SVG Objekten
          * diese sollen interactive sein, Achtung das Naming der id muss unique sein, sonst werden andere Routinen aufgerufen
          *
+         * unique ID, start all ids here with graph-
+         * on load, there is no good on load criterion to setup addEventListener, do it manual with two buttons, Edit and Save
+         * initial events are based on jquery
+         *
          * Tabelleneintrag für die Darstellung der Hierarchie mit aktuellen Werten
          * Bestandteil einer übergeordneten Tabelle für die Darstellung in der Startpage
          * verwendet Get Topology Liste aus EvaluateHardware_Configuration
          * drawTable zeichnet die Topologie mit rekursiven Aufrufen von drawCell als Hierarchie
          *
+         * style kann false, full, iframe sein, oiframe verweist auf php files im webfront
          *
          **************************************/
 
-		function showGraphWidget($debug=false)
+		function showGraphWidget($style=false,$debug=false)
 			{
             if ($debug) echo "showGraphWidget mit Debug aufgerufen.\n";
 
@@ -1652,38 +1665,75 @@
             $wert .= '  document.addEventListener("DOMContentLoaded", function () {
                             alert("dom content loaded");
                             });   ';
-            $wert .= '  function onloadSvgShowAlert() {
+            $wert .= '  var selectedElement = null;
+                        var offset;
+                        var onloadSvg = false;
+                        function onloadSvgShowAlert() {
                             const svgElem = document.getElementById("svgObj");
-                            const event = new Date();
-                            svgElem.addEventListener("click", (evt) => { 
-                               if (evt.target.classList.contains("draggable")) {
-                                    selectedElement = evt.target;
-                                    document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " onloadSvgShowAlert click " + "<br>";
-                                    }
-                                else alert("click svg not draggable");
-                                });
-                            svgElem.addEventListener("mousedown", (evt) => { 
-                               if (evt.target.classList.contains("draggable")) {
-                                    selectedElement = evt.target;
-                                    document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " onloadSvgShowAlert mousedown " + "<br>";
-                                    }
-                                });
-                            svgElem.addEventListener("mousemove", (evt) => { 
-                               if (evt.target.classList.contains("draggable")) {
-                                    selectedElement = evt.target;
-                                    document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " onloadSvgShowAlert mousemove " + "<br>";
-                                    }
-                                });
-                            svgElem.addEventListener("mouseup", (evt) => { 
-                               if (evt.target.classList.contains("draggable")) {
-                                    selectedElement = evt.target;
-                                    document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " onloadSvgShowAlert mouseup " + "<br>";
-                                    }
-                                });
-
+                            graphLog(" onloadSvgShowAlert addEvent " + onloadSvg);
+                            if (onloadSvg==false) {
+                                onloadSvg=true;
+                                svgElem.addEventListener("click", (evt) => { 
+                                    if (evt.target.classList.contains("draggable")) {
+                                        graphLog(" onloadSvgShowAlert click ");
+                                        }
+                                    else alert("click svg not draggable");
+                                    });
+                                svgElem.addEventListener("mousedown", (evt) => { 
+                                    if (evt.target.classList.contains("draggable")) {
+                                        startDrag(evt);
+                                        graphLog(" onloadSvgShowAlert mousedown start drag");
+                                        }
+                                    });
+                                svgElem.addEventListener("mousemove", (evt) => { 
+                                    if (selectedElement) {
+                                        evt.preventDefault();
+                                        var coord = getMousePosition(evt);
+                                        selectedElement.setAttributeNS(null, "x", coord.x - offset.x);
+                                        selectedElement.setAttributeNS(null, "y", coord.y - offset.y);  
+                                        graphLog(" onloadSvgShowAlert mousemove drag " + selectedElement + " " + Math.round(coord.x) + " / " + Math.round(coord.y));
+                                        } 
+                                    });
+                                svgElem.addEventListener("mouseup", (evt) => { 
+                                    selectedElement = null;
+                                    graphLog(" onloadSvgShowAlert mouseup end drag ");
+                                    });
+                                svgElem.addEventListener("mouseleave", (evt) => { 
+                                    selectedElement = null;
+                                    graphLog(" onloadSvgShowAlert mouseleave end drag ");                                
+                                    });
+                                }
+                            } ';
+             $wert .= '  function getMousePosition(evt) {
+                            const svgElem = document.getElementById("svgObj");
+                            var CTM = svgElem.getScreenCTM();
+                            return {
+                                x: (evt.clientX - CTM.e) / CTM.a,
+                                y: (evt.clientY - CTM.f) / CTM.d
+                                };
                             }
-                        window.onload = onloadSvgShowAlert; ';  
-            $wert .= '  function makeDraggable(evt) {
+                        function startDrag(evt) {
+                            if (evt.target.classList.contains("draggable")) {
+                                selectedElement = evt.target;
+                                offset = getMousePosition(evt);
+                                offset.x -= parseFloat(selectedElement.getAttributeNS(null, "x"));
+                                offset.y -= parseFloat(selectedElement.getAttributeNS(null, "y"));
+                                } 
+                            }                                                    
+                        ';  
+              $wert .= 'var logCount = 0;
+                         function graphLog(text) {
+                            const event = new Date();
+                            logCount++;
+                            if (logCount>20) {
+                                logCount=0;
+                                document.getElementById("graph-log").innerHTML = "";
+                                }
+                            document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + text + "<br>";
+                            }
+                          ';  
+        /*    $wert .= '  window.onload = onloadSvgShowAlert; 
+                          function makeDraggable(evt) {
                             var svg = evt.target;
                             svg.addEventListener("mousedown", startDrag);
                             svg.addEventListener("mousemove", drag);
@@ -1707,12 +1757,12 @@
                             function endDrag(evt) {
                                 selectedElement = null;
                                 }
-                            }';    
+                            }';    */
             $wert .= '  function reportWindowSizeGraph () {
                             let varheight=Math.round(window.innerHeight * 0.85);
                             const event = new Date();
                             document.getElementById("graph-status").innerHTML = "Size " + window.innerHeight + " (" + varheight + ") x " + window.innerWidth + "  " + Date();
-                            document.getElementById("graph-log").innerHTML += event.toLocaleTimeString("it-IT") + " show windows size " +  "<br>";
+                            graphLog(" show windows size ");
                             };
                         $("#graph-status").on("click", function() {
                             reportWindowSizeGraph ();
@@ -1723,7 +1773,8 @@
                             });                            
 
                         window.onresize = reportWindowSizeGraph;                     
-                    ';   
+                    '; 
+            // report browser version  
             $wert .= '  function reportBrowserVersionGraph() {
                             var Sys = {};  
                             var ua = navigator.userAgent.toLowerCase();  
@@ -1744,6 +1795,7 @@
                             document.getElementById("graph-browser").innerHTML = reportBrowserVersionGraph ();
                             });  
                     ';
+            // switch fullscreen and show status draggable
             $wert .= '  var fullScreen=0;
                         function toggleFullScreen(elem) {
                             if (fullScreen==0) { elem.requestFullscreen(); fullScreen=1; return ("Full Screen"); }
@@ -1758,23 +1810,15 @@
                     ';                        
             $wert .= '';
             $wert .= '</script>';
-            //$wert .= '<script type="text/javascript">';
+            if ($style=="full")
+                {
+                $wert .= '<div class=“resp-table-row” style="display: table-row;">';                // display type  Row
+                $wert .= '  <div class=“table-body-cell” style="width: 70%; display: table-cell;">';                 // display type Cell
+                }
+            else $wert .= '<div>';
 
-            //$wert .= '</script>';             
-            $wert .= '<div>';
-            //$wert .= ' <svg id="frame-circle" width="100" height="100">';
-            //$wert .= ' <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" onload="makeDraggable(evt)">';
-            //$wert .= ' <svg viewBox="0 0 200 100" onload="alert(\'show svg\')" xmlns="http://www.w3.org/2000/svg">';
-            $wert .= ' <svg id="svgObj" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">';
-      /*    $wert .= '<style>';
-            $wert .= '.static { 
-                        cursor: not-allowed;
-                        }
-                      .draggable {
-                        cursor:move;
-                        }';  
-            $wert .= '</style>';  
-            $wert .= '<script type="text/javascript">';            
+            $wert .= '        <svg id="svgObj" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">';
+     /*     $wert .= '<script type="text/javascript">';            
             $wert .= '  const svgElm = document.getElementById("svgObj");
                             svgElm.addEventListener("load", () => { 
                             alert("load svg");
@@ -1805,16 +1849,24 @@
                             } ';
             //$wert .= '    ]]>'; 
             $wert .= '</script>';   */
-            $wert .= '   <rect x="0" y="0" width="200" height="100" fill="#fafafa"/>';
-            $wert .= '   <rect class="draggable" x="40" y="50" width="8" height="10" fill="#007bff"/>';
-            $wert .= '   <rect class="static" x="58" y="50" width="8" height="10"   fill="#888"/>';
-            $wert .= '   <circle id="graph-circle" class="draggable" cx="10" cy="10" r="8" stroke="green" stroke-width="2" fill="yellow" />';
-            $wert .= ' </svg>';
-            $wert .= '</div>';
+            $wert .= '        <rect x="0" y="0" width="200" height="100" fill="#fafafa"/>';
+            $wert .= '        <rect id="graph-obj-001" class="draggable" x="40" y="50" width="8" height="10" fill="#007bff"/>';
+            $wert .= '        <rect id="graph-obj-002" class="draggable" x="80" y="50" width="8" height="10" fill="#227bff"/>';
+            $wert .= '        <rect id="graph-obj-003" class="draggable" x="120" y="50" width="8" height="10" fill="#227bff"/>';
+            $wert .= '        <rect class="static" x="58" y="50" width="8" height="10"   fill="#888"/>';
+            $wert .= '        <circle id="graph-circle" class="draggable" cx="10" cy="10" r="8" stroke="green" stroke-width="2" fill="yellow" />';
+            $wert .= '      </svg>';
+            $wert .= '   </div>';
+            if ($style=="full")
+                {
+                $wert .= '      <div class=“table-body-cell” style="width: 30%; display: table-cell;">';                 // display type Cell
+                $wert .= '         <div id="graph-log" style="font-size: 1hm; display:inline; float:left;"><br>Log evolves here<br></div>';        
+                $wert .= '   </div>';
+                $wert .= ' </div>';
+                }
             $wert .= '<div id="graph-status" style="font-size: 1hm; display:inline; float:left;">Statusangaben hier clicken</div>';        
             $wert .= '<div id="graph-browser" style="font-size: 1hm; display:inline; padding: 5px;">Browser hier clicken</div>';        
             $wert .= '<div id="graph-fullscreen" style="font-size: 1hm; display:inline; float:right;">Fullscreen hier clicken</div>';
-            $wert .= '<div id="graph-log" style="font-size: 1hm; display:inline; float:left;"><br>Log evolves here<br></div>';        
 
             return ($wert);
             }

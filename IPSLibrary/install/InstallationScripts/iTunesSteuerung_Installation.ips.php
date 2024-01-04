@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -16,25 +16,25 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */  
 
-/*
-
-ItunesSteuerung_Installation            Mai 2021   v19
-
-Itunes Ansteuerung und Ueberwachung, macht ein kleines Lautsprechersymbol im Webfront, oben in der Schnellauswahl
-Übernimmt auch das Install des Netplayers, da dieser mittlerweile etwas buggy geworden ist.
-
-Modifiziert auf IPS Library und kleine Anpassungen von Wolfgang Joebstl
-
-
-Funktionen:
-
-Erst-Installation:
-
-Installation (erneut/Update)
-
-
-
-*/
+    /* ItunesSteuerung_Installation
+     *
+     * Itunes Ansteuerung und Ueberwachung, macht ein kleines Symbol im Webfront, oben in der Schnellauswahl, notenschlüssel oder Lautsprecher
+     * Übernimmt auch das Install des Netplayers, da dieser mittlerweile etwas buggy geworden ist.
+     *
+     * Modifiziert auf IPS Library und kleine Anpassungen von Wolfgang Joebstl
+     *
+     *
+     * Funktionen:
+     *
+     * Erst-Installation:
+     *
+     * Installation (erneut/Update)
+     *
+	 *
+	 * @file          WebCamera_Installation.ips.php
+	 * @author        Wolfgang Joebstl
+	 *
+     */
 
 /*******************************
  *
@@ -42,9 +42,7 @@ Installation (erneut/Update)
  *
  ********************************/
 
-    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\iTunesSteuerung\iTunes.Configuration.inc.php");
-    //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\iTunesSteuerung\iTunes.Library.ips.php");
+    $debug=true;
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ("iTunes.Configuration.inc.php","IPSLibrary::config::modules::iTunesSteuerung");
@@ -63,9 +61,9 @@ Installation (erneut/Update)
 
 	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPS ModulManager Version   : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('iTunesSteuerung');
-	echo "\nModul iTunesSteuerung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
+	echo "\nIPS ModulManager Version   : ".$ergebnis;                              
+	$ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('iTunesSteuerung');
+	echo "\nModul iTunesSteuerung Version : ".$ergebnisVersion."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";     /* wird auch für das Logging der Installation verwendet */
 
 	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -77,12 +75,39 @@ Installation (erneut/Update)
 
     if (isset($installedModules["Startpage"]))  echo "Modul Startpage available.\n";
 
+    $ipsOps = new ipsOps();
+    $dosOps = new dosOps();
+
+	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
+	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+    IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+
+	if (isset ($installedModules["OperationCenter"]))           // Logging nur wenn operationCenter vorhanden
+		{
+        IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");  
+        $subnet="10.255.255.255";
+
+        $systemDir     = $dosOps->getWorkDirectory(); 
+        echo "systemDir : $systemDir \n";           // systemDir : C:/Scripts/ 
+        echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
+
+        $Heute=time();
+        $HeuteString=date("dmY",$Heute);
+        echo "Heute  Datum ".$HeuteString." für das Logging der iTunesSteuerung Installation.\n";
+
+        $LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
+        $log_Install=new Logging($systemDir."Install/Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
+        $log_Install->LogMessage("Install Module iTunesSteuerung. Aktuelle Version ist $ergebnisVersion.");
+        }
 
     $iTunes = new iTunes();
     $config = $iTunes-> getiTunesConfig();
-    //echo "Konfiguration:\n";    print_R($config);
+    if ($debug) { echo "Konfiguration:\n";    print_R($config); }
 
-	echo "Variablen vorbereiten.\n";
+	echo "Installation iTunesSteuerung, Variablen vorbereiten.\n";
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -100,14 +125,13 @@ Installation (erneut/Update)
 
 	$moduleManagerNP = new IPSModuleManager('NetPlayer');
 
-	IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSMessageHandler.class.php",     "IPSLibrary::app::core::IPSMessageHandler");
 	IPSUtils_Include ("NetPlayer_Constants.inc.php",     "IPSLibrary::app::modules::NetPlayer");
 	IPSUtils_Include ("NetPlayer_Configuration.inc.php", "IPSLibrary::config::modules::NetPlayer");
 
 	$CategoryIdDataNP     = $moduleManagerNP->GetModuleCategoryID('data');
 	$CategoryIdAppNP      = $moduleManagerNP->GetModuleCategoryID('app');
-	$CategoryIdHw       = CreateCategoryPath('Hardware.NetPlayer');
+	$CategoryIdHw         = CreateCategoryPath('Hardware.NetPlayer');
 
 /*******************************
  *
@@ -115,7 +139,7 @@ Installation (erneut/Update)
  *
  ********************************/
 
-	echo "\n";
+/*	echo "\n";
 	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
 	echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
 	
@@ -126,12 +150,23 @@ Installation (erneut/Update)
 		$result=IPS_GetInstance($instanz);
 		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
 		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
-		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		/* alle Instanzen dargestellt */
-		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
-		//print_r($result);
 		}
-	echo "\n";
+	echo "\n";  */
+    
+    $wfcHandling =  new WfcHandling(); 
+    $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
+    
+    $configWFront=$ipsOps->configWebfront($moduleManager,false);     // wenn true mit debug Funktion
+    
+    $RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
+    $WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+    $WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+    $Mobile_Enabled       = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+    $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
+
+    if ($WFC10_Enabled==true)		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
+    if ($WFC10User_Enabled==true)   $WFC10User_ConfigId       = $WebfrontConfigID["User"];
+    echo "Administrator $WFC10_ConfigId User $WFC10User_ConfigId.\n";
 	
 /*******************************
  *
@@ -326,14 +361,15 @@ Path=Visualization.Mobile.iTunes
 
 	echo "\n";
 	echo "===================================================\n";
-	echo "Konfiguration aus iTunes_Configuration ausgeben:\n";
+	echo "Konfiguration aus iTunes_Configuration in Webfront einarbeiten:\n";
+    echo "   zur Auswahl stehen je nach Konfiguration Media, Oe3Player, ... \n";
 	//$config=iTunes_Configuration();
-	print_r($config);
+	//print_r($config);
 
 	$webfront_links=array();
     foreach ($config as $type => $configuration)
         {
-        echo "Bearbeite Konfiguration Index $type:\n";            
+        echo "      Bearbeite Konfiguration Index $type:\n";            
         switch ($type)
             {
             case "Media":			// war früher in der Config iTunes
@@ -441,6 +477,28 @@ Path=Visualization.Mobile.iTunes
                 $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["USER"]=false;        
                 $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["MOBILE"]=false;        
                 */
+                break;
+            case "Denon":
+                $order=70;   
+                $categoryId_DenonPlayer  = CreateCategory("DenonPlayer", $CategoryIdData, $order);                         
+                $tabname="Denon";
+                if (isset($configuration["Url"]))
+                    {
+                    /*CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)*/
+                    $DenonPlayerID = CreateVariableByName($categoryId_DenonPlayer,"Denon", 3, "~HTMLBox",$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+                    echo "      Create Denon Player Frame \"DenonWebView\" ($DenonPlayerID).\n";             
+                    SetValue($DenonPlayerID,'<iframe src="'.$configuration["Url"].'" width="900" height="1200"
+                       <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
+                        Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
+                        <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
+                        </p></iframe>');
+                    }
+                $webfront_links[$tabname]["Auswertung"][$DenonPlayerID]["TAB"]="DenonWebView";
+                $webfront_links[$tabname]["Auswertung"][$DenonPlayerID]["NAME"]="Denon";
+                $webfront_links[$tabname]["Auswertung"][$DenonPlayerID]["ORDER"]=$order;   
+                $webfront_links[$tabname]["Auswertung"][$DenonPlayerID]["ADMINISTRATOR"]=true;        
+                $webfront_links[$tabname]["Auswertung"][$DenonPlayerID]["USER"]=false;        
+                $webfront_links[$tabname]["Auswertung"][$DenonPlayerID]["MOBILE"]=false;                   
                 break;
             case "Alexa":
             case "Netplayer":
@@ -591,6 +649,7 @@ Path=Visualization.Mobile.iTunes
 		echo "=====================================================================================================================\n";		
         $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "Webportal Administrator im Webfront Konfigurator ID ".$WFC10_ConfigId." installiert in Kategorie ". $categoryId_AdminWebFront." (".IPS_GetName($categoryId_AdminWebFront).")\n";
+        $config = $configWFront["Administrator"]; 
 
 		/*************************************
 		 * Ordnung machen, hat sicher bereits das CustomComponent_Installation Modul bereits erledigt */

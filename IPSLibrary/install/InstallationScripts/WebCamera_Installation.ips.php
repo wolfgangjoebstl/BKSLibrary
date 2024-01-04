@@ -146,7 +146,7 @@
 
         $LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
 		$log_Install=new Logging($systemDir."Install/Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
-		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
+		$log_Install->LogMessage("Install Module WebCamera. Aktuelle Version ist $ergebnisVersion.");
    
 
 

@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/*
 	 * This file is part of the IPSLibrary.
@@ -104,15 +104,16 @@
                 }
 
             /* Root der Konfig durchgehen, es wird das ganze Unterverzeichnis übernommen */
-            configfileParser($configInput, $configMedia, ["Media","media","MEDIA","iTunes","itunes","ITUNES"],"Media","[]");                // null es wird als Default zumindest ein Indexknoten angelegt
+            configfileParser($configInput, $configMedia,    ["Media","media","MEDIA","iTunes","itunes","ITUNES"],"Media","[]");                // null es wird als Default zumindest ein Indexknoten angelegt
+            configfileParser($configInput, $configOe3,      ["Oe3Player","oe3player","OE3PLAYER"],"Oe3Player","[]");
 
-            configfileParser($configInput, $config, ["Alexa","alexa","ALEXA"],"Alexa","[]");
-            configfileParser($configInput, $config, ["Netplayer","netplayer","NETPLAYER"],"Netplayer","[]");
-            configfileParser($configInput, $config, ["ttsPlayer","ttsplayer","TTSPLAYER"],"ttsPlayer","[]");
-            configfileParser($configInput, $configOe3, ["Oe3Player","oe3player","OE3PLAYER"],"Oe3Player","[]");
+            configfileParser($configInput, $config,         ["Denon","denon","DENON"],"Denon","[]");
+            configfileParser($configInput, $config,         ["Alexa","alexa","ALEXA"],"Alexa","[]");
+            configfileParser($configInput, $config,         ["Netplayer","netplayer","NETPLAYER"],"Netplayer","[]");
+            configfileParser($configInput, $config,         ["ttsPlayer","ttsplayer","TTSPLAYER"],"ttsPlayer","[]");
+            configfileParser($configInput, $config,         ["iTunesSteuerung","itunessteuerung","ITUNESSTEUERUNG"],"iTunesSteuerung","[]");                // null es wird als Default zumindest ein Indexknoten angelegt
 
             configfileParser($configInput, $config, ["Configuration","configuration","CONFIGURATION"],"Configuration","[]");
-            configfileParser($configInput, $config, ["iTunesSteuerung","itunessteuerung","ITUNESSTEUERUNG"],"iTunesSteuerung","[]");                // null es wird als Default zumindest ein Indexknoten angelegt
 
             /* Sub Tabs */
             $config["Media"] = $this->checkConfigTabs($configMedia["Media"], $debug);       // mit oder ohne Debug, return output array, input array, widget config
@@ -129,6 +130,9 @@
             return ($config);
             }
 
+        /* check Configuration for Media and Oe3Player
+         * we expect Name, Profile, Side, Type, Link 
+         */
         private function checkConfigTabs($configInput,$debug=false)
             {
             $config = array();
