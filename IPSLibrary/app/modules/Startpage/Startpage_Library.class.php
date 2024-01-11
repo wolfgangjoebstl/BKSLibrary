@@ -114,6 +114,7 @@
 		protected $configuration = array();				// die angepasste, standardisierte Konfiguration
 		protected $aussentemperatur, $innentemperatur;
 		
+        public $newstyle;                               // wenn true, IPS 7 oder größer, kein Webfront Verzeichnis, alles im User anlegen
 		public $picturedir, $imagedir, $icondir;			// hier sind alle Bilder für die Startpage abgelegt
         public $workdir;            // Arbeitsverzeichnis, zB VLC Start Scripts
 
@@ -123,7 +124,7 @@
 
 		public $CategoryIdData, $CategoryIdApp;			// die passenden Verzeichnisse
 
-        protected $dosOps;                                // ein paar Routinen ohne jedesmal new zu machen
+        protected $dosOps,$ipsOps;                                // ein paar Routinen ohne jedesmal new zu machen
 		
 		protected $OWDs;				// alle Openweather Instanzen
 
@@ -137,7 +138,9 @@
 			{
 			/* standardize configuration */
 			
-			$this->dosOps = new dosOps();                                           // wird überall verwendet
+			$this->dosOps = new dosOps();  
+            $this->ipsOps = new ipsOps();
+                                                     // wird überall verwendet
 			$this->setStartpageConfiguration(false,$debug);
 			
 			/* get Directories */
@@ -156,9 +159,43 @@
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
 
-			$this->picturedir = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\");
-            $this->imagedir   = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\images\\");                   // Astronomy Path to Moon Pic: user/Startpage/user/images/mond/mond357.gif
-            $this->icondir    = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\icons\\");
+            $picDir =    $this->dosOps->correctDirName(IPS_GetKernelDir()."user\\Startpage\\user\\pictures\\"); 
+            $newstyle =  is_dir($picDir);
+            $altPicDir = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\");
+            $oldstyle =  is_dir($altPicDir);
+
+            $ipsVersion = $this->ipsOps->ipsVersion();
+            if ($debug)
+                {
+                if ($ipsVersion["Major"]>6) 
+                    {
+                    echo "IPS Version 7 oder größer, neue Verzeichnisstrukturen anstelle webfront : $picDir \n";
+                    if ($oldstyle && $newstyle) echo "   bisheriges und neues Verzeichnis vorhanden.\n"; 
+                    elseif ($newstyle) echo "   neues Verzeichnis vorhanden. Alles in Ordnung.\n";
+                    elseif ($oldstyle) echo "   bisheriges Verzeichnis vorhanden.\n";
+                    else               echo "   neues und bisheriges Verzeichnis NICHT vorhanden.\n";
+                    }
+                else 
+                    {
+                    echo "IPS Version 6 oder früher, bestehende Verzeichnisstrukturen mit webfront.\n";    
+                    echo "Verzeichnis für IPS Version 6 oder früher : $altPicDir \n";
+                    if ($oldstyle) echo "   Verzeichnis vorhanden.\n";
+                    else           echo "   Verzeichnis NICHT vorhanden.\n";
+                    }
+                }
+            if ($oldstyle && $newstyle) { $oldstyle=false; }
+            if ($oldstyle)
+                {
+                $this->picturedir = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\");
+                $this->imagedir   = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\images\\");                   // Astronomy Path to Moon Pic: user/Startpage/user/images/mond/mond357.gif
+                $this->icondir    = $this->dosOps->correctDirName(IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\icons\\");
+                }
+            if ($newstyle)
+                {
+                $this->picturedir = $this->dosOps->correctDirName(IPS_GetKernelDir()."user\\Startpage\\user\\pictures\\");
+                $this->imagedir   = $this->dosOps->correctDirName(IPS_GetKernelDir()."user\\Startpage\\user\\images\\");                   // Astronomy Path to Moon Pic: user/Startpage/user/images/mond/mond357.gif
+                $this->icondir    = $this->dosOps->correctDirName(IPS_GetKernelDir()."user\\Startpage\\user\\icons\\");
+                }
 
 			$this->contentID=CreateVariable("htmlChartTable",3, $this->CategoryIdData,0,"~HTMLBox",null,null,"Graph");
 
@@ -179,7 +216,8 @@
 			$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 
 			$this->OWDs=$modulhandling->getInstances('OpenWeatherData');
-			}
+			$this->newStyle = $newstyle;                                        // wenn true kein webfront verzeichnis mehr
+            }
 
 
 		/*
@@ -1029,7 +1067,7 @@
                         }
                     if ($goodtogo)
                         {
-                        if ($debug) echo str_pad($place["Path"],55);
+                        if ( ($debug) && (isset($place["Path"])) ) echo str_pad($place["Path"],55);
                         $x=$configuration["x"]; $y=$configuration["y"];
                         if ( isset($configuration["l"]) ) $l=$configuration["l"]; else $l=1;
                         if ( isset($configuration["h"]) ) $h=$configuration["h"]; else $h=1;
@@ -1074,7 +1112,7 @@
                 {
                 echo "=====================================================================================\n";
                 echo "Status Topologie für Ausgabe mit writeTable vorbereitet:\n";
-                print_r($topologyStatus);
+                if ($debug>1) print_r($topologyStatus);
                 }
 
             $wert.="<style>";
@@ -2178,7 +2216,7 @@
             }
 
         /********************
-         *
+         * showPictureWidget
          * Zelle Tabelleneintrag für die Darstellung eines BestOf Bildes
          * class container = width: auto; height: auto; max-height:95%; max-width: 100%
          *
@@ -2205,7 +2243,8 @@
                 {
                 if ($showfile===false) $showfile=rand(1,$maxcount-1);
                 $filename = $file[$showfile];
-                $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb, $debug);
+                if ($this->newStyle) $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb, $debug);
+                else $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir().$verzeichnisWeb, $debug);
                 if ($debug) echo "showPictureWidget, Kernel Dir ".IPS_GetKernelDir()." Filename Dir $verzeichnis ,Filename $filename untersuchen.\n";
                 if (file_exists($verzeichnis.$filename)) 
                     {
@@ -4504,7 +4543,8 @@
                 else echo "Fehler, Zusammenfassung des Wetters bei OpenWeather noch nicht aktiviert.\n";
 				}
 			$html    .= "\n".'</body>'."\n".'</html>';             // Abschluss für das Include als iFrame
-            $verzeichnis = $this->dosOps->correctDirName(IPS_GetKernelDir().'webfront\user\Startpage');					
+            if ($this->newStyle) $verzeichnis = $this->dosOps->correctDirName(IPS_GetKernelDir().'user\Startpage');					
+            else $verzeichnis = $this->dosOps->correctDirName(IPS_GetKernelDir().'webfront\user\Startpage');					
 			$filename=$verzeichnis.'Startpage_Openweather.php';
 			if (!file_put_contents($filename, $html)) {
 		        throw new Exception('Create File '.$filename.' failed!');

@@ -36,9 +36,10 @@
  *      eventLog
  *
  *
+ * folgende Tätigkeiten werden hier der reihe nach durchgeführt
  *
- *
- *      sync database Configuration
+ *      sync database Configuration ($sqlOperate->syncTableConfig) 
+ *      sync database Values
  *
  *
  */
@@ -130,7 +131,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         echo "---------------------------------------------------------------------------------\n";
 
         $sqlOperate = new sqlOperate();           // default MySQL Instanz extends sqlHandle, USE DATABASE in MariaDB bereits gesetzt
-        $sqlOperate->syncTableConfig();
+        $sqlOperate->syncTableConfig(false, true);         // false for all Tables, true for debug
 
         //echo "---------------------------------------------------------------------------------\n";
 

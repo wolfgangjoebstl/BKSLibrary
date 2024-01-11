@@ -550,7 +550,7 @@ class TopologyLibraryManagement
         foreach ($deviceList as $name => $entry)            // name is unique in devicelist
             {
             //echo "$i   $name\n";
-            $topRoom=false; $topGroup=false;
+            $topRoom=false; $topGroup=false; $entryplace=false;
             if (isset($entry["Instances"]))                 // es gibt die Kategorie Instances in der devicelist, alle Instanzen gemeinsam haben einen Room, ID=0
                 {
                 $instances=$entry["Instances"];
@@ -611,7 +611,7 @@ class TopologyLibraryManagement
                             }
                         // room eindeutig machen wenn tilde im Namen
 
-                        if (isset($topology[$entryplace]))
+                        if ( ($entryplace) && (isset($topology[$entryplace])) )
                             {
                             $entry=$topology[$entryplace];
                             }

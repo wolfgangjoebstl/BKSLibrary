@@ -8530,8 +8530,20 @@ class ipsOps
         if ($module != "") $this->module = $module;
         }
 
-    /* den IPS Pfad ausgeben */
+    /* die IPS version ausgeben, als Major, Minor Array
+     */
+    public function ipsVersion()
+        {
+        $ipsVer = IPS_GetKernelVersion();
+        $ipsVers = explode(".",$ipsVer);
+        $ipsVersion["Major"]=(integer)$ipsVers[0];
+        $ipsVersion["Minor"]=(integer)$ipsVers[1];
+        //print_r($ipsVersion);
+        return($ipsVersion);
+        }
 
+    /* den IPS Pfad ausgeben 
+     */
     public function path($objectR,$order=false)
         {
         $path=array();
@@ -8556,8 +8568,8 @@ class ipsOps
         return($str);
         }
 
-    /* ipsOps, die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen */
-
+    /* ipsOps, die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen 
+     */
     public function totalChildren($oid)
         {
         $count=0;

@@ -22,11 +22,19 @@
  * HighSpeedUpdate      alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP
  * CleanUpEndofDay      CleanUp für Backup starten, sollte alte Backups loeschen
  * UpdateStatus
- * 
+ *
+ * Bearbeitet Webfront Bedienelemente:
+ *  abhängig von varaibleID
+ *
+ *
+ * Bearbeitet Timer:
+ *
+ * Execute:
+ *
+ * Variable:
  *
  ***********************************************************/
 
-//Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -36,6 +44,7 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
 
 $ExecuteExecute=true;             	// Execute machen
 $debug=false;	                    // keine lokalen Echo Ausgaben
+if ($_IPS['SENDER']=="Execute") $debug=true;
 
 /******************************************************
 
@@ -49,43 +58,43 @@ $debug=false;	                    // keine lokalen Echo Ausgaben
     ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
     $startexec=microtime(true);
 
-$dir655=false;
+    $dir655=false;
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager))
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('OperationCenter',$repository);
-	}
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    if (!isset($moduleManager))
+        {
+        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+        $moduleManager = new IPSModuleManager('OperationCenter',$repository);
+        }
 
-$installedModules = $moduleManager->GetInstalledModules();
+    $installedModules = $moduleManager->GetInstalledModules();
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
-$scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
+    $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
+    $scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
 
-$scriptId           = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
-$backupScriptId     = @IPS_GetObjectIDByIdent('UpdateBackupLogs', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
-if ($backupScriptId !== false) 
-    {
-    //echo "Die Backups werden in einem eigenem Script ($backupScriptId) mit höherem Speicherbedarf finalisiert.\n";
-    }
-else 
-    {
-    //echo "Script UpdateBackupLogs nicht gefunden. Speicherlimit kann überschritten werden.\n";
-    }
-//echo "Zwei Werte, OperationCenter Modul (".IPS_GetName($scriptId).") und Script im Modul $CategoryIdApp (".IPS_GetName($CategoryIdApp).").\n";
+    $scriptId           = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+    $backupScriptId     = @IPS_GetObjectIDByIdent('UpdateBackupLogs', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+    if ($backupScriptId !== false) 
+        {
+        //echo "Die Backups werden in einem eigenem Script ($backupScriptId) mit höherem Speicherbedarf finalisiert.\n";
+        }
+    else 
+        {
+        //echo "Script UpdateBackupLogs nicht gefunden. Speicherlimit kann überschritten werden.\n";
+        }
+    //echo "Zwei Werte, OperationCenter Modul (".IPS_GetName($scriptId).") und Script im Modul $CategoryIdApp (".IPS_GetName($CategoryIdApp).").\n";
 
-$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
+    $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 
 	/******************************************************
 	 *
 	 * INIT, Timer, sollte eigentlich in der Install Routine sein
 	 *			
 	 *		MoveCamFiles				, alle 150 Sec
-	 *		RouterAufruftimer       , immer um 0:20
+	 *		RouterAufruftimer       , immer um 0:20Geräte mit
  	 *
 	 *************************************************************/
 
@@ -114,7 +123,7 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
         IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 
-        echo "EvaluateHardware, Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+        if ($debug) echo "EvaluateHardware, Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
         IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 
         $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
@@ -176,6 +185,8 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$OperationCenterSetup = $OperationCenter->getSetup();
     
 	$DeviceManager = new DeviceManagement();                            // stürzt aktuell mit HMI_CreateReport ab
+    $DeviceManagerHomematic = new DeviceManagement_Homematic();         // deshalb diese calss verwenden
+    
 
 /**********************************
  *
@@ -208,6 +219,7 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 
 	$ActionButton=$OperationCenter->get_ActionButton();
 	$ActionButton+=$DeviceManager->get_ActionButton();
+    $ActionButton+=$DeviceManagerHomematic->get_ActionButton();
 	$ActionButton+=$BackupCenter->get_ActionButton();
 
 /*********************************************************************************************/
@@ -243,11 +255,14 @@ if ($_IPS['SENDER']=="WebFront")
                         $HMI=$ActionButton[$variableId]["DeviceManagement"]["HMI"];
                         $HomematicInventoryId=$ActionButton[$variableId]["DeviceManagement"]["HtmlBox"];
                         //echo "$variableId gefunden.".IPS_GetName($HMI)."   ".IPS_GetProperty($HMI,"SortOrder");
+                        $outputfile = IPS_GetProperty($HMI,"OutputFile");
+                        if (strpos("webfront",$outputfile)) echo "neuen Ordner user einstellen, webfront ab IPS 7 nicht mehr erlaubt. \n";
                         IPS_SetProperty($HMI,"SortOrder",$sortOrder);
                         IPS_ApplyChanges($HMI);
                         HMI_CreateReport($HMI);
                         SetValue($HomematicInventoryId,GetValue($HomematicInventoryId));
                         if ( (isset($scriptIdEvaluateHardware)) && ($_IPS['VALUE']>5) ) IPS_RunScriptWait($scriptIdEvaluateHardware);
+                        //echo "fertig";
                         }
 					}
 
@@ -357,7 +372,7 @@ if ($_IPS['SENDER']=="WebFront")
 
 /*******************************************************************************************
  * 
- *      EXECUTE, nur machen wenn am Amnfanmg der Scriptdatei freigegeben
+ *      EXECUTE, nur machen wenn am Anfanmg der Scriptdatei freigegeben
  *
  ***/
 
@@ -523,7 +538,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
                     }
 				}  /* ende foreach */
 			}
-		}
+		}       // ende if (isset ($installedModules["IPSCam"]))
 
     /* Timer 2 Emulation/Simulation */
         echo "\n=================================================================\n";
@@ -560,7 +575,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
                 echo "   --> Show CamSnapshots files:\n";
                 $camOperation->showCamSnapshots($camConfig,true);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
                 }
-				} /* Ende isset */        
+			} /* Ende isset */        
 
 	/********************************************************
     *	Erreichbarkeit der Kameras ueberprüfen
@@ -1429,7 +1444,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		}
 	}
 
-    echo "\nDurchlaufzeit : ".(microtime(true)-$startexec)." Sekunden\n";
+    if ($debug) echo "\nDurchlaufzeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
 
 	

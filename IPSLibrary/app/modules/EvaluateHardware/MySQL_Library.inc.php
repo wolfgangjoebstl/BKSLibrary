@@ -79,28 +79,33 @@ class sqlOperate extends sqlHandle
      *
      */
 
-    public function syncTableConfig($debug=false)
+    public function syncTableConfig($table=false,$debug=false)
         {
+        if ($table===false) $tablecomp=false;              
+        else $tablecomp=true;                               // nur einen bestimmten table vergleichen
         $config=$this->getDatabaseConfig();
         $tables = $this->showTables();     // SHOW TABLES
         echo "Sync database Configuration with MariaDB Configuration:\n";           // config with tables
         echo "   ".str_pad("Tabelle",30).str_pad("Status",20)."\n";
-        foreach ($config as $tableName => $entries)
+        foreach ($config as $tableName => $entries)         // entries ist der SOLL Zustand
             {
-            echo "   ".str_pad($tableName,30);
-            if (isset($tables[$tableName]))         // Datenbank gibt es bereits, stimmen die Spaltenbezeichnungen
+            if (($tablecomp) && ($table==$tableName) )
                 {
-                $columns=$this->describeTable($tableName);
-                echo "available, compare columns ";
-                $this->updateTableConfig($tableName, $columns, $entries, $debug);       // Tabelle tablename wird von config in columns auf config in entries upgedated
+                echo "   ".str_pad($tableName,30);
+                if (isset($tables[$tableName]))         // Datenbank gibt es bereits, stimmen die Spaltenbezeichnungen
+                    {
+                    $columns=$this->describeTable($tableName);      // IST Zustand
+                    echo "available, compare columns ";
+                    $this->updateTableConfig($tableName, $columns, $entries, $debug);       // Tabelle tablename wird von config in columns auf config in entries upgedated
+                    }
+                else                                    // neue Tabellen entsprechend config anlegen
+                    {
+                    $configSet=$config[$tableName];
+                    echo "not available, create table and columns.\n";          // hier kommt nix mehr in der selben Zeile 
+                    $this->createTableConfig($tableName, $entries);
+                    }   // ende Tabelle noch nicht vorhanden
+                echo "\n";
                 }
-            else                                    // neue Tabellen entsprechend config anlegen
-                {
-                $configSet=$config[$tableName];
-                echo "not available, create table and columns.\n";          // hier kommt nix mehr in der selben Zeile 
-                $this->createTableConfig($tableName, $entries);
-                }   // ende Tabelle noch nicht vorhanden
-            echo "\n";
             }
         }
 
@@ -132,7 +137,7 @@ class sqlOperate extends sqlHandle
              echo "      ".str_pad("Spalte",30).str_pad("Status Ist Config",20)."\n";
              //print_r($columns);
              }
-        foreach ($columns as $name => $column)
+        foreach ($columns as $name => $column)      // IST Zustand durchgehen
             {
             if ($debug) echo "      ".str_pad($column["Field"],30);
             if (isset($configSet[$column["Field"]]))         // Spaltenbezeichnung gibt es bereits, stimmen die Konfigurationen
@@ -155,17 +160,18 @@ class sqlOperate extends sqlHandle
             }
 
         /* check die einzelnen Eintraege der SollConfig Spalte für Spalte */
-        foreach ($configSet as $name => $column)
+        foreach ($configSet as $name => $column)                                // SOLL Zustand durchgehen
             {
             echo "      ".str_pad($column["Field"],30);
             $result = $this->makeTableConfig($column);
-            if (isset($columns[$name])===false) 
+            if (isset($columns[$name])===false)                      // IST Zustand vergleichen
                 {
                 echo "Spalte $name in der Tabelle unbekannt.\n";
                 //print_r($columns);
                 $same["Status"]=false;
                 }
             else $same = $this->compareTableConfig($column,$columns[$name],false);  // same ist array mit Status, Command, function vergleicht column soll mit column ist
+            echo json_encode($same)." ";
             if ($same["Status"]==false)         // Primary Key wird nicht automatisch geändert aber bei neuen Tabellen richtig angelegt 
                 {
                 $sqlCommand="";
@@ -206,7 +212,7 @@ class sqlOperate extends sqlHandle
             echo "\n";
             }       // ende foreach
         echo "    ";
-        $this->showIndex($tableName);
+        if ($debug) $this->showIndex($tableName);
         }
         
     /* wenn es die Tabelle noch nicht gibt, diese erzeugen
@@ -290,6 +296,7 @@ class sqlOperate extends sqlHandle
      *        index   => "registerID" oder "*"   typischerweise der PRIMARY Key
      *        key     => "deviceID,portID,TYPEREG"   das sind die Indexes, als Keys, nur wenn diese Unterschiedlich sind wird eine neue Eintrag erzeugt, sonst geändert
      *        ident   => "";
+     *        unique  => string of several entries seperated by comma
      *        change  => "Update";
      *        history => "";
      *
@@ -297,19 +304,30 @@ class sqlOperate extends sqlHandle
      *
      *  Beispiele:  advise[index]="registerID", [key]=registerID für WHERE registerId=devicelist[registerID]
      *
+     * Zuerst Anzahl der vorhandenen Eintraege in der Tabelle table rausfinden
+     * abhängig wie advise[key] definiert ist:  empty, wert => devicelist[wert]  zB count (Name) from Table personen where Name = Wolfgang AND Surname = Joebstl
+     *      SELECT COUNT(*) FROM $table;                 wenn column nicht definiert ist
+     *      SELECT COUNT(*) As $column FROM $table;      wenn column als Wert definiert ist und needle default oder * ist
+     *      SELECT COUNT($column) FROM $table WHERE $column='$needle';
+     *      SELECT COUNT($column) FROM $table WHERE $column[0]='$needle[0]' AND|OR $column[1]='$needle[1]';
+     * wenn Count 0 ist einen neuen Eintrag machen
+     * nach key die anderen Filter ident und unique testen
+     * wenn keine Eintraege vorhanden
+     *
      */
 
     public function updateTableEntriesValues($table,$deviceList,$advise,$config=false,$updated=true,$debug=false)
         {
-        //if ( ($debug) && ($table=="registers"))  echo "\nsqlOperate:updateTableEntriesValue('$table', ...), ".json_encode($advise)."\n"; 
+        //if ( ($debug>1) && ($table=="registers"))  echo "\nsqlOperate:updateTableEntriesValue('$table', ...), ".json_encode($advise)."\n"; 
+        if ($debug>1)   echo "\nsqlOperate::updateTableEntriesValue('$table', ...), Advise : ".json_encode($advise)." expecting \"index\" \"unique\" \"key\" otherwise string set as empty\n"; 
         //print_r($deviceList);
-        $text="";
+        $text="";           // illustrates the sql command 
 
         /* Konfiguration rausfinden und überprüfen */
         if ($config === false) $config=$this->getDatabaseConfig()[$table];
-        if (isset($advise["index"])===false) $advise["index"] = "*";
-        if (isset($advise["unique"])===false) $advise["unique"]="";
-        if (isset($advise["key"])===false) $advise["key"]="";                       // Fehlerbehandlung weiter unten bereits vorgesehen
+        if (isset($advise["index"])===false)    $advise["index"] = "*";
+        if (isset($advise["unique"])===false)   $advise["unique"]="";
+        if (isset($advise["key"])===false)      $advise["key"]="";                       // Fehlerbehandlung weiter unten bereits vorgesehen
 
         /* mehrere uniques möglich, auspacken */
         $uniques=explode(",",$advise["unique"]);
@@ -323,7 +341,7 @@ class sqlOperate extends sqlHandle
             } 
         else
             {
-            foreach ($uniques as $indexVal => $entry) 
+            foreach ($uniques as $indexVal => $entry)               // Pärchen aus Unique zB WHERE Name = Value AND Parent = Value
                 {
                 $text .= $entry."=".$deviceList[$entry]."   ";
                 $unis[$indexVal]=$deviceList[$entry];    
@@ -356,43 +374,51 @@ class sqlOperate extends sqlHandle
             {
             $text .= $entry."=".$deviceList[$entry]."   ";
             $vars[$indexVal]=$deviceList[$entry];    
-            }    
-        $sql = $this->whereStatement($keys,$vars);          // text ist die Auflistung der Keys und Werte, sql die Abfrage dazu, Default ist AND Verknüpfung
+            }
+        //print_R($keys); print_R($vars);         // 0 => key, 0 => var 
+        //if ($debug>1) echo "whereStatement ".json_encode($keys)." ".json_encode($vars)."\n";    
+        $sql = $this->whereStatement($keys,$vars, true, $debug);          // text ist die Auflistung der Keys und Werte, sql die Abfrage dazu, Default ist AND Verknüpfung
         //print_r($deviceList);
 
-        /* Anzahl der vorhandenen Eintraege in der Tabelle table rausfinden */
+        /***** Anzahl der vorhandenen Eintraege in der Tabelle table für advise[key] rausfinden */
         $count = $this->countTable($table,$keys,$vars,true,$debug);           // SELECT COUNT(column) FROM deviceList WHERE column='$var'; WHERE statement wird aus keys und vars abgeleitet, column ist der erste Key, true für AND Verknüpfung
-        //$count = $this->countTable($table,$keys,$vars,true,true);            // true für AND, true für Debug
-        //echo "$text, gefunden Anzahl : $count.\n";
-        //if ($debug) echo "$text, gefunden Anzahl : $count.\n";
+        if ($debug) echo "Command : $text, Result: gefundene Anzahl : $count.\n";
 
         $update=false;
         if ($count == 0)            // neuer Eintrag
             {
-            //echo "      updateTableEntriesValue: Eintrag in Tabelle '$table' für $text noch nicht gefunden. Neuer Eintrag:\n";
             if ($debug) 
                 {
+                echo "      updateTableEntriesValue: Eintrag in Tabelle '$table' für $text noch nicht gefunden. Neuer Eintrag:\n";
                 //print_r($keys); print_r($advise); 
                 print_r($deviceList);
                 }
             $countIdent=0;
             if ($advise["ident"] != "")             // Filter aus [ident] = [identTgt]
                 {
-                //print_r($deviceList[$advise["identTgt"]]);
-                $countIdent = $this->countTable($table,$advise["ident"],$deviceList[$advise["identTgt"]]);           // SELECT COUNT(column) FROM table WHERE column='$var'; WHERE statement wird aus keys und vars abgeleitet, column ist der erste Key
+                if ($debug>1) { echo "Filter aus ".$advise["ident"]."\n"; print_r($deviceList[$advise["identTgt"]]); }
+                //function countTable($table,$column,$needle="*",$and=true,$debug=false)
+                $countIdent = $this->countTable($table,$advise["ident"],$deviceList[$advise["identTgt"]],true,$debug);           // SELECT COUNT(column) FROM table WHERE column='$var'; WHERE statement wird aus keys und vars abgeleitet, column ist der erste Key
+                if ($debug>1) echo "whereStatement ".json_encode($advise["ident"])." ".json_encode($deviceList[$advise["identTgt"]])."\n"; 
                 $sql = $this->whereStatement($advise["ident"],$deviceList[$advise["identTgt"]]);          // text ist die Auflistung der Keys und Werte, sql die Abfrage dazu, Default ist AND Verknüpfung
                 }
             if ($countIdent==0) // create
                 {
-                $countUnique = $this->countTable($table,$uniques,$unis,false);           // SELECT COUNT(column) FROM table WHERE column='$var'; WHERE statement wird aus keys und vars abgeleitet, column ist der erste Key, OR Statement                    
-                echo "      CreateTableEntry  $table $text  Unique Count: $countUnique \n";
+                $countUnique=0;
+                if ($advise["unique"] != "")             // Filter
+                    {
+                    $countUnique = $this->countTable($table,$uniques,$unis,false,$debug);           // SELECT COUNT(column) FROM table WHERE column='$var'; WHERE statement wird aus keys und vars abgeleitet, column ist der erste Key, OR Statement  
+                    echo "Unique Count: $countUnique \n";                  
+                    }
                 if ($countUnique==0)
                     {
+                    echo "      CreateTableEntry Table : $table Command : $text , \n";
                     $this->createTableEntryValues($table, $keys, $vars, $deviceList, $advise, $config, $debug);
 
                     }
-                else
+                else            // doppelten Eintrag gefunden, suchen und löschen
                     {
+                    if ($debug>1) echo "doubles found with whereStatement uniques : ".json_encode($uniques)." unis : ".json_encode($unis)."\n"; 
                     $sql = $this->whereStatement($uniques,$unis,false);
                     $sqlCommand = "SELECT * FROM $table ".$sql;
                     echo " >SQL Command : $sqlCommand\n";                     
@@ -831,7 +857,7 @@ class sql_serverGateways extends sqlOperate
         return $config;   
         }
 
-    /* syncTableValues für das serverGateways Array
+    /* sql_serverGateways::syncTableValues für das serverGateways Array
      *
      * noch nicht vollstaendig implementiert, da wahrscheinlich kein vollstaendiges Array verfügbar sein wird
      * Name ist der Unique Index, serverGatewayID der primary Index als Int Zahl -> selbe Struktur wie bei allen anderen tables
@@ -848,7 +874,7 @@ class sql_serverGateways extends sqlOperate
         $sql = "SELECT serverGatewayID,Name FROM $table";
         $result1=$this->query($sql);
         $fetch = $result1->fetch();
-        //print_r($fetch);      // index 0,1,2 mit den beiden Eintraegen serverGatewayID und Name
+        if ($debug>1) print_r($fetch);      // index 0,1,2 mit den beiden Eintraegen serverGatewayID und Name
         
         $indexTable=array();
         foreach ($fetch as $entry)      // wenn ein Name gesetzt ist ein array mit index name und gateway id
@@ -863,7 +889,7 @@ class sql_serverGateways extends sqlOperate
             echo str_pad($name,30);            
             $serverGateways[$name]["Name"]=$name;           // vervollstaendigen, manchmal erforderlich
             if ( (isset($serverGateways[$name]["Parent"])) && (isset($indexTable[$serverGateways[$name]["Parent"]])) ) $serverGateways[$name]["parentID"] = $indexTable[$serverGateways[$name]["Parent"]];
-            $result=$this->updateEntriesValues($serverGateways[$name]);
+            $result=$this->updateEntriesValues($serverGateways[$name],false,$debug);
             if ($result["Status"] !== false)                // update Geräteeintrag erfolgreich
                 {
                 $serverGatewayID=$result["Index"];
@@ -873,10 +899,12 @@ class sql_serverGateways extends sqlOperate
             }
         }
 
-    /* wird von syncTableValues aufgerufen */
-
+    /* sql_serverGateways::updateEntriesValues
+     * wird von syncTableValues aufgerufen 
+     */
     public function updateEntriesValues($values, $updated=false,$debug=false)
         {
+        if ($debug) echo "sql_serverGateways::updateEntriesValues aufgerufen:\n";
         $advise=array();  // Index deviceID, Identifier name
         $advise["index"] = "serverGatewayID";
         $advise["key"]="Name";
@@ -960,24 +988,24 @@ class sql_topologies extends sqlOperate
         return $config;   
         }
 
-    /* syncTableValues für das topology Array
+    /* sql_topologies::syncTableValues für das topology Array
      *
      *
      */
 
     public function syncTableValues($topology,$debug=false)
         {
-        if ($debug) echo "syncTableValues für das topology Array:\n";
+        if ($debug) echo "sql_topologies::syncTableValues für das topology Array aufgerufen:\n";
         $table="topologies";        // Datenbank Tabelle in die gespeichert wird
         $columnValue="Name";        // Key aus dem Array und die Spalte aus der Datenbank Tabelle
-        $this->compareSizeArrayTable($topology,$columnValue);     // Name der Tabelle aus dem class Name abgeleitet
-
+        $this->compareSizeArrayTable($topology,$columnValue,$debug);     // Name der Tabelle aus dem class Name abgeleitet
+        if ($debug>1) { $config = $this->getDatabaseConfig($this->tableName); print_R($config); }
         $sql = "SELECT topologyID,Name FROM $table";
         $result1=$this->query($sql);
         $fetch = $result1->fetch();
         //print_r($fetch);
         $parentTable=array();
-        foreach ($fetch as $entry)
+        foreach ($fetch as $entry)          // check ob zwei gleiche Räume in der Tabelle sind
             {
             if (isset($parentTable[$entry["Name"]])===false) $parentTable[$entry["Name"]]=$entry["topologyID"];
             else echo "Fehler, zwei gleiche Räume in der Topologie.\n";
@@ -989,7 +1017,7 @@ class sql_topologies extends sqlOperate
             echo str_pad($name,30);            
             $topology[$name]["Name"]=$name;
             if ( (isset($topology[$name]["Parent"])) && (isset($parentTable[$topology[$name]["Parent"]])) ) $topology[$name]["parentID"] = $parentTable[$topology[$name]["Parent"]];
-            $result=$this->updateEntriesValues($topology[$name]);
+            $result=$this->updateEntriesValues($topology[$name], true, $debug);         // nicht jedesmal die ganze Tabelle löschen
             if ($result["Status"] !== false)                // update Geräteeintrag erfolgreich
                 {
                 $topologyID=$result["Index"];
@@ -999,8 +1027,9 @@ class sql_topologies extends sqlOperate
             }
         }
 
-    /* wird von   syncTableValues aufgerufen */
-
+    /* wird von syncTableValues aufgerufen 
+     * advise so zusammenbauen damit es einen Sinn macht     
+     */
     public function updateEntriesValues($values, $updated=false,$debug=false)
         {
         $advise=array();  // Index deviceID, Identifier name
@@ -1280,7 +1309,7 @@ class sql_deviceList extends sqlOperate
     public function syncTableValues($deviceList,$debug=false)
         {
         // deviceList ist auch das Array mit den Inputdaten und config die gerade synchronisierte config der Datenbank 
-        if ($debug) echo "  syncTableValues für das deviceList Array, Debug Mode ein:\n";
+        if ($debug) echo "  sql_deviceList::syncTableValues für das deviceList Array, Debug Mode ein:\n";
 
         $sql_instances = new sql_instances();
         $sql_channels = new sql_channels();
@@ -1760,11 +1789,11 @@ class sql_valuesOnRegs extends sqlOperate
         $advise["change"]="Update";
         $advise["history"]="";
             
-        if ($debug) echo "syncTableValues für das valuesOnRegs Array:\n";
+        if ($debug) echo "sql_valuesOnRegs::syncTableValues für das valuesOnRegs Array:\n";
         $table="valuesOnRegs";                                                  // Datenbank Tabelle in die gespeichert wird
         $columnValue=$advise["key"]; 
         $indexID=$advise["index"];                                                   // Key aus dem Array und die Spalte aus der Datenbank Tabelle
-        $this->compareSizeArrayTable($valuesOnRegs,$columnValue);     // Name der Tabelle aus dem class Name abgeleitet
+        $this->compareSizeArrayTable($valuesOnRegs,$columnValue,$debug);     // Name der Tabelle aus dem class Name abgeleitet
 
         /*   es wird nicht auf sich selber referenziert, kann weggelassen werden 
         $sql = "SELECT $indexID,$columnValue FROM $table";
@@ -1989,7 +2018,7 @@ class sqlHandle
             } 
         else 
             {
-            if ($debug) echo " --> Verbindung hergestellt.\n";
+            if ($debug) echo " --> Verbindung zu MySQL erfolgreich hergestellt.\n";
             }
         $this->available=true;
         }
@@ -2078,11 +2107,11 @@ class sqlHandle
      *
      */
 
-    public function getDatabaseConfiguration()
+    public function getDatabaseConfiguration($debug=false)
         {
         if ((isset(static::$configDataBase))==false) 
             {
-            //echo "getDatabaseConfiguration: return initial Config for Database '".$this->dataBase."' with MariaDB:\n";                
+            if ($debug) echo "getDatabaseConfiguration: return initial Config for Database '".$this->dataBase."' with MariaDB:\n";                
             switch ($this->dataBase)
                 {
                 case "ipsymcon":
@@ -2095,12 +2124,12 @@ class sqlHandle
             //print_r($config);
 
             /* Konfiguration prüfen und überarbeiten und gleich speichern */
-            static::$configDataBase=$this->checkandrepairDatabaseConfig($config);
+            static::$configDataBase=$this->checkandrepairDatabaseConfig($config, $debug);
             return static::$configDataBase;
             }            
         else 
             {
-            //echo "getDatabaseConfiguration: return Config for Database ".$this->dataBase." with MariaDB:\n";
+            if ($debug) echo "getDatabaseConfiguration: return Config for Database ".$this->dataBase." with MariaDB:\n";
             return static::$configDataBase;
             }
         }
@@ -2187,16 +2216,17 @@ class sqlHandle
      *
      */
 
-    public function whereStatement($column,$needle,$and=true)
+    public function whereStatement($column,$needle,$and=true, $debug=false)
         {
-        if (is_array($column))
+        if ( (is_array($column)) && (is_array($needle)) )
             {
-            if ((sizeof($column))>0)
+            if ( ((sizeof($column))>0) && (sizeof($column) == sizeof($needle)) )
                 {
                 $first=true; 
                 $sql = "WHERE ";
                 foreach ($column as $index => $entry)
                     {
+                    //if ($debug>1) { echo "whereStatement Name : $index => $entry Needle : ".$needle[$index]."\n";  }        // print_R($needle);
                     if ($first) 
                         { 
                         $first = false; 
@@ -2210,7 +2240,11 @@ class sqlHandle
                         }
                     }
                 }
-            else $sql="";
+            else 
+                {
+                $sql="";
+                echo "ERROR, whereStatement wrong input parameter, arrays differ. \n";
+                }
             }
         else $sql = "WHERE $column='$needle'";
         return ($sql);
@@ -2222,20 +2256,30 @@ class sqlHandle
      *
      * SELECT COUNT(".$column[0].") FROM $table WHERE $column[0]==$needle[$column[0]]
      *
+     * SELECT COUNT(*) FROM $table;                 wenn column nicht definiert ist
+     * SELECT COUNT(*) As $column FROM $table;      wenn column als Wert definiert ist und needle default oder * ist
+     * SELECT COUNT($column) FROM $table WHERE $column='$needle';
+     * SELECT COUNT($column) FROM $table WHERE $column[0]='$needle[0]' AND|OR $column[1]='$needle[1]';
+     *
      */ 
-
     public function countTable($table,$column,$needle="*",$and=true,$debug=false)
         {
-        if (is_array($column))
+        if ( (is_array($column)) && (sizeof($column)>0) && ($column[0] != "") )           // wenn ein array und auch befüllt und nicht ein empty Eintrag dann auch ein Where Statement reinquetschen
             {
-            $sql=$this->whereStatement($column,$needle,$and);
+            //if ($debug>1) echo "countTable $table whereStatement ".json_encode($column)." ".json_encode($needle)."\n"; 
+            $sql=$this->whereStatement($column,$needle,$and,$debug);
             $sqlCommand = "SELECT COUNT(".$column[0].") FROM $table $sql;";
             //if ($debug) echo "countTable mit sql Statement \"$sqlCommand\"\n";
             } 
         else 
             {
+            if (is_array($column)) { $column=""; $needle="*"; }         // definierte Werte schaffen
             if ($debug) echo "countTable('$table','$column','$needle','$and')\n"; 
-            if ($needle=="*")
+            if ($column=="")
+                {
+                $sqlCommand = "SELECT COUNT(*) FROM $table;";
+                }
+            elseif ($needle=="*")
                 {
                 $sqlCommand = "SELECT COUNT(*) As $column FROM $table;";        // funktioniert nur so
                 }
@@ -2580,7 +2624,7 @@ class sqlHandle
                 }
             $textUpd .= "\n";
             }
-        if ( ($debug) && false)
+        if ($debug>1)
             {
             if ($update) echo "updateTableValue: Update, einen Wert gefunden. Abfrage SQL : $sqlCommand.\n";
             echo $textUpd;

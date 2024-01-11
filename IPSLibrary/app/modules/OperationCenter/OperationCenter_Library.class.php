@@ -5639,7 +5639,7 @@ class HomematicOperation extends OperationCenter
         parent::__construct($subnet,$debug);                       // sonst sind die Config Variablen noch nicht eingelesen
         }
 
-    /* get_CCUDevices
+    /* HomematicOperation::get_CCUDevices
      */
     public function get_CCUDevices()
         {
@@ -5647,8 +5647,8 @@ class HomematicOperation extends OperationCenter
         return($this->CCUDevices);    
         }
 
-    /* CCU socket Status 
-    */
+    /* HomematicOperation::ccuSocketStatus 
+     */
     public function ccuSocketStatus($log_OperationCenter=false, $debug=false)
         {
         if ($log_OperationCenter===false) return(false);
@@ -5665,8 +5665,8 @@ class HomematicOperation extends OperationCenter
         return ($socketHtml);
         }
 
-    /* CCU socket DutyCycle 
-    */
+    /* HomematicOperation::ccuSocketDutyCycle 
+     */
     public function ccuSocketDutyCycle($log_OperationCenter=false, $debug=false)
         {
         if ($log_OperationCenter===false) return(false);
@@ -5730,7 +5730,8 @@ class HomematicOperation extends OperationCenter
         }
 
 
-    /* Routinen von Syspingalldevices übersichtlicher machen, hier Sockets Homematic analysieren und ein html machen
+    /* HomematicOperation::sysStatusSockets
+     * Routinen von Syspingalldevices übersichtlicher machen, hier Sockets Homematic analysieren und ein html machen
      */
     public function sysStatusSockets($log_OperationCenter, $debug=false)
         {
@@ -7170,7 +7171,7 @@ class DeviceManagement
 	 *
 	 * Initialisierung des DeviceManagement Class Objektes
      *
-     * wichtige Variablen die erfast werden
+     * wichtige Variablen die erfast werden (????)
      *      $this->HMIs
      *      $this->HomematicAddressesList
      *
@@ -7884,10 +7885,11 @@ class DeviceManagement
 	 *
 	 */
 	 
-	function get_ActionButton()
+	function get_ActionButton($debug=false)
 		{
 		$countHMI = sizeof($this->HMIs);
-		//echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
+		if ($debug) echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
+        if ($this->HMIs==0) echo "No Homematic Instances, doublecheck and call class DeviceManagement_Homematic.\n";
 	    $ActionButton=array();
 		if ($countHMI>0)
 	        {
@@ -8001,7 +8003,7 @@ class DeviceManagement
 
 	function getHomematicAddressList($callCreateReport=false, $debug=false, $supress=false)
 		{
-        //if ($debug) echo "DeviceManagement::getHomematicAddressList aufgerufen.\n";
+        if ($debug>1) echo "DeviceManagement::getHomematicAddressList aufgerufen : Evaluate HMI : ".json_encode($this->HMIs)."\n";
 		$countHMI = sizeof($this->HMIs);
 		$addresses=array();
 		if ($countHMI>0)
@@ -8069,71 +8071,70 @@ class DeviceManagement
     private function updateHmiReport($HMI,$debug=false, $supress=false, $callCreateReport=false)
         {
         $result=false; 
-         
-				$configHMI=IPS_GetConfiguration($HMI);
-				if ($debug)             // no information available in configuration wether creation of report as variable is activated
-					{
-					echo "\n-----------------------------------\n";
-					echo "Konfiguration für HMI Report Creator : ".$HMI." (".IPS_GetName($HMI).")\n";
-					echo $configHMI."\n";
-					}
-	            $childrens=IPS_GetChildrenIDs($HMI);
-    	        if (isset($childrens[0]))
-        	        {
-                    if (IPS_GetName($childrens[0]) != "Device Liste") echo "   Name of HMI_CreateReport children not \"Device Liste\", is \"".IPS_GetName($childrens[0])."\"   \n";
+        $configHMI=IPS_GetConfiguration($HMI);
+        $lastUpdateRequestTimeId = CreateVariableByName($HMI,"HMIReportUpdateRequestTime", 1, "", "", 101, null);         // integer, time
+        $deviceListId            = @IPS_GetObjectIDByName("Device Liste",$HMI);
+        if ($debug)             // no information available in configuration wether creation of report as variable is activated
+            {
+            echo "\n-----------------------------------\n";
+            echo "updateHmiReport aufgerufen, Konfiguration für HMI Report Creator : ".$HMI." (".IPS_GetName($HMI).")\n";
+            echo $configHMI."\n";
+            echo "IDs found as childrens under Report Instance : LastUpdate $lastUpdateRequestTimeId DeviceList $deviceListId \n";
+            }
+        if (isset($deviceListId))
+            {
+            $lastUpdate=IPS_GetVariable($deviceListId)["VariableChanged"];
+            $noUpdate=time()-$lastUpdate;
+            if ( $noUpdate > (48*60*60) )           // Abfragen für Fehlermeldungen etwas entschärft
+                {
+                if ( $noUpdate > (100*60*60) )           // schwerer Fehler, wenn das Update mehrere Tage lang nicht durchgeht
+                    {
+                    if ($debug) echo  "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". CCU might had crashed. Please check. no more request for  HMI_CreateReport($HMI) to save CCU power.\n";
+                    IPSLogger_Err(__file__, "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". CCU might had crashed. Please check.");
+                    }
+                else
+                    {
+                    $message = "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". Do right now.";
+                    if ($debug) echo "     $message\n";
+                    if ( $noUpdate > (25*60*60) )
+                        {
+                        SetValue($this->HMI_ReportStatusID,$message);
+                        $callCreateReport=true;
+                        }
                     else
                         {
-                        $lastUpdate=IPS_GetVariable($childrens[0])["VariableChanged"];
-                        $noUpdate=time()-$lastUpdate;
-                        if ( $noUpdate > (48*60*60) )           // Abfragen für Fehlermeldungen etwas entschärft
+                        $hoursnok=round($noUpdate/60/60);
+                        if (GetValue($this->HMI_ReportStatusID)==$message) IPSLogger_Err(__file__, "HMI_CreateReport did not execute for $hoursnok hours. CCU might had crashed. Please check.");
+                        else 
                             {
-                            if ( $noUpdate > (100*60*60) )           // schwerer Fehler, wenn das Update mehrere Tage lang nicht durchgeht
-                                {
-                                IPSLogger_Err(__file__, "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". CCU might had crashed. Please check.");
-                                }
-                            else
-                                {
-                                $message = "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". Do right now.";
-                                if ($debug) echo "     $message\n";
-                                if ( $noUpdate > (25*60*60) )
-                                    {
-                                    SetValue($this->HMI_ReportStatusID,$message);
-                                    $callCreateReport=true;
-                                    }
-                                else
-                                    {
-                                    $hoursnok=round($noUpdate/60/60);
-                                    if (GetValue($this->HMI_ReportStatusID)==$message) IPSLogger_Err(__file__, "HMI_CreateReport did not execute for $hoursnok hours. CCU might had crashed. Please check.");
-                                    else 
-                                        {
-                                        SetValue($this->HMI_ReportStatusID,$message);
-                                        $callCreateReport=true;
-                                        }
-                                    }
-                                }
+                            SetValue($this->HMI_ReportStatusID,$message);
+                            $callCreateReport=true;
                             }
-                        else
-                            {
-                            if ($supress==false) echo "    HMI_CreateReport für ".IPS_GetName($HMI)." wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.\n";
-                            SetValue($this->HMI_ReportStatusID,"HMI_CreateReport wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.");
-                            $result=$childrens[0];
-                            }
-                        //print_r($childrens);
-                        //echo GetValue($childrens[0]);
-                        $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
-                        //print_R($HomeMaticEntries);
-                        if ($debug) echo "updateHmiReport, ".IPS_GetName($HMI)." ($HMI) HomeMaticEntries erzeugt : ".sizeof($HomeMaticEntries)."\n";
-                        if ( ( ( (is_array($HomeMaticEntries)) && (sizeof($HomeMaticEntries)>0) ) === false) || $callCreateReport)
-                            {
-                            //if ($debug) 
-                                {
-                                echo "     updateHmiReport: HMI_CreateReport($HMI) aufrufen:";   
-                                }
-                            HMI_CreateReport($HMI);  
-                            if ($debug) echo "  --> done\n";                  
-                            }                    
-                        }           // report available, check whether update needed
-                    }                   // es gibt einen report
+                        }
+                    }
+                }
+            else
+                {
+                if ($supress==false) echo "    HMI_CreateReport für ".IPS_GetName($HMI)." wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.\n";
+                SetValue($this->HMI_ReportStatusID,"HMI_CreateReport wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.");
+                $result=$deviceListId;
+                }
+            $HomeMaticEntries=json_decode(GetValue($deviceListId),true);
+            //print_R($HomeMaticEntries);
+            if ($debug) echo "updateHmiReport, ".IPS_GetName($HMI)." ($HMI) HomeMaticEntries erzeugt : ".sizeof($HomeMaticEntries)."\n";
+            if ( ( ( (is_array($HomeMaticEntries)) && (sizeof($HomeMaticEntries)>0) ) === false) || $callCreateReport)
+                {
+                $lastUpdateRequestTime = GetValue($lastUpdateRequestTimeId);
+                SetValue($lastUpdateRequestTimeId,time());
+                //if ($debug) 
+                    {
+                    echo "     updateHmiReport: HMI_CreateReport($HMI) aufrufen:";   
+                    }
+                HMI_CreateReport($HMI);  
+                if ($debug) echo "  --> done\n";                  
+                }                    
+            }                   // es gibt einen report
+        else echo "ERROR, no HMI Report created, no devicelist available.\n";
         return ($result);
         }
 
