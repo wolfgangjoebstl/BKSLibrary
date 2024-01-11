@@ -7,7 +7,7 @@
 	 * man in der Datei IPSModuleManager.ini verändern kann (Ablagerort: IPSLibrary.install.InitializationFile).
 	 *
 	 * @file          IPSModuleManager.class.php
-	 * @author        Andreas Brauneis
+	 * @author        Andreas Brauneis fork Wolfgang Jöbstl
 	 *
 	 */
 
@@ -29,7 +29,7 @@
 	 *  Version 2.5.1, 05.01.2012<br/>
 	 *  Version 2.5.3, 29.10.2012  Adapted Version Handling<br/>
 	 */
-	class IPSModuleManager{
+	class ModuleManagerIPS7{
 
  		const DOWNLOADLISTFILE_PATH            = "IPSLibrary/install/DownloadListFiles/";
 		const DOWNLOADLISTFILE_SUFFIX          = '_FileList.ini';
@@ -130,6 +130,11 @@
 			global $_IPS;
 			$_IPS['PROXY'] = $this->managerConfigHandler->GetValueDef('Proxy', '', ''); /*Proxy Settings*/
 		}
+
+        public function getSourceRepository()
+            {
+            return($this->sourceRepository);
+            }
 
 		/**
        * @public
@@ -511,7 +516,6 @@
 		
 			$resultList = array();
 			$scriptList = $this->fileConfigHandler->GetValueDef($fileKey, $fileTypeSection, array());
-			print_R($scriptList);
 			
 			foreach ($scriptList as $idx => $script) {
 				if ($script=='') {
@@ -542,6 +546,7 @@
 							$fullScriptName   = IPS_GetKernelDir().'user/'.$this->moduleName.'/'.$script;				/* jw, change */
 						} else {
 							$fullScriptName   = $baseDirectory.'/IPSLibrary/webfront/'.$this->moduleName.'/'.$script;
+                            echo "$baseDirectory results into $fullScriptName \n";
 						}
 						break;
 					case 'Install':
@@ -564,6 +569,68 @@
 			return $resultList;
 		}
 
+    private function GetScriptListWebfront($fileKey, $fileTypeSection, $baseDirectory) {
+			if ($fileKey=='DownloadFiles') {
+                echo "DownloadFiles behandlen.\n";
+				return array($this->GetModuleDownloadListFile($baseDirectory));
+			}
+		
+            echo $this->GetModuleDownloadListFile(IPS_GetKernelDir().'scripts/')."\n";  // ini File des Moduls
+
+			$resultList = array();
+			$scriptList = $this->fileConfigHandler->GetValueDef($fileKey, $fileTypeSection, array());           // filekey zB ScriptFiles  fileTypeSection zB Webfront
+			//print_R($scriptList);
+
+			foreach ($scriptList as $idx => $script) {
+				if ($script=='') {
+					continue;
+				}
+				$script = str_replace('\\', '/', $script);
+				
+				if ($fileKey=='DefaultFiles') {
+					$script   = 'Default/'.$script;
+				} elseif ($fileKey=='ExampleFiles') {
+					$script   = 'Examples/'.$script;
+				} else {
+				}
+
+				switch ($fileTypeSection) {
+					case 'App':
+						$namespace = $this->fileConfigHandler->GetValue(IPSConfigHandler::MODULENAMESPACE);
+						$fullScriptName   = $baseDirectory.'::'.$namespace.'::'.$script;
+						break;
+					case 'Config':
+						$namespace = $this->fileConfigHandler->GetValue(IPSConfigHandler::MODULENAMESPACE);
+						$namespace = str_replace('IPSLibrary::app', 'IPSLibrary::config', $namespace);
+						$fullScriptName   = $baseDirectory.'::'.$namespace.'::'.$script;
+						break;
+					case 'WebFront':
+						if ($baseDirectory==IPS_GetKernelDir().'scripts/') {
+							//$fullScriptName   = IPS_GetKernelDir().'webfront/user/'.$this->moduleName.'/'.$script;
+							$fullScriptName   = IPS_GetKernelDir().'user/'.$this->moduleName.'/'.$script;				// jw, change 
+						} else {
+							$fullScriptName   = $baseDirectory.'/IPSLibrary/webfront/'.$this->moduleName.'/'.$script;
+						}
+						break;
+					case 'Install':
+						if ($fileKey=='DefaultFiles' or $fileKey=='ExampleFiles') {
+							$fullScriptName   = $baseDirectory.'/IPSLibrary/install/InitializationFiles/'.$script;
+						} else {
+							$fullScriptName   = $baseDirectory.'/IPSLibrary/install/InstallationScripts/'.$script;
+						}
+						break;
+					default:
+						die('Unknown fileTypeSection '.$fileTypeSection);
+				}
+				$fullScriptName   = str_replace('::', '/', $fullScriptName);
+				$fullScriptName   = str_replace('//', '/', $fullScriptName);
+				$fullScriptName   = str_replace('\\\\', '\\', $fullScriptName);
+				$fullScriptName   = str_replace('\\192.168', '\\\\192.168', $fullScriptName);
+
+				$resultList[] = $fullScriptName;
+			}
+			return $resultList;
+		}
 		/**
 		 * @public
 		 *
@@ -859,18 +926,59 @@
 		private function DeployModuleFiles($fileKey, $fileTypeSection, $sourceRepository) {
 			$backupDirectory = $this->managerConfigHandler->GetValueDef('DeployBackupDirectory', '', IPS_GetKernelDir().'backup/IPSLibrary_Deploy/');
 			$backupHandler   = new IPSBackupHandler($backupDirectory);
-			$fileTypeSectionLocal = $fileTypeSection;			/* jw, changes begin */
-			if ($fileTypeSection=='WebFront') $fileTypeSectionLocal = "";
-			
-			$localList       = $this->GetScriptList($fileKey, $fileTypeSectionLocal, IPS_GetKernelDir().'scripts/');			/* jw, changes end */
+				
+			$localList       = $this->GetScriptList($fileKey, $fileTypeSection, IPS_GetKernelDir().'scripts/');		 
 			$repositoryList  = $this->GetScriptList($fileKey, $fileTypeSection, $sourceRepository);
 			$backupList      = $this->GetScriptList($fileKey, $fileTypeSection, $backupHandler->GetBackupDirectory());
 
-		if ($fileTypeSectionLocal == "") { echo "Deploy Modul Files Webfront :\n"; print_R($localList); }
 			$this->backupHandler->CreateBackup($repositoryList, $backupList);
 			$this->fileHandler->FilterEqualFiles($localList, $repositoryList);
-			if ($fileTypeSectionLocal == "") print_R($localList);
 			$this->fileHandler->WriteFiles($localList, $repositoryList);
+		}
+
+        /* Testfunktion für Verständinis Webfront Behandlung
+         */
+        private function DeployModuleFilesWebFront($fileKey, $sourceRepository) {
+			$backupDirectory = $this->managerConfigHandler->GetValueDef('DeployBackupDirectory', '', IPS_GetKernelDir().'backup/IPSLibrary_Deploy/');
+			$backupHandler   = new IPSBackupHandler($backupDirectory);
+			
+			$fileTypeSection='WebFront';
+			echo "DeployModuleFilesWebFront $fileKey $fileTypeSection $sourceRepository \n";
+			$localList       = $this->GetScriptListWebfront($fileKey, $fileTypeSection, IPS_GetKernelDir().'scripts/');	
+            print_r($localList);
+			$repositoryList  = $this->GetScriptList($fileKey, $fileTypeSection, $sourceRepository);
+			$backupList      = $this->GetScriptList($fileKey, $fileTypeSection, $backupHandler->GetBackupDirectory());
+			//$this->backupHandler->CreateBackup($repositoryList, $backupList);
+            print_R($repositoryList);
+            $this->fileHandler->FilterEqualFiles($localList, $repositoryList);
+			
+            /* $sourceOut      = array();
+			$destinationOut = array();
+            foreach ($localList as $idx=>$sourceScript) {
+				$sourceFile          = $localList[$idx];
+				$destinationFile     = $repositoryList[$idx];
+				echo "compare $sourceFile with $destinationFile :";
+				$addFileToList = true;
+				if (!file_exists($destinationFile)) {
+                    echo "destination does not exists";
+					$addFileToList = true;
+				} else {
+					$sourceContent      = file_get_contents($sourceFile);
+					$destinationContent = file_get_contents($destinationFile);
+					$sourceContent      = str_replace(chr(13), '',$sourceContent);
+					$destinationContent = str_replace(chr(13), '',$destinationContent);
+					if ($sourceContent == $destinationContent) {
+						$addFileToList = false;
+					}
+				}
+				if ($addFileToList) {
+					$sourceOut[]      = $sourceFile;
+					$destinationOut[] = $destinationFile;
+				};
+                echo "\n";
+			}  */
+            print_r($localList);
+            print_R($repositoryList);
 		}
 
 		/**
@@ -911,6 +1019,14 @@
 			$this->DeployModuleFiles('ExampleFiles', 'WebFront', $sourceRepository);
 
 			$this->logHandler->Log('Finished Deploy of Module "'.$this->moduleName.'"');
+		}
+
+        public function DeployModuleWebfront($sourceRepository='', $changeText='', $installationRequired=false) {
+            echo "DeployModuleWebfront($sourceRepository \n";
+			if ($sourceRepository=='') { $sourceRepository = $this->sourceRepository; }
+			$sourceRepository = IPSFileHandler::AddTrailingPathDelimiter($sourceRepository);
+			$this->DeployModuleFilesWebfront('ScriptFiles',  $sourceRepository);
+			//$this->DeployModuleFiles('ExampleFiles', 'WebFront', $sourceRepository);
 		}
 
 		/**

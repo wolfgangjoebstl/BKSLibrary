@@ -14,6 +14,8 @@
 	 *
 	 * You should have received a copy of the GNU General Public License
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 *
+	 * test Startpage Output
 	 */
 
 	$cookie_name = "identifier-symcon-startpage";
