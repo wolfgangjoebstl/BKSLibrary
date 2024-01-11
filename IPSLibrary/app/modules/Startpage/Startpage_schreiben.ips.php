@@ -81,6 +81,7 @@
     * 
     * aktuell ist die Wettertabelle nicht oben angeordnet, sondern unten
     *
+	*
     **************************************/
 
     if ($_IPS['SENDER']=="Execute") $debug=true;
