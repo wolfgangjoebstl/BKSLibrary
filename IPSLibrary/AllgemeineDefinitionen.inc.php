@@ -8499,6 +8499,7 @@ class ipsCharts
  * ipsOps, Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
  *
  * __construct              als Constructor wird entweder nichts oder der Modulname übergeben
+ * ipsVersion
  * path                     gibt den IPS Category Path als string return aus
  * totalChildren            die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen
  *     countChildren           rekursive Funktion dafür.
@@ -8541,6 +8542,19 @@ class ipsOps
         //print_r($ipsVersion);
         return($ipsVersion);
         }
+
+    /* check ob IPS version größer 6
+     */
+    public function ipsVersion7check()
+        {
+        $ipsVer = IPS_GetKernelVersion();
+        $ipsVers = explode(".",$ipsVer);
+        $ipsVersion["Major"]=(integer)$ipsVers[0];
+        $ipsVersion["Minor"]=(integer)$ipsVers[1];
+        //print_r($ipsVersion);
+        return(($ipsVersion["Major"]>6));
+        }
+
 
     /* den IPS Pfad ausgeben 
      */

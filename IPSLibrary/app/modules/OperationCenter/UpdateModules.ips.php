@@ -15,13 +15,14 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
 
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+    IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	
 	// Repository
 	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 	$repositoryJW="https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/";
 
-	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+	$moduleManager = new ModuleManagerIPS7('', '', sys_get_temp_dir(), true);
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();
@@ -99,7 +100,7 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
             echo "-----------------------------------------------------------------------------------------------------------------------------\n";
             echo "\n\n";		
             if (isset ($installedModules["OperationCenter"])) $log_Install->LogMessage("Update Module ".$upd_module." from Repository : ".$useRepository."    Aktuell vergangene Zeit : ".exectime($startexec)." Sekunden");
-            $LBG_module = new IPSModuleManager($upd_module,$useRepository);
+            $LBG_module = new ModuleManagerIPS7($upd_module,$useRepository);
             echo "-----------------------------------------------------------------------------------------------------------------------------\n";
             $LBG_module->LoadModule();
             $log[]="Load Module ".$upd_module." completed    Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden";   
