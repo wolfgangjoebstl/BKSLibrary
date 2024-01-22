@@ -1,4 +1,4 @@
-<?
+<?php
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *

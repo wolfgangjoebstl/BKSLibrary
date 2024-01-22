@@ -1,4 +1,4 @@
-<?
+<?php
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
@@ -97,48 +97,53 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
 
     if (isset ($installedModules["Guthabensteuerung"]))
         {
-        /* nur wenn Guthabensteuerung installiert ist ausführen */
-        echo "Mobilfunk Guthaben Struktur auf Remote Servern aufbauen:\n";
-        $struktur = $remote->RPC_CreateModuleByName("Guthaben");
-        echo "Struktur Server :\n";
-        print_r($struktur);
-        
-        /* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
-
-        $Guthabensteuerung=GuthabensteuerungList();
-        
-        foreach ($Guthabensteuerung as $Key)
+        // nur wenn Guthabensteuerung installiert ist und die Guthabenwerte wirklich auf remote Servern ausgewertet werden sollen ausführen 
+        $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
+        $GuthabenAllgConfig     = $guthabenHandler->getGuthabenConfiguration();                              //get_GuthabenAllgemeinConfig();        
+        if ( (isset($GuthabenAllgConfig["EvaluateGuthaben"])) && ($GuthabenAllgConfig["EvaluateGuthaben"]) )
             {
-            //set_time_limit(120);
-            $oid=(integer)$Key["OID"];
-            $variabletyp=IPS_GetVariable($oid);
-            //print_r($variabletyp);
-            if ($variabletyp["VariableProfile"]!="")
+            echo "Mobilfunk Guthaben Struktur auf Remote Servern aufbauen:\n";
+            $struktur = $remote->RPC_CreateModuleByName("Guthaben");
+            echo "Struktur Server :\n";
+            print_r($struktur);
+            
+            /* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
+
+            $Guthabensteuerung=GuthabensteuerungList();
+            
+            foreach ($Guthabensteuerung as $Key)
                 {
-                echo "    ".str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
-                }
-            else
-                {
-                echo "    ".str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
-                }
-            $parameter="";
-            foreach ($remServer as $Name => $Server)
-                {
-                echo "   Guthabensteuerung: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-                if ( $status[$Name]["Status"] == true )
-                    {			
-                    $rpc = new JSONRPC($Server["Adresse"]);
-                    $result=RPC_CreateVariableByName($rpc, $guthID[$Name], $Key["Name"], $Key["Typ"],$struktur[$Name]);
-                    //$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
-                    //$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
-                    //$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
-                    //$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
-                    $parameter.=$Name.":".$result.";";
+                //set_time_limit(120);
+                $oid=(integer)$Key["OID"];
+                $variabletyp=IPS_GetVariable($oid);
+                //print_r($variabletyp);
+                if ($variabletyp["VariableProfile"]!="")
+                    {
+                    echo "    ".str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
                     }
+                else
+                    {
+                    echo "    ".str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".exectime($startexec)." Sekunden\n";
+                    }
+                $parameter="";
+                foreach ($remServer as $Name => $Server)
+                    {
+                    echo "   Guthabensteuerung: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+                    if ( $status[$Name]["Status"] == true )
+                        {			
+                        $rpc = new JSONRPC($Server["Adresse"]);
+                        $result=RPC_CreateVariableByName($rpc, $guthID[$Name], $Key["Name"], $Key["Typ"],$struktur[$Name]);
+                        //$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
+                        //$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+                        //$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
+                        //$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
+                        $parameter.=$Name.":".$result.";";
+                        }
+                    }
+                $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events, das sind viele, einmal am Ende besser */
+                $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
                 }
-            $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events, das sind viele, einmal am Ende besser */
-            $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-            $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
             }
         }
 

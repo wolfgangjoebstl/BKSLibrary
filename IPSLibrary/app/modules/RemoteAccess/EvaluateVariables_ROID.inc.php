@@ -1,4 +1,4 @@
-<?
+<?php
 function GuthabensteuerungList() { return array(
 "Phone_Cost" => array(
          "OID" => 17479, 

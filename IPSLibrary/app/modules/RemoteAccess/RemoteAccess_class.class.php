@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -94,7 +94,7 @@ class RemoteAccess
 	 */
 	public function __construct()
 		{
-		$this->includefile='<?'."\n";
+		$this->includefile='<?php'."\n";
 
 		/* Beispiel für RemoteAccess_GetConfiguration()
 		 *		"BKS-VIS"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.20:88/api/',
