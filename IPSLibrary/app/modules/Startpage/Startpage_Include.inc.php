@@ -41,26 +41,88 @@
 
 
 	IPSUtils_Include ("IPSLogger.inc.php",                      "IPSLibrary::app::core::IPSLogger");
-
+	IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 
 	/*************************************************************************************************/
 
 	/**
-	 * Setz eine bestimmte Seite in der Startpage
+	 * Setzt eine bestimmte Seite in der Startpage
 	 *
-	 * @param string $action Action String
+	 * @param string $action Action String  
 	 * @param string $module optionaler Module String
 	 * @param string $info optionaler Info String
 	 */
-	function Startpage_SetPage($action, $module='', $info='') {
+	function Startpage_SetPage($action, $module='', $info='', $id='', $configuration='') {
 		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId), $action);               // Verschiedene Variablen in data :  Action
 		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_MODULE, $baseId), $module);
 		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_INFO, $baseId), $info);
 		$typeId = IPS_GetObjectIDByName("Startpagetype", $baseId);
+
+        $sqlHandle = new sqlHandle(false);           // false, default MySQL Instanz, true debug
+        if ($sqlHandle->available !==false)
+            {
+            $sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
+            $targetTable = "webfrontAccess";        // Zugriff mit Webfront Share Cookies
+            $targetTableClass = "sql_".$targetTable;
+            $sql = new $targetTableClass();
+            $values = array(
+                // accessID is automatic Key
+                "nameOfID"          => $action,                 // Cookie
+                "eventDescription"  => $info,                   // startofscript, button-eins etc
+                "eventName"         => $id,                     // TopologyReceiver
+                "configuration"     => $configuration,
+            );
+            $result=$sql->updateEntriesValues($values);
+            IPSLogger_Inf(__file__, 'Startpage_SetPage aufgerufen, Update Table '.$targetTable.":".json_encode($result));	
+            }
 		return ($typeId);		
 		}
-			
+
+    function Startpage_GetData($action,$full=false)
+        {
+        $tableArray = false;
+        $sqlHandle = new sqlHandle(false);           // false, default MySQL Instanz, true debug
+        if ($sqlHandle->available !==false)
+            {
+            $sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
+            $targetTable = "webfrontAccess";        // Zugriff mit Webfront Share Cookies
+
+            $tables=array("webfrontAccess"=>"eventName");
+            //echo "Show from all of these tables ".json_encode($tables)." the content:\n";
+            foreach ($tables as $table => $active)
+                {
+                if ($active !== false)
+                    {
+                    //echo "<br>\n---------------------------------------------------------------------------------<br>\n";
+                    //echo "Echo Values from MariaDB Database $table:<br>\n"; 
+                    if ($active !=1) $sql = "SELECT * FROM $table WHERE nameOfID='".$action."' AND eventName='TopologyReceiver' ORDER BY $active;";
+                    else $sql = "SELECT * FROM $table;";
+                    //echo "$sql<br>\n";
+                    $result1=$sqlHandle->query($sql);
+                    $tableArray = $result1->fetchSelect();
+                    $result1->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
+                    }
+                }
+
+            }
+        //return $tableArray;
+        if ($full=="configuration")
+            {
+            $config=array(); $id=0;
+            foreach ($tableArray as $idx => $entry)
+                {
+                $index = $entry["eventDescription"];
+                $index = str_replace("-","",$index);
+                $config[$index]=$entry["configuration"];
+                }
+            return json_encode($config);
+            }
+        elseif ($full) return $tableArray;
+        else return $tableArray[0]["configuration"];
+        }
+
+
 	/**
 	 * Refresh der Startpage
 	 *

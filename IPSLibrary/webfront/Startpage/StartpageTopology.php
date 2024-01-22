@@ -136,144 +136,108 @@
 		<a href="#" onClick=trigger_button('View4','','')>View4</a> |
 		<a href="#" onClick=trigger_button('View5','','')>View5</a> -->
 		<?php
-			IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-			IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
-			IPSUtils_Include ("Startpage_Include.inc.php", "IPSLibrary::app::modules::Startpage");
-			IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
+		IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+		IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+		IPSUtils_Include ("Startpage_Include.inc.php", "IPSLibrary::app::modules::Startpage");
+		IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
-			$identifier=false;
-			if(!isset($_COOKIE[$cookie_name])) {
-			  echo "Cookie named '" . $cookie_name . "' is not set!";
-			} else {
-				//echo "Cookie '" . $cookie_name . "' is set, Value is: " . $_COOKIE[$cookie_name];
-				$identifier = $_COOKIE[$cookie_name];
-				}
+		$identifier=false;
+		if(!isset($_COOKIE[$cookie_name])) {
+		  echo "Cookie named '" . $cookie_name . "' is not set!";
+		} else {
+			//echo "Cookie '" . $cookie_name . "' is set, Value is: " . $_COOKIE[$cookie_name];
+			$identifier = $_COOKIE[$cookie_name];
+			}
+		
+		$startpage = new StartpageWidgets("responsive");
+		$debug=false;
+		
+		$files=$startpage->readPicturedir();
+		$maxcount=count($files);
+		if ($maxcount>0) $showfile=rand(1,$maxcount-1);
+		   
+		$maxPicCols=2; $maxPicLines=2;   
+		$maxItems=4;   
+		$tempLine = $startpage->showTemperatureTableValues(0);
+		$addLine=$startpage->additionalTableLinesResponsive(0);
+		$items=$startpage->bottomTableLinesResponsive(0);                                       // nur zählen, sonst html5 code ausgeben
+		$itemLine=ceil($items/$maxItems);
+		$lines=$tempLine+$addLine+7+$itemLine;
 			
-			$startpage = new StartpageWidgets("responsive");
-			$debug=false;
-			
-			$files=$startpage->readPicturedir();
-			$maxcount=count($files);
-			if ($maxcount>0) $showfile=rand(1,$maxcount-1);
-			   
-			$maxPicCols=2; $maxPicLines=2;   
-			$maxItems=4;   
-			$tempLine = $startpage->showTemperatureTableValues(0);
-			$addLine=$startpage->additionalTableLinesResponsive(0);
-			$items=$startpage->bottomTableLinesResponsive(0);                                       // nur zählen, sonst html5 code ausgeben
-			$itemLine=ceil($items/$maxItems);
-			$lines=$tempLine+$addLine+7+$itemLine;
-				
-			$style =  "";
-			$style .= '.container-startpage { box-sizing: border-box; display:grid; grid-template-columns: 9fr 1fr 1fr 2fr; 
-												grid-template-rows:  repeat('.$lines.',auto);';
-			$style .= '                         grid-template-areas:';
-			$style .= '                             "picture cmd  cmd  cmd "'."\n"; 
-			$style .= '                             "picture icon icon ."'; 
-			for ($i=0;($i<$tempLine);$i++) 
-				  $style .= '                       "picture span'.$i.' span'.$i.' ."';
+		$style =  "";
+		$style .= '.container-startpage { box-sizing: border-box; display:grid; grid-template-columns: 9fr 1fr 1fr 2fr; 
+											grid-template-rows:  repeat('.$lines.',auto);';
+		$style .= '                         grid-template-areas:';
+		$style .= '                             "picture cmd  cmd  cmd "'."\n"; 
+		$style .= '                             "picture icon icon ."'; 
+		for ($i=0;($i<$tempLine);$i++) 
+			  $style .= '                       "picture span'.$i.' span'.$i.' ."';
 
-			switch ($addLine)
-				{
-				case -1:
-					$style .= '                     "picture add0 add0 add0"'; 
-					break;
-				case 0:
-					break;
-				case ($addLine<4):
-					for ($i=0;($i<$addLine);$i++) 
-						$style .= '                 "picture add'.$i.' add'.$i.' ."'; 
-					break;
-				default:
-					echo "Anzahl addLines $addLine kenn ich nicht.\n";
-					break;
-				}
-			$style .= '                             "picture . . ." 
-													"picture . . ." 
-													"picture . . ." 
-													"picture . . ."';
-			for ($i=0;($i<$itemLine);$i++)                                        
-				$style .= '                         "bottom bottom bottom bottom"';
-			$style .= '                             "info info info info";}'."\n";										
-                                          
-			$style .= '.container-bottomline { display:inline-grid; grid-template-columns: repeat('.$maxItems.',auto); 
-                                        grid-template-rows: auto;}';
-		    $style .= '.container-picture { display:inline-grid; grid-template-columns: repeat('.$maxPicCols.',auto); 
-                                        grid-template-rows: repeat('.$maxPicLines.',auto);}'."\n";
-										
-			//$style .= '.container-picture1 { display:inline-grid; grid-template-columns: auto; grid-template-rows: auto;"}'."\n";
-			$style .= '.container-picture1 { display:flex;}'."\n";
-			$style .= '.container-picture2 { display:inline-grid; grid-template-columns: 1fr 1fr 1fr; 
-                                        grid-template-rows: auto auto;
-                                        grid-template-areas:  "area1 area1 area2"
-                                                              "area1 area1 area2";}'."\n";
-			$wert = "";
-			$wert.= $startpage->writeStartpageStyle($style);			
-			
-			$wert.= '<div id="sp" class="container-startpage">';            // display type Table
-			$wert.=     '<div id="sp-pic" style="grid-area:picture">';                 // display type Cell
-			$wert.='	    <div id="sp-pic-grid" class="container-picture" style="width:100%;">';
-			$wert.=             '<div id="sp-pic-grid-left" style="grid-area:area1">';                 // display type Cell picture
-			$wert .=        		$startpage->showPictureWidgetResponsive(9);					// amount of pictures, you can switch
-			$wert.=                 '</div>';
-			$wert.=             '<div id="sp-pic-grid-right" style="grid-area:area2; display:none">';                 // display type Cell picture
-			$wert .=                $startpage->inclOrfWeather();
-			$wert.=                 '</div>';			
-			$wert.=         	'</div>';
-			$wert.=         '</div>';
-			$wert.=     '<div id="sp-cmd" class="container-cmd" style="grid-area:cmd; ">';                 // display type Cell cmd
-			$wert .=             $startpage->commandLineResponsive();
-			$wert.=         '</div>';			
-			$wert .=    $startpage->showTemperatureTableIcons();
-			$wert .=    $startpage->showTemperatureTableValues();
-			$wert .=    $startpage->additionalTableLinesResponsive();
-			$wert .=    $startpage->showWeatherTableResponsive();
-			$wert.='	<div id="sp-bot" style="grid-area:bottom; background-color:#7f8f9f">';
-			//$wert.='	    <div id="sp-bot-grid" class="container-bottomline" style="background-color:#4f3f3f; width:100%;">';
-			$wert .=             $startpage->bottomTableLinesResponsive();
-			//$wert.=             '</div>';    
-			$wert.=         '</div>'; 
-			$wert.='	<div id="sp-inf" style="grid-area:info; background-color:#7f6f5f">';    
-			$wert .=             $startpage->infoTableLinesResponsive(["ID"=>$identifier]);  			
-			$wert.=         '</div>';  			
-			$wert.='    </div>';          
-			echo $wert;
-			//echo $startpage->StartPageWrite(1);
-			
-			/*$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-			$action  = GetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId));
-			$module  = GetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_MODULE, $baseId));
-			$info    = GetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_INFO,   $baseId));
-			switch($action) {
-				case 'View1':
-					echo 'Hallo, hier ist View1 mit Temperaturwerten -check<br> ';
-					$Werte=IPS_GetChildrenIDs(22334);
-					foreach ($Werte as $Wert) echo "   ".$Wert."  ".IPS_GetName($Wert)."   ".GetValue($Wert)."<br>";
-					SetValue(35191,"View1 gedrueckt");
-					break;
-				case 'View2':
-					echo "Hallo, hier ist View2 mit Bewegungswerten <br>";
-					$Werte=IPS_GetChildrenIDs(22823);
-					foreach ($Werte as $Wert) echo "   ".$Wert."  ".IPS_GetName($Wert)."   ".(GetValue($Wert)?"Ein":"Aus")."<br>";	
-					SetValue(35191,"View2 gedrueckt");
-					break;
-				case 'View3':
-					echo "Hallo, hier ist View3 mit den installierten Modulen <br>";					
-					IPSUtils_Include ("IPSModuleManager.class.php", "IPSLibrary::install::IPSModuleManager");
-					$moduleManager = new IPSModuleManager();
-					$modules         = $moduleManager->GetInstalledModules();
-					foreach ($modules as $name => $module) echo "   ".$name."  ".$module."<br>";					
-					break;
-				case 'View4':
-					echo "Hallo, hier ist View4 mit der aktuellen Uhrzeit:<br>";
-					echo 'Es ist heute '.date("D.m.Y H:i:s").' Refresh ?';  					
-					break;
-				case 'View5':
-					echo "Hallo, hier ist View5";				
-					break;
-				default:
-					trigger_error('Unknown Action '.$action);
-			}  */
+		switch ($addLine)
+			{
+			case -1:
+				$style .= '                     "picture add0 add0 add0"'; 
+				break;
+			case 0:
+				break;
+			case ($addLine<4):
+				for ($i=0;($i<$addLine);$i++) 
+					$style .= '                 "picture add'.$i.' add'.$i.' ."'; 
+				break;
+			default:
+				echo "Anzahl addLines $addLine kenn ich nicht.\n";
+				break;
+			}
+		$style .= '                             "picture . . ." 
+												"picture . . ." 
+												"picture . . ." 
+												"picture . . ."';
+		for ($i=0;($i<$itemLine);$i++)                                        
+			$style .= '                         "bottom bottom bottom bottom"';
+		$style .= '                             "info info info info";}'."\n";										
+									  
+		$style .= '.container-bottomline { display:inline-grid; grid-template-columns: repeat('.$maxItems.',auto); 
+									grid-template-rows: auto;}';
+		$style .= '.container-picture { display:inline-grid; grid-template-columns: repeat('.$maxPicCols.',auto); 
+									grid-template-rows: repeat('.$maxPicLines.',auto);}'."\n";
+									
+		//$style .= '.container-picture1 { display:inline-grid; grid-template-columns: auto; grid-template-rows: auto;"}'."\n";
+		$style .= '.container-picture1 { display:flex;}'."\n";
+		$style .= '.container-picture2 { display:inline-grid; grid-template-columns: 1fr 1fr 1fr; 
+									grid-template-rows: auto auto;
+									grid-template-areas:  "area1 area1 area2"
+														  "area1 area1 area2";}'."\n";
+		$wert = "";
+		$wert.= $startpage->writeStartpageStyle($style);			
+		
+		$wert.= '<div id="sp" class="container-startpage">';            // display type Table
+		$wert.=     '<div id="sp-pic" style="grid-area:picture">';                 // display type Cell
+		$wert.='	    <div id="sp-pic-grid" class="container-picture" style="width:100%;">';
+		$wert.=             '<div id="sp-pic-grid-left" style="grid-area:area1">';                 // display type Cell picture
+		$wert .=        		$startpage->showPictureWidgetResponsive(9);					// amount of pictures, you can switch
+		$wert.=                 '</div>';
+		$wert.=             '<div id="sp-pic-grid-right" style="grid-area:area2; display:none">';                 // display type Cell picture
+		$wert .=                $startpage->inclOrfWeather();
+		$wert.=                 '</div>';			
+		$wert.=         	'</div>';
+		$wert.=         '</div>';
+		$wert.=     '<div id="sp-cmd" class="container-cmd" style="grid-area:cmd; ">';                 // display type Cell cmd
+		$wert .=             $startpage->commandLineResponsive();									// ten buttons for testing commands, id=sp-cmd-item#
+		$wert.=         '</div>';			
+		$wert .=    $startpage->showTemperatureTableIcons();
+		$wert .=    $startpage->showTemperatureTableValues();
+		$wert .=    $startpage->additionalTableLinesResponsive();
+		$wert .=    $startpage->showWeatherTableResponsive();
+		$wert.='	<div id="sp-bot" style="grid-area:bottom; background-color:#7f8f9f">';
+		//$wert.='	    <div id="sp-bot-grid" class="container-bottomline" style="background-color:#4f3f3f; width:100%;">';
+		$wert .=             $startpage->bottomTableLinesResponsive();
+		//$wert.=             '</div>';    
+		$wert.=         '</div>'; 
+		$wert.='	<div id="sp-inf" style="grid-area:info; background-color:#7f6f5f">';    
+		$wert .=             $startpage->infoTableLinesResponsive(["ID"=>$identifier,"AJAX"=>"Note"]);  			
+		$wert.=         '</div>';  			
+		$wert.='    </div>';          
+		echo $wert;	
 		?>
 	</body>
 </html>

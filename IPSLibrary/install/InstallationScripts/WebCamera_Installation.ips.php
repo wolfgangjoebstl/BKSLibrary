@@ -59,6 +59,8 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+    IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
+
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
     IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 
@@ -66,12 +68,13 @@
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
     echo "Allocated Memory : ".$sysOps->getNiceFileSize(memory_get_usage(true),false).".\n";
 
-	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) 
-		{
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		$moduleManager = new IPSModuleManager('WebCamera',$repository);
-		}
+	// Repository
+	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+	$repositoryJW="https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/";
+
+    $moduleManagerAll = new ModuleManagerIPS7('', '', sys_get_temp_dir(), true);
+	$moduleManager    = new ModuleManagerIPS7('WebCamera',$repository);
+
  	$installedModules = $moduleManager->GetInstalledModules();
 	//print_r($installedModules);
 

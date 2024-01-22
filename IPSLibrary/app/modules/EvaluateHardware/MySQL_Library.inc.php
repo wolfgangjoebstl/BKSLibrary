@@ -71,26 +71,43 @@ class sqlOperate extends sqlHandle
     */
 
     /* syncTableConfig
-     *  Voraussetzung USE database, holt sich mit SHOW TABLES die Datenbank Konfiguration für die angelegten Tabellen
-     *  wenn Tabelle vorhanden, dann anhand DESCRIBE TABLE die columns herausfinden udn die Änderungen identifizieren 
-     *     anhand updateTableConfig wird der Tabellenname, die Istconfig und die Soll Config übergeben
-     *  sonst CREATE mit createTableConfig
+     * vergleicht die SOLL Konfiguration in MySQL_Configuration (getDatabaseConfig) mit der aus der Datenbank ausgelesenen IST Konfiguration
+     * Unterschiede werden identifiziert und wenn relevant korrigiert, die SOLL Konfiguration durchgehen
      *
+     * erster Parameter kann false sein - dann werden alle Tabellen verglichen oder den Namen ener bestimmten tabelle annehmen
+     *
+     * Voraussetzung USE database, holt sich mit SHOW TABLES die IST Datenbank Konfiguration für die angelegten Tabellen
+     *
+     * Wenn Tabelle vorhanden, dann anhand DESCRIBE TABLE die columns herausfinden und die Änderungen identifizieren 
+     * Mit der Funktion updateTableConfig wird der Tabellenname, die Istconfig und die Soll Config übergeben
+     *
+     * Sonst wenn Tabelle nicht vorhanden CREATE mit createTableConfig
+     *
+     * Zeitvertzögerungen im Durchlauf handelt manb sich bei Konfigurationsunterschieden der Tabelle in. Sowas verzögert die exec time gewaltig, ist wie ein Fehlerfall einzuordnen.
      *
      */
 
     public function syncTableConfig($table=false,$debug=false)
         {
+        $showTime=false;
         if ($table===false) $tablecomp=false;              
         else $tablecomp=true;                               // nur einen bestimmten table vergleichen
+        if ($debug>100) 
+            {
+            $showTime=true;
+            $startexec=$debug;
+            $debug=false;
+            echo "syncTableConfig($table with output of exec time.\n";
+            }
         $config=$this->getDatabaseConfig();
         $tables = $this->showTables();     // SHOW TABLES
         echo "Sync database Configuration with MariaDB Configuration:\n";           // config with tables
         echo "   ".str_pad("Tabelle",30).str_pad("Status",20)."\n";
         foreach ($config as $tableName => $entries)         // entries ist der SOLL Zustand
             {
-            if (($tablecomp) && ($table==$tableName) )
+            if ( ($tablecomp===false) || (($tablecomp) && ($table==$tableName)) )
                 {
+                if ($showTime) echo "--------------------------------------> Exectime Database Handling: ".exectime($startexec)." Seconds.\n";
                 echo "   ".str_pad($tableName,30);
                 if (isset($tables[$tableName]))         // Datenbank gibt es bereits, stimmen die Spaltenbezeichnungen
                     {
@@ -109,16 +126,21 @@ class sqlOperate extends sqlHandle
             }
         }
 
-    /* updateTableConfig
+    /* updateTableConfig, vergleicht IST mit SOLL Zustand aus Config
      *  Voraussetzung USE database
-     *
+     *  Parameter:
      *      tableName       Tabelle tableName in der database
      *      columns         IST : Spalten aus DESCRIBE tableName
      *      configSet       SOLL: gewünschte Konfiguration, ähnlich der die ausgegeben wird
      *
+     * Die Ist Config Spalte für Spalte durchgehen und einmal zur Info ausgeben, makeTableConfig ermittelt den IST Zustand für eine Spalte
+     * Dann die SOLL Configuration durchgehen, wieder makeTableConfig verwenden, ohne Parameter CREATE ???
+     * Wenn die Spalte fehlt ist der Status gleich einmal false
+     * sonst compareTableConfig(SOLL,IST) verwenden, diese Routine entscheidet
+     *
+     * Wenn Unterschied Tabelle anpassen
      *  ALTER TABLE $tableName
      *
-     * Die Ist Config Spalte für Spalte durchgehen
      *
      */
 
@@ -127,7 +149,7 @@ class sqlOperate extends sqlHandle
         if ($debug) 
             {
             echo "Configurationen der Tabellen $tableName vergleichen:\n";
-            echo "   Check Anzahl der Spalten : Ist : ".sizeof($columns)." Soll : ".sizeof($configSet)."\n";
+            echo "      Check Anzahl der Spalten : Ist : ".sizeof($columns)." Soll : ".sizeof($configSet)."\n";
             }
         else echo "(Ist : ".sizeof($columns)." Soll : ".sizeof($configSet).")\n";
 
@@ -174,6 +196,7 @@ class sqlOperate extends sqlHandle
             echo json_encode($same)." ";
             if ($same["Status"]==false)         // Primary Key wird nicht automatisch geändert aber bei neuen Tabellen richtig angelegt 
                 {
+                //if ($debug) $this->compareTableConfig($column,$columns[$name],true);            // noch einmal mit DEBUG true, kanns nicht glauben
                 $sqlCommand="";
                 if (isset($result[$name])) 
                     {
@@ -182,7 +205,6 @@ class sqlOperate extends sqlHandle
                         {
                         if (isset($same["Command"]))        // manchmal ist ein zusatzbefehl notwendig um den table abzuändern.
                             {
-                            //$this->compareTableConfig($column,$columns[$name],true);            // noch einmal mit DEBUG true, kanns nicht glauben
                             $sqlCommand1 = "ALTER TABLE $tableName ".$same["Command"].";";
                             echo "Zusatzbefehl:      \"$sqlCommand1\"\n";
                             $result=$this->command($sqlCommand1);                        
@@ -328,6 +350,7 @@ class sqlOperate extends sqlHandle
         if (isset($advise["index"])===false)    $advise["index"] = "*";
         if (isset($advise["unique"])===false)   $advise["unique"]="";
         if (isset($advise["key"])===false)      $advise["key"]="";                       // Fehlerbehandlung weiter unten bereits vorgesehen
+        if (isset($advise["ident"])===false)    $advise["ident"]=""; 
 
         /* mehrere uniques möglich, auspacken */
         $uniques=explode(",",$advise["unique"]);
@@ -516,6 +539,65 @@ class sqlOperate extends sqlHandle
  * Name der Klasse muss immer xx_tablename sein, sonst funktionieren einige functions nicht
  *
  *******************************************************************************************************/
+
+/* sql_webfrontAccess extends sqlOperate
+ *
+ * sqlHandle für die Basisfunktionen, die mehr der Datenbank zugeordnet sind
+ * sqlOperate für die übergeordneten Funkionen zur Manipulation der Datenbank
+ * sql_xxx für die Tabellen spezifischen Operationen
+ *
+ *      _construct      getDataBaseConfiguration und speichere individuelle Konfiguration
+ *      getDatabaseConfig
+ *
+ *      get_ColumnComponentModule       Register Tabelle mit Konfiguration in IPSDeviceHandler_GetComponentModules() vergleichen, nur Zeilen ohne componentModuleID ausgeben
+ *      get_componentModules: Tabelle componentModules updaten
+ *      syncTableValues
+ *      updateEntriesValues
+ *      getSelectforShow
+ *
+ */
+
+class sql_webfrontAccess extends sqlOperate
+    {
+    private $dataBase;          // Name of used Database, has effect on request default config
+    private $tableName;             // Name of used Table, has effect on request default config
+    private $configDB;          // Konfiguration der  Database, has effect on request default config
+
+    public function __construct($oid=false)
+        {
+        parent::__construct($oid);          // ruft sqlHandle construct auf
+        $this->useDatabase("ipsymcon"); 
+        $this->tableName="webfrontAccess";
+        $this->getDatabaseConfig($this->tableName);
+        }
+
+    public function getDatabaseConfig(...$tableName)
+        {
+        if (isset($tableName[0])) $table=$tableName[0];
+        else $table="webfrontAccess";
+
+        $config = parent::getDatabaseConfiguration()[$table]; 
+        $this->configDB=$config;
+        return $config;   
+        }
+
+    /* sql_webfrontAccess::updateEntriesValues
+     *      values
+     *
+     * creates advise, default values result into
+     *
+     */
+    public function updateEntriesValues($values, $updated=false, $debug=false)
+        {
+        $advise=array();  // Index deviceID, Identifier name
+        //$advise["index"] = "nameOfID";                   // default is *
+        $advise["key"]="nameOfID,eventName,eventDescription";
+        //$advise["ident"]="";
+        //$advise["change"]="Update";
+        //$advise["history"]="";
+        return parent::updateTableEntriesValues($this->tableName,$values,$advise,$this->configDB, $updated, $debug);
+        }
+    }
 
 /* sql_auditTrail extends sqlOperate
  *
@@ -744,6 +826,7 @@ class sql_componentModules extends sqlOperate
         }
 
     /* sql_componentModules:syncTableValues für das componentModules Array
+     * Tabelle zeilenweise vergleichen
      *
      * die Tabellen sind immer gleich aufgebaut, Index=Key, Name=Unique, Werte
      * die Arrays sind immer ohne Index, Name => Werte
@@ -2104,7 +2187,7 @@ class sqlHandle
      *      Field wird vom key übernommen
      *      Type,Extra immer in Kleinbuchstaben
      *
-     *
+     * verwendet checkandrepairDatabaseConfig für die Vereinheitlichung der Konfiguration, hat Auswirkungen auf die Verglechsfunktionen
      */
 
     public function getDatabaseConfiguration($debug=false)
@@ -2115,7 +2198,7 @@ class sqlHandle
             switch ($this->dataBase)
                 {
                 case "ipsymcon":
-                    $config = mySQLDatabase_getConfiguration();
+                    $config = mySQLDatabase_getConfiguration();         // das ist die Funktion in der Config Datei
                     break;
                 default:
                     $config=array();
@@ -2136,7 +2219,9 @@ class sqlHandle
 
     /* sqlHandle::checkandrepairDatabaseConfig
      * 
-     * Konfiguration prüfen und überarbeiten 
+     * Konfiguration prüfen und überarbeiten, Struktur ist 
+     *   tablename => column => configuration
+     *
      */
 
     private function checkandrepairDatabaseConfig($config, $debug=false)
@@ -2151,13 +2236,39 @@ class sqlHandle
                     {
                     //echo "         Änderung: config[$tablename][$columnID][\"Field\"]=$columnID\n";
                     $config[$tablename][$columnID]["Field"]=$columnID;    
-                    }   
-                if ( ( (isset($column["Key"])) && ($column["Key"]!="") ) ||                                 // ein Key ist gesetzt, automatisch NOT NULL überschreiben
-                     ( (isset($column["Extra"])) && (strtoupper($column["Extra"])=="AUTO_INCREMENT") ) )    // auto_increment ist gesetzt, automatisch mit NOT NULL überschreiben
+                    }
+                // autoset NULL to NO, by auto set Funktionen ist automatisch auch gewährleistet dass kieine NUMLL Werte auftreten, daher ist der Parameter auch NULL NO
+                $autosetNull=false;   
+                if ( (isset($column["Key"])) && ($column["Key"]!="") ) $autosetNull=true;                                 // ein Key ist gesetzt, automatisch NOT NULL überschreiben
+                if (isset($column["Extra"])) 
                     {
-                    if ($debug) echo "         Änderung: config[$tablename][$columnID][\"Null\"]=\"NO\"\n";
+                    $extraCommand=strtoupper($column["Extra"]);
+                    if ($extraCommand=="AUTO_INCREMENT")  $autosetNull=true;    // auto_increment ist gesetzt, automatisch mit NOT NULL überschreiben
+                    // on update current_timestamp()
+                    $extraOnUpdate = explode(" ",$extraCommand);
+                    if (sizeof($extraOnUpdate)>2) 
+                        {
+                        //if ($debug) echo json_encode($extraOnUpdate)."\n";
+                        if (($extraOnUpdate[0]=="ON") && ($extraOnUpdate[1]=="UPDATE")) $autosetNull=true;    // on update ist gesetzt, automatisch mit NOT NULL überschreiben
+                        }
+                    }
+                if (isset($column["Default"])) 
+                    {
+                    $defaultCommand=strtoupper($column["Default"]);
+                    switch ($defaultCommand)
+                        {
+                        case "CURRENT_TIMESTAMP()":
+                            $autosetNull=true;    // default ist gesetzt, automatisch mit NOT NULL überschreiben
+                            break;
+
+                        }
+                    }
+                if ($autosetNull)    
+                    {
+                    if ($debug) echo "         Änderung: config[$tablename][$columnID][\"Null\"]=\"NO\"  Feld wird automatisch beschrieben, kann nicht Null sein (zB auto_increment, on update, Key etc\n";
                     $config[$tablename][$columnID]["Null"] = "NO";   
                     }
+                if (isset($column["Null"])===false) $config[$tablename][$columnID]["Null"]  = "NO";    
                 }
             }
         return $config;
@@ -2418,7 +2529,7 @@ class sqlHandle
         }
 
     /* compare soll und ist Config 
-     * meldet mit einem Array den Status zurück
+     * meldet mit einem Array den Status zurück, verwendet makeTableConfig für Analyse Soll und Ist Konfiguration
      *   Status
      *
      *
@@ -2564,6 +2675,7 @@ class sqlHandle
      *      deviceList      Werte, nur die Werte updaten für die eine Spalte vorhanden ist [column]
      *      advise          nicht verwendet, für Audit trail
      *      config          configuartion für dies tabelle mit den einzelnen Spalten
+     *      updated
      *
      * zuerst alle Spalten der ersten Zeile mit einem SELECT * WHERE holen.
      * dann die config der Spalten einzeln durchgehen, wenn ein Wert in der devicelist hinterlegt ist
@@ -2573,10 +2685,11 @@ class sqlHandle
     public function updateTableEntryValues($table, $sql, $text, $deviceList, $advise, $config, $updated=true, $debug)
         {
         $update=false;
-        if ( ($debug) && false)         // sonst zuviele Eintraege 
+        if ( ($debug) && true)         // sonst zuviele Eintraege 
             {
             echo "updateTableEntryValues($table, $sql, $text, ...)\n";
-            //print_r($deviceList); print_r($config);
+            print_r($deviceList); 
+            //print_r($config);
             }
 
         $sqlCommand = "SELECT * FROM $table $sql;";
@@ -2632,16 +2745,18 @@ class sqlHandle
 
         if ($update)        // nur wenn Update wirklich erforderlich
             {
-            echo "     Unterschiedlicher Eintrag in den Spalten '$vars' gefunden. Update notwendig:\n";
             if ($updated) $sqlCommand .= ",changed = '".date("Y-m-d H:i:s")."' ";
-            if ($debug) echo $textUpd; 
             $sqlCommand .= $sql;        // add WHERE statement für richtige Zeile
             
             //print_r($advise);                         // wenn ein Audit trail gefordert wird, hier programmieren
             //if (isset($advise["change"])) $sqlCommand .= ",".$advise["change"]." = 'CURRENT_TIMESTAMP()'";
 
             $sqlCommand .= ";";
-            echo " >SQL Command : $sqlCommand\n";    
+            if ($debug) 
+                {
+                echo "     Unterschiedlicher Eintrag in den Spalten '$vars' gefunden. Update notwendig:\n";
+                echo $textUpd." >SQL Command : $sqlCommand\n";    
+                }
             $result=$this->command($sqlCommand);
             }
         return ($update);

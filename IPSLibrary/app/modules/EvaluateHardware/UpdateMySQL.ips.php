@@ -36,7 +36,7 @@
  *      eventLog
  *
  *
- * folgende Tätigkeiten werden hier der reihe nach durchgeführt
+ * folgende Tätigkeiten werden hier der Reihe nach durchgeführt
  *
  *      sync database Configuration ($sqlOperate->syncTableConfig) 
  *      sync database Values
@@ -86,6 +86,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
     echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
     echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
     echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
+    echo "-----------------------------> Exectime Database Handling: ".exectime($startexec)." Seconds.\n";
     echo "\n";
 
     /* DeviceManger muss immer installiert werden, wird in Timer als auch RunScript und Execute verwendet */
@@ -128,12 +129,12 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         $config = $sqlHandle->getDatabaseConfiguration();
 
         /* sync database Configuration */
-        echo "---------------------------------------------------------------------------------\n";
+        //echo "------------------------------------> Exectime Database Handling: ".exectime($startexec)." Seconds.\n";           //0.27 seconds
 
         $sqlOperate = new sqlOperate();           // default MySQL Instanz extends sqlHandle, USE DATABASE in MariaDB bereits gesetzt
-        $sqlOperate->syncTableConfig(false, true);         // false for all Tables, true for debug
+        $sqlOperate->syncTableConfig(false, $startexec);         // false for all Tables, true for debug
 
-        //echo "---------------------------------------------------------------------------------\n";
+        echo "--------------------------------------> Exectime Database Handling: ".exectime($startexec)." Seconds.\n";
 
         $sql_serverGateways = new sql_serverGateways();
         $sql_topologies = new sql_topologies();         // eigene Klasse pro Tabelle, extends sqlOperate that extends sqlHandle
@@ -146,7 +147,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
 
         /* sync database Values */
         echo "\n";
-        echo "---------------------------------------------------------------------------------\n";
+        echo "--------------------------------------> Exectime Database Handling: ".exectime($startexec)." Seconds.\n";
         echo "Sync Values of table serverGateways with MariaDB Database:\n";           // config with tables
 
         $serverGateways=array();
@@ -164,7 +165,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         echo "Tabelle deviceList mit touch zusammenräumen:\n";    
 
         $touch=$sql_deviceList->touchTableOnDevice($deviceList,true);              // true mit Debug
-        echo "---------------------------------------------------------------------------------\n";
+        echo "----------------------------------------------> Exectime Database Handling: ".exectime($startexec)." Seconds.\n";
         echo "  die Werte die in devicelsit sind bekommen ein touch, Werte ohne aktuellem touch ausgeben.\n";    
         $sql = "SELECT * FROM deviceList WHERE touch != $touch;";
         $result1=$sqlHandle->query($sql);

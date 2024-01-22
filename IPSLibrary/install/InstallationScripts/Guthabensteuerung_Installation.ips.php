@@ -128,7 +128,7 @@
 
     $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
 	$GuthabenConfig         = $guthabenHandler->getContractsConfiguration();            // get_GuthabenConfiguration();
-	$GuthabenAllgConfig     = $guthabenHandler->getGuthabenConfiguration();                              //get_GuthabenAllgemeinConfig();
+	$GuthabenAllgConfig     = $guthabenHandler->getGuthabenConfiguration();                              //aus get_GuthabenAllgemeinConfig() entspricht $this->configuration["CONFIG"]
 	//print_r($GuthabenConfig);
 
     /* ScriptIDs finden für Timer */
@@ -472,6 +472,52 @@
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 
+
+	/****************************************************************
+	 *
+	 * Initialisiere Profile
+	 *
+	 ************************************************************************/
+
+	createProfilesByName("Euro");
+	createProfilesByName("MByte");
+
+	/* Create Web Pages */
+
+	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
+	if ($WFC10_Enabled==true)
+		{
+		$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+        $WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+		echo "\nWF10 ";
+		}
+
+	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
+	if ($WFC10User_Enabled==true)
+		{
+		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+		echo "WF10User ";
+		}
+		
+	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
+	if ($Mobile_Enabled==true)
+		{
+		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		echo "Mobile ";
+		}
+
+	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
+	if ($Retro_Enabled==true)
+		{
+		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		echo "Retro \n";
+		}
+
+	//echo "Test";
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
 	/*****************************************************
 	 *
 	 * Selenium Webdriver 
@@ -640,50 +686,97 @@
             }
         }
 
-	/****************************************************************
+	/******************************************************
 	 *
-	 * Initialisiere Profile
+	 *		WebFront Installation, display of Guthabensteuerung Information
 	 *
-	 ************************************************************************/
+	 *************************************************************/	
 
-	createProfilesByName("Euro");
-	createProfilesByName("MByte");
+    if ($DoInstall && ($GuthabenAllgConfig["EvaluateGuthaben"]))          // nur wenn auch explizit eine Auswertung der Tel Nummernkonten erwünscht ist
+        {
+        if ($WFC10_Enabled) 
+            {
+            echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
+            $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+            $phone_summary_ID=@IPS_GetVariableIDByName("Summary",$categoryId_WebFront);
+            if ($phone_summary_ID !== false)
+                {
+                echo "Variable Summary loeschen.\n";
+                EmptyCategory($phone_summary_ID);
+                IPS_DeleteVariable($phone_summary_ID);
+                }
+            else
+                {
+                echo "Variable Summary neu anlegen.\n";
+                }			
+            EmptyCategory($categoryId_WebFront);											
+            $phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
+            foreach ($phoneID as $phone)
+                {
+                CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
+                }
+            CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID, $categoryId_WebFront,  20);
+                                                                    
+                
+                                    
+            CreateLinkByDestination(IPS_GetName($startImacroID), $startImacroID, $categoryId_WebFront,  30);
+            CreateLinkByDestination(IPS_GetName($statusReadID), $statusReadID, $categoryId_WebFront,  40);
+            //CreateLinkByDestination(IPS_GetName($testInputID), $testInputID, $categoryId_WebFront,  50);
+                        
+            }
 
-	/* Create Web Pages */
+        if ($WFC10User_Enabled) 
+            {
+            echo "\nWebportal User installieren auf ".$WFC10User_Path.": \n";
+            $categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
+            $phone_summary_ID=@IPS_GetVariableIDByName("Summary",$categoryId_WebFront);
+            if ($phone_summary_ID !== false)
+                {
+                echo "Variable Summary loeschen.\n";
+                EmptyCategory($phone_summary_ID);
+                IPS_DeleteVariable($phone_summary_ID);
+                }
+            else
+                {
+                echo "Variable Summary neu anlegen.\n";
+                }			
+            $phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
+            foreach ($phoneID as $phone)
+                {
+                CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
+                }
+            CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID,    $categoryId_WebFront,  20);
+            }
 
-	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-	if ($WFC10_Enabled==true)
-		{
-		$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-        $WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-		echo "\nWF10 ";
-		}
+        if ($Mobile_Enabled) 
+            {
+            echo "\nWebportal Mobile installieren auf ".$Mobile_Path.": \n";
+            $categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
+            $phone_summary_ID=@IPS_GetVariableIDByName("Summary",$categoryId_WebFront);
+            if ($phone_summary_ID !== false)
+                {
+                echo "Variable Summary loeschen.\n";
+                EmptyCategory($phone_summary_ID);
+                IPS_DeleteVariable($phone_summary_ID);
+                }
+            else
+                {
+                echo "Variable Summary neu anlegen.\n";
+                }			
+            $phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
+            foreach ($phoneID as $phone)
+                {
+                CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
+                }
+            CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID,    $categoryId_WebFront,  20);
+            }
 
-	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-	if ($WFC10User_Enabled==true)
-		{
-		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		echo "WF10User ";
-		}
-		
-	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	if ($Mobile_Enabled==true)
-		{
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-		echo "Mobile ";
-		}
-
-	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	if ($Retro_Enabled==true)
-		{
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
-		}
-
-	//echo "Test";
-
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+        if ($Retro_Enabled) 
+            {
+            echo "\nWebportal Retro installieren auf ".$Retro_Path.": \n";
+            createPortal($Retro_Path);
+            }
+        }           // nur wenn Auswertung telnummern
 
 	/******************************************************
 	 *
@@ -882,7 +975,7 @@
             }
 
         $configWF=$guthabenHandler->getWebfrontsConfiguration("Api",false);            // true für Debug
-        print_R($configWF); 
+        //print_R($configWF); 
         if ($configWF)
             {
             $webfront_links=array(
@@ -926,13 +1019,16 @@
 
 
             $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, kein interop mode, ist in der Kopie der Config in der class
-            $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
-            foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+            
+            if (false)          // comment to view structure of webfront
                 {
-                echo "\n------$index:\n";
-                $wfcHandling->print_wfc($wfc[$index]);
-                }  
-
+                $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
+                foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+                    {
+                    echo "\n------$index:\n";
+                    $wfcHandling->print_wfc($wfc[$index]);
+                    }  
+                }
             if ($DoDelete)          // alles was mit Money anfängt löschen
                 {
                 echo "Delete Panes starting with ".$configWF["TabPaneItem"]."\n";
@@ -960,98 +1056,6 @@
             echo "Webfront Api Money successfull installed.\n";
             }
         }
-
-
-
-	/******************************************************
-	 *
-	 *		WebFront Installation
-	 *
-	 *************************************************************/	
-
-	if ( ($WFC10_Enabled) && ($DoInstall) )
-		{
-		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		$phone_summary_ID=@IPS_GetVariableIDByName("Summary",$categoryId_WebFront);
-		if ($phone_summary_ID !== false)
-			{
-			echo "Variable Summary loeschen.\n";
-			EmptyCategory($phone_summary_ID);
-			IPS_DeleteVariable($phone_summary_ID);
-			}
-		else
-			{
-			echo "Variable Summary neu anlegen.\n";
-			}			
-        EmptyCategory($categoryId_WebFront);											
-		$phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
-		foreach ($phoneID as $phone)
-			{
-	   		CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
-			}
-		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID, $categoryId_WebFront,  20);
-																 
-			 
-								  
-        CreateLinkByDestination(IPS_GetName($startImacroID), $startImacroID, $categoryId_WebFront,  30);
-        CreateLinkByDestination(IPS_GetName($statusReadID), $statusReadID, $categoryId_WebFront,  40);
-        //CreateLinkByDestination(IPS_GetName($testInputID), $testInputID, $categoryId_WebFront,  50);
-					  
-		}
-
-	if ( ($WFC10User_Enabled) && ($DoInstall) )
-		{
-		echo "\nWebportal User installieren auf ".$WFC10User_Path.": \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
-		$phone_summary_ID=@IPS_GetVariableIDByName("Summary",$categoryId_WebFront);
-		if ($phone_summary_ID !== false)
-			{
-			echo "Variable Summary loeschen.\n";
-			EmptyCategory($phone_summary_ID);
-			IPS_DeleteVariable($phone_summary_ID);
-			}
-		else
-			{
-			echo "Variable Summary neu anlegen.\n";
-			}			
-		$phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
-		foreach ($phoneID as $phone)
-			{
-	   		CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
-			}
-		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID,    $categoryId_WebFront,  20);
-		}
-
-	if ( ($Mobile_Enabled) && ($DoInstall) )
-		{
-		echo "\nWebportal Mobile installieren auf ".$Mobile_Path.": \n";
-		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
-		$phone_summary_ID=@IPS_GetVariableIDByName("Summary",$categoryId_WebFront);
-		if ($phone_summary_ID !== false)
-			{
-			echo "Variable Summary loeschen.\n";
-			EmptyCategory($phone_summary_ID);
-			IPS_DeleteVariable($phone_summary_ID);
-			}
-		else
-			{
-			echo "Variable Summary neu anlegen.\n";
-			}			
-		$phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
-		foreach ($phoneID as $phone)
-			{
-	   		CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
-			}
-		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID,    $categoryId_WebFront,  20);
-		}
-
-	if ( ($Retro_Enabled) && ($DoInstall) )
-		{
-		echo "\nWebportal Retro installieren auf ".$Retro_Path.": \n";
-		createPortal($Retro_Path);
-		}
-
 
     echo "Installation Guthabensteuerung abgeschlossen. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
     if ($errorWarning) echo "check log, maybe there is an error or warning in the log\n";

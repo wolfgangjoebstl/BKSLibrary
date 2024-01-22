@@ -1,6 +1,6 @@
-<?
+<?php
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 //include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
@@ -77,7 +77,7 @@ Alle mit Evaluate Hardware gefundenen Module mit Status ausgeben.
 
 Registriert keine Events. Funktioniert derzeit nur mit Remote Access ......
 
-RemoteAccess für Motion
+RemoteAccess fÃ¼r Motion
 
 
 **********************************************************************************************************************************************************/

@@ -235,6 +235,14 @@
     /* Standard Config überprüfen */    
     $WebfrontConfigID = $wfcHandling->installWebfront();            // die beiden Webfronts anlegen und das Standard Webfront loeschen
 
+    /*******************************
+    *
+    * Kachel Visualisiserung 
+    * https://www.symcon.de/de/service/dokumentation/komponenten/kachel-visualisierung/instanzkonfiguration/
+    *
+    ********************************/
+
+
     if (isset($WebfrontConfigID["Kachel Visualisierung"]))
         {
         $KachelID = $WebfrontConfigID["Kachel Visualisierung"];

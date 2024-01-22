@@ -1399,7 +1399,12 @@
             {		
             /* Webfront Darstellung erfolgt im User Verzeichnis, dieses erstellen */
             $Verzeichnis="user/OperationCenter/Homematics/";
-            $Verzeichnis=IPS_GetKernelDir()."webfront/".$Verzeichnis;
+            if ($ipsOps->ipsVersion7check()) 
+                {
+                $Verzeichnis=IPS_GetKernelDir().$Verzeichnis;
+                echo "IPS Version 7 oder später, wir übersiedeln in dieses Verzeichnis : $Verzeichnis \n";
+                }
+            else $Verzeichnis=IPS_GetKernelDir()."webfront/".$Verzeichnis;
             $Verzeichnis = str_replace('\\','/',$Verzeichnis);
             if ( is_dir ( $Verzeichnis ) == false ) $dosOps->mkdirtree($Verzeichnis);
             
@@ -1424,7 +1429,8 @@
                 echo "Ausgabe Speicher Verzeichnis :".$aktVerzeichnis."\n";
                 if ( $aktVerzeichnis != $neuVerzeichnis)
                     {
-                    echo "Verzeichnis auf Webfront verschieben. In das Verzeichnis ".$neuVerzeichnis."\n";
+                    if ($ipsOps->ipsVersion7check()) echo "Verzeichnis für Webfront auf /user verschieben. In das Verzeichnis ".$neuVerzeichnis."\n";
+                    else echo "Verzeichnis für Webfront auf webfront/user verschieben. In das Verzeichnis ".$neuVerzeichnis."\n";
                     IPS_SetProperty($HMI,"OutputFile",$neuVerzeichnis);
                     IPS_ApplyChanges($HMI);
                     }

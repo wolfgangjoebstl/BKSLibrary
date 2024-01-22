@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/**@defgroup RemoteReadWrite_Installation
 	 * @ingroup modules_weather
@@ -198,79 +198,6 @@
 		echo "\nWebportal Retro installieren auf ".$Retro_Path.": \n";
 		createPortal($Retro_Path);
 		}
-
-
-function createPortal($Path)
-	{
-		$categoryId_WebFront         = CreateCategoryPath($Path);
-		$categoryId_WebFrontTemp     = CreateCategoryPath($Path.".Temperatur");
-		$categoryId_WebFrontHumi     = CreateCategoryPath($Path.".Feuchtigkeit");
-		$categoryId_WebFrontSwitch   = CreateCategoryPath($Path.".Schalter");
-
-		IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
-
-		//IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
-
-		$Homematic = HomematicList();
-		$FHT = FHTList();
-		$FS20= FS20List();
-	
-		foreach ($Homematic as $Key)
-			{
-			/* alle Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["TEMPERATURE"])==true)
-	   		{
-      		$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontTemp,  10);
-				//print_r($Key["COID"]["TEMPERATURE"]);
-				//echo $Key["COID"]["TEMPERATURE"]["OID"]." ";
-				//echo date("d.m h:i",IPS_GetVariable($oid)["VariableChanged"])." ";
-				//echo $Key["Name"].".".$Key["COID"]["TEMPERATURE"]["Name"]." = ".GetValueFormatted($oid)."\n";
-				}
-			}
-
-		foreach ($FHT as $Key)
-			{
-			/* alle Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["TemeratureVar"])==true)
-		   	{
-      		$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontTemp,  10);
-				}
-			}
-
-		foreach ($Homematic as $Key)
-			{
-			/* alle Feuchtigkeitswerte ausgeben */
-			if (isset($Key["COID"]["HUMIDITY"])==true)
-		   	{
-	   	   $oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
-      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontHumi,  10);
-				//$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			}
-
-   	$categoryId_WebFrontSwitchFS20   = CreateCategoryPath($Path.".Schalter.FS20");
-		foreach ($FS20 as $Key)
-			{
-			/* alle Statuswerte ausgeben */
-			if (isset($Key["COID"]["StatusVariable"])==true)
-			   {
-      		$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
-      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontSwitchFS20,  10);
-				}
-			}
-   	$categoryId_WebFrontSwitchHM   = CreateCategoryPath($Path.".Schalter.Homematic");
-		foreach ($Homematic as $Key)
-			{
-			/* alle Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["STATE"])==true)
-	   		{
-	      	$oid=(integer)$Key["COID"]["STATE"]["OID"];
-      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontSwitchHM,  10);
-				}
-			}
-	}
 
 
 

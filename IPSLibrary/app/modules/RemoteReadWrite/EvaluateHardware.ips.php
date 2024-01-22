@@ -1,4 +1,4 @@
-<?
+<?php
 
 
 /* Herausfinden welche Hardware verbaut ist 
@@ -45,8 +45,8 @@
 
 		/* für alte Funktionen, Programm weiterhin enthalten */
 
-		//$includefile='<?'."\n".'$fileList = array('."\n";
-		$includefile='<?'."\n"; 
+		//$includefile='<?php'."\n".'$fileList = array('."\n";
+		$includefile='<?php'."\n"; 
 		$alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten
 		foreach ($alleInstanzen as $instanz)
 			{

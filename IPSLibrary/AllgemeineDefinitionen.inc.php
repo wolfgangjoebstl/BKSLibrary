@@ -2102,114 +2102,6 @@ function send_status($aktuell, $startexec=0, $debug=false)
 		return $ParentId;
 	}
 
-
-    /*****************************************************************
-    function CreateVariableByName2($name, $type, $profile, $action, $visible)
-        {
-        $id=IPS_GetParent($_IPS['SELF']);
-        $vid = @IPS_GetVariableIDByName($name, $id);
-        if($vid === false)
-            {
-            $vid = IPS_CreateVariable($type);
-            IPS_SetParent($vid, $id);
-            IPS_SetName($vid, $name);
-            IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
-            if($profile!='')
-                {
-                IPS_SetVariableCustomProfile($vid,$profile);
-                }
-            if($action!=0)
-                {
-                IPS_SetVariableCustomAction($vid,$action);
-                }
-            IPS_SetHidden($vid,!$visible);
-            }
-        return $vid;
-        }       */
-
-    /************************************
-    *
-    * Original wird im Library Modul Manager verwendet 
-    * Aufruf mit CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon );
-    *
-    *
-    *
-    *********************************************************
-
-    function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault=null, $Icon='')
-        {
-            $VariableId = @IPS_GetObjectIDByIdent(Get_IdentByName2($Name), $ParentId);
-            //echo "CreateVariable2: erzeuge Variable mit Name ".$Name." unter der Parent ID ".$ParentId." (".IPS_GetName($ParentId).") mit aktuellem Wert ".$ValueDefault." und Profil $Profile.\n";
-            if ($VariableId === false) $VariableId = @IPS_GetVariableIDByName($Name, $ParentId);
-            if ($VariableId === false)
-                {
-                //echo "    erzeuge neu !\n";
-                $VariableId = IPS_CreateVariable($Type);
-                IPS_SetParent($VariableId, $ParentId);
-                IPS_SetName($VariableId, $Name);
-                IPS_SetIdent($VariableId, Get_IdentByName2($Name));
-                IPS_SetPosition($VariableId, $Position);
-                IPS_SetVariableCustomProfile($VariableId, $Profile);
-                IPS_SetVariableCustomAction($VariableId, $Action);
-                IPS_SetIcon($VariableId, $Icon);
-                if ($ValueDefault===null)
-                    {
-                    switch($Type)
-                        {
-                        case 0: SetValue($VariableId, false); break; //Boolean
-                        case 1: SetValue($VariableId, 0); break; //Integer
-                        case 2: SetValue($VariableId, 0.0); break; //Float
-                        case 3: SetValue($VariableId, ""); break; //String
-                        default:
-                        }
-                    }
-                else
-                    {
-                    SetValue($VariableId, $ValueDefault);
-                    }
-
-                //Debug ('Created VariableId '.$Name.'='.$VariableId."");
-                }
-            $VariableData = IPS_GetVariable ($VariableId);
-            if ($VariableData['VariableCustomProfile'] <> $Profile)
-                {
-                //Debug ("Set VariableProfile='$Profile' for Variable='$Name' ");
-                //echo "Set VariableProfile='$Profile' for Variable='$Name' \n";
-                IPS_SetVariableCustomProfile($VariableId, $Profile);
-                }
-            else 
-                {
-                //echo "Aktuelles Profil ist :".$VariableData['VariableCustomProfile']."\n";
-                }	
-            if ($VariableData['VariableCustomAction'] <> $Action)
-                {
-                //Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
-                //echo "Set VariableCustomAction='$Action' for Variable='$Name' \n";
-                IPS_SetVariableCustomAction($VariableId, $Action);
-                }
-            UpdateObjectData2($VariableId, $Position, $Icon);
-            return $VariableId;
-        }   */
-
-    /*****************************************************************
-
-    function CreateVariableByNameFull($id, $name, $type, $profile = "")
-    {
-        $vid = @IPS_GetVariableIDByName($name, $id);
-        if($vid === false)
-        {
-            $vid = IPS_CreateVariable($type);
-            IPS_SetParent($vid, $id);
-            IPS_SetName($vid, $name);
-            IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
-            if($profile !== "") 
-            {
-                IPS_SetVariableCustomProfile($vid, $profile);
-            }
-        }
-        return $vid;
-    }           */
-
     /******************************************************************/
 
     /* Additional function to create an identifier out of a variable name, space is the new parameter to decide either to remove 
@@ -2244,220 +2136,6 @@ function send_status($aktuell, $startexec=0, $debug=false)
             }
 
     }
-
-    /**********************************************************************************************/
-
-    /******************************************************
-    *
-    * Summestartende, depreciated, has moved to amis and with similar function to ArchiveOps class
-    *
-    * Gemeinschaftsfunktion, fuer die manuelle Aggregation von historisierten Daten
-    *
-    * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, false ohne Hochrechnung
-    *
-    *
-    * Routine scheiter bei Ende Sommerzeit, hier wird als Strtzeit -30 Tage eine Stunde zu wenig berechnet 
-    *
-    *****************************************************************************************
-
-    function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
-        {
-        if ($display)
-            {
-            echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).") \n";
-            echo "Werte von ".date("D d.m.Y H:i:s",$starttime)." bis ".date("D d.m.Y H:i:s",$endtime)."\n";
-            }
-        $zaehler=0;
-        $ergebnis=0;
-        $increment=(integer)$increment_var;
-            
-        do {
-            // es könnten mehr als 10.000 Werte sein,                 Abfrage generisch lassen
-            // Eintraege für GetAggregated integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit
-            $aggWerte = AC_GetAggregatedValues ( $archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
-            $aggAnzahl=count($aggWerte);
-            //print_r($aggWerte);
-            foreach ($aggWerte as $entry)
-                {
-                if (((time()-$entry["MinTime"])/60/60/24)>1) 
-                    {
-                    // keine halben Tage ausgeben 
-                    $aktwert=(float)$entry["Avg"];
-                    if ($display) echo "     ".date("D d.m.Y H:i:s",$entry["TimeStamp"])."      ".$aktwert."\n";
-                    switch ($increment)
-                        {
-                        case 0:
-                        case 2:
-                            echo "*************Fehler.\n";
-                            break;
-                        case 1:        // Statuswert, daher kompletten Bereich zusammenzählen 
-                            $ergebnis+=$aktwert;
-                            break;
-                        default:
-                        }
-                    }
-                else
-                    {
-                    $aggAnzahl--;
-                    }	
-                }
-            if (($aggAnzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
-            
-            $zaehler+=1;
-                
-            } while (count($aggWerte)==10000);		
-        if ($display) echo "   Variable: ".IPS_GetName($variableID)." mit ".$aggAnzahl." Tageswerten und ".$ergebnis." als Ergebnis.\n";
-        return $ergebnis;
-        }
-
-    // alte Funktion, als Referenz
-
-    function summestartende2($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
-        {
-        $zaehler=0;
-        $initial=true;
-        $ergebnis=0;
-        $vorigertag="";
-        $disp_vorigertag="";
-        $neuwert=0;
-
-        $increment=(integer)$increment_var;
-        //echo "Increment :".$increment."\n";
-        $gepldauer=($endtime-$starttime)/24/60/60;
-        do {
-            // es könnten mehr als 10.000 Werte sein,  Abfrage generisch lassen
-            $werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
-            // Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten, nicht mer als 10.000 Werte ...
-            //print_r($werte);
-            $anzahl=count($werte);
-            //echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
-
-            if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
-
-            if ($initial)           // allererster Durchlauf 
-                {
-                $ersterwert=$werte['0']['Value'];
-                $ersterzeit=$werte['0']['TimeStamp'];
-                }
-
-            if ($anzahl<10000)
-                {
-                // letzter Durchlauf 
-                $letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
-                $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
-                //echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
-                //     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
-                }
-
-            $initial=true;
-
-            foreach($werte as $wert)
-                {
-                if ($initial)
-                    {
-                    //print_r($wert);
-                    $initial=false;
-                    //echo "   Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
-                    }
-
-                $zeit=$wert['TimeStamp'];
-                $tag=date("d.m.Y", $zeit);
-                $aktwert=(float)$wert['Value'];
-
-                if ($tag!=$vorigertag)
-                    { // neuer Tag 
-                    $altwert=$neuwert;
-                    $neuwert=$aktwert;
-                    switch ($increment)
-                        {
-                        case 1:
-                            $ergebnis=$aktwert;
-                            break;
-                        case 2:
-                            if ($altwert<$neuwert)
-                                {
-                                $ergebnis+=($neuwert-$altwert);
-                                }
-                            else
-                                {
-                                //$ergebnis+=($altwert-$neuwert);
-                                //$ergebnis=$aktwert;
-                                }
-                            break;
-                        case 0:        // Statuswert, daher kompletten Bereich zusammenzählen 
-                            $ergebnis+=$aktwert;
-                            break;
-                        default:
-                        }
-                    $vorigertag=$tag;
-                    }
-                else
-                    {
-                    // neu eingeführt, Bei Statuswert muessen alle Werte agreggiert werden 
-                    switch ($increment)
-                        {
-                        case 1:
-                        case 2:
-                            break;
-                        case 0:        // Statuswert, daher kompletten Bereich zusammenzählen
-                            $ergebnis+=$aktwert;
-                            break;
-                    default:
-                        }
-                    }
-
-                if ($display==true)
-                    {
-                    // jeden Eintrag ausgeben 
-                    //print_r($wert);
-                    if ($gepldauer>100)
-                        {
-                        if ($tag!=$disp_vorigertag)
-                            {
-                            echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-                            $disp_vorigertag=$tag;
-                            }
-                        }
-                    else
-                        {
-                        echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-                        }
-                    }
-                $zaehler+=1;
-                }
-            $endtime=$zeit;
-            } while (count($werte)==10000);
-
-        $dauer=($ersterzeit-$letzterzeit)/24/60/60;
-        echo "   Bearbeitete Werte:".$zaehler." für ".number_format($dauer, 2, ",", "")." Tage davon erwartet: ".$gepldauer." \n";
-        switch ($increment)
-        {
-        case 0:
-        case 2:
-                if ($estimate==true)
-                    {
-                    echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
-                    $ergebnis=($ergebnis)*$gepldauer/$dauer;
-                    echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
-                    }
-            break;
-        case 1:
-                if ($estimate==true)
-                    {
-                    $ergebnis=($ersterwert-$letzterwert);
-                    echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
-                    $ergebnis=($ergebnis)*$gepldauer/$dauer;
-                echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
-                    }
-                else
-                {
-                    $ergebnis=($ersterwert-$letzterwert);
-                    }
-            break;
-        default:
-        }
-        return $ergebnis;
-        }           */
 
     /******************************************************************/
 
@@ -2902,7 +2580,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
                     }
                 }
             }
-        // Wenn Switch nicht erfolgreich in Griuppe weitersuchen
+        // Wenn Switch nicht erfolgreich in Gruppe weitersuchen
         if ($groupCategoryId !== false)
             {
             $childrenIds = IPS_GetChildrenIDs($groupCategoryId);
@@ -7915,7 +7593,9 @@ class App_Convert_XmlToArray
  * Tabellen und auch andere Elemente werden als Tabellen dargestellt. Die Darstellung der Inhalten von arrays vereinheitlichen
  *
  *      __construct
- *      createTable
+ *      setConfiguration
+ *      getColumnsName
+ *      showTable
  *      
  */
 
@@ -8500,6 +8180,7 @@ class ipsCharts
  *
  * __construct              als Constructor wird entweder nichts oder der Modulname übergeben
  * ipsVersion
+ * ipsVersion7check         true wenn IPS Version groesser 6
  * path                     gibt den IPS Category Path als string return aus
  * totalChildren            die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen
  *     countChildren           rekursive Funktion dafür.
@@ -8555,6 +8236,18 @@ class ipsOps
         return(($ipsVersion["Major"]>6));
         }
 
+    /* object belongs to category
+     * read path and check if Category with name is part of
+     */
+    public function isMemberOfCategoryName($objectR,$categoryName)
+        {
+        $found=false;
+        while ($objectR=IPS_GetParent($objectR))
+            {
+            if (IPS_GetName($objectR)==$categoryName) $found=true;
+            }
+        return ($found);
+        } 
 
     /* den IPS Pfad ausgeben 
      */
@@ -8582,6 +8275,20 @@ class ipsOps
         return($str);
         }
 
+    /* get Childrens from a certain Type
+     */
+    public function getChildrenIDsOfType($oid,$type=0)
+        {
+        $result = array();
+        $entries=IPS_getChildrenIDs($oid);
+        foreach ($entries as $entry)
+            {
+            $objectType=IPS_getObject($entry)["ObjectType"];
+            if ($objectType==$type) $result[]=$entry;  
+            }
+        return ($result);
+        }
+
     /* ipsOps, die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen 
      */
     public function totalChildren($oid)
@@ -8591,8 +8298,8 @@ class ipsOps
         return ($count);
         }
 
-    /* rekursiver Aufruf für Ermittlung totalChildren   */
-
+    /* rekursiver Aufruf für Ermittlung totalChildren   
+     */
     private function countChildren($oid,&$count)
         {
         $entries=IPS_getChildrenIDs($oid);
@@ -16013,6 +15720,79 @@ function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$V
 
 
 /******************************** DEPRCIATED **************************/
+
+
+function createPortal($Path)
+	{
+		$categoryId_WebFront         = CreateCategoryPath($Path);
+		$categoryId_WebFrontTemp     = CreateCategoryPath($Path.".Temperatur");
+		$categoryId_WebFrontHumi     = CreateCategoryPath($Path.".Feuchtigkeit");
+		$categoryId_WebFrontSwitch   = CreateCategoryPath($Path.".Schalter");
+
+		IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
+
+		//IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+
+		$Homematic = HomematicList();
+		$FHT = FHTList();
+		$FS20= FS20List();
+	
+		foreach ($Homematic as $Key)
+			{
+			/* alle Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["TEMPERATURE"])==true)
+	   		{
+      		$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontTemp,  10);
+				//print_r($Key["COID"]["TEMPERATURE"]);
+				//echo $Key["COID"]["TEMPERATURE"]["OID"]." ";
+				//echo date("d.m h:i",IPS_GetVariable($oid)["VariableChanged"])." ";
+				//echo $Key["Name"].".".$Key["COID"]["TEMPERATURE"]["Name"]." = ".GetValueFormatted($oid)."\n";
+				}
+			}
+
+		foreach ($FHT as $Key)
+			{
+			/* alle Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["TemeratureVar"])==true)
+		   	{
+      		$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontTemp,  10);
+				}
+			}
+
+		foreach ($Homematic as $Key)
+			{
+			/* alle Feuchtigkeitswerte ausgeben */
+			if (isset($Key["COID"]["HUMIDITY"])==true)
+		   	{
+	   	   $oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
+      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontHumi,  10);
+				//$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+
+   	$categoryId_WebFrontSwitchFS20   = CreateCategoryPath($Path.".Schalter.FS20");
+		foreach ($FS20 as $Key)
+			{
+			/* alle Statuswerte ausgeben */
+			if (isset($Key["COID"]["StatusVariable"])==true)
+			   {
+      		$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontSwitchFS20,  10);
+				}
+			}
+   	$categoryId_WebFrontSwitchHM   = CreateCategoryPath($Path.".Schalter.Homematic");
+		foreach ($Homematic as $Key)
+			{
+			/* alle Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["STATE"])==true)
+	   		{
+	      	$oid=(integer)$Key["COID"]["STATE"]["OID"];
+      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontSwitchHM,  10);
+				}
+			}
+	}
 
 
     function getNiceFileSize($bytes, $binaryPrefix=true) {

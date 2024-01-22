@@ -6,7 +6,11 @@
      *
      * Handling auf NULL and NOT NULL, default in MariaDB is NULL, means values may be NULL:
      *    empty NUll Config Parameter means Default and values maybe Null
-     *    NULL=NO meands SQL syntax NO NULL
+     *    NULL=NO means SQL syntax NO NULL
+     *
+     * Automatic NULL=NO implementation not done so far, wenn timestam or auto-increment set NULL=NO
+     *
+     * to understand SQL Table Configuration https://www.w3schools.com/sql/sql_autoincrement.asp
      *
      */
 
@@ -16,7 +20,9 @@
                                     "Name"         => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "UNI", "Default" => "", "Extra" => ""],
                                     "Type"         => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
                                     "parentID"     => ["Type" => "varchar(255)", "Null" => "", "Key" => "", "Default" => "", "Extra" => ""],
-                                    "Updated"      => ["Type" => "timestamp", "Null" => "", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
+                                    "Changed"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
+                                    "Touch"             => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
+                                    "Updated"      => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
                                     ],
                 "deviceList"    => ["deviceID"          => ["Type" => "int", "Null" => "NO", "Key" => "PRI", "Default" => "", "Extra" => "auto_increment"],
                                     "Name"              => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "UNI", "Default" => "", "Extra" => ""],
@@ -29,7 +35,7 @@
                                     "Information"       => ["Type" => "varchar(255)", "Null" => "", "Key" => "", "Default" => "", "Extra" => ""],
                                     "Changed"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
                                     "Touch"             => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
-                                    "Updated"           => ["Type" => "timestamp", "Null" => "", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
+                                    "Updated"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
                                     ],
                 "instances"     => ["instanceID"   => ["Field" => "instanceID", "Type" => "int", "Null" => "NO", "Key" => "PRI", "Default" => "", "Extra" => "auto_increment"],
                                     "deviceID"     => ["Field" => "deviceID", "Type" => "int", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
@@ -40,7 +46,7 @@
                                     "CONFIG"       => ["Field" => "CONFIG", "Type" => "varchar(4095)", "Null" => "", "Key" => "", "Default" => "", "Extra" => ""],
                                     "Changed"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
                                     "Touch"             => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
-                                    "Updated"      => ["Field" => "Updated", "Type" => "timestamp", "Null" => "", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
+                                    "Updated"      => ["Field" => "Updated", "Type" => "timestamp", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
                                     ],
                 "channels"      => ["channelID"     => ["Field" => "channelID", "Type" => "int", "Null" => "NO", "Key" => "PRI", "Default" => "", "Extra" => "auto_increment"],
                                     "deviceID"     => ["Field" => "deviceID", "Type" => "int", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
@@ -82,11 +88,15 @@
                                          "Name"             => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "UNI", "Default" => "", "Extra" => ""],
                                          "Type"             => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
                                          "parentID"         => ["Type" => "varchar(255)", "Null" => "", "Key" => "", "Default" => "", "Extra" => ""],
+                                    "Changed"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
+                                    "Touch"             => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
                                          "Updated"          => ["Type" => "timestamp", "Null" => "", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
                                         ],
                 "componentModules" =>   ["componentModuleID"  => ["Type" => "int", "Null" => "", "Key" => "PRI", "Default" => "", "Extra" => "auto_increment"],
                                          "componentName"      => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "UNI", "Default" => "", "Extra" => ""],
                                          "moduleName"         => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
+                                    "Changed"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
+                                    "Touch"             => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
                                          "Updated"            => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
                                         ],
                 "auditTrail"     =>     ["auditTrailID"     => ["Type" => "int", "Null" => "NO", "Key" => "PRI", "Default" => "", "Extra" => "auto_increment"],
@@ -95,6 +105,8 @@
                                          "message"           => ["Type" => "varchar(2047)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
                                          "SQLStatement"      => ["Type" => "varchar(2047)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
                                          "Time"              => ["Type" => "timestamp", "Null" => "", "Key" => "", "Default" => "current_timestamp()", "Extra" => ""],
+                                    "Changed"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
+                                    "Touch"             => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
                                          "Updated"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
                                         ],
                 "eventLog"      => ["eventLogID"     => ["Type" => "int", "Null" => "NO", "Key" => "PRI", "Default" => "", "Extra" => "auto_increment"],
@@ -103,8 +115,20 @@
                                     "eventDescription"  => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
                                     "eventName"         => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
                                     "Time"              => ["Type" => "timestamp", "Null" => "", "Key" => "", "Default" => "current_timestamp()", "Extra" => ""],
+                                    "Changed"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
+                                    "Touch"             => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
                                     "Updated"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
                                     ],
+                "webfrontAccess"      => ["accessID"     => ["Type" => "int", "Null" => "NO", "Key" => "PRI", "Default" => "", "Extra" => "auto_increment"],
+                                          "nameOfID"          => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
+                                          "eventDescription"  => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
+                                          "eventName"         => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
+                                          "configuration"     => ["Type" => "varchar(255)", "Null" => "NO", "Key" => "", "Default" => "", "Extra" => ""],
+                                    "Time"              => ["Type" => "timestamp", "Null" => "", "Key" => "", "Default" => "current_timestamp()", "Extra" => ""],
+                                    "Changed"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
+                                    "Touch"             => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "\"0000-00-00 00:00:00\"", "Extra" => ""],
+                                    "Updated"           => ["Type" => "timestamp", "Null" => "NO", "Key" => "", "Default" => "current_timestamp()", "Extra" => "on update current_timestamp()"],
+                                    ],                                    
                     );
 		return $dataBaseConfiguration; 
         }

@@ -37,6 +37,12 @@
     /*
      * Klasse StartpageHandler
      *
+     * umgestellt auf IPS7, Verzeichnis webfront\user wird durch user ersetzt
+     * OperationCenter um den ModulMagerIps7 und HighchartIps7 erweitert 
+     * im construct wird bereits ermittelt ob der newstyle anzuwenden ist
+     *
+     *
+     *----------------------------
      * sammelt alle Routinen für die Erstellung und Verwaltung der Startpage/Dashboard
      * mit der Absage des IPSWeather Moduls wurden die Wetter Aktivitäten hier her verlagert.
      *
@@ -129,9 +135,7 @@
 		protected $OWDs;				// alle Openweather Instanzen
 
 		/**
-		 * @public
-		 *
-		 * Initialisierung des IPSMessageHandlers
+         * Initialisierung des StartpageHandlers
 		 *
 		 */
 		public function __construct($debug=false)
@@ -150,11 +154,6 @@
 	        $this->installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
 
             //print_R($installedModules);
-
-			$moduleManagerHC = new IPSModuleManager('IPSHighcharts',"");
-            $categoryHighchartsID = $moduleManagerHC->GetModuleCategoryID('app');	
-            $this->scriptHighchartsID = @IPS_GetScriptIDByName("IPSHighcharts", $categoryHighchartsID);
-            //echo "StartpageHandler, construct, Highcharts App Category : $categoryHighchartsID and ScriptID : $this->scriptHighchartsID\n";
 
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
@@ -217,6 +216,20 @@
 
 			$this->OWDs=$modulhandling->getInstances('OpenWeatherData');
 			$this->newStyle = $newstyle;                                        // wenn true kein webfront verzeichnis mehr
+
+            if ($this->newStyle)
+                {
+                $moduleManagerOC = new IPSModuleManager('OperationCenter',"");
+                $categoryHighchartsID = $moduleManagerOC->GetModuleCategoryID('app');	
+                $this->scriptHighchartsID = @IPS_GetScriptIDByName("HighchartsIps7", $categoryHighchartsID);
+                }
+            else
+                {    
+                $moduleManagerHC = new IPSModuleManager('IPSHighcharts',"");
+                $categoryHighchartsID = $moduleManagerHC->GetModuleCategoryID('app');	
+                $this->scriptHighchartsID = @IPS_GetScriptIDByName("IPSHighcharts", $categoryHighchartsID);
+                }
+            //echo "StartpageHandler, construct, Highcharts App Category : $categoryHighchartsID and ScriptID : $this->scriptHighchartsID\n";
             }
 
 
@@ -2243,8 +2256,8 @@
                 {
                 if ($showfile===false) $showfile=rand(1,$maxcount-1);
                 $filename = $file[$showfile];
-                if ($this->newStyle) $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb, $debug);
-                else $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir().$verzeichnisWeb, $debug);
+                if ($this->newStyle) $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir().$verzeichnisWeb, $debug);       // webfront/user gibt es ab IPS7 nicht mehr
+                else $verzeichnis    = $this->dosOps->correctDirName(IPS_GetKernelDir()."/webfront".$verzeichnisWeb, $debug);
                 if ($debug) echo "showPictureWidget, Kernel Dir ".IPS_GetKernelDir()." Filename Dir $verzeichnis ,Filename $filename untersuchen.\n";
                 if (file_exists($verzeichnis.$filename)) 
                     {
@@ -3558,6 +3571,7 @@
 	        $wert.='.container:hover .image { opacity: 0.8; }';             // define classes
 	        $wert.='.container:hover .middle { opacity: 1; }';
 	        $wert.='.StartPageText { background-color: #4CAF50; color: white; font-size: 16px; padding: 16px 32px; }';          // was former .text only, this is used in standard formatting !!!
+            $wert.='.StartPageInfoLine { display: inline-block; padding: 3px 1rem; }';
             $wert.=$input;
 	        $wert.='</style>';
 	        return($wert);
@@ -3812,7 +3826,7 @@
 				$i++;
 				}
 	
-            if (false)   // Routine zum Erstellen eines Highchart Diagrans
+            if (false)   // Routine zum Erstellen eines Highchart Diagrams
                 {
                 /* zusaetzlich auch ein huebsches Meteogram erstellen, benötigter Input ist
                 * $categoryId_OpenWeather,$startTime, $endTime
@@ -4254,7 +4268,8 @@
                 *
                 */
 
-                IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+                if ($this->newStyle) IPSUtils_Include ("HighchartsIps7.inc.php", "IPSLibrary::app::modules::operationCenter");
+                else IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
         
                 $CfgDaten    = CheckCfgDaten($CfgDaten);
                 //print_r($CfgDaten);
@@ -4944,8 +4959,19 @@
 
        /* commandLineResponsive
          * somme Buttons to control Display with Javascript
+         * styling could be more creative, but it does for the moment
          * 
-         * html5: id=,2 class=
+         * html5: id=sp-cmd-item# class=button-resp
+         *
+         * real operation in javascript file, could be for example
+         * 0 Button eins, toggle 1/4/9 pictures
+         * 1 Button zwei, resize image picture single to bigger
+         * 2 Button drei, change picture size
+         * 3 Button vier, orf on/off
+         * 4 Button fuenf, hide pictures item per item
+         *
+         * ein ajax-request aus javascript vom Webbrowser ruft Startpage_SetPage auf
+         *
          */
 	    function commandLineResponsive($count=false)               
 	        {
@@ -5167,15 +5193,22 @@
                     if ($configBottomLine)
                         {
                         //$wert.= '<td>';
-                        $wert.=     '<div id="sp-inf-txt">click here';
+                        $wert.=     '<div id="sp-inf-txt" class="StartPageInfoLine">click here';
                         $wert.=         '</div>';
                         if ($count !==false) $count++;
                         }
                     }                           // ende foreach Einträge
 	            }               // ende es gibt eine bottom Line
-            if (isset($config["ID"])) 
-            $wert.=     '<div id="sp-inf-cookie-id">'.$config["ID"];
-            $wert.=         '</div>';
+            if (isset($config["ID"]))
+                { 
+                $wert.=     '<div id="sp-inf-cookie-id" class="StartPageInfoLine">'.$config["ID"];
+                $wert.=         '</div>';
+                }
+            if (isset($config["AJAX"]))
+                { 
+                $wert.=     '<div id="sp-inf-ajax-id" class="StartPageInfoLine">'.$config["AJAX"];
+                $wert.=         '</div>';
+                }
             if ($count !== false) return ($count);
 	        return ($wert);            
 	        }

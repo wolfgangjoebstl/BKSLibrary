@@ -119,8 +119,19 @@
 	        return ($this->configuration);
 	        }
 
-        /* die gesamte Konfiguration einlesen und eventuell anpassen, prüfen und bearbeiten */
-
+        /* die gesamte Konfiguration einlesen und eventuell anpassen, prüfen und bearbeiten 
+         * drei Bereiche: 
+         *  CONTRACTS           Guthaben, Telefonnummern
+         *  CONFIG              eigentliche Config
+         *      EvaluateGuthaben        Die Guthabenregister nur mehr auf einem Server bearbeiten, anlegen, speichern, nicht mehr auf remote Server verteilen
+         *      WebResultDirectory
+         *      OperatingMode           Selenium|iMacro
+         *      Api  
+         *      Webfront
+         *  EXECUTE             Debuginformation, Umgang ob Ergebnisse gespeichert werden sollen
+         *
+         *
+         */
 		public function setConfiguration($ausgeben,$ergebnisse,$speichern)
 	        {
             if ( ((function_exists("get_GuthabenConfiguration"))===false) || ((function_exists("get_GuthabenAllgemeinConfig"))===false) ) IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
@@ -146,11 +157,12 @@
                         }
                     } // ende foreach
                 }
-                $configuration["CONTRACTS"] = $phoneID;
+            $configuration["CONTRACTS"] = $phoneID;
 
             if (function_exists("get_GuthabenAllgemeinConfig")) 
                 {
                 $configInput=get_GuthabenAllgemeinConfig();
+                configfileParser($configInput, $config, ["EvaluateGuthaben","Evaluateguthaben","evaluateguthaben" ],"EvaluateGuthaben" ,false); 
                 /* Web result Directory */
                 configfileParser($configInput, $config, ["WebResultDirectory","Webresultdirectory","webresultdirectory" ],"WebResultDirectory" ,"/Guthaben/"); 
                	$systemDir     = $this->dosOps->getWorkDirectory(); 

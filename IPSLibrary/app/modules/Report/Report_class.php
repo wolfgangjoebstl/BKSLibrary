@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -18,7 +18,17 @@
 
 
 	/**
-	 * @class Report_Class
+     *
+     * umgestellt auf IPS7, Verzeichnis webfront\user wird durch user ersetzt
+     * OperationCenter um den ModulMagerIps7 und HighchartIps7 erweitert 
+     * im construct wird bereits ermittelt ob der newstyle anzuwenden ist
+     *
+     *
+     *----------------------------
+     * es gibt folgende classes
+     *  ReportControl_Manager
+     *  HighCharts                  als Fork vom HighchartsModul, kein include notwendig, ob Aufruf wirklich erfolgt unklar
+     *
 	 *
      * für die Darstellung von Highcharts Grafiken im Webfront. Aufruf erfolgt über ActionManaager:
      *		$variableId   = $_IPS['VARIABLE'];  $value        = $_IPS['VALUE'];
@@ -58,6 +68,9 @@
      
 	class ReportControl_Manager {
 
+        public      $newstyle;                              // wenn true, IPS 7 oder größer, kein Webfront Verzeichnis, alles im User anlegen
+        protected   $dosOps,$ipsOps;                        // ein paar Routinen ohne jedesmal new zu machen
+
 		private $categoryIdValues;              // * ID Kategorie für die berechneten Werte
 		private $categoryIdCommon;  	        // * ID Kategorie für allgemeine Steuerungs Daten
         private $categoryIdData;  	              // * ID Kategorie des Parents
@@ -76,6 +89,9 @@
 		public function __construct($debug=false) 
             {
             $this->debug=$debug;
+            $this->dosOps = new dosOps();  
+            $this->ipsOps = new ipsOps();
+
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Report');
 			$this->categoryIdValues   = IPS_GetObjectIDByIdent('Values', $baseId);
 			$this->categoryIdCommon   = IPS_GetObjectIDByIdent('Common', $baseId);
@@ -84,6 +100,10 @@
 			//$this->sensorConfig       = IPSPowerControl_GetSensorConfiguration();
 			$this->valueConfig        = $this->setValueConfiguration();                                 // pro Report eine Index 0..x aufsteigend, kontinuierlich, Name ist der Verweis
             $this->configuration      = $this->setConfiguration();                                      // auf den Key/Index für die detaillierte Konfiguration des Reports
+
+            $ipsVersion = $this->ipsOps->ipsVersion();
+            if ($ipsVersion["Major"]>6) $this->newstyle=true;
+            else $this->newstyle=false;
 		    }
 
 
@@ -1035,9 +1055,24 @@
 				SetValue($variableIdChartHTML, '');
 				return;
 			    }
-
-			// Create Chart with Config File
-			IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+            
+            // Create Chart with Config File
+            if ($this->newstyle)
+                {
+                IPSUtils_Include ("HighchartsIps7.inc.php", "IPSLibrary::app::modules::operationCenter");
+                $moduleManagerOC = new IPSModuleManager('OperationCenter',"");
+                $categoryHighchartsID = $moduleManagerOC->GetModuleCategoryID('app');	
+                $this->scriptHighchartsID = @IPS_GetScriptIDByName("HighchartsIps7", $categoryHighchartsID);
+                }
+            else
+                { 
+                IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");   
+                $moduleManagerHC = new IPSModuleManager('IPSHighcharts',"");
+                $categoryHighchartsID = $moduleManagerHC->GetModuleCategoryID('app');	
+                $this->scriptHighchartsID = @IPS_GetScriptIDByName("IPSHighcharts", $categoryHighchartsID);
+                }
+			
+			
 			$CfgDaten    = CheckCfgDaten($CfgDaten);
 			//if ($this->debug) print_r($CfgDaten);                 // zuviele Daten
 			$sConfig     = CreateConfigString($CfgDaten);           // IPSHighCharts function        
@@ -1680,14 +1715,20 @@
 
     class HighCharts
         {
+        public      $newstyle;                              // wenn true, IPS 7 oder größer, kein Webfront Verzeichnis, alles im User anlegen
+        protected   $dosOps,$ipsOps;                        // ein paar Routinen ohne jedesmal new zu machen
 
         private $version = "2.03"; 
         private $versionDate = "05.10.2012";
 
         function __construct()
             {
+            $this->dosOps = new dosOps();  
+            $this->ipsOps = new ipsOps();
 
-
+            $ipsVersion = $this->ipsOps->ipsVersion();
+            if ($ipsVersion["Major"]>6) $this->newstyle=true;
+            else $this->newstyle=false;
             }
 
         // ------------------------------------------------------------------------
@@ -1759,12 +1800,14 @@
         //    IN: $stringForCfgFile = String welcher in das File geschrieben wird
         // ------------------------------------------------------------------------
         function CreateConfigFile($stringForCfgFile, $id, $charttype = 'Highcharts')
-        {
-            $path = "webfront\user\IPSHighcharts\\" . $charttype;
+            {
+            if ($this->newstyle) $path = "user\IPSHighcharts\\" . $charttype;
+            else $path = "webfront\user\IPSHighcharts\\" . $charttype;
+
             $filename = $charttype . "Cfg$id.tmp";
 
             return $this->CreateConfigFileByPathAndFilename($stringForCfgFile, $path, $filename);
-        }
+            }
 
         // ------------------------------------------------------------------------
         // CreateConfigFileByPathAndFilename
@@ -1773,7 +1816,7 @@
         // 		 $path, $filename = Pfad un Name des Tmp-Files welches erzeugt werden soll
         // ------------------------------------------------------------------------
         function CreateConfigFileByPathAndFilename($stringForCfgFile, $path, $filename)
-        {
+            {
             // Standard-Dateiname .....
             $tmpFilename = IPS_GetKernelDir() . $path . "\\" . $filename;
 
@@ -1783,7 +1826,7 @@
             fclose($handle);
 
             return $tmpFilename;
-        }
+            }
 
         // ------------------------------------------------------------------------
         // CheckCfgDaten
@@ -1806,8 +1849,8 @@
             // ChartType
             $this->IfNotIssetSetValue($cfg['Ips']['ChartType'], 'Highcharts');
 
-        if ($cfg['Ips']['ChartType'] != 'Highcharts' && $cfg['Ips']['ChartType'] != 'Highstock')
-            die ("Abbruch! Es sind nur 'Highcharts' oder 'Highstock' als ChartType zulässig");
+            if ($cfg['Ips']['ChartType'] != 'Highcharts' && $cfg['Ips']['ChartType'] != 'Highstock')
+                die ("Abbruch! Es sind nur 'Highcharts' oder 'Highstock' als ChartType zulässig");
 
             // über WebInterface kommt der Aufruf wenn die Content-Variable aktualisiert wird
             if ($_IPS['SENDER'] != "WebInterface" && $cfg['RunMode'] != "popup")
@@ -1894,7 +1937,7 @@
             $cfg['yAxis'] = $axisArr;
             }
             return $cfg;
-        }
+            }
 
         // ------------------------------------------------------------------------
         // CheckCfg
@@ -1913,7 +1956,7 @@
             $cfg = $this->CheckCfg_Series($cfg);
 
             return $cfg;
-        }
+            }
 
         // ------------------------------------------------------------------------
         // CheckCfg_Common
@@ -1941,7 +1984,7 @@
                 die ("Abbruch - 'ArchiveHandlerId' (".$cfg['ArchiveHandlerId'].") ist keine Instance eines ArchiveHandler.");
 
             if ($cfg['RunMode'] == "popup")
-            {
+                {   
                 // keine Webfront Id
                 if (!isset($cfg['WebFrontConfigId']))
                     die ("Abbruch - Konfiguration von 'WebFrontConfigId' fehlt.");
@@ -1952,10 +1995,9 @@
                     die ("Abbruch - 'WebFrontConfigId' ist keine WebFrontId");
 
                 $this->IfNotIssetSetValue($cfg['WFCPopupTitle'], "");
+                }
+            return $cfg;
             }
-
-        return $cfg;
-        }
 
 
         // ------------------------------------------------------------------------
@@ -2282,7 +2324,7 @@
             return trim(print_r($s, true), "Array\n()") ;
         }
 
-    // ***************************************************************************************************************************
+        // ***************************************************************************************************************************
 
         // ------------------------------------------------------------------------
         // GetHighChartsCfgFile
@@ -2743,7 +2785,7 @@
                 //&& $Serie['EndTime'] >= time()    			// nicht wenn Endzeitpunkt vor NOW ist
                 && !$Serie['Ips']['IsCounter'])				// nicht bei Zählervariablen
                 {
-    //                $curValue = ReadCurrentValue($VariableId);
+        //                $curValue = ReadCurrentValue($VariableId);
                     $curValue    = $this->ReadLoggedValue($Id_AH, $VariableId, $Serie['EndTime']);
                     $dataArray[] = $this->CreateDataItem($curValue['TimeStamp'], $curValue['Value'], $Serie);
                 }
@@ -2964,7 +3006,7 @@
             $offset = trim($offset , "," );
 
             //*1000 da JS in [ms] angebgeben wird un php in [s]
-    /*		$TooltipString="function() {
+        /*		$TooltipString="function() {
                                     var serieIndex = this.series.index;
 
                                     if (this.series.type == 'pie')
@@ -2996,7 +3038,7 @@
 
                                     }
                             } ";
-    */
+        */
             $TooltipString="function() {
                                     var serieIndex = this.series.index;
                                     var unit = [".$s. "][serieIndex];
@@ -3347,7 +3389,7 @@
                 {
                     $item = trim($item, "@");
                 }
-    /*			else if ((substr($item,0,1) == "$" && substr($item,-1) == "$"))
+        /*			else if ((substr($item,0,1) == "$" && substr($item,-1) == "$"))
                 {
 
                     $item = trim($item, "$");

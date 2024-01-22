@@ -18,7 +18,10 @@
 	 */  
 
     /*******************************************************
+    * umgestellt auf IPS7, Verzeichnis webfront\user wird durch user ersetzt
+    * OperationCenter um den ModulMagerIps7 und HighchartIps7 erweitert 
     *
+    *----------------------------
     * schreiben des Startpage html Strings in der htmlbox der Startpage
     *
     * es gibt verschiedene Darstellungsarten

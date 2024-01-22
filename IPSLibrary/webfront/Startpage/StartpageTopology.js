@@ -6,7 +6,7 @@ $(document).ready(function(){
 	let item=0;
 	var $write = $('#write');					// keine globale Variable ???
 	//var shift = false, capslock = false;
-
+	trigger_ajax("startofscript", "Cookie", "startpage", createConfig());			// Ajax Request kommt in StartpageTopologyReceiver an als   id, action, module, info
 	window.visualViewport.addEventListener("scroll", viewportHandler);
 	window.visualViewport.addEventListener("resize", viewportHandler);
 		 
@@ -36,17 +36,52 @@ $(document).ready(function(){
 		if (pic==4) {
 			$(".sp-image-pic9").css ("display", "none");
 			$(".sp-image-pic0").css ("display", "none");
-			$(".sp-image-pic4").css ("display", "inline").css("width","100%").css("max-height",picture4Height);			}
+			$(".sp-image-pic4").css ("display", "inline").css("width","50%").css("max-height",picture4Height);			}
 		if (pic==0) {
 			$(".sp-image-pic9").css ("display", "none");
 			$(".sp-image-pic4").css ("display", "none");
 			$(".sp-image-pic0").css ("display", "inline").css("width","100%").css("max-height",picture0Height);			}
 		}
+	
+	function createConfig(info='') {
+		const obj = {};
+		obj.info=info;
+		obj.height=window.visualViewport.height;
+		obj.width=window.visualViewport.width;
+		var config = JSON.stringify(obj);
+		return config;
+		}
 		
-	function trigger_ajax(id, action, module, info) {
+	function analyseConfig(obj) {
+		var result;
+		result = JSON.parse(obj);
+		if (typeof result.startofscript == "undefined") alert ("startofscript not available");
+		else {
+			var result1 = JSON.parse(result.startofscript);
+			if (typeof result1.startofscript == "undefined") alert ("startofscript.startofscript not available");
+			if (typeof result1.buttoneins == "undefined") alert ("startofscript.buttoneins not available");
+				{
+				var buttoneins = JSON.parse(result1.buttoneins);
+				if (typeof buttoneins.info == "undefined") alert ("startofscript.buttoneins.info not available");
+				picture = buttoneins.info;
+				updatePictureStyle(picture);
+				}
+			return result.startofscript;
+			if (typeof result.buttoneins == "undefined") alert ("buttoneins not available");
+			}
+		return obj;
+		}	
+	
+	function trigger_ajax(id, action, module, config) {
 		//$.ajax({type: "POST", url: "/user/Startpage/StartpageTopology_Receiver.php", data: "&id="+id+"&action="+action+"&module="+module+"&info="+info});
+		var result;			// will become object after assignment
 		action=readCookie('identifier-symcon-startpage');
-		$.post('/user/Startpage/StartpageTopology_Receiver.php', {id:id,action:action,module:module,info:info});
+		$.post('/user/Startpage/StartpageTopology_Receiver.php', 
+			{id:id,action:action,module:module,info:config},
+			function(data, status){	
+				var configws = analyseConfig(data);
+				document.getElementById('sp-inf-ajax-id').innerHTML = "Ajax Response: '"+configws+"'   "+status;
+				});
 			};	
 			
 	function createCookie(name, value, days) {
@@ -81,11 +116,11 @@ $(document).ready(function(){
 		
 	
 		 
-  $("#phide").click(function(){ 
-	 $(this).hide('slow'); 
-	 //$("ajax_result").hide();	
-	 //$(this).text('empty');
-	 document.getElementById('ajax_result').innerHTML = "empty";
+    $("#phide").click(function(){ 
+		$(this).hide('slow'); 
+		//$("ajax_result").hide();	
+		//$(this).text('empty');
+		document.getElementById('ajax_result').innerHTML = "empty";
 
 		});
 	
@@ -105,10 +140,10 @@ $(document).ready(function(){
 				}
 			}
 		updatePictureStyle(picture);
-		trigger_ajax("button-eins", "Toggle", "module", picture);			// Ajax Request kommt in StartpageTopologyReceiver an als   id, action, module, info
+		trigger_ajax("button-eins", "Cookie", "startpage", createConfig(picture));			// Ajax Request kommt in StartpageTopologyReceiver an als   id, action, module, info
 		});
 	
-	// Button fuenf	
+	// Button fuenf	, hide pictures item per item
 	$("#sp-cmd-item4").click(function(){ 
 		document.getElementById('sp-inf-txt').innerHTML = "empty image picture 0";
 		if (item==0) $(".image-item-p0").css ("display", "none");
@@ -124,11 +159,14 @@ $(document).ready(function(){
 		if (item==8) item=0;
 		});
 
+	// Button zwei, resize image picture single to bigger
 	$("#sp-cmd-item1").click(function(){ 
 		document.getElementById('sp-inf-txt').innerHTML = "resize image picture single to bigger";
 		$(".image-pic0").css ("max-height", "800px");
+		trigger_ajax("button-zwei", "Cookie", "startpage", createConfig());
 		});
-
+	
+	// Button drei, change picture size
 	$("#sp-cmd-item2").click(function(){ 
 		document.getElementById('sp-inf-txt').innerHTML = "change picture size";
 		$("#sp-pic-img-full").css ("max-height", "800px");
@@ -154,6 +192,13 @@ $(document).ready(function(){
 			$(".image-pic0").css("display", "none");
 			pic1=false; }
 		});
+
+	// Button null, do read of config and update
+	$("#sp-cmd-item9").click(function(){ 
+		trigger_ajax("startofscript", "Cookie", "startpage", createConfig());			// Ajax Request kommt in StartpageTopologyReceiver an als   id, action, module, info
+		document.getElementById('sp-inf-txt').innerHTML = "update to config";
+		});
+
 		
 	$("#sp-pic-img-p0").click(function(){ 
 		document.getElementById('sp-inf-txt').innerHTML = "empty image picture 0";
@@ -185,22 +230,22 @@ $(document).ready(function(){
 	// iframe auf fullscreen
 
 	function enterFullscreen(element) {
-	  if(element.requestFullscreen) {
-		element.requestFullscreen();
-	  } else if(element.msRequestFullscreen) {      // for IE11 (remove June 15, 2022)
-		element.msRequestFullscreen();
-	  } else if(element.webkitRequestFullscreen) {  // iOS Safari
-		element.webkitRequestFullscreen();
-	  }
+		if(element.requestFullscreen) {
+			element.requestFullscreen();
+		} else if(element.msRequestFullscreen) {      // for IE11 (remove June 15, 2022)
+			element.msRequestFullscreen();
+		} else if(element.webkitRequestFullscreen) {  // iOS Safari
+			element.webkitRequestFullscreen();
+		}
 	}
 
 	//$('#guthbnField').click(function(){ alert("hi");  });
     //$("#guthbnField").click(function(){ $(this).hide(); });
 	
-  $("#guthbnField").click(function(){ 				    // Function um Parameter aus der URi zu holen
-	var ipsValue = get_url_param('action');
-	$(this).html("<p>action="+ipsValue+"</p>"); 
-	});	
+	$("#guthbnField").click(function(){ 				    // Function um Parameter aus der URi zu holen
+		var ipsValue = get_url_param('action');
+		$(this).html("<p>action="+ipsValue+"</p>"); 
+		});	
 	
     function get_url_param( name ) {
         name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
@@ -215,21 +260,20 @@ $(document).ready(function(){
     }
 
 
-  $("#guthbnField-More").click(function(){ 			// Objekt Manipulation
-	 var $write = $('#write');
-     document.getElementById('demotext').innerHTML = "demotext : "+$write.text();		// demotext wird mit dem Wert von Write überschrieben
-	 //$("#write").text("jetzt aber");
-	 $write.text("jetzt aber");				//write zeigt auf das feld mit ID write, siehe def oben
-	 //document.write("Hallo");   Wuerde das ganze fenster überschreiben
-	 //$(this).hide(); 
-	 });
+	$("#guthbnField-More").click(function(){ 			// Objekt Manipulation
+		var $write = $('#write');
+		document.getElementById('demotext').innerHTML = "demotext : "+$write.text();		// demotext wird mit dem Wert von Write überschrieben
+		//$("#write").text("jetzt aber");
+		$write.text("jetzt aber");				//write zeigt auf das feld mit ID write, siehe def oben
+		//document.write("Hallo");   Wuerde das ganze fenster überschreiben
+		//$(this).hide(); 
+		});
 
 		
-  $("#amis_send_simple_ajax").click(function(){   // Ajax Request
-	 document.getElementById('ajax_result').innerHTML = "empty";
-	 //$.post('/user/Amis/AmisReceiver.php',  {    name: "Donald Duck",    city: "Duckburg"  },
-	 $.get('/user/Amis/AmisReceiver.php',
-		function(data, status){
+	$("#amis_send_simple_ajax").click(function(){   // Ajax Request
+		document.getElementById('ajax_result').innerHTML = "empty";
+		//$.post('/user/Amis/AmisReceiver.php',  {    name: "Donald Duck",    city: "Duckburg"  },
+		$.get('/user/Amis/AmisReceiver.php', function(data, status){
 			//alert("Data: " + data + "\nStatus: " + status);
 			//$("ajax_result").show();
 			var obj = JSON.parse(data);					// immer json formatiert, immer ein Objekt mit Id
@@ -240,33 +284,32 @@ $(document).ready(function(){
 			});
 	     });
 
-  $("#amis_send_full_ajax").click(function(){   // Ajax Request
-	document.getElementById('ajax_result').innerHTML = "empty";
-	$.ajax({
-		url : '/user/Amis/AmisReceiver.php',
-		type : 'post',			// get oder post gemeinsam mit data
-		dataType: "json",
-		data: "command=sort&id="+this.id,			
-		}).done(function (data) {
+	$("#amis_send_full_ajax").click(function(){   // Ajax Request
+		document.getElementById('ajax_result').innerHTML = "empty";
+		$.ajax({
+			url : '/user/Amis/AmisReceiver.php',
+			type : 'post',			// get oder post gemeinsam mit data
+			dataType: "json",
+			data: "command=sort&id="+this.id,			
+			}).done(function (data) {
 				ajaxresponse(data);
 				// Auswerteprozess und Darstellung für this
-		}).fail(function(errorobj, textstatus, error) {
+			}).fail(function(errorobj, textstatus, error) {
 				document.getElementById('ajax_fail').innerHTML = "Fehler Ajax : "+error+" "+textstatus;
-		}).always(function(data) {
+			}).always(function(data) {
 				return data;
+			});
 		});
-  });
 		 
-  $("#guthbnFieldAjaxFirst").click(function(){ 					// Ajax Request
-  	 var $write = $('#write');
-     var data = ajaxrequest('/user/Amis/AmisReceiver.php', 'get', 'command:ARD');			// die ersten beiden Parameter sind exakt festgelegt		
-	 $("ajax_result").hide();
-	 $write.text("jetzt aber Ajaxrequest abgesetzt."+data+".");
-	 });
+	$("#guthbnFieldAjaxFirst").click(function(){ 					// Ajax Request
+		var $write = $('#write');
+		var data = ajaxrequest('/user/Amis/AmisReceiver.php', 'get', 'command:ARD');			// die ersten beiden Parameter sind exakt festgelegt		
+		$("ajax_result").hide();
+		$write.text("jetzt aber Ajaxrequest abgesetzt."+data+".");
+		});
 		
 
 	const tableSort = function(tab) {
-	
 		// Kopfzeile vorbereiten
 		const initTableHead = function(sp) { 
 			const sortbutton = document.createElement("button");
@@ -421,8 +464,7 @@ $(document).ready(function(){
 
 	if (window.addEventListener) window.addEventListener("DOMContentLoaded", initTableSort, false);
 
-//Ajax aufrufen
-	function ajaxrequest(action, method, data)
+	function ajaxrequest(action, method, data)			//Ajax aufrufen
 		{
 			// Der eigentliche AJAX Aufruf
 			$.ajax({
@@ -514,8 +556,8 @@ $(document).ready(function(){
 			};
 		}
 
-//Formular für Ajax 
-	$("form").submit(function(event) {
+
+	$("form").submit(function(event) {					//Formular für Ajax 
 		// Das eigentliche Absenden verhindern
 		event.preventDefault();
 		//cue the page loader

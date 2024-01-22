@@ -11,9 +11,12 @@
 	 *
 	 * IPSHighcharts, ermöglich Darstellung von Charts im Webfront mit Hilfe von "Highcharts" (www.highcharts.com)
 	 *
+     * für Anpassung wegen fehlendem webfront/user Verzeichnis ab IPS7 erfolgte ein fork, ist jetzt Bestandteil von operationCenter
+     * CreateConfigFile berücksichtigt bereits den neuen Pfad, für Unterscheidung darf kein Vereichnis webfront vorhanden sein
+     *
 	 */
 
-	 $version = "2.03"; $versionDate = "05.10.2012";
+	 $version = "7.00"; $versionDate = "12.01.2024";
 
 	//ToDo:
 	// FEATURE: Plotbands. Timestamp in From und To
@@ -123,11 +126,11 @@
 	// ------------------------------------------------------------------------
 	function CreateConfigFile($stringForCfgFile, $id, $charttype = 'Highcharts')
 	{
-		$path     = "user\IPSHighcharts\\" . $charttype;
+		$ipsOps=new ipsOps();
+        if ($ipsOps->ipsVersion7check()) $path     = "user\IPSHighcharts\\" . $charttype;
 		//to be compatible for older IPS versions (<7.0)
-		if (file_exists(IPS_GetKernelDir() . 'webfront')) {
-			$path = 'webfront\\' . $path;
-		}
+		elseif (file_exists(IPS_GetKernelDir() . 'webfront')) { $path = 'webfront\\' . $path; }
+        else echo "HighchartsIps7, kein Pfad für configfile möglich.\n";
 		$filename = $charttype . "Cfg$id.tmp";
 
 
