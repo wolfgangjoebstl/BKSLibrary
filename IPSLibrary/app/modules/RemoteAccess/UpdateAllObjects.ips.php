@@ -28,9 +28,12 @@
 
     $startexec=microtime(true);
     $executeObjects=true;              // false   nicht alle Register updaten, produziert weniger Fehler :-) aktuell auch zu viel Ausgabetext
-    $debug=false;
+    $debug=true;
+
+    // active deletion of objects from not needed module, if categorie is in object path it will be removed
     $dodelete=true;
- 
+    $excludeModules=["Guthabensteuerung","DetectMovement"];
+
 	IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
@@ -60,18 +63,24 @@ if ( ($_IPS['SENDER']=="Execute") )
     $i=0; 
 	foreach ($eventlist as $oid => $data)
 		{
-        echo str_pad($i,3," ",STR_PAD_LEFT)."Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],90)." | ".str_pad($data[2],40);
+        echo str_pad($i,3," ",STR_PAD_LEFT)." Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],90)." | ".str_pad($data[2],40);
 		if (IPS_ObjectExists($oid))
 			{
 			echo " | ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),65)."    | ".str_pad(GetValue($oid),25);
-            if ($ipsOps->isMemberOfCategoryName($oid,"Guthabensteuerung")) 
+            if (isset($excludeModules))
                 {
-                echo " | Guthabensteuerung \n";
-                $delete[$oid]=true;
-                //$messageHandler->UnRegisterEvent($eventID);
-                //IPS_DeleteEvent($childrenID);
+                foreach ($excludeModules as $module)
+                    {
+                    if ($ipsOps->isMemberOfCategoryName($oid,$module)) 
+                        {
+                        echo " | $module";
+                        $delete[$oid]=true;
+                        //$messageHandler->UnRegisterEvent($eventID);
+                        //IPS_DeleteEvent($childrenID);
+                        }
+                    }
                 }
-            else echo "\n";
+            echo "\n";
 			}
 		else
 			{
@@ -81,23 +90,14 @@ if ( ($_IPS['SENDER']=="Execute") )
         $i++;
 		}
 	echo "===================================================================\n";	
-	echo "Execute registered Events ".sizeof($eventlist)." Eintraege : \n";
+	echo "Delete registered Events ".sizeof($delete)." Eintraege : \n";
     $i=1;
-	foreach ($eventlist as $oid => $data)
+	foreach ($delete as $oid => $data)
 		{
-		if (IPS_ObjectExists($oid))
-			{
-            echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
-			echo "$i/$maxCount  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
-			if ($executeObjects) $messageHandler->HandleEvent($oid, GetValue($oid));
-			}
-		else
-			{
-			echo "*********  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)."      ----->    OID nicht verfügbar !\n";
-			}
+		echo "$i Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
         $i++;  		
 		}
-    echo "\n\n================================================================================================\n\n";  
+    echo "\n\n================================================================================================\n";  
 	}
 	
 if ( ($_IPS['SENDER']=="TimerEvent") ||  ($_IPS['SENDER']=="Execute") )
@@ -115,9 +115,8 @@ if ( ($_IPS['SENDER']=="TimerEvent") ||  ($_IPS['SENDER']=="Execute") )
 	$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
 	if ($debug)
         {
-        echo"\n";
-        echo "Zusätzliche Checks bei der Eventbearbeitung:\n";
-        echo "ScriptID der Eventbearbeitung : ".$scriptId." \n";
+        echo"Execute Timer Procedure once a day:\n";
+        echo "Zusätzliche Checks bei der Eventbearbeitung, ScriptID der Eventbearbeitung : ".$scriptId." \n";
         echo"\n";
         }
 	$children=IPS_GetChildrenIDs($scriptId);
@@ -191,45 +190,45 @@ if ( ($_IPS['SENDER']=="TimerEvent") ||  ($_IPS['SENDER']=="Execute") )
 	/*********************************************************************
 	 * 
 	 * Ausgabe aller Events die konfiguriert sind
-	 *
-	 * dazu config File auslesen
+	 * wenn $executeObjects am Anfang gesetzt, dann alle Event ausprobieren und auf den remote Servern updaten
+     * messageHandler Handle Event macht construct vom Component und ruft das HandleEvent des IPSComponents auf (data[1]) mit dem zusätzlichen Parameter Modul (data[2])
+	 * Ausgabe echo Parameter wie im Config angeführt, Verweis auf den entsprechenden IPSComponent auf zB IPSComponentSensor_Motion
+     * IPSComponentSwitch_RHomematic
+     *      ruft vom module SyncState auf, synchronisieren des Status von Gruppen
 	 *
 	 ***********************************************************************************/
 
-    if ($_IPS['SENDER'] !="Execute")            // nicht zweimal das selbe
+    if ($debug)
         {
-        //$movement_config=IPSDetectMovementHandler_GetEventConfiguration();
-        if ($debug)
-            {
-            echo "===================================================================\n";
-            echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
-            }
-        $i=1;
-        foreach ($eventlist as $oid => $data)
-            {
-            if (IPS_ObjectExists($oid))
-                {
-                if ($debug)
-                    {
-                    echo "\n";
-                    echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
-                    echo "$i/$maxCount  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
-                    }
-                if ($executeObjects) $messageHandler->HandleEvent($oid, GetValue($oid));
-                }
-            else
-                {
-                if ($debug)
-                    {
-                    echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
-                    echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
-                    }
-                }
-            $i++;
-            }
+        echo "===================================================================\n";
+        echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
+        if ($executeObjects)  echo "   Flag executeObjects activated, try function UpdateEvent , needs time \n";
         }
-
-	}
+    $i=1;
+    foreach ($eventlist as $oid => $data)
+        {
+        if (IPS_ObjectExists($oid))
+            {
+            if ($debug)
+                {
+                echo "\n";
+                echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
+                //echo "$i/$maxCount  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+                echo "$i/$maxCount  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+                }
+            if ($executeObjects) $messageHandler->UpdateEvent($oid, GetValue($oid),$debug);
+            }
+        else
+            {
+            if ($debug)
+                {
+                echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
+                echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
+                }
+            }
+        $i++;
+        }
+    }       // Ende if Timer
 
 
 ?>

@@ -7,6 +7,10 @@
  * Allerlei betriebliche Abfragen und Wartungsmassnahmen
  * die Timer sind so gesetzt dass sie teilweise alle 10 Sekunden kommen können, auf Durchlaufzeiten achten
  *
+ * schlichtet auch die Bilder der Webcams, ändern auf neues Verzeichnis ab IPS7
+ *
+ *
+ *
  * RouterAufruftimer
  * RouterExectimer
  * SysPingTimer			alle 5 Minuten, wenn nicht anders konfiguriert wird alle 60 Minuten syspingalldevices aufgerufen

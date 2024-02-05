@@ -19,6 +19,7 @@
 
 /* WebCamera Library   
  *
+ * seit IP Symcon Version 7 ändert sich das webfront/user verzeichnis auf user/
  * es gibt IPS Cam als externes Modul, hier werden pro Kamera Einstellungen im Webfront vorgesehen
  * im OperationCenter gibt es die Livestreamdarstellung und eine Capturebilder Darstellung
  * WebCamera ist dazu ein eigenständiges Modul das aktuell noch Funktionen aus den beiden anderen Programmen übernimmt
@@ -244,7 +245,8 @@ class WebCamera
     public function zielVerzeichnis()
         {
         $picVerzeichnis="user/OperationCenter/AllPics/";
-        $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
+        if ($this->ipsOps->ipsVersion7check())  $picVerzeichnisFull=IPS_GetKernelDir().$picVerzeichnis;
+        else                                    $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
         $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);            
         return ($picVerzeichnisFull);
         }

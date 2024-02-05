@@ -2137,13 +2137,17 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
     }
 
-    /******************************************************************/
-
+    /*****************************************************************
+     * verwendet in installComponentFull
+     * Parameter
+     *  rpc         der rpc für den Server
+     *  id          OID der Kategorie
+     *  name        Name
+     *  struktur    array der Server Struktur, childrens der id
+     *  type        steht für 0 Boolean 1 Integer 2 Float 3 String
+     */
     function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
         {
-
-        /* type steht für 0 Boolean 1 Integer 2 Float 3 String */
-
         $result="";
         $size=sizeof($struktur);
         if ($size==0)
@@ -10540,7 +10544,6 @@ class dosOps
    /* eine Datei kopieren 
     * fileName ist Filename samt Quellverzeichnis, targetDir ist das Zielverzeichnis ohne Filename
     */
-
     function moveFile($fileName,$targetDir)
         {
         $result=false;
@@ -10548,6 +10551,118 @@ class dosOps
         if ( (file_exists($fileName)) && ($dirAvailable) ) $result=copy($fileName,$targetDir); 
         return($result);
         }
+
+   /* eine Verzeichnis kopieren wenn notwendig 
+    * 
+    */
+    function copyIfNeeded($bilderverzeichnis,$picturedir,$debug=false)
+        {    
+        $bilderverzeichnis = $this->correctDirName($bilderverzeichnis); 
+        
+        $bilderverzeichnis = str_replace(['\\','//','\\\\','\/'],'/',$bilderverzeichnis);
+        $picturedir = str_replace(['\\','//','\\\\','\/'],'/',$picturedir);
+
+        $file = $this->readSourceDir($bilderverzeichnis);
+        echo "Insgesamt ".count($file)." Files aus dem Verzeichnis $bilderverzeichnis eingelesen, wenn notwendig nach $picturedir synchronisieren:\n";
+        //print_R($file);
+        $check = $this->readDirtoCheck($picturedir);
+
+        foreach ($file as $filename)
+            {
+            if (isset($check[$filename]))
+                {
+                $check[$filename]=false;
+                if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen. nichts tun\n";
+                }
+            elseif ( is_file($bilderverzeichnis.$filename)==true )
+                {	
+                echo "   copy ".$bilderverzeichnis.$filename." nach ".$picturedir.$filename." \n";	
+                copy($bilderverzeichnis.$filename,$picturedir.$filename);
+                }
+            }
+
+        //if ($debug) echo "Verzeichnis für Anzeige auf Startpage synchronisieren:\n";	
+        $i=0;
+        foreach ($check as $filename => $delete)
+            {
+            if ($delete == true)
+                {
+                echo "     delete Datei ".$filename." \n";
+                }
+            else
+                {
+                //if ($debug) echo "   ".$filename."\n";
+                $i++;		
+                }	
+            }	
+        //if ($debug) echo "insgesamt ".$i." Dateien.\n";
+        }
+
+
+    /* Verzeichnis erstellen oder Dateien aus dem Verzeichnis einlesen 
+     */
+    function readSourceDir($bilderverzeichnis,$debug=false)
+        {
+        $file=array();
+        if ( is_dir ( $bilderverzeichnis ) )
+            {
+            $handle=opendir ($bilderverzeichnis);
+            $i=0;
+            while ( false !== ($datei = readdir ($handle)) )
+                {
+                if ($debug)
+                    {
+                    if (is_dir($bilderverzeichnis.$datei)) echo "Dir  | $datei\n";
+                    else echo "File | $datei\n";
+                    }
+                if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($bilderverzeichnis.$datei) == false) )  
+                    {
+                    $i++;
+                    $file[$i]=$datei;
+                    }
+                }
+            closedir($handle);
+            //print_r($file);
+            }/* ende if isdir */
+        else
+            {
+            echo "Kein Verzeichnis mit dem Namen \"".$bilderverzeichnis."\" vorhanden.\n";
+            $dirstruct=explode("/",$bilderverzeichnis);
+            //print_r($dirstruct);
+            $directoryPath="";
+            foreach ($dirstruct as $directory)
+                {
+                $directoryOK=$directoryPath;
+                $directoryPath.=$directory."/";
+                if ( is_dir ( $directoryPath ) ) {;}
+                else
+                    {
+                    if ($directory !=="") echo "Error : ".$directory." is not in ".$directoryOK."\n";
+                    }
+                //echo $directoryPath."\n";
+                } 
+            $this->mkdirtree($bilderverzeichnis);	
+            }
+        return ($file);
+        }
+
+    /* read dir to check 
+     */
+    function readDirtoCheck($picturedir)
+        {
+        $check=array();
+        $handle=opendir ($picturedir);
+        while ( false !== ($datei = readdir ($handle)) )
+            {
+            if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($picturedir.$datei) == false)) 
+                {
+                $check[$datei]=true;
+                }
+            }
+        closedir($handle);
+        return ($check);
+        }
+
 
     }       // ende class
 
@@ -11962,7 +12077,7 @@ class ComponentHandling
     * DeviceList,MySQL
     * kann nur mehr die TYPE_ keywords und erweitert mit REGISTER
     *
-    * Return ist ein Array nit den wichtigsten Onformationen über jeden Component
+    * Return ist ein Array nit den wichtigsten Informationen über jeden Component
     * Anzeige der einzelnen Components erfolgt zB aus OperationCenterLibrary $DeviceManager->writeCheckStatus($result)
     *
     ****************************************************************************************/    
@@ -12458,9 +12573,10 @@ class ComponentHandling
             case "CONTACT":
                 $detectmovement="Contact";
                 $keyName["Key"]="STATE";                        // Eigenen Index Key definieren
-                $variabletyp=0; 		                        // Integer, Kontakte können mehrer Zustände haben , gibt manchmal auch gekippt , war früher Boolean 					
-                $index="Bewegung";
-                $profile="Motion";
+                $variabletyp=1; 		                        // Integer, Kontakte können mehrer Zustände haben , gibt manchmal auch gekippt , war früher Boolean 					
+                //$index="Bewegung";
+                $index="Kontakte";                              // Kategorie in Webfront/Administrator/RemoteAccess
+                $profile="Window";                             // abgeleitet von Window.HM, ist ein Integer Profil oder Boolean Contact
                 break;
             case "CO2":
                 $detectmovement="Climate";
@@ -12817,6 +12933,7 @@ class ComponentHandling
 							{
 							$rpc = new JSONRPC($Server["Adresse"]);
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
+                            if ($debug) echo "     Erzeuge Variable in ".$Server[$index]." mit $IndexName.$IndexNameExt und Variabletyp $variabletyp und ".$struktur[$Name].".\n";	
 							$result=$this->remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName.$IndexNameExt, $variabletyp,$struktur[$Name]);
 							if ($debug) echo "     Setze Profil für $IndexName$IndexNameExt auf ".$Server["Adresse"]." direkt noch einmal auf $profile da es hier immer Probleme gibt ...\n";							
 							$rpc->IPS_SetVariableCustomProfile($result,$profile);

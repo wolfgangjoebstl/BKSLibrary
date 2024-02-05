@@ -2385,10 +2385,11 @@
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
 			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* Ort der Spiegelregister */
-			if ($mirrorID !== false) $powerID=@IPS_GetObjectIDByName($variablename."_Power",variablename); else $powerID=false;
+            if ($debug) echo "CreateMirrorRegister : Input $variableId $variablename $mirrorID \n";
+			if ($mirrorID !== false) $powerID=@IPS_GetObjectIDByName($variablename."_Power",$mirrorID); else $powerID=false;
 			if ( ($mirrorID===false) || ($powerID===false) )		
 				{	
-				/* Spiegelregister noch nicht erzeugt, manchmal wenn wenig Bewegung ist werden sie nicht rechtzeitig vor den Gruppenabfragen erzeugt */
+				if ($debug) echo "  Spiegelregister noch nicht erzeugt, manchmal wenn wenig Bewegung ist werden sie nicht rechtzeitig vor den Gruppenabfragen erzeugt \n";
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 				$variableLogID=CreateVariable($variablename,1,$this->Detect_DataID, 10, "~Intensity.100", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */

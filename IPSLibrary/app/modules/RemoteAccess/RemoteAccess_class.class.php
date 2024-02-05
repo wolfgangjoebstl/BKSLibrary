@@ -21,8 +21,10 @@
      *  Überblick zur Verfügung gestellter classes und functions
      *
      * RemoteAccess Class
+     * RA_Autosteuerung extends RemoteAccess
      * IPSMessageHandlerExtended extends IPSMessageHandler
      *
+     * function installAccess
      */
 
 	/*********************
@@ -809,6 +811,10 @@ class RemoteAccess
 		return ($print);
 		}
 
+    /* RemoteAccess::get_StructureofROID
+     * Defaultwert ist Schalter, sonst die Kategprie anfordern
+     * alle Werte in listofROIDs
+     */
 	public function get_StructureofROID($key="")
 		{
 		if ($key=="") $key="Schalter";
@@ -1308,14 +1314,27 @@ class RA_Autosteuerung extends RemoteAccess
  *
  * IPSMessageHandlerExtended class
  *
+ * IPSMessageHandler verbessern, wenn möglich. Zusätzlich unregisterEvent, deleteEvent
+ *
+ *
  * uses $eventConfiguration
- *	
  *  Get_EventConfigurationAuto
  *  Get_EventConfigurationCust
  *  StoreEventConfiguration
  *  DeleteEvent
+ *  RegisterEvent
  *  UnRegisterEvent
+ *  UpdateEvent
  *
+ * Von der Parent class übrig
+ *  Set_EventConfigurationAuto
+ *	CreateEvents
+ *  CreateEvent
+ *  RegisterOnChangeEvent
+ *  RegisterOnUpdateEvent
+ *  HandleIREvent
+ *  HandleEvent
+ *  IPSMessageHandler_HandleLibraryEvent
  *
  **********************************************************************************/	
 	
@@ -1507,6 +1526,68 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
                 self::StoreEventConfiguration($configurationAuto);
                 }
             }
+		
+		/**
+		 * Methode um autretende Events zu processen. Mit dem fork von HandleEvent wird sichergestellt dass das Event auch wirklich bearbeitet wird
+		 *
+		 * @param integer $variable ID der auslösenden Variable
+		 * @param string $value Wert der Variable
+		 */
+		public function UpdateEvent($variable, $value, $debug=false) {
+			$configurationAuto = self::Get_EventConfigurationAuto();
+			$configurationCust = self::Get_EventConfigurationCust();
+
+			if (array_key_exists($variable, $configurationCust)) {
+				$params = $configurationCust[$variable];
+			} elseif (array_key_exists($variable, $configurationAuto)) {
+				$params = $configurationAuto[$variable];
+			//} elseif ($variable==IPSMH_IRTRANS_BUTTON_VARIABLE_ID) {
+				//$params = '';
+				//$this->HandleIREvent($variable, $value);
+			} else {
+				$params = '';
+				IPSLogger_Wrn(__file__, 'Variable '.$variable.' NOT found in IPSMessageHandler Configuration!');
+			}
+            if ($debug) echo "UpdateEvent aufgerufen für Variable ".$variable." : ".json_encode($params)."\n";
+            //print_r($params);
+            //IPSLogger_Inf(__file__, 'IPSMessageHandler HandleEvent für Component/Module '.json_encode($params));			
+
+			if ($params<>'') {
+				if (count($params) < 3) {
+					throw new IPSMessageHandlerException('Invalid IPSMessageHandler Configuration, Event Defintion needs 3 parameters');
+				}
+				if ($debug) echo "Create Component ".$params[1]."\n";
+                $component = IPSComponent::CreateObjectByParams($params[1]);
+				if ($debug) echo "Create Module ".$params[2]."\n";
+				$module    = IPSLibraryModule::CreateObjectByParams($params[2]);
+
+				if (function_exists('IPSMessageHandler_BeforeHandleEvent')) {
+					if (IPSMessageHandler_BeforeHandleEvent($variable, $value, $component, $module)) {
+                        if (method_exists($component,"UpdateEvent"))
+                            {
+                            if ($debug) echo "Component->UpdateEvent aufrufen\n";
+	    					$component->UpdateEvent($variable, $value, $module, $debug);
+                            }
+                        else
+                            {
+                            if ($debug) echo "Component->HandleEvent aufrufen\n";
+	    					$component->HandleEvent($variable, $value, $module);
+                            }
+
+    					if (function_exists('IPSMessageHandler_AfterHandleEvent')) {
+							IPSMessageHandler_AfterHandleEvent($variable, $value, $component, $module);
+						}
+					}
+				} else {
+					$component->UpdateEvent($variable, $value, $module);
+					if (function_exists('IPSMessageHandler_AfterHandleEvent')) {
+						IPSMessageHandler_AfterHandleEvent($variable, $value, $component, $module);
+					}
+				}
+			}
+		}
+	
+
 
 	}  /* Ende class */	
 	

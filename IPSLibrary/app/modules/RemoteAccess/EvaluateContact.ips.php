@@ -2,12 +2,13 @@
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
- *	hier für alle Homematic Kontakte
- *
+ *	hier für alle Homematic Kontakte, Kontakte sind eine eigene Kategorie und unterscheiden sich von Bewegung und Tastern 
+ *  schreibt in Kategorie Kontakte  Pfad: Visualization/Webfront/Administrator/RemoteAccess/ServerName/Kontakte
  */
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
+IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
@@ -26,39 +27,52 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
     $dosOps->setMaxScriptTime(120); 
     $startexec=microtime(true);
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager))
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	$moduleManager = new ModuleManagerIPS7('RemoteAccess',$repository);
 
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-	$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
-	}
+    $installedModules = $moduleManager->GetInstalledModules();
+    $inst_modules="\nInstallierte Module:\n";
+    foreach ($installedModules as $name=>$modules)
+        {
+        $inst_modules.=str_pad($name,30)." ".$modules."\n";
+        }
+    echo $inst_modules."\n\n";
 
-$installedModules = $moduleManager->GetInstalledModules();
-$inst_modules="\nInstallierte Module:\n";
-foreach ($installedModules as $name=>$modules)
-	{
-	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	}
-echo $inst_modules."\n\n";
+    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    echo "RA Category Data ID   : ".$CategoryIdData."\n";
+    echo "RA Category App ID    : ".$CategoryIdApp."\n";
 
-echo "RA Category Data ID   : ".$CategoryIdData."\n";
-echo "RA Category App ID    : ".$CategoryIdApp."\n";
+    echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
+    if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
+    if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n";}
+    if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+    if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
+    if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
+    if (isset ($installedModules["LedAnsteuerung"])) { 	    echo "  Modul LedAnsteuerung ist installiert.\n"; } else { echo "Modul LedAnsteuerung ist NICHT installiert.\n";}
+    if (isset ($installedModules["DENONsteuerung"])) { 	    echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
+    if (isset ($installedModules["DetectMovement"])) { 	    echo "  Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n";}
+    if (isset ($installedModules["EvaluateHardware"])) 
+        { 
+        echo "  Modul EvaluateHardware ist installiert.\n"; 
+        IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
+        IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
+        IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
 
-echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
-if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
-if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n";}
-if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
-if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
-if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
-if (isset ($installedModules["LedAnsteuerung"])) { 	echo "  Modul LedAnsteuerung ist installiert.\n"; } else { echo "Modul LedAnsteuerung ist NICHT installiert.\n";}
-if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
-if (isset ($installedModules["DetectMovement"])) { 	echo "  Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n";}
-echo "\n";
+        echo "========================================================================\n";    
+        echo "Statistik der Register nach Typen:\n";
+        $hardwareTypeDetect = new Hardware();
+        $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
+        $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
+        $hardwareTypeDetect->writeRegisterStatistics($statistic);        
+        //print_r($statistic);        
+        } 
+    else 
+        { 
+        echo "Modul EvaluateHardware ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+        }
+    echo "\n";
 
  /******************************************************
   *
@@ -85,12 +99,12 @@ echo "\n";
 
 	echo "\n";
 	echo "***********************************************************************************************\n";
-	echo "EvaluateMotion, Bewegungsmelder, Helligkeitssesor und Contact Handler wird ausgeführt:\n";
+	echo "Contact Handler wird ausgeführt, EvaluateMotion, Bewegungsmelder, Helligkeitssesor in einem anderen Script:\n";
     echo "--------------------------------------------------------------------------------------\n";
     if ( (function_exists('deviceList')) )
         {
         echo "Kontakte von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, false);				/* true ist Debug, Bewegungsensoren */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, true);				/* true ist Debug, Bewegungsensoren */
         //print_r($result);
         }
     elseif (function_exists('HomematicList'))
@@ -153,7 +167,7 @@ echo "\n";
             }
         }
 
-if (false)
+if (false)          // Alle FS20EX Kontakte ausgeben, Depreciated
 	{	
 	echo "******* Alle FS20EX Kontakte ausgeben.\n";
 	foreach ($FS20EX as $Key)

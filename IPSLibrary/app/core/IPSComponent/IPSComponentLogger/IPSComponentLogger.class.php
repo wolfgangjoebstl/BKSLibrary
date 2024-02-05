@@ -1294,7 +1294,8 @@ class Logging
                         $NachrichtenID=$this->do_init_motion($variable, $variablename, $value, $debug);
                         break;
                     case "CONTACT":
-                        $this->Type=0;      // Contact ist boolean
+                        //$this->Type=0;      // Contact ist boolean
+                        $this->Type=1;      // Contact ist integer, kann mehrere Werte annehmen, auch gekippt 0 geschlossen, 1 gekippt, 2 
                         $NachrichtenID=$this->do_init_contact($variable, $variablename,$value,$debug);
                         break;
                     case "BRIGHTNESS":
@@ -1500,7 +1501,7 @@ class Logging
             foreach ($params as $val)
                 {
                 $para= explode(':', $val);
-                if ($debug) echo "Wert :".$val." Anzahl ",count($para)." -> sollen 2 sein.\n";
+                if ($debug) echo "Wert :\"".$val."\" Anzahl ",count($para)." -> sollen 2 sein.\n";
                 if (count($para)==2)
                     {
                     $Server=$remServer[$para[0]]["Url"];

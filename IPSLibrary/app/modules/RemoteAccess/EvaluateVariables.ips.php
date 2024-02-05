@@ -98,6 +98,8 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
     if (isset ($installedModules["Guthabensteuerung"]))
         {
         // nur wenn Guthabensteuerung installiert ist und die Guthabenwerte wirklich auf remote Servern ausgewertet werden sollen ausführen 
+        IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
+        IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
         $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
         $GuthabenAllgConfig     = $guthabenHandler->getGuthabenConfiguration();                              //get_GuthabenAllgemeinConfig();        
         if ( (isset($GuthabenAllgConfig["EvaluateGuthaben"])) && ($GuthabenAllgConfig["EvaluateGuthaben"]) )

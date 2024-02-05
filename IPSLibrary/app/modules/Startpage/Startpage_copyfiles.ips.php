@@ -14,13 +14,14 @@
 
 
     /*
-    * wie der Name scon sagt die Dateien aus dem Dropbox/Synology Drive Laufwerk in die Webfront Umgebung kopieren
+    * wie der Name startpage_copyfiles schon sagt die Dateien aus dem Dropbox/Synology Drive Laufwerk in die Webfront Umgebung kopieren
     * aus Sicherheitsgründen dürfen die Browser nicht extern zugreifen
+    * Ab IPS 7 hat sich das Zielverzeichnis von webfront/user auf /user geändert
+    *
     *
     *
     */
 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	
     IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
@@ -56,17 +57,20 @@
     /* Zielverzeichnis für die Startpage Bilder erstellen */
    	$picturedir = $startpage->picturedir;
 	$dosOps->mkdirtree($picturedir);
+
    	$imagedirM = $startpage->imagedir."/mond/";
 	$dosOps->mkdirtree($imagedirM);
    	$imagedirMT = $startpage->imagedir."/mondtransparent/";
 	$dosOps->mkdirtree($imagedirMT);
+
     $icondir = $startpage->icondir."/";
 	$dosOps->mkdirtree($icondir);
     $iconStartdir = $icondir."Start/";
 	$dosOps->mkdirtree($icondir);
     $iconClockdir = $iconStartdir."clock/";
 	$dosOps->mkdirtree($iconClockdir);
-
+    $iconWeatherdir = $iconStartdir."weather/";         // Zielverzeichnis
+	$dosOps->mkdirtree($iconWeatherdir);
 
 	//$picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
     //echo "Zum Vergleich $picturedir   und $check \n";
@@ -79,21 +83,25 @@
     *
     *******************************/
 
-    copyIfNeeded($iconverzeichnis."/",$icondir);           // true debug
+    $dosOps->copyIfNeeded($iconverzeichnis."/",$icondir);           // true debug
 
     $iconStartVerzeichnis = $iconverzeichnis."/start/";
-    copyIfNeeded($iconStartVerzeichnis,$iconStartdir);           // true debug
+    $dosOps->copyIfNeeded($iconStartVerzeichnis,$iconStartdir);           // true debug
 
     $iconClockVerzeichnis = $iconverzeichnis."/clock/";
-    copyIfNeeded($iconClockVerzeichnis,$iconClockdir);           // true debug
+    $dosOps->copyIfNeeded($iconClockVerzeichnis,$iconClockdir);           // true debug
+
+    //$iconWeatherVerzeichnis = $iconverzeichnis."/Weather/gross/";           // Quellverzeichnis
+    $iconWeatherVerzeichnis = $iconverzeichnis."/Weather/";           // Quellverzeichnis für kleine Wettericons
+    $dosOps->copyIfNeeded($iconWeatherVerzeichnis,$iconWeatherdir);           // true debug
 
     $imageverzeichnisMond = $imageverzeichnis."/mond/";                       // mond und mondtransparent
-    copyIfNeeded($imageverzeichnisMond,$imagedirM);           // true debug
+    $dosOps->copyIfNeeded($imageverzeichnisMond,$imagedirM);           // true debug
 
     $imageverzeichnisMondTransparent = $imageverzeichnis."/mondtransparent/";                       // mond und mondtransparent
-    copyIfNeeded($imageverzeichnisMondTransparent,$imagedirMT);           // true debug
+    $dosOps->copyIfNeeded($imageverzeichnisMondTransparent,$imagedirMT);           // true debug
 
-    copyIfNeeded($bilderverzeichnis,$picturedir);           // true debug
+    $dosOps->copyIfNeeded($bilderverzeichnis,$picturedir);           // true debug
 
 
 if (false)
@@ -134,6 +142,8 @@ if (false)
 	}
 //NetPlayer_Power(false);
 
+if (false)      // siehe dosOps dorthin übernommen
+	{
 	/**************************************************************************************************************************
 	 *
 	 *   praktische Functions, so ähnlich auch in AllgemeineDefinitionen
@@ -247,5 +257,6 @@ if (false)
             }	
         //if ($debug) echo "insgesamt ".$i." Dateien.\n";
         }
+    }
 
 ?>

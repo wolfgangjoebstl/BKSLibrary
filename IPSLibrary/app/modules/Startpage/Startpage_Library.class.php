@@ -45,6 +45,7 @@
      *----------------------------
      * sammelt alle Routinen für die Erstellung und Verwaltung der Startpage/Dashboard
      * mit der Absage des IPSWeather Moduls wurden die Wetter Aktivitäten hier her verlagert.
+     * wenn das IPSWeather Modul nicht mehr vorhanden ist auch die Icons verschieben und neu verweisen
      *
      * es werden die Versuche verstärkt das Webdesign auf eine responsive Darstellung zu erneuern
      *
@@ -408,8 +409,17 @@
 		 *     ob Wunderground oder OpenWeatherTable verwendet werden soll
          *
          * Weathertable mit externer Frage deaktivieren:
+         *
          *	"Display"    => array (
-		 *		"Weathertable"	=> 'InActive', 		// Active or InActive 
+		 *		"Weather"       =>  array(
+		 *		    "Weathertable"	    => 'InActive', 		    // Active or InActive,   
+         *          ["WeatherSource"]   => "WunderGround",      // funktioniert nur mehr diese Applikation        
+         *                  ),
+         *
+         *
+         *
+         *	"Display"    => array (
+		 *		"Weathertable"	=> 'InActive', 		// Active or InActive, deprectaed
 		 *							),	
 		 *
 		 *********************************************************************************************/
@@ -3419,19 +3429,19 @@
             return ($wert);
             }
 
-        /********************
+        /* getWeatherData
          *
          * holt die Wetterdaten, abhängig von der benutzten App sind die Daten auf verschiedenen Orten gespeichert
+         * Wetterdaten sind in Program.IPSLibrary.data.modules.Startpage.OpenWeather
          *
-         **************************************/
-
+         */
 		function getWeatherData()
             {
             $result=array();
 			$Config=$this->configWeather();
 			if ( $Config["Active"] )
 				{
-                if ($Config["Source"]=="WU")        // WeatherUnderground
+                if ($Config["Source"]=="WU")        // WeatherUnderground, deprecated
                     {
                     $todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
                     if ($todayID == false)
@@ -3579,14 +3589,25 @@
 	
 		/*************************************************************************************************
 	     *
-	     * Funktion für OpenweatherMap Darstellung
-	     *
-	     *
+	     * Funktion für OpenweatherMap Darstellung, Zuordnung Symbole zum Cloudy Wert
+         *
+	     * verwendet die originären Icons von IPSWeather, mittlerweile die von einem cloud drive zur Verfügung gestellt werden
+	     *          \user\IPSWeatherForcastAT\icons             alte Destination und wenn Wunderground Weather
+         *          \user\Startpage\user\icons\Start\weather
+         *
+         * http://10.0.0.124:3777/user/Startpage/user/icons/Weather/cloudy.png
+         *
+         *  cloudy  rainy
+         *   <11     >0    chance_of_rain
+         *   <11      0    sunny
+         * 
+         *   usw
 	     */
 	
 		function findIcon($cloudy,$rainy)
 			{
-			$icon="/user/IPSWeatherForcastAT/icons/";
+            if ($this->newStyle) $icon="/user/Startpage/user/icons/Start/weather/";
+			else $icon="/user/IPSWeatherForcastAT/icons/";
 			if ($cloudy < 11)
 				{
 				if ($rainy>0) $icon.="chance_of_rain";
@@ -3667,9 +3688,12 @@
 			return($gefunden);
 			}	
 	
-        /* Wetterdarstellung basierend auf OpenWeatherMap machen
+        /* StartpageHandler::aggregateOpenWeather 
+         * Wetterdarstellung basierend auf OpenWeatherMap machen
+         * das IPSWeatherForcastAT Modul wird nicht mehr benötigt und verschwindet in Neuinstallationen
          *
-         * erstellt die entsprechend notwendigen Register in categoryId_OpenWeather
+         * nutzt den Datenbereich der Startpage data/modules/Startpage
+         * erstellt die entsprechend notwendigen Register in categoryId_OpenWeather mit Name OpenWeather
          * die erhaltenen Messwerte werden analysiert und in die bekannte 4 Tagevorschau aggregiert
          * danach wird die Erstellung des Meteograms aufgerufen.
          *
@@ -3725,9 +3749,9 @@
 	
 			if ($debug) echo "Satz von Variablen für die Startpage ist auf $categoryId_OpenWeather.\n";
 	
-			$WU_today_id=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
-			$OW_today_id=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Startpage.OpenWeather");
-			if ($debug) echo "WU Today ID ist : ".$WU_today_id."    OW Today ist ".$OW_today_id."\n";
+			//$WU_today_id=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
+			//$OW_today_id=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Startpage.OpenWeather");
+			//if ($debug) echo "WU Today ID ist : ".$WU_today_id."    OW Today ist ".$OW_today_id."\n";
 	
 		    $result=array();
 	    	//foreach ($this->OWDs as $OWD) $result[$OWD]=OpenWeatherData_UpdateHourlyForecast($OWD);
@@ -5047,13 +5071,14 @@
 	        return ($wert);
 	        }
 
-        /********************
+        /* StartpageWidgets::showWeatherTableResponsive
+         * Aufruf direkt in der htmlBox ohne Parameter mit StartpageTopology.php, getWeatherData wird übernommen
          *
+         * Wetterzeile je Tag mit Hoch/Tiefsttemperatur und Icon
          * Zelle Tabelleneintrag für die Wettertabelle
-         * macht 4 Zeilen mit jeweils 2 oder 3 Zellen
-         *
-         **************************************/
-
+         * macht 4 Zeilen mit jeweils 2 oder 3 Zellen, abhängig von todayDate
+         * Icon mit Pfad steht in weather.today 7 tomorow tomorrow1 tomorrow2
+         */
 		function showWeatherTableResponsive($weather=false)
             {
             $wert="";
@@ -5075,12 +5100,12 @@
             return ($wert);
             }
 
-        /********************
+        /* tempTableLineResponsive
          *
          * macht eine html Zeile mit zwei oder drei Zellen in der Wettertabelle
-         *
-         **************************************/
-
+         * zwei Zellen wenn kein datum vorhanden ist
+         * alle Werte werden als Parameter übernommen
+         */
 		function tempTableLineResponsive($TempMin, $TempMax, $imageSrc, $date="")
 			{
 			$wert="";

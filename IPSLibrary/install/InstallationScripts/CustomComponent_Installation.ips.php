@@ -258,6 +258,30 @@
                 IPS_ApplyChanges($KachelID);
                 }
             }
+        if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["DetectMovement"]))  )
+            { 
+            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+            $moduleManagerOC 	= new IPSModuleManager('OperationCenter',$repository);
+            $CategoryIdDataOC   = $moduleManagerOC->GetModuleCategoryID('data');
+            $categoryId_DetectMovement    = CreateCategory('DetectMovement',   $CategoryIdDataOC, 150);
+            $TableEventsID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");
+
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            $moduleManagerDM = new IPSModuleManager('DetectMovement',$repository);
+            $CategoryIdDataDM     = $moduleManagerDM->GetModuleCategoryID('data');
+            $CategoryIdAppDM      = $moduleManagerDM->GetModuleCategoryID('app');
+            $testMovementscriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);  
+
+            $DetectDeviceHandler = new DetectDeviceHandler();
+
+            $DetectDeviceHandler->create_Topology(["ID"=>$webfrontTileID], true);            // true für init, true für Debug
+            $topology=$DetectDeviceHandler->Get_Topology();
+            $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+            $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,true);        // true for Debug
+            $DetectDeviceHandler->updateLinks($topologyPlusLinks);
+            }
+
         }
 
     /*******************************

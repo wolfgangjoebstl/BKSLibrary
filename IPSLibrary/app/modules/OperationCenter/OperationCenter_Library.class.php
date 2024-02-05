@@ -26,7 +26,9 @@
 /*********************************************************************************************
  *
  *
- * letzte Version 6.02.2023
+ * letzte Version 6.02.2024, Änderungen für Update auf IPS7
+ *
+ * webfront/user Verzeichnis auf user/ geändert wenn IPS7
  *
  * diese Klassen werden hier behandelt:
  *
@@ -98,7 +100,7 @@
  * PurgeFiles			die älteren Verzeichnisse loeschen, wenn () keine Parameter dann die Funktion von PurgeLogs nachstellen
  *
  * CopyCamSnapshots		die Snapshots (zB alle Tage, Stunden, Minuten die von IPSCam erstellt werden im Webfront darstellen, und dazu wegkopieren
- * showCamCaptureFiles	es werden von den ftp Verzeichnissen ausgewählte Dateien in das Webfront/user verzeichnis für die Darstellung im Webfront kopiert
+ * showCamCaptureFiles	es werden von den ftp Verzeichnissen ausgewählte Dateien in das Webfront/user oder neu user/ Verzeichnis für die Darstellung im Webfront kopiert
  *
  * imgsrcstring, extracttime	Hilfsroutinen
  * DirLogs, readdirToArray		Hilfsroutinen
@@ -119,6 +121,7 @@
 class OperationCenter
 	{
     static $hourPassed,$fourHourPassed;
+    public $newstyle;                               // wenn true, IPS 7 oder größer, kein Webfront Verzeichnis, alles im User anlegen
 
     protected $dosOps,$sysOps;                        // verwendete andere Klassen 
     protected $ipsTables;                   // verwendete andere Klassen
@@ -150,8 +153,10 @@ class OperationCenter
 	public function __construct($subnet='10.255.255.255',$debug=false)
 		{
         $this->debug=$debug;
-		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+        $ips = new ipsOps();
+        $this->newstyle = $ips->ipsVersion7check();
 
+		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
         $this->dosOps = new dosOps();                   // create classes used in this class
         $this->sysOps = new sysOps();                   // create classes used in this class
         $this->ipsTables = new ipsTables();             // create classes used in this class, standard creation of tables
@@ -4926,7 +4931,8 @@ class BackupIpsymcon extends OperationCenter
             $sourceDir="C:\Ip-Symcon";
             $sourceDir = $this->dosOps->correctDirName($sourceDir);
             $data["BackupSourceDir"]=$sourceDir;
-            $backupSourceDirs=array("db","media","modules","scripts","webfront","settings.json");
+            if ($this->newstyle) $backupSourceDirs=array("db","media","modules","scripts","user","settings.json");            // ab IPS7 kein webfront Verzeichnis mehr, ersetzt durch user
+            else $backupSourceDirs=array("db","media","modules","scripts","webfront","settings.json");
             $data["BackupDirectoriesandFiles"]=$backupSourceDirs;
             //echo "printParams für die Auswertung der Source : ".$data["BackupSourceDir"]."\n"; print_r($params);
             $this->readSourceDirs($data,$result,$mode="date");
@@ -6601,7 +6607,8 @@ class CamOperation extends OperationCenter
 
             /* Zielverzeichnis ermitteln */
             $picVerzeichnis="user/OperationCenter/AllPics/";
-            $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
+            if ($this->newstyle) $picVerzeichnisFull=IPS_GetKernelDir().$picVerzeichnis;            // ab IPS7 kein webfront/user Verzeichnis mehr
+            else $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
             $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
             if ($debug) 
                 {
@@ -6658,7 +6665,8 @@ class CamOperation extends OperationCenter
     
         /* Zielverzeichnis für Anzeige ermitteln */
         $picVerzeichnis="user/OperationCenter/AllPics/";
-        $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
+        if ($this->newstyle) $picVerzeichnisFull=IPS_GetKernelDir().$picVerzeichnis;            // ab IPS7 kein webfront/user Verzeichnis mehr
+        else $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
         $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
 
         $anzahl=sizeof($camConfig);
@@ -6832,7 +6840,8 @@ class CamOperation extends OperationCenter
                     
                         /* Kamerabilderverzeichnis muss innerhalb Webfront entstehen, daher Bilder dorthin kopieren */
                         $imgVerzeichnis="user/OperationCenter/Cams/".$cam_name."/";
-                        $imgVerzeichnisFull=IPS_GetKernelDir()."webfront/".$imgVerzeichnis;
+                        if ($this->newstyle) $imgVerzeichnisFull=IPS_GetKernelDir().$imgVerzeichnis;            // ab IPS7 kein webfront/user Verzeichnis mehr
+                        else $imgVerzeichnisFull=IPS_GetKernelDir()."webfront/".$imgVerzeichnis;
                         $imgVerzeichnisFull = str_replace('\\','/',$imgVerzeichnisFull);
                         if ( is_dir ( $imgVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($imgVerzeichnisFull);
                     

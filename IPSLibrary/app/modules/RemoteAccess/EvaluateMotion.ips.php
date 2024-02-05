@@ -35,12 +35,13 @@
  *
  */
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
+IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');		/* für Definiotion RemoteAccess_TypeFS20 wenn benötigt */
 
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');		/* für Definiotion RemoteAccess_TypeFS20 wenn benötigt */
 
  /******************************************************
   *
@@ -54,13 +55,7 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $startexec=microtime(true);
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-    if (!isset($moduleManager))
-        {
-        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-        echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-        $moduleManager = new IPSModuleManager('RemoteAccess',$repository);
-        }
+	$moduleManager = new ModuleManagerIPS7('RemoteAccess',$repository);
 
     $installedModules = $moduleManager->GetInstalledModules();
     $inst_modules="\nInstallierte Module:\n";
@@ -133,7 +128,7 @@ echo "\n";
 
 	echo "\n";
 	echo "***********************************************************************************************\n";
-	echo "EvaluateMotion, Bewegungsmelder, Helligkeitssesor und Contact Handler wird ausgeführt:\n";
+	echo "EvaluateMotion, Bewegungsmelder und Helligkeitssesor Handler wird ausgeführt, Contact Handler in einem eigenen Script:\n";
     echo "--------------------------------------------------------------------------------------\n";
     if ( (function_exists('deviceList')) )
         {

@@ -21,7 +21,8 @@
      *
      * Definiert ein IPSComponentSensor_Remote Object, das ein IPSComponentSensor Object für einen beliebigen Sensor implementiert.
      *
-     * kann Climate und Sensor
+     * kann Climate und Sensor, es werden auch allgemeine Variablen wie SystemInfo synchronisiert
+     * Generalabfrage mit UpdateEvent hinzugefügt
      *
 	 * Events werden im Event Handler des IPSMessageHandler registriert. 
      *
@@ -130,8 +131,6 @@
 			}	
 
 		/**
-		 * @public
-		 *
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
          *
@@ -167,6 +166,31 @@
                 echo "IPSComponentSensor_Remote:HandleEvent Wert == Mirror, Logging supressed.\n";
                 }
 
+			}
+
+		/* Fork als UpdateEvent
+		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
+		 * an das entsprechende Module zu leiten.
+         *
+         *			Luftdruck   => array('OnChange','IPSComponentSensor_Remote,44126,,BAROPRESSURE','IPSModuleSensor_Remote,',),
+		 *          Wirkenergie => array('OnChange','IPSComponentSensor_Remote,27977,,ENERGY','IPSModuleSensor_Remote',),
+         *
+         * in der Config IPSMessageHandler_GetEventConfiguration stehen bereits die Verweise auf einen besonderen Datentyp wie oben zB BAROPRESSURE oder ENERGY
+         *
+         * Macht Sensor_Logging 
+         * und ruft function updateMirorVariableValue ($oldvalue=GetValue($this->mirrorNameID); SetValue($this->mirrorNameID,$value); return($oldvalue);) auf.
+		 *
+		 * @param integer $variable ID der auslösenden Variable
+		 * @param string $value Wert der Variable
+		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
+		 */
+		public function UpdateEvent($variable, $value, IPSModuleSensor $module,$debug)
+			{
+			if ($debug) echo "UpdateEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
+            $log=new Sensor_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
+            $mirrorValue=$log->updateMirorVariableValue($value);
+            $result=$log->Sensor_LogValue($value,$debug);                  // SetValue($this->variableLogID,GetValue($this->variable));
+            $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
 			}
 
 		/**
