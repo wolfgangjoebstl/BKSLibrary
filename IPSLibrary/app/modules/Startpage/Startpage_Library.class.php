@@ -733,7 +733,27 @@
 
         /* Station Display
          *
-         * Darstelllung als x mal y Widgets am Bildschirm. Möglichst vielfältige Auswahl ist geplant.
+         * Darstelllung als x mal y Widgets am Bildschirm. configuration.Widgets ist nach Zeilen und Spalten sortiert
+         * aktuell erfolgt die html Formatierung als Tabelle mit tr und td
+         *
+         *     picture für das 9/4/1 Bild
+         * vergleiche Formatierung Startpage
+         *      .container-startpage { box-sizing: border-box; display:grid; 
+         *                        grid-template-columns: 9fr 1fr 1fr 2fr; 
+		 *						  grid-template-rows:    repeat('.$lines.',auto);
+		 *                        grid-template-areas:
+		 *                             "picture  cmd    cmd    cmd " 
+		 *                             "picture  icon   icon    ." 
+         *                             "picture  spanX  spanX   ."                  mehrere X möglich
+         *                             "picture  add0   add0   add0"
+         *                             "picture  addX   addX   addX"
+         *                             "picture   .      .      ."
+         *                             "bottom   bottom bottom bottom"
+         *                             "info     info   info   info";}
+         *
+         *      <div id="sp" class="container-startpage">
+         *
+         * Möglichst vielfältige Auswahl ist geplant.
          * Die Darstellung sollte soweit möglich responsive sein und konfigurierbar.
          * WidgetsConfig wird transformiert
          *
@@ -886,23 +906,32 @@
 		function showAstronomyWidget($displayType=false,$config=false,$debug=false)
 			{
             $wert="";
+            $config["Responsive"]=true;             // oder copy to responsive widgets
             $modulname="Astronomy";
-            //echo "Rausfinden ob Instanz $modulname verfügbar:\n";
+            if ($debug) 
+                {
+                echo "showAstronomyWidget mit Mode $displayType aufgerufen.\n";
+                echo "   Configuration ".json_encode($config)."\n";
+                }
             $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
             $Astronomy=$modulhandling->getInstances($modulname);
-            if (count($Astronomy)>0)
+            $count = count($Astronomy);
+            if ($count>0)
                 {
                 $instanzID=$Astronomy[0];    
+                if ($debug) echo "   Rausfinden ob Instanz $modulname verfügbar: $count Instanzen verfügbar, Aktive Instanz : $instanzID.\n";
                 //$instanzname=IPS_GetName($instanzID);
                 $wert.='<table width="100%">';
-
-                $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);
+                // Mond aus IPS Media übernehmen und in user Verzeichnis für die Darstellung im Webfront finden
+                $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);           // IPS Media wurde verwendet
                 if ($moonPicId !== false) 
                     {
                     $htmlpicMoon=IPS_GetMedia($moonPicId)["MediaFile"]; 
+                    if ($debug) echo "   html Bild Mond aus IPS_GetMedia verfügbar $htmlpicMoon \n";            // zB modules/.store/fonzo.ipsymconastronomy/Astronomy/images/mond/mond322.gif
                     $pos1=strpos($htmlpicMoon,"Astronomy");
                     if ($pos1) $htmlpicMoon = 'user/Startpage/user'.substr($htmlpicMoon,$pos1+9);
                     else $htmlpicMoon=false;   
+                    if ($debug) echo "   html Bild Mond auch verfügbar unter $htmlpicMoon \n";            // zB modules/.store/fonzo.ipsymconastronomy/Astronomy/images/mond/mond322.gif
                     }
                 $sunriseID=@IPS_GetObjectIDByName("Sonnenaufgang Uhrzeit",$instanzID);
                 if ($sunriseID !== false) $sunrise = GetValueIfFormatted($sunriseID);
@@ -919,7 +948,8 @@
                 switch (strtoupper($displayType))
                     {
                     case "CHART":
-                        $wert.='<tr><td>'.$this->showAstronomy().'</td></tr>';
+                        if ($config["Responsive"]) $wert .= $this->showAstronomy($debug);                       // responsive, keine Tabelle mehr
+                        else $wert.='<tr><td>'.$this->showAstronomy().'</td></tr>';
                         break;
                     case "MOON":
                         $wert.='<tr><td align="center">';
@@ -986,7 +1016,7 @@
                     if ($childName=="Position Sonne und Mond") $foundHtmlBox=$child;
                     }
                 if ($foundHtmlBox !== false) $htmlAstro=GetValue($foundHtmlBox);              // das ist ein iframe mit 
-                //echo $html;
+                if ($debug) echo "***********Ausgabe html Astro : $htmlAstro \n";
                 //SetValue($AstroLinkID,$html);
                 }
             return ($htmlAstro);
@@ -3533,7 +3563,7 @@
          *
          **************************************/
 
-	    function writeStartpageStyle($input="")
+	    function writeStartpageStyle($input=false)
 	        {
 	    	$wert='<style>';
 	        $wert.='kopf { background-color: red; height:120px;  }';        // define element selectors
@@ -3582,7 +3612,8 @@
 	        $wert.='.container:hover .middle { opacity: 1; }';
 	        $wert.='.StartPageText { background-color: #4CAF50; color: white; font-size: 16px; padding: 16px 32px; }';          // was former .text only, this is used in standard formatting !!!
             $wert.='.StartPageInfoLine { display: inline-block; padding: 3px 1rem; }';
-            $wert.=$input;
+            if ($input==false) $wert.=$this->result;
+            else $wert.=$input;
 	        $wert.='</style>';
 	        return($wert);
 	        }
@@ -4594,7 +4625,9 @@
 		}		// ende class
 		
     /* Widgets zusammenfassen, alte Routinen im Handler überschreiben und responsive darstellen
+     *
      * Folgende neue Routinen wurden übernommen
+     *
      *  setDebugMode                                Debug ein/ausschalten, ohne Einzelparameter in jeder function
      *  selectPictures                              Auswahl von 1 bis max Bilder aus Smallpics
      *  showPictureWidgetResponsive                 diese anzeigen,1,4 oder 9 Stück
@@ -4615,6 +4648,7 @@
 		{
 
         protected $debug=false;
+        protected $result=false;                    // ergebnis für fluent Berechnungen
 
         public function __construct()                 // alles responsive darstellen
             {
@@ -4625,6 +4659,49 @@
         public function setDebugMode($debug)
             {
             $this->debug=$debug;
+            }
+
+        /* die Styles zusammenfassen
+         */
+        public function writeStartpageStyleStatus($size=false)
+            {
+            if ($size==false)            // fluent Übergabe
+                {
+                $cols  = $this->result[0];
+                $lines = $this->result[1];    
+                }
+            else
+                {
+                $cols  = $size[0];
+                $lines = $size[1];
+                }
+            $style = "";
+            $style .= '.container-startpage { box-sizing: border-box; display:grid; ';
+            $style .= '                 grid-template-columns: repeat('.$cols.',auto);';
+            $style .= '     		    grid-template-rows:    repeat('.$lines.',auto);';
+            $style .=         '}';
+            $this->result=$style;
+            if ($size==false) return ($this);
+            else return ($style);
+            }
+
+        /* cols und lines aus der configuration ableiten
+         */
+        public function getStartpageStyleStatusSize($debug=false) 
+            {
+	        if (isset($this->configuration["Widgets"]) ) $config=$this->configuration["Widgets"];
+            else $config=array();                
+            if ($debug) echo "getStartpageStyleStatusSize, Zeilen und Spalten bestimmen:\n";
+            $lines=0; $cols=0;
+            foreach ($config as $row => $config2)
+                {
+                $lines++; $col=0;
+                foreach ($config2 as $column => $screens)  $col++;
+                if ($col>$cols) $cols=$col;
+                }
+            if ($debug) echo "   Ergebnis Zeilen $lines und Spalten $cols .\n";
+            $this->result = [$cols,$lines];  
+            return ($this);                             // die ganze class als return, damit stehen wieder alle Funktionen zur Verfügung
             }
 
         /* selectPictures
@@ -4679,6 +4756,158 @@
                     } while ( ($i < $check) && ($count<$max) );
                 }
             return ($result);
+            }
+
+
+        /* StartpageWidgets::showDisplayStationResponsive
+         *
+         * Darstelllung als x mal y Widgets am Bildschirm. configuration.Widgets ist nach Zeilen und Spalten sortiert
+         * aktuell erfolgt die html Formatierung als Tabelle mit tr und td
+         *
+         *     picture für das 9/4/1 Bild
+         * vergleiche Formatierung Startpage
+         *      .container-startpage { box-sizing: border-box; display:grid; 
+         *                        grid-template-columns: 9fr 1fr 1fr 2fr; 
+		 *						  grid-template-rows:    repeat('.$lines.',auto);
+		 *                        grid-template-areas:
+		 *                             "picture  cmd    cmd    cmd " 
+		 *                             "picture  icon   icon    ." 
+         *                             "picture  spanX  spanX   ."                  mehrere X möglich
+         *                             "picture  add0   add0   add0"
+         *                             "picture  addX   addX   addX"
+         *                             "picture   .      .      ."
+         *                             "bottom   bottom bottom bottom"
+         *                             "info     info   info   info";}
+         *
+         *      <div id="sp" class="container-startpage">
+         *
+         * Möglichst vielfältige Auswahl ist geplant.
+         * Die Darstellung sollte soweit möglich responsive sein und konfigurierbar.
+         * WidgetsConfig wird transformiert
+         *
+         * verfügbare Widgets sind weiter unten inline gelistet
+         *
+         */
+
+		function showDisplayStationResponsive($subscreen=1, $debug=false)
+			{
+	        if (isset($this->configuration["Widgets"]) ) $config=$this->configuration["Widgets"];
+            else $config=array();
+            if ($debug) 
+                {
+                echo "   showDisplayStation aufgerufen: \n";
+                //echo "showDisplayStation: ".json_encode($config)."\n";
+                //print_R($config);
+                foreach ($config as $row => $config2) 
+                    {
+                    foreach ($config2 as $column => $screens)
+                        {                        
+                        echo "    $row    $column    ";
+                        if (isset($screens[$subscreen])) echo json_encode($screens[$subscreen]);
+                        echo "\n";
+                        }
+                    }
+                }
+            $wert = "";
+            foreach ($config as $row => $config2)
+                {                       
+                foreach ($config2 as $column => $screens)               // Zeilen und Spalten durchgehen, wenn es ein Widget für den aktuellen Screeen gibt bearbeiten
+                    {
+                    if (isset($screens[$subscreen])) 
+                        {
+                        $entry=$screens[$subscreen];
+                        if ($debug) 
+                            {
+                            echo "   Row $row Col $column Show ".str_pad($entry["Type"],25)."   ".json_encode($entry)."\n";
+                            //print_R($entry);
+                            }
+                        $tdformat='bgcolor="'.$entry["Format"]["BGColor"].'"';
+
+                        /* verfügbare Widgets:
+                         *  Astronomy               showAstronomyWidget
+                         *  Moon                    showAstronomyWidget
+                         *  Weather                 showWeatherTable
+                         *  Grouptemp               showTempGroupWidget
+                         *  Heating                 showHeatingWidget
+                         *  Picture                 showPictureWidget
+                         *  Specialregs             showSpecialRegsWidget                   Register werden mit Highcharts angezeigt
+                         *  Temperature             showTemperatureTable
+                         *  empty
+                         *  Rainmeter               showRainmeterWidget
+                         *  Charts                  showChartsWidget                        Tabelle mit Börsenkursen
+                         *
+                         */
+                        switch (strtoupper($entry["Type"]))
+                            {
+                            case "ASTRONOMY":
+                                $wert .= '<div>';
+                                $wert.=$this->showAstronomyWidget("CHART",$entry,$debug);
+                                $wert.='</td>';
+                                break;
+                            case "MOON":
+                                $wert .= '<div>';
+                                $wert.=$this->showAstronomyWidget("MOON",$entry,$debug);
+                                $wert.='</td>';
+                                break;
+                            case "WEATHER":
+                                $wert .= '<div>';
+                                $wert .= $this->showWeatherTable(false,$debug);     // statt false können die Wetterdaten übergeben werden
+                                $wert .= '</div>';
+                                break;
+                            case "GROUPTEMP":               // Verschiedene Gruppen von Temperaturwerten anzeigen
+                                $wert .= '<div>';
+                                $wert .= $this->showTempGroupWidget($entry,$debug);
+                                $wert .= '</div>';           
+                                break;
+                            case "HEATING":               // Heizungsfunktion nachweisen und illustrieren
+                                $wert .= '<div>';
+                                $wert .= $this->showHeatingWidget($entry,$debug);
+                                $wert .= '</div>';            
+                                break;
+                            case "PICTURE":
+                                $wert .= '<div>';
+                                $wert.= $this->showPictureWidget(false,$debug);     // statt false könnte das Bild übergeben werden
+                                $wert .= '</div>';             
+                                break;
+                            case "SPECIALREGS":
+                                $wert .= '<div>';
+                                $wert.= $this->showSpecialRegsWidget($entry,$debug);
+                                $wert .= '</div>';           
+                                break;
+                            case "TEMPERATURE":
+                                $wert .= '<div>';
+                                $wert .= $this->showTemperatureTable("",$entry,$debug);         // erster Parameter ist colspan als config für table
+                                $wert .= '</div>';
+                                break;
+                            case "EMPTY":
+                                $wert .= '<div>intentionally left empty</div>';         // erster Parameter ist colspan als config für table
+                                break;
+                            case "RAINMETER":
+                                $wert .= '<div>';
+                                $wert .= $this->showRainmeterWidget($entry,$debug);
+                                $wert .= '</div>';
+                                break;
+                            case "CHARTS":
+                                $wert .= '<div>';
+                                $wert .= $this->showChartsWidget($entry,$debug);
+                                $wert .= '</div>';
+                                break;
+                            default:
+                                if ($debug) echo " Fehler  Row $row Col $column Widget ".$entry["Type"]." nicht verfügbar\n"; 
+                                $wert.='<div>'."reserved for Widget Type ".$entry["Type"].", available soon".'</div>';         // erster Parameter ist colspan als config für table
+                                break;
+                            }
+                        }
+                    else 
+                        {
+                                $wert.='<div>intentionally left empty</div>';
+
+                        }
+                    }
+                $wert .= '</tr>';    
+                }
+
+            return ($wert);
             }
 
         /* StartpageWidgets::showPictureWidgetResponsive

@@ -160,7 +160,7 @@
              * Zuordnung zu write Startpage
              *      0       Explorer
              *      1       Full Screen
-             *      2       Station             2
+             *      2       Station             2  / 23
              *      3       Media               5
              *      4       Frame               22   html box wird anders beschrieben
              *      5       Picture             1
@@ -193,7 +193,8 @@
         			SetValue($StartPageTypeID,5);
  		        	break;
         		case "Station":  	/* Wetterstation, Station */
-		        	SetValue($StartPageTypeID,2);
+		        	//SetValue($StartPageTypeID,2);                             // Station alte Formatierung
+		        	SetValue($StartPageTypeID,23);
                     SetValue($switchSubScreenID,GetValue($switchSubScreenID)+1);
         			break;
         		case "Fullcreen":  	/* Full Screen ein, Fullscreen */
@@ -298,7 +299,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,$debug));
         SetValue($mobileContentID,  $startpage->bottomTableLines());                                                        // Mobile Webfron Statuszeile/tabelle
         }
-    else 
+    else        // 21 free 22 Frame 23 Station
         {   //  frameborder=0  width="80%" height="1000"  border:none frameborder:0
         // Table wird jetzt unten angezeigt, irgendwas mit den beiden styles
         //SetValue($variableIdHTML,'<div><iframe width="100%" height=200%  name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>');
@@ -359,7 +360,18 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         $html .= '</script>';
         $html .= '<div style="box-sizing: border-box;">';
         //$html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="width:100%; height:1000px; position:absolute; top:0; left: 0">';
-        $html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" style="width:100%; height:85vh; ">';
+        switch ($startPageType)
+            {
+            case 23:        // Status
+                $html .= '  <iframe id="frame-start" name="StartStatus" src="../user/Startpage/StartpageStatus.php" style="width:100%; height:85vh; ">';
+                break;
+            case 22:        // Frame
+                $html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" style="width:100%; height:85vh; ">';
+                break;
+            default:        // leer, Fehler mglw.
+                $html .= '  <iframe id="frame-start" name="StartDefault" style="width:100%; height:85vh; ">';
+                break;
+            }
         $html .= '      </iframe>';
         $html .= '  </div>';
         $html .= '<div id="frame-status" style="font-size: 1hm; display:inline; float:left;">Statusangaben hier clicken</div>';        
