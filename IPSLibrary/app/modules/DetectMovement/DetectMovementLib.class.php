@@ -79,6 +79,7 @@
      * 
      * gemeinsame Routinen, die natürlich auch überschrieben werden können
      *
+     * Set_EventConfigurationAuto, Get_EventConfigurationAuto        self::$eventConfigurationAuto setzen, lesen
      *
      *
      **********************************************/
@@ -94,7 +95,7 @@
 		
 		abstract function CreateMirrorRegister($variableId);
 
-		private $installedModules, $log_OperationCenter;
+		protected $installedModules, $log_OperationCenter;
 
   		protected $Detect_DataID;												/* Speicherort der Mirrorregister, von getMirrorRegisterName verwendet */ 
         protected $debug;
@@ -142,10 +143,14 @@
                 if (IPS_ObjectExists($variableId))
                     {                    
                     $configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-                    for ($i=0; $i<count($params); $i=$i+3) 
+                    for ($i=0; $i<count($params); $i=$i+3)          // schreibt in Dreierreihe, Infos sollten nicht verlorengehen
                         {
-                        if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-                        $configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+                        //if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';                // keine newline für die nächsten drei Parameter
+                        if ($i>0)                                                                                   // nach den ersten 3 Parametern keine Limitierung, aber weiterhin Abarbeitung in Dreiergruppen
+                            {
+                            for ($j=0;(isset($params[$i+$j])&&($j<3));$j++) $configString .= "'".$params[$i+$j]."',";
+                            }
+                        else $configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
                         }
                     $configString .= '),';
                     $configString .= '   //'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId));
@@ -748,8 +753,21 @@
             * Bei den Parameter kann festgelegt werden ob ein Wert überschrieben wird oder wenn er bereits vorhanden ist übernommen wird.
             *
             */
-        public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $componentOverwrite=false, $moduleOverwrite=false)
+        public function RegisterEvent($variableId, $eventTypeInput, $componentParamsInput, $moduleParamsInput, $componentOverwrite=false, $moduleOverwrite=false)
             {
+            // mehr als drei Inputvariablen können
+            $targetcount=3;
+            if (is_array($eventTypeInput)) 
+                {
+                $eventType=$eventTypeInput[0];
+                $targetcount=count($eventTypeInput)*3;
+                }
+            else $eventType=$eventTypeInput;
+            if (is_array($componentParamsInput)) $componentParams=$componentParamsInput[0];
+            else $componentParams=$componentParamsInput;
+            if (is_array($moduleParamsInput)) $moduleParams=$moduleParamsInput[0];
+            else $moduleParams=$moduleParamsInput;
+
             $debug=$this->debug;       // kein Übergabeparameter
             if ($debug) echo "DetectHandler::RegisterEvent, Aufruf mit VariableID $variableId (".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId)).") für EventType $eventType $componentParams $moduleParams \n";
             $configurationAuto = $this->Get_EventConfigurationAuto();
@@ -769,67 +787,79 @@
                     $moduleClassNew  = $moduleParamsNew[0];
 
                     $params = $configurationAuto[$variableId];          /* die bisherige Konfiguration zB yayay => array('Topology','Arbeitszimmer','',)   */
+                    $count = count($params);
+                    if ($targetcount>$count) $count=$targetcount;
                     if ($debug) echo "   Eintrag in Konfiguration besteht fuer VariableID:".$variableId." : ".json_encode($params)." sind ".count($params)." Einträge.\n";
                     //print_r($params);
-                    for ($i=0; $i<count($params); $i=$i+3)              /* immer Dreiergruppen, es könnten auch mehr als eine sein !!! */
+                    for ($i=0; $i<$targetcount; $i=$i+3)              /* immer Dreiergruppen, es könnten auch mehr als eine sein !!! */
                         {
-                        $moduleParamsCfg = $params[$i+2];           
-                        $moduleParamsCfg = explode(',', $moduleParamsCfg);          /* die ModuleCfg als array */
-                        $moduleClassCfg  = $moduleParamsCfg[0];                     /* der erste Parameter bei der Modulcfg ist die Class : Temperature, Humidity ... */
-                        // Found Variable and Module --> Update Configuration
-                        //echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
-                        /* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
-                        /*if ($moduleClassCfg=$moduleClassNew)
+                        if ($i<3)       //0,1,2 der erste Run besteht aus $i=>$eventType; $i+1=>$componentParams[], $i+2=>$moduleParams[]
                             {
+                            $moduleParamsCfg = $params[$i+2];           
+                            $moduleParamsCfg = explode(',', $moduleParamsCfg);          /* die ModuleCfg als array */
+                            $moduleClassCfg  = $moduleParamsCfg[0];                     /* der erste Parameter bei der Modulcfg ist die Class : Temperature, Humidity ... */
+                            // Found Variable and Module --> Update Configuration
+                            //echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
+                            /* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
+                            /*if ($moduleClassCfg=$moduleClassNew)
+                                {
+                                $found = true;
+                                $configurationAuto[$variableId][$i]   = $eventType
+                                $configurationAuto[$variableId][$i+1] = $componentParams;
+                                $configurationAuto[$variableId][$i+2] = $moduleParams;
+                                } */
                             $found = true;
-                            $configurationAuto[$variableId][$i]   = $eventType;
-                            $configurationAuto[$variableId][$i+1] = $componentParams;
-                            $configurationAuto[$variableId][$i+2] = $moduleParams;
-                            } */
-                        $found = true;
-                        if ($configurationAuto[$variableId][$i]   != $eventType ) 
-                            {
-                            $update=true;
-                            echo "   Event Type $eventType hat sich verändert.\n";
-                            $configurationAuto[$variableId][$i]   = $eventType;
-                            }
-                        //else if ($debug) echo "   Event Type $eventType hat sich nicht verändert.\n";
-                        /* überschreiben oder doch nicht genauer machen. Neuer Wert ParameterBlock 1 ist componentParams, neuer Wert ParameterBlock 2 ist moduleParams
-                        * Es werden nur nicht leere neue Parameter überschrieben. 
-                        * Bei moduleParams wird auch in subarrays unterschieden - 
-                        */
-                        if ( ($componentParams != "") || $componentOverwrite ) { $configurationAuto[$variableId][$i+1] = $componentParams; }     
-                        if ( ($moduleParams    != "") || $moduleOverwrite)
-                            {
-                            $moduleParamsCfgNewCount=count($moduleParamsNew);                       // wieviele subParameter hat der neue ParameterBlock 2
-                            if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )          // haben sich die subParameter alt zu neu geändert, dann schreiben
+                            if ($configurationAuto[$variableId][$i]   != $eventType ) 
                                 {
-                                echo "Update Module Params: $moduleParams. Anzahl hat sich geändert. ".count($moduleParamsCfg)." != $moduleParamsCfgNewCount\n";
-                                //print_r($moduleParamsCfg); print_r($moduleParamsNew);
-                                $moduleParamsArray=array();
-                                $result="";
-                                for ($j=0;$j<$moduleParamsCfgNewCount;$j++) 
-                                    {
-                                    if ( (isset($moduleParamsCfg[$j])==false) || ( (isset($moduleParamsCfg[$j])) && ($moduleParamsCfg[$j] != "") ) || $moduleOverwrite) $moduleParamsArray[$j]=$moduleParamsNew[$j];
-                                    }
-                                foreach ($moduleParamsArray as $entry) $result .= $entry.",";
-                                //print_R($moduleParamsArray); echo "ModuleParams Wert wird gesetzt $entry.\n";
                                 $update=true;
-                                $configurationAuto[$variableId][$i+2] = substr($result,0,strlen($result));      // letztes Komma wieder wegnehmen
-                                } 
-                            else
-                                {
-                                if ($configurationAuto[$variableId][$i+2] != $moduleParams)
-                                    {
-                                    $update=true;
-                                    echo "Update Module Params: $moduleParams. Anzahl hat sich nicht geändert ($moduleParamsCfgNewCount) aber der Inhalt: ".$configurationAuto[$variableId][$i+2]." != $moduleParams\n";
-                                    $configurationAuto[$variableId][$i+2] = $moduleParams;
-                                    } 
+                                echo "   Event Type $eventType hat sich verändert.\n";
+                                $configurationAuto[$variableId][$i]   = $eventType;
                                 }
+                            //else if ($debug) echo "   Event Type $eventType hat sich nicht verändert.\n";
+                            /* überschreiben oder doch nicht genauer machen. Neuer Wert ParameterBlock 1 ist componentParams, neuer Wert ParameterBlock 2 ist moduleParams
+                            * Es werden nur nicht leere neue Parameter überschrieben. 
+                            * Bei moduleParams wird auch in subarrays unterschieden - 
+                            */
+                            if ( ($componentParams != "") || $componentOverwrite ) { $configurationAuto[$variableId][$i+1] = $componentParams; }     
+                            if ( ($moduleParams    != "") || $moduleOverwrite)
+                                {
+                                $moduleParamsCfgNewCount=count($moduleParamsNew);                       // wieviele subParameter hat der neue ParameterBlock 2
+                                if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )          // haben sich die subParameter alt zu neu geändert, dann schreiben
+                                    {
+                                    echo "Update Module Params: $moduleParams. Anzahl hat sich geändert. ".count($moduleParamsCfg)." != $moduleParamsCfgNewCount\n";
+                                    //print_r($moduleParamsCfg); print_r($moduleParamsNew);
+                                    $moduleParamsArray=array();
+                                    $result="";
+                                    for ($j=0;$j<$moduleParamsCfgNewCount;$j++) 
+                                        {
+                                        if ( (isset($moduleParamsCfg[$j])==false) || ( (isset($moduleParamsCfg[$j])) && ($moduleParamsCfg[$j] != "") ) || $moduleOverwrite) $moduleParamsArray[$j]=$moduleParamsNew[$j];
+                                        }
+                                    foreach ($moduleParamsArray as $entry) $result .= $entry.",";
+                                    //print_R($moduleParamsArray); echo "ModuleParams Wert wird gesetzt $entry.\n";
+                                    $update=true;
+                                    $configurationAuto[$variableId][$i+2] = substr($result,0,strlen($result));      // letztes Komma wieder wegnehmen
+                                    } 
+                                else
+                                    {
+                                    if ($configurationAuto[$variableId][$i+2] != $moduleParams)
+                                        {
+                                        $update=true;
+                                        echo "Update Module Params: $moduleParams. Anzahl hat sich nicht geändert ($moduleParamsCfgNewCount) aber der Inhalt: ".$configurationAuto[$variableId][$i+2]." != $moduleParams\n";
+                                        $configurationAuto[$variableId][$i+2] = $moduleParams;
+                                        } 
+                                    }
+                                }
+                            //echo "RegisterEvent $variableId : ".json_encode($configurationAuto[$variableId])."\n";
                             }
-                        //echo "RegisterEvent $variableId : ".json_encode($configurationAuto[$variableId])."\n";
-                        }
-                    }
+                        else        // noch drei Werte, aber es gibt nix zum Updaten, bleiben wie sie sind
+                            {
+                            $index=intval($count/3);
+                            $configurationAuto[$variableId][$i]   = $eventType[$index];
+                            if (isset($componentParams[$index]))$configurationAuto[$variableId][$i+1] = $componentParams[$index];
+                            if (isset($moduleParams[$index]))$configurationAuto[$variableId][$i+2] = $moduleParams[$index];
+                            }           // ende if
+                        }                   // ende for
+                    }                           // ende if variableID
 
                 // Variable NOT found --> Create Configuration
                 if (!$found)
@@ -838,9 +868,18 @@
                     $configurationAuto[$variableId][] = $eventType;
                     $configurationAuto[$variableId][] = $componentParams;
                     $configurationAuto[$variableId][] = $moduleParams;
+                    if ($targetcount>3)
+                        {
+                        for ($i=3;$i<$tragetcount;$i=$i+3)
+                            {
+                            $index=intval($i/3);
+                            $configurationAuto[$variableId][$i]   = $eventType[$index];
+                            if (isset($componentParams[$index]))$configurationAuto[$variableId][$i+1] = $componentParams[$index];
+                            if (isset($moduleParams[$index]))$configurationAuto[$variableId][$i+2] = $moduleParams[$index];
+                            }    
+                        }
                     $update=true;
                     }
-
                 if ($update) $this->StoreEventConfiguration($configurationAuto,$comment);             // zweiter Parameter wäre jetzt ein Kommentar
                 $this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
                 $debug=true;
@@ -856,9 +895,20 @@
         * mit Parameter true kann man eine erweiterte Ausgabe erzwingen
         */
 
-        public function Print_EventConfigurationAuto($list=false,$extend=false)
+        public function Print_EventConfigurationAuto($list=false,$inputConf=false,$debug=false)
             {
-            //$extend=false;
+            $extend=false; $filter=false;
+            if (is_array($inputConf))
+                {
+                if (isset($inputConf["extend"])) $extend=$inputConf["extend"];
+                if (isset($inputConf["filter"])) 
+                    {
+                    $filterVal=explode(",",$inputConf["filter"]);
+                    $filter=true;
+                    echo "Print_EventConfigurationAuto Filter ".json_encode($filterVal)."\n";
+                    }
+                }
+            else $extend=$inputConf;
             if (is_array($list)) 
                 {
                 $configuration = $list;
@@ -897,13 +947,37 @@
                 {
                 foreach ($configuration as $variableId=>$params)
                     {
-                    echo "  ".$variableId."   ";
-                    if (IPS_ObjectExists($variableId)) echo str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",60)." \"".$params[0]."\",\"".$params[1]."\",\"".$params[2]."\"";
-                    else echo "******* Delete Entry from IPSDetectDeviceHandler_GetEventConfiguration() in EvaluateHardware_Configuration.";
-                    echo "\n";
+                    $doecho=true;
+                    if ($filter)
+                        {
+                        for ($i=0;$i<count($filterVal);$i++)
+                            {
+                            if ( (isset($params[$i])) && (isset($filterVal[$i])) && ($params[$i]!=$filterVal[$i]) ) $doecho=false;
+                            }
+                        }
+                    if ($doecho)
+                        {
+                        echo "  ".$variableId."   ";
+                        if (IPS_ObjectExists($variableId)) 
+                            {
+                            echo str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",90);
+                            foreach ($params as $index=>$param) { echo " \"$param\","; }
+                            }
+                        else echo "******* Delete Entry from IPSDetectDeviceHandler_GetEventConfiguration() in EvaluateHardware_Configuration.";
+                        echo "\n";
+                        }
                     }
                 }
             }
+
+        public function PrintEvent($group)
+            {
+            echo "ListEvents for $group:\n";
+            $config=$this->ListEvents($group);
+            //print_R($config);
+            foreach ($config as $ID=>$entry) echo "   ".str_pad($ID,6).str_pad(IPS_GetName($ID).".".IPS_GetName(IPS_GetParent($ID)),60).str_pad(GetValue($ID),20)."$entry\n";
+            }
+
         }
 
 /***********************************************************
@@ -2696,7 +2770,7 @@
     class DetectHandlerTopology extends DetectHandler
 		{
 		protected $topology;            // topologie ist auch in der Children class verfügbar
-        protected $ID;
+        protected $ID,$Config;
 
 	    public function Get_Configtype()
 			{
@@ -2723,8 +2797,15 @@
 			}
 
         /* Functions that are common 
-         * Topology in webfront als Kategorien entsprechend topology config anlegen
-         * wenn init true vorher die World Topologie loeschen, Übergabe alternativ als config array
+         *
+         */
+
+        /* create_Topology 
+         * in webfront als Kategorien entsprechend topology config anlegen, entweder true/false oder ein Array mit Parameter
+         *      ID      die Startkategorie, wenn false dann den Webfront Path von EvaluateHardware nehmen
+         *      Init    wenn true vorher die World Topologie loeschen, 
+         *      Use     nur bestimmte Kategorien erstellen Place, Room, DeviceGroup
+         * verwendet get_topology von EvaluateHardware_Configuration, wenn nicht vorhanden Abbruch
          *
          * Topology Format ist flat, keine Hierarchie, index ist der Name !!! es braucht mehrere Durchläufe
          *      World
@@ -2741,17 +2822,21 @@
         public function create_Topology($input=false,$debug=false)
             {
             if ($debug) echo "create_Topology aufgerufen: Config ".json_encode($input)."\n";
+            $this->Config=array();
             if (is_array($input)) 
                 {
                 if (isset($input["Init"])) $init=$input["Init"];
                 else $init=false;
                 if (isset($input["ID"])) $ID=$input["ID"];
                 else $ID=false;
+                if (isset($input["Use"])) $this->Config["Use"]=$input["Use"];
+                else $use=false;
                 }
             else
                 {
                 $init=$input;    
                 $ID=false;
+                $use=false;
                 }
             $ipsOps=new ipsOps();                
 			if (function_exists("get_Topology") === false)
@@ -2769,7 +2854,7 @@
                         IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
                         $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
                         }
-                    $installedModules = $moduleManager->GetInstalledModules();
+                    //$installedModules = $moduleManager->GetInstalledModules();
                     //print_r($installedModules); 
                     $WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
                     if ($debug) echo "   Webportal EvaluateHardware Datenstruktur installieren in: ".$WFC10_Path." \n";
@@ -2789,13 +2874,17 @@
                     }
                 $this->topology=array();
                 $topology = get_Topology();         //get_Topology ist die Datei im Config File
-				$topology["World"]["OID"]=$this->ID;        // Startpunkt, das ist die ID von World, fpür die Erzeugung von CreateCategoryPath
+				$topology["World"]["OID"]=$this->ID;        // Startpunkt, das ist die ID von World, für die Erzeugung von CreateCategoryPath
                 $this->create_TopologyChildrens($this->topology,$topology,$debug);           
                 }
             return($this->topology);
             }
 
-        /* entry ist die Sub Topologie die jetzt eingeordnet werden muss
+        /* create_TopologyChildrens
+         * input ist die Sub Topologie die jetzt in topology eingeordnet werden muss
+         *      Struktur zumindest Type, Parent und Name, 
+         *              optional Config, Childrens oder verschiedene Infos für Startpage Display, neuerdings zusammengefasst in Config
+         *
          * gleiche Indexe nicht überschreiben sondern erweitern mit __# # ist eine aufsteigende Zahl
          * es wird nicht mehr vorher alles rüberkopiert, Schritt für Schritt prüfen
          * für jede Input Category wird überprüft
@@ -2806,14 +2895,14 @@
          */
         private function create_TopologyChildrens(&$topology,$input, $debug=false)
             {
-            if ($debug) echo "create_TopologyChildrens aufgerufen.\n";
+            if ($debug) echo "   create_TopologyChildrens aufgerufen.\n";
             $translation=array();
             foreach ($input as $category => $entry)
                 {
-                $oid=false;
+                $oid=false; $gocreate=false;
                 if ($debug>1)
                     {
-                    echo "  process  $category";
+                    echo "    process  $category";
                     if (isset($input[$category]["Parent"])) echo ".".$input[$category]["Parent"]; 
                     if (isset($topology[$category])) echo " redundant ";
                     echo "\n";
@@ -2827,8 +2916,8 @@
                     do {
                         $i++;
                         $categoryIndex = $category."__$i";          
-                    } while (isset($topology[$categoryIndex]));                // Category schon im Zielarray bekannt
-                    $translation[$category]=$categoryIndex;                     
+                    } while (isset($topology[$categoryIndex]));                // Category mit __Index schon im Zielarray bekannt, solange weitermachen bis nicht
+                    $translation[$category]=$categoryIndex;                     // und speichern als translation, einer pro function Aufruf
                     }
                 else $categoryIndex=$category;                    // wenn keine neue categorie Index notwendig, trotzdem beide führen
 
@@ -2844,13 +2933,22 @@
                         //$topology[$category]["OID"]=CreateCategoryByName($parentID,$input[$category]["Name"], 10);          // keinen identifier schreiben, ist überfordert mit __
                         if (isset($topology[$parentIndex]["Path"])) $topology[$categoryIndex]["Path"]=$parent.".".$topology[$parentIndex]["Path"];
                         else $topology[$categoryIndex]["Path"]=$parent;
+                        if ( (isset($this->Config["Use"])) && (isset($entry["Type"])) )
+                            {
+                            if (in_array($entry["Type"],$this->Config["Use"])===false ) 
+                                {
+                                if ($debug>1) echo "                          >> ".$entry["Name"]." Type ".$entry["Type"]." not found in array use : ".json_encode($this->Config["Use"])."\n";
+                                }
+                            else $gocreate=true;
+                            }
+                        else $gocreate=true;
                         if ($debug) 
                             {
                             //echo "CreateCategoryPathFromOid(".$input[$category]["Name"].".".$topology[$category]["Path"].",".$this->ID.")\n";
                             echo "     ".str_pad($input[$category]["Name"].".".$topology[$categoryIndex]["Path"],120)." $categoryIndex \n";
                             }
-                        $oid = CreateCategoryPathFromOid($input[$category]["Name"].".".$topology[$categoryIndex]["Path"],$this->ID,false);              // true für Debug
-
+                        if ($gocreate) $oid = CreateCategoryPathFromOid($input[$category]["Name"].".".$topology[$categoryIndex]["Path"],$this->ID,false);              // true für Debug
+                        else $oid="none";
                         $topology[$parentIndex]["Children"][$categoryIndex]=$categoryIndex;                   // den neuen Index nehmen, soll ja ein verweis sein
                         if ($debug>1) echo "      ".$topology[$categoryIndex]["Path"]."\n";
                         }
@@ -2988,10 +3086,12 @@
                 {
                 throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
                 }
+            $comment = "//last time written on ".date("d.m.Y H:i:s")."\n       ";
             $fileContent = file_get_contents($fileNameFull, true);
             $configString="";
             $ipsOps->serializeArrayAsPhp($this->topology, $configString, 0, 10, false);          // true mit Debug, ConfigString mit Zusatzinformationen anreichern, mit ident 10 anfangen
-            $search1='$getUnifiedTopology = array(';
+            //$search1='$getUnifiedTopology = array(';
+            $search1='get_UnifiedTopology(';                        // vor dem Kommentarfeld schon zu ersetzen beginnen
             $search2='return $getUnifiedTopology;';
             $pos1 = strpos($fileContent, $search1);
             $pos2 = strpos($fileContent, $search2);
@@ -3016,61 +3116,70 @@
                     {
                     echo "Search Item \"$search1\" found at $pos1 and Search Item \"$search2\" found at $pos2. \n";
                     }
-				$fileContentNew = substr($fileContent, 0, $pos1).'$getUnifiedTopology = '.$configString.substr($fileContent, $pos2);
+				$fileContentNew = substr($fileContent, 0, $pos1)."get_UnifiedTopology() {        $comment ".'$getUnifiedTopology'." = ".$configString.substr($fileContent, $pos2);
 				}
 			file_put_contents($fileNameFull, $fileContentNew);
 
             }
 
 
-        /*
-         * Verbindung der Topologie mit der Object und instanzen Konfiguration
-         * $objectsConfig = $DetectDeviceHandler->Get_EventConfigurationAuto();  
-         * es können jetzt auch mehrstufige hierarchische Gewerke aufgebaut werden
-         * zB Weather besteht aus Temperatur und Feuchtigkeit
+        /* mergeTopologyObjects
+         * Verbindung der Topologie mit der Object und instanzen Konfiguration. Ergebnis ist $topologyPlusLinks,  nur einsortieren, keine Links erzeugen, das macht updateLinks
+         * übernimmt topology und $objectsConfig, siehe weiter unten, objectsConfig = $DetectDeviceHandler->Get_EventConfigurationAuto();        vulgo aka channelEventList
          *
          * Übergabeparameter
-         *  topology            die tatsächliche Topologies aus der config in EvaluateHardware_configuration
+         *  topology            die tatsächliche Topologies aus der config in EvaluateHardware_configuration, eindeutige Keys mit __#, erzeugt references
          *  objectsConfig       die Object/register Config aus dem DetectDeviceHandler, das sind nicht die Geräte sondern die Register
          *                      es gibt dort auch Gesamt register die definiert werden
+         *
          * in der objectsConfig gilt, 
          *  Index            Register or Instance OID
          *  Index Subarray:  0 Topology  1 Array of Rooms seperated by , 2 Array of Registertype seperated by , 
+         *        optional:  3 ROOM|DEVICE
+         *    
+         * 42539 : Zentralzimmer Bewegung[0] => Topology, [1] => Zentralzimmer,  [2] => Brightness
+         *
+         * Die objectsConfig aka channelEventList der Reihe nach durchgehen, wir haben die OID der Register als Index. Format siehe oben
+         *      ich brauch einen Raum oder mehrere, aus der Raumangabe auch mit ~ den uniqueName rausbekommen
+         *          für den Raum muss es in topology zumindest eine OID geben
+         *              es können jetzt auch mehrstufige hierarchische Gewerke aufgebaut werden
+         *              zB Weather besteht aus Temperatur und Feuchtigkeit
+         *          abhängig von den weiteren Parametern, mehr als drei:
          *
          * in der Topology muss es zumindest den Ort oder die Orte geben, die mit Par 1 übergeben wurde
-         * erst nmach dem Einsortieren ist klar wieviele Werte pro Raum vorhanden sind
+         * erst nach dem Einsortieren ist klar wieviele Werte pro Raum vorhanden sind
+         *
+         * topologypluslinks structure, keyindex ist der uniquename der Topologie, Arbeitszimmer
+         *
+         *
+         * Stromheizung Modul installiert, Actuator definieren
+         *
+         *
          */
 
         function mergeTopologyObjects($topology, $objectsConfig, $debug=false)
             {
-            if ($debug>1) echo "mergeTopologyObjects mit informationen aus einer DetectDeviceHandler Configuration aufgerufen, in die Topologie einsortieren:\n";
-
+            if ($debug>1) echo "mergeTopologyObjects mit Informationen aus einer DetectDeviceHandler Configuration aufgerufen, in die Topologie einsortieren:\n";
+            if (isset($this->installedModules["Stromheizung"])) 
+                {                                                
+                if ($debug>1)echo "    Stromheizung Modul installiert, Actuator definieren\n"; 
+                IPSUtils_Include ("IPSHeat.inc.php",  "IPSLibrary::app::modules::Stromheizung");   
+                $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
+                }
             /* place name kann jetzt redundant sein, index eindeutig aber nicht unbedingt passend zur User Angabe, User nimmt immer den ersten Wert
                 * ausser es wird die Baseline mit ~ angegben, name~baseline bedeutet wir suchen einen index dessen Pfad name und baseline enthält
                 * reference ist der key der 
                 */
-            $references = $this->topologyReferences($topology,$debug);
-            /* $references=array();
-            foreach ($topology as $topindex => $topentry)
-                {
-                if (!( (isset($topentry["Name"])) && (isset($topentry["Path"])) )) 
-                    {
-                    if ($debug>1) 
-                        {
-                        echo "Warning, incomplete array on $topindex:\n";
-                        print_R($topentry);          // Eintrag fehlt
-                        }
-                    }
-                else $references[$topentry["Name"]][$topentry["Path"]] = $topindex;               // für einen namen alle Einträge durchgehen, der wo die bvaseline im key ist den index übernehmen
-                }  */
+            $references = $this->topologyReferences($topology,$debug);              // aus einer Topology eine Reference machen welche uniqueNames einem mehrdeutigen Name zugeordnet sind, unter index Path abspeichern
             $text="";                
             $topologyPlusLinks=$topology;               // Topologie ins Ergebnis Array übernehmen
-            foreach ($objectsConfig as $index => $entry)
+            foreach ($objectsConfig as $index => $entry)                    // Register der Reihe nach durchgehen, Informationen über den Raum analysieren
                 {
                 if ($debug>1) 
                     {
-                    $newText=$entry[0]."|".$entry[1]."|".$entry[2];                 //entry 0 ist immer Topology, gar nicht erst einmal kontrollieren
-                    if ($newText != $text) echo "$index   \"$newText\"\n";
+                    $newText=$entry[0]; 
+                    for ($i=1;$i<count($entry);$i++) $newText.="|".$entry[$i];                 //entry 0 ist immer Topology, gar nicht erst einmal kontrollieren, für alle Elemente machen, können mehr als 3 sein
+                    if ($newText != $text) echo "$index   \"$newText\"\n";          // nur die geänderten Zeilen ausgeben
                     $text=$newText;
                     }
                 $name=IPS_GetName($index);
@@ -3081,60 +3190,137 @@
                     {
                     foreach ($entry1 as $entryplace)         // alle Räume durchgehen
                         {
-                        $place=$this->uniqueNameReference($entryplace,$references);
-                        /*$placeName=explode("~",$entryplace);        // Raum mit Zusatzangabe Ort im Pfad 
-                        if (sizeof($placeName)>1) 
-                            {
-                            if ($debug>1) echo "Name reference with Baseline Identifier found : $entryplace detected as ".$placeName[0]."~".$placeName[1]."\n";
-                            //print_R($references);
-                            if (isset($references[$placeName[0]]))
-                                {
-                                //print_r($references[$placeName[0]]);
-                                $found=$placeName[0]; $foundpos=false;
-                                foreach ($references[$placeName[0]] as $refname => $reference) 
-                                    {
-                                    $pos1 = strpos($refname,$placeName[1]); 
-                                    if ($debug>1) echo "$refname $pos1  ";
-                                    if ($pos1 !==false) 
-                                        {
-                                        if ( ($foundpos && ($pos1<$foundpos)) || ($foundpos===false)) { $foundpos=$pos1; $found=$reference; }
-                                        }
-                                    }
-                                $place=$found;
-                                if ($debug>1) echo "  => $place\n";
-                                }
-                            }
-                        else $place=$entryplace;*/
+                        $place=$this->uniqueNameReference($entryplace,$references);         // für eine Raumangabe Wohzimmer~LBG70 den uniquename Wohnzimmer__1 finden
                         if ( isset($topology[$place]["OID"]) != true ) 
                             {
                             if ($debug) echo "   Fehler, zumindest erst einmal die Kategorie \"$place\" in function get_Topology() von EvaluateHardware_Configuration anlegen.\n";
                             }
-                        else
+                        else        // uniqueName in topology vorhanden
                             {
                             $oid=$topology[$place]["OID"];
                             //print_r($topology[$place]);
-                            $size=sizeof($entry2);              // Gewerk, Type der Register überprüfen
-                            if ($entry2[0]=="") $size=0;
-                            if ($size == 1)         // es wurde ein Gewerk angeben, zB Temperatur, vorne einsortieren 
-                                {	
-                                if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
-                                //CreateLinkByDestination($name, $index, $oid, 10);	
-                                $topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
-                                }
-                            elseif ($size == 2)         // eine zusätzliche Hierarchie einführen, der zweite Wert ist die Übergruppe 
+                            if (count($entry)>3)
                                 {
-                                if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
-                                //CreateLinkByDestination($name, $index, $oid, 10);	
-                                $topologyPlusLinks[$place]["OBJECT"][$entry2[1]][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
-                                } 
-                            else        // empty size = 0 oder mehr Parameter, eine Instanz, dient nur der Vollstaendigkeit 
-                                {	
-                                if ($debug>1) echo "   erzeuge INSTANCE Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
-                                //CreateLinkByDestination($name, $index, $oid, 1000);						
-                                $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
-                                }
-                            }
-                        }
+                                $entry3=strtoupper($entry[3]);
+                                if (isset($entry[4])) $newname = $entry[4];
+                                else $newname = IPS_GetName($index);
+                                echo "mergeTopologyObjects mit zusätzlichen Informationen anlegen : ".str_pad(IPS_GetName($index)."($index)",50)." => ".$entry[0].",".$entry[1].",".$entry[2].",$entry3,$newname .\n";
+                                switch ($entry3)    
+                                    {
+                                    case "ROOM":
+                                        $topologyPlusLinks[$place]["TOPO"][$entry3][$index]=$newname;          // TOPO -> ROOM -> oid of source -> link name
+                                        break;
+                                    case "DEVICE":
+                                        /* welcher Aktuator, schreibt TOPO.DEVICE.name.oid.name
+                                            [ArbeitszimmerHue] => Array ( [0] => Array (
+                                                    [Name] => ArbeitszimmerHue
+                                                    [Type] => Ambient
+                                                    [Activateable] => 1
+                                                    [Category] => Groups ) )
+                                         * anreichern um zusätzliche           
+                                         */
+                                        $plusLink=array();
+                                        if (isset($topology[$place]["Actuators"][IPS_GetName($index)]))
+                                            {
+                                            echo "      DEVICE,Actuator given as ".IPS_GetName($index).": ";
+                                            $configActuators = $topology[$place]["Actuators"][IPS_GetName($index)];         // das Objekt aus der devicelist
+                                            foreach ($configActuators as $subindex => $subconfigActuator)                // there is also a port
+                                                {
+                                                //print_R($subconfigActuator);
+                                                if ($subindex=="TopologyInstance")
+                                                    {
+
+                                                    }
+                                                else    
+                                                    {
+                                                    $identifier = strtoupper($subconfigActuator["Category"]).strtoupper($subconfigActuator["Type"]);
+                                                    $plusLink=$ipsheatManager->checkActuators($subconfigActuator["Name"],$identifier,);
+                                                    /* echo "Identifier for Actuator $newname : $identifier";
+                                                    switch ($identifier)
+                                                        {
+                                                        case "GROUPSAMBIENT":
+                                                            $soid = $ipsheatManager->GetGroupIdByName($subconfigActuator["Name"]);
+                                                            $plusLink[$soid]=$subconfigActuator["Name"];
+                                                            $soid = $ipsheatManager->GetGroupAmbienceIdByName($subconfigActuator["Name"]);
+                                                            $plusLink[$soid]=$subconfigActuator["Name"]."#ColTemp";
+                                                            $soid = $ipsheatManager->GetGroupLevelIdByName($subconfigActuator["Name"]);
+                                                            $plusLink[$soid]=$subconfigActuator["Name"]."#Level";
+                                                            break;
+                                                        case "PROGRAMSPROGRAM":
+                                                            $soid = $ipsheatManager->GetProgramIdByName($subconfigActuator["Name"]);
+                                                            $plusLink[$soid]=$subconfigActuator["Name"];
+                                                            break; 
+                                                        case "SWITCHESRGB":
+                                                            echo ", ".$subconfigActuator["Name"]."  ";
+                                                            $soid = $ipsheatManager->GetSwitchIdByName($subconfigActuator["Name"]);
+                                                            $plusLink[$soid]=$subconfigActuator["Name"];
+                                                            $soid = $ipsheatManager->GetLevelIdByName($subconfigActuator["Name"]); 
+                                                            $plusLink[$soid]=$subconfigActuator["Name"].IPSHEAT_DEVICE_LEVEL;
+                                                            $soid = $ipsheatManager->GetColorIdByName($subconfigActuator["Name"]); 
+                                                            $plusLink[$soid]=$subconfigActuator["Name"].IPSHEAT_DEVICE_COLOR;
+                                                            break;
+                                                        default:
+                                                            echo "       ->> WARNING, Identifier unknown !!!!";  
+                                                            break;                                                     
+                                                        }                       // end switch  */
+                                                    }
+                                                }                       // end foreach
+                                            echo " \n";
+                                            }                       // end ifset
+                                        else $plusLink[$index]=$newname;
+                                        $topologyPlusLinks[$place]["TOPO"][$entry3][$newname]=$plusLink;          // TOPO -> ROOM -> oid of source -> link name
+                                        break;
+                                    default:
+                                        break;    
+                                    }           // end switch entry3
+                                }       // end more entries than 3
+                            else
+                                {
+                                $size=sizeof($entry2);              // Gewerk, Type der Register überprüfen
+                                if ($entry2[0]=="") $size=0;
+                                if ($size == 1)         // es wurde ein Gewerk angeben, zB Temperatur, vorne einsortieren 
+                                    {	
+                                    if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                    //CreateLinkByDestination($name, $index, $oid, 1000);	
+                                    //$topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
+                                    $plusLink=array();
+                                    if (isset($topology[$place]["Actuators"][IPS_GetName($index)]))
+                                        {
+                                        echo "      DEVICE,Actuator given as ".IPS_GetName($index).": ";
+                                        $configActuators = $topology[$place]["Actuators"][IPS_GetName($index)];         // das Objekt aus der devicelist
+                                        foreach ($configActuators as $subindex => $subconfigActuator)                // there is also a port
+                                            {
+                                            //print_R($subconfigActuator);
+                                            if ($subindex=="TopologyInstance")
+                                                {
+
+                                                }
+                                            else    
+                                                {
+                                                $identifier = strtoupper($subconfigActuator["Category"]).strtoupper($subconfigActuator["Type"]);
+                                                $plusLink=$ipsheatManager->checkActuators($subconfigActuator["Name"],$identifier,true);
+                                                }
+                                            }   	    // ende foreach
+                                        echo " \n";
+                                        }
+                                    else $plusLink[$index]=$name;
+                                    $topologyPlusLinks[$place]["OBJECT"][$entry2[0]]=$plusLink;          // OBJECT -> TYPE -> oid of source -> link name
+                                    }
+                                elseif ($size == 2)         // eine zusätzliche Hierarchie einführen, der zweite Wert ist die Übergruppe 
+                                    {
+                                    if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                    //CreateLinkByDestination($name, $index, $oid, 1000);	
+                                    $topologyPlusLinks[$place]["OBJECT"][$entry2[1]][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
+                                    } 
+                                else        // empty size = 0 oder mehr Parameter, eine Instanz, dient nur der Vollstaendigkeit 
+                                    {	
+                                    if ($debug>1) echo "   erzeuge INSTANCE Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
+                                    //CreateLinkByDestination($name, $index, $oid, 1000);						
+                                    $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
+                                    }
+                                }           // end 3 entries
+                            }           // end  uniqueName in topology vorhanden
+                        }              // end alle Räume durchgehen
                     //print_r($entry1);
                     }
                 else                // kein Raum angegeben
@@ -3157,8 +3343,9 @@
             return ($topologyPlusLinks);
             }
 
-        /*  aus einer Topology eine Reference machen welche unqueNames einem Name zugeordnet sind
-         *
+        /* aus einer Topology eine Reference machen welche uniqueNames einem mehrdeutigen Name zugeordnet sind, unter index Path abspeichern
+         * Wohnzimmer ist Wohnzimmer.LBG70 und Wohnzimmer.BKS01
+         * auch in findRoom benutzt.
          */
         public function topologyReferences($topology,$debug=false)
             {
@@ -3176,6 +3363,37 @@
                 else $references[$topentry["Name"]][$topentry["Path"]] = $topindex;               // für einen namen alle Einträge durchgehen, der wo die bvaseline im key ist den index übernehmen
                 }
             return($references);
+            }
+
+        public function findRoom($instances,$channelEventList,$topology)
+            {
+            $references = $this->topologyReferences($topology);
+                        $room="";
+                        foreach ($instances as $instance)       // alle Instanzen aus einem deviceList Eintrag durchgehen und mit $channelEventList abgleichen, eine Rauminformation daraus ableiten, Plausicheck inklusive
+                            {
+                            $config="";
+                            //print_r($channelEventList[$instance["OID"]]);
+                            if (isset($channelEventList[$instance["OID"]])) 
+                                {
+                                $config=json_encode($channelEventList[$instance["OID"]]);
+                                if ($channelEventList[$instance["OID"]][1] !="")
+                                    {
+                                    if ($room == "") 
+                                        {
+                                        $room=$channelEventList[$instance["OID"]][1];
+                                        $entryplace=$this->uniqueNameReference($room,$references);
+                                        }
+                                    else
+                                        {
+                                        if ($room != $channelEventList[$instance["OID"]][1]) echo "!!!Fehler, die Channels sind in unterschiedlichen Räumen. ".$instance["OID"]."  $room != ".$channelEventList[$instance["OID"]][1]."\n";
+                                        }
+                                    }
+                                }
+                            //echo "     ".$instance["OID"]."   $config  \n";
+                            }
+
+
+            return($room);
             }
 
         /* Raumangabe kann eine Tilde enthalten, entsprechend auflösen
@@ -3276,7 +3494,7 @@
      *
      * in einem eigenen Bereich von EvaluateHardware werden die Register angelegt
      *
-	 * DetectDeviceHandler extends DetectHandlerTopolog with
+	 * DetectDeviceHandler extends DetectHandlerTopolog extends DetectHandler with
 	 *	    __construct
 	 *	    Get_Configtyp, Get_ConfigFileName, Get_Topology		gemeinsame (self) Konfigurations Variablen
 	 * 	    Get_EventConfigurationAuto, Set_EventConfigurationAuto
@@ -3429,33 +3647,137 @@
                 }                
             }
 
-        /* aus mergeTopologyObjects wird in Visualization...EvaluateHardware das Webfront LocalData erstellt.
-         * hier die Links einsortieren
+        /* DetectDeviceHandler::updateLinks
+         * aus mergeTopologyObjects wird in Visualization...EvaluateHardware das Webfront LocalData erstellt.
+         *
+         * topologyPlusLinks Eintrag für Eintrag durchgehen, das sind alle Räume mit uniqueName
+         *
+         * OID ist bereits auf eine bestimmte Topologie bestehend aus Kategorien festgelegt
+         * hier die Links einsortieren, kann auch in anderen Bereichen verwendet werden
+         * es werden nur Objekte hinzugefügt
+         * den Index als Oif für die Datenquelle nehmen und dem Eintrag OID als Speicherort.
+         *
+         *  uniqueName =>   Type            ist der place, also Place, Room, DeviceGroup
+         *                  Path
+         *                  OID             die OID der Kategorie
+         *                  OBJECT          Register
+         *                      IpsHeatSwitch
+         *                  INSTANCE        Instanzen mit untergeordneten Registern
+         *                  TOPO
+         *                      ROOM        in die Room Instanz verschiedene Objekte hineinverlinken
+         *                      DEVICE      für jedes Actuator Device eine Anzahl von Registern hineinverlinken
+         *
+         *                      ...         in eine Device Group mehrere Actuator Devices hineinverlinken
+         *
+         *                  Actuators       Liste der Actuator, IPSHeat die es in diesem Raum gibt
+         *  
+         *  TOPO            wenn Parameter 3 Device oder Room heisst
+         *
+         *  OBJECTS         Untergruppen anhand Parameter 2 IPSHeat etc
+         *      es braucht einen Type (Parameter 2), eine OID und den gewünschten Namen dafür
+         *      Routine denkt nicht mehr, was angeführt wurde, wird als Link in der Kategorie wenn vorhanden oder in der Topology Instanz dargestellt, siehe mergeTopology
+         *  INSTANCES
+         *      nix implementiert         
          */
 
-        public function updateLinks($topologyPlusLinks)
+        public function updateLinks($topologyPlusLinks,$debug=false)
             {
-            foreach ($topologyPlusLinks as $place => $entry)
+            foreach ($topologyPlusLinks as $place => $entry)            // $topologyPlusLinks Eintrag für Eintrag durchgehen, das sind alle Räume mit uniqueName
                 {
+                // input Werte aus dem array darstellen, Zusammenafssung aller TOPO, OBJECT und INSTANCE arrays, INSTANCE wird nur angezeigt wenn keine OBJECT definiert
                 if (isset($entry["Type"])) echo "$place (".$entry["Type"].") : ";
                 else echo "$place : ";
-                $object=false; $instance=false;
+                $object=false; $instance=false; $topo=false;
+                if (isset($entry["TOPO"])) 
+                    {
+                    echo "  TOPO (".(count($entry["TOPO"])).")";
+                    $topo=true;            							//CreateLinkByDestination($name, $index, $oid, 10);
+                    }
                 if (isset($entry["OBJECT"])) 
                     {
                     echo "  OBJECT (".(count($entry["OBJECT"])).")";
                     $object=true;            							//CreateLinkByDestination($name, $index, $oid, 10);
                     }
-                elseif (isset($entry["INSTANCE"])) 
+                if (isset($entry["INSTANCE"])) 
                     {
                     echo "  INSTANCE (".(count($entry["INSTANCE"])).")";
                     $instance=true;
                     }
+                if (isset($entry["Path"])) echo "    ".$entry["Path"];    
                 echo "\n";
-                if ($object) 
+                if ($topo)          // ROOM oder DEVICE
+                    {
+                    foreach ($entry["TOPO"] as $type => $subentry)   // TOPO -> Room -> oid source -> name of link
+                        {
+                        echo "      $type  :\n";
+                        switch ($type)
+                            {
+                            case "DEVICE":                                  // mehrere Device
+                                foreach ($subentry as $devicename => $deviceentry)
+                                    {
+                                    if (isset($entry["Actuators"]))
+                                        {
+                                        foreach ($deviceentry as $oid => $name)
+                                            {
+                                            $objects = @IPS_GetVariable($oid);
+                                            if ($objects===false)
+                                                {
+                                                echo "        $oid   -> ***** Failure, dont know VariableID.\n";
+                                                }
+                                            else
+                                                {
+                                                if (isset($entry["Actuators"][$devicename]["TopologyInstance"]))
+                                                    {
+                                                    $topologyinstance=$entry["Actuators"][$devicename]["TopologyInstance"];         // wird nur hier gebraucht
+                                                    echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                                                    if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
+                                                    echo "\n";
+                                                    CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
+                                                    }
+                                                else
+                                                    {
+                                                    echo "Warning, not known ";
+                                                    print_R($entry["Actuators"]);
+                                                    }	                
+                                                }                    
+                                            }
+                                        }
+                                    else 
+                                        {
+                                        echo "    >>> Warning, no Index Actuators in Topo $place.";
+                                        print_R($entry);
+                                        }
+                                    }
+                                break;
+                            case "ROOM":                                    // ein Raum
+                                $topologyinstance=$entry["TopologyInstance"];
+                                foreach ($subentry as $oid => $name)
+                                    {
+                                    $objects = @IPS_GetVariable($oid);
+                                    if ($objects===false)
+                                        {
+                                        echo "        $oid   -> ***** Failure, dont know VariableID.\n";
+                                        }
+                                    else
+                                        {
+                                        echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                                        if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
+                                        echo "\n";
+                                        CreateLinkByDestination($name, $oid, $topologyinstance, 1000);	                
+                                        }                    
+                                    }
+                                break;
+                            default:
+                                echo "Do not know $type \n";
+                                break;
+                            }               // end switch
+                        }
+                    }
+                if ($object)            // wenn ein Objekt konfiguriert wurde, alle Einträge dafür durchgehen
                     {
                     foreach ($entry["OBJECT"] as $type => $subentry)
                         {
-                        echo "      $type  :\n";
+                        echo "      $type  :\n";                        //IpsHeatSwitch, Temperature etc.
                         foreach ($subentry as $oid => $name)
                             {
                             $objects = @IPS_GetVariable($oid);
@@ -3468,7 +3790,16 @@
                                 echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
                                 if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
                                 echo "\n";
-                                CreateLinkByDestination($name, $oid, $entry["OID"], 10);	                
+                                if (is_numeric($entry["OID"])) CreateLinkByDestination($name, $oid, $entry["OID"], 1000);	                
+                                else 
+                                    {
+                                    if (isset($entry['TopologyInstance'])) 
+                                        {
+                                        $topologyinstance=$entry["TopologyInstance"];
+                                        CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
+                                        }
+                                    else echo "Entry OID is not numeric, TopologyInstance not available, probably none and no TOPD Instanz, ie DeviceGroup Entry.\n";
+                                    }
                                 }                    
                             }
                         }

@@ -31,6 +31,7 @@
      */
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
     IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
     $dosOps = new dosOps();
@@ -38,11 +39,7 @@
     $startexec=microtime(true);
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
-	}
+    $moduleManager    = new ModuleManagerIPS7('EvaluateHardware',$repository);
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
@@ -304,7 +301,7 @@
 		$wfcHandling->CreateWFCItemCategory  ('WorldTPA', $configWF["TabPaneItem"],   10, 'World', 'Wellness', $worldID   /*BaseId*/, 'true' /*BarBottomVisible*/);
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
 
-        if (isset($DetectDeviceHandler))		// Die Kategorie World wird in DetectMovement_Installation mit Werten befüllt
+        if (isset($DetectDeviceHandler))		// Die Kategorie World in Webfront-EvaluateHardware wird in DetectMovement_Installation mit Werten befüllt
             {
             $DetectDeviceHandler->create_Topology(true, true);            // true für init - bedeutet World kategorie wird gelöscht, true für Debug
             $topology=$DetectDeviceHandler->Get_Topology();

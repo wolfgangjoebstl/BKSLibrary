@@ -8846,7 +8846,7 @@ class DeviceManagement
             $resultReg[0]["HEIGHT"]="LEVEL";              // DIRECTION INHIBIT LEVEL WORKING
             }                    
         /*-------Bewegung------------------------------*/
-        elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder */
+        elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder, Durchgangssensor ist weiter unten */
             {
             //print_r($registerNew);    
             $result[0] = "Bewegungsmelder";
@@ -8856,6 +8856,16 @@ class DeviceManagement
             if ( array_search("BRIGHTNESS",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="BRIGHTNESS";
             if ( array_search("ILLUMINATION",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="ILLUMINATION";
             }
+        elseif ( array_search("PRESENCE_DETECTION_STATE",$registerNew) !== false) /* Presaenzmelder  */
+            {
+            //print_r($registerNew);    
+            $result[0] = "Bewegungsmelder";
+            $result[1] = "Funk-Bewegungsmelder";
+            $resultType[0] = "TYPE_MOTION";            
+            $resultReg[0]["MOTION"]="PRESENCE_DETECTION_STATE";
+            if ( array_search("BRIGHTNESS",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="BRIGHTNESS";
+            if ( array_search("ILLUMINATION",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="ILLUMINATION";
+            }            
         /*-------RSSI------------------------------*/
         elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* nur der Empfangswert */
             {
@@ -8963,7 +8973,7 @@ class DeviceManagement
             $found=false;
             if ($debug)
                 { 
-                echo "             HomematicDeviceType: kein bekanntes Muster für ein gerät entdeckt. Wirklich so schwierig ?\n";
+                echo "             HomematicDeviceType: kein bekanntes Muster für ein Gerät entdeckt. Wirklich so schwierig ?\n";
                 print_r($registerNew);
                 }
             }
@@ -9066,6 +9076,7 @@ class DeviceManagement
      * DeviceManagement::getHomematicHMDevice
      * gibt für eine Homematic Instanz/Kanal eines Gerätes den Device Typ aus HM Inventory aus
      * Voraussetzung ist das das Homematic Inventory Handler Modul installiert ist. Sonst wird ein leerer String zurückgegeben
+     * Aufruf von getHomematicDevices -> EvaluateHardware
      *
      * Der zweite Parameter definiert den gewünschten Output
      *      default, false      Standard Homematic Name 
@@ -9132,6 +9143,7 @@ class DeviceManagement
                         $matrix=[0,2,1,1,2,1,1,1];                        
                         break;
 
+                    case "HmIP-SPI":                    // Presencemelder, PRESENCE_DETECTION_STATE
                     case "HmIP-SMI":
                     case "HmIP-SMI55-2":                // Einbaurahmen Bewegungsmelder, MOTION; ILLUMINATION, MOTION_DETECTION und ein paar mehr
                     case "HM-Sec-MDIR":
@@ -9737,7 +9749,7 @@ class DeviceManagement_Homematic extends DeviceManagement
             }        
         foreach ($storedError_Log as $date => $entry)
             {
-            if ($debug) echo "$date ".json_encode($entry)."  \n";
+            if ($debug>1) echo "   $date ".json_encode($entry)."  \n";
             $html .= '<tr>';
             $text="";
             $text .= $date."    ".$entry["State"]."   ";
@@ -9793,7 +9805,7 @@ class DeviceManagement_Homematic extends DeviceManagement
         if ($debug) echo "updateHomematicErrorLog($filename,...) aufgerufen:\n";
         $dosOps = new dosOps();               
         $ipsOps = new ipsOps();
-        if ($dosOps->fileAvailable($filename))
+        if ($dosOps->fileAvailable($filename,$debug))
             {
             include $filename;
             //IPSUtils_Include ('EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // deviceList
@@ -9806,7 +9818,7 @@ class DeviceManagement_Homematic extends DeviceManagement
         $newHM_Errors = array();
         $today = time();
 
-        if ($debug) echo "Unterschied zu den gespeicherten Homematic Fehlermeldungen, insgesamt ".sizeof($storedHM_Errors).":\n";
+        if ($debug) echo "    Unterschied zu den gespeicherten Homematic Fehlermeldungen, insgesamt ".sizeof($storedHM_Errors).":\n";
         //print_R($storedHM_Errors);        
         foreach ($arrHM_Errors as $oid=>$entry)
             {
@@ -9837,10 +9849,10 @@ class DeviceManagement_Homematic extends DeviceManagement
             }
         if ($debug) 
             {
-            echo "Diese Meldungen sind weggefallen, insgesamt ".sizeof($storedHM_Errors).":\n";
-            print_R($storedHM_Errors);
-            echo "Diese Meldungen sind neu dazugekommen, insgesamt ".sizeof($newHM_Errors).":\n";
-            print_R($newHM_Errors);
+            echo "    Diese Meldungen sind weggefallen, insgesamt ".sizeof($storedHM_Errors).":\n";
+            if ($debug>1) print_R($storedHM_Errors);
+            echo "    Diese Meldungen sind neu dazugekommen, insgesamt ".sizeof($newHM_Errors).":\n";
+            if ($debug>1) print_R($newHM_Errors);
             }            
         foreach ($newHM_Errors as $oid=>$entry)
             {

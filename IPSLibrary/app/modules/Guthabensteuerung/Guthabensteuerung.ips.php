@@ -908,7 +908,7 @@ if ($_IPS['SENDER']=="WebFront")
             $sourceFile = $seleniumChromedriver->getFilenameOfVersion($updateChromedriver);         // file Adresse erforderlich Quelldatei ermitteln
 
             $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();
-            $log_Guthabensteuerung->LogNachrichten("Update Chromedriver aktuelle Version $actualVersion identifiziert.");
+            $log_Guthabensteuerung->LogNachrichten("Update Chromedriver aktuelle Version \"$actualVersion\" identifiziert.");       // kann auch false sein wenn nicht identifiziert
             if ($actualVersion==$updateChromedriver) 
                 {
                 echo "already done on $updateChromedriver";
@@ -916,8 +916,9 @@ if ($_IPS['SENDER']=="WebFront")
             else 
                 {
                 //echo "Aktuelles chromedriver.exe gefunden. Version $actualVersion. Neue version ist hier : $sourceFile\n";
-                $status=$seleniumChromedriverUpdate->copyChromeDriver($sourceFile,$selDir);
+                $status=$seleniumChromedriverUpdate->copyChromeDriver($sourceFile,$selDir);                                                 // Watchdog Library
                 if ($status==102) $log_Guthabensteuerung->LogNachrichten("Neues Chromedriver File wurde bereits in Zielverzeichnis $selDir kopiert");
+                else $log_Guthabensteuerung->LogNachrichten("Neues Chromedriver File $sourceFile in Zielverzeichnis $selDir kopiert. Status $status.");
                 $seleniumChromedriverUpdate->deleteChromedriverBackup();
                 $log_Guthabensteuerung->LogNachrichten("Update Chromedriver, Selenium wird jetzt gestoppt.");
                 $seleniumChromedriverUpdate->stoppSelenium();   
@@ -940,6 +941,10 @@ if ($_IPS['SENDER']=="WebFront")
     /* letzte verfügbare Chromedriver Version von ftp Server laden
      *      dazu rausfinden welche Versionen es am Server gibt mit und in result speichern
      *      dann mit der aktuell eingesetzten Version vergleichen, nur die größeren Versionsnummern vergleichen
+     *
+     *      Ergebnis als html zusammenfassen, beinhaltet Ergebnis und Tabelle
+     *          SeleniumUpdate::installEnvironment  für TrgetDir und Status 7za.exe
+     *          Tabelle mit Spalte Versionsnummer, alte Versionsbezeichnung, neue Versionsbezeichnung
      */
     if ($getChromedriver)               
         {
@@ -947,15 +952,16 @@ if ($_IPS['SENDER']=="WebFront")
         if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
             {
             $SeleniumUpdate = new SeleniumUpdate();
-            $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
+            $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);      // gibt tergetdir und den status von 7za.exe aus.
             $html .= $result;
 
             $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
             $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
-            $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
+            $versionOverview    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
             //print_R($version);          // Version Nummer, Filename, Size in Bytes
-            $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
-                                
+            $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);           // aus der Watchdog Library
+
+            // neue Chromedriver Versionen finden, wenn neue version gefunden wird diese zum Download anmerken, wird in config gespeichert                                
             $log_Guthabensteuerung->LogNachrichten("Get Chromedriver Versionen von Webpage gestartet");
             $configChromedriverID       = IPS_GetObjectIdByName("ConfigChromeDriver",$CategoryId_Mode); 
             $sysOps = new sysOps();
@@ -973,7 +979,7 @@ if ($_IPS['SENDER']=="WebFront")
             $configNew=array();             // die neu Konfiguration auf Basis von Old
             $log_Guthabensteuerung->LogNachrichten("Vorhandene Chromedriver Versionen ".GetValue($configChromedriverID).". Actual Version $actualVersion.");
             //print_R($configOld);
-            foreach ($result as $version => $entry)
+            foreach ($result as $version => $entry)         // alle Chromedriver versionen als Tabelle ausgeben, Spalte Versionsnummer, alte Versionsbezeichnung, neue Versionsbezeichnung
                 {
                 $html .= '<tr><td>'.$version.'</td>';
                 if ($version >= $actualVersion)
@@ -1060,21 +1066,25 @@ if ($_IPS['SENDER']=="WebFront")
                 $log_Guthabensteuerung->LogNachrichten("Update Config.Succesful Operation");
                 $configString = json_encode($configNew);
                 SetValue($configChromedriverID,$configString);  
-                $html .= "Copy to sharedrive : $execDir <br>";                  
+                $html .= "Copy to sharedrive $execDir the following files: <br>"; 
+                $i=1;                 
                 foreach ($config as $version => $entry)
                     { 
                     if (file_exists($execDir."chromedriver_$version.exe")) echo "Version $version bereits vorhanden, wird auf neueste Version überschrieben.\n";
                     copy ($dir."chromedriver_$version.exe",$execDir."chromedriver_$version.exe"); 
-                    $html .= "    chromedriver_$version.exe<br>";                  
+                    $html .= str_pad($i,2," ",STR_PAD_LEFT)."    chromedriver_$version.exe<br>"; 
+                    $i++;                 
                     }
                 $seleniumChromedriver->update_ExecDirContent();
-                $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis execdir erfassen 
-                $tabs=$SeleniumUpdate->findTabsfromVersion($version, $actualVersion);
-                SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
-                $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
-                $webOps->createActionProfileByName($pname,$tabs,0);
+                $versionOverview    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis execdir erfassen 
                 }  
             }
+        $latestVersion=array_key_last($versionOverview);
+        $tabs=$SeleniumUpdate->findTabsfromVersion($versionOverview, $actualVersion);
+        SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
+        $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+        $webOps->createActionProfileByName($pname,$tabs,0);
+        $html .= "Tabs for updating chromedriver has been set to the latest setup of $actualVersion ... $latestVersion.<br>";
         SetValue($SeleniumHtmlStatusID,$html);          // Status Window update
         }
 

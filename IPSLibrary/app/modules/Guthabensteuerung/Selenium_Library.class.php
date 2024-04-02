@@ -6118,8 +6118,9 @@ class SeleniumUpdate
             print_r($version);
             }
         $tab=array(); 
+        if ($version===false) return (false);
         $count = sizeof($version);
-        $indexStart=$count-3;
+        $indexStart=$count-5;                       // ein paar alte Versionen mit suchen
         $start=false;
         $index=0;
         foreach ($version as $num => $entry)
@@ -6133,8 +6134,13 @@ class SeleniumUpdate
         return ($tab);
         }
 
-    /* von den Servern das Environment für das herunterladen von aktuellen Chromeversionen installieren
-     *
+    /* von den Servern das Environment für das Herunterladen von aktuellen Chromeversionen installieren
+     * Ergebnis ist ein html string
+     * Erzeugt das Targetdir wenn erforderlich und gibt es im html aus, es werden gleich die Inhalte des targetdirs geladen udn verglichen, um rauszufinden was bereits erledigt ist
+     * Benötigt 7zr.exe und 7z2301-extra.7z, wenn nicht vorhanden download 7z2301-extra.7z
+     * Benötigt unzip_7za.bat, wenn nicht schreibe das batch file selbst, zerlegt das 7z file
+     * Benötigt 7za.exe, wenn nicht wird unzip_7za.bat gestartet um diese Datei durch Aufruf von 7zr.exe zu erhalten
+     * als positives Feedback wird berichtet das 7za.exe vorhanden ist.
      */
     function installEnvironment($targetDir,$debug=false)
         {
@@ -6198,7 +6204,7 @@ class SeleniumUpdate
             if ($file) 
                 {
                 if ($debug) echo "   --> Datei $filename gefunden.\n";
-                $html .= "Unzip Programm available : $filename <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
+                $html .= "Unzip Programm available : $filename <br>";                  // unzip programm steht zur Verfügung 
                 }
             else
                 {
@@ -6206,6 +6212,7 @@ class SeleniumUpdate
                 $commandName="unzip_7za.bat";
                 $ergebnis = $sysOps->ExecuteUserCommand($targetDir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
                 echo "Execute Batch $dir$commandName um File $dir$filename zu erhalten : \"$ergebnis\"\n";
+                $html .= "Unzip Programm not available, maybe next time when script is started by pressing GET. <br>";
                 }
         return ($html);
         }

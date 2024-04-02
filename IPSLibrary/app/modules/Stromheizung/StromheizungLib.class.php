@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -21,7 +21,27 @@
 
 	//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
 
-/******************************************************************************************************************/
+/*****************************************************************************************************************
+ *  
+ *      HeizungHandler abstract class with
+ *          __construct
+ *          StoreEventConfiguration
+ *          CreateEvents
+ *          ListEvents
+ *          ListGroups
+ *          CreateEvent
+ *          RegisterEvent
+ *
+ *      StromheizungHandler extends HeizungHandler
+ *          __construct     defines self::$configtype = '$eventStromheizungConfiguration';
+ *          Get_Configtype
+ *          Get_EventConfigurationAuto          StromheizungHandler_GetEventConfiguration();
+ *          Set_EventConfigurationAuto
+ *
+ *
+ *
+ *
+ */
 
 
 	abstract class HeizungHandler {
@@ -104,7 +124,7 @@
 		/**
 		 * @public
 		 *
-		 * Listet anhand der Konfiguration alle Events
+		 * Listet anhand der Konfiguration alle Events, Index ist EventID und Wert ist params[0]
 		 *
 		 */
 		public function ListEvents($type="")
@@ -115,23 +135,23 @@
 				{
 				switch ($type)
 					{
-				   case 'Motion':
+				    case 'Motion':
 					case 'Contact':
 						if ($type==$params[0])
-						   {
+						    {
 							$result[$variableId]=$params[1];
 							}
-					   break;
+					    break;
 					default:
 					   if ($type!="")
-					      {
+					        {
 							if ($type==$params[1])
 							   {
 								$result[$variableId]=$params[1];
 							   }
-					      }
+					        }
 					   else
-					      {
+					        {
 							$result[$variableId]=$params[0];
 							}
 					   break;
@@ -144,7 +164,7 @@
 		 * @public
 		 *
 		 * Listet anhand der Konfiguration alle Events
-		 *
+		 * sammelt alle params[1] und zeigt sie als available an
 		 */
 		public function ListGroups($type="")
 			{
@@ -154,7 +174,7 @@
 				{
 				switch ($type)
 					{
-				   case 'Motion':
+				    case 'Motion':
 					case 'Contact':
 						if (($type==$params[0]) && ($params[1] != ""))
 						   {

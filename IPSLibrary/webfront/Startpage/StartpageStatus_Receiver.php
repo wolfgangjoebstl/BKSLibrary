@@ -32,18 +32,18 @@
 	switch ($id) 
 		{
 		case "button-eins":
-			$result=Startpage_SetPage($action, $module, $id, "TopologyReceiver", $info);
+			$result=Startpage_SetPage($action, $module, $id, "TopologyStatus", $info);
 			echo $id;
 			break;
 		case "startofscript":
-			$result=Startpage_SetPage($action, $module, $id, "TopologyReceiver", $info);
+			$result=Startpage_SetPage($action, $module, $id, "TopologyStatus", $info);
 			$result = Startpage_getData($action, "configuration");
 			$response[$id]=$result;
 			echo json_encode($response);			// format is as JSON
 			break;
 		default:
 			$result=Startpage_SetPage($action, $module, $id, "TopologyReceiver", $info);
-			IPSLogger_Inf(__file__, 'StartpageTopology_Receiver mit Id '.$id.' Cookie '.$action.' und Ergebnis '.$result);	
+			IPSLogger_Inf(__file__, 'StartpageStatus_Receiver mit Id '.$id.' Cookie '.$action.' und Ergebnis '.$result);	
 			$result = Startpage_getData($action);
 			echo $id.":".$result;
 			break;

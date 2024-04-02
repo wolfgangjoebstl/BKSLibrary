@@ -1,4 +1,4 @@
-<?
+<?php
 
 /***********************************************************************
 
@@ -57,19 +57,19 @@ if ($_IPS['SENDER']=="WebFront")
 		{
 		case "2":  /* Auto */
 		   /* im Auto Mode sichergehen dass Zusatzheizung nicht eingeschaltet bleibt */
-	  		FS20_SwitchMode(ADR_Zusatzheizung_KZ, false); //Gerät komplett ausschalten
-	  		FS20_SwitchMode(ADR_Zusatzheizung_WZ, false); //Gerät komplett ausschalten
+	  		FS20_SwitchMode(ADR_Zusatzheizung_KZ, false); //GerÃ¤t komplett ausschalten
+	  		FS20_SwitchMode(ADR_Zusatzheizung_WZ, false); //GerÃ¤t komplett ausschalten
 			break;
 		case "3":  /* 4 Stunden Timer ein */
 			IPS_SetScriptTimer($_IPS['SELF'], 10*60);
 			SetValue($EinschaltdauerID,24);    /* 4 Stunden lang vorheizen,  in 10 Minuten Schritten einstellen */
 			SetValue(57474,240);
-			FS20_SwitchDuration(ADR_Zusatzheizung_KZ, true, 800); //Gerät für 800 sek einschalten
-			FS20_SwitchDuration(ADR_Zusatzheizung_WZ, true, 800); //Gerät für 800 sek einschalten
+			FS20_SwitchDuration(ADR_Zusatzheizung_KZ, true, 800); //GerÃ¤t fÃ¼r 800 sek einschalten
+			FS20_SwitchDuration(ADR_Zusatzheizung_WZ, true, 800); //GerÃ¤t fÃ¼r 800 sek einschalten
 			SetValue($Temp1AnfangID,GetValue($WZ_TempID));
 			SetValue($Temp2AnfangID,GetValue($KZ_TempID));
 
-			/* ein email zur Bestätigung schicken */
+			/* ein email zur BestÃ¤tigung schicken */
 		 	$ergebnis=send_status();
 		 	SetValue(14087,"Heizung an ".date("Y.m.d D H:i:s")." : ".$ergebnis);
 			IPS_RunScript(49434);
@@ -78,12 +78,12 @@ if ($_IPS['SENDER']=="WebFront")
 			IPS_SetScriptTimer($_IPS['SELF'], 10*60);
 			SetValue($EinschaltdauerID,48);    /* 8 Stunden lang vorheizen,  in 10 Minuten Schritten einstellen */
 			SetValue(57474,480);
-			FS20_SwitchDuration(ADR_Zusatzheizung_KZ, true, 800); //Gerät für 800 sek einschalten
-			FS20_SwitchDuration(ADR_Zusatzheizung_WZ, true, 800); //Gerät für 800 sek einschalten
+			FS20_SwitchDuration(ADR_Zusatzheizung_KZ, true, 800); //GerÃ¤t fÃ¼r 800 sek einschalten
+			FS20_SwitchDuration(ADR_Zusatzheizung_WZ, true, 800); //GerÃ¤t fÃ¼r 800 sek einschalten
 			SetValue($Temp1AnfangID,GetValue($WZ_TempID));
 			SetValue($Temp2AnfangID,GetValue($KZ_TempID));
 
-			/* ein email zur Bestätigung schicken */
+			/* ein email zur BestÃ¤tigung schicken */
 		 	$ergebnis=send_status();
 		 	SetValue(14087,"Heizung an ".date("Y.m.d D H:i:s")." : ".$ergebnis);
 			IPS_RunScript(49434);
@@ -113,7 +113,7 @@ if ($_IPS['SENDER']=="Variable")
 	switch ($_IPS['VARIABLE'])
 		{
 
-		/* Positionswerte geändert */
+		/* Positionswerte geÃ¤ndert */
 
    case "32688": /* Arbeitszimmer Pos Aenderung Heizung*/
 		If ($_IPS['VALUE'])
@@ -187,7 +187,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	SetValue($TempErhoehungID,$TempErhoehung);
 
  	$ergebnis=send_status();
- 	$ergebnis_lang=$ergebnis."\n\nTemperaturerehoehung seit Einschaltzeitpunkt:\n\n".number_format($TempErhoehung, 2, ",", "" )."°C\n ";
+ 	$ergebnis_lang=$ergebnis."\n\nTemperaturerehoehung seit Einschaltzeitpunkt:\n\n".number_format($TempErhoehung, 2, ",", "" )."Â°C\n ";
 
  	if ((GetValue($WZ_TempID)>22) or (GetValue($KZ_TempID)>20))
  	   {
@@ -201,8 +201,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   {
    	SetValue($EinschaltdauerID,$Restzeit);
    	IPS_SetScriptTimer($_IPS['SELF'], 10*60);
-   	FS20_SwitchDuration(ADR_Zusatzheizung_KZ, true, 800); //Gerät für 800 sek einschalten
-		FS20_SwitchDuration(ADR_Zusatzheizung_WZ, true, 800); //Gerät für 800 sek einschalten
+   	FS20_SwitchDuration(ADR_Zusatzheizung_KZ, true, 800); //GerÃ¤t fÃ¼r 800 sek einschalten
+		FS20_SwitchDuration(ADR_Zusatzheizung_WZ, true, 800); //GerÃ¤t fÃ¼r 800 sek einschalten
 		$ergebnis="Status ".date("Y.m.d D H:i:s")." : ".$ergebnis;
  		$ergebnis_lang="Status OK : Zusatzheizung aktiviert".$ergebnis_lang."\n\n";
 	  	WriteLogEvent("Zusatzheizung aktiviert. Temperatur WZ:".GetValue($WZ_TempID)." und KZ:".GetValue($KZ_TempID));
@@ -214,7 +214,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		$ergebnis="Heizung aus ".date("Y.m.d D H:i:s")." : ".$ergebnis;
 		$ergebnis_lang="Status OK : Zusatzheizung wieder deaktiviert".$ergebnis_lang."\n\n";
 	  	WriteLogEvent("Zusatzheizung wieder deaktiviert. Temperatur WZ:".GetValue($WZ_TempID)." und KZ:".GetValue($KZ_TempID));
-		/* nach Ablauf des Events wieder zurück in den Auto Mode schalten */
+		/* nach Ablauf des Events wieder zurÃ¼ck in den Auto Mode schalten */
 		SetValue(19155,2);
 		}
 	if (($Restzeit/6)==(round($Restzeit/6, 0, PHP_ROUND_HALF_DOWN)))
@@ -236,12 +236,12 @@ $status=GetValue(19155);
 switch ($status)
 	{
 	case "0":   /* dauernd aus */
-	  	FS20_SwitchMode($adresse, false); //Gerät komplett ausschalten
+	  	FS20_SwitchMode($adresse, false); //GerÃ¤t komplett ausschalten
 	  	WriteLogEvent("    -> schaltet ".$adresse." aus");
 		break;
 
 	case "1":   /* dauernd ein */
-	  	FS20_SwitchDuration($adresse, true, 800); //Gerät nur mit Timer für 800 sek einschalten
+	  	FS20_SwitchDuration($adresse, true, 800); //GerÃ¤t nur mit Timer fÃ¼r 800 sek einschalten
 	  	WriteLogEvent("    -> schaltet ".$adresse." fuer 800 Sek ein");
 		break;
 
@@ -250,12 +250,12 @@ switch ($status)
 	   break;
 
 	case "3":   /* 4 Stunden */
-	  	FS20_SwitchDuration($adresse, true, 800); //Gerät nur mit Timer für 800 sek einschalten
+	  	FS20_SwitchDuration($adresse, true, 800); //GerÃ¤t nur mit Timer fÃ¼r 800 sek einschalten
 	  	WriteLogEvent("    -> schaltet ".$adresse." fuer 800 Sek ein (4 Stunden Modus)");
 	   break;
 
 	case "4":   /* 8 Stunden */
-	  	FS20_SwitchDuration($adresse, true, 800); //Gerät nur mit Timer für 800 sek einschalten
+	  	FS20_SwitchDuration($adresse, true, 800); //GerÃ¤t nur mit Timer fÃ¼r 800 sek einschalten
 	  	WriteLogEvent("    -> schaltet ".$adresse." fuer 800 Sek ein (8 Stunden Modus)");
 	   break;
 
@@ -265,19 +265,19 @@ switch ($status)
 		   case "10884": /* Kellerzimmer Pos Aenderung Heizung*/
 		      if (GetValue(10884)==true)
 		         {
-	  				FS20_SwitchDuration(ADR_Zusatzheizung_KZ, true, 800); //Gerät nur mit Timer für 800 sek einschalten
+	  				FS20_SwitchDuration(ADR_Zusatzheizung_KZ, true, 800); //GerÃ¤t nur mit Timer fÃ¼r 800 sek einschalten
 	  				WriteLogEvent("    -> schaltet ".ADR_Zusatzheizung_KZ." fuer 800 Sek ein (Power Modus)");
 					}
 		   break;
 			case "17661": /* Wohnzimmer Pos Aenderung Heizung*/
 		      if (GetValue(17661)==true)
 		         {
-	  				FS20_SwitchDuration(ADR_Zusatzheizung_WZ, true, 800); //Gerät nur mit Timer für 800 sek einschalten
+	  				FS20_SwitchDuration(ADR_Zusatzheizung_WZ, true, 800); //GerÃ¤t nur mit Timer fÃ¼r 800 sek einschalten
 	  				WriteLogEvent("    -> schaltet ".ADR_Zusatzheizung_WZ." fuer 800 Sek ein (Power Modus)");
 					}
 			break;
 			}
-	  	FS20_SwitchDuration($adresse, true, 800); //Gerät nur mit Timer für 800 sek einschalten
+	  	FS20_SwitchDuration($adresse, true, 800); //GerÃ¤t nur mit Timer fÃ¼r 800 sek einschalten
 	  	WriteLogEvent("    -> schaltet ".$adresse." fuer 800 Sek ein (8 Stunden Modus)");
 	   break;
 

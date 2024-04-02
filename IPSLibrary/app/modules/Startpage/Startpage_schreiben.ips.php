@@ -363,7 +363,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         switch ($startPageType)
             {
             case 23:        // Status
-                $html .= '  <iframe id="frame-start" name="StartStatus" src="../user/Startpage/StartpageStatus.php" style="width:100%; height:85vh; ">';
+                $html .= '  <iframe id="status-start" name="StartStatus" src="../user/Startpage/StartpageStatus.php" style="width:100%; height:85vh; ">';
                 break;
             case 22:        // Frame
                 $html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" style="width:100%; height:85vh; ">';

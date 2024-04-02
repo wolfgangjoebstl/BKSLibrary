@@ -47,8 +47,16 @@
      * mit der Absage des IPSWeather Moduls wurden die Wetter Aktivitäten hier her verlagert.
      * wenn das IPSWeather Modul nicht mehr vorhanden ist auch die Icons verschieben und neu verweisen
      *
-     * es werden die Versuche verstärkt das Webdesign auf eine responsive Darstellung zu erneuern
+     * es werden die Versuche verstärkt, das Webdesign auf eine responsive Darstellung zu erneuern
+     * es gibt zwei classes 
+     *      StartpageHandler
+     *      StartpageWidgets
+     * wenn Startpage_schreiben nicht mehr direkt StartpageHandler::StartPageWrite aufruft gibt es nette responsive frames mit container und div als Gestaltungselemente
+     * die direkt als iframes auf php dateien mit javascript und css verweisen. Diese wiederum rufen direkt die Routinen in der class StartpageWidgets auf.
+     *      Frame  -> showPictureWidgetResponsive und andere
+     *      Status -> showDisplayStationResponsive
      *
+     * --------------------------------
      * Hauptroutine ist StartPageWrite mit den 4 unterschiedlichen Darstellungen
      * aufgerufen werden dazu analog die folgenden Funktionen:   showHierarchy, [showPictureWidget,showTopology], [showDisplayStation, bottomTableLines], [showPictureWidget,showWeatherTemperatureWidget,bottomTableLines]     
      *
@@ -4629,7 +4637,10 @@
      * Folgende neue Routinen wurden übernommen
      *
      *  setDebugMode                                Debug ein/ausschalten, ohne Einzelparameter in jeder function
+     *  writeStartpageStyleStatus
+     *  getStartpageStyleStatusSize
      *  selectPictures                              Auswahl von 1 bis max Bilder aus Smallpics
+     *  showDisplayStationResponsive
      *  showPictureWidgetResponsive                 diese anzeigen,1,4 oder 9 Stück
      *  showTemperatureTableIcons                   die Icons Aussen und Innen
      *  showTemperatureTableValues
@@ -4661,7 +4672,10 @@
             $this->debug=$debug;
             }
 
-        /* die Styles zusammenfassen
+        /* die Styles zusammenfassen, Darstellung Display Status als css class mit display:grid und 
+         * den divs ohne spezielle Formatierung.
+         * es lassen sich die styles von divs zusammenlegen mit .item1 {grid-column-start: 1;  grid-column-end: 3; }
+         *
          */
         public function writeStartpageStyleStatus($size=false)
             {
@@ -4676,10 +4690,17 @@
                 $lines = $size[1];
                 }
             $style = "";
-            $style .= '.container-startpage { box-sizing: border-box; display:grid; ';
+            $style .= '.container-status { box-sizing: border-box; display:grid; ';
             $style .= '                 grid-template-columns: repeat('.$cols.',auto);';
             $style .= '     		    grid-template-rows:    repeat('.$lines.',auto);';
             $style .=         '}';
+            $style .= '.cont-ind-border {border: 2px solid white; border-radius: 5px; }';
+            $cols=3; $lines=2;
+            $style .= '.cont-stat-astro  { box-sizing: border-box; display:grid;';
+            $style .= '                 grid-template-columns: repeat('.$cols.',auto);'; 
+            $style .= '                 grid-template-rows: repeat('.$lines.',auto);';
+		    $style .= '                 grid-template-areas:  "moon0 moon1 moon2 "';
+            $style .= '                                       "info  info  info  ";}';                 // die nächsten div innerhalb dieses div nebeneinander darstellen
             $this->result=$style;
             if ($size==false) return ($this);
             else return ($style);
@@ -4761,7 +4782,7 @@
 
         /* StartpageWidgets::showDisplayStationResponsive
          *
-         * Darstelllung als x mal y Widgets am Bildschirm. configuration.Widgets ist nach Zeilen und Spalten sortiert
+         * Darstellung als x mal y Widgets am Bildschirm. configuration.Widgets ist nach Zeilen und Spalten sortiert
          * aktuell erfolgt die html Formatierung als Tabelle mit tr und td
          *
          *     picture für das 9/4/1 Bild
@@ -4780,6 +4801,11 @@
          *                             "info     info   info   info";}
          *
          *      <div id="sp" class="container-startpage">
+         *
+         *     darstellung status
+         *  .container-status { box-sizing: border-box; display:grid; 
+         *                            grid-template-columns: repeat('.$cols.',auto);
+         *        		              grid-template-rows:    repeat('.$lines.',auto); }
          *
          * Möglichst vielfältige Auswahl ist geplant.
          * Die Darstellung sollte soweit möglich responsive sein und konfigurierbar.
@@ -4809,6 +4835,7 @@
                     }
                 }
             $wert = "";
+            //$wert .= '<div style="display:inline-grid;">';                         // div is external to this routine
             foreach ($config as $row => $config2)
                 {                       
                 foreach ($config2 as $column => $screens)               // Zeilen und Spalten durchgehen, wenn es ein Widget für den aktuellen Screeen gibt bearbeiten
@@ -4840,28 +4867,30 @@
                         switch (strtoupper($entry["Type"]))
                             {
                             case "ASTRONOMY":
-                                $wert .= '<div>';
-                                $wert.=$this->showAstronomyWidget("CHART",$entry,$debug);
-                                $wert.='</td>';
+                                $wert .= '<div id="station-astro-chart" class=" cont-ind-border">';     
+                                $wert.=$this->showAstronomyWidgetResponsive("CHART",$entry,$debug);
+                                $wert.='</div>';
                                 break;
                             case "MOON":
-                                $wert .= '<div>';
-                                $wert.=$this->showAstronomyWidget("MOON",$entry,$debug);
-                                $wert.='</td>';
+                                $wert .= '<div id="station-astro-moon" class=" cont-ind-border" style="width:650px">';
+                                $wert.=$this->showAstronomyWidgetResponsive("MOON",$entry,$debug);
+                                $wert.='</div>';
                                 break;
                             case "WEATHER":
-                                $wert .= '<div>';
-                                $wert .= $this->showWeatherTable(false,$debug);     // statt false können die Wetterdaten übergeben werden
+                                $wert .= '<div id="station-weather">';
+                                $wert .= $this->showWeatherTableResponsive(false,$debug);     // statt false können die Wetterdaten übergeben werden
                                 $wert .= '</div>';
                                 break;
                             case "GROUPTEMP":               // Verschiedene Gruppen von Temperaturwerten anzeigen
-                                $wert .= '<div>';
-                                $wert .= $this->showTempGroupWidget($entry,$debug);
+                                $wert .= '<div id="station-draw-chart" class=" cont-ind-border">';
+                                //$wert .= $this->showTempGroupWidget($entry,$debug);
+                                $wert .= $this->drawChart();
+                                $wert .= 'Temp Group Widget, replaced by nice drawings for fun';
                                 $wert .= '</div>';           
                                 break;
                             case "HEATING":               // Heizungsfunktion nachweisen und illustrieren
                                 $wert .= '<div>';
-                                $wert .= $this->showHeatingWidget($entry,$debug);
+                                //$wert .= $this->showHeatingWidget($entry,$debug);
                                 $wert .= '</div>';            
                                 break;
                             case "PICTURE":
@@ -4871,7 +4900,7 @@
                                 break;
                             case "SPECIALREGS":
                                 $wert .= '<div>';
-                                $wert.= $this->showSpecialRegsWidget($entry,$debug);
+                                //$wert.= $this->showSpecialRegsWidget($entry,$debug);
                                 $wert .= '</div>';           
                                 break;
                             case "TEMPERATURE":
@@ -4889,7 +4918,7 @@
                                 break;
                             case "CHARTS":
                                 $wert .= '<div>';
-                                $wert .= $this->showChartsWidget($entry,$debug);
+                                //$wert .= $this->showChartsWidget($entry,$debug);
                                 $wert .= '</div>';
                                 break;
                             default:
@@ -4903,11 +4932,338 @@
                                 $wert.='<div>intentionally left empty</div>';
 
                         }
-                    }
-                $wert .= '</tr>';    
+                    }    
+                }
+            //$wert .= '</div>';
+            return ($wert);
+            }
+
+
+        /* Astronomy Widget, responsive Version, serveral div after each other
+         *
+         * depending on Display Option different ways of display , MOON, CHART
+         * 
+         * Definition ist eine eigenständige Zelle, typischerweise eine Zelle von 6 : 2 Reihen a 3 Zellen
+         * angenommen wird dass diese htmlBox innerhalb einer Zelle von <td>   und   </td> ist,#.
+         *
+         */
+
+		function showAstronomyWidgetResponsive($displayType=false,$config=false,$debug=false)
+			{
+            $wert="";
+            $config["Responsive"]=true;             // oder copy to responsive widgets
+            $modulname="Astronomy";
+            if ($debug) 
+                {
+                echo "showAstronomyWidgetResponsive mit Mode $displayType aufgerufen.\n";
+                echo "   Configuration ".json_encode($config)."\n";
                 }
 
+            $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+            $Astronomy=$modulhandling->getInstances($modulname);
+            $count = count($Astronomy);
+            if ($count>0)
+                {
+                $instanzID=$Astronomy[0];    
+                if ($debug) echo "   Rausfinden ob Instanz $modulname verfügbar: $count Instanzen verfügbar, Aktive Instanz : $instanzID.\n";
+                //$instanzname=IPS_GetName($instanzID);
+                
+                // Mond aus IPS Media übernehmen und in user Verzeichnis für die Darstellung im Webfront finden
+                $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);           // IPS Media wurde verwendet
+                if ($moonPicId !== false) 
+                    {
+                    $htmlpicMoon=IPS_GetMedia($moonPicId)["MediaFile"]; 
+                    if ($debug) echo "   html Bild Mond aus IPS_GetMedia verfügbar $htmlpicMoon \n";            // zB modules/.store/fonzo.ipsymconastronomy/Astronomy/images/mond/mond322.gif
+                    $pos1=strpos($htmlpicMoon,"Astronomy");
+                    //if ($pos1) $htmlpicMoon = 'user/Startpage/user'.substr($htmlpicMoon,$pos1+9);
+                    if ($pos1) $htmlpicMoon = 'user'.substr($htmlpicMoon,$pos1+9);
+                    else $htmlpicMoon=false;   
+                    if ($debug) echo "   html Bild Mond auch verfügbar unter $htmlpicMoon \n";            // zB modules/.store/fonzo.ipsymconastronomy/Astronomy/images/mond/mond322.gif
+                    }
+                $sunriseID=@IPS_GetObjectIDByName("Sonnenaufgang Uhrzeit",$instanzID);
+                if ($sunriseID !== false) $sunrise = GetValueIfFormatted($sunriseID);
+                else $sunrise="";
+                $sunsetID=@IPS_GetObjectIDByName("Sonnenuntergang Uhrzeit",$instanzID);
+                if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
+                else $sunset="";
+                $fullMoonID=@IPS_GetObjectIDByName("Vollmond",$instanzID);
+                if ($fullMoonID !== false) $fullMoon = GetValue($fullMoonID);
+                else $fullMoon="";
+
+                $iconPic = 'user/Startpage/user/icons/Flower.svg';
+                }  
+            else $wert.="Astronomy not available";
+
+            switch (strtoupper($displayType))
+                {
+                case "CHART":
+                    $wert .= $this->showAstronomyChartResponsive($debug);                       // responsive, keine Tabelle mehr
+                    break;
+                case "MOON":
+                    $cols=3; $lines =2;
+                    $wert.='<div id="show-moon" class="cont-stat-astro" style="background-color:#222222">';
+                    $wert .= $this->showAstronomyMoonResponsive();                                                  // 3 Monde jeweils als div nebeneinander
+                    $wert.='<div style="grid-area:info"><table>';
+                    $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
+                    $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
+                    $wert.='<tr><td>Nächster Vollmond</td><td>'.$fullMoon.'</td></tr>';
+                    $wert.='<tr><td align="center">';
+                    if ($iconPic) $wert.='<img src="'.$iconPic.'" alt="Flower Icon">';
+                    $wert.='</td></tr>';
+                    $wert.='</table></div>';
+                    $wert.='</div>';
+                    break;
+                case "ALL":
+                default:
+                    $wert.='<table width="100%">';
+                    $wert.='<tr><td colspan="2" >'.$this->showAstronomyResponsive().'</td></tr>';
+                    //$wert.='<tr><td align="center"><iframe><img src="'.$htmlpicMoon.'" alt="Bild der Mondphase"></iframe></td></tr>';
+                    $wert.='<tr><td align="center">';
+                    
+                    $wert.='</td><td><table>';
+                    $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
+                    $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
+                    $wert.='</table></td></tr>';
+                    $wert.='</table>';
+                    break;
+                }
             return ($wert);
+            }
+
+        /********************
+         *
+         * Eintrag für die Darstellung von astronomischen Informationen
+         * ist ein iframe auf sunmoonline.php 
+         * das php spannt ein Canvas auf und zeichnet eine Horizontlinie und Sonne und Mond auf ihrer aktuellen Position
+         *
+         **************************************/
+
+		function showAstronomyChartResponsive($debug=false)
+			{
+            $htmlAstro="";
+            $geo = new geoOps();            // Moon calcs included
+            $sun = $geo->calculateSunCoordinates();
+            $moon = $geo->calculateMoonCoordinates();
+            $htmlAstro .= $geo->getSunMoonView($sun['sunazimut'], $sun['sunaltitude'], $moon['moonazimut'], $moon['moonaltitude']);      // file schreiben und iFrame ausgeben
+            
+            $month = date('m');
+            $day = date('d');
+            $year = date('Y');
+            $location  = $geo->getlocation();
+            $latitude  = $location['Latitude'];
+            $longitude = $location['Longitude'];
+            $data = ($geo->calcMoonTimes($month, $day, $year, $latitude, $longitude));
+            $moonrise = $data->{'moonrise'}-60*60;        //Aufgang, Apple ist um eine Stunde früher dran, warum ?
+            //$moonrisedate = date('D d.m.Y', $moonrise);
+            $moonrisetime = date('H:i', $moonrise);
+            $moonset = $data->{'moonset'}-60*60;        //Untergang, Apple ist um eine Stunde früher dran, warum ?
+            //$moonsetdate = date('D d.m.Y', $moonset);
+            $moonsettime = date('H:i', $moonset); 
+
+            $locationInfo = $geo->getlocationinfo();
+            $sunrisetime = date('H:i', $locationInfo["Sunrise"]);         
+            $sunsettime  = date('H:i', $locationInfo["Sunset"]);             
+            $htmlAstro .= '<table>';
+            $htmlAstro .= '<tr><td>Sonnen - Auf/untergang</td><td>'.$sunrisetime.'</td><td>'.$sunsettime.'</td></tr>';
+            $htmlAstro .= '<tr><td>Mond   - Auf/untergang</td><td>'.$moonrisetime.'</td><td>'.$moonsettime.'</td></tr>';
+            $htmlAstro .= '</table>';
+            return ($htmlAstro);
+            }
+
+        /* Mondbilder, dir mit der niedrigen Qualität, anzeigen. Bildrer drehen sich nicht abhängig von der Tageszeit und zeigen nur
+         * den Beleuchtungsgrad an.
+         */
+		function showAstronomyMoonResponsive($debug=false)
+			{
+            $htmlAstro="";
+            $geo = new geoOps();            // Moon calcs included
+            $tagsek = 24*60*60;
+            $time = time()-$tagsek;
+            $Tag = array("gestern","heute","morgen");
+            for ($i=0; $i<3; $i++)
+                {
+                $mondphase = $geo->getMoonPhasePercent($time);        
+                $htmlpicMoon = 'user/images/mond/mond'.$geo->GetMoonPicture($mondphase)["picid"].'.gif';
+                $htmlAstro .= '<div style="grid-area:moon'.$i.';">';
+                $htmlAstro .= '<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase 100x100 '.$Tag[$i].'">';
+                $htmlAstro .= '<p>'.$Tag[$i].'</p>';
+                $htmlAstro .= '</div>';
+                $time += $tagsek;
+                }
+            //if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
+            //$geo->getMoonPictureNasa(time());
+
+            return ($htmlAstro);
+            }
+
+        /* selber zeichnen probieren mit Canvas und einem kleinen Programm
+         */
+        public function drawChart()
+            {
+            $filedir='StartPage'.DIRECTORY_SEPARATOR;
+            $filename="canvasdraw.php";
+            $framewidth=600;
+            $frameheight=400;
+            //Canvas ausrichten-------------------------------------   
+            $npx=50; $npy=150;             
+            $canvaswidth = 500; //canvas width
+            $canvasheight = 300; //canvas height
+            $hexcolor_int = 0x317131;
+            
+            if ($hexcolor_int == 0)
+                {
+                $red   = 255;
+                $blue  = 255;
+                $green = 255;
+                $alpha = 0;
+                }
+            else
+                {
+                $red   = floor($hexcolor_int/65536);
+                $blue  = floor(($hexcolor_int-($red*65536))/256);
+                $green = $hexcolor_int-($blue*256)-($red*65536);
+                //$canvasbackgroundtransparency = $this->canvasbackgroundtransparency / 100; // canvas background transparency
+                $canvasbackgroundtransparency = 0.3;
+                $alpha = str_replace(',', '.', strval($canvasbackgroundtransparency));
+                }
+
+            //Koordinatensystem aufzeichnen
+            $z = 40;           //Offset y-achse
+
+            $lWt = 2;         //Linienstärke Teilstriche
+            $lWh = 2;         //Linienstärke Horizontlinie
+
+            //Waagerechte Linie-------------------------------------------------------------
+            $l1 = 360;        //Länge der Horizontlinie
+
+            $x1 = $npx;            //Nullpunkt waagerecht
+            $y1 = $npy + $z;        //Nullpunkt senkrecht
+            $x2 = $x1 + $l1;        //Nullpunkt + Länge = waagerechte Linie
+            $y2 = $npy + $z;
+
+            //Teilstriche-------------------------------------------------------------------
+            $l2 = 10;         //Länge der Teilstriche
+            //N 0°
+            $x3 = $npx;           //Nullpunkt waagerecht
+            $y3 = $y1 - $l2 / 2;    //Nullpunkt senkrecht
+            $x4 = $x3;
+            $y4 = $y3 + $l2;        //Nullpunkt + Länge = senkrechte Linie
+            //O
+            $x5 = $npx + 90;
+            $y5 = $y1 - $l2 / 2;
+            $x6 = $x5;
+            $y6 = $y5 + $l2;
+            //S
+            $x7 = $npx + 180;
+            $y7 = $y1 - $l2 / 2;
+            $x8 = $x7;
+            $y8 = $y7 + $l2;
+            //W
+            $x9 = $npx + 270;
+            $y9 = $y1 - $l2 / 2;
+            $x10 = $x9;
+            $y10 = $y9 + $l2;
+            //N 360°
+            $x11 = $npx + 360;
+            $y11 = $y1 - $l2 / 2;
+            $x12 = $x11;
+            $y12 = $y11 + $l2;
+
+            //Daten zum Zeichnen------------------------------------------------
+
+
+
+            //Erstellung der Html Datei-----------------------------------------------------
+            $html =
+                '<html lang="de">
+            <head>
+        <style>
+        body {
+        background-color: rgba(' . $red . ', ' . $green . ', ' . $blue . ', ' . $alpha . ');
+        }
+        </style>
+            <script type="text/javascript">
+
+            function draw(){
+            var canvas = document.getElementById("canvas1");
+            if(canvas.getContext){
+                var ctx = canvas.getContext("2d");
+                var posx=0;
+                var posy=0;
+                var rad=0;
+                var y=0;
+
+        function rFact(num)
+        {
+            if (num === 0)
+            { return 1; }
+            else
+            { return num * rFact( num - 1 ); }
+        }
+
+                ctx.lineWidth = ' . $lWh . '; //Horizontlinie
+                ctx.strokeStyle = "rgb(51,102,255)";
+                ctx.beginPath();
+                ctx.moveTo(' . $x1 . ',' . $y1 . ');
+                ctx.lineTo(' . $x2 . ',' . $y2 . ');
+                ctx.stroke();
+
+                ctx.lineWidth = ' . $lWt . '; //Teilstriche
+                ctx.strokeStyle = "rgb(51,102,255)";
+
+                for (let i = 0; i < 5; i++) {
+                    posx = ' . $x1 . '+i*90;
+                    ctx.beginPath();
+                    ctx.moveTo(posx,' . $y3 . ');
+                    ctx.lineTo(posx,' . $y4 . ');
+                    ctx.stroke();
+                    }
+                posx = ' . $x1 . ';
+                posy = ' . $y1 . ';
+
+                ctx.strokeStyle = "rgb(251,0,0)";
+                ctx.beginPath();
+                ctx.moveTo(posx,posy);
+                for (let i = 0; i < 360; i++) {
+                    rad=i/180*Math.PI;
+                    y=Math.sin(rad);
+                    ctx.lineTo(posx+i,posy+y*100);
+                    }
+                ctx.stroke();
+
+                ctx.strokeStyle = "rgb(0,251,0)";
+                ctx.beginPath();
+                ctx.moveTo(posx,posy);
+                for (let i = 0; i < 360; i++) {
+                    rad=i/180*Math.PI;
+                    y=(rad)-(Math.pow(rad,3)/6)+(Math.pow(rad,5)/rFact(5))-(Math.pow(rad,7)/rFact(7))+(Math.pow(rad,9)/rFact(9))-(Math.pow(rad,11)/rFact(11))+(Math.pow(rad,13)/rFact(13))-(Math.pow(rad,15)/rFact(15))+(Math.pow(rad,17)/rFact(17))-(Math.pow(rad,19)/rFact(19))+(Math.pow(rad,21)/rFact(21));
+                    ctx.lineTo(posx+i+2,posy+y*100);
+                    }
+                ctx.stroke();
+                }
+
+            }
+
+            </script><title>nice drawing</title>
+            </head>
+
+            <body onload="draw()">
+            <canvas id="canvas1" width="' . $canvaswidth . '" height="' . $canvasheight . '">
+            </canvas>
+            </body>
+
+            </html>';
+
+            //Erstellen des Dateinamens, abspeichern und Aufruf in <iframe>-----------------
+            $fullFilename = IPS_GetKernelDir();
+            if (IPS_GetKernelVersion() < 7.0) {             $fullFilename .= 'webfront' . DIRECTORY_SEPARATOR;         }
+            $fullFilename .= 'user' . DIRECTORY_SEPARATOR . $filedir . $filename;
+            $handle = fopen($fullFilename, 'w');
+            fwrite($handle, $html);
+            fclose($handle);
+            $HTMLData = '<iframe src="'.$filename.'" border="0" frameborder="0" scrolling="no" style= "width:' . $framewidth . 'px; height:' . $frameheight . 'px;"/></iframe>';
+            $HTMLData .= 'drawCanvas with '.$fullFilename.'.';
+            return ($HTMLData);
             }
 
         /* StartpageWidgets::showPictureWidgetResponsive

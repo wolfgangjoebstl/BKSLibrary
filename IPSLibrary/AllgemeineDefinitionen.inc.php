@@ -52,6 +52,7 @@
       * fileOps
       * timerOps
       * curlOps                 curl Aufgaben, zusammengefasst
+      * geoOps                  alles rund um Plätze auf der Eerde und im Weltall
       * errorAusgabe
       * ComponentHandling
 	  * WfcHandling                 Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen, vorerst von Modulen AMIS und Sprachsteuerung verwendet
@@ -9677,17 +9678,19 @@ class sysOps
  *  mkdirtree
  *  latestChange
  *  readdirToArray              ein Verzeichnis samt Unterverzeichnisse einlesen und als Array zurückgeben
- *  dirToArray                  verwendet für das rekursive aufrufen
+ *     dirToArray                  verwendet für das rekursive aufrufen
  *  readdirtoStat               nur statistische Informationen über das Verzeichnis zurückmelden
- *  dirToStat                   verwendet für das rekursive aufrufen
+ *     dirToStat                   verwendet für das rekursive aufrufen
  *  writeDirStat
- *  correctDirName
+ *  correctDirName              einem Verzeichnisbaum ein Backslash oder Slash anhängen, sonst wäre die letzte Position eventuell auch eine Datei
+ *  convertDirName              to DOS or LINUX style
  *  rrmdir                      ein Verzeichnis rekursiv loeschen
  *  readFile                    eine Datei ausgeben
  *  deleteFile
- *
- *
- *
+ *  moveFile
+ *  copyIfNeeded
+ *  readSourceDir
+ *  readDirtoCheck
  */
 
 class dosOps
@@ -9930,7 +9933,7 @@ class dosOps
         {
         if ($verzeichnis=="") 
             {
-            echo "fileAvailable $filename aufgerufen.\n";
+            if ($debug) echo "fileAvailable $filename aufgerufen.\n";
             $posSlash=strrpos($filename,'/');
             $posBackSlash=strrpos($filename,'\\');
             if ($posSlash !== false)  
@@ -10487,6 +10490,23 @@ class dosOps
             $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // aus den Kombis \/ und /\ wird ein Doppel \ dieses auch vereinfachen
             }
         if ($linux) 
+            {
+            $verzeichnis = str_replace("\\","/",$verzeichnis);              // Slash wins
+            $verzeichnis = str_replace("//","/",$verzeichnis);
+            }    
+		return ($verzeichnis);
+		}
+
+    /* einen Verzeichnisbaum auf Backslash oder Slash ändern */
+
+	function convertDirName($verzeichnis,$dos=false)
+		{
+        if ($dos) 
+            {
+            $verzeichnis = str_replace("/","\\",$verzeichnis);          // Backslash wins
+            $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // aus den Kombis \/ und /\ wird ein Doppel \ dieses auch vereinfachen
+            }
+        else 
             {
             $verzeichnis = str_replace("\\","/",$verzeichnis);              // Slash wins
             $verzeichnis = str_replace("//","/",$verzeichnis);
@@ -11870,6 +11890,26 @@ class curlOps
 
     }
 
+
+/**************************************************************************************************************************
+ *
+ * geoOps siehe Startpage_Update
+ *
+ * geo Routinen zusammengefasst
+ *  
+ *  
+ *  
+ *
+ *
+ *
+ *
+ ******************************************************/
+
+
+
+
+
+
 /**************************************************************************************************************************
  *
  * errorAusgabe
@@ -12379,7 +12419,7 @@ class ComponentHandling
                 }
             if (isset($keywords[0])==false) 
                 {
-                echo "workOnHomematicList, Error, Keywords do not make sense to us:\n";
+                echo "workOnHomematicList, Error, Keywords for Key $key do not make sense to us:\n";
                 print_R($keywords);
                 }
             else $keyword=$keywords[0];	
@@ -14186,10 +14226,14 @@ class WfcHandling
 		$this->DeleteItem($ItemId);
 	}
 
-    /******
+    /* WfcHandling::installWebfront
+     * wird vom install von CustomComponent, EvaluateHardware,Stromheizung und WebLinks aufgerufen 
+     * EvaluateHardware erstellt auch die Kategorien Topology und World 
      *
      * die beiden Webfronts anlegen und das Standard Webfront loeschen 
      * $WebfrontConfigID als return
+     *
+     * Zusätzlich ein Kachelwebfront anlegen und die config auslesen
      *
      */
 
@@ -14293,6 +14337,11 @@ class WfcHandling
 		    }
         else    
             {            
+            $topID=@IPS_GetCategoryIDByName("Topology", 0 );
+            if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da
+            $worldID=@IPS_GetCategoryIDByName("World", $topID );
+            if ($worldID === false) 	$worldID = CreateCategory("World",$topID,20);       // Kategorie anlegen wenn noch nicht da
+
             if ( isset($WebfrontConfigID["Kachel Visualisierung"]) == false )
                 {
                 echo "\nWebfront Configurator \"Kachel Visualisierung\"  erstellen !\n";
@@ -14307,6 +14356,10 @@ class WfcHandling
                 $KachelID = $WebfrontConfigID["Kachel Visualisierung"];
                 echo "Webfront Configurator \"Kachel Visualisierung\" bereits vorhanden : ".$KachelID." \n";
                 }
+            $config = IPS_GetConfiguration($KachelID);
+            print_R($config);
+            IPS_SetConfiguration($KachelID,'{"BaseID":'.$worldID.'}');
+            IPS_ApplyChanges($KachelID);			
             }
         echo "\n";
 
@@ -14324,6 +14377,7 @@ class WfcHandling
                         echo "  ".$Key.": Mobile Access for User not set (".$config->MobileID.").   --> setzen\n";
                         }
                 case "Administrator":
+                case "Kachel Visualisierung":
                     if ($config->Password == "") 
                         {
                         echo "  ".$Key.": Remote Access Webfront Password not set.   --> setzen\n";
@@ -14334,7 +14388,8 @@ class WfcHandling
                         }					
                     break;
                 default:
-                    echo "    Zusaetzlichen Webfront Configurator gefunden.  --> loeschen\n";
+                    echo "    $Key : Zusaetzlichen Webfront Configurator gefunden.  --> loeschen\n";
+                    print_r($config);
                 }
             }	
 
@@ -15297,7 +15352,8 @@ class ModuleHandling
 		foreach ($instances as $ID => $name) echo "     ".str_pad($ID,5).str_pad($name,7).str_pad(IPS_GetName($name),30)."  ".IPS_GetName(IPS_GetParent($name))."\n";
 		}
 
-	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben
+	/* ModuleHandling::getInstances
+     * Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben
      * der Modulname kann auf unterschiedliche Varianten übermittelt werden
      * als Modul Identifier:        {31F53ADE-EC84-55ED-901D-38C5EF0970C4}
      * als Name:
@@ -15349,7 +15405,9 @@ class ModuleHandling
 		}
 
     /* Alle installierten Discovery Instanzen ausgeben
+     *   Homematic
      *
+     *   andere müssen manuell mit addNonDiscovery() hinzugefügt werden
      */
 
 	public function getDiscovery($debug=false)
@@ -15381,8 +15439,13 @@ class ModuleHandling
         return($modules);
         }
 
-    /* Alle zusätzlichen nicht automatisierbaren Discovery Instanzen ausgeben
-     *
+    /* Alle zusätzlichen nicht automatisierbaren Discovery Instanzen ausgeben, dazu discovery anreichern
+     *      AmazonEchoConfigurator
+     *      NetatmoWeatherConfig
+     *      HomeMatic RF Interface Configurator
+     *      HUE Configurator
+     *      FS20EX Instanzen, FS20 Instanzen, FHT Instanzen         deprecated
+     *      CAM Instanzen
      */
 
 	public function addNonDiscovery(&$discovery,$debug=false)
@@ -15403,6 +15466,9 @@ class ModuleHandling
         $input["ModuleID"]   = "{91624C6F-E67E-47DA-ADFE-9A5A1A89AAC3}";
         $input["ModuleName"] = "HomeMatic RF Interface Configurator";
         $discovery[]=$input;
+        $input["ModuleID"]   = "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}";        // add HUE
+        $input["ModuleName"] = "HUE Configurator";
+        $discovery[]=$input;
 
         /* wenn keine Konfiguratoren verfügbar dann die GUIDs der Instanzen eingeben
         *
@@ -15419,12 +15485,16 @@ class ModuleHandling
         $discovery[]=$input;     
         $input["ModuleID"] =    "{D26101C0-BE49-7655-87D3-D721064D4E40}";           // OperationCenter Cam Instanzen, kein Konfigurator, kein Discovery, haendische Installation
         $input["ModuleName"] = "CAM Instanzen";
+        $discovery[]=$input;          
+        $input["ModuleID"] =    "{81F09287-FDDF-204E-98CB-30B27D106ECE}";           // IPSHeat Instanzen, kein Konfigurator, kein Discovery, haendische Installation
+        $input["ModuleName"] = "IPSHeat Instanzen";
         $discovery[]=$input;     
 
         return ($discovery);
         }
 
-    /* Alle installierten Instanzen mit einem bestimmten Typ ausgeben
+    /* ModuleHandling::getInstancesByType
+     * Alle installierten Instanzen mit einem bestimmten Typ ausgeben
      * WERT	BESCHREIBUNG
      *  0	Kern
      *  1	I/O

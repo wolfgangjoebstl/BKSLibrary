@@ -36,14 +36,23 @@
  *
  *      __construct
  *      updateInstanceLists
+ *      getPlaceInstances
+ *      getRoomInstances
+ *      getDeviceInstances
+ *      getDeviceGroupInstances
  *      get_SocketList
  *      get_GatewayList
  *      get_HardwareList
  *      get_DeviceList
- *      createTopologyInstances
+ *
+ *      createTopologyInstances                 TOPD Instanzen erzeugen und im zweiten Schritt einsortieren
  *      createTopologyInstance
+ *      initInstanceConfiguration
  *      sortTopologyInstances                   Topologie in DeviceList einsortieren
  *
+ * Nutzt die eigene Library. Es gibt Instanzen mit unterschiedlichen Eigenschaften, Ort, Gerät, Gruppe
+ * Die neue Tiles / Kachel Webdarstellung unterstützt diese Form der Darstellung.
+ * Allerdings müssen für die Strukturierung weiterhin Kategorien verwendet werden und keine Ortsinstanzen
  *
  */
 
@@ -53,7 +62,7 @@ class TopologyLibraryManagement
     var $topID;                 // OID der Topology Kategorie, wird automatisch angelegt, wenn nicht vorhanden
     var $modulhandling;         // andere classes die genutzt werden, einmal instanzieren
     var $deviceInstances,$roomInstances,$placeInstances,$devicegroupInstances;                       // Instanzenlisten, für schnelleren Zugriff, müssen regelmaessig upgedatet werden.
-    var $debug;
+    var $debug, $createUniqueNames;
     var $installedModules;
 
     public function __construct($debug=false)
@@ -72,6 +81,7 @@ class TopologyLibraryManagement
 
         $this->modulhandling = new ModuleHandling(); 
         $this->updateInstanceLists();                       // liste der Instanzen updaten
+        $this->createUniqueNames = false;               // keine uniqueNames, Index abhängig vom Namen
         }
 
     /* die Liste der Instanzen wird gechached und nicht automatisch upgedated.
@@ -195,10 +205,13 @@ class TopologyLibraryManagement
         return($gateway);
         }
 
-    /* Liste aller montierten Hardware Instanzen ausgeben
+    /* Liste aller montierten Hardware Instanzen ausgeben, von EvaluateHardware aufgerufen
+     *
      * Format ist gleich, Key ist der Hardwaretyp dann der Name der Instanz mit den Einträgen OID und CONFIG
-     * übergeben wird eine Liste von Discovery Instanzen
-     * aus den Discovery Instanzen wird nur die ModulID übernommen
+     * übergeben wird eine Liste von Discovery oder Configurator Instanzen
+     * aus den Discovery Instanzen wird nur die ModulID übernommen, mit getHardwareTyp aus der Hardware_Library ein Object class identifier gefunden
+     * bekannt Hardware Type: 
+     *      Homematic, HomematicExtended, HUE, Harmony, EchoControl, OpCentCam, IPSHeat
      *
      * der Ausgabewert ist Input für die Erstellung der DeviceList
      */
@@ -206,7 +219,7 @@ class TopologyLibraryManagement
     public function get_HardwareList($discovery, $debug=false)
         {
         $hardware=array(); 
-        $hardwareTypeDetect = new Hardware();           // in Harwdare_library
+        $hardwareTypeDetect = new Hardware();           // in Hardware_library
         foreach ($discovery as $entry)
             {
             $hardwareType = $hardwareTypeDetect->getHardwareType($entry["ModuleID"]);       // einfaches Showup um die Erweiterung der class herauszufinden, zB HardwareHomematic
@@ -235,17 +248,18 @@ class TopologyLibraryManagement
         return($hardware);
         }
 
-    /* devicelist, Bestandteil der config::EvaluateHardware_Include   
+    /* TopologyLibraryManagement::get_Devicelist, Bestandteil der config::EvaluateHardware_Include   
      *
      *    $discovery = $modulhandling->getDiscovery();
      *    $hardware = $topologyLibrary->get_HardwareList($discovery);
      *    $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
      *
      *  basierend auf den Ergebnissen der Discovery module zuerst eine Hardwareliste und dann eine Deviceliste erstellen
+     *  die Hardwareliste ist betreffend index je hardwareType unique. Übere mehrere HardwareTypes kann das nicht garantiert werden
      *  array deviceList erstellen, sortieren und um weitere Informationen anreichern 
      *   
      *  erstellen funktioniert modular mit getDeviceCheck, getDeviceParameter, getDeviceChannels, getDeviceActuators
-     *  alle obigen functions sind Teil der class Hardware$hadwaretype, hardwaretype kommt aus der getHardwarelist
+     *  alle obigen functions sind Teil der class Hardware$hardwaretype, hardwaretype kommt aus der getHardwarelist
      *  diese Klassen findet man unter HardwareLibrary
      *  Beispiel 
      *      class HardwareHomematic extends Hardware
@@ -267,49 +281,70 @@ class TopologyLibraryManagement
      *      HardwareFS20ExFamily
      *      HardwareEchoControl
      *
+     * getDeviceCheck kann jetzt Namen abändern wenn er nicht mehr Unique ist, testweise durchziehen
+     *
+     *
      */
 
-    public function get_DeviceList($hardware, $debug=false)
+    public function get_DeviceList($hardware, $config=false, $debug=false)
         {
-        if ($debug) echo "  get_DeviceList aus dem Modul TopologyLibraryManagement aufgerufen:\n";
+        echo "  TopologyLibraryManagement::get_DeviceList aufgerufen";
+        if (is_array($config))
+            {
+            if (isset($config["uniqueNames"]))
+                {
+                if (strtoupper($config["uniqueNames"])=="CREATE") 
+                    {
+                    $this->createUniqueNames=true;   
+                    echo ", Erzeugung von uniqueNames wird unterstützt";
+                    }
+                }
+            }
+        echo ":\n";
         $deviceList=array();
         $hardwareTypeDetect = new Hardware();        
         foreach ($hardware as $hardwareType => $deviceEntries)          // die device types durchgehen HUE, Homematic etc.
             {
             foreach ($deviceEntries as $name => $entry)         // die devices durchgehen, Homematic Devices müssen gruppiert werden 
                 {
-                if ($debug) echo "      Bearbeite Gerät \"$name\" vom Typ \"$hardwareType\", new class is \"Hardware$hardwareType\":\n";
+                if ($debug) echo "      Bearbeite Gerät mit Index \"$name\" vom Typ \"$hardwareType\", new class is \"Hardware$hardwareType\":\n";
                 $objectClassName = "Hardware".$hardwareType;
-                $object = new $objectClassName(); 
-                if ($object->getDeviceCheck($deviceList, $name, $hardwareType, $entry, $debug))
+                $object = new $objectClassName($this->createUniqueNames); 
+                if ($object->getDeviceCheck($deviceList, $name, $hardwareType, $entry, $debug))                 // name kann sich ebenfalls ändern wen unqueNames erzeugt werden              
                     {
                     if ($debug>1) echo "          $objectClassName=>getDeviceParameter aufgerufen:\n";
                     $object->getDeviceParameter($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
                     if ($debug>1) echo "          $objectClassName=>getDeviceChannels aufgerufen:\n";
                     $ok = $object->getDeviceChannels($deviceList, $name, $hardwareType, $entry, $debug);      // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
                     if ($debug>1) echo "          $objectClassName=>getDeviceActuators aufgerufen:\n";
-                    $object->getDeviceActuators($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+                    $object->getDeviceActuators($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Aktuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
                     if ($debug>1) echo "          $objectClassName=>getDeviceInformation aufgerufen:\n";
-                    if ($ok) $object->getDeviceInformation($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+                    if ($ok) $object->getDeviceInformation($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Aktuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
                     if ($debug>1) echo "          $objectClassName=>getDeviceTopology aufgerufen:\n";
-                    $object->getDeviceTopology($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+                    $object->getDeviceTopology($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Aktuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
                     }
                 }
             }
         ksort($deviceList);
-        $actuators=$hardwareTypeDetect->getDeviceActuatorsFromIpsHeat($deviceList);
-        if ($debug) 
+        $actuators=$hardwareTypeDetect->getDeviceActuatorsFromIpsHeat($deviceList);         // die deviceList erweitern, siehe Hardware_Library
+        if ($debug>1)
             {
             //print_r($deviceList);
             echo "\n";
-            echo "Bereits konfigurierte Actuators aus IPSHeat dazugeben, Ergebnis der Funktion: \n";
+            echo "TopologyLibraryManagement::get_DeviceList : Bereits konfigurierte Actuators aus IPSHeat dazugeben, Ergebnis der Funktion: \n";
             print_r($actuators);
+            }
+        elseif ($debug) 
+            {
+            echo "\n";
+            echo "TopologyLibraryManagement::get_DeviceList : Bereits konfigurierte Actuators aus IPSHeat dazugeben.\n";
             }
         return($deviceList);
         }
 
-    /* mit Dummy Instanzenen eine Topologie aufbauen
-     * Input ist Topology mit eindeutigem Index und Eintrag Name und Pfad
+    /* TopologyLibraryManagement::createTopologyInstances
+     * mit Dummy Instanzen eine Topologie aufbauen, entweder als Tree Instanz als Children von Instanz oder in einen Kategoriebaum einsortieren
+     * Input ist Topology mit eindeutigem Index und Eintrag Name und Pfad, immer name und Pfad verwenden, nicht den uniqueName als Index
      *
      * verwendet aus der class
      *      placeinstances
@@ -318,103 +353,181 @@ class TopologyLibraryManagement
      *      devicegroupInstances
      *
      * diese werden aus der Modulsammlung generiert, Name ist nicht eindeutig
+     * ruft createTopologyInstance auf, zweiter Parameter ist Parentliste, das sind die Objekte die als Parent in Frage kommen
      *
+     * sort Order position room , places , devicegroups
      */
 
-    public function createTopologyInstances($topology, $debug=false)
+    public function createTopologyInstances(&$topology, $config=false, $debug=false)
         {
-        echo "\n";
+        $sortCateg=false;
+        if ($config)
+            {
+            if (isset($config["Sort"]))
+                {
+                if (strtoupper($config["Sort"])=="KATEGORIE") 
+                    {
+                    $sortCateg=true;
+                    }
+                }
+            }
+        else
+            {
+            $config["Use"]["Place"]=true;
+            $config["Use"]["Room"]=true;
+            $config["Use"]["Device"]=true;
+            $config["Use"]["DeviceGroup"]=true;
+            }
         $onlyOne=true;
         $parent = $this->topID;
-        if ($debug) echo "createTopologyInstances aufgerufen, Topology Eintraege durchgehen, als Liste dargestellt, insgesamt ".count($topology)." Einträge:\n";
-        foreach($topology as $name => $entry)
+        if ($debug) 
+            {
+            echo "createTopologyInstances aufgerufen, Topology Eintraege durchgehen, als Liste dargestellt, insgesamt ".count($topology)." Einträge";
+            if ($config) echo " (Config is ".json_encode($config).") ";
+            echo " :\n";
+            }
+        foreach($topology as $uniqueName => $entry)
             {
             if (isset($entry["Type"]))
                 {
-                echo "   $name with Name ".$entry["Name"].", Type ".$entry["Type"]."   \n";         // UniqueName und Name und Type
+                echo "   $uniqueName with Name ".$entry["Name"].", Type ".$entry["Type"]."   \n";         // UniqueName und Name und Type
                 //print_R($entry);
-                $entry["UniqueName"] = $name;
+                $entry["UniqueName"] = $uniqueName;           // Index auch als Parameter mitnehmen, wird an createTopologyInstance übergeben
                 if ($onlyOne)
                     {
                     switch ($entry["Type"])
                         {
                         case "Place":
                             //print_r($entry);
-                            $this->createTopologyInstance($this->placeInstances, $this->placeInstances, $entry, "{4D96B245-6B06-EC46-587F-25E8A323A206}", $debug);     // Places können nur in Places eingeordnet werden
+                            if ( (isset($config["Use"]["Place"])) && $config["Use"]["Place"] )
+                                {
+                                $config["GUID"] = "{4D96B245-6B06-EC46-587F-25E8A323A206}";
+                                if ($sortCateg) $InstanzID=$this->createTopologyInstance($this->placeInstances, $topology, $entry, $config, $debug);     // Places können nur in Places eingeordnet werden
+                                else $InstanzID=$this->createTopologyInstance($this->placeInstances, $this->placeInstances, $entry, $config, $debug);     // Places können nur in Places eingeordnet werden
+                                IPS_SetPosition($InstanzID,400);
+                                }
                             break;
                         case "Room":
                             //print_r($entry);
-                            $this->createTopologyInstance($this->roomInstances, $this->placeInstances, $entry, "{F8CBACC3-6D51-9C88-58FF-3D7EBDF213B5}", $debug);      // Rooms können nur in Places vorkommen
+                            if ( (isset($config["Use"]["Room"])) && $config["Use"]["Room"] )
+                                {
+                                $config["GUID"] = "{F8CBACC3-6D51-9C88-58FF-3D7EBDF213B5}";
+                                if ($sortCateg) $InstanzID=$this->createTopologyInstance($this->roomInstances, $topology, $entry, $config, $debug);     // Places können nur in Places eingeordnet werden
+                                else $InstanzID=$this->createTopologyInstance($this->roomInstances, $this->placeInstances, $entry,$config , $debug);      // Rooms können nur in Places vorkommen
+                                IPS_SetPosition($InstanzID,500);
+                                }
                             break;
                         case "Device":
                             /* Devices sind üblicherweise nicht in der Topologyliste. Bei Sonderwünschen halt auch dort eintragen */
-                            $this->createTopologyInstance($this->deviceInstances, $this->roomInstances, $entry, "{5F6703F2-C638-B4FA-8986-C664F7F6319D}", $debug);      // Devices in Rooms vorkommen
-                            $this->createTopologyInstance($this->deviceInstances, $this->devicegroupInstances, $entry, "{5F6703F2-C638-B4FA-8986-C664F7F6319D}", $debug);      // Devices in Rooms vorkommen
+                            if ( (isset($config["Use"]["Device"])) && $config["Use"]["Device"] )
+                                {
+                                $config["GUID"] = "{5F6703F2-C638-B4FA-8986-C664F7F6319D}";
+                                if ($sortCateg) $InstanzID=$this->createTopologyInstance($this->deviceInstances, $topology, $entry, $config, $debug);
+                                else $InstanzID=$this->createTopologyInstance($this->deviceInstances, $this->roomInstances, $entry, $config, $debug);      // Devices in Rooms vorkommen
+                                $this->createTopologyInstance($this->deviceInstances, $this->devicegroupInstances, $entry, $config, $debug);      // Devices in Rooms vorkommen
+                                IPS_SetPosition($InstanzID,900);
+                                }
                             break;
                         case "DeviceGroup":
-                            $this->createTopologyInstance($this->devicegroupInstances, $this->roomInstances, $entry, "{CE5AD2B0-A555-3A22-5F41-63CFF00D595F}", $debug);      // DeviceGroups können nur in Rooms vorkommen
+                            if ( (isset($config["Use"]["DeviceGroup"])) && $config["Use"]["DeviceGroup"] )
+                                {
+                                $config["GUID"] = "{CE5AD2B0-A555-3A22-5F41-63CFF00D595F}";
+                                if ($sortCateg) $InstanzID=$this->createTopologyInstance($this->devicegroupInstances, $topology, $entry, $config , $debug);
+                                else $InstanzID=$this->createTopologyInstance($this->devicegroupInstances, $this->roomInstances, $entry, $config , $debug);      // DeviceGroups können nur in Rooms vorkommen
+                                IPS_SetPosition($InstanzID,600);
+                                }
                             break;
                         default:
                             //$InstanzID = @IPS_GetInstanceIDByName($name, $parent);
                             break;
                         }
+                    if ($InstanzID) $topology[$uniqueName]["TopologyInstance"]=$InstanzID;
+                    //$onlyOne=false;           // Debug Purpose
                     }
                 }
-            else echo "$name without Type definition.\n";
+            else echo "$uniqueName without Type definition.\n";
             }
         }
 
 
 
-    /* createTopologyInstances, siehe oben wird von createTopologyInstances aufgerufen
+    /* createTopologyInstance, siehe oben wird von createTopologyInstances aufgerufen
      * 
      * Es wird eine Neue TOPD Instanz mit der GUID erstellt wenn sie noch nicht in der InstanceList enthalten ist
+     * der Name ist entweder der UniqueName oder (noch nicht implementeiert) der Name, gesucht wird aber immer nach UniqueName, das ist der eindeutige Key
      * sonst wird sie in die unter entry[parent] genanten Instanz, muss in der ParentList vorhanden sein, einsortiert
      *
-     * InstanceList  List of relevant instances, key ist eindeutiger Instance key nicht der Name
-     * ParentList    List of relevant Parent Instances, same format as InstanceList   Name->OID
-     * entry
-     * GUID for createInstance
+     *  InstanceList    List of relevant instances, key ist eindeutiger Instance key nicht der Name
+     *  ParentList      List of relevant Parent Instances, same format as InstanceList   Name->OID
+     *  entry           UniqueName, Name, Parent, unique Guid as result of operation
+     *  GUID            for createInstance, oder config mit guid und weiteren Parametern
      *
      * Beginnt in root.Topology, wenn vorhanden weitermachen, sonst return false
      *
+     * Konfiguration
+     *  ParentID        DefaultLagerort für alle Instanzen, andernfalls wird Topology gesucht
+     *
+     *
+     * Format InstanceList, gibt eine Liste jeweils für Room, place, Device etc
+     *      uniquename => 
+     *
+     * Format parentList
+     *      uniquename => 
+     *
+     * Format entry
+     *      name
+     *      UniqueName
      *
      */
 
     private function createTopologyInstance($InstanceList, $ParentList, $entry, $guid, $debug=false)
         {
-        $parent=@IPS_GetObjectIDByName("Topology", 0 );         // Default Parent
+        $first=true; $sortCateg=false; $InstanzID=false;
+        if (is_array($guid)) $config=$guid;
+        else $config["GUID"]=$guid;
+        if (isset($config["Sort"]))
+            {
+            if (strtoupper($config["Sort"])=="KATEGORIE") 
+                {
+                $sortCateg=true;
+                }
+            }
+        if (isset($config["ParentID"])) $parent=$config["ParentID"];
+        else $parent=@IPS_GetObjectIDByName("Topology", 0 );         // Default Parent
+        if ($debug>1) echo "   createTopologyInstance aufgerufen, Config is ".json_encode($config).") \n";
+
         /* gibt es die Instanz mit dem Namen schon. Es wird in der InstanceList gesucht. Wenn nicht erstellen. Wenn schon update des Parents  */
         if ($parent)        // ohne Kategorie keine Funktion, sie wird aber übergeordnet von TopID eingelesen, also 100$ Wahrscheinlichkeit dass sie da ist
             {
             if ( (isset($InstanceList[$entry["UniqueName"]])) === false)          // Instanz noch nicht erstellt
                 {
-                $InsID = IPS_CreateInstance($guid);          //Topology Room Instanz erstellen mit dem Namen "Stehlampe"
-                if ($InsID !== false)
+                $InstanzID = IPS_CreateInstance($config["GUID"]);          //Topology Room/Place/Device/DeviceGroup Instanz erstellen mit dem Namen "Stehlampe"
+                if ($InstanzID !== false)
                     {
-                    IPS_SetName($InsID, $entry["UniqueName"]); // Instanz benennen, Name muss nicht eindeutig sein
-                    if ($entry["Name"] == $entry["Parent"]) 
+                    IPS_SetName($InstanzID, $entry["UniqueName"]);          // Instanz benennen, Name muss nicht eindeutig sein
+                    if ($entry["Name"] == $entry["Parent"])             // Root identifier, üblicherweise World
                         {
-                        echo "    -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." unter $parent erstellen.\n"; 
-                        IPS_SetParent($InsID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
+                        echo "      -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." unter $parent erstellen.\n"; 
+                        IPS_SetParent($InstanzID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
                         }
                     else
                         {
-                        if (isset($ParentList[$entry["Parent"]])) 
+                        if (isset($ParentList[$entry["Parent"]]))    // auch hier ist ein UniqueName
                             {
                             echo "   -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." unter ".$entry["Parent"]." erstellen.\n"; 
-                            IPS_SetParent($InsID, $ParentList[$entry["Parent"]]);
+                            if (isset($ParentList[$entry["Parent"]]["OID"])) IPS_SetParent($InstanzID, $ParentList[$entry["Parent"]]["OID"]);
+                            else IPS_SetParent($InstanzID, $ParentList[$entry["Parent"]]);
                             }
                         else 
                             {
                             echo "    -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." vorerst unter $parent erstellen. Wird später einsortiert.\n"; 
-                            IPS_SetParent($InsID, $parent);        // Parent noch nicht bekannt, Sauhaufen machen, und später unten korrigieren und neu einordnen
+                            IPS_SetParent($InstanzID, $parent);        // Parent noch nicht bekannt, Sauhaufen machen, und später unten korrigieren und neu einordnen
                             }
                         }
                     
                     //Konfiguration
-                    //IPS_SetProperty($InsID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
-                    IPS_ApplyChanges($InsID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
+                    //IPS_SetProperty($InstanzID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
+                    IPS_ApplyChanges($InstanzID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
                     }
                 else echo "!!! Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n";
                 }
@@ -422,55 +535,83 @@ class TopologyLibraryManagement
                 {
                 $InstanzID = $InstanceList[$entry["UniqueName"]]; 
                 $configTopologyDevice=IPS_GetConfiguration($InstanzID);         // Konfiguration bearbeiten/update
-                if ($debug) echo "    Die Topology ".$entry["Type"]." Instanz-ID gibt es bereits und lautet: ".IPS_GetName($InstanzID)." (".$InstanzID."). Sie hat die Konfiguration : $configTopologyDevice und liegt unter ".IPS_GetName(IPS_GetParent($InstanzID))."(".IPS_GetParent($InstanzID).").\n";
+                if ($debug>1) echo "      Die Topology ".$entry["Type"]." Instanz-ID gibt es bereits und lautet: ".IPS_GetName($InstanzID)." (".$InstanzID."). Sie hat die Konfiguration : $configTopologyDevice und liegt unter ".IPS_GetName(IPS_GetParent($InstanzID))."(".IPS_GetParent($InstanzID).").\n";
                 if ($entry["Name"] == $entry["Parent"])         // Root
                     {
                     if ((IPS_GetParent($InstanzID)) != $parent)
                         {
-                        echo "    -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter $parent einsortieren.\n"; 
+                        echo "    -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter $parent einsortieren (Root).\n"; 
                         IPS_SetParent($InstanzID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
                         }
                     }
                 else
                     {
-                        
-                    if (isset($ParentList[$entry["Parent"]])) 
+                    if ($sortCateg) $expectedParent = $entry["UniqueName"];       // Name ist nicht UniqueName
+                    else $expectedParent = $entry["Parent"];                         
+                    if ($expectedParentID=$this->getParentId($expectedParent,$ParentList,$sortCateg,$debug=false))           // none ist auch false
                         {
-                        if ( ($ParentList[$entry["Parent"]]) != (IPS_GetParent($InstanzID)) ) 
+                        if ($debug>1) echo "      suche $expectedParent und vergleiche $expectedParentID != ".(IPS_GetParent($InstanzID))."\n";
+                        if ( $expectedParentID != (IPS_GetParent($InstanzID)) ) 
                             {
-                            echo "    -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter ".$entry["Parent"]." einsortieren.\n"; 
-                            IPS_SetParent($InstanzID, $ParentList[$entry["Parent"]]);
+                            echo "    -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter ".$expectedParent." ($expectedParentID) einsortieren.\n"; 
+                            IPS_SetParent($InstanzID, $expectedParentID);
                             }
                         }
-                    else 
+                    else
                         {
-                        echo "Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." vorerst unter ".IPS_GetParent($InstanzID)." lassen.\n"; 
-                        //IPS_SetParent($InsID, $parent);        // Parent noch nicht bekannt, Sauhaufen machen, und später unten korrigieren und neu einordnen
+                        $expectedParent=$entry["Parent"];               // nur bei sortCateg interessant, andernfalls den Pfad nach hinten fahren
+                        if ($expectedParentID=$this->getParentId($expectedParent,$ParentList,$sortCateg,$debug=false))           
+                            {
+                            echo "      -> Nächsten Parent suchen, probiere ".$entry["Parent"].".\n";
+                            if ($debug>1) echo "      suche $expectedParent und vergleiche $expectedParentID != ".(IPS_GetParent($InstanzID))."\n";
+                            if ( $expectedParentID != (IPS_GetParent($InstanzID)) ) 
+                                {
+                                echo "        -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter ".$expectedParent." ($expectedParentID) einsortieren.\n"; 
+                                IPS_SetParent($InstanzID, $expectedParentID);
+                                }
+                            }
+                        else echo "          >>> schon wieder ein fail.\n";
                         }
                     }
-                $entry["guid"]=$guid;
+                $entry["guid"]=$config["GUID"];
                 $this->initInstanceConfiguration($InstanzID,$entry,true);           //true für debug
 
                 //TOPD_SetDeviceList($InstanzID,$instances);
                 //if (isset($installedModules["DetectMovement"]))  $Handler->RegisterEvent($InstanzID,'Topology','','');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
-                }
-            return (true);
+                }  
+            return ($InstanzID);
             }
         else return (false);
         }
 
-    /* eine Topology instanz initialisieren 
+    /* vereinfachtes erlangen der ParentId
+     * bei sortCateg ist es der UniqueName, sonst der Parent
+     * in der ParentList kann es der Eintrag OID sein oder direkt ein Wert
+     */
+    private function getParentId($expectedParent,$ParentList,$sortCateg,$debug=false)
+        {
+        $expectedParentID=false;                // das geht besser zu programmieren
+        if (isset($ParentList[$expectedParent]["OID"])) $expectedParentID = $ParentList[$expectedParent]["OID"];  
+        elseif (isset($ParentList[$expectedParent]))  $expectedParentID = $ParentList[$expectedParent]; 
+        else echo "Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." vorerst unter ".IPS_GetParent($InstanzID)." lassen. ".$expectedParent." nicht gefunden.\n";
+
+        if ( ($expectedParentID) && (is_numeric($expectedParentID)) && ($expectedParentID>0)) return ($expectedParentID) ;
+        else return (false);
+        }
+
+    /* TopologyLibraryManagement::initInstanceConfiguration
+     * eine Topology instanz initialisieren 
      * erzeugt UUID
      * übernimmt aus entry 
      *      Path
      *      UniqueName
      *
      */
-    protected function initInstanceConfiguration($InstanzID, $entry=array(), $debug=false)
+    public function initInstanceConfiguration($InstanzID, $entry=array(), $debug=false)
         {
                 $configTopologyDevice=IPS_GetConfiguration($InstanzID);                     
                 $newConfigTopologyDevice = json_decode($configTopologyDevice,true);         // als array
-                if ($debug) print_R($newConfigTopologyDevice);
+                if ($debug>1) print_R($newConfigTopologyDevice);
                 if ($newConfigTopologyDevice["UUID"]=="")          // UUID setzen
                     {
                     switch ($entry["guid"])
@@ -488,7 +629,7 @@ class TopologyLibraryManagement
 
                         case "{5F6703F2-C638-B4FA-8986-C664F7F6319D}":          // device
                             if ($debug) echo "topology Device UUID setzen.\n";
-                            TOPD_SetDeviceList($InstanzID,$entry["instances"]);
+                            TOPD_SetDeviceList($InstanzID,$entry["instances"]);         // array order->instance -> NAME,OID,   erzeugt einzelne Variablen oder eine DeviceList
                             $newConfigTopologyDevice["UUID"]=TOPD_createUuid($InstanzID);
                             break;
                         case "{CE5AD2B0-A555-3A22-5F41-63CFF00D595F}":          // device group
@@ -497,14 +638,22 @@ class TopologyLibraryManagement
                             break;
                         }
                     }
-                if ($debug && (isset($entry["Path"])===false) ) print_R($entry);
+                if (($debug>1) && (isset($entry["Path"])===false) ) print_R($entry);
                 if ( (isset($entry["UniqueName"])) && ($newConfigTopologyDevice["UniqueName"]=="") )    $newConfigTopologyDevice["UniqueName"] = $entry["UniqueName"];                  
                 if ( (isset($entry["Path"])) && ($newConfigTopologyDevice["Path"]=="") )                $newConfigTopologyDevice["Path"] = $entry["Path"];                  
                 IPS_SetConfiguration($InstanzID,json_encode($newConfigTopologyDevice));
                 IPS_ApplyChanges($InstanzID);                           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
+        return ($newConfigTopologyDevice);
         }
 
-    /* sortTopologyInstances, update der deviceList um Topology
+    /* TopologyLibraryManagement::sortTopologyInstances, update der deviceList um Topology und Topology um infos aus deviceList
+     *
+     * verwendet aus der class
+     *  topID                   start/base OID der Kategorien, nicht der Instanzen
+     *  deviceInstances         alle Topology Device Instances (TOPD) bevor die Routine aufgerufen wurde
+     *  roomInstances           Zusammenfassung Räume, damit Top Instance richtig einsortiert werden kann
+     *  devicegroupInstances    alle Device Gruppen
+     *
      * benötigt Modul DetectMovement, Input ist
      *   IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
      *   $deviceList = deviceList(); 
@@ -524,81 +673,113 @@ class TopologyLibraryManagement
      *
      * bei zweiten Mal von allen Instanzen die Räume auslesen, müssen gleich sein wenn sie nicht leer sind 
      * danach den Raum des Gerätes abgleichen, übernehmen wenn Raum aus den Instanzen bereits ermittelt wurde
-     *
-     * verwendet aus der class
-     *  topID                   start/base OID der Kategorien, nicht der Instanzen
-     *  deviceInstances         alle Topology Device Instances (TOPD) bevor die Routine aufgerufen wurde
-     *  roomInstances           Zusammenfassung Räume, damit Top Instance richtig einsortiert werden kann
-     *  devicegroupInstances    alle Device Gruppen
+
      *
      * In der devicelist eine Topology Information einfügen
      *      Topology 0 ROOM|GROUP
+     * In der Topology Liste eine Information über die erzeugte Instanz einfügen
      *
+     *
+     * Noch einmal Schritt für Schritt beschrieben:
+     * das deviceList Array Eintrag für Eintrag durchgehen, nur wenn es einen Eintrag Instances gibt weiter machen
+     * den Namen des Eintrages mit dem deviceInstances Objekt abgleichen, 
+     *    wenn noch nicht vorhanden einen neue Device Instanz erzeugen
+     *    wenn vorhanden alle Instanzen aus dem deviceList Eintrag durchgehen und mit $channelEventList abgleichen
+     *          alle Einträge sollen im selben raum sein dann passts
+     *
+     *    wenn $config["Use"]["Device"])=="ACTUATORS"
+     *          in topology einen neuen key mit Actuators anlegen
+     *
+     * Devices mit Order Position mit 900 eimsortieren
      */
 
-    public function sortTopologyInstances(&$deviceList, $topology, $channelEventList, $deviceEventList, $debug=false)
+    public function sortTopologyInstances(&$deviceList, &$topology, $channelEventList, $deviceEventList, $config=false, $debug=false)
         {
-        $DetectDeviceHandler = new DetectDeviceHandler();
+        if (isset($this->installedModules["DetectMovement"]))   // benötige topologyReferences
+            {
+            $DetectDeviceListHandler = new DetectDeviceListHandler();
+            $DetectDeviceHandler = new DetectDeviceHandler();
+            }
+        else
+            {
+            echo "sortTopologyInstances called, Modul DetectMovement not installed, return as false.\n"; 
+            return(false);
+            }   
         $references = $DetectDeviceHandler->topologyReferences($topology,$debug);
+        if (isset($config["Sort"]))
+            {
+            if (strtoupper($config["Sort"])=="KATEGORIE") $sortCateg=true;
+            else $sortCateg=false;
+            }
+        else $sortCateg=false;
 
-        if (isset($this->installedModules["DetectMovement"])) $DetectDeviceListHandler = new DetectDeviceListHandler();   
         $i=0;
         $onlyOne=true;
         $parent=$this->topID;
-        if ($debug) echo "sortTopologyInstances aufgerufen: Input ist die Devicelist mit ".count($deviceList)." Geraete Eintraegen. Base Category ist ".IPS_GetName($parent)." ($parent) \n";
-
+        if ($debug) 
+            {
+            echo "sortTopologyInstances aufgerufen: Input ist die Devicelist mit ".count($deviceList)." Geraete Eintraegen. \n";
+            echo "Base Category ist ".IPS_GetName($parent)." ($parent) ";
+            if ($sortCateg) echo ", wir sortieren in Kategorien. \n";
+            else echo ", wir sortieren in Topology Instanzen. \n";
+            }
         foreach ($deviceList as $name => $entry)            // name is unique in devicelist
             {
             //echo "$i   $name\n";
-            $topRoom=false; $topGroup=false; $entryplace=false;
+            $topRoom=false; $topGroup=false; $entryplace=false; $configUpdated=false;
             if (isset($entry["Instances"]))                 // es gibt die Kategorie Instances in der devicelist, alle Instanzen gemeinsam haben einen Room, ID=0
                 {
                 $instances=$entry["Instances"];
                 //if ($onlyOne)
                     {
-                    if ( (isset($this->deviceInstances[$name])) === false )         // neue Device Instanz erzeugen       
+                    $gocreate=false;
+                    if ( (isset($this->deviceInstances[$name])) === false )         // neue Device Instanz erzeugen, einordnen im Root       
                         {
-                        if ($debug) echo str_pad($i,4)."Eine Device Instanz mit dem Namen $name unter ".IPS_GetName($parent)." ($parent) erstellen:\n";
-                        $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen 
-                        if ($InsID !== false)
+                        if ( (isset($config["Use"]["Device"])) && ($config["Use"]["Device"]) ) 
                             {
-                            IPS_SetName($InsID, $name); // Instanz benennen
-                            IPS_SetParent($InsID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
-                            
-                            //Konfiguration
-                            //IPS_SetProperty($InsID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
-                            IPS_ApplyChanges($InsID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
+                            if (strtoupper($config["Use"]["Device"])=="ACTUATORS") 
+                                {
+                                if (isset($entry["Actuators"])) $gocreate=true;
+                                }
+                            else $gocreate=true;
+                            if ($gocreate)
+                                {
+                                if ($debug) echo str_pad($i,4)."Eine Device Instanz mit dem Namen $name unter ".IPS_GetName($parent)." ($parent) erstellen:\n";
+                                $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen 
+                                if ($InsID !== false)
+                                    {
+                                    IPS_SetName($InsID, $name); // Instanz benennen
+                                    IPS_SetParent($InsID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
+                                    
+                                    //Konfiguration
+                                    //IPS_SetProperty($InsID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
+                                    IPS_ApplyChanges($InsID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
+                                    $this->deviceInstances[$name]=$InsID;
+                                    }
+                                else if ($debug) echo "Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n";
+                                }
                             }
-                        else if ($debug) echo "Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n";
                         $room="none";
                         }
-                    else                    // die DeviceInstances sind mit dem Unique Name aus der deviceList erzeugt wurden, keine Überschhneidungen zu erwarten
+                    if (isset($this->deviceInstances[$name]))                   // DeviceInstanz bereits erstellt nur mehr einsortieren
                         {
+                        // die DeviceInstances sind mit dem Unique Name aus der deviceList erzeugt wurden, keine Überschneidungen zu erwarten
                         $InstanzID = $this->deviceInstances[$name];    
                         if ($debug) echo str_pad($i,4)."Eine Device Instanz mit dem Namen $name unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es bereits und lautet: ". $InstanzID."   \n";
-                        $room="";
-                        foreach ($instances as $instance)       // alle Instanzen aus einem deviceList Eintrag durchgehen und mit $channelEventList abgleichen, eine Rauminformation daraus ableiten, Plausicheck inklusive
+                        // Workaround für Device Variable Childrens
+                        $devId = @IPS_GetObjectIDByName ($name, $InstanzID);
+                        if ($devId)
                             {
-                            $config="";
-                            //print_r($channelEventList[$instance["OID"]]);
-                            if (isset($channelEventList[$instance["OID"]])) 
-                                {
-                                $config=json_encode($channelEventList[$instance["OID"]]);
-                                if ($channelEventList[$instance["OID"]][1] !="")
-                                    {
-                                    if ($room == "") 
-                                        {
-                                        $room=$channelEventList[$instance["OID"]][1];
-                                        $entryplace=$DetectDeviceHandler->uniqueNameReference($room,$references);
-                                        }
-                                    else
-                                        {
-                                        if ($room != $channelEventList[$instance["OID"]][1]) echo "!!!Fehler, die Channels sind in unterschiedlichen Räumen. ".$instance["OID"]."  $room != ".$channelEventList[$instance["OID"]][1]."\n";
-                                        }
-                                    }
-                                }
-                            //echo "     ".$instance["OID"]."   $config  \n";
+                            IPS_SetHidden($devId,true);
+                            $devId = IPS_GetObjectIDByName ("Device Liste", $InstanzID);
+                            IPS_SetHidden($devId,true);
                             }
+                        else echo "      >>>Warnung, eine Device Instanz mit dem Namen $name ($InstanzID) unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es, sie hat aber keine Children die man verstecken kann.\n";
+                        IPS_SetPosition($InstanzID,900);
+                        // Abgleich Topology DeviceInstance mit channelEventList, deviceEventList und topology ob der room stimmt
+                        $room=$DetectDeviceHandler->findRoom($instances,$channelEventList,$topology);                   // alle Instanzen aus einem deviceList Eintrag durchgehen und mit $channelEventList abgleichen, eine Rauminformation daraus ableiten, Plausicheck inklusive
+                        //if ($name=="ArbeitszimmerHue") { echo "***************\n"; }
+
                         if (isset($deviceEventList[$InstanzID]))        // device mit Rauminformation abgleichen
                             {
                             //print_r($deviceEventList[$InstanzID]);
@@ -610,51 +791,98 @@ class TopologyLibraryManagement
                                 }
                             }
                         // room eindeutig machen wenn tilde im Namen
-
                         if ( ($entryplace) && (isset($topology[$entryplace])) )
                             {
-                            $entry=$topology[$entryplace];
+                            $newentry=$topology[$entryplace];
                             }
-                        else $entry=array();
-                        if (isset($this->roomInstances[$room]))         // kennt den Parent room für einen Raum, kümmert sich aber nicht um gleiche Namen
+                        else $newentry=array();
+                        if ($sortCateg)         // in eine Kategorie einsortieren
                             {
-                            //echo "Vergleiche ".IPS_GetParent($InstanzID)." mit ".$roomInstances[$room]."\n";
-                            if ( IPS_GetParent($InstanzID) != $this->roomInstances[$room])
+                            $expectedParent = false;                    // default nix machen
+                            if ( (isset($config["Use"]["Device"])) && ($config["Use"]["Device"]) )              // Was machen wir mit Devices, in die Kategorie einsortiern
                                 {
-                                if ($debug) echo "    -> Instanz Room vorhanden. Parent auf $room setzen.\n";
-                                IPS_SetParent($InstanzID,$this->roomInstances[$room]);
+                                $expectedParent = $parent;                  // wenn use Device in den parent schicken                                
+                                if (strtoupper($config["Use"]["Device"])=="ACTUATORS")
+                                    {
+                                    if (isset($entry["Actuators"]))                        // neue Betriebsart, Schalter, RGB und Ambient Lampen einbauen
+                                        {
+                                        //echo $name."  ".json_encode($entry["Actuators"])."\n";    
+                                        if (isset($topology[$room]["OID"])) $expectedParent=$topology[$room]["OID"];
+                                        $topology[$room]["Actuators"][$name]=$entry["Actuators"];
+                                        $topology[$room]["Actuators"][$name]["TopologyInstance"]=$InstanzID;
+                                        // more Information out of devicelist for updateLinks
+                                        }
+                                    }
+                                elseif (isset($topology[$room]["OID"])) $expectedParent=$topology[$room]["OID"];
                                 }
-                            $topRoom=true;
+                            if ( ($expectedParent) && (is_numeric($expectedParent)) && ($expectedParent>0))
+                                {
+                                if ($debug>1) echo "         Vergleiche ".IPS_GetParent($InstanzID)." (".IPS_GetName(IPS_GetParent($InstanzID)).") mit $expectedParent  ";    
+                                if ( IPS_GetParent($InstanzID) != $expectedParent)
+                                    {
+                                    if ($debug) echo "    -> Kategorie Room vorhanden. Ungleich zu $expectedParent, Parent auf $room setzen.\n";
+                                    IPS_SetParent($InstanzID,$expectedParent);
+                                    }
+                                elseif ($debug>1) echo "    -> Kategorie Room vorhanden.\n";
+                                $topRoom=true;                                                  // auch in deviceList abspeichern
+                                $newentry["guid"]="{5F6703F2-C638-B4FA-8986-C664F7F6319D}";
+                                $newentry["instances"]=$instances;
+                                $newentry["UniqueName"]=$entryplace;
+                                $configUpdated = $this->initInstanceConfiguration($InstanzID,$newentry,$debug);          //true für debug
+                                if ($debug>1) print_R($configUpdated);
+                                }
                             }
-                        elseif (isset($this->devicegroupInstances[$room]))    
+                        else                // in eine andere Instanz einsortieren, nicht mehr so üblich
                             {
-                            if ( IPS_GetParent($InstanzID) != $this->devicegroupInstances[$room])
+                            if (isset($this->roomInstances[$room]))         // kennt den Parent room für einen Raum, kümmert sich aber nicht um gleiche Namen
                                 {
-                                if ($debug) echo "    -> Instanz DeviceGroup vorhanden. Parent $room setzen.\n";
-                                IPS_SetParent($InstanzID,$this->devicegroupInstances[$room]);
+                                //echo "Vergleiche ".IPS_GetParent($InstanzID)." mit ".$roomInstances[$room]."\n";
+                                if ( IPS_GetParent($InstanzID) != $this->roomInstances[$room])
+                                    {
+                                    if ($debug) echo "    -> Instanz Room vorhanden. Parent auf $room setzen.\n";
+                                    IPS_SetParent($InstanzID,$this->roomInstances[$room]);
+                                    }
+                                $topRoom=true;                                                  // auch in deviceList abspeichern
                                 }
-                            $topGroup=true;
+                            elseif (isset($this->devicegroupInstances[$room]))    
+                                {
+                                if ( IPS_GetParent($InstanzID) != $this->devicegroupInstances[$room])
+                                    {
+                                    if ($debug) echo "    -> Instanz DeviceGroup vorhanden. Parent $room setzen.\n";
+                                    IPS_SetParent($InstanzID,$this->devicegroupInstances[$room]);
+                                    }
+                                $topGroup=true;                                                  // auch in deviceList abspeichern
+                                }
+                            $newentry["guid"]="{5F6703F2-C638-B4FA-8986-C664F7F6319D}";
+                            $newentry["instances"]=$instances;
+                            $newentry["UniqueName"]=$entryplace;
+                            $this->initInstanceConfiguration($InstanzID,$newentry,true);          //true für debug
+                            
+                            /* $configTopologyDevice=IPS_GetConfiguration($InstanzID);
+                            //echo "  Hier ist die abgespeicherte Konfiguration:    $configTopologyDevice \n";
+                            
+                            $oldconfig=json_decode($configTopologyDevice,true);
+                            print_r($oldconfig);
+                            $oldconfig["UpdateInterval"]=10;
+                            $newconfig=json_encode($oldconfig);
+                            echo "Neue geplante Konfiguration wäre : $newconfig \n";
+                            IPS_SetConfiguration($InstanzID,$newconfig);
+                            
+                            TOPD_SetDeviceList($InstanzID,$instances);      */
                             }
-                        $entry["guid"]="{5F6703F2-C638-B4FA-8986-C664F7F6319D}";
-                        $entry["instances"]=$instances;
-                        $this->initInstanceConfiguration($InstanzID,$entry,true);          //true für debug
-                        
-                        /* $configTopologyDevice=IPS_GetConfiguration($InstanzID);
-                        //echo "  Hier ist die abgespeicherte Konfiguration:    $configTopologyDevice \n";
-                        
-                        $oldconfig=json_decode($configTopologyDevice,true);
-                        print_r($oldconfig);
-                        $oldconfig["UpdateInterval"]=10;
-                        $newconfig=json_encode($oldconfig);
-                        echo "Neue geplante Konfiguration wäre : $newconfig \n";
-                        IPS_SetConfiguration($InstanzID,$newconfig);
-                        
-                        TOPD_SetDeviceList($InstanzID,$instances);      */
                         if (isset($this->installedModules["DetectMovement"]))  $DetectDeviceListHandler->RegisterEvent($InstanzID,'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
                         }
                     //$onlyOne=false;
-                    /* Ein Eintrag wurde erstellt oder ist vorhanden */
-                    if ($topRoom) $deviceList[$name]["Topology"][0]["ROOM"]=$room;
+                    /* Ein Eintrag wurde erstellt oder ist vorhanden, devicelist erweitern mit den zusätzlichen Informationen */
+                    if ($topRoom) 
+                        {
+                        unset($configUpdated['ImportCategoryID']);
+                        unset($configUpdated['Open']);
+                        unset($configUpdated['UpdateInterval']);
+                        $configUpdated["Name"]=$room;
+                        //$deviceList[$name]["Topology"][0]["ROOM"]=$room;
+                        if ($configUpdated) $deviceList[$name]["Topology"] = $configUpdated;
+                        }
                     if ($topGroup) $deviceList[$name]["Topology"][0]["GROUP"]=$room;
                     $i++;    
                     }

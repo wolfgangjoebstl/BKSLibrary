@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -36,19 +36,25 @@
      *
      * class IPSHeat_Manager
      * private vars $switchCategoryId, $groupCategoryId, $programCategoryId
-     * __construct
-     * GetSwitchIdByName, GetLevelIdByName, GetColorIdByName, GetAmbienceIdByName
-     * GetGroupIdByName
-     * GetProgramIdByName
-     * GetValue
-	 * SetValue					wird bei einer Variablenänderung aus dem Webfront aufgerufen
-     * SetSwitch, SetDimmer, SetRGB,SetAmbient, SetHeat
-     * SetGroup
-     * SetProgram
-     * GetConfigById, 
-	 * GetConfigNameById		eliminiert bekannte Erweiterungen wie #Level und gibt den Hauptnamen zurück
-     * SynchronizeGroupsBySwitch
-	 * SynchronizeGroupsByGroup
+     *  __construct
+     *  setConfiguration
+     *  getConfigGroups
+     *  convertConfigToArray
+     *
+     *  getGroupIDs
+     *
+     *  GetSwitchIdByName, GetLevelIdByName, GetColorIdByName, GetAmbienceIdByName
+     *  GetGroupIdByName
+     *  GetProgramIdByName
+     *  GetValue
+	 *  SetValue					wird bei einer Variablenänderung aus dem Webfront aufgerufen
+     *  SetSwitch, SetDimmer, SetRGB,SetAmbient, SetHeat
+     *  SetGroup
+     *  SetProgram
+     *  GetConfigById, 
+	 *  GetConfigNameById		eliminiert bekannte Erweiterungen wie #Level und gibt den Hauptnamen zurück
+     *  SynchronizeGroupsBySwitch
+	 *  SynchronizeGroupsByGroup
      *
      *
 	 * Webfront Änderung ruft SetValue auf. Abhänig vom Typ wird das spezielle SetXXX aufgerufen.
@@ -117,6 +123,194 @@
             }
 
 
+        /* List Switch Config and store as array with readable identifiers
+         *
+         */
+        public function getConfigSwitches($configSwitches,$debug=false)
+            { 
+            // Struktur festlegen
+            $structureGroup = array(
+                "Index"                => array( "Name" => "Index",        "Size" => 40, ),
+                IPSHEAT_NAME           => array( "Name" => "Name",         "Size" => 35, ),
+                IPSHEAT_GROUPS         => array( "Name" => "Groups",       "Size" => 50, ),
+                IPSHEAT_TYPE           => array( "Name" => "Type",         "Size" => 20, ),
+                );
+
+            return($this->convertConfigToArray($structureGroup,$configSwitches,$debug));
+            }
+
+
+        /* List Group Config and store as array with readable identifiers
+         *
+         */
+        public function getConfigGroups($configGroups,$debug=false)
+            { 
+            // Struktur festlegen
+            $structureGroup = array(
+                "Index"                => array( "Name" => "Index",        "Size" => 20, ),
+                IPSHEAT_NAME           => array( "Name" => "Name",         "Size" => 20, ),
+                IPSHEAT_GROUPS         => array( "Name" => "Groups",       "Size" => 20, ),
+                IPSHEAT_TYPE           => array( "Name" => "Type",         "Size" => 20, ),
+                IPSHEAT_ACTIVATABLE    => array( "Name" => "Activateable", "Size" => 10, ),
+                );
+
+            return($this->convertConfigToArray($structureGroup,$configGroups,$debug));
+            }
+
+        /* List Program Config and store as array with readable identifiers
+         *
+         */
+        public function getConfigPrograms($configGroups,$debug=false)
+            { 
+            // Struktur festlegen
+            $listEntries=array(
+                    7  =>   'IPSHEAT_PROGRAMON',
+                    8  =>   'IPSHEAT_PROGRAMOFF',
+                    9  =>   'IPSHEAT_PROGRAMLEVEL',
+                    10 =>   'IPSHEAT_PROGRAMRGB',
+            );
+            
+            $result=array();
+            if ($debug) echo str_pad("Index",20).str_pad("List",20).str_pad("Command",30).str_pad("Script",80)."\n";
+            foreach ($configGroups as $index => $entry)
+                {
+                if ($debug) echo str_pad($index,20)."\n";
+                foreach ($entry as $subindex => $list)
+                    {
+                    if ($debug) echo str_pad("",20).str_pad($subindex,20)."\n";
+                    foreach ($list as $listindex => $items)
+                        {
+                        if ($debug) echo str_pad("",20).str_pad("",20).str_pad($listEntries[$listindex],30).str_pad($items,80)."\n";
+                        $result[$index][$subindex][$listEntries[$listindex]]=$items;
+                        }
+                    }
+                }
+            return($result);
+            }
+
+        /* Convert Constant Formatted Config and store as array with readable identifiers
+         * according to a $structureGroup, output as array and echo if debug
+         */
+        private function convertConfigToArray($structureGroup,$configGroups,$debug=false)
+            { 
+            // Überschrift für echo Ausgabe 
+            foreach ($structureGroup as $index => $entry) { if ($debug) echo str_pad($entry["Name"],$entry["Size"]); }
+            if ($debug) echo "\n";
+            $result=array();
+            // einzelne Zeilen ausgeben und in Array schreiben
+            foreach ($configGroups as $index => $entry)
+                {
+                foreach ($structureGroup as $styleID => $style) 
+                    {
+                    if ($styleID=="Index") 
+                        {
+                        if ($debug) echo str_pad($index,$style["Size"]); 
+                        $indexID=$index;
+                        }
+                    else 
+                        {
+                        if (isset($entry[$styleID])) 
+                            {
+                            if ($debug) echo str_pad($entry[$styleID],$style["Size"]); 
+                            $result[$indexID][$structureGroup[$styleID]["Name"]]=$entry[$styleID];
+                            }
+                        elseif ($debug)  echo str_pad("",$style["Size"]);
+                        }
+                    }
+                if ($debug) echo "\n";
+                }
+            return($result);
+            }
+        
+        /* generates a summary with link according to the type
+         */
+        public function checkActuators($name, $identifier,$debug=false)
+            {
+            $plusLink=array();
+            if ($debug) echo "checkActuators, Identifier for Actuator $name : $identifier";
+            switch ($identifier)
+                {
+                case "GROUPSSWITCH":
+                    $soid = $this->GetGroupIdByName($name);
+                    $plusLink[$soid]=$name;
+                    break;
+                case "GROUPSAMBIENT":
+                    $soid = $this->GetGroupIdByName($name);
+                    $plusLink[$soid]=$name;
+                    $soid = $this->GetGroupAmbienceIdByName($name);
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_AMBIENCE;
+                    $soid = $this->GetGroupLevelIdByName($name);
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_LEVEL;
+                    break;
+                case "PROGRAMSPROGRAM":
+                    $soid = $this->GetProgramIdByName($name);
+                    $plusLink[$soid]=$name;
+                    break;
+                case "SWITCHESAMBIENT":
+                    $soid = $this->GetSwitchIdByName($name);
+                    $plusLink[$soid]=$name;
+                    $soid = $this->GetAmbienceIdByName($name);
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_AMBIENCE;
+                    $soid = $this->GetLevelIdByName($name);
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_LEVEL;
+                    break;                     
+                case "SWITCHESRGB":
+                    if ($debug) echo ", $name  ";
+                    $soid = $this->GetSwitchIdByName($name);
+                    $plusLink[$soid]=$name;
+                    $soid = $this->GetLevelIdByName($name); 
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_LEVEL;
+                    $soid = $this->GetColorIdByName($name); 
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_COLOR;
+                    break;
+                case "GROUPSTHERMOSTAT":
+                    $soid = $this->GetGroupIdByName($name);
+                    $plusLink[$soid]=$name;
+                    break;          
+                default:
+                    echo "       ->> WARNING, Identifier \"$identifier\" unknown !!!!\n";  
+                    break;                                                     
+                }                       // end switch
+            //if ($debug) echo "\n";
+            return($plusLink);
+            }
+
+        /* Summarizes the Group Identifiers in one table
+         * 
+         */
+        public function getGroupIDs()
+            {
+            $configGroups = IPSHeat_GetGroupConfiguration();
+            $IDs = array();
+            $config = $this->getConfigGroups($configGroups,false);                    // erst einmal die Groups, Programs folgen noch
+            foreach ($config as $index => $entry)
+                {
+                // ID herausbekommen, wird fürs Registrieren benötigt
+                if (isset($entry["Type"]))
+                    {
+                    $IDs[] = $this->GetGroupIdByName($entry["Name"]);
+                    }
+                }
+            //print_R($IDs);
+            return ($IDs);
+            }
+
+        /* Summarizes the Program Identifiers in one table
+         * 
+         */
+        public function getProgramIDs()
+            {
+            $configPrograms = IPSHeat_GetProgramConfiguration();
+            $IDs = array();
+            $config = $this->getConfigPrograms($configPrograms,false);                    // erst einmal die Groups, Programs folgen noch
+            foreach ($config as $index => $entry)
+                {
+                // ID herausbekommen, wird fürs Registrieren benötigt
+                $IDs[] = $this->GetProgramIdByName($index);
+                }
+            //print_R($IDs);
+            return ($IDs);
+            }
 		/**
 		 * @public
 		 *
@@ -174,9 +368,20 @@
 		 * @return int ID der Gruppe
 		 */
 		public function GetGroupIdByName($name) {
-			return IPS_GetVariableIDByName($name, $this->groupCategoryId);
+			return @IPS_GetVariableIDByName($name, $this->groupCategoryId);
 		}
 
+		public function GetGroupLevelIdByName($name) {
+			return IPS_GetVariableIDByName($name.IPSHEAT_DEVICE_LEVEL, $this->groupCategoryId);
+		}
+
+		public function GetGroupAmbienceIdByName($name) {
+			return IPS_GetVariableIDByName($name.IPSHEAT_DEVICE_AMBIENCE, $this->groupCategoryId);
+		}
+
+		public function GetGroupColorIdByName($name) {
+			return IPS_GetVariableIDByName($name.IPSHEAT_DEVICE_COLOR, $this->groupCategoryId);
+		}
 		/**
 		 * @public
 		 *
@@ -369,10 +574,11 @@
 		 * @param bool $value Neuer Wert der Variable
 		 */
 		public function SetRGB($variableId, $value, $syncGroups=true, $syncPrograms=true, $debug=false) {
-			if (GetValue($variableId)==$value) {
-				return;
-			}
 			if ($debug) echo "SetRGB ".$variableId." (".IPS_GetName($variableId).") ".$value." ".dechex($value)."\n";
+            else
+                {
+                if (GetValue($variableId)==$value) { return; }
+                }
 			$configName   = $this->GetConfigNameById($variableId);
 			$configLights = IPSHeat_GetHeatConfiguration();
 			$switchId     = IPS_GetVariableIDByName($configName, $this->switchCategoryId);

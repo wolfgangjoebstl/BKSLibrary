@@ -56,7 +56,7 @@
 		<meta http-equiv="Expires" content="0">
 		<meta name="viewport" content="width=device-width, initial-scale=1" />							<!-- Formatierung  -->
 		
-		<link rel="stylesheet" type="text/css" href="/user/Startpage/StartpageTopology.css" />
+		<link rel="stylesheet" type="text/css" href="/user/Startpage/StartpageStatus.css" />
 
 		<script type="text/javascript" src="jquery.min.js"></script>
 		<script type="text/javascript" src="StartpageStatus.js" ></script>
@@ -68,7 +68,8 @@
 		IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
 		IPSUtils_Include ("Startpage_Include.inc.php", "IPSLibrary::app::modules::Startpage");
 		IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
-
+		IPSUtils_Include ('Startpage_Update.ips.php', 'IPSLibrary::app::modules::Startpage');
+	
 		$identifier=false;
 		if(!isset($_COOKIE[$cookie_name])) {
 		  echo "Cookie named '" . $cookie_name . "' is not set!";
@@ -94,7 +95,7 @@
 												
 		$wert = "";
 		$wert .= $startpage->getStartpageStyleStatusSize()->writeStartpageStyleStatus()->writeStartpageStyle();			// style einfügen Size an status style an allg style			
-		$wert .= '<div id="sp-status" class="container-startpage">';
+		$wert .= '<div id="sp-status" class="container-status">';
         $wert .= $startpage->showDisplayStationResponsive(1);
         $wert .= '</div>';
 		echo $wert;	

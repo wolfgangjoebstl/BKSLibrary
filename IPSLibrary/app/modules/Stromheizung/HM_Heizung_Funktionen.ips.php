@@ -1,4 +1,4 @@
-<?
+<?php
 Function HM_WochenTempProfil_html($ID_tempProfile, $day_hl=99)
 	{
 

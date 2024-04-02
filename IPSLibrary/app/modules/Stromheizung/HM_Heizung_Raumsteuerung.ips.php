@@ -1,4 +1,4 @@
-<?
+<?php
 include "HM_Heizung_Konfig.ips.php";
 include "HM_Heizung_Funktionen.ips.php";
 include "hmxml.inc.php";

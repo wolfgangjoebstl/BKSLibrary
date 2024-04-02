@@ -6,7 +6,7 @@ $(document).ready(function(){
 	let item=0;
 	var $write = $('#write');					// keine globale Variable ???
 	//var shift = false, capslock = false;
-	trigger_ajax("startofscript", "Cookie", "startpage", createConfig());			// Ajax Request kommt in StartpageTopologyReceiver an als   id, action, module, info
+	trigger_ajax("startofscript", "Cookie", "startpage", createConfig());			// Ajax Request kommt in StartpageStatus_Receiver an als   id, action, module, info
 	window.visualViewport.addEventListener("scroll", viewportHandler);
 	window.visualViewport.addEventListener("resize", viewportHandler);
 		 
@@ -73,10 +73,10 @@ $(document).ready(function(){
 		}	
 	
 	function trigger_ajax(id, action, module, config) {
-		//$.ajax({type: "POST", url: "/user/Startpage/StartpageTopology_Receiver.php", data: "&id="+id+"&action="+action+"&module="+module+"&info="+info});
+		//$.ajax({type: "POST", url: "/user/Startpage/StartpageStatus_Receiver.php", data: "&id="+id+"&action="+action+"&module="+module+"&info="+info});
 		var result;			// will become object after assignment
 		action=readCookie('identifier-symcon-startpage');
-		$.post('/user/Startpage/StartpageTopology_Receiver.php', 
+		$.post('/user/Startpage/StartpageStatus_Receiver.php', 
 			{id:id,action:action,module:module,info:config},
 			function(data, status){	
 				var configws = analyseConfig(data);
@@ -140,7 +140,7 @@ $(document).ready(function(){
 				}
 			}
 		updatePictureStyle(picture);
-		trigger_ajax("button-eins", "Cookie", "startpage", createConfig(picture));			// Ajax Request kommt in StartpageTopologyReceiver an als   id, action, module, info
+		trigger_ajax("button-eins", "Cookie", "startpage", createConfig(picture));			// Ajax Request kommt in StartpageStatus_Receiver an als   id, action, module, info
 		});
 	
 	// Button fuenf	, hide pictures item per item
@@ -195,7 +195,7 @@ $(document).ready(function(){
 
 	// Button null, do read of config and update
 	$("#sp-cmd-item9").click(function(){ 
-		trigger_ajax("startofscript", "Cookie", "startpage", createConfig());			// Ajax Request kommt in StartpageTopologyReceiver an als   id, action, module, info
+		trigger_ajax("startofscript", "Cookie", "startpage", createConfig());			// Ajax Request kommt in StartpageStatus_Receiver an als   id, action, module, info
 		document.getElementById('sp-inf-txt').innerHTML = "update to config";
 		});
 

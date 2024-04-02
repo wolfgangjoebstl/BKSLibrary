@@ -1,4 +1,4 @@
-<?
+<?php
 /* HMXML.inc.php v 02-2014
 
  * angepasst am 2013-11-19 wegen HM-CC-RT-DN by SWifty

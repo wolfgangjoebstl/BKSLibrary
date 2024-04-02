@@ -1,4 +1,4 @@
-<?
+<?php
 // ************************************************************************
 // Bitte die nachfolgenden Beispiele durch die eigene Daten ersetzen
 // Bei der Bezeichnung des $Zimmers bitte darauf achten, dass der Name mit den

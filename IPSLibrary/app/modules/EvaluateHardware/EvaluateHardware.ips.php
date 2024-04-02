@@ -135,15 +135,16 @@
         $verzeichnis=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
         $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
         $filename=$verzeichnis.'EvaluateHardware_DeviceErrorLog.inc.php';  
-        $storedError_Log=$DeviceManager->updateHomematicErrorLog($filename,$arrHM_Errors);
+        $storedError_Log=$DeviceManager->updateHomematicErrorLog($filename,$arrHM_Errors,false);        //true für Debug
         //print_R($storedError_Log);
         krsort($storedError_Log);
-        $html = $DeviceManager->showHomematicFehlermeldungenLog($storedError_Log);
-        $hwStatus = $DeviceManager->HardwareStatus("array");           // Ausgabe als Array
+        echo "Ausgabe showHomematicFehlermeldungenLog : \n";
+        $html = $DeviceManager->showHomematicFehlermeldungenLog($storedError_Log,true);             //true für Debug
+        $hwStatus = $DeviceManager->HardwareStatus("array",true);           // Ausgabe als Array, true für Debug
         $output = $DeviceManager->showHardwareStatus($hwStatus,["Reach"=>false,]);           // Ausgabe als html
         SetValue($statusDeviceID,$output);
 
-        //echo "  Homematic Serialnummern erfassen:\n";
+        echo "  Homematic Serialnummern erfassen:\n";
         $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
         }
 
@@ -246,7 +247,9 @@ IPS_SetEventActive($tim1ID,true);
             echo "   Anordnung nach Gerätetypen, Zusammenfassung:\n";
             foreach ($hardware as $type => $entries) echo str_pad("     $type : ",28).count($entries)."\n";
         echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
-        $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
+        $configDeviceList=array();
+        $configDeviceList["uniqueNames"]="Create";
+        $deviceList = $topologyLibrary->get_DeviceList($hardware,$configDeviceList, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
         echo "\n";
 
         $includefileDevices     = '<?php'."\n";             // für die php Devices and Gateways, neu
@@ -291,17 +294,39 @@ IPS_SetEventActive($tim1ID,true);
                 $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
                 */
 
-                $topology            = $DetectDeviceHandler->Get_Topology();
-                $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
-                $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();          // alle Geräte
-                //print_r($topology);
-                
-                echo "CreateTopologyInstances wird aufgerufen:\n";
-                $topologyLibrary->createTopologyInstances($topology);           // Topologie TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup in Kategorie Topologie erstellen
-                echo "----------------------------------------\n";
-                echo "SortTopologyInstances wird aufgerufen um die einzelnen Geräte in die Topologie einzusortieren:\n";
-                $topologyLibrary->sortTopologyInstances($deviceList,$topology, $channelEventList,$deviceEventList);
-                echo "----------------------------------------\n";
+                // Alternative Kategorienstruktur in Topology, die Topology Instanzen dort einsortieren
+                $topConfig=array();
+                $topId = @IPS_GetCategoryIDByName("Topology", 0);
+                if ($topId)
+                    {
+                    echo "----------------------------------------DeviceList mit Informationen zur Topologie anreichern\n";
+                    $debug=false;
+                    $topConfig["ID"]=$topId;
+                    $topConfig["Use"]=["Place","Room","Device"];        // keine Kategorie für DeviceGroup erstellen
+                    echo "TopologyID gefunden : $topId, eine Topologie mit Kategorien erstellen.\n";
+                    $DetectDeviceHandler->create_Topology($topConfig, $debug);            // true für init, true für Debug, bei init löscht sich die ganze Kategorie und baut sie neu auf, macht auch schon _construct
+                    $topology=$DetectDeviceHandler->Get_Topology();
+                    $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
+                    $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();          // alle Geräte
+                    
+                    $DetectDeviceHandler->create_UnifiedTopologyConfigurationFile($debug); 
+                    //print_r($topology);
+                    
+                    echo "CreateTopologyInstances wird aufgerufen, je nach Konfig Place, Room und DeviceGroup einordnen:\n";
+                    $topinstconfig = array();
+                    $topinstconfig["Sort"]="Kategorie";
+                    $topinstconfig["Use"]["Room"]=true;
+                    $topinstconfig["Use"]["Place"]=true;
+                    $topinstconfig["Use"]["DeviceGroup"]=true;
+                    //$topinstconfig["Use"]["Device"]=true;                                       // Topology Device nicht erstellen
+                    $topologyLibrary->createTopologyInstances($topology,$topinstconfig);           // wenn so konfiguriert :  Topologie TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup in Kategorie Topologie erstellen
+                    echo "----------------------------------------\n";
+                    echo "SortTopologyInstances wird aufgerufen um die einzelnen Geräte in die Topologie einzusortieren:\n";
+                    $topinstconfig["Use"]["Device"]="Actuators";                               // nur die Actuators hinzufügen
+                    $debug=true;
+                    $topologyLibrary->sortTopologyInstances($deviceList,$topology, $channelEventList,$deviceEventList,$topinstconfig,$debug);           // neu abgeänderte Routine in Arbeit
+                    echo "----------------------------------------\n";
+                    }
                 }           // end isset DetectMovement
             }               // end TopologyMappingLibrary
 
@@ -510,7 +535,7 @@ IPS_SetEventActive($tim1ID,true);
                 if ($result) echo "   *** register Event $moid: $typ\n";
                 }		
             }
-        echo "----------------Liste der DetectTHumidity Gruppen durchgehen:\n";
+        echo "----------------Liste der DetectHumidity Gruppen durchgehen:\n";
         //print_r($groups);         
         foreach ($groups as $group => $entry)
             {
@@ -542,10 +567,61 @@ IPS_SetEventActive($tim1ID,true);
             $soid=$DetectHeatControlHandler->InitGroup($group);
             echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
             $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','HeatControl');		
-            if ($result) echo "   *** register Event $soid\n";
+            if ($result) echo str_pad($soid,6)."   *** register Event successful\n";
             }	
-                                                                                                                                                                                        
         echo "\n";
+
+        if (isset($installedModules["Stromheizung"]))
+            {            
+            echo "----------------Liste der IPSHeat Gruppen durchgehen:\n";
+            IPSUtils_Include ("IPSHeat.inc.php",  "IPSLibrary::app::modules::Stromheizung");
+            $heatManager = new IPSHeat_Manager();
+
+            $configGroups = IPSHeat_GetGroupConfiguration();
+            //print_r($configGroups);
+            $result = $heatManager->getConfigGroups($configGroups);
+            //print_R($result);
+            foreach ($result as $index => $entry)
+                {
+                // ID herausbekommen, wird fürs Registrieren benötigt
+                if (isset($entry["Type"]))
+                    {
+                    $soid = $heatManager->GetGroupIdByName($index);
+                    $resultEvent=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','IpsHeatGroup');		
+                    if ($resultEvent) echo str_pad($soid,6)."   *** register Event successful\n";
+                    }
+                }
+            echo "----------------Liste der IPSHeat Programme durchgehen:\n";                
+            $configPrograms = IPSHeat_GetProgramConfiguration();
+            //print_r($configPrograms);
+            $result = $heatManager->getConfigPrograms($configPrograms);
+            //print_R($result);
+            foreach ($result as $index => $entry)
+                {
+                $soid = $heatManager->GetProgramIdByName($index);
+                $resultEvent=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','IpsHeatProgram');		
+                if ($resultEvent) echo str_pad($soid,6)."   *** register Event successful\n";                  
+                }
+            } 
+            echo "----------------Liste der IPSHeat Switch durchgehen:\n";
+            IPSUtils_Include ("IPSHeat.inc.php",  "IPSLibrary::app::modules::Stromheizung");
+            $heatManager = new IPSHeat_Manager();
+
+            $configSwitches = IPSHeat_GetHeatConfiguration();
+            //print_r($configGroups);
+            $result = $heatManager->getConfigSwitches($configSwitches,false);            // true für debug
+            //print_R($result);
+            foreach ($result as $index => $entry)
+                {
+                // ID herausbekommen, wird fürs Registrieren benötigt
+                if (isset($entry["Type"]))
+                    {
+                    $soid = $heatManager->GetSwitchIdByName($index);                                            // Name ist nicht eindeutig
+                    $resultEvent=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','IpsHeatSwitch');		
+                    if ($resultEvent) echo str_pad($soid,6)."   *** register Event successful\n";
+                    }
+                }
+
         echo "=======================================================================\n";
         echo "Jetzt noch einmal den ganzen DetectDevice Event table sortieren, damit Raumeintraege schneller gehen :\n";
         $configuration=$DetectDeviceHandler->Get_EventConfigurationAuto();
@@ -554,9 +630,7 @@ IPS_SetEventActive($tim1ID,true);
         $configurationNew=$DetectDeviceHandler->sortEventList($configuration);
         echo "    Und wieder in der Config abspeichern.\n";
         $DetectDeviceHandler->StoreEventConfiguration($configurationNew);
-        } /* ende if isset DetectMovement */
-
-    echo "\n";
+        }   /* ende if isset DetectMovement */    echo "\n";
     echo "\n";
 
     /******************************************************
