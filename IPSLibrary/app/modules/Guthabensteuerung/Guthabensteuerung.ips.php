@@ -44,6 +44,12 @@
      * in der Tabelle sind Links versteckt
      *
      *
+     * verwendet ipsTables für:
+     *      webfront yahoofinance in $ Tab
+     *
+     * andere webfront Tabellen
+     *      Darstellung Chromedriver versionen
+     *
      */
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');

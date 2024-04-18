@@ -274,12 +274,14 @@
             $testMovementscriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);  
 
             $DetectDeviceHandler = new DetectDeviceHandler();
-
-            $DetectDeviceHandler->create_Topology(["ID"=>$webfrontTileID], true);            // true für init, true für Debug
-            $topology=$DetectDeviceHandler->Get_Topology();
-            $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
-            $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,true);        // true for Debug
-            $DetectDeviceHandler->updateLinks($topologyPlusLinks);
+            if (false)      // nur in EvaluateHardware_Installation machen
+                {
+                $DetectDeviceHandler->create_Topology(["ID"=>$webfrontTileID], true);            // true für init, true für Debug
+                $topology=$DetectDeviceHandler->Get_Topology();
+                $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+                $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,true);        // true for Debug
+                $DetectDeviceHandler->updateLinks($topologyPlusLinks);
+                }
             }
 
         }

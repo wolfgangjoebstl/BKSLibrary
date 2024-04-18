@@ -24,10 +24,13 @@
     *----------------------------
     * schreiben des Startpage html Strings in der htmlbox der Startpage
     *
-    * es gibt verschiedene Darstellungsarten
+    * es gibt verschiedene Darstellungsarten, diese können zentral für alle Webfronts per Einstellung geändert werden
+    * Bei der Datsellung Frame kann die Formatierung der Seite pro Browser konfiguriert werden
+    * es werden dazu browser cookies in der Datenbank gespeichert.
+    *
     * die Darstellung selbst erfolgt über die Library mit $startpage->StartPageWrite
     *
-    * wird alle 8 Minuten vom Timer aufgerufen
+    * Deise routine wird alle 8 Minuten vom Timer aufgerufen
     * Routine bearbeitet auch die Tastendrücke am Webfront
     *
     * Bilder im Verzeichnis werden verkleinert um die Darstellung im Webfront zu beschleunigen
@@ -87,7 +90,11 @@
 	*
     **************************************/
 
-    if ($_IPS['SENDER']=="Execute") $debug=true;
+    if ($_IPS['SENDER']=="Execute") 
+        {
+        echo "Script Execute, Darstellung automatisch mit Debug aktiviert.\n";
+        $debug=true;
+        }
     else $debug=false;
 
     /********************************************* CONFIG *******************************************************/
@@ -127,7 +134,7 @@
     $StartPageTypeID = IPS_getObjectIdByName("Startpagetype", $startpage->CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
     if ($debug) 
         {
-        echo "StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).") ".GetValue($StartPageTypeID)."\n";
+        echo "   StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).") ".GetValue($StartPageTypeID)."\n";
         //echo "Kategorienvergleich: ".$startpage->CategoryIdData."   $CategoryIdData  \n";
         }
     $variableIdHTML  = CreateVariable("Uebersicht",    3 /*String*/, $CategoryIdData, 40, '~HTMLBox', null,null,"");
@@ -229,7 +236,11 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
     if ($maxcount>0)
         {
         $showfile=rand(1,$maxcount-1);
-        if ($debug) echo "StartpageTypeID ist 1. Parameter : Bilder zur Anzeige  $maxcount Datei Index dafür ausgesucht $showfile \n";;
+        if ($debug) 
+            {
+            echo "   StartpageTypeID ist 1. Parameter : Bilder zur Anzeige  $maxcount Datei Index dafür ausgesucht $showfile \n";
+            echo "Bilder resample, Größe verkleinern, Bild zur Darstellung ausgesucht $showfile:\n";
+            }
         //print_r($file);
 
         if ( is_dir($VerzeichnisBilder) ==  false ) mkdir($VerzeichnisBilder);
@@ -239,14 +250,19 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
             {
             if ($debug)
                 {
+                echo "   Datei ist ".$VerzeichnisBilder.$datei."\n";
+                $notouch=true;
                 foreach ($files as $index=> $file )
                     {
                     if (file_exists($VerzeichnisBilder.$file)===false) 
                         {
-                        $datei=$file;    
+                        $datei=$file; 
+                        $notouch=false;  
                         break;
                         }
                     }
+                if ($notouch) echo "   Datei ist immer noch ".$VerzeichnisBilder.$datei.", keine Bilder zum bearbeiten.\n"; 
+                else echo "   Neue Datei gefunden ".$VerzeichnisBilder.$datei.", mehr Bilder zum bearbeiten.\n";                   
                 }
             }
         if (file_exists($VerzeichnisBilder.$datei)===false)
@@ -292,8 +308,8 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 
     /* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
 
-    if ($debug) echo "Aufruf StartpageWrite in Startpage Class Library.\n";
     $startPageType=GetValue($StartPageTypeID);
+    if ($debug) echo "Aufruf StartpageWrite in Startpage Class Library.Start Page Type ist $startPageType.\n";
     if ($startPageType<21)
         {
         SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,$debug));
@@ -309,7 +325,8 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         //SetValue($variableIdHTML,'<div style="padding-bottom:56.25%; position:relative; display:block; width: 100%"><iframe width="100%" height="100%  name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>');
         //SetValue($variableIdHTML,'<div class="cuw-container"><iframe class="cuw-responsive-iframe" width="100%" height="800px" frameborder:0 src="../user/Startpage/StartpageTopology.php"></iframe></div>');          
         //SetValue($variableIdHTML,'<div class="cuw-container"><iframe class="cuw-responsive-iframe" style="width:100%; height:800px; border:none;" name="StartPage" src="../user/Startpage/StartpageTopology.php"></iframe></div>'); 
-        $html  = '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>';
+        
+        //$html  = '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>';
         $html .= '<script type="text/javascript">';
         /*$html .= '  var intervalId = window.setInterval(function(){
                         reportWindowSize();

@@ -276,9 +276,13 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                         $result = number_format($value, $round, ",",".");
                         }
                     break;
+                case "OID":
+                    $result = str_pad($value, 5);
+                    break;                    
                 default:
                     if (gettype($value)=="boolean") $result = ($value?"true":"false"); 
                     elseif (gettype($value)=="string") $result = $value;
+                    elseif (gettype($value)=="integer") $result = $value;                    
                     else $result = number_format($value, 2, ",",".")." $unit";           // unit wahrscheinlich empty oder ein Wert den wir nicht kennnen
                     break;
                 }
@@ -7598,8 +7602,12 @@ class App_Convert_XmlToArray
  * Tabellen und auch andere Elemente werden als Tabellen dargestellt. Die Darstellung der Inhalten von arrays vereinheitlichen
  *
  *      __construct
- *      setConfiguration
+ *      checkConfiguration
+ *      setConfiguration            Sort, Html, Header
  *      getColumnsName
+ *      analyseConfig
+ *      processData
+ *      analyseData
  *      showTable
  *      
  */
@@ -7611,14 +7619,14 @@ class ipsTables
 
     function __construct($cfg=false)                    // config bei create class, danach mit setConfiguration oder erst mit der Funktion übergeben,  
         {
-        $this->config = $this->setConfiguration($cfg);                  // es wird die class config geändert
+        $this->config = $this->checkConfiguration($cfg);                  // es wird die class config geändert
         }
 
     /* check/set Configuration
      *
      */
 
-    public function setConfiguration($cfg,$debug=false)
+    protected function checkConfiguration($cfg,$debug=false)
         {
         $config = array();
 
@@ -7627,9 +7635,29 @@ class ipsTables
 
         // parse configuration, logInput ist der Input und config der angepasste Output
         configfileParser($cfgInput, $config, ["SORT","Sort","sort" ],"sort" ,false);                // nicht sortieren
-        configfileParser($cfgInput, $config, ["HTML","Html","html" ],"html" ,false);                // textdarstellung
-        configfileParser($cfgInput, $config, ["HEADER","Headser","header" ],"header" ,false);                // bei html eine headerrow formatieren
 
+        configfileParser($cfgInput, $config, ["HTML","Html","html" ],"html" ,false);                // darstellung als html, wenn true
+        configfileParser($cfgInput, $config, ["TEXT","Text","text" ],"text" ,false);                // Ausgabe als text während der Bearbeitung, wenn true
+
+        configfileParser($cfgInput, $config, ["HEADER","Header","header" ],"header" ,false);                // bei html eine headerrow formatieren
+        configfileParser($cfgInput, $config, ["DISPLAY","Display","display" ],"display" ,null);                // display Einstellungen als Konfigurationsparameter
+        configfileParser($cfgInput, $config, ["INSERT","Insert","insert" ],"insert" ,null);                // bei html eine headerrow einfügen mit den Namen aus display
+        configfileParser($cfgInput, $config, ["REPLACE","Replace","replace" ],"replace" ,null);                // bei html die erst zeile überschreiben mit den Namen aus display
+
+        configfileParser($cfgInput, $config, ["FILTER","Filter","filter" ],"filter" ,null);                // bei html die erst zeile überschreiben mit den Namen aus display
+
+        configfileParser($cfgInput, $config, ["FORMAT","Format","format" ],"format" ,null);                // bei html die erst zeile überschreiben mit den Namen aus display
+
+        return($config);
+        }
+
+    /* set Configuration
+     *
+     */
+
+    public function setConfiguration($cfg,$debug=false)
+        {
+        $this->config = $this->checkConfiguration($cfg,$debug);
         return($config);
         }
 
@@ -7638,6 +7666,7 @@ class ipsTables
 
     function getColumnsName($inputData,$debug=false)
         {
+        if ($debug) echo "getColumnsName:  ";
         $display=array();
         $rows=false; $rowNum=0;
         foreach ($inputData as $name => $item)          // name ist die Zeilenbezeichnung
@@ -7657,13 +7686,148 @@ class ipsTables
                 foreach ($item as $index => $entry) 
                     {
                     if ($debug) echo " $index ";
-                    $display[$index]="";
+                    //$display[$index]="";
+                    $display[$index]=$index;                // Defaultanzeige ist nicht leer
                     }
                 }
             else $rows++;
-            if ($debug) echo "\n";
             }
+        if ($debug) echo "\n";
         return ($display);
+        }
+
+    /* übersichtlicher machen, display, config auflösen um es nachher wieder auseinander zu führen
+     */
+    protected function analyseConfig($display, $config, $debug=false)
+        {
+        if (is_array($config)) $config = $this->checkConfiguration($config);
+        else $config = $this->config;
+        if (isset( $config["display"])) 
+            {
+            if ($debug) echo "Einstellung für Display übernehmen, override of ".json_encode($display)." \n";
+            }
+        else $config["display"]=$display;
+        if (isset($config["format"]["class-id"])===false)   $config["format"]["class-id"]="easycharts-api";           // make it short
+        if (isset($config["format"]["header-id"])===false)  $config["format"]["header-id"]="hrow";          // make it short
+        return ($config);
+        }
+
+    /* übersichtlicher machen, die Daten vorverarbeiten, config wird erweitert
+     * Header noch nicht hinzufügen, eventuell entfernen
+     */
+    protected function processData($processData, &$config, $debug=false)
+        {
+        $inputData = array();
+        $doheader=false;
+        $replace=false;
+        $row=0;
+        $expectedIndex=0;
+        if ( ( (isset($config["insert"]["Header"])) && ($config["insert"]["Header"]) ) || ( (isset($config["replace"]["Header"])) && ($config["replace"]["Header"]) ) )
+            {
+            foreach ($config["display"] as $index => $entry)            // noch nicht einfügen, sonst wird mitsortiert
+                {
+                //if ((is_array($entry)) && (isset($entry["header"]))) $inputData[$row][$index]=$entry["header"];
+                //else $inputData[$row][$index]=$entry;
+                }
+            //$row++;
+            $doheader=true;
+            }
+        if ( (isset($config["replace"]["Header"])) && ($config["replace"]["Header"]) ) { $replace=true; $expectedIndex=1; $doheader=true; }
+        foreach ($processData as $index => $entry)
+            {
+            if ($replace==false)            // skip first row if replace, otherwise insert
+                {
+                $inputData[$row]=$entry;
+                if ( (isset($config["insert"]["Index"])) && ($config["insert"]["Index"]) ) 
+                    {
+                    $inputData[$row]["Index"]=$index; 
+                    $inputData[$row]["Name"]=IPS_GetName($index);
+                    }
+                else 
+                    {
+                    //compare index with row
+                    if ($index!=$expectedIndex)
+                        {
+                        echo "    ($index!=$expectedIndex)   wir erwarten uns einen geordneten Index mit 0,1,2,3,4 \n";
+                        return (false);
+                        }
+                    }
+                $row++; 
+                $expectedIndex++;  
+                }
+            else $replace=false;
+            }
+
+        $config["rows"]=$row;
+        $config["doheader"]=$doheader;
+        return ($inputData);
+        }
+
+    /* nach dem sortieren erst den Header hinzufügen
+     */
+    protected function insertHeader(&$inputData, &$config, $debug=false)
+        {
+        $doheader=false;
+        $inputHeader=array();
+        if ( ( (isset($config["insert"]["Header"])) && ($config["insert"]["Header"]) ) || ( (isset($config["replace"]["Header"])) && ($config["replace"]["Header"]) ) )
+            {
+            foreach ($config["display"] as $index => $entry)
+                {
+                if ((is_array($entry)) && (isset($entry["header"]))) $inputHeader[$index]=$entry["header"];
+                else $inputHeader[$index]=$entry;
+                }
+            $doheader=true;
+            }
+        if ($doheader) 
+            {
+            if ($debug) echo "insert header now:   \n";
+            array_unshift($inputData,$inputHeader);
+            }
+        return (true);
+        }
+
+
+    /* analyse data including header
+     */
+    protected function analyseData($inputData, &$config, $debug=false)
+        {
+        $analyseCols=array();
+        $colMax=0;
+        $displayWidth=array();
+        $doheader  = $config["doheader"];
+        foreach ($inputData as $row => $inputLine)                              // alle zeilen durchgehen
+            {
+            $col=0;
+            foreach ($config["display"] as $name => $itemBox)                   // alle Spalten die mit Display angezeigt werden sollen durchgehen
+                {
+                // evaluate display width of each column, add 2 
+                if (isset($displayWidth[$col])==false) $displayWidth[$col]=2;
+                if (isset($inputLine[$name])) $len = strlen($inputLine[$name])+2;
+                else 
+                    {
+                    if ($debug>1) { echo "analyseData $name not known:"; print_r($inputLine); }
+                    $len=0;
+                    }
+                if ($len>$displayWidth[$col]) $displayWidth[$col]=$len; 
+                // analyse list of entrie
+                if ((is_array($itemBox)) && (isset($itemBox["header"]))) $colName=$itemBox["header"];
+                else $colName=$itemBox;
+                if ( (isset($inputLine[$name])) && ( ($doheader && $row>0) || ($doheader==0) ) )
+                    {
+                    $entry=$inputLine[$name];
+                    if (isset($analyseCols[$colName][$entry]))
+                        {
+                        $analyseCols[$colName][$entry]++;
+                        }
+                    else $analyseCols[$colName][$entry]=1;
+                    }
+                $col++;
+                }
+            if ($col>$colMax) $colMax = $col;
+            }
+        $config["cols"]=$colMax;
+        $config["analyse"]=$analyseCols;
+        return ($displayWidth);
         }
 
     /* showTable
@@ -7679,112 +7843,169 @@ class ipsTables
      *  sort
      *  html
      *  header
+     *  display
+     *  text
      *
      */
 
 
-    function showTable($inputData,$display=false,$config=false, $debug=false)
+    function showTable($processData,$display=false,&$config=false, $debug=false)
         {
-        //if ($debug) echo "showTable:\n";
+        
         $text="";
+
         $ipsOps = new ipsOps();
+
         if ($display===false) $display=array();
-        if (sizeof($display)==0) $display = $this->getColumnsName($inputData,$debug);           // ein leeres display abändern dass alle Spalten angezeigt werden
+        if (sizeof($display)==0) $display = $this->getColumnsName($processData,$debug);           // ein leeres display abändern dass alle Spalten angezeigt werden
 
-        if (is_array($config)) $config = $this->setConfiguration($config);
-        else $config = $this->config;
+        $config = $this->analyseConfig($display, $config, $debug);
 
+        if ($debug) echo "showTable: ".json_encode($config)."\n";
+
+        // process Data
+        $inputData = $this->processData($processData, $config, $debug);             // config wird erweitert, die berabeiteten Daten retourniert
+        if ($inputData===false) return ($false);
+
+        // sort Data
         //print_R($inputData);
-        $ipsOps->intelliSort($inputData, $config["sort"],SORT_ASC,$debug);                   // $sort=SORT_ASC
-        $html=$config["html"];
+        $dir=SORT_ASC;
+        if (is_array($config["sort"]))
+            {
+            $sort=$config["sort"]["column"];
+            $dir=$config["sort"]["direction"];    
+            }
+        else $sort=$config["sort"];
+        $ipsOps->intelliSort($inputData, $sort,$dir,$debug);                   // $sort=SORT_ASC
+
+        $this->insertHeader($inputData, $config, $debug);
+
+        $rows      = $config["rows"];
+        $doheader  = $config["doheader"];
+        $html      = $config["html"];
+        $dotext    = $config["text"];
+        $display   = $config["display"];
+        $id        = $config["format"]["class-id"];
+        $hid       = $config["format"]["header-id"];
+
+        $displayWidth=$this->analyseData($inputData, $config, $debug);       // Daten Anzahl Spalten und Breite bestimmen
 
         if (is_array($display))
             {
-            if ($debug)  echo "showTable Detail of Columns ".json_encode($display)."\n";
-            $rows=false; $rowNum=0;
-            foreach ($inputData as $name => $item)
-                {
-                //echo "    ($name==$rowNum)   ";             //wir erwarten uns eine geordneten Index mit 0,1,2,3,4
-                if ($name==$rowNum) 
+            //print_R($config);
+            $filter=false;
+            if (isset($config["filter"])) 
+                { 
+                $filter=array();
+                echo "Config Filter gesetzt :  ".json_encode($config["filter"])." jetzt anpassen für ".json_encode($display)."\n"; 
+                $col=0;
+                foreach ($config["display"] as $index => $entry)
                     {
-                    $rowNum++;
+                    //if ((is_array($entry)) && (isset($entry["header"]))) $inputHeader[$index]=$entry["header"];
+                    //else $inputHeader[$index]=$entry;
+                    if ((is_array($entry)) && (isset($entry["header"]))) $inputHeader[$col]=$entry["header"];
+                    else $inputHeader[$col]=$entry;
+                    $col++;
                     }
-                else 
+                foreach ($inputHeader as $index=>$entry)
                     {
-                    //echo "ungleich";
+                    if (isset($config["filter"][$entry])) $filter[$index] = $config["filter"][$entry];
                     }
-                if ($rows===false) $rows=1;
-                else $rows++;
-                if ($debug) echo "\n";
+                echo "Config Filter umgewandelt in :  ".json_encode($filter)."\n";
                 }
-            if ($rows)          // multi array, nicht nur eine zeile, ein Array mit header darstellen
+
+            if ($debug)  echo "showTable Detail of Columns ".json_encode($display)."\n";
+            if ($rows>0)          // multi array, nicht nur eine zeile, ein Array mit header darstellen
                 {
                 if ($debug) echo "    ".$rows." Reihen erkannt.\n"; 
-                $displayWidth=array(); 
                 $displayOutput=array();
                 $line=0;
                 foreach ($inputData as $row => $inputLine)
                     {
+                    if ($debug>1) echo "Process $row ".json_encode($inputLine)."\n";
                     //print_R($inputLine);
                     if ($row==0)                                                // die erste Zeile ist der Header der Tabelle
                         {
+                        if ($debug>1) echo "Header/First Row :\n";
                         $col=0;
                         foreach ($display as $name => $itemBox)
                             {
-                            $displayWidth[$col]=strlen($name)+2;
-                            if ( (is_array($itemBox)) && (isset($itemBox["header"])) ) $displayOutput[$line][$col]=$itemBox["header"];
-                            else $displayOutput[$line][$col]=$name;
+                            if (isset($inputLine[$name])) $input=$inputLine[$name];
+                            else $input="";
+                            $displayOutput[$line][$col]=$input;
+                            if ($dotext) echo str_pad($input,$displayWidth[$col]);
                             $col++;
-                            //echo str_pad($name,$displayWidth[$name]);
                             }
                         $line++;
-                        //echo "\n";
+                        if ($dotext) echo "\n";
                         }
-                    $col=0;
-                    //print_r($display);
-                    foreach ($display as $name => $itemBox)                    // die anderen Zeilen werden entsprechend display vorverarbeitet
+                    else
                         {
-                        if (is_array($itemBox)) $item=$itemBox["format"];
-                        else $item=$itemBox;
-                        if ((isset($inputLine["currency"])) && ($item=="<currency>")) $item=$inputLine["currency"];              // die Währung wird sich aus der gleichen tabelle aus einer anderen Spalte geholt
-                        if (isset($inputLine[$name]))                                       // schauen ob es diese Zele auch wirklich gibt, sonst leer ausgeben
+                        $col=0;
+                        if ($debug>1) echo "Continous Row :\n";
+                        //print_r($display);
+                        $displayOutputLine=array();
+                        foreach ($display as $name => $itemBox)                    // die anderen Zeilen werden entsprechend display vorverarbeitet
                             {
-                            $displayOutput[$line][$col] = nf($inputLine[$name],$item)." ";              //nf übernimmt die Formatierung
-                            //echo ".".$inputLine[$name]."($name)";
+                            if (is_array($itemBox)) $item=$itemBox["format"];
+                            else $item=$itemBox;
+                            if ((isset($inputLine["currency"])) && ($item=="<currency>")) $item=$inputLine["currency"];              // die Währung wird sich aus der gleichen tabelle aus einer anderen Spalte geholt
+
+                            if (isset($inputLine[$name]))                                       // schauen ob es diese Zelle auch wirklich gibt, sonst leer ausgeben
+                                {
+                                $input = nf($inputLine[$name],$item)." ";              //nf übernimmt die Formatierung
+                                }
+                            else $input = "";
+                            $displayOutputLine[$col]=$input;
+                            if ($dotext) echo str_pad(nf($input,$item)." ",$displayWidth[$col]);
+                            $col++;
                             }
-                        else $displayOutput[$line][$col] = "";
-                        $width=strlen($displayOutput[$line][$col]);
-                        if ($width>$displayWidth[$col]) $displayWidth[$col] = $width;
-                        $col++;
-                        //echo str_pad(nf($inputLine[$name],$item)." ",$displayWidth[$name]);
+                        if ($filter)
+                            {
+                            //echo "filter";
+                            $found=false;
+                            foreach ($filter as $column => $value)
+                                {
+                                if (isset($displayOutputLine[$column]))
+                                    {
+                                    $pos = strpos($displayOutputLine[$column],$value);    
+                                    if ($pos) $found=true;
+                                    //echo $pos;
+                                    }
+                                }
+                            if ($found) $displayOutput[$line]=$displayOutputLine;
+                            //echo "Config Filter gesetzt";
+                            }
+                        else $displayOutput[$line]=$displayOutputLine;
+                        $line++;
+                        if ($dotext) echo "\n";  
                         }
-                    $line++;
-                    //echo "\n";  
                     }
                 //print_R($displayOutput);
 
                 if ($html)              // Textausgabe als html Tabelle, displayOutput ist die bereits vorverarbeitete Quelle der Ausgabe
                     {
                     $size=-1;                   //responsive
-                    $id="easycharts-api";
-                    $wert=""; 
-                    $wert="<style>";
-                    $wert.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
-                    if ($size==0) $wert.='font-size: 100%; width: 100%;';
-                    elseif ($size==-1) $wert.='font-size:50%vw; max-width: 900px ';        // responsive font size
-                    else $wert.='font-size: 150%; width: 100%;';
-                    $wert.='color:black; border-collapse: collapse;  }';
-                    //$wert .= '<font size="1" face="Courier New" >';
-                    $wert.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
-                    $wert.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
-                    $wert.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
-                    $wert.='#'.$id.' tr:hover {background-color: #ddd;}';
-                    $wert.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
-                    $wert.="</style>";
-                    $text .= '<div id="'.$id.'">';
-                    $wert .= '<table>';
-                    $text .= $wert;
-                    if (false)
+                    $text=""; 
+                    //if (false)          // mit einzigartiger id
+                        {
+                        $text .= "<style>";
+                        $text.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
+                        if ($size==0) $text.='font-size: 100%; width: 100%;';
+                        elseif ($size==-1) $text.='font-size:50%vw; max-width: 900px ';        // responsive font size
+                        else $text.='font-size: 150%; width: 100%;';
+                        $text.='color:black; border-collapse: collapse;  }';
+                        //$wert .= '<font size="1" face="Courier New" >';
+                        $text.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+                        $text.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
+                        $text.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
+                        $text.='#'.$id.' tr:hover {background-color: #ddd;}';
+                        $text.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
+                        $text.="</style>";
+                        $text .= '<div id="'.$id.'">';
+                        $text .= '<table class="sortierbar">';
+                        }
+                    if (false)          // mit class, mehrfach verwendbar, aber nur einmal definierbar, im Skin css
                         {                        
                         $text .= '<style>';
                         $text .= 'table.quicky { border:solid 5px #006CFF; margin:0px; padding:0px; border-spacing:0px; border-collapse:collapse; line-height:22px; font-size:13px;'; 
@@ -7796,16 +8017,39 @@ class ipsTables
                         $text .= '';
                         $text .= '</style>';
                         $text .= '<div class="quicky">';
-                        $text .= '<table>';
+                        $text .= '<table class="sortierbar">';                        
                         }
+                    if (false)          // mit class aber selber formatierung
+                        {
+                        $text .= "<style>";
+                        $text .= 'table.'.$id.' { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
+                        if ($size==0) $text.='font-size: 100%; width: 100%;';
+                        elseif ($size==-1) $text.='font-size:50%vw; max-width: 900px ';        // responsive font size
+                        else $text.='font-size: 150%; width: 100%;';
+                        $text.='color:black; border-collapse: collapse;  }';
+                        //$wert .= '<font size="1" face="Courier New" >';
+                        $text .= ' td.'.$id.', #customers th { border: 1px solid #ddd; padding: 8px; }';
+                        $text .= ' tr.'.$id.':nth-child(even){background-color: #f2f2f2;color:black;}';
+                        $text .= ' tr.'.$id.':nth-child(odd){background-color: #e2e2e2;color:black;}';
+                        $text .= ' tr.'.$id.':hover {background-color: #ddd;}';
+                        $text .= ' th.'.$id.' { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
+                        $text .= "</style>";
+                        $text .= '<div class="'.$id.'">';
+                        $text .= '<table class="sortierbar">';
+                        }                        
                     foreach ($displayOutput as $line => $row)
                         {
-                        $text .= '<tr>';
+                        if ($doheader) 
+                            {
+                            if ($line==0) $text .= '<thead><tr>';
+                            if ($line==1) $text .= '<tbody><tr>';
+                            }
+                        else $text .= '<tr>';
                         foreach ($row as $col => $item)
                             {
-                            if ( ($config["header"]) && ($line==0) )
+                            if ( ($doheader) && ($line==0) )
                                 {
-                                $text .= '<th>';
+                                $text .= '<th id="'.$hid.'-'.$col.'">';
                                 $text .= $item;
                                 $text .= '</th>'; 
                                 }
@@ -7816,9 +8060,10 @@ class ipsTables
                                 $text .= '</td>';
                                 }
                             }
-                        $text .= '</tr>';
+                        if ( ($doheader) && ($line==0) ) $text .= '</thead></tr>';
+                        else $text .= '<tr>';
                         }
-                    $text .= '</table>';
+                    $text .= '</tbody></table>';
                     $text .= '</div>';
                     if ($debug) echo $text;
                     }
@@ -7839,7 +8084,7 @@ class ipsTables
                 }
             else
                 {
-
+                echo "Struktur der Daten nicht erkannt.\n";
                 }  
             }
         else
@@ -8688,7 +8933,7 @@ class ipsOps
      * als Returnwert wird üblicherweise das inputArray verwendet, return sortArray nur als Hilfestellung
      *
      * es muss ein zweidimensionales array mit Zeilen und Spalten sein
-     * zuerst die Zeilen udn die Spalten durchgehen udn ein Array mit den sortierenden Elementen anlegen
+     * zuerst die Zeilen und die Spalten durchgehen und ein Array mit den sortierenden Elementen anlegen
      *
      */
 

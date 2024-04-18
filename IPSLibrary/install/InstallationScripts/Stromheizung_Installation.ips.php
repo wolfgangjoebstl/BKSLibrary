@@ -108,6 +108,10 @@
 	$profilname=array("mode.HM"=>"update");
     $profileOps->synchronizeProfiles($profilname);
 
+    /* known Profile for Webfront Tiles:  ~TWColor instead of ColorTemperatureSelect.Hue
+     * https://www.symcon.de/de/service/dokumentation/komponenten/objekt-darstellung/farbtemperatur/
+     */
+
 /*******************************
  *
  * wichtige Kategorien anlegen, werden für wfcHandling benötigt
@@ -130,21 +134,7 @@
 	
     $wfcHandling =  new WfcHandling();
     $wfcHandling->get_WfcStatus();
-    $WebfrontConfigID = $wfcHandling->installWebfront();
-
-    /*echo "\n";
-	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
-	
-	$WebfrontConfigID=array();
-	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
-	foreach ($alleInstanzen as $instanz)
-		{
-		$result=IPS_GetInstance($instanz);
-		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
-		}
-	echo "\n"; */
+    $WebfrontConfigID = $wfcHandling->installWebfront();            // Webfront Administrator, User und Kachel Visulaisiserung anlegen
 	
 /*******************************
  *
@@ -203,83 +193,6 @@ Path=Visualization.Mobile.Stromheizung
 
     $ipsOps->writeConfigWebfrontAll($configWFront);
 
-    /*
-	if ($WFC10_Enabled==true)
-		{
-		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
-		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-		$WFC10_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',"HeatTPA");
-		$WFC10_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10',"roottp");
-		$WFC10_TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10',"");
-		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10',"Temperature");
-		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10',300);
-		$WFC10_TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10',"");
-		$WFC10_TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10',"");
-		$WFC10_TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10',"");
-		$WFC10_TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10',"");
-		echo "WF10 Administrator\n";
-		echo "  Path          : ".$WFC10_Path."\n";
-		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";		
-		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10_TabItem."\n";
-		echo "  TabName       : ".$WFC10_TabName."\n";
-		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10_TabOrder."\n";
-		}
-
-	echo "\n";
-
-
-	if ($WFC10User_Enabled==true)
-		{
-		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
-		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10User',"HeatTPU");
-		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10User',"roottp");
-		$WFC10User_TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10User',"");
-		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10User',"Temperature");
-		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10User',300);
-		$WFC10User_TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10User',"");
-		$WFC10User_TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10User',"");
-		$WFC10User_TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10User',"");
-		$WFC10User_TabOrder       = $moduleManager->GetConfigValueIntDef('TabOrder', 'WFC10User',"");
-		echo "WF10 User \n";
-		echo "  Path          : ".$WFC10User_Path."\n";
-		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
-		echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10User_TabItem."\n";
-		echo "  TabName       : ".$WFC10User_TabName."\n";
-		echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
-		}		
-
-
-	if ($Mobile_Enabled==true)
-		{	
-		$Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');
-		$mobile_PathOrder     = $moduleManager->GetConfigValueInt('PathOrder', 'Mobile');
-		$mobile_PathIcon      = $moduleManager->GetConfigValue('PathIcon', 'Mobile');		
-		echo "Mobile \n";
-		echo "  Path          : ".$Mobile_Path."\n";
-		echo "  TabPaneIcon   : ".$mobile_PathIcon."\n";
-		echo "  TabPaneOrder  : ".$mobile_PathOrder."\n";				
-		}
-
-	if ($Retro_Enabled==true)
-		{	
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
-		echo "  Path          : ".$Retro_Path."\n";		
-		}       */
-		
 	$WFC10_Regenerate     = false;			// true, das Webfront im Konfigurator neu aufbauen
 	$mobile_Regenerate    = true;			// das mobile Webfront nicht neu aufbauen
 			
@@ -316,7 +229,7 @@ Path=Visualization.Mobile.Stromheizung
      *
      * for switches and groups
      *
-     * in der data categorie immer für alle children hide machen und nur mehr die auch wirklich in der Konfigiuration sind wieder unhiden 
+     * in der data categorie immer für alle children hide machen und nur mehr die auch wirklich in der Konfiguration sind wieder unhiden 
      * Am Ende müssen eine Menge Objekte gelöscht werden.
      *
 	 * ===================================================================================================   */
@@ -325,6 +238,7 @@ Path=Visualization.Mobile.Stromheizung
     echo "Create Mirror Variables for Switches, dependent on Type create one or more objects.\n";
     $childs=IPS_GetChildrenIDs($categoryIdSwitches);
     foreach ($childs as $child) IPS_SetHidden($child,true);         // alle Switches hide
+
 	$idx = 100;
 	$lightConfig = IPSHeat_GetHeatConfiguration();                  // Switches Configuration, bekannte Switched wieder unhide
 	//print_r($lightConfig);
@@ -361,7 +275,7 @@ Path=Visualization.Mobile.Stromheizung
 				break;
 			case IPSHEAT_TYPE_AMBIENT:
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
-				$miredId  = CreateVariable($deviceName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdSwitches,  $idx, 'ColorTemperatureSelect.Hue',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+				$miredId  = CreateVariable($deviceName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~TWColor',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
 				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
                 IPS_SetHidden($switchId,false); IPS_SetHidden($miredId,false); IPS_SetHidden($levelId,false);
                 //echo "   suche Variable \"".$deviceName.IPSHEAT_DEVICE_COLOR."\"\n";
@@ -412,7 +326,7 @@ Path=Visualization.Mobile.Stromheizung
                     break;
                 case IPSHEAT_TYPE_AMBIENT:                    
 					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
-					$miredId  = CreateVariable($groupName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdGroups,  $idx, 'ColorTemperatureSelect.Hue', $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+					$miredId  = CreateVariable($groupName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdGroups,  $idx, '~TWColor', $scriptIdActionScript, false, 'HollowDoubleArrowRight');
 					$levelId  = CreateVariable($groupName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdGroups,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
                     IPS_SetHidden($switchId,false); IPS_SetHidden($miredId,false); IPS_SetHidden($levelId,false);                
                     break;

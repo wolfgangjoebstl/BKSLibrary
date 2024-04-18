@@ -1,0 +1,106 @@
+body {
+	color:white;
+	font-family: 'PT Sans', 'Droid Sans', arial, sans-serif;
+	margin:0;
+	padding:0;
+	-moz-user-select: none;
+	-khtml-user-select: none;
+	user-select: none;
+}
+
+a:link, a:visited, a:active, a:hover {
+	color: #ffaaff;
+	text-decoration: none;
+}
+
+a:hover {
+	color: #4f7acf;
+}
+
+/* not needed
+.ipsContainer.htmlBox {
+	height:800px;
+	background-color: #858815;
+} */
+
+.container-cmd      { display:flex; justify-content:space-between;}
+.image-pic0         { width:100%; max-height:700px; display:none;}
+.image-pic4         { width:50%; max-height:350px; display:none;}
+.image-pic9         { width:33%; max-height:240px;display:inline;}
+.button-resp        { color:black; font-size: 1.5vw; align:center; background-color:#a1b1c1;}
+.button-resp:hover  { background-color:#c1b1a1;}
+
+#sp-pic-orf >h2 {font-size: 18px; }
+#sp-pic-orf >p {font-size: 12px; }
+
+.cuw-responsive-iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+    height: 800px;
+  padding-top: 56.25%;
+}
+
+
+.sortbutton { 
+	width: 100%; 
+	height: 100%; 
+	border: none; 
+	background-color: transparent; 
+	font: inherit; 
+	color: inherit; 
+	text-align: inherit; 
+	padding: 0; 
+	cursor: pointer; 
+} 
+.sortierbar thead th span.visually-hidden { 
+	position: absolute !important; 
+	clip: rect(1px, 1px, 1px, 1px) !important; 
+	padding: 0 !important; 
+	border: 0 !important; 
+	height: 1px !important; 
+	width: 1px !important; 
+	overflow: hidden !important; 
+	white-space: nowrap !important; 
+} 
+.sortierbar caption span { 
+	font-weight: normal; 
+	font-size: .8em; 
+}
+.sortbutton svg { 
+	margin-left: .2em; height: .7em; 
+} 
+.sortbutton.sortedasc svg path:last-of-type { 
+	fill: currentColor !important; 
+} 
+.sortbutton.sorteddesc svg path:first-of-type { 
+	fill: currentColor!important; 
+}
+.sortbutton.sortedasc > span.visually-hidden:first-of-type { 
+	display: none;
+} 
+.sortbutton.sorteddesc > span.visually-hidden:last-of-type { 
+	display: none;
+} 
+.sortbutton.unsorted > span.visually-hidden:last-of-type { 
+	display: none;
+}
+
+.standardContainer {
+	position: relative;
+	line-height: 36px;
+	min-height: 36px;
+	margin: 10px;
+	padding: 0 10px;
+	overflow: visible;
+	cursor: default;
+	border: 1px solid rgba(255, 255, 255, 0.25);
+	background: none repeat scroll 0 0 rgba(0, 0, 0, 0.25);
+}
+
+p {
+	margin: 10px;
+}

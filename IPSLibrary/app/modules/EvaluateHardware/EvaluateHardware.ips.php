@@ -212,7 +212,7 @@ IPS_SetEventActive($tim1ID,true);
  *
  *************************************************************/
 
-    if (true)           // keine else mehr, immer ausführen, das heisst jeden Tag oder bei jedem AUfruf ein neues Inventory erstellen
+    if (true)           // keine else mehr, immer ausführen, das heisst jeden Tag oder bei jedem Aufruf ein neues Inventory erstellen
         {
 
         echo "\n";
@@ -309,9 +309,6 @@ IPS_SetEventActive($tim1ID,true);
                     $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
                     $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();          // alle Geräte
                     
-                    $DetectDeviceHandler->create_UnifiedTopologyConfigurationFile($debug); 
-                    //print_r($topology);
-                    
                     echo "CreateTopologyInstances wird aufgerufen, je nach Konfig Place, Room und DeviceGroup einordnen:\n";
                     $topinstconfig = array();
                     $topinstconfig["Sort"]="Kategorie";
@@ -326,6 +323,13 @@ IPS_SetEventActive($tim1ID,true);
                     $debug=true;
                     $topologyLibrary->sortTopologyInstances($deviceList,$topology, $channelEventList,$deviceEventList,$topinstconfig,$debug);           // neu abgeänderte Routine in Arbeit
                     echo "----------------------------------------\n";
+                    
+                    // Teil von Install, trotzdem täglich durchführen
+                    $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$channelEventList,false);        // true,2 for Debug, 1 für Warnings  Verwendet ~ in den Ortsangaben, dadurch werden die Orte wieder eindeutig ohne den Pfad zu wissen
+                    $topinstconfig["Show"]["Instances"]=true;
+                    $topinstconfig["Show"]["LinkFromParent"]=true;
+                    $DetectDeviceHandler->updateLinks($topologyPlusLinks,$topinstconfig,true);                  // In den Topology Category tree einsortieren, true debug                    
+                    $DetectDeviceHandler->create_UnifiedTopologyConfigurationFile($topology,false);            //true für Debug, speichert topology mit neuen erweiterten Indexen in EvaluateHardware_Configuration ab
                     }
                 }           // end isset DetectMovement
             }               // end TopologyMappingLibrary

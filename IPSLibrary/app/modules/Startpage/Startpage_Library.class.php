@@ -41,7 +41,7 @@
      * OperationCenter um den ModulMagerIps7 und HighchartIps7 erweitert 
      * im construct wird bereits ermittelt ob der newstyle anzuwenden ist
      *
-     *
+     * Einstieg mit StartpageWrite
      *----------------------------
      * sammelt alle Routinen für die Erstellung und Verwaltung der Startpage/Dashboard
      * mit der Absage des IPSWeather Moduls wurden die Wetter Aktivitäten hier her verlagert.
@@ -507,6 +507,7 @@
 
         /* StartPageWrite, die Startpage vollständig schreiben, erstellt eine html Tabelle
          * anhand von Pagetype wird eine von mehreren möglichen Darstellungen ausgewählt. createActionProfileByName("StartpageControl")
+         * alle Styles sind hier zusammengefasst: writeStartpageStyle
          *
          * Parameter:
          *       PageType    4 Hierarchie, 3 Topologie, 2 Station, 1 Picture
@@ -3565,9 +3566,10 @@
 			return ($wert);
 			}
 		
-        /********************
+        /* StartpageHandler::writeStartpageStyle
          *
          * Die Tabelle benötigt einen gemeinsamen Style, diesen hier zusammenfassen
+         * wenn input false ist, sucht die Routine das calss Register result
          *
          **************************************/
 
@@ -3620,7 +3622,7 @@
 	        $wert.='.container:hover .middle { opacity: 1; }';
 	        $wert.='.StartPageText { background-color: #4CAF50; color: white; font-size: 16px; padding: 16px 32px; }';          // was former .text only, this is used in standard formatting !!!
             $wert.='.StartPageInfoLine { display: inline-block; padding: 3px 1rem; }';
-            if ($input==false) $wert.=$this->result;
+            if ($input===false) $wert.=$this->result;
             else $wert.=$input;
 	        $wert.='</style>';
 	        return($wert);

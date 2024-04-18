@@ -116,6 +116,14 @@
  *
  * andere classes, siehe weiter unten
  *
+ * nutzt ipsTables, aber noch nicht implementiert, betrifft folgende html Tabellen:
+ *          readSystemInfo
+ *          writeIpTable
+ *          deleteBackupStatusError
+ *          writeTableStatus
+ *
+ *
+ *
  ****************************************************************************************************************/
 
 class OperationCenter

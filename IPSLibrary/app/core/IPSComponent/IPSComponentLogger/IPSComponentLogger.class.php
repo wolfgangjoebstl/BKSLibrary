@@ -1081,7 +1081,7 @@ class Logging
             $this->DetectHandler = new DetectClimateHandler();                            // zum Beispiel für die Evaluierung der Mirror Register       */
             }
 
-        $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+        $this->variablename = $this->getVariableName($variable, $variablename,true);           // true für Debug, function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
 
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden 		
         $moduleManager_CC = new IPSModuleManager('CustomComponent');    //   <--- change here 
@@ -1091,7 +1091,7 @@ class Logging
         switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
             case "CO2":
-                $this->variablename = $this->variablename."CO2";
+                //$this->variablename = $this->variablename."CO2";      // liefert bereits richtigen Variablenname
                 $name="ClimateMirror_".$this->variablename;   // manchmal gibt es unterschiedliche Typen in einem Gerät des selben Components;
                 echo "do_init_climate, Create Auswertung Register ".$this->variablename." as Integer und ".$this->variableProfile."\n";
                 if ($this->variableProfile <> "Netatmo.CO2") IPSLogger_Wrn(__file__, "do_init_climate, Create Auswertung Register ".$this->variablename." as Integer with Profile ".$this->variableProfile." instead of \"Netatmo.CO2\".necessary.");
@@ -1101,7 +1101,7 @@ class Logging
                 $this->variableType=1;
                 break;
             case "BAROPRESSURE":
-                $this->variablename = $this->variablename."BARO";
+                //$this->variablename = $this->variablename."BARO";     // liefert bereits richtigen Variablenname
                 $name="ClimateMirror_".$this->variablename;   // manchmal gibt es unterschiedliche Typen in einem Gerät des selben Components;
                 echo "do_init_climate, Create Mirror Register ".$this->variablename." as Integer und ".$this->variableProfile."\n";
                 if ($this->variableProfile <> "Netatmo.Pressure") IPSLogger_Wrn(__file__, "do_init_climate, Create Auswertung Register ".$this->variablename." as Integer with Profile ".$this->variableProfile." instead of \"Netatmo.CO2\".necessary.");

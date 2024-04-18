@@ -22,11 +22,20 @@
      *      LogEvaluateHardware     Nachrichten.EvaluateHardware.SystemTP
      *
      *      ValuesTable             Werte.HardwareStatus                    DeviceManager->showHardwareStatus  nette Tabelle per Typ, Update onDemand ImproveDeviceDetection
-     *      MessageTable            MessageList.SystemTP                               $testMovement->getComponentEventListTable, Update onDemand ImproveDeviceDetection
-     *      TableEvents             MessageTabellen.SystemTP                 $html=$detectMovement->writeEventlistTable($detectMovement->eventlist), Kategorie data.DetectMovement
+     *      MessageTable            MessageList.SystemTP                    $testMovement->getComponentEventListTable, Update onDemand ImproveDeviceDetection
+     *      TableEvents             MessageTabellen.SystemTP                $html=$detectMovement->writeEventlistTable($detectMovement->eventlist), Kategorie data.DetectMovement
      *
      * Erweiterung um einfache Visualisierungen im Webfront zur Analyse, Darstellung im DoctorBag und Schraubenschlüssel
+     * im Schraubenschlüssel- SystemTP: EvaluateHardware und MessageList
+     *      Subtab mit EvaluateHardware
+     *          darin drei Tabs, Auswertung/StatusOverview und Nachrichten        siehe oben
      *
+     *      Subtab MessageList
+     *          darin html Box Tabelle und einfache Sortieranforderungen per Variable
+     *
+     * im House Icon: EvalTopologyTPA -> HouseTPA -> roottp 
+     *      Subtab mit EvalTopology und  Icon Wellness (Palme)
+     *      das ist die Kategorie Topologie ohne Instanzen wie in Tiles
      *
      */
 
@@ -34,9 +43,15 @@
     IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
     IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+    IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
+    IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(400);                 // max. Scriptlaufzeit definieren
     $startexec=microtime(true);
+    $debug=false;
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     $moduleManager    = new ModuleManagerIPS7('EvaluateHardware',$repository);
@@ -73,6 +88,8 @@
     $ipsOps = new ipsOps();
     $webOps = new webOps();
 
+    $topologyLibrary = new TopologyLibraryManagement();                     // in EvaluateHardware Library, neue Form des Topology Managements
+
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
     $valuesDeviceID                 = CreateVariable("ValuesTable", 3, $CategoryIdData,1020,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $statusDeviceID                 = CreateVariable("StatusDevice", 3, $CategoryIdData,1020,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
@@ -89,7 +106,17 @@
     $actionSortMessageTableID          = CreateVariableByName($categoryId_DetectDevice,"SortTableBy", 1,$pname,"",1010,$scriptIdImproveDeviceDetection);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
     $messageTableID          = CreateVariable("MessageTable", 3, $categoryId_DetectDevice,1010,"~HTMLBox",null,null,"");
 
-   if (  (isset($installedModules["OperationCenter"])) && (isset($installedModules["DetectMovement"]))  )
+    echo "DetectTopologies Tabelle erstellen.\n";
+    $categoryId_DetectTopologies        = CreateCategory('DetectTopologies',        $CategoryIdData, 20);
+    $pname="DetectTopologies";                                         // keine Standardfunktion, da Inhalte Variable
+    $nameID=["View1","View2", "View3"];
+    $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable
+    $actionViewMessageTableID       = CreateVariableByName($categoryId_DetectTopologies,"ViewTableOn", 1,$pname,"",1020,$scriptIdImproveDeviceDetection);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+    $topologyTableID                = CreateVariableByName($categoryId_DetectTopologies,"TopologyViewTable", 3,"~HTMLBox", "", 1010);
+    $topologyControlTableID         = CreateVariableByName($categoryId_DetectTopologies,"TopologyControlTable", 3, "~HTMLBox","", 1030);
+    $topologyConfigTableID          = CreateVariableByName($categoryId_DetectTopologies,"TopologyConfigTable", 3, "","", 1100);
+
+    if (  (isset($installedModules["OperationCenter"])) && (isset($installedModules["DetectMovement"]))  )
         {    
         IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
         $moduleManagerOC 	= new IPSModuleManager('OperationCenter',$repository);
@@ -106,7 +133,12 @@
 		$SchalterSortID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$testMovementscriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     
     	$DetectDeviceHandler = new DetectDeviceHandler();
+        $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
+
         }
+
+    IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+    $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
 
     /* check if Administrator and User Webfronts are already available */
 
@@ -268,6 +300,44 @@
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,["Scope" => "Administrator","EmptyCategory"=>false],true);            //true für Debug
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
 
+        /*-------------------------------------*/
+
+        $configWF["TabPaneItem"]="TopologyList"; 
+        $configWF["TabPaneOrder"]=2020;                                          
+
+        echo "====================================================================================================\n";
+        echo "Webfront TabPaneItem $tabPaneParent.".$configWF["TabPaneItem"]." erzeugen:\n";
+
+        $webfront_links=array(
+            "DetectTopologies" => array(
+                $topologyControlTableID => array(
+                        "NAME"				=> "ControlTable",
+                        "ORDER"				=> 200,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),
+                $actionViewMessageTableID => array(
+                        "NAME"				=> "Ansichten",
+                        "ORDER"				=> 210,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),        
+                $topologyTableID => array(
+                        "NAME"				=> "TopologieTabelle",
+                        "ORDER"				=> 220,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),
+                "CONFIG" => array("type" => "link"),
+                        ),
+                    );	           
+
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,["Scope" => "Administrator","EmptyCategory"=>false],true);            //true für Debug
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+
         }
     /*-------------*/
 
@@ -277,7 +347,7 @@
 
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
-		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
+		echo "Webportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
@@ -295,21 +365,52 @@
 		echo "\nWebportal Topology Datenstruktur installieren in: ".$configWF["Path"]." \n";
         $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]);
 		IPS_SetHidden($categoryId_WebFrontAdministrator,true);
-		$worldID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);           // Wird nicht mehr neu benannt, wenn schon einmal verhonden
+		$worldID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);           // Wird nicht mehr neu benannt, wenn schon einmal verhanden
 	    //EmptyCategory($worldID);                                                              // die wird nicht mehr erzeugt
         $wfcHandling->DeleteWFCItems("World");
 		$wfcHandling->CreateWFCItemCategory  ('WorldTPA', $configWF["TabPaneItem"],   10, 'World', 'Wellness', $worldID   /*BaseId*/, 'true' /*BarBottomVisible*/);
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
 
-        if (isset($DetectDeviceHandler))		// Die Kategorie World in Webfront-EvaluateHardware wird in DetectMovement_Installation mit Werten befüllt
-            {
-            $DetectDeviceHandler->create_Topology(true, true);            // true für init - bedeutet World kategorie wird gelöscht, true für Debug
-            $topology=$DetectDeviceHandler->Get_Topology();
-            $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
-            $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,false);        // true for Debug
-            $DetectDeviceHandler->updateLinks($topologyPlusLinks);
-            }
+        // Die Kategorie World in Webfront-EvaluateHardware wird in DetectMovement_Installation mit Werten befüllt
+
 		}
+
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * Webfront Tiles aufbauen, Struktur mit Instanzen in Topology aufbauen
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+
+    if (isset($DetectDeviceHandler))		
+        {
+        $topId=@IPS_GetObjectIDByName("Topology", 0 );            
+        $topConfig["ID"]=$topId;
+        $topConfig["Use"]=["Place","Room","Device"];
+        // init nicht aktiviert, eigene Config hier.
+        echo "====================================================================================\n";
+		echo "Webportal Tiles/Kacheln mit Startpunt Topology aufbauen:\n";
+        echo "TopologyID gefunden : $topId, eine Topologie mit Kategorien hier erstellen.\n";
+        $DetectDeviceHandler->create_Topology($topConfig, $debug);            // true für init, true für Debug, bei init löscht sich die ganze Kategorie und baut sie neu auf, macht auch schon _construct
+        $topology=$DetectDeviceHandler->Get_Topology();
+        $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
+        $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();          // alle Geräte
+        $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+        echo "CreateTopologyInstances wird aufgerufen, erzeugt die Instances Place, Room und Device/Devicegroup aus der TopologyLibrary:\n";
+        $topinstconfig = array();
+        $topinstconfig["Sort"]="Kategorie";
+        $topinstconfig["Use"]["Room"]=true;
+        $topinstconfig["Use"]["Place"]=true;
+        $topinstconfig["Use"]["DeviceGroup"]=true;
+        $topologyLibrary->createTopologyInstances($topology,$topinstconfig, $debug);          // true für Debug, erzeugt eh keine Devices            
+        $topinstconfig["Use"]["Device"]="Actuators";                               // nur die Actuators hinzufügen
+        $topologyLibrary->sortTopologyInstances($deviceList, $topology, $channelEventList, $deviceEventList,$topinstconfig,$debug);          // die Devices hinzunehmen und einsortieren
+        $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,$debug);        // true for Debug
+        $DetectDeviceHandler->updateLinks($topologyPlusLinks);
+        }
+
+
+
+
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *

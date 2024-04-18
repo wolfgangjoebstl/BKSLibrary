@@ -124,6 +124,32 @@
             $this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			}
 
+        /* get protected Detect_DataID, das ist die Component Category aus CustomCoponent für die jeweilige Class
+         *
+         */
+        public function getDetectDataID()
+            {
+            return ($this->Detect_DataID);
+            }
+
+        /* clone profile and type from original variable
+         */
+        protected function cloneProfileandType($variableId,$output=false)
+            {
+            $variableProfile=IPS_GetVariable($variableId)["VariableProfile"];
+            if ($variableProfile=="") $variableProfile=IPS_GetVariable($variableId)["VariableCustomProfile"];
+            $type=IPS_GetVariable($variableId)["VariableType"];
+            switch ($type)
+                {
+                case 0: $variableType="Boolean"; break;
+                case 1: $variableType="Integer"; break;
+                case 2: $variableType="Float"; break;
+                case 3: $variableType="String"; break;
+                }
+            if ($output) return ($variableType.".".$variableProfile);
+            else return ([$variableType,$variableProfile]);
+            }
+
 		/**
 		 * @private, DetectHandler
 		 *
@@ -285,8 +311,7 @@
 				}
 			}
 
-		/**
-		 * @public
+		/* DetectHandler::ListEvents
 		 *
 		 * Listet anhand der Konfiguration alle Events als array
 		 * Erster Parameter ist ein bekannter Event Typ. Wenn kein Eventtyp übergeben wird, wird dieser ausgegeben.
@@ -335,8 +360,7 @@
 			return ($result);
 			}
 
-		/**
-		 * @public
+		/* DetectHandler::ListGroups
 		 *
 		 * Listet anhand der Konfiguration alle Gruppen. Das ist der zweite Parameter.
 		 * Wenn type angegeben wird und bekannt ist werden auch mehrer Gruppen die durch "," getrennt sind ebenfalls aufgelöst
@@ -384,6 +408,7 @@
                 }
             else
                 {
+                echo get_class($this)."::ListGroups, Aufruf mit $type,$varId \n";
                 switch ($type)
                     {
                     case "Sensor":
@@ -437,6 +462,7 @@
 					case 'Motion':
 					case 'Temperatur':	
 					case 'Topology':
+                    case "Climate":
                         $result[$oid]["Room"] = $eventConfig[1];
                         $typedevs=explode(",",$eventConfig[2]);
                         foreach ($typedevs as $typedev)
@@ -509,8 +535,7 @@
             return ($mirrorID);
             }
 
-		/**
-		 * @public getMirrorRegisterNamefromConfig
+		/* DetectHandler::getMirrorRegisterNamefromConfig
          *
          * liest die configuration des Events aus. Wenn ein Mirror Index vorkommt, diesen ausgeben.
 		 *
@@ -524,8 +549,7 @@
             else return (false);
             }  
 
-		/** 
-		 * getMirrorRegisterName    ermittelt den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
+		/* DetectHandler::getMirrorRegisterName    ermittelt den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
          *
 		 *  wenn der Name Bestandteil der Config, dann diesen nehmen
          *  sonst schauen ob der Parent eine Instanz ist, dann den Namen der Instanz nehmen, oder
@@ -1100,7 +1124,7 @@
 			return ($mirrorID);			
 			}
 
-		/**
+		/* DetectSensorHandler::InitGroup
 		 *
 		 * Die DetectSensorHandler Sensor Gesamtauswertung_ Variablen erstellen 
 		 *
@@ -1256,7 +1280,7 @@
 			return ($mirrorID);			
 			}
 
-		/**
+		/* DetectCounterHandler::InitGroup
 		 *
 		 * Die DetectCounterHandler Sensor Gesamtauswertung_ Variablen erstellen 
 		 *
@@ -1372,20 +1396,32 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 
-		/**
-		 * getMirrorRegister für Climate
-		 * 
+		/* DetectClimateHandler::getMirrorRegister 
+		 * Achtung, für Climate gibt es einen anderen MirrorRegisterName, Endung CO2 oder BARO
 		 */
 
 		public function getMirrorRegister($variableId, $debug = false)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
+            switch ($format=$this->cloneProfileandType($variableId,true)) 
+                {
+                case "Integer.Netatmo.CO2":
+                    $variablename=$variablename."CO2";
+                    break;  
+                case "Float.Netatmo.Pressure":
+                    $variablename=$variablename."BARO";
+                    break;  
+                default:
+                    echo "DetectClimateHandler::getMirrorRegister $format unknown. \n";
+                    break;
+                }
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
             if ($mirrorID === false) echo "Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             return ($mirrorID);
             }
 
-		/**
+		/* DetectClimateHandler::CreateMirrorRegister
+         *
 		 * Das DetectClimateHandler Spiegelregister anlegen
 		 * 
 		 */
@@ -1393,8 +1429,8 @@
 		public function CreateMirrorRegister($variableId,$debug=false)
 			{
             if ($debug) echo "   DetectClimateHandler::CreateMirrorRegister in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).").\n";    
-
-            /* clone profile and type from original variable */
+            //$format = $this->cloneProfileandType($variableId,false);          /* clone profile and type from original variable */
+            
             $variableProfile=IPS_GetVariable($variableId)["VariableProfile"];
             if ($variableProfile=="") $variableProfile=IPS_GetVariable($variableId)["VariableCustomProfile"];
             $variableType=IPS_GetVariable($variableId)["VariableType"];
@@ -1412,31 +1448,41 @@
 			return ($mirrorID);			
 			}
 
-		/**
+		/* DetectClimateHandler::InitGroup
 		 *
-		 * Die Climate Gesamtauswertung_ Variablen erstellen 
-		 *
+		 * Die Climate Gesamtauswertung_ Variablen erstellen, es können verschiedene Variablen sein, diese Rutine fasst mehrere Variabletypen zusammen 
+		 * CO2 in ppm, Baro in mbar
+         * mit ListGroups("Climate") wurden die verschiedenen Gruppen berechnet, der Reihe nach hier InitGroup aufrufen
 		 */
 
-		function InitGroup($group)
+		function InitGroup($group, $debug=false)
 			{
-			echo "\nDetect Climate Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			if ($debug) echo "\nDetect Climate Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
-			$status=false; $status1=false;
-			foreach ($config as $oid=>$params)
+            //print_R($config);                     // Register die zu dieser Gruppe gehören ausgeben, sollten dem selben Variablentyp angehören
+			$status1=(float)0; $count1=0;
+            $status=(float)0; $count=0;
+			foreach ($config as $oid=>$params)          // [xxx0] => Innen, gibt Name/Parent/Parent aus
 				{
-				$status=$status || GetValue($oid);
-				echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+                $status+=GetValue($oid);
+				$count++;
+				if ($debug) echo "  OID:     ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".GetValue($oid)." ".$status."\n";
+                $format = $this->cloneProfileandType($oid,false);
 				$moid=$this->getMirrorRegister($oid);
-				if ($moid !== false) $status1=$status1 || GetValue($moid);
-
-                // clone profile and type from original variable 
-                $variableProfile=IPS_GetVariable($variableId)["VariableProfile"];
-                if ($variableProfile=="") $variableProfile=IPS_GetVariable($variableId)["VariableCustomProfile"];
-                $variableType=IPS_GetVariable($variableId)["VariableType"];                
+				if ($moid !== false) 
+                    {
+                    //echo "Mirror Register found.\n";
+                    $status1+=GetValue($moid);
+                    $count1++;
+                    if ($debug) echo "     MOID: ".$moid." Name: ".str_pad((IPS_GetName($moid)."/".IPS_GetName(IPS_GetParent($moid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($moid)))),50)."Status: ".GetValue($moid)." ".$status1."\n";
+                    $format = $this->cloneProfileandType($moid,false);
+                    }
+                if ($debug) echo "         OID:  ".$this->cloneProfileandType($oid,true)."  MOID:  ".$this->cloneProfileandType($moid,true)." \n";
 				}
-			echo "  Gruppe ".$group." hat neuen Status, Wert ".(integer)$status." \n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,$variableType,$this->Detect_DataID,1000, $variableProfile, null,false);
+            if ($count>0) { $status=round($status/$count,1); }  
+            if ($count1>0) { $status1=round($status1/$count,1); }              
+			echo "  Gruppe ".$group." hat neuen Status, Wert ".$status."    $status1\n";
+			$statusID=CreateVariable("Gesamtauswertung_".$group,$format[0],$this->Detect_DataID,1000, $format[1], null,false);           // format = [type,profile], wenn vorhanden ist das das format vom vereinheitlichten Spiegelregister
 			SetValue($statusID,$status);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -1445,7 +1491,47 @@
 			IPS_ApplyChanges($archiveHandlerID);
 			return ($statusID);			
 			}  
-			
+
+		/**
+		 *
+		 * Die Climate Gesamtauswertung_ Variablen berechnen 
+		 *
+		 */
+		function CalcGroup($config,$debug=false)
+			{
+			//if ($debug) echo "\nCalcgroup ".json_encode($config)."\n";
+            $status=(float)0;                       // Status zusammenzählen
+            $power=(float)0;                        // Leistung zusammenzählen
+            $count=0;
+			foreach ($config as $oid=>$params)
+				{
+                $mirrorID=$this->getMirrorRegister($oid);
+                $variablename=IPS_GetName($mirrorID);
+                $mirrorPowerID=@IPS_GetObjectIDByName($variablename."_Power",$mirrorID);                    
+                //$status+=GetValue($oid);                  // unterschiede Integer und Power
+                if ($mirrorID) $status+=GetValue($mirrorID);
+                if ($mirrorPowerID) $power+=GetValue($mirrorPowerID);
+                $count++;                
+                /* Ausgabe der Berechnung der Gruppe */
+                if ($debug) 
+                    {
+                    echo "    OID: ".$oid;
+                    //echo " Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)                
+                    echo " Name: ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50);
+                    echo "Status (LEVEL | POWER) ".str_pad(GetValue($oid),10)." ".str_pad($status,10)." | ";
+                    if ($mirrorPowerID) echo str_pad(GetValue($mirrorPowerID),10);
+                    else echo "   0  ";
+                    echo "   ".$power."\n";
+                    }
+				}
+            if ($count>0) { $status=$status/$count; }
+            echo "Gruppe hat neuen Status : ".$status." | ".$power."\n";                
+            /* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
+			return ($power);			
+			}					
+
+
+
 		}
 
 /******************************************************************************************************************/
@@ -2492,29 +2578,6 @@
 			if ($debug) echo "\nDetect HeatControl Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
             $power = $this->CalcGroup($config);
-        /*  $status=(float)0;                       // Status zusammenzählen
-            $power=(float)0;                        // Leistung zusammenzählen
-            $count=0;
-			foreach ($config as $oid=>$params)
-				{
-                $mirrorID=$this->getMirrorRegister($oid);
-                $variablename=IPS_GetName($mirrorID);
-                $mirrorPowerID=@IPS_GetObjectIDByName($variablename."_Power",$mirrorID);                    
-                $status+=GetValue($oid);
-                if ($mirrorPowerID) $power+=GetValue($mirrorPowerID);
-                $count++;                
-                // Ausgabe der Berechnung der Gruppe 
-                echo "OID: ".$oid;
-                //echo " Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)                
-                echo " Name: ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50);
-                echo "Status (LEVEL | POWER) ".GetValue($oid)." ".$status." | ";
-                if ($mirrorPowerID) echo GetValue($mirrorPowerID);
-                else echo "   0  ";
-                echo "   ".$power."\n";
-				}
-            if ($count>0) { $status=$status/$count; }
-            echo "Gruppe ".$group." hat neuen Status : ".$status." | ".$power."\n";     */
-
             /* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
             $statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, "~Power", null, null);
 			//$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Power', null,false);
@@ -3077,7 +3140,7 @@
          * während get_Topology der allgemeine input des users ist, ist $getUnifiedTopology die übergeordnete Topologie, ähnlich der Function devicelist
          *
          */
-        public function create_UnifiedTopologyConfigurationFile($debug=false)
+        public function create_UnifiedTopologyConfigurationFile($topology=false, $debug=false)
             {
             $ipsOps=new ipsOps();                
 			$fileNameFull = $this->Get_ConfigFileName();
@@ -3086,10 +3149,12 @@
                 {
                 throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
                 }
+            if (is_array($topology)===false) $topology=$this->topology; 
+            
             $comment = "//last time written on ".date("d.m.Y H:i:s")."\n       ";
             $fileContent = file_get_contents($fileNameFull, true);
             $configString="";
-            $ipsOps->serializeArrayAsPhp($this->topology, $configString, 0, 10, false);          // true mit Debug, ConfigString mit Zusatzinformationen anreichern, mit ident 10 anfangen
+            $ipsOps->serializeArrayAsPhp($topology, $configString, 0, 10, false);          // true mit Debug, ConfigString mit Zusatzinformationen anreichern, mit ident 10 anfangen
             //$search1='$getUnifiedTopology = array(';
             $search1='get_UnifiedTopology(';                        // vor dem Kommentarfeld schon zu ersetzen beginnen
             $search2='return $getUnifiedTopology;';
@@ -3680,8 +3745,14 @@
          *      nix implementiert         
          */
 
-        public function updateLinks($topologyPlusLinks,$debug=false)
+        public function updateLinks($topologyPlusLinks,$config=false, $debug=false)
             {
+            $doInstances=false; $doLinkFromParent=false;
+            if (is_array($config))
+                {
+                if (isset($config["Show"]["Instances"])) $doInstances=$config["Show"]["Instances"];
+                if (isset($config["Show"]["LinkFromParent"])) $doLinkFromParent=$config["Show"]["LinkFromParent"];
+                }
             foreach ($topologyPlusLinks as $place => $entry)            // $topologyPlusLinks Eintrag für Eintrag durchgehen, das sind alle Räume mit uniqueName
                 {
                 // input Werte aus dem array darstellen, Zusammenafssung aller TOPO, OBJECT und INSTANCE arrays, INSTANCE wird nur angezeigt wenn keine OBJECT definiert
@@ -3705,11 +3776,21 @@
                     }
                 if (isset($entry["Path"])) echo "    ".$entry["Path"];    
                 echo "\n";
+                if ( (isset($entry["OID"])) && (is_numeric($entry["OID"])) )     // Category, do children hide
+                    {
+                    $childs=IPS_GetChildrenIDs($entry["OID"]);
+                    foreach ($childs as $child) 
+                        {
+                        $objectType=IPS_GetObject($child)["ObjectType"];
+                        if ($objectType==6) IPS_SetHidden($child,true);
+                        }
+                    }
                 if ($topo)          // ROOM oder DEVICE
                     {
+                    echo "      TOPO  :\n";
                     foreach ($entry["TOPO"] as $type => $subentry)   // TOPO -> Room -> oid source -> name of link
                         {
-                        echo "      $type  :\n";
+                        echo "           $type  :\n";
                         switch ($type)
                             {
                             case "DEVICE":                                  // mehrere Device
@@ -3729,10 +3810,11 @@
                                                 if (isset($entry["Actuators"][$devicename]["TopologyInstance"]))
                                                     {
                                                     $topologyinstance=$entry["Actuators"][$devicename]["TopologyInstance"];         // wird nur hier gebraucht
-                                                    echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                                                    echo "              ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
                                                     if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
                                                     echo "\n";
-                                                    CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
+                                                    $linkId=CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
+                                                    IPS_SetHidden($linkId,false);
                                                     }
                                                 else
                                                     {
@@ -3760,11 +3842,23 @@
                                         }
                                     else
                                         {
-                                        echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                                        echo "             ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
                                         if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
                                         echo "\n";
-                                        CreateLinkByDestination($name, $oid, $topologyinstance, 1000);	                
+                                        $linkId=CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
+                                        IPS_SetHidden($linkId,false);	                
                                         }                    
+                                    }
+                                if ($doLinkFromParent)
+                                    {
+                                    $parent = $entry["Parent"];
+                                    if (isset($topologyPlusLinks[$parent]["OID"]))
+                                        {
+                                        $parentId = $topologyPlusLinks[$parent]["OID"];
+                                        echo "            Link at Parent, Look for $parent in Kategorie $parentId, Name ".$entry["Name"]." \n";
+                                        $linkId=CreateLinkByDestination($entry["Name"], $topologyinstance, $parentId, 10);
+                                        IPS_SetHidden($linkId,false);
+                                        }
                                     }
                                 break;
                             default:
@@ -3790,13 +3884,18 @@
                                 echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
                                 if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
                                 echo "\n";
-                                if (is_numeric($entry["OID"])) CreateLinkByDestination($name, $oid, $entry["OID"], 1000);	                
+                                if (is_numeric($entry["OID"])) 
+                                    {
+                                    $linkId=CreateLinkByDestination($name, $oid, $entry["OID"], 1000);
+                                    IPS_SetHidden($linkId,false);	                
+                                    }
                                 else 
                                     {
                                     if (isset($entry['TopologyInstance'])) 
                                         {
                                         $topologyinstance=$entry["TopologyInstance"];
-                                        CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
+                                        $linkId=CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
+                                        IPS_SetHidden($linkId,false);
                                         }
                                     else echo "Entry OID is not numeric, TopologyInstance not available, probably none and no TOPD Instanz, ie DeviceGroup Entry.\n";
                                     }
@@ -3804,7 +3903,35 @@
                             }
                         }
                     }
-                if ($instance);             // vorerst der Übersichtlichkeit wegen keine Instanzen als Link hinzufügen
+                /* vorerst der Übersichtlichkeit wegen keine Instanzen als Link hinzufügen, daher ab jetzt konfigurierbar
+                 * [INSTANCE] => Array   (  [10xx] => Hue Smart button 2, ) 
+                 */
+                if ($instance && $doInstances)             // 
+                    {
+                    echo "      INSTANCE  :\n";
+                    foreach ($entry["INSTANCE"] as $oid => $name)
+                        {
+                        if (IPS_ObjectExists($oid)===false)
+                            {
+                            echo "        $oid   -> ***** Failure, dont know Instance ID.\n";
+                            }
+                        else
+                            {
+                            echo "        $oid   -> $name\n";
+                            if (is_numeric($entry["OID"])) 
+                                {
+                                $linkId=CreateLinkByDestination($name, $oid, $entry["OID"], 2000);	
+                                IPS_SetHidden($linkId,false);                
+                                }
+                            elseif (isset($entry['TopologyInstance'])) 
+                                {
+                                $linkId=CreateLinkByDestination($name, $oid, $entry["TopologyInstance"], 2000);
+                                IPS_SetHidden($linkId,false);
+                                }
+                            else echo "Entry OID is not numeric, TopologyInstance not available, probably none and no TOPD Instanz, ie DeviceGroup Entry.\n";
+                            }
+                        }
+                    }
                 echo "\n";
                 //print_R($entry);
                 }       // ende foreach

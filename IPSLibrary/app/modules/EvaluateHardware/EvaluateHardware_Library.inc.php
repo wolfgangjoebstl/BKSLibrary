@@ -894,6 +894,215 @@ class TopologyLibraryManagement
 
     }       // ende class
 
+/**************************************************************
+ *
+ * Webfront Darstellungs Unterstützung
+ *
+ */
+
+class showEvaluateHardware
+    { 
+
+    protected $topologyControlTableID,$topologyConfigTableID;
+    protected $topologyConfig;
+
+    /* construct, wichtige Variablen und Konfigurationen zur Darstellung
+     */
+
+    public function __construct()
+        {
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        $moduleManager    = new ModuleManagerIPS7('EvaluateHardware',$repository);
+        $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+        $categoryId_DetectTopologies = @IPS_GetCategoryIDByName('DetectTopologies', $CategoryIdData);
+        if ($categoryId_DetectTopologies)
+            {
+            $this->topologyControlTableID = IPS_GetVariableIDByName("TopologyControlTable",$categoryId_DetectTopologies);   
+            $this->topologyConfigTableID = IPS_GetVariableIDByName("TopologyConfigTable",$categoryId_DetectTopologies);
+            }
+        }
+
+    /* use config of class, update it
+     */
+    public function setTopologyConfig($config)  
+        {
+        $this->topologyConfig=$config;
+        }
+
+    /* eine Tabelle zum Konfigurieren von Filtern bauen
+     */
+    public function showControlLine($configInput=false)
+        {
+        $table=false;
+        if (is_array($configInput)) $config = $configInput;
+        if (isset($config["display"]))
+            {
+            $table="<table><tr>";
+            foreach ($config["display"] as $index=>$entry)
+                {
+                if ((is_array($entry)) && (isset($entry["header"]))) $header=$entry["header"];
+                else $header=$entry;
+                $table .= "<th>".$header."</th>";
+                }
+            $table .= "</tr></table>";
+            }
+        $html  = "";
+        //$html  .= '<script type="text/javascript" src="/user/EvaluateHardware/jquery-3.7.1.min.js"></script>';        // diese oder eine ähnliche Datei sollte bereits geladen sein
+        //$html  .= '<script type="text/javascript" src="/user/EvaluateHardware/EvaluateHardware.js" ></script>';       // kein Verweis auf externe javascript Dateien ohne iframe
+
+
+        $html .= '<script type="text/javascript">';
+        //$html .= '$(document).ready(function(){ ';                        // jquery nicht rechtzeitig geladen
+        $html .= 'function ready(callback){                                     // in case the document is already rendered
+                if (document.readyState!=\'loading\') callback();           // modern browsers
+                else if (document.addEventListener) document.addEventListener(\'DOMContentLoaded\', callback);
+                // IE <= 8
+                else document.attachEvent(\'onreadystatechange\', function(){
+                    if (document.readyState==\'complete\') callback();
+                    });
+            }
+            ready(function(){               ';                              // do something
+        //$html .= '   alert("loaded");';                                   // wird ausgegeben wenn die html Variable im Webfront geschrieben wird oder die Tans im Webfront geändert werden
+        $html .= '     if (typeof trigger_ajax !== "undefined") { document.getElementById("evhw-go").innerHTML = "look here, got loaded, trigger_ajax somewhere else defined"; }
+                       else {
+                            document.getElementById("evhw-go").innerHTML = "look here, got loaded";
+                            }';
+        $html .= '     function EVtrigger_ajax(id, action, module, config) {
+                            //$.ajax({type: "POST", url: "/user/EvaluateHardware/EvaluateHardware_Receiver.php", data: "&id="+id+"&action="+action+"&module="+module+"&info="+info});
+                            var result;			// will become object after assignment
+                            action=EVreadCookie("identifier-symcon-evaluatehardware");
+                            ajax.post("/user/EvaluateHardware/EvaluateHardware_Receiver.php", 
+                                    {id:id,action:action,module:module,info:config},
+                                    function(data, status){	
+                                        var configws = EVVanalyseConfig(data);
+                                        document.getElementById("ev-inf-ajax-id").innerHTML = "Ajax Response: \'"+configws+"\'   "+status + "   " + action + "   " + Date();
+                                        });
+                                };';
+       $html .= '     function EVanalyseConfig(obj) {
+                        var result;
+                        result = JSON.parse(obj);
+                        if (typeof result.module == "undefined") alert ("module identifier not available");
+                        else {
+                            if (result.module=="evaluatehardware")
+                                {
+                                }
+                            else
+                                {
+                                alert (result.module);
+                                if (typeof result.startofscript == "undefined") alert ("startofscript not available");
+                                else {
+                                    var result1 = JSON.parse(result.startofscript);
+                                    if (typeof result1.startofscript == "undefined") alert ("startofscript.startofscript not available");
+                                    if (typeof result1.buttoneins == "undefined") alert ("startofscript.buttoneins not available");
+                                        {
+                                        var buttoneins = JSON.parse(result1.buttoneins);
+                                        if (typeof buttoneins.info == "undefined") alert ("startofscript.buttoneins.info not available");
+                                        picture = buttoneins.info;
+                                        updatePictureStyle(picture);
+                                        }
+                                    return result.startofscript;
+                                    if (typeof result.buttoneins == "undefined") alert ("buttoneins not available");
+                                    }
+                                }
+                            }
+                        return obj;
+                        };';                                	
+       $html .= '     function EVVanalyseConfig(obj) {
+                        var result;
+                        result = JSON.parse(obj);
+                        return obj;
+                        };';  
+       $html .= '     function EVreadCookie(name) {
+                        var nameEQ = encodeURIComponent(name) + "=";
+                        var ca = document.cookie.split(\';\');
+                        for (var i = 0; i < ca.length; i++) {
+                            var c = ca[i];
+                            while (c.charAt(0) === \' \')
+                                c = c.substring(1, c.length);
+                            if (c.indexOf(nameEQ) === 0)
+                                return decodeURIComponent(c.substring(nameEQ.length, c.length));
+                            }
+                        return null;
+                        };
+                ';   
+
+        //$html .= '$("#evhw-go").click(function(){document.getElementById("evhw-go").innerHTML = "empty image picture";});';
+        $html .= 'document.querySelector("#evhw-go").addEventListener("click", (e) => { document.getElementById("evhw-go").innerHTML = "empty image picture";});
+                ';
+	    //$html .= '$("#ev-send-ajax-id").click(function(){ ';                                                                                                                          //jquery ausdesignen, an vanilla javascript gewöhnen
+        $html .= 'document.querySelector("#ev-send-ajax-id").addEventListener("click", (e) => {
+		              //document.getElementById("ev-inf-ajax-id").innerHTML = "ajax request will be send";
+		              EVtrigger_ajax("button-ev3", "Cookie", "evaluatehardware", "");
+		              //document.getElementById("ev-inf-ajax-id").innerHTML = "ajax request was send" + Date();
+		              });'; 
+        $html .= '  var ajax = {};
+                    ajax.x = function () {
+                        if (typeof XMLHttpRequest !== \'undefined\') {
+                            return new XMLHttpRequest();
+                        }
+                        var versions = [
+                            "MSXML2.XmlHttp.6.0",
+                            "MSXML2.XmlHttp.5.0",
+                            "MSXML2.XmlHttp.4.0",
+                            "MSXML2.XmlHttp.3.0",
+                            "MSXML2.XmlHttp.2.0",
+                            "Microsoft.XmlHttp"
+                        ];
+
+                        var xhr;
+                        for (var i = 0; i < versions.length; i++) {
+                            try {
+                                xhr = new ActiveXObject(versions[i]);
+                                break;
+                            } catch (e) {
+                            }
+                        }
+                        return xhr;
+                    };
+
+                    ajax.send = function (url, callback, method, data, async) {
+                        if (async === undefined) {
+                            async = true;
+                        }
+                        var x = ajax.x();
+                        x.open(method, url, async);
+                        x.onreadystatechange = function () {
+                            if (x.readyState == 4) {
+                                callback(x.responseText)
+                            }
+                        };
+                        if (method == \'POST\') {
+                            x.setRequestHeader(\'Content-type\', \'application/x-www-form-urlencoded\');
+                        }
+                        x.send(data)
+                    };
+
+                    ajax.get = function (url, data, callback, async) {
+                        var query = [];
+                        for (var key in data) {
+                            query.push(encodeURIComponent(key) + \'=\' + encodeURIComponent(data[key]));
+                        }
+                        ajax.send(url + (query.length ? \'?\' + query.join(\'&\') : \'\'), callback, \'GET\', null, async)
+                    };
+
+                    ajax.post = function (url, data, callback, async) {
+                        var query = [];
+                        for (var key in data) {
+                            query.push(encodeURIComponent(key) + \'=\' + encodeURIComponent(data[key]));
+                        }
+                        ajax.send(url, callback, \'POST\', query.join(\'&\'), async)
+                    };
+                ';
+        $html .= '   });  ';  
+        $html .= '</script>';  
+        if ($table) $html .= '<div id="evhw-tableheader">'.$table."</div>";              
+        $html .= '<div id="evhw-go" style="display:inline">look here</div>';
+	    $html .= '<div id="ev-inf-ajax-id" style="display:inline; padding:5px">or maybe here</div>';
+	    $html .= '<div id="ev-send-ajax-id" style="display:inline; padding:5px">then press here</div>';   
+        SetValue($this->topologyControlTableID,$html);
+        }
+
+    }    
 
 /***************************************************************/
 

@@ -237,90 +237,49 @@
         }
 
 	/*************************************************************************************/
-    
-    $DetectDeviceHandler->create_Topology(true, true);            // true für init, true für Debug
-    $topology=$DetectDeviceHandler->Get_Topology();
-    $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
-    $configurationEvent = $DetectDeviceListHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
-
-    print_r($topology);
-
-    /* die Topologie mit den Geräten anreichen:
-        *    wir starten mit Name, Parent, Type, OID, Children  
-        * Es gibt Links zu Chíldren, INSTANCE und OBJECT 
-        *    Children, listet die untergeordneten Eintraege
-        *    OBJECT sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
-        *    INSTANCE ist der vollständigkeit halber für die Geräte
-        *
-        * Damit diese Tabelle funktioniert muss der DetDeviceHandler fleissig register definieren
-        */
-    
-    echo "=====================================================================================\n";
-    echo "mergeTopologyObjects aufgerufen:\n";
-    $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,false);        // true for Debug
-    //echo "=====================================================================================\n";
-    //$topologyPlusLinks=$DetectDeviceListHandler->mergeTopologyObjects($topologyPlusLinks,$configurationEvent,$debug);
-
-    if ($debug) 
+    if (false)   // nur in EvaluateHardware_Installation machen
         {
+        $DetectDeviceHandler->create_Topology(true, true);            // true für init, true für Debug
+        $topology=$DetectDeviceHandler->Get_Topology();
+        $configurationDevice = $DetectDeviceHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+        $configurationEvent = $DetectDeviceListHandler->Get_EventConfigurationAuto();        // IPSDetectDeviceHandler_GetEventConfiguration()
+
+        print_r($topology);
+
+        /* die Topologie mit den Geräten anreichen:
+            *    wir starten mit Name, Parent, Type, OID, Children  
+            * Es gibt Links zu Chíldren, INSTANCE und OBJECT 
+            *    Children, listet die untergeordneten Eintraege
+            *    OBJECT sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
+            *    INSTANCE ist der vollständigkeit halber für die Geräte
+            *
+            * Damit diese Tabelle funktioniert muss der DetDeviceHandler fleissig register definieren
+            */
+        
         echo "=====================================================================================\n";
-        echo "looking at Webfront Kategory $categoryId_AdminWebFront ".$ipsOps->path($categoryId_AdminWebFront)."\n";
-        $worldID=IPS_GetObjectIDByName("World",$categoryId_AdminWebFront);
-        if ($worldID===false) echo "Failure, Dont know why but we miss category World in $categoryId_AdminWebFront.\n";
-        //print_r($topologyPlusLinks);
+        echo "mergeTopologyObjects aufgerufen:\n";
+        $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$configurationDevice,false);        // true for Debug
+        //echo "=====================================================================================\n";
+        //$topologyPlusLinks=$DetectDeviceListHandler->mergeTopologyObjects($topologyPlusLinks,$configurationEvent,$debug);
 
-        /* testweise hier die Auswertung machen 
-        $html = $startpage->showTopology();
-        echo $html;     */
+        if ($debug) 
+            {
+            echo "=====================================================================================\n";
+            echo "looking at Webfront Kategory $categoryId_AdminWebFront ".$ipsOps->path($categoryId_AdminWebFront)."\n";
+            $worldID=IPS_GetObjectIDByName("World",$categoryId_AdminWebFront);
+            if ($worldID===false) echo "Failure, Dont know why but we miss category World in $categoryId_AdminWebFront.\n";
+            //print_r($topologyPlusLinks);
 
-        print_R($topologyPlusLinks);
+            /* testweise hier die Auswertung machen 
+            $html = $startpage->showTopology();
+            echo $html;     */
+
+            print_R($topologyPlusLinks);
+            }
+
+        $DetectDeviceHandler->updateLinks($topologyPlusLinks);
         }
-
-    $DetectDeviceHandler->updateLinks($topologyPlusLinks);
-    /* aus dem topologyPlusLinks Array die echten Links erzeugen, $DetectDeviceHandler->updateLinks($topologyPlusLinks) 
-    foreach ($topologyPlusLinks as $place => $entry)
-        {
-        echo "$place (".$entry["Type"].") : ";
-        $object=false; $instance=false;
-        if (isset($entry["OBJECT"])) 
-            {
-            echo "  OBJECT (".(count($entry["OBJECT"])).")";
-            $object=true;            							//CreateLinkByDestination($name, $index, $oid, 10);
-            }
-        elseif (isset($entry["INSTANCE"])) 
-            {
-            echo "  INSTANCE (".(count($entry["INSTANCE"])).")";
-            $instance=true;
-            }
-        echo "\n";
-        if ($object) 
-            {
-            foreach ($entry["OBJECT"] as $type => $subentry)
-                {
-                echo "      $type  :\n";
-                foreach ($subentry as $oid => $name)
-                    {
-                    $objects = @IPS_GetVariable($oid);
-                    if ($objects===false)
-                        {
-                        echo "        $oid   -> ***** Failure, dont know VariableID.\n";
-                        }
-                    else
-                        {
-                        echo "        ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20)."last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
-                        if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
-                        echo "\n";
-                        CreateLinkByDestination($name, $oid, $entry["OID"], 10);	                
-                        }                    
-                    }
-                }
-            }
-        if ($instance);             // vorerst der Übersichtlichkeit wegen keine Instanzen als Link hinzufügen
-        echo "\n";
-        //print_R($entry);
-        }       // ende foreach         */
-
-
+  
 	/****************************************************************************************************************/
 	/*                                                                                                              */
 	/*                                      Install                                                                 */
