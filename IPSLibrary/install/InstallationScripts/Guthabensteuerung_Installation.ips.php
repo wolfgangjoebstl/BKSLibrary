@@ -35,7 +35,19 @@
      *
      * Allgemeine Funktion Money mit dem Dollarzeichen
      * Darstellung von Guthaben, aktuellem Depotwert, Analyseergebnisse von Yahoo Finance API
+     * nachdem diese API nur mehr intern für Webbrowser Aufrufe funktioniert und systematisch für externe Aufrufe geblockt wird
+     * wird die API Schnittstelle deaktiviert und um eine Selenium Schnittstelle erweitert 
      *
+     * Installationsschritte:
+     *      INIT, generell, check ob AMIS Modul
+     *      INIT, Variablen anlegen
+     *      Setup YahooApi und vielleicht auch andere, die Variablen initialisisern
+     *      Setup Selenium or iMacro Environment
+     *      initialize Timer
+     *      initialize Profile
+     *      Selenium Webdriver 
+     *
+     *      Selenium Webfront initialisieren
 	 *
 	 * @file          Guthabensteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -45,9 +57,9 @@
 
 /********************************************************
  *
- * INIT, generell
+ * INIT, generell, 
  *
- * check ob AMIS installiert wurde
+ * überprüft ob AMIS installiert ist, zusätzliche Kategorie
  *
  *******************************************************************/
 
@@ -169,7 +181,14 @@
     $NachrichtenID      = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
     $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
     
-    /* YahooApi und vielleicht auch andere, die Variablen initialisisern */
+    
+/********************************************************
+ *
+ * Setup YahooApi und vielleicht auch andere, die Variablen initialisisern
+ *
+ *
+ *******************************************************************/
+    
     if (isset($GuthabenAllgConfig["Api"]))
         {
         $CategoryId_Finance     = CreateCategoryByName($CategoryIdData,'Finance',200);           // sucht oder legt an,($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
@@ -796,9 +815,21 @@
 
     /**************************************************
      *
-     * Guthabensteuerung und Selnium wird hier überwacht, Anzeige erfolgt im SystemTP
+     * Selenium Webfront initialisieren
      *
-     */
+     * Guthabensteuerung und Selenium wird hier überwacht, Anzeige erfolgt im SystemTP
+     * erfordert (strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
+     * zwei Webfronts:
+     *      benötigt upgedatetes Orderbook
+     *      Parameter für Webfront von hier : $configWF=$guthabenHandler->getWebfrontsConfiguration("Selenium");
+     *      am Ende Aufruf easySetupWebfront($configWF,$webfront_links
+     * zweites Webfront:
+     *      Webfront Api
+     *      Parameter für Webfront von hier :    $configWF=$guthabenHandler->getWebfrontsConfiguration("Api"
+     *      am Ende Aufruf easySetupWebfront($configWF,$webfront_links
+     *
+     **********************************************************/
+
     echo " Selenium Webfront initialisieren. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
     /*
@@ -820,9 +851,11 @@
         }
      */
 
-    //$wfcHandling =  new WfcHandling($WFC10_ConfigId);
+    //$wfcHandling =  new WfcHandling($WFC10_ConfigId);         // alte legacy Applikation, es werden die WFC_ Befehle aufgerurfen
+
     $wfcHandling =  new WfcHandling();                                  // neue Verarbeitung, flexibler beim Update von CategoryID
-    /* Workaround wenn im Webfront die Root fehlt */
+    /* Workaround wenn im Webfront die Root fehlt 
+     */
     $WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();   
 
     if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")

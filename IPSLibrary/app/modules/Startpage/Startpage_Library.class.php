@@ -1760,7 +1760,7 @@
                         cursor: move;
                         }';     
             $wert .= '</style>';            
-            $wert .= '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>';
+            //$wert .= '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>';
             $wert .= '<script type="text/javascript">';
             $wert .= '  document.addEventListener("DOMContentLoaded", function () {
                             alert("dom content loaded");
@@ -6227,5 +6227,81 @@
 
 
         }
+
+    /* handle webBrowserConfigurations based on Cookies
+     *
+     */
+
+    class webBrowserLibrary
+        {
+
+        protected $sqlInstances,$sqlHandle;
+        protected $webbrowserCookiesTableID;
+        protected $debug;
+        
+        /* MySQL Database von Synology verfügbar. Modul dazu installiert:
+        *   https://github.com/demel42/IPSymconMySQL/blob/master/README.md
+        */
+        function __construct($debug=false)
+            {
+            $this->debug=$debug;
+            $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+            $this->sqlInstances = $modulhandling->getInstances('MySQL');
+            IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
+            $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+			$moduleManager = new ModuleManagerIPS7('Startpage',$repository);
+	        $installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+            $moduleManagerEH    = new ModuleManagerIPS7('EvaluateHardware',$repository);
+            $CategoryIdDataEH   = $moduleManagerEH->GetModuleCategoryID('data'); 
+            $categoryId_BrowserCookies = getCategoryIdByName($CategoryIdDataEH, "WebfrontCookies");                  // Achtung false ist wie 0
+            $this->webbrowserCookiesTableID  = getVariableIDByName($categoryId_BrowserCookies, "BrowserCookieTable");
+            if ($this->webbrowserCookiesTableID===false) $this->sqlInstances = false;
+            if ($this->sqlInstances)
+                {
+                $oid=$this->sqlInstances[0];           // ersten treffer new_checkbox_tree_get_multi_selection
+                if ($debug) echo "sqlHandle: new $oid (".IPS_GetName($oid).") for MySQL Database found.\n";
+                $status=IPS_GetInstance($oid)["InstanceStatus"];
+                if ($status != 102) echo "class webBrowserLibrary, SQL Instanz Konfiguration noch nicht abgeschlossen, oder Instanz fehlerhaft. Status is $status.\n";
+                if ($debug) echo "-------------------\n";            
+                $this->sqlHandle = new sqlHandle(false);           // false, default MySQL Instanz, true debug
+                if ($this->sqlHandle->available !==false) $this->sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
+                }
+            }
+
+        public function getTable_webfrontAccess($action=false)
+            {
+            $tableArray=array();
+            if ($this->sqlHandle->available !==false)
+                {
+                $tables=array("webfrontAccess"=>true);
+                if ($this->debug) echo "Show from all of these tables ".json_encode($tables)." the content:\n";
+                foreach ($tables as $table => $active)
+                    {
+                    if ($active !== false)
+                        {
+
+                        if ($active !=1) $sql = "SELECT * FROM $table WHERE nameOfID='".$action."' AND eventName='TopologyReceiver' ORDER BY $active;";
+                        else $sql = "SELECT * FROM $table;";
+                        if ($this->debug) 
+                            {
+                            echo "<br>\n---------------------------------------------------------------------------------<br>\n";
+                            echo "Echo Values from MariaDB Database $table:<br>\n"; 
+                            echo "$sql<br>\n";                            
+                            }
+                        $result1=$this->sqlHandle->query($sql);
+                        $tableArray = $result1->fetchSelect();
+                        $result1->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
+                        }
+                    }
+                }
+            return ($tableArray);
+            }
+
+
+        
+        }
+
+
+
 
 ?>

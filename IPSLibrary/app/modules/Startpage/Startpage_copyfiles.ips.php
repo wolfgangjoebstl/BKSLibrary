@@ -18,21 +18,27 @@
     * aus Sicherheitsgründen dürfen die Browser nicht extern zugreifen
     * Ab IPS 7 hat sich das Zielverzeichnis von webfront/user auf /user geändert
     *
+    * wird alle 28.800 Sekunden aufgerufen - also alle 8 Stunden
     *
+    * Kopiert wird:
+    *       Bilder
+    *       Image
+    *       Icons
+    *
+    * Zusätzlich wird die im Werkzeugschlüssel dargestellte Tabelle upgedated
     *
     */
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-	
+    IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
+
     IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
     IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
     IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		$moduleManager = new IPSModuleManager('Startpage',$repository);
-	}
+    $moduleManager    = new ModuleManagerIPS7('Startpage',$repository);    
+    $installedModules = $moduleManager->GetInstalledModules();
 
     /****************************************
     *
@@ -53,6 +59,7 @@
 	$iconverzeichnis=$configuration["Directories"]["Icons"];
 
     $dosOps= new dosOps();
+    $ipsTables = new ipsTables();               // fertige Routinen für eine Tabelle in der HMLBox verwenden
 
     /* Zielverzeichnis für die Startpage Bilder erstellen */
    	$picturedir = $startpage->picturedir;
@@ -102,6 +109,72 @@
     $dosOps->copyIfNeeded($imageverzeichnisMondTransparent,$imagedirMT);           // true debug
 
     $dosOps->copyIfNeeded($bilderverzeichnis,$picturedir);           // true debug
+
+    //if (false)          // Update SQL Table
+        {
+        if (isset($installedModules["EvaluateHardware"]))
+            {
+            IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+            $moduleManagerEH    = new ModuleManagerIPS7('EvaluateHardware',$repository);
+            $CategoryIdDataEH   = $moduleManagerEH->GetModuleCategoryID('data'); 
+            $categoryId_BrowserCookies = getCategoryIdByName($CategoryIdDataEH, "WebfrontCookies");                  // Achtung false ist wie 0
+            $webbrowserCookiesTableID  = getVariableIDByName($categoryId_BrowserCookies, "BrowserCookieTable");
+            if ($webbrowserCookiesTableID)
+                {
+                /* MySQL Database von Synology verfügbar. Modul dazu installiert:
+                *   https://github.com/demel42/IPSymconMySQL/blob/master/README.md
+                */
+
+                $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+                $oidResult = $modulhandling->getInstances('MySQL');
+                if (sizeof($oidResult)>0) 
+                    {
+                    $oid=$oidResult[0];           // ersten treffer new_checkbox_tree_get_multi_selection
+                    echo "sqlHandle: new $oid (".IPS_GetName($oid).") for MySQL Database found.\n";
+                    $status=IPS_GetInstance($oid)["InstanceStatus"];
+                    if ($status != 102) echo "Instanz Konfiguration noch nicht abgeschlossen, oder Instanz fehlerhaft. Status is $status.\n";
+                    echo "-------------------\n";            
+                    //$sqlHandle = new sqlHandle(false,true);           // default MySQL Instanz mit Debug
+                    //if ($sqlHandle->available === false) echo "\nWarning, no SQL Handle available.\n";    
+                    $full=false;
+                    $tableArray = false;
+                    $sqlHandle = new sqlHandle(false);           // false, default MySQL Instanz, true debug
+                    if ($sqlHandle->available !==false)
+                        {
+                        $sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
+                        $targetTable = "webfrontAccess";        // Zugriff mit Webfront Share Cookies
+
+                        //$tables=array("webfrontAccess"=>"eventName");
+                        $tables=array("webfrontAccess"=>true);
+                        echo "Show from all of these tables ".json_encode($tables)." the content:\n";
+                        foreach ($tables as $table => $active)
+                            {
+                            if ($active !== false)
+                                {
+                                echo "<br>\n---------------------------------------------------------------------------------<br>\n";
+                                echo "Echo Values from MariaDB Database $table:<br>\n"; 
+                                if ($active !=1) $sql = "SELECT * FROM $table WHERE nameOfID='".$action."' AND eventName='TopologyReceiver' ORDER BY $active;";
+                                else $sql = "SELECT * FROM $table;";
+                                echo "$sql<br>\n";
+                                $result1=$sqlHandle->query($sql);
+                                $tableArray = $result1->fetchSelect();
+                                $result1->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
+                                }
+                            }
+                        }
+                    $config=array();
+                    $config["html"]    = true;
+                    $config["insert"]["Header"]    = true;
+                    $config["sort"] = "nameOfID";
+                    $html = $ipsTables->showTable($tableArray, false ,$config,false);                // true Debug
+                    SetValue($webbrowserCookiesTableID,$html);
+                    //print_r($config);
+                    }
+                else echo "no SQL Instanz implementiert.\n";
+                }
+            }
+        }
+
 
 
 if (false)

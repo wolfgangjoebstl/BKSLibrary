@@ -154,6 +154,7 @@
                 IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
                 $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
                 $selDir        = $seleniumChromedriverUpdate->getSeleniumDirectory();
+                $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
                 $version       = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
                 $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
                 }
@@ -564,7 +565,7 @@ if ($_IPS['SENDER']=="WebFront")
                         break;
                     }
                 break;
-            case ($startImacroID):                      // StartSelenium in eigenem Webfron Guthabensteuerung
+            case ($startImacroID):                      // StartSelenium in eigenem Webfront Guthabensteuerung
                 //echo "Taste Macro gedrückt";
                 switch ($value)
                     {

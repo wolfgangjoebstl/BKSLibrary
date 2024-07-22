@@ -60,6 +60,8 @@
     
     $wfcHandling =  new WfcHandling();
 
+    $debug=false;
+
 /*******************************
  *
  * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
@@ -107,7 +109,7 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
-    $gartensteuerung = new Gartensteuerung(0,0,true);   // default, default, debug=false
+    $gartensteuerung = new Gartensteuerung(0,0,$debug);   // default, default, debug=false
     $GartensteuerungConfiguration =	$gartensteuerung->getConfig_Gartensteuerung();
 
 	/*
@@ -132,6 +134,7 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
+    echo "\n";
     echo "Darstellung der benötigten Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("Minuten"=>"update");
     $profileOps->synchronizeProfiles($profilname);
@@ -144,6 +147,7 @@
 
     $categoryId_Gartensteuerung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
 	$categoryId_Register    		= CreateCategory('Gartensteuerung-Register',   $CategoryIdData, 200);
+	$categoryIdSelectReports        = CreateCategory('SelectReports',              $CategoryIdData, 300);
 
 	$scriptIdGartensteuerung   		= IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	$scriptIdWebfrontControl   		= IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
@@ -155,12 +159,14 @@
     // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 	/* CreateVariable3 wie unten legt automatisch die Infos im Include File an */
 
+    echo "Create GiessAnlagenProfil und Variable GiessAnlage.\n";
 	$pname="GiessAnlagenProfil";
     $tabs =  ["Aus","EinmalEin","Auto"];
     $color = [0x481ef1,0xf13c1e,0x1ef127];
     $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
 	$GiessAnlageID 		= CreateVariable3("GiessAnlage", 1, $categoryId_Gartensteuerung, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 
+    echo "Create GiessKreisProfil und Variable Giesskreis.\n";
 	$pname="GiessKreisProfil";
     $tabsToChoose  = ["1","2","3","4","5","6","7","8"];
     $colorToChoose = [0x481ef1,0xf13c1e,0x1ef127,0xF6E3CE,0x2EFE64,0xB40486,0x04B486,0x8404B6];
@@ -183,6 +189,34 @@
     $color = [0x481ef1,0x1ef127];
     $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
 	$GiessKonfigID 		= CreateVariable3("GiessStartzeitpunkt",0,$categoryId_Register, 300, $pname,$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+    // Umschalter auf der inken Seite wenn DataQuality Pane aktiviert ist
+
+    $buttonIds=false;
+    if (strtoupper($GartensteuerungConfiguration["Configuration"]["DataQuality"])=="ENABLED") 
+        {
+        echo "Buttons zur Anzeige von historischen Daten:\n";
+        $gartensteuerungReports=$GartensteuerungConfiguration["Configuration"]["Reports"];
+        $count=0;
+        $associationsValues = array();
+        foreach ($gartensteuerungReports as $displaypanel=>$values)
+            {
+            echo "     Profileintrag $count : ".$displaypanel."  \n";
+            $associationsValues[$count]=$displaypanel;
+            $count++;
+            }        
+        $webOps = new webOps(true);
+        $webOps->setConfigButtons(9000);                    // order in ID display
+        $buttonIds = $webOps->createSelectButtons($associationsValues,$categoryIdSelectReports, $scriptIdWebfrontControl);
+
+        $pname="AnotherSelector";
+        $tabs =  ["Aus","Ein","Auto"];
+        $color = [0x481ef1,0xf13c1e,0x1ef127];
+        $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+	    $AnotherSelectorID 		= CreateVariable3("AnotherSelector", 1, $categoryIdSelectReports, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	    $ReportSelectorID 		= CreateVariable3("ReportSelector",  3, $categoryIdSelectReports, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String  es wird in lesbaren Format die Betriebsart gespeichert */
+		}      
+
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -212,6 +246,12 @@
 	$GiessTimeRemainID	= CreateVariable3("GiessTimeRemain",1,$categoryId_Gartensteuerung,  30, "Minuten",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessKreisInfoID	= CreateVariable3("GiessKreisInfo",3,$categoryId_Gartensteuerung,  40, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessDauerInfoID	= CreateVariable3("GiessDauerInfo",3,$categoryId_Gartensteuerung,  50, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	$tableID	        = CreateVariable3("Tabelle",  3,$categoryIdSelectReports,  30, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$table1ID	        = CreateVariable3("Tabelle1", 3,$categoryIdSelectReports,  540, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$table2ID	        = CreateVariable3("Tabelle2", 3,$categoryIdSelectReports,  550, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$chartID	        = CreateVariable3("Chart",    3,$categoryIdSelectReports,  100, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$mapID	            = CreateVariable3("GoogleMap",3,$categoryIdSelectReports,  500, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	$GiessCountID		= CreateVariable3("GiessCount",1,$categoryId_Register, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessCountOffsetID	= CreateVariable3("GiessCountOffset",1,$categoryId_Register, 210, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -418,12 +458,12 @@
 			echo "      TabItem ID ".$tabItem." nicht mehr vorhanden.\n";
 			}	
 
-        /* Webfront für Giessanlage anlegen */
-        if ($GartensteuerungConfiguration["Configuration"]["Irrigation"]=="ENABLED")
+        echo "   Webfront für Giessanlage entspreechend Konfiguration anlegen [Giessanlage|Statistik|Gartenpumpe]:\n";
+        echo "     erzeugt TabPaneItem :".$config["TabPaneItem"]." in ".$config["TabPaneParent"]."\n";
+        CreateWFCItemTabPane   ($WFC10_ConfigId, $config["TabPaneItem"], $config["TabPaneParent"],  $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]); /* Autosteuerung Haeuschen */
+        if (strtoupper($GartensteuerungConfiguration["Configuration"]["Irrigation"])=="ENABLED")
             {
-            echo "        erzeugt TabItem :".$config["TabPaneItem"]." in ".$config["TabPaneParent"]."\n";
-            CreateWFCItemTabPane   ($WFC10_ConfigId, $config["TabPaneItem"], $config["TabPaneParent"],  $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]); /* Autosteuerung Haeuschen */
-            echo "        erzeugt Split TabItem :".$tabItem." mit Name ".$config["TabName"]." in ".$config["TabPaneItem"]." und darunter die Items Left und Right.\n";
+            echo "     ConfOption Giessanlage, erzeugt Split TabItem :".$tabItem." mit Name ".$config["TabName"]." in ".$config["TabPaneItem"]." und darunter die Items Left und Right.\n";
             CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $config["TabPaneItem"],    $config["TabOrder"],     $config["TabName"],     $config["TabIcon"], 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
             CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
             CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
@@ -448,6 +488,7 @@
 
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["Statistics"])=="ENABLED")                //tabItem0
             {
+            echo "     ConfOption Statistik, erzeugt SplitPaneItem :".$tabItem."0 in ".$config["TabPaneItem"]."\n";
             $categoryIdLeft0  = CreateCategory('Left0',  $categoryId_WebFrontAdministrator, 10);
             $categoryIdRight0 = CreateCategory('Right0', $categoryId_WebFrontAdministrator, 20);
             CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."0",           $config["TabPaneItem"],    100,     "Statistik",     "Rainfall", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
@@ -462,6 +503,7 @@
 
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["PowerPump"])=="ENABLED")                 //tabItem1
             {
+            echo "     ConfOption Gartenpumpe, erzeugt SplitPaneItem :".$tabItem."1 in ".$config["TabPaneItem"]."\n";                
             $categoryIdLeft1  = CreateCategory('Left1',  $categoryId_WebFrontAdministrator, 10);
             $categoryIdRight1 = CreateCategory('Right1', $categoryId_WebFrontAdministrator, 20);
             CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."1",           $config["TabPaneItem"],    100,     "PowerPump",     "Electricity", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
@@ -473,6 +515,30 @@
                 $powerID = $GartensteuerungConfiguration["Configuration"]["CheckPower"];
                 CreateLinkByDestination("Leistung Gartenpumpe", $powerID ,    $categoryIdRight1,  150);
 
+                }
+            }
+        if (strtoupper($GartensteuerungConfiguration["Configuration"]["DataQuality"])=="ENABLED") 
+            {
+            echo "     ConfOption Datenqualität, erzeugt SplitPaneItem :".$tabItem."2 in ".$config["TabPaneItem"]."\n";                
+            $categoryIdLeft2  = CreateCategory('Left2',  $categoryId_WebFrontAdministrator, 10);
+            $categoryIdRight2 = CreateCategory('Right2', $categoryId_WebFrontAdministrator, 20);
+            CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."2",           $config["TabPaneItem"],    100,     "DataQuality",     "Stars", 1 /*Vertical*/, 10 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."2".'_Left',   $tabItem."2",   10, '', '', $categoryIdLeft2   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."2".'_Right',  $tabItem."2",   20, '', '', $categoryIdRight2  /*BaseId*/, 'false' /*BarBottomVisible*/);    
+            
+            if ($buttonIds)                 // es wurden Buttons für die Linke Seite erstellt
+                {
+    	        $categoryIdButtonGroup  = CreateVariableByName($categoryIdLeft2, "Select Report", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                foreach ($buttonIds as $id => $button)
+                    {
+                    CreateLinkByDestination(" ", $button["ID"], $categoryIdButtonGroup, $id+100);         // kein Name, sonst zu Viel Platzbedarf, Profil hat einen Namen, geht nicht mit CreateLink
+                    }
+                CreateLinkByDestination("Selector", $AnotherSelectorID, $categoryIdRight2,   50);    
+                CreateLinkByDestination("Tabelle",  $tableID ,          $categoryIdRight2,  150);
+                CreateLinkByDestination("Tabelle1", $table1ID ,         $categoryIdRight2,  560);
+                CreateLinkByDestination("Tabelle2", $table2ID ,         $categoryIdRight2,  570);
+                CreateLinkByDestination("Chart",    $chartID ,          $categoryIdRight2,  250);
+                CreateLinkByDestination("Map",      $mapID ,            $categoryIdRight2,  500);
                 }
             }
 		}
@@ -521,6 +587,7 @@
 			}	
 		echo "Webfront ".$WFC10User_ConfigId." erzeugt TabItem :".$config["TabPaneItem"]." in ".$config["TabPaneParent"]."\n";
 		CreateWFCItemTabPane   ($WFC10User_ConfigId, $config["TabPaneItem"], $config["TabPaneParent"],  $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]);
+		echo "Webfront ".$WFC10User_ConfigId." erzeugt TabItem : $tabItem in ".$config["TabPaneItem"]."\n";
 		CreateWFCItemTabPane   ($WFC10User_ConfigId, $tabItem,               $config["TabPaneItem"],    $config["TabOrder"],     $config["TabName"],     $config["TabIcon"]);		
 
 		/*************************************/
@@ -559,6 +626,16 @@
 		$categoryId_WebFront         = CreateCategoryPath($config["Path"]);
 		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
 		}
+
+    echo "Summary WFC Konfiguration : \n";
+    $wfc=$wfcHandling->read_wfc(1,true);                             // 1 ist der level der angezeigt wird, true für Debug
+    //$wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
+    foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+        {
+        echo "\n------$index:\n";
+        $wfcHandling->print_wfc($wfc[$index]);
+        } 
+
 
 /************************************************************************************************/
 

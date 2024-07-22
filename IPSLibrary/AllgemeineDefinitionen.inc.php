@@ -36,6 +36,8 @@
       *
       * uebersichtlicher als die verschiedenen einzelnen Routinen
 	  *
+      * profileOps              versammelt Operationen rund um die Bearbeitung von Profile
+      * webOps
       * archiveOps              rund um die Archiv Funktion von IP Symcon
       * statistics
       *         meansCalc           extends statistics
@@ -43,19 +45,21 @@
       *         meansRollEvaluate   extends statistics
       *         maxminCalc          extends statistics
       * App_Convert_XmlToArray
-      * ipsCharts               Chartdarstellung rund um die Highcharts Funktionen
+      * jsSnippets              Aufbau von javascript basierten html Seiten
       * ipsTables               Darstellung von html basierten Tabellen
-      * chartOps                
+      * ipsCharts               Chartdarstellung rund um die Highcharts Funktionen
+      *                
       * ipsOps                  Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
       * dosOps
       * sysOps
       * fileOps
       * timerOps
       * curlOps                 curl Aufgaben, zusammengefasst
-      * geoOps                  alles rund um Plätze auf der Eerde und im Weltall
+      * geoOps                  alles rund um Plätze auf der Erde und im Weltall
       * errorAusgabe
       * ComponentHandling
-	  * WfcHandling                 Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen, vorerst von Modulen AMIS und Sprachsteuerung verwendet
+	  * WfcHandling             Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen, vorerst von Modulen AMIS und Sprachsteuerung verwendet
+      *                         übernimmt Funktionen zum WFC Handling, wie zB CreatePane, Create Category, SpiltPane etc
       * ModuleHandling              
       *
       *
@@ -246,6 +250,10 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                     $sysOps = new sysOps();
                     $result = $sysOps->getNiceFileSize($value);         // getNiceFileSize
                     break;
+                case "DAYMONTH":
+                    if (is_numeric($value)) $result = date("d.m.",$value);
+                    else $result = $value;
+                    break; 
                 case "DATE":
                     if (is_numeric($value)) $result = date("d.m.Y",$value);
                     else $result = $value;
@@ -258,9 +266,20 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                     if (is_numeric($value)) $result = date("H:i:s",$value);
                     else $result = $value;
                     break;                                      
+                case "HOURMINUTE":
+                case "HOURMIN":
+                    if (is_numeric($value)) $result = date("H:i",$value);
+                    else $result = $value;
+                    break;                                      
+                case "°":
+                    if (is_numeric($value)) $result = number_format((float)$value, 1, ",",".")."$unit";           // wie unten, aber vielleicht kommt noch etwas
+                    else $result = $value;
+                    break;
                 case "USD":
                 case "EUR":
-                    $result = number_format($value, 2, ",",".")." $unit";           // wie unten, aber vielleicht kommt noch etwas
+                case "MM":
+                    if (is_numeric($value)) $result = number_format($value, 2, ",",".")." $unit";           // wie unten, aber vielleicht kommt noch etwas
+                    else $result = $value;
                     break;
                 case "%":
                     $result = number_format($value*100, 2, ",",".")."%";           // wie unten, aber vielleicht kommt noch etwas
@@ -533,191 +552,6 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                 }
             }
         }
-
-    /* DEPRECIATED, look createKnownProfilesByName in profileOps class
-     * alle Profile manuell erzeugen, geht auch lokal oder remote, keine Update Funktion, 
-     * die Profile haben alle vorgegebene Namen und werden hier zentral ausschliesslich nach dem erkannten Namen erzeugt
-     *
-     *      Temperatur            °C
-     *      TemperaturSet          °C
-     *      Humidity
-     *      Switch
-     *      Contact
-     *      Button
-     *      Motion      
-     *      Pressure
-     *      CO2
-     *      mode.HM
-     *      Rainfall
-     *
-     *
-     */
-
-	function createProfilesByName($pname,$server="LOCAL")
-        {
-        if (strtoupper($server) != "LOCAL") 
-            {
-            $rpc = new JSONRPC($server);
-            $remote=true;
-            }
-        else $rpc=false;
-        echo "  Profil ".$pname." existiert nicht, oder Aufforderung zum update.\n";
-        switch ($pname)
-            {
-            case "Temperatur":
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-                    $rpc->IPS_SetVariableProfileText($pname,'',' °C');
-                    }
-                else 
-                    {
-                    IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-                    IPS_SetVariableProfileText($pname,'',' °C');
-                    }
-                break;
-            case "TemperaturSet":
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileIcon ($pname, "Temperature");
-                    $rpc->IPS_SetVariableProfileText($pname,'',' °C');
-                    $rpc->IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
-                    $rpc->IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileIcon ($pname, "Temperature");
-                    IPS_SetVariableProfileText($pname,'',' °C');
-                    IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
-                    IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
-                    }
-                break;
-            case "Humidity";
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                    $rpc->IPS_SetVariableProfileText($pname,'',' %');
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                    IPS_SetVariableProfileText($pname,'',' %');                
-                    }
-                break;
-            case "Switch";
-                rpc_CreateVariableProfile($rpc, $pname, 0);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
-                    IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
-                    }
-                break;
-            case "Contact";
-                rpc_CreateVariableProfile($rpc, $pname, 1);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileIcon ($pname, "Window");
-                    $rpc->IPS_SetVariableProfileText ($pname, "","");
-                    $rpc->IPS_SetVariableProfileValues ($pname, 0,2,0);
-                    $rpc->IPS_SetVariableProfileDigits ($tpname, 0);                    
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileIcon ($pname, "Window");
-                    IPS_SetVariableProfileText ($pname, "","");
-                    IPS_SetVariableProfileValues ($pname, 0,2,0);
-                    IPS_SetVariableProfileDigits ($tpname, 0);                    
-                    IPS_SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
-                    IPS_SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
-                    IPS_SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
-
-                    //IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-                    //IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
-                    //IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
-                    }
-                break;
-            case "Button";
-                rpc_CreateVariableProfile($rpc, $pname, 0);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
-                    IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);                
-                    }
-                break;
-            case "Motion";
-                rpc_CreateVariableProfile($rpc, $pname, 0);
-                if ($remote) 
-                    {
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
-                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
-                    }
-                else
-                    {
-                    IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
-                    IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);                
-                    }
-                break;
-            case "Pressure";
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                IPS_SetVariableProfileText($pname,'',' mbar');
-                IPS_SetVariableProfileIcon($pname,"Gauge");
-                break;      
-            case "CO2";
-                rpc_CreateVariableProfile($rpc, $pname, 1);
-                IPS_SetVariableProfileText($pname,'',' ppm');
-                IPS_SetVariableProfileIcon($pname,"Gauge");
-                IPS_SetVariableProfileValues ($pname, 250, 2000, 0);
-                break;                                    
-            case "mode.HM";
-                rpc_CreateVariableProfile($rpc, $pname, 1);
-                IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
-                IPS_SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-                IPS_SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-                IPS_SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                IPS_SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                IPS_SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
-                //echo "Profil ".$pname." erstellt;\n";
-                break;		
-            case "Rainfall":
-                rpc_CreateVariableProfile($rpc, $pname, 2);
-                IPS_SetVariableProfileIcon ($pname, "Rainfall");
-                IPS_SetVariableProfileText ($pname, ""," mm");
-                //IPS_SetVariableProfileValues ($pname, 0,0,0);
-                IPS_SetVariableProfileDigits ($tpname, 1);			
-                break;
-            case "Euro":
-        		rpc_CreateVariableProfile($rpc, $pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		        IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-		        IPS_SetVariableProfileText($pname,'','Euro');
-                break;
-            case "MByte":
-        		rpc_CreateVariableProfile($rpc, $pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		        IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-		        IPS_SetVariableProfileText($pname,'',' MByte');
-                break;
-            default:
-                break;
-            }
-    }
 
 /****************************************************************************************************
  * immer wenn eine Statusmeldung per email angefragt wird 
@@ -1815,29 +1649,36 @@ function send_status($aktuell, $startexec=0, $debug=false)
  *      GetValueIfFormatted
  *
  *      CreateVariableByName
+ *      getVariableIDByName
  *      CreateCategoryByName
- *      Depriciated: 
+ *      getCategoryIdByName
+ *
+ *      CreateCategoryPathFromOid
+ *
+ *      Depricated/Removed: 
  *          CreateVariableByName2
  *          CreateVariable2
  *          CreateVariableByNameFull
+ *
+ *          summestartende
+ *          summestartende2
+ *
  *      Get_IdentByName2
- * UpdateObjectData2
+ *      UpdateObjectData2
  *
- * summestartende
- * summestartende2
+ *      RPC_CreateVariableByName
+ *      RPC_CreateCategoryByName
+ *      RPC_CreateVariableField
+ *      RemoteAccessServerTable
+ *      RemoteAccess_GetConfigurationNew
  *
- * RPC_CreateVariableByName
- * RPC_CreateCategoryByName
- * RPC_CreateVariableField
- * RemoteAccessServerTable
- * RemoteAccess_GetConfigurationNew
+ *      ReadTemperaturWerte
+ *      ReadThermostatWerte
+ *      ReadAktuatorWerte
  *
- * ReadTemperaturWerte
- * ReadThermostatWerte
- * ReadAktuatorWerte
- *
- * exectime
- * getVariableId
+ *      startexec
+ *      exectime
+ *      getVariableId
  *
  *
  * AD_ErrorHandler
@@ -2055,6 +1896,17 @@ function send_status($aktuell, $startexec=0, $debug=false)
         return $VariableId;
         }
 
+    /* infache getVariableId Function
+     * vertauschte Parameter :-) und ein false ohne Fehlermeldung
+     *
+     */
+    function getVariableIDByName($parentID, $name)
+        {
+        return(@IPS_GetVariableIDByName($name, $parentID));    
+        }
+
+    /* einfache CreateCategory Function
+     */
     function CreateCategoryByName($parentID, $name, $position=0)
         {
         $vid = @IPS_GetCategoryIDByName($name, $parentID);
@@ -2068,6 +1920,15 @@ function send_status($aktuell, $startexec=0, $debug=false)
         IPS_SetPosition($vid, $position);
         return $vid;
         }
+
+    /* einfache getCategoryId Function
+     * vertauschte Parameter :-) und ein false ohne Fehlermeldung
+     */
+    function getCategoryIdByName($parentID, $name)
+        {
+        return(@IPS_GetCategoryIDByName($name, $parentID));
+        }
+
 
 	/** Anlegen eines Kategorie Pfades. Kopiert from IPSInstaller CreateCategoryPath
 	 *
@@ -2115,7 +1976,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
     */
 
     function Get_IdentByName2($name, $space="")
-    {
+        {
             $ident = str_replace(' ', $space, $name);
             $ident = str_replace(array('ö','ä','ü','Ö','Ä','Ü'), array('oe', 'ae','ue','Oe', 'Ae','Ue' ), $ident);
             $ident = str_replace(array('"','\'','%','&','(',')','=','#','<','>','|','\\'), $space, $ident);
@@ -2123,12 +1984,12 @@ function send_status($aktuell, $startexec=0, $debug=false)
             $ident = str_replace(array('+','-','/','*'), $space, $ident);
             $ident = str_replace(array('ß'), 'ss', $ident);
             return $ident;
-    }
+        }
 
     /******************************************************************/
 
     function UpdateObjectData2($ObjectId, $Position, $Icon="")
-    {
+        {
             $ObjectData = IPS_GetObject ($ObjectId);
             $ObjectPath = IPS_GetLocation($ObjectId);
             if ($ObjectData['ObjectPosition'] <> $Position and $Position!==false) {
@@ -2140,7 +2001,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
                 IPS_SetIcon($ObjectId, $Icon);
             }
 
-    }
+        }
 
     /*****************************************************************
      * verwendet in installComponentFull
@@ -2754,8 +2615,10 @@ class profileOps
                 {
                 if ($num>($count-1)) 
                     {
-                    echo "Delete Profile Association $num.\n";
-                    $this->DeleteVariableProfileAssociation($pname, $num);
+                    echo "Delete Profile Association $num mit Wert ".$assoc["Value"].".\n";
+                    //print_r($assoc);
+                    //$this->DeleteVariableProfileAssociation($pname, $num);                  // ist num die vierte Instanz oder das Profil 6
+                    $this->DeleteVariableProfileAssociation($pname, $assoc["Value"]);
                     }
                 else echo "Keep   Profile Association $num.\n";
                 }
@@ -2804,9 +2667,12 @@ class profileOps
 
 	function createKnownProfilesByName($pname,$debug=false)
         {
-        echo "      profileOps::createKnownProfilesByName, Profil ".$pname." existiert nicht, oder Aufforderung zum update. ";
-        if ($this->rpc) echo "Durchführung remote für Server ".$this->rpc."\n";
-        else echo "Durchführung lokal.\n";
+        if ($debug)
+            {
+            echo "      profileOps::createKnownProfilesByName, Profil ".$pname." existiert nicht, oder Aufforderung zum update. ";
+            if ($this->rpc) echo "Durchführung remote für Server ".$this->rpc."\n";
+            else echo "Durchführung lokal.\n";
+            }
         switch ($pname)
             {
             case "Temperatur":
@@ -2902,7 +2768,6 @@ class profileOps
                 $this->SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
                 $this->SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
                 $this->SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
-                //echo "Profil ".$pname." erstellt;\n";
                 break;		
             case "Rainfall":
                 $this->CreateVariableProfile($pname, 2);
@@ -2928,7 +2793,6 @@ class profileOps
                 $this->SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
                 $this->SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
                 $this->SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
                 break;
 	        case "AusEin":
                 $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
@@ -2950,14 +2814,12 @@ class profileOps
                 $this->SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
                 $this->SetVariableProfileAssociation($pname, 0, "Nein", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
                 $this->SetVariableProfileAssociation($pname, 1, "Ja", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
                 break;
 	        case "Null":
                 $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
                 $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
                 $this->SetVariableProfileValues($pname, 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
                 $this->SetVariableProfileAssociation($pname, 0, "Null", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
                 break;
 	        case "SchlafenAufwachenMunter":
                 $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
@@ -2966,7 +2828,6 @@ class profileOps
                 $this->SetVariableProfileAssociation($pname, 0, "Schlafen", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
                 $this->SetVariableProfileAssociation($pname, 1, "Aufwachen", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
                 $this->SetVariableProfileAssociation($pname, 2, "Munter", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-  	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
                 break;
 	        case "AusEinAutoP1P2P3P4":
                 $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
@@ -2979,43 +2840,15 @@ class profileOps
                 $this->SetVariableProfileAssociation($pname, 4, "Profil 2", "", 0x3ec127); //P-Name, Value, Assotiation, Icon, Color
                 $this->SetVariableProfileAssociation($pname, 5, "Profil 3", "", 0x5ea147); //P-Name, Value, Assotiation, Icon, Color
                 $this->SetVariableProfileAssociation($pname, 6, "Profil 4", "", 0x7ea167); //P-Name, Value, Assotiation, Icon, Color
-  	   	        //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
                 break;
-            // Gartensteuerung
-            /* case "GiessAnlagenProfil":
-        		$this->CreateVariableProfile($pname, 1);                // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
-		        $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                $this->SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-                $this->SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-                $this->SetVariableProfileAssociation($pname, 1, "EinmalEin", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-                $this->SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                break;
-	        case "GiessConfigProfil":           // Boolean
-                $this->CreateVariableProfile($pname, 0);                // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
-                $this->SetVariableProfileAssociation($pname, 0, "Morgen", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-                $this->SetVariableProfileAssociation($pname, 1, "Abend", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                break;
-	         case "GiessKreisProfil":             // wird anhand der verfügbaren Kreise angelegt, ist eigentlich ein Button
-                $this->CreateVariableProfile($pname, 1);                // PName, Typ 0 Boolean 1 Integer 2 Float 3 String 
-                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                $this->SetVariableProfileValues($pname, 1, 6, 1); //PName, Minimal, Maximal, Schrittweite
-                $this->SetVariableProfileAssociation($pname, 1, "1", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-                $this->SetVariableProfileAssociation($pname, 2, "2", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-                $this->SetVariableProfileAssociation($pname, 3, "3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-                $this->SetVariableProfileAssociation($pname, 4, "4", "", 0xF6E3CE); //P-Name, Value, Assotiation, Icon, Color=orange
-                $this->SetVariableProfileAssociation($pname, 5, "5", "", 0x2EFE64); //P-Name, Value, Assotiation, Icon, Color=grassgruen
-                $this->SetVariableProfileAssociation($pname, 6, "6", "", 0xB40486); //P-Name, Value, Assotiation, Icon, Color=violett		
-                break;  */
             case "Minuten":
                 $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
                 $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
                 $this->SetVariableProfileText($pname,'','Min');
                 break;
-            // Amis
             case "Zaehlt":
                 $this->CreateVariableProfile($pname, 0); 
                 $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-
                 $this->SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
                 $this->SetVariableProfileAssociation($pname, false, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
                 $this->SetVariableProfileAssociation($pname, true, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
@@ -3035,104 +2868,8 @@ class profileOps
                 $this->SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
                 $this->SetVariableProfileText($pname,'','kW');
                 break;
-   /* echo "Profile Definition für AMIS Modul:\n";
-	$pname="AusEin-Boolean";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 0); 
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-		IPS_SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt.\n";
-		}
-    else echo "   Profil ".$pname." vorhanden.\n";
-		
-	$pname="Zaehlt";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 0); 
-  		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-
-		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, false, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  		IPS_SetVariableProfileAssociation($pname, true, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt.\n";
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";           
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-	   
-	$pname="kWh";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); 
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','kWh');
-		echo "Profil ".$pname." erstellt.\n";          
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";             
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="Wh";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); 
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','Wh');
-		echo "Profil ".$pname." erstellt.\n";          
-        //print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";             
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="kW";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); 
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','kW');
-		echo "Profil ".$pname." erstellt.\n";          
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";             
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="Euro";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); 
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','Euro');
-		echo "Profil ".$pname." erstellt.\n";          
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";             
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }  */
-
             default:
+                echo "      profileOps::createKnownProfilesByName, Profil ".$pname." existiert nicht, oder Aufforderung zum update. ";
                 break;
             }
         }
@@ -3314,6 +3051,7 @@ class profileOps
  *
  * versammelt Operationen in einer Klasse die die Darstellung der Webfronts betrifft
  * 
+ *  __construct                     gerade einmal zebtral debug aktivieren
  *  createActionProfileByName       erzeugt ein Profil für eine Zeile aus einzelnen Buttons die ein Script initieren, mit und ohne Selector, ohne ist kompakt
  *  getActionProfileByName
  *  createButtonProfileByName       erzeugt ein profil für einen einzelnen Button
@@ -3338,6 +3076,14 @@ class webOps
     var $colorSelect = 0x897654;                  // color of selected button
     var $modulName   = "";                      // Before Profilname to differ between modules
 
+    var $debug=false;
+
+    function __construct($debug=false)
+        {
+        $this->debug=$debug;
+        if ($debug) echo "Aufruf class webOps\n";    
+        }
+
     /* SpezialProfile für Action Aufrufe aus dem Webfront, erzeugt eine Zeile aus einzelnen Buttons die ein Script initieren 
      *  pname ist der Name
      *  nameID ein Array aus einzelnen Einträgen
@@ -3351,7 +3097,6 @@ class webOps
      *    $actionDeviceTableID          = CreateVariableByName($hardwareStatusCat,"ShowTablesBy", 1,$pname,"",1010,$scriptIdImproveDeviceDetection);                 
      *
      */
-
     function createActionProfileByName($pname,$nameIDs,$style=1,$colorSet=false,$debug=false)
         {
         // Farben für die Buttons annehmen, fehlende oder nicht zueinander passende Werte schätzen
@@ -3466,13 +3211,15 @@ class webOps
 
     function createSelectButtons($pnames,$categoryId, $scriptId, $debug=false)
         {
+        if ($this->debug) echo "createSelectButtons(".json_encode($pnames).",$categoryId,$scriptId   \n";
         $this->setSelectButtons($pnames,$categoryId);           // auch in der class speichern
         $result=array();
-        if ($debug) 
+        if ($debug || $this->debug) 
             {
             echo "createSelectButtons with following Names :\n";
             foreach ($pnames as $pname)
                 {
+                if (is_array($pname)) return (false);               // nur Name des Profiles erlaubt
                 echo $pname." ";
                 }
             echo "\n";
@@ -3513,6 +3260,7 @@ class webOps
      */
     function setConfigButtons($order=10,$modulName="")
         {
+        if ($this->debug) echo "setConfigButtons($order,$modulName)   \n";
         $this->order       = $order;
         $this->modulName   = $modulName;
         }
@@ -3582,6 +3330,7 @@ class webOps
  *  getArchivedValues       die Daten eines Archivs holen, Zeitspanne oder alle, keine Restriktionen, inklusive manueller Aggregation
  *  manualDailyAggregate    tägliche Aggregation von geloggten Daten, aktuell Energiedaten
  *  manualDailyEvaluate
+ *
  *  getValues               holt sich die Daten und analysiert sie, die generelle Funktion
  *  analyseValues           holt sich die Daten und analysiert sie, hier geht man bereits von einer geordneten Struktur aus
  *
@@ -3790,24 +3539,29 @@ class archiveOps
         return ($result);    
         }
 
-    /* speichern wie wenn sie ein Archive wären
+    /* speichern wie wenn die Daten ein Archive wären
+     * verwendet             
+     *      $oid = $config["OIdtoStore"];          
      *
      */
-    function quickStore($data,$debug=false)
+    function quickStore($data,$config=array(),$debug=false)
         {
-        foreach ($data as $oid => $result)
+        if ($debug) echo "Use archiveOps::quickstore to enter data.\n";
+        foreach ($data as $oidIndex => $result)
             {
+            if (isset($config["OIdtoStore"])) $oid = $config["OIdtoStore"];             // oid wird auch ausserhalb geändert
+
             if ($debug)
                 {
-                if (@IPS_getName($oid)) echo "Datenspeicher $oid (".IPS_getName($oid).")\n";                // oid muss nicht immer einen Namen haben
-                else echo "Datenspeicher $oid \n"; 
+                if (@IPS_getName($oidIndex)) echo "Datenspeicher $oidIndex (".IPS_getName($oidIndex).")\n";                // oid muss nicht immer einen Namen haben
+                else echo "Datenspeicher $oidIndex \n"; 
                 }
             foreach ($result as $function => $entries)    
                 {
                 if ($debug) echo "  $function   ";
                 $f=0;
-                if ($function==="Values")  $this->result[$oid][$function]=$data[$oid][$function];
-                else $this->result[$oid]["Values"]=$data[$oid];       
+                if ($function==="Values")  $this->result[$oid][$function]=$data[$oidIndex][$function];
+                else $this->result[$oid]["Values"]=$data[$oidIndex];       
                 }
             }
         //$this->result=$data;                   // ist nur der Pointer   
@@ -3827,6 +3581,7 @@ class archiveOps
      *      ShowTable
      *          align           den Zeitstempel auf Tages, Stunden, Minutenwerte runterrechnen um leichter Übereinstimmungen zu finden
      *          adjust
+     *          calculate
      *
      *
      * es fehlt
@@ -3839,7 +3594,10 @@ class archiveOps
         $resultShow=array();           // Ausgabe von bereinigten Werten zur weiteren Bearbeitung
         $valuesAdd=array();
         $statistics = new statistics();   
-        $config = $statistics->setConfiguration($configInput);        
+        $config = $statistics->setConfiguration($configInput);   
+        $doecho=true;
+        if ($config["ShowTable"]["output"]=="realTable") { $returnRealTable=true; $doecho=false;  }  
+        else $returnRealTable=false;
         // einfache Routine
         //foreach ($werte as $wert) echo "   ".date ("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";     
 
@@ -3884,6 +3642,15 @@ class archiveOps
             if (isset($wert["Value"])) echo "   $timeStamp2        \n";
             }
 
+        $getValues=array();
+        $moreValues=false;
+        if ($config["AggregatedValue"] != "Avg") 
+            {
+            if (is_array($config["AggregatedValue"])) $getValues=$config["AggregatedValue"];
+            else $getValues[]=$config["AggregatedValue"];
+            $moreValues=true;
+            }
+
         //Darstellung des Result Speicher aus dem archive, das sind dann mehrere oids, synchronisiseren des Zeitstempels und eventuell anpassen erforderlich
         if ($werte===false)
             {
@@ -3891,14 +3658,17 @@ class archiveOps
             // tabelle schreiben timestamp oid value
             $oids=array();                                                                                                  // Counter wieviele Messwerte
             foreach ($this->result as $oid => $result) 
-                {           
-                if (@IPS_getName($oid)) echo "Datenspeicher $oid (".IPS_getName($oid).")\n";                // oid muss nicht immer einen Namen haben
-                else echo "Datenspeicher $oid \n";
+                { 
+                if ($debug)           
+                    {
+                    if (@IPS_getName($oid)) echo "Datenspeicher $oid (".IPS_getName($oid).")\n";                // oid muss nicht immer einen Namen haben
+                    else echo "Datenspeicher $oid \n";
+                    }
                 if (isset($oids[$oid])) $oids[$oid]++;                      // Counter wieviele Messwerte erhöhen
                 else $oids[$oid]=0;                                         // oder anlegen
                 foreach ($result as $function => $entries)    
                     {
-                    echo "  $function   ";
+                    if ($debug) echo "  $function   ";
                     $f=0;
                     if ($function==="Values")                    // nur den Unterpunkt Values bearbeiten, Means, Info etc nicht
                         {
@@ -3940,24 +3710,27 @@ class archiveOps
                             $tabelle[$timestamp][$oid]=$entry;              // Value/Timestamp ist der Originalwert, nicht die alignte Variante
                             $f++;
                             }   
-                        echo "count $f"; 
+                        if ($debug) echo "count $f"; 
                         }
-                    else echo "warning, unexpected category, $function ";
-                    echo "\n";
+                    elseif ($debug) echo "warning, unexpected category, $function ";
+                    if ($debug) echo "\n";
                     }
                 }
             ksort($tabelle);
             ksort($oids);                
 
             //tabelle Ausgeben, zuerst die Spalten sortieren
-            echo "Ausgabe der alignten Tabelle für die obigen Werte:\n";
-            echo "   Timestamp                  ";
-            foreach ($oids as $oid=>$count) 
+            if ($doecho)
                 {
-                echo $oid."         ";
+                echo "Ausgabe der alignten Tabelle für die obigen Werte:\n";
+                echo "   Timestamp                  ";
+                foreach ($oids as $oid=>$count) 
+                    {
+                    echo $oid."         ";
+                    }
+                echo "\n";
                 }
-            echo "\n";
-            
+
             /* Zeilenweise nach Datumsstempel abarbeiten und darstellen, Zeitstempel sind bereits aligned, fehlende Werte mit *** kennzeichnen
              * tabelle mit timestamp als index und dann oid als index, mögliche oids sind im array oids abgespeichert
              * für jede Zeile feststellen welche oids von den darzustellenden vorhanden sind, immer mit TimeStamp und Value gespeichert
@@ -3966,9 +3739,11 @@ class archiveOps
              * 
              */ 
             $correct=0;
+            $realtable=array(); $line=0; 
+            //$line=count($tabelle)-1;
             foreach ($tabelle as $timeStamp => $entries)
                 {
-                echo "   ".date ("d.m.Y H:i:s",$timeStamp)."        ";          
+                if ($doecho) echo "   ".date ("d.m.Y H:i:s",$timeStamp)."        ";          
                 $overwrite=false; $pullwrite=false;         // für Mechanismus welche Werte fehlen, geändert gehören oder ergänzt werden müssen
                 foreach ($oids as $oid=>$count)             // für jede Zeile feststellen welche oids von den darzustellenden vorhanden sind
                     {
@@ -4027,16 +3802,31 @@ class archiveOps
                 ksort($entries);
                 foreach ($entries as $oid =>$entry)
                     {
-                    if (isset($entry["Value"]))   echo nf($entry["Value"],"",14);       // nf does also rounding to 2 kommas and str_pad for 14
-                    elseif (isset($entry["Avg"])) echo nf($entry["Avg"],"",14);
-                    else echo str_pad("",14);
+                    if (isset($entry["Value"]))   { $wert=nf($entry["Value"],"");  $wert2=$entry["Value"]; }
+                    elseif (isset($entry["Avg"])) { $wert=nf($entry["Avg"],"");  $wert2=$entry["Avg"]; }
+                    else { $wert="";  $wert2=""; }
+                    if ($doecho) echo str_pad($wert,14);
+                    if ( $moreValues && (isset($entry["Avg"])) ) 
+                        {
+                        foreach ($getValues as $valIndex) 
+                            {
+                            if ($valIndex=="Avg") $realtable[$line][$oid]=$entry[$valIndex]; 
+                            else $realtable[$line][$oid.$valIndex]=$entry[$valIndex];   
+                            }
+                        }
+                    else $realtable[$line][$oid]=$wert2;
                     }
-                echo "\n";
+                if ($doecho) echo "\n";
+                $realtable[$line]["TimeStamp"]=$timeStamp;
+                $line++;
+                //$line--;
                 }
+            $resultShow["realtable"]=$realtable;                  // ausgabefertige version
             $resultShow["table"]=$tabelle;                  // das sind die bereinigten Werte, wahrscheinlich zu gross
             $resultShow["columns"]=$oids;
             $resultShow["add"]=$valuesAdd;
             }
+        if ($returnRealTable) return ($resultShow["realtable"]);
         return ($resultShow);
         }
 
@@ -4088,16 +3878,17 @@ class archiveOps
         }
 
     /* archiveOps::getArchivedValues
+     * aufgerufen von getValues wenn Parameter Aggregated auf false steht
      * es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
      * Zwischen Start udn Endtime werden Werte aus dem Archiv getLogged geholt, es gibt keine 10.000er Begrenzung, allerdings wird der Speicher schnell knapp
      * es gibt eine manuelle Aggregation die sowohl die Summe als auch den Average und Max/Min berechnen kann. Die Funktion kann auch die Übergabe von einer 10.000 Tranche zurnächsten
      *
      * es wird meansCalc verwendet um die Datenmengen vorab zu analysieren, Ergebnis Auswertung wird am Ende präsentiert
      *
-     *  aus der Config werden benötigt
+     * config auch qualifizieren, aus der Config werden benötigt
      *      StartTime
      *      EndTime
-     *      manAggregate
+     *      manAggregate    verwendet manualDailyAggregate
      *
      *
      *
@@ -4108,11 +3899,11 @@ class archiveOps
         // Konfiguration vorbereiten
         $remOID=false;  	                // anstelle lokaler Archive, die Archive von einem Remote Server abfragen
         $statistics = new statistics();        
-        $config = $statistics->setConfiguration($configInput);
+        $config = $statistics->setConfiguration($configInput);          // Konfiguration qulifizieren
         if (is_numeric($oid)) $aggType = AC_GetAggregationType($this->archiveID, $oid);
         else
             {
-            echo "getArchivedValues($oid, benötigt Analyse.\n"; // String Variable, wahrscheinlich im Format Server::VariableName
+            echo "getArchivedValues($oid, benötigt Analyse wo der Wert gespeichert ist und welche OID er hat.\n"; // String Variable, wahrscheinlich im Format Server::VariableName
             $result = explode("::",$oid);
             $size = sizeof($result);
             if ($size==2)
@@ -4146,13 +3937,15 @@ class archiveOps
 
         $werteTotal=array(); 
         //print_R($config);   
-        $this->configStartEndTime($config);         // transforms config Start/Endtime to Unixtime 
+        $this->configStartEndTime($config);         // transforms config Start/Endtime to Unixtime
+
         /* Mittelwertberechnung von analyseValues verwenden und vorbereiten */
         $means=array();                                          // Speicherplatz im Ergebnis zur Verfügung stellen
         $config["Means"]["Full"]   = new meansCalc($means, "Full");       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
         $config["Means"]["Day"]    = new meansCalc($means, "Day",2000);                           // Ergebnis in means[Day]
         $maxminFull = $config["Means"]["Full"];
         $maxminDay = $config["Means"]["Day"];
+
         $config["carryOver"]=0;
         $config["counter"]=$aggType;                        // aufpassen Aggregation ist anders
 
@@ -4313,7 +4106,9 @@ class archiveOps
         else $maxminFull = new maxminCalc($maxmin,"Full");       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
         if (isset($config["Means"]["Day"])) $maxminDay = $config["Means"]["Day"];
         else $maxminDay = new maxminCalc($maxmin,"Day");
-
+        $maxminFull->updateConfig($config);             // Fehlermeldung wenn maxminCalc verwendet wird
+        $maxminDay->updateConfig($config);
+        
         foreach($werte as $wert)            // die Werte analysieren und bearbeiten, Standardfunktionen verwenden
             {
             $maxminFull->addValue($wert);
@@ -4488,6 +4283,8 @@ class archiveOps
         else $maxminFull = new maxminCalc($maxmin,"Full");       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
         if (isset($config["Means"]["Day"])) $maxminDay = $config["Means"]["Day"];
         else $maxminDay = new maxminCalc($maxmin,"Day");
+        $maxminFull->updateConfig($config,false);             // Fehlermeldung wenn maxminCalc verwendet wird, über array kommt meansCalc, true extended Debug
+        $maxminDay->updateConfig($config);
 
         foreach($werte as $wert)            // die Werte analysieren und bearbeiten, Standardfunktionen verwenden
             {
@@ -4502,6 +4299,7 @@ class archiveOps
      * Get/AnalyseValues,ArchiveOps, Abgrenzung klar, eine kann auch ohne Zeitangabe Werte verarbeiten
      *
      * kann bereits beide Formate, Logged [Value/TimeStamp/Duration] und aggregated [Avg/TimeStamp/Min/Max] , und kann auch ein Array [Value/TimeStamp] verarbeiten
+     * zusätzlich wird ein Remote Server Format mit Server::Dateiname unterstützt.
      *
      * verwendete Klassen:
      *      maxminCalc
@@ -4522,7 +4320,9 @@ class archiveOps
      * Struktur von ResultShares, Index ist der Aktienindexname
      *      Values
      *      MeansRoll
-     *          MeansRollMonth
+     *          MeansRoll
+     *              Month
+     *              Week
      *
      *      Description
      *          Max
@@ -4591,6 +4391,13 @@ class archiveOps
 
         // Default Ergebnis festlegen 
         $result=array();
+        $meansCustomName="unknown";
+        if ($config["meansRoll"]) 
+            {
+            $meansCustom=$config["meansRoll"]["count"];          // selber die letzten Werte zusammenzählen, nicht nach Datum vergleichen
+            if (isset($config["meansRoll"]["name"])) $meansCustomName=$config["meansRoll"]["name"];
+            }
+        else $meansCustom=false; 
 
         /****************************** Verarbeitung und Vorbereitung Konfiguration, Einlesen der Werte
          */
@@ -4616,7 +4423,7 @@ class archiveOps
             if ($debug>1) $debug1=true; else $debug1=false;
             $aggreg=$this->configAggregated($config["Aggregated"]);         // convert String in Config to integer
             //$werte   = @AC_GetAggregatedValues($this->archiveID, $oid, $aggreg, $config["StartTime"], $config["EndTime"], 0);             // 0 unlimited  
-            $werte = $this->getArchivedAggregates($oid,$config,$debug1);                //hat keine Begrenzung, wie getArchivedValues nur mit Aggregates
+            $werte = $this->getArchivedAggregates($oid,$config,$debug1);                //hat keine Begrenzung, wie getArchivedValues nur mit Aggregates, beinhaltet Avg aber auch Min und Max und Time dazu
             $aggType = AC_GetAggregationType($this->archiveID, $oid);
             if ($debug>1) 
                 {
@@ -4700,7 +4507,7 @@ class archiveOps
             {
             $config["InputValues"]=$this->result[$oid]["Values"];              // <- etwas strange, hier versteckt alle Werte noch einmal zu übergeben
             //print_r($config);
-            $eventLogAll = new eventLogEvaluate($events,"All",$config,$debug);             // events ist der Speicherplatz für Berechnungen
+            $eventLogAll = new eventLogEvaluate($events,"All",$config,$debug);             // events ist der Speicherplatz für die Ergebnisse der Berechnungen
             }
 
         /* Standardabweichung am Monatsmittelwert */
@@ -4730,11 +4537,19 @@ class archiveOps
                 $wertAktuell = $statistics->wert($entry);               // nur umrechnen, statistics ist die übergeordnete class
 
                 $maxminFull->addValue($entry);
-                $eventLogAll->addValueAsIndex($index);                  // Vorwert, änderungs Analyse 
+                $eventLogAll->addValueAsIndex($index);                  // Vorwert, Änderungs Analyse 
                 if ($indexCount >= $lateStart)                          // nur brauchbar wenn in die Vergangenheit der Mittelwert berechnet wird oder es schon zu viele Werte sind
                     {
                     // Trendberechnung verwendet meansRollEvaluate, hat alle Werte als Array bereits übergeben bekommen
-
+                    if ($meansCustom)               // wahrscheinlich eine Zahl
+                        {
+                        $mittelWertCustom = $meansRoll->meansValues($index, $meansCustom);                    // aus den nächsten oder vorigen Monatswerten einen Mittelwert berechnen, sollte auch für ein Intervall funktionieren
+                        if ( (isset($mittelWertCustom["error"])) === false)
+                            {
+                            $this->result[$oid]["MeansRoll"][$meansCustomName][$index] = $mittelWertCustom;            // beide Werte mit Index abspeichern
+                                
+                            }
+                        }
                     $mittelWertMonat = $meansRoll->meansValues($index, "month");                    // aus den nächsten oder vorigen Monatswerten einen Mittelwert berechnen, sollte auch für ein Intervall funktionieren
                     if ( (isset($mittelWertMonat["error"])) === false)
                         {
@@ -4932,7 +4747,7 @@ class archiveOps
                     echo "Aktuell ".nf($wertAktuell)." Max ".nf($maxmin["All"]["Max"]["Value"])." Min ".nf($maxmin["All"]["Min"]["Value"])." Trend Monat ".nf($trendMonat,"%")." Woche ".nf($trendWoche,"%")."\n";
                     }
                 }
-            else echo "     Warnung, $oid, noch nicht ausreichend gültige Werte für die Mittelwert und Standardabweichungsberechnung verfügbar.\n";
+            elseif ($debug) echo "     Warnung, $oid, noch nicht ausreichend gültige Werte für die Mittelwert und Standardabweichungsberechnung verfügbar.\n";
             $this->result[$oid]["Description"]["eventLog"]=$events["All"]["eventLog"];            
             $this->result[$oid]["Description"]["Count"]=$logCount;                              // alle Werte, die für die Berechnung des Mittelwertes herangezogen wurden
             if ($debug && false)
@@ -5043,7 +4858,7 @@ class archiveOps
             $events=array();
             $eventLogAll = new eventLogEvaluate($events,"All",$config,$debug);             // events ist der Speicherplatz für Berechnungen
 
-            /* rollierender Mittelwert */
+            /* rollierender Mittelwert , es gibt nur Month und der fix mit 20 Werten */
             $meansRoll = new meansRollEvaluate($this->result[$oid]["Values"]);              // das Array mit den Werten, die Config und Debug       
 
             /* Wertebereich bearbeiten */
@@ -5301,7 +5116,7 @@ class archiveOps
      *      Integrate
      *      deleteSourceOnError
      *      Aggregated          [Avg] statt [Value] verwenden, aggregierte Werte
-     *
+     *      AggregatedValue     anderen Wert festlegen als Avg, default ist Avg
      *
      * Konfiguration in cleanupData:
      *
@@ -5330,13 +5145,16 @@ class archiveOps
             {
             $configCleanUp=$statistics->configCleanUpData($config["cleanupData"]);
             if ($debug) echo "   cleanupStoreValues aufgerufen. Konfiguration cleanupData gesetzt : ".json_encode($configCleanUp)."\n";
-            //print_R($configCleanUp);
-            if (isset($configCleanUp["Range"])) $config["Range"]=$configCleanUp["Range"];
-            else $config["Range"]=false; 
-            $config["maxLogsperInterval"]  = $configCleanUp["maxLogsperInterval"];  // default 10000, es geht auch false hier
-            $config["deleteSourceOnError"] = $configCleanUp["deleteSourceOnError"];
             }        
-        elseif ($debug) echo "   cleanupStoreValues aufgerufen. Konfiguration cleanupData nicht gesetzt. \n";
+        else
+            {
+            $configCleanUp=$statistics->configCleanUpData([]);
+            if ($debug) echo "   cleanupStoreValues aufgerufen. Konfiguration cleanupData nicht gesetzt. Verwende Default Werte : ".json_encode($configCleanUp)."\n";
+            }
+        if (isset($configCleanUp["Range"])) $config["Range"]=$configCleanUp["Range"];
+        else $config["Range"]=false; 
+        $config["maxLogsperInterval"]  = $configCleanUp["maxLogsperInterval"];  // default 10000, es geht auch false hier
+        $config["deleteSourceOnError"] = $configCleanUp["deleteSourceOnError"];
         if ($debug && (isset($config["Split"]))) echo "      Preprocess, call calculateSplitOnData, Configuration : ".json_encode($config["Split"])."\n";
         $split=$this->prepareSplit($config,$debug);
         $count = @count($werte);
@@ -5398,11 +5216,18 @@ class archiveOps
         if ($debug>1) echo"    Search for doubles based on TimeStamp, ignore false values:\n";     // dazu neues array result anlegen mit Index Timestamp
         $check=array();
         unset ($this->result[$oid]);                        //cleanup, alte Werte sollen nicht bestehen bleiben
-        $i=0; $d=0; $displayMax=20; $debug2=false;
+        $i=0; $d=0; $displayMax=20; $debug2=$debug;
         if ($debug2) echo "Werte, insgesamt ".sizeof($werte).", durchgehen.\n";
         foreach ($werte as $indexArchive => $wert)
             {
-            if ($config["Aggregated"]) $wertUsed=$wert["Avg"];
+            if ($config["Aggregated"]) 
+                {
+                if (isset($config["AggregatedValue"]))
+                    {
+                    $wertUsed=$wert[$config["AggregatedValue"]];                // Timestamp egal
+                    }
+                else $wertUsed=$wert["Avg"];
+                }
             else 
                 {
                 if (is_bool($wert["Value"])) 
@@ -5454,11 +5279,13 @@ class archiveOps
             echo "     --> Zusammenfassung gültig $i und ungültig $d Stück.\n";
             if ($d>0) 
                 {
-                echo "                Ungültig (marked for deletion) sind : ";
+                echo "                Ungültig (marked for deletion) sind ".count($deleteIndex)." Einträge: ";
+                //print_R($deleteIndex);
                 foreach ($deleteIndex as $index => $value) 
                     {
                     //echo json_encode($value)."  ";
-                    echo " $index=>".date("d.m.Y H:i:s",$value)."  ".$werte[$index]["Value"]." | ";
+                    echo " $index=>".date("d.m.Y H:i:s",$value)."  ";
+                    if (isset($werte[$index]["Value"])) echo $werte[$index]["Value"]." | ";
                     }
                 echo "\n";          // alle in einer Zeile
                 }
@@ -5467,7 +5294,7 @@ class archiveOps
         /* function, go
          * keine tests bei $config["Aggregated"]>0
          * wenn markiert für delete im deleteindex und $deleteSourceonError auch wirklich delete
-         *
+         * in $this->result[$oid]["Values"] speichern
          */
         $onewarningonly=false;
         $logCount=0; $error=0; $ignore=false;
@@ -5985,22 +5812,28 @@ class statistics
         }        
 
     /* einheitliche Konfiguration mit Variablen für die Nutzung in den Statistikfunktionen
-        *      EventLog            true
-        *      DataType            Archive, Aggregated, Logged
-        *          Aggregated      true if dataType is Aggregated, werte false,0,1,2,
-        *      manAggregate        Aggregate, 
+        *       EventLog            true
+        *       DataType            Archive, Aggregated, Logged
+        *           Aggregated      true if dataType is Aggregated, werte false,0,1,2,
+        *       manAggregate        Aggregate, 
         *                          Format
-        *      KIfeature           none, besondere Auswertungen machen
-        *      Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
-        *      OIdtoStore          eine ander OID verwenden als die echte OID
-        *      returnResult
+        *       KIfeature           none, besondere Auswertungen machen
+        *       Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
+        *       OIdtoStore          eine ander OID verwenden als die echte OID
         *
-        *      suppresszero
-        *      maxDistance
+        *       processondata       eigene Unterkonfigurationsgruppe
+        *       cleanupdata         eigene Unterkonfigurationsgruppe
+        * 
+        *       returnResult
         *
-        *      StartTime 
-        *      EndTime
-        *      LogChange
+        *       meansRoll            ein Wert, diese Anzahl werden als vorwerte für den rollierenden Mittelwert verwendet
+        *
+        *       suppresszero
+        *       maxDistance
+        *
+        *       StartTime 
+        *       EndTime
+        *       LogChange
         *
         */
 
@@ -6016,8 +5849,13 @@ class statistics
         // parse configuration, logInput ist der Input und config der angepasste Output
         configfileParser($logInput, $config, ["EVENTLOG","EventLog","eventLog" ],"EventLog" ,true); 
         configfileParser($logInput, $config, ["DataType","DATATYPE","datatype" ],"DataType" ,"Archive");
+
         if ($config["DataType"] == "Logged") $config["Aggregated"]=false;
-        else configfileParser($logInput, $config, ["Aggregated","AGGREGATED","aggregated" ],"Aggregated" ,false); 
+        else 
+            {
+            configfileParser($logInput, $config, ["Aggregated","AGGREGATED","aggregated" ],"Aggregated" ,false); 
+            configfileParser($logInput, $config, ["AggregatedValue","AGGREGATEDVALUE","aggregatedvalue","aggregatedValue" ],"AggregatedValue" ,"Avg"); 
+            }
 
         configFileParser($logInput, $config1, ["manAggregate","MANAGGREGATE","managgregate"],"manAggregate",false);         // false, anderer Wert default daily , array [aggregate=daily,format=>standard]
         if (is_array($config1["manAggregate"]))
@@ -6036,6 +5874,8 @@ class statistics
 
         if (isset($config["cleanupData"])) $config["cleanupData"]=$this->configCleanUpData($config["cleanupData"]);
         if (isset($config["processOnData"])) $config["processOnData"]=$this->configProcessOnData($config["processOnData"]);
+
+        configFileParser($logInput, $config, ["meansRoll","MEANSROLL","meansroll","MeansRoll"],"meansRoll",false);   // Description
 
         configFileParser($logInput, $config, ["returnResult","RETURNRESULT","returnresult","ReturnResult"],"returnResult",false);   // Description
 
@@ -6114,19 +5954,19 @@ class statistics
     }       // ende class statistics
 
 
-   /*  Berechnung von Mittelwerten, Summen und Max/Min, die Ausgaben und Berechnungsgrundlagen erfolgen in einen gemeinsamen Speicher
-    *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
-    *  verarbeitet Werte mit Zeitstempel und Value, nicht aggregiert mit Avg oder Skalare ohne Zeitstempel
+   /* Berechnung von Mittelwerten, Summen und Max/Min, die Ausgaben und Berechnungsgrundlagen erfolgen in einen gemeinsamen Speicher
+    * das Ergebnis ist ein externes array, es wird nur der Pointer übergeben
+    * verarbeitet Werte mit Zeitstempel und Value, nicht aggregiert mit Avg oder Skalare ohne Zeitstempel
     *
-    *  beim Construct wird der Name unter dem die Berechnung gespeichert werden soll und die Anzahl der Werte die berücksichtigt werden soll gespeichert
-    *  wenn ich 11 Werte angebe wird auf 10 zurückgerundet
-    *  auch wenn in result bereits Werte gespeichert sind werden die Werte extra mit addValue übergeben
-    *  Ergebnis steht zB in result[full] wenn name full ist. Es können mehrere Mittelwert gleichzeitig berechnet werden
+    * beim Construct wird der Name unter dem die Berechnung gespeichert werden soll und die Anzahl der Werte die berücksichtigt werden soll gespeichert
+    * wenn ich 11 Werte angebe wird auf 10 zurückgerundet
+    * auch wenn in result bereits Werte gespeichert sind werden die Werte extra mit addValue übergeben
+    * Ergebnis steht zB in result[full] wenn name full ist. Es können mehrere Mittelwert gleichzeitig berechnet werden
     *
     * für die Berechnung werden folgende Werte angelegt
     *      Count, Count1, Count2, CountFull
     *      Sum, Sum1, Sum2 
-    * das bedeutet wir haben entweder zwei oder einen mittelwert
+    * das bedeutet wir haben entweder zwei oder einen Mittelwert
     *
     * Sonderfall ist Full mit logs=false
     *
@@ -6136,21 +5976,30 @@ class statistics
     *  calculate
     *  extrapolate
     *
+    * extends statistic
+    *       nutzt setConfiguration und addWert, updateWert, date, wert bzw. configCleanUpData, configProcessOnData
     *
-    *
+    * Abgebrochen wird 
+    *       wenn das übergebene array, also der Pointer, kein array ist
     *
     */
 
 class meansCalc extends statistics
     {
-    
+    protected $extendedDebug;           // some extra output
     protected $name;
     protected $result;
     protected $sum,$sum1,$sum2,$sumTime1,$sumTime2,$count1,$count2;
+    protected $configDelta;
+    protected $previousValue, $previousTime;                                        // Mittelwerten aus der Differenz erstellen
 
     function __construct(&$result,$name="Full",$logs=false)
         {
         if (is_array($result)===false) return (false);
+        $this->config=false;
+        $this->configDelta = false;                       // false die Werte nehmen, true die Differenz zum Vorwert ausrechnen
+        $this->extendedDebug = false;
+        $this->previousValue=false; $this->previousTime=false;
 
         $this->sum=0; $this->sum1=0; $this->sum2=0;
         $this->sumTime1=0; $this->sumTime2=0;
@@ -6175,22 +6024,53 @@ class meansCalc extends statistics
         return (true);
         }
 
+    /* meanscalc::updateConfig nachträgliche Konfiguration
+     * wenn this->config nicht mehr false ist dann etwas unternehmen
+     */
+    function updateConfig($configInput=false, $extraDebug=false)
+        {
+        if ($extraDebug) $this->extendedDebug=true;
+        $this->config=$this->setConfiguration($configInput);
+        if ( ($this->config["Integrate"]) )
+            {
+            if ($this->extendedDebug) echo "meansCalc::updateConfig Integrate\n";
+            $this->configDelta=true;
+            }
+        //print_r($this->config);
+        }
+
     /* Übergabe wert[value] und wert[TimeStamp] oder wert
      * alle Werte die hier übergeben werden, werden in sum addiert
      * und an checkMinMax übergeben
      *
+     * sum += value; count++; 
+     *
      * Spezialfunktion mit logs bzw countFull
-        * zählt nur bis CountFull/2 in Sum1 dann in Sum2
-        *
-        * Zwei Funktionen mit Value/TimeStamp oder ohne
-        *
-        */
+     * zählt nur bis CountFull/2 in Sum1 dann in Sum2
+     *
+     * Zwei Funktionen mit Value/TimeStamp oder ohne
+     *
+     */
     function addValue($wertInput)
         {
         if (is_array($this->result)===false) return (false);
         if (isset($wertInput["Value"]))         // Funktion mit Value/TimeStamp
             {
-            $this->sum += $wertInput["Value"];
+            if ($this->configDelta)             // Delta aus den Vorwerten berechnen
+                {
+                if ($this->previousValue===false) 
+                    {
+                    //$value = $wertInput["Value"];                 // Alternative
+                    $value=0;
+                    }
+                else $value = $wertInput["Value"]-$this->previousValue;
+                $this->previousValue=$wertInput["Value"]; $this->previousTime=$wertInput["TimeStamp"];
+                if ($this->extendedDebug) echo date("d.m.Y H:i:s",$wertInput["TimeStamp"])." ".nf($wertInput["Value"],"mm",12).nf($value,"mm",12)."\n"; 
+                }
+            else $value = $wertInput["Value"];  // kein Delta berechnen
+            $wertInput["Value"]=$value;
+
+            $this->sum += $value;
             $this->count++;
             if ($this->result[$this->name]["CountFull"])            // wenn 0/false alle Werte mitnehmen, keine Teilsummen bilden
                 {
@@ -6198,17 +6078,17 @@ class meansCalc extends statistics
                     {
                     if ($this->result[$this->name]["Count"]<($this->result[$this->name]["CountFull"]/2))
                         {
-                        $this->sum1 += $wertInput["Value"];
+                        $this->sum1 += $value;
                         $this->sumTime1 += $wertInput["TimeStamp"];
                         $this->count1++;
                         }    
                     else 
                         {
-                        $this->sum2 += $wertInput["Value"];
+                        $this->sum2 += $value;
                         $this->sumTime2 += $wertInput["TimeStamp"];
                         $this->count2++;                                
-                        }    
-                    $this->checkMinMax($wertInput);         // Min/Max nur über den Bereich bis CountFull (logs), übergibt Wert und Zeitstempel
+                        } 
+                    $this->checkMinMax($wertInput);   
                     }
                 }
             else            // wenn 0/false alle Werte mitnehmen, keine Teilsummen bilden
@@ -6286,6 +6166,10 @@ class meansCalc extends statistics
                 $this->result[$this->name]['MinEntry']["Value"]     = $wertInput["Value"];
                 $this->result[$this->name]['MinEntry']["TimeStamp"] = $wertInput["TimeStamp"];                 
                 }
+            }
+        elseif (is_array($wertInput))
+            {
+            echo "wrong";
             }
         else
             {
@@ -6451,7 +6335,7 @@ class meansCalc extends statistics
 
 
 
-/*  Auswertung von Archive Einträgen, Ausgaben in einen gemeinsamen Speicher
+   /*  Auswertung von Archive Einträgen, Ausgaben in einen gemeinsamen Speicher
     *  das Ergebnis ist ein externes array, es wird nur der pointer übergeben
     *  es gilt besondere Ereignisse heruaszufiltern.
     *  Übergabe config als Parameter:
@@ -6483,7 +6367,14 @@ class eventLogEvaluate extends statistics
     protected $result;
     protected $first=false,$debug;
 
-    /* die wichtigsten Variablen initialisieren */
+    /* die wichtigsten Variablen initialisieren, Ergebnis der Berechnungen wird in ein vom Auftraggeber vorbereitetes array gespeichert
+     *
+     * Ergebnis speichern in result[name]
+     *     legt zusätzliche Untergruppen an
+     *                      eventLog
+     *                      countPosMax
+     *                      countNegMax
+     */
 
     function __construct(&$result,$name="All",$config=false,$debug=false)
         {
@@ -6531,9 +6422,9 @@ class eventLogEvaluate extends statistics
         }
 
     /* Übergabe wert[value] oder wert[avg] und wert[TimeStamp]
-        * previousOne ist rückwärts oder vorwärts möglich, TimeStamp als PreviousTime mit betrachten
-        *
-        */
+     * previousOne ist rückwärts oder vorwärts möglich, TimeStamp als PreviousTime mit betrachten
+     *
+     */
     function addValue($wert)
         {
         if (is_array($this->result)===false) return (false);
@@ -6925,12 +6816,14 @@ class meansRollEvaluate extends statistics
             return (true);
             }
 
-        /* Übergabe wert[value] oder wert[avg] und wert[TimeStamp]
-         * wir brauchen einen timeStamp 
+        /* Übergabe index auf wert[value] oder wert[avg] und wert[TimeStamp] in input und ein count als Wert oder Identifier
+         * wir brauchen einen timeStamp um den Wert einem Zeitpunkt zuordnen, sonst false
+         *
          * previousOne ist rückwärts oder vorwärts möglich, TimeStamp mit betrachten
          * berechnet einen rollierenden Mittelwert mit countInput Werten
          *      day, week, month
          * count ist die maximale Anzahl an Werten die berücksichtigt wird, wir beginnen bei index und zählen nach oben
+         * wenn duration gesetzt ist wird nach Ablauf der Zeit bereits mit der Berechnung abgebrochen
          *
          */
         function meansValues($index, $countInput)
@@ -6944,6 +6837,11 @@ class meansRollEvaluate extends statistics
                 {
                 switch (strtoupper($countInput))    
                     {
+                    case "YEAR":
+                        $count=400;                          // mehr Arbeitstage, Count, es wird nach duration abgebrochen
+                        //$debug=false;
+                        $duration=(366*24*60*60);         // es werden Zeitstempel verglichen, Kalendertage, Schalttage mitnehmen
+                        break;
                     case "MONTH":
                         $count=40;                          // mehr Arbeitstage, Count, es wird nach duration abgebrochen
                         //$debug=false;
@@ -6958,7 +6856,7 @@ class meansRollEvaluate extends statistics
                         break;
                     }
                 }
-            else 
+            else                // nu die Werte zählen um den Mittelwert zu bekommen
                 {
                 $debug=false;
                 $count=$countInput;
@@ -7596,6 +7494,39 @@ class App_Convert_XmlToArray
 
     }       // end of class
 
+/* class for javascript snippets
+ */
+
+class jsSnippets
+    {
+
+    /* ready to go
+     * in case the document is already rendered, call ready with function to ensure data is available
+     * try after each other
+     *      document.readyState!='loading' for modern browsers
+     *      document.addEventListener on DOMContentLoaded
+     *      document.attachEvent on onreadystatechange, then document.readyState==complete
+     */
+    public function ready($innerfunction)
+        {
+        $html="";
+        $html .= 'function ready(callback){                                     
+                if (document.readyState!=\'loading\') callback();           
+                else if (document.addEventListener) document.addEventListener(\'DOMContentLoaded\', callback);
+                else document.attachEvent(\'onreadystatechange\', function(){
+                    if (document.readyState==\'complete\') callback();
+                    });
+            }'."\n";
+        $html .= 'ready(function(){ '."\n";                                                          // do something        
+        $html .= $innerfunction;
+        $html .= '   });  
+                '; 
+        return ($html);
+        }
+
+
+    }       // end of class
+
 /**************************************************************************************************************************
  *
  * ipsTables, Zusammenfassung von Funktionen rund um die Darstellung von Tables mit html
@@ -7603,10 +7534,13 @@ class App_Convert_XmlToArray
  *
  *      __construct
  *      checkConfiguration
+ *      checkDisplayConfig
  *      setConfiguration            Sort, Html, Header
+ *
  *      getColumnsName
  *      analyseConfig
  *      processData
+ *      insertHeader
  *      analyseData
  *      showTable
  *      
@@ -7616,13 +7550,25 @@ class ipsTables
     {
     
     var $config = array();          // config, auch Teil der Class
+    var $data   = array();
 
     function __construct($cfg=false)                    // config bei create class, danach mit setConfiguration oder erst mit der Funktion übergeben,  
         {
         $this->config = $this->checkConfiguration($cfg);                  // es wird die class config geändert
         }
 
-    /* check/set Configuration
+    /* check/set Configuration, erster Parameter, es gibt auch noch display
+     * analyseConfig wird vorangestellt um beide config parameter auseinander und wieder zusammenzuführen
+     *
+     *      sort
+     *      html            true
+     *      text            true, Ausgabe als echo
+     *      header          foramtieren der headerrow
+     *      display
+     *      insert
+     *      replace
+     *      filter
+     *      format
      *
      */
 
@@ -7641,6 +7587,9 @@ class ipsTables
 
         configfileParser($cfgInput, $config, ["HEADER","Header","header" ],"header" ,false);                // bei html eine headerrow formatieren
         configfileParser($cfgInput, $config, ["DISPLAY","Display","display" ],"display" ,null);                // display Einstellungen als Konfigurationsparameter
+        configfileParser($cfgInput, $config, ["TRANSPOSE","Transpose","transpose" ],"transpose" ,false);                // Zeilen und Spalten vertauschen
+        configfileParser($cfgInput, $config, ["REVERSE","Reverse","reverse" ],"reverse" ,false);                // Zeilen in die andere Richtung sortieren
+
         configfileParser($cfgInput, $config, ["INSERT","Insert","insert" ],"insert" ,null);                // bei html eine headerrow einfügen mit den Namen aus display
         configfileParser($cfgInput, $config, ["REPLACE","Replace","replace" ],"replace" ,null);                // bei html die erst zeile überschreiben mit den Namen aus display
 
@@ -7648,6 +7597,35 @@ class ipsTables
 
         configfileParser($cfgInput, $config, ["FORMAT","Format","format" ],"format" ,null);                // bei html die erst zeile überschreiben mit den Namen aus display
 
+        return($config);
+        }
+
+
+    /* check/set Display Configuration, 
+     *
+     * wir haben nur header, format
+     *
+     */
+
+    function checkDisplayConfig($cfg,$debug=false)
+        {
+        $config = array();
+        if ($debug) echo "checkDisplayConfig : ".json_encode($cfg)."\n";
+        if (is_array($cfg)) $cfgInput = $cfg;
+        else $cfgInput=array();                             // false oder anderer scalarer Wert
+        foreach ($cfgInput as $columnName => $cfgWert)
+            {
+            if (is_array($cfgWert))
+                {
+                configfileParser($cfgWert, $config[$columnName], ["HEADER","Header","header" ],"header" ,"unknown");
+                configfileParser($cfgWert, $config[$columnName], ["FORMAT","Format","format" ],"format" ,"");
+                }
+            else 
+                {
+                $config[$columnName]["header"]=$cfgWert;
+                $config[$columnName]["format"]="";
+                }
+            }
         return($config);
         }
 
@@ -7662,6 +7640,7 @@ class ipsTables
         }
 
     /* Ausgabe ein array mit der Auflistung der Indexe, also aller verfügbaren Spalten
+     * zur Orientierung und wenn keine Angabe als Defaultwerte 
      */ 
 
     function getColumnsName($inputData,$debug=false)
@@ -7705,11 +7684,29 @@ class ipsTables
         if (isset( $config["display"])) 
             {
             if ($debug) echo "Einstellung für Display übernehmen, override of ".json_encode($display)." \n";
+            $display = $config["display"];
             }
-        else $config["display"]=$display;
+        unset ($config["display"]); 
+        $config["display"] = $this->checkDisplayConfig($display);
         if (isset($config["format"]["class-id"])===false)   $config["format"]["class-id"]="easycharts-api";           // make it short
         if (isset($config["format"]["header-id"])===false)  $config["format"]["header-id"]="hrow";          // make it short
         return ($config);
+        }
+
+    /* data is not always structured with line and column
+     * convert different formats identified by name
+     * put them already under the class
+     */
+    function convertData($processData,$model=false)
+        {
+        $this->data=array();
+        foreach ($processData as $dataName => $entry)               // dataname is col name
+            {
+            foreach ($entry as $seriesId => $subentry)
+                {
+                // alignment of timestamped data is difficult, use getValues   
+                }
+            }
         }
 
     /* übersichtlicher machen, die Daten vorverarbeiten, config wird erweitert
@@ -7767,6 +7764,7 @@ class ipsTables
      */
     protected function insertHeader(&$inputData, &$config, $debug=false)
         {
+        //if ($debug) echo "insertHeader: ".json_encode($config)."\n";
         $doheader=false;
         $inputHeader=array();
         if ( ( (isset($config["insert"]["Header"])) && ($config["insert"]["Header"]) ) || ( (isset($config["replace"]["Header"])) && ($config["replace"]["Header"]) ) )
@@ -7781,7 +7779,7 @@ class ipsTables
         if ($doheader) 
             {
             if ($debug) echo "insert header now:   \n";
-            array_unshift($inputData,$inputHeader);
+            array_unshift($inputData,$inputHeader);             // inputheader am Anfang des arrays einfügen
             }
         return (true);
         }
@@ -7840,9 +7838,9 @@ class ipsTables
      *  format  dieser Eintrag wird 1:1 an nf weitergeleitet
      *
      * config Einstellungen
-     *  sort
+     *  sort            eventuell multisort mit mehreren Spalten
      *  html
-     *  header
+     *  insert.header   Spaltenbezeichnung einführen
      *  display
      *  text
      *
@@ -7865,7 +7863,7 @@ class ipsTables
 
         // process Data
         $inputData = $this->processData($processData, $config, $debug);             // config wird erweitert, die berabeiteten Daten retourniert
-        if ($inputData===false) return ($false);
+        if ($inputData===false) return (false);
 
         // sort Data
         //print_R($inputData);
@@ -7877,9 +7875,11 @@ class ipsTables
             }
         else $sort=$config["sort"];
         $ipsOps->intelliSort($inputData, $sort,$dir,$debug);                   // $sort=SORT_ASC
+        if ($config["reverse"]) krsort($inputData);
 
         $this->insertHeader($inputData, $config, $debug);
 
+        // diese Konfigurationen werden übernommen, Pointer übernehmen
         $rows      = $config["rows"];
         $doheader  = $config["doheader"];
         $html      = $config["html"];
@@ -7887,10 +7887,11 @@ class ipsTables
         $display   = $config["display"];
         $id        = $config["format"]["class-id"];
         $hid       = $config["format"]["header-id"];
+        $transpose = $config["transpose"];
 
         $displayWidth=$this->analyseData($inputData, $config, $debug);       // Daten Anzahl Spalten und Breite bestimmen
 
-        if (is_array($display))
+        if (is_array($display))         // ist immer gesetzt, wenn nicht vorerst keine Funktion, zuerst filter
             {
             //print_R($config);
             $filter=false;
@@ -7920,23 +7921,42 @@ class ipsTables
                 if ($debug) echo "    ".$rows." Reihen erkannt.\n"; 
                 $displayOutput=array();
                 $line=0;
+                // macht aus inputData[row][col] displayOutput[line][col]
                 foreach ($inputData as $row => $inputLine)
                     {
                     if ($debug>1) echo "Process $row ".json_encode($inputLine)."\n";
                     //print_R($inputLine);
                     if ($row==0)                                                // die erste Zeile ist der Header der Tabelle
                         {
-                        if ($debug>1) echo "Header/First Row :\n";
+                        if ($debug>1) echo "Header/First Row : ".($transpose?"Transpose":"")."\n";
                         $col=0;
                         foreach ($display as $name => $itemBox)
                             {
-                            if (isset($inputLine[$name])) $input=$inputLine[$name];
-                            else $input="";
-                            $displayOutput[$line][$col]=$input;
+                            if ($transpose) 
+                                {
+                                if (is_array($itemBox)) $item=$itemBox["format"];
+                                else $item=$itemBox;
+                                if ((isset($inputLine["currency"])) && ($item=="<currency>")) $item=$inputLine["currency"];              // die Währung wird sich aus der gleichen tabelle aus einer anderen Spalte geholt
+
+                                if (isset($inputLine[$name]))                                       // schauen ob es diese Zelle auch wirklich gibt, sonst leer ausgeben
+                                    {
+                                    if ($doheader) $input = $inputLine[$name]; 
+                                    else $input = nf($inputLine[$name],$item)." ";              //nf übernimmt die Formatierung
+                                    }
+                                else $input = "";
+                                $displayOutput[$col][$line]=$input;      // Zeilen werden Spalten
+                                }
+                            else 
+                                {
+                                if (isset($inputLine[$name])) $input=$inputLine[$name];
+                                else $input="";
+                                $displayOutput[$line][$col]=$input;
+                                }
                             if ($dotext) echo str_pad($input,$displayWidth[$col]);
                             $col++;
                             }
                         $line++;
+                        if ($debug>1) print_r($displayOutput);
                         if ($dotext) echo "\n";
                         }
                     else
@@ -7956,32 +7976,37 @@ class ipsTables
                                 $input = nf($inputLine[$name],$item)." ";              //nf übernimmt die Formatierung
                                 }
                             else $input = "";
+                            if ($transpose)  $displayOutput[$col][$line]=$input;
                             $displayOutputLine[$col]=$input;
                             if ($dotext) echo str_pad(nf($input,$item)." ",$displayWidth[$col]);
                             $col++;
                             }
-                        if ($filter)
+                        if ($transpose===false)
                             {
-                            //echo "filter";
-                            $found=false;
-                            foreach ($filter as $column => $value)
+                            if ($filter)
                                 {
-                                if (isset($displayOutputLine[$column]))
+                                //echo "filter";
+                                $found=false;
+                                foreach ($filter as $column => $value)
                                     {
-                                    $pos = strpos($displayOutputLine[$column],$value);    
-                                    if ($pos) $found=true;
-                                    //echo $pos;
+                                    if (isset($displayOutputLine[$column]))
+                                        {
+                                        $pos = strpos($displayOutputLine[$column],$value);    
+                                        if ($pos) $found=true;
+                                        //echo $pos;
+                                        }
                                     }
+                                if ($found) $displayOutput[$line]=$displayOutputLine;
+                                //echo "Config Filter gesetzt";
                                 }
-                            if ($found) $displayOutput[$line]=$displayOutputLine;
-                            //echo "Config Filter gesetzt";
+                            else $displayOutput[$line]=$displayOutputLine;
                             }
-                        else $displayOutput[$line]=$displayOutputLine;
                         $line++;
+                        if (($debug>1) && ($row==1)) print_r($displayOutput);
                         if ($dotext) echo "\n";  
                         }
                     }
-                //print_R($displayOutput);
+                //print_R($displayOutput);      // fertig mit Zeilen und Spalten, nur mehr ausgeben
 
                 if ($html)              // Textausgabe als html Tabelle, displayOutput ist die bereits vorverarbeitete Quelle der Ausgabe
                     {
@@ -8105,7 +8130,10 @@ class ipsTables
  *
  *      __construct
  *      createChart
- *      
+ *      createChartFromArray
+ *
+ *
+ *
  */
 
 class ipsCharts
@@ -8123,6 +8151,10 @@ class ipsCharts
 
     /* createChart 
      * Highcharts class übernimmt die config Daten
+     * holt die Daten aus dem Archiv
+     * macht lauter kleine Tabellenzellen mit den letzten Werten je OID in der Config
+     * sehr praktisch für eine einfache Vorwertedarstellung zB in Station von Startpage
+     *
      */
 
     public function createChart($chartID,$specialConf,$debug=false)
@@ -8259,8 +8291,9 @@ class ipsCharts
 
     /* createChartfrom Array 
      * Highcharts class übernimmt die config Daten
-     * Darstellung in einem Table,string zur darstellung als return, 
+     * Darstellung in einem Table,string zur Darstellung als return, 
      * benötigt die scriptHighchartsID und einen Index unter dem der Graph als Datei abgespeichert wird
+     * zeichnet mehrere Highcharts nebeinander in einer Tabelle
      *
      *  data wird aus dem array übernommen, werte alle
      *      Value
@@ -8277,6 +8310,9 @@ class ipsCharts
      *              Index                   mehrere Kurven in einem Plot
      *          Name        
      *              Index                   parallel mit gleichem Index ein passender Name dazu
+     *
+     * gibt eine html Tabelle aus
+     *
      */
 
     public function createChartFromArray($chartID,$specialConf,&$result,$debug=false)
@@ -8285,12 +8321,23 @@ class ipsCharts
             $wert .= "<table><tr>";
             if ($this->scriptHighchartsID>100)      // ohne Script gehts nicht */
                 {
+                /* die Datenpunkte einzeln pro indexChart speichern */
                 foreach ($specialConf as $indexChart => $config)
                     {
                     if ($debug) echo "showSpecialRegsWidget: Highcharts Ausgabe von $indexChart (".json_encode($config).") : \n"; 
-
-                    $endTime=time();
-                    $startTime=$endTime-$config["Duration"];     /* drei Tage ist Default */
+                    if (isset($config["Index"])) $resultseries=$result[$config["Index"]];
+                    else $resultseries=$result;
+                    if (isset($config["StartTime"]))
+                        {
+                        $startTime=strtotime($config["StartTime"]);
+                        $endTime=$startTime+$config["Duration"];    
+                        }
+                    else
+                        {
+                        $endTime=time();
+                        $startTime=$endTime-$config["Duration"];     /* drei Tage ist Default */
+                        }
+                    if ($debug) echo "Starttime ist ".date("d.m.Y H:i",$startTime)." Endtime ist ".date("d.m.Y H:i",$endTime)."\n";
                     $chart_style=$config["Style"];            // line spline area gauge            gauge benötigt eine andere Formatierung
 
                     // Create Chart with Config File
@@ -8304,7 +8351,7 @@ class ipsCharts
 
                     $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
                     $CfgDaten['ContentVarableId']   = $chartID;                                                                                   //****************************                          
-                    $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
+                    $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in Themes kopiert werden....
                     $CfgDaten['StartTime']          = $startTime;
                     $CfgDaten['EndTime']            = $endTime;
 
@@ -8317,7 +8364,7 @@ class ipsCharts
                     $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
                     
                     $CfgDaten['title']['text']      = "";                           // weglassen braucht zuviel Platz
-                    //$CfgDaten['subtitle']['text']   = "great subtitle";         // hioer steht der Zeitraum, default als Datum zu Datum Angabe
+                    //$CfgDaten['subtitle']['text']   = "great subtitle";         // hier steht der Zeitraum, default als Datum zu Datum Angabe
                     $CfgDaten['subtitle']['text']   = "Zeitraum ".nf($config["Duration"],"s");         // hier steht nmormalerweise der Zeitraum, default als Datum zu Datum Angabe
                     
                     //$CfgDaten["PlotType"]= "Gauge"; 
@@ -8343,41 +8390,107 @@ class ipsCharts
 
                     $CfgDaten['chart']['type']      = $chart_style;                                     // neue Art der definition
                     $CfgDaten['chart']['backgroundColor']   = $config["backgroundColor"];                // helles Gelb ist Default
-
-                    /*foreach($config["OID"] as $index => $oid)
-                        {
-                        $serie = array();
-                        $serie['type']                  = $chart_style;                 // muss enthalten sein
-                        if ($config["Step"]) $serie['step'] = $config["Step"];                // false oder left
-
-                        // wenn Werte für die Serie aus der geloggten Variable kommen : 
-                        if (isset($config["Name"][$index])) $serie['name'] = $config["Name"][$index];
-                        else $serie['name'] = $config["Name"][0];
-                        //$serie['marker']['enabled'] = false;                  // keine Marker
-                        $serie['Unit'] = $config["Unit"];                            // sieht man wenn man auf die Linie geht
-                        $serie['Id'] = $oid;
-                        //$serie['Id'] = 28664 ;
-                        $CfgDaten['series'][] = $serie;
-                        }*/
                     
-                    $scale=1;
-                    $serie['Unit'] = $config["Unit"]; 
-                    $serie['type']      = 'line';
-                    $serie['step']      = 'right';
-                    foreach ($result as $entry)
+
+                    if (isset($config["Series"]))                           // createChartFromArray
                         {
-                        //if ($scale==0) $scale=100/$entry["Value"];
-                        if ($debug) echo "      ".date("d.m H:i:s",$entry["TimeStamp"])."  ".round($entry["Value"]*$scale,0)."\n";
-                        $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => (float)(round(($entry["Value"]*$scale),0))];
+                        foreach($config["Series"] as $indexSeries => $configSerie)          // mehrere Kurven übereinander zeichnen
+                            {
+                            if (!( (isset($configSerie["Enable"])) && ($configSerie["Enable"]===false)  ))              // nicht aktiv disabled
+                                {
+                                if  (isset($configSerie["MapData"]))                // Die Daten in mehreren Serien übereinander zeichnen
+                                    {
+                                    if (isset($configSerie["Index"]))  
+                                        {
+                                        $minYear=9999;
+                                        foreach ($resultseries[$configSerie["Index"]] as $entry)
+                                            {
+                                            $currentYear=(integer)date("Y",$entry["TimeStamp"]);   
+                                            if ($currentYear<$minYear) $minYear=$currentYear;
+                                            }
+                                        switch ($configSerie["MapData"])
+                                            {
+                                            case "Year":            
+                                                // Index ist 0 bis 11 für die Monate
+                                                break;
+                                            }
+                                        $scale=1;                            
+                                        for ($i=0;($i<(2025-$minYear));$i++) 
+                                            {
+                                            //$CfgDaten['series'][$i]['type']                  = $chart_style;                 // muss enthalten sein
+                                            $CfgDaten['series'][$i]['type']                  = 'line';                 // muss enthalten sein
+                                            if (isset($configSerie["Step"])) $CfgDaten['series'][$i]['step'] = $configSerie["Step"];                // false oder left
+                                            if (isset($configSerie["Name"])) $CfgDaten['series'][$i]['name'] = $configSerie["Name"].($i+1);
+                                            else $serie['name'] = $indexSeries.($i+1);
+                                            if (isset($configSerie["Unit"])) $CfgDaten['series'][$i]['Unit'] = $configSerie["Unit"]; 
+                                            $CfgDaten['series'][$i]['step']      = 'right';
+                                            $CfgDaten['series'][$i]['marker']['enabled'] = false;                  // keine Marker, Punkte auf der Linie
+                                            }
+                                        foreach ($resultseries[$configSerie["Index"]] as $entry)                        // copy data
+                                            {
+                                            //if ($scale==0) $scale=100/$entry["Value"];
+                                            $timestamp=$entry["TimeStamp"];
+                                            $indexOfMonth=(integer)date("Y",$timestamp)-$minYear; 
+                                            $timestamp = strtotime(date("d.m",$timestamp).".$minYear");
+                                            if ($debug) echo "      ".str_pad($indexOfMonth,3)." ".date("d.m.Y H:i:s",$timestamp)."  ".round($entry["Value"]*$scale,1)."\n";
+                                            $CfgDaten['series'][$indexOfMonth]['data'][] = ["TimeStamp" =>  $timestamp,"y" => (float)(round(($entry["Value"]*$scale),1))];
+                                            }
+                                        }
+                                    }
+                                else    
+                                    {
+                                    $scale=1;                            
+                                    $serie = array();
+                                    $serie['type']                  = $chart_style;                 // muss enthalten sein
+                                    if (isset($configSerie["Step"])) $serie['step'] = $configSerie["Step"];                // false oder left
+                                    if (isset($configSerie["Name"])) $serie['name'] = $configSerie["Name"];
+                                    else $serie['name'] = $indexSeries;
+                                    if (isset($configSerie["Unit"])) $serie['Unit'] = $configSerie["Unit"]; 
+                                    //$serie['type']      = 'line';
+                                    $serie['step']      = 'right';
+                                    $serie['marker']['enabled'] = false;                  // keine Marker, Punkte auf der Linie
+                                    if (isset($configSerie["Index"]))
+                                        {
+                                        foreach ($resultseries[$configSerie["Index"]] as $entry)                        // copy data
+                                            {
+                                            //if ($scale==0) $scale=100/$entry["Value"];
+                                            $timestamp=$entry["TimeStamp"];
+                                            if ($timestamp>$startTime)
+                                                {
+                                                if ($debug) echo "    :  ".date("d.m.Y H:i:s",$entry["TimeStamp"])."  ".round($entry["Value"]*$scale,1)."\n";
+                                                $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => (float)(round(($entry["Value"]*$scale),1))];
+                                                }
+                                            }
+                                        }
+                                    $CfgDaten['series'][] = $serie;                                         
+                                    } 
+                                }
+                            }                      
                         }
-                    $CfgDaten['series'][] = $serie;
+                    else
+                        {
+                        $scale=1;
+                        $serie = array();                        
+                        $serie['Unit'] = $config["Unit"]; 
+                        $serie['type']      = 'line';
+                        $serie['step']      = 'right';
+                        $serie['marker']['enabled'] = false;                  // keine Marker, Punkte auf der Linie
+                        if (isset($config["Name"])) $serie['name'] = $config["Name"]; else $serie['name'] = $indexChart;
+                        foreach ($resultseries as $entry)
+                            {
+                            //if ($scale==0) $scale=100/$entry["Value"];
+                            if ($debug) echo "      ".date("d.m H:i:s",$entry["TimeStamp"])."  ".round($entry["Value"]*$scale,0)."\n";
+                            $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => (float)(round(($entry["Value"]*$scale),0))];
+                            }
+                        $CfgDaten['series'][] = $serie;
+                        }
                     $highCharts = new HighCharts();
                     $CfgDaten    = $highCharts->CheckCfgDaten($CfgDaten);
                     $sConfig     = $highCharts->CreateConfigString($CfgDaten);
                     $tmpFilename = $highCharts->CreateConfigFile($sConfig, "WidgetGraph_$indexChart");
                     if ($tmpFilename != "")
                         {
-                        if ($debug) echo "Ausgabe Highcharts:\n";
+                        if ($debug) echo "Ausgabe Highcharts in File WidgetGraph_$indexChart :\n";
                         $chartType = $CfgDaten['Ips']['ChartType'];
                         $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
                         $callBy="CfgFile";
@@ -8456,10 +8569,14 @@ class ipsOps
     {
 
     var $module;
+    var $includefile;
 
     function __construct($module="")
         {
         if ($module != "") $this->module = $module;
+        $this->includefile="<?php";                      //  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht , verwendet von CreateVariable3
+	    $this->includefile.="\n".'function ParamList() {
+		        return array('."\n";
         }
 
     /* die IPS version ausgeben, als Major, Minor Array
@@ -8927,7 +9044,7 @@ class ipsOps
         }
 
     /* ipsOps, verwendet array_multisort, array wird nach dem key orderby sortiert
-     * Ergebnis ist sortarray, das inputarray besteht aus Zeilen und Spalten, die Spalte assoziert mit dem Key
+     * Ergebnis der Berechnungen ist sortarray aber sortiert wird inputarray, das inputarray besteht aus Zeilen und Spalten, die Spalte assoziert mit dem Key
      * zuerst alle Zeilen und Spalten durchgehen, es wird ein neues Array mit der Spalte als Key und seinem Wert angelegt, das heisst pro zeile ein Wert
      * array_multisort nimmt das sortArray mit dem orderby Key als Input für den Sortierungsalgorythmus und sortiert ensprechend das inputArray
      * als Returnwert wird üblicherweise das inputArray verwendet, return sortArray nur als Hilfestellung
@@ -8939,6 +9056,7 @@ class ipsOps
 
     function intelliSort(&$inputArray, $orderby, $sort=SORT_ASC, $debug=false)
         {
+        $first=true;
         $sortArray = array(); 
         if ($sort === false) $sort=SORT_ASC;
         if ($orderby === false) return (false);         // Spalten Key nachdem sortiert werden soll
@@ -8948,7 +9066,7 @@ class ipsOps
             foreach($inputArray as $index => $entry)              // alle Spalten zeilenweise durchgehen
                 {
                 if ((is_array($entry))===false) return false; 
-                if ($debug) echo str_pad($index,5)."   ".sizeof($entry)." Spalten\n";
+                if ($debug && $first) { echo str_pad($index,5)."   ".sizeof($entry)." Spalten\n"; $first=false; }
                 foreach($entry as $key=>$value)
                     { 
                     if (is_array($value)) { echo "intellisort, input array mehr als zweidimensional : ".json_encode($entry)."\n"; return (false); }
@@ -9096,7 +9214,117 @@ class ipsOps
 		    }
 		Debug ("Empty Category ID=$CategoryId");
 	    }
+
+    /* createVariableByName as class function with additional features
+     * Variable oder Kategorie wird nur angelegt wenn sie noch nicht vorhanden ist
+     *
+     */
+
+    function createVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        {
+        //echo "Position steht auf $position.\n";
+        //echo "CreateVariableByName: $id $name $type $profile $ident $position $action\n";
+        /* type steht für 0 Boolean 1 Integer 2 Float 3 String */
         
+        $VariableId = @IPS_GetVariableIDByName($name, $parentID);
+        if ($VariableId === false)
+            {
+            echo "Create Variable Name $name Type $type in $parentID:\n";
+            $VariableId = @IPS_CreateVariable($type);
+            if ($VariableId === false ) throw new Exception("Cannot CreateVariable with Type $type");
+            IPS_SetParent($VariableId, $parentID);
+            IPS_SetName($VariableId, $name);
+            if ( ($profile) && ($profile !== "") ) { IPS_SetVariableCustomProfile($VariableId, $profile); }
+            if ( ($ident) && ($ident !=="") ) {IPS_SetIdent ($VariableId , $ident );}
+            if ( $action && ($action!=0) ) { IPS_SetVariableCustomAction($VariableId,$action); }        
+            if ($default !== false) SetValue($VariableId, $default);
+            IPS_SetInfo($VariableId, "this variable was created by script #".$_IPS['SELF']." ");
+            }
+        else 
+            {
+            $VariableData = IPS_GetVariable($VariableId);
+            $objectInfo   = IPS_GetObject($VariableId); 
+            if ($VariableData['VariableType'] <> $type)
+                {
+                IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." <> \"$type\". Delete and create new.");
+                IPS_DeleteVariable($VariableId); 
+                $VariableId=CreateVariableByName($parentID, $name, $type, $profile, $ident, $position, $action);  
+                $VariableData = IPS_GetVariable ($VariableId);            
+                }
+            if ($profile && ($VariableData['VariableCustomProfile'] <> $profile) )
+                {
+                //Debug ("Set VariableProfile='$Profile' for Variable='$name' ");
+                echo "Set VariableProfile='$profile' for Variable='$name' \n";
+                $result=@IPS_SetVariableCustomProfile($VariableId, $profile);
+                if ($result==false) 
+                    {
+                    echo "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.\n";
+                    IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.");
+                    }
+                }	
+            if ($action && ($VariableData['VariableCustomAction'] <> $action) )
+                {
+                //Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+                echo "Set VariableCustomAction='$action' for Variable='$name' \n";
+                IPS_SetVariableCustomAction($VariableId, $action);
+                }
+            if ($ident && ($objectInfo['ObjectIdent'] <> $ident) )
+                {
+                //Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+                echo "Set VariableIdent='$ident' for Variable='$name' \n";
+                IPS_SetIdent($VariableId, $ident);
+                }
+    
+            }
+        IPS_SetPosition($VariableId, $position);
+	    $this->includefile.='"'.$name.'" => array("OID"     => \''.$VariableId.'\','."\n".
+					'                       "Name"    => \''.$name.'\','."\n".
+					'                       "Type"    => \''.$type.'\','."\n".
+					'                       "Profile" => \''.$profile.'\'),'."\n";        
+        return $VariableId;
+        }
+
+    function getIncludeFile()
+        {
+	    $includefile = $this->includefile.');'."\n";
+	    $includefile.='}'."\n".'?>';
+        return $includefile;
+        }
+
+    /* einfache getVariableId Function
+     * vertauschte Parameter :-) und ein false ohne Fehlermeldung
+     *
+     */
+    function getVariableIDByName($parentID, $name)
+        {
+        return(@IPS_GetVariableIDByName($name, $parentID));    
+        }
+
+    /* einfache CreateCategory Function
+     */
+    function createCategoryByName($parentID, $name, $position=0)
+        {
+        $vid = @IPS_GetCategoryIDByName($name, $parentID);
+        if($vid === false)
+            {
+            $vid = IPS_CreateCategory();
+            IPS_SetParent($vid, $parentID);
+            IPS_SetName($vid, $name);
+            IPS_SetInfo($vid, "this category was created by script #".$_IPS['SELF']." ");
+            }
+        IPS_SetPosition($vid, $position);
+        return $vid;
+        }
+
+    /* einfache getCategoryId Function
+     * vertauschte Parameter :-) und ein false ohne Fehlermeldung
+     */
+    function getCategoryIdByName($parentID, $name)
+        {
+        return(@IPS_GetCategoryIDByName($name, $parentID));
+        }
+
+
 	/**
 	 *
 	 * Command trimmen, damit es in einer Zeile ausgegeben werden kann, Befehl wird oft formatiert für bessere Lesbarkeit
@@ -10709,15 +10937,16 @@ class dosOps
         $pos5=strpos($verzeichnis,":");
 
         $dos=false; $linux=false;
-        if ($pos1 && $pos2) 
+        if ($pos1 && $pos2)                                 // es gibt sowohl \ als auch /
             {
-            if (($pos3===0) || ($pos5==1) ) $dos=true;;
+            if (($pos3===0) || ($pos5==1) ) $dos=true;      // backslash oder Doppelpunkt
             if ($pos4===0) $linux=true;
             }            
+        if ($pos5==1) $dos=true;                        //  Doppelpunkt als zweites Zeichen, ebenfall eindeutig DOS
 
 		if ($debug) 
             {
-            echo "correctDirName Auswertungen: Len:$len pos1:$pos1 pos2:$pos2 pos3:$pos3 pos4:$pos4\n";			// am Schluss muss ein Backslash oder Slash sein !
+            echo "correctDirName Auswertungen: Len:$len pos1:$pos1 pos2:$pos2 pos3:$pos3 pos4:$pos4 pos5:$pos5\n";			// am Schluss muss ein Backslash oder Slash sein !
             if ($pos1 && $pos2) echo "   mixed usage of / und \\ , Positions of \\ $pos3 and of / $pos4.\n";
             if ($dos) echo "DOS System.\n";
             if ($linux) echo "LINUX System.\n";                
@@ -12142,7 +12371,7 @@ class curlOps
  *
  * geo Routinen zusammengefasst
  *  
- *  
+ * Abstandsberechnung vereinfacht nach https://www.kompf.de/gps/distcalc.html 
  *  
  *
  *
@@ -12151,8 +12380,90 @@ class curlOps
  ******************************************************/
 
 
+class geoOps
+    {
 
+    function __construct()
+        {
 
+        }
+
+    /* distance = sqrt(dx * dx + dy * dy)
+     * mit distance: Entfernung in km 
+     * dx = 71.5 * (lon1 - lon2)                    Abstand Breitenkreisen für unsere breite 49 Grad
+     * dy = 111.3 * (lat1 - lat2)                   Abstand Länge für unseren bereich 9 Grad
+     * lat1, lat2, lon1, lon2: Breite, Länge in Grad
+     */
+    public function distance($pos1,$pos2)
+        {
+        $dx= 71.5*($pos1["north"]-$pos2["north"]);
+        $dy= 111.3*($pos1["east"]-$pos2["east"]);
+        $dist=sqrt($dx*$dx+$dy*$dy);
+        return $dist;
+        }
+
+    public function writePosDegrees($posd)
+        {
+        return( $posd["north"]["deg"]."°". $posd["north"]["min"]."'". $posd["north"]["sec"]."\"N ".$posd["east"]["deg"]."°". $posd["east"]["min"]."'". $posd["east"]["sec"]."\"E");
+        }
+
+    public function PosDDDegMinSec($pos)
+        {
+        $posd=array();
+        if (is_array($pos))
+            {
+            if (isset($pos["north"])) $posd["north"] = $this->DDDegMinSec($pos["north"]);    
+            if (isset($pos["east"]))  $posd["east"]  = $this->DDDegMinSec($pos["east"]);    
+            if (isset($pos["name"]))  $posd["name"]  = $pos["name"];    
+            return $posd;
+            }   
+        return false; 
+        }
+
+    /* aus einem Gradwert mit Komma ein Grad Minuten Sekunden mit Komma machen
+     */
+    public function DDDegMinSec(float $DD)
+        {
+        $A = abs($DD);
+        $B = $A * 3600;                                                 // in secs
+        $C = round($B - 60 * $this->roundvariantfix($B / 60), 2);       // Runden auf 100stel secs
+
+        if ($C == 60) {
+            $D = 0;
+            $E = $B + 60;                   // die hundertsel Rundung holt auf die volle Minute auf
+        } else {
+            $D = $C;
+            $E = $B;
+        }
+
+        if ($DD < 0) {
+            $DDDeg = $this->roundvariantfix($E / 3600) * (-1);
+        } else {
+            $DDDeg = $this->roundvariantfix($E / 3600);
+        }
+        $DDMin = fmod(floor($E / 60), 60);
+        $DDSec = $D;
+
+        return ["deg"=>$DDDeg,"min"=>$DDMin, "sec"=>$DDSec];
+
+        }
+
+    /* wenn Wert größer 0 floor, wenn kleiner 0 ist ceil nehmen
+     * floor macht aus 4.3 -> 4, 9.999 -> 9, aber aus -3.14 -> -4 daher bei neg. Werten ceil und -3.14 -> -3
+     * das heisst wir vernichten die Kommastellen, egal ob plus oder minus
+     * der Wert bleibt float, geht daher auch für sehr grosse Zahlen
+     */
+    protected function roundvariantfix($value)
+        {
+        $roundvalue = 0;
+        if ($value >= 0)
+            $roundvalue = floor($value);
+        elseif ($value < 0)
+            $roundvalue = ceil($value);
+        return $roundvalue;
+        }
+
+    }
 
 
 /**************************************************************************************************************************
@@ -13400,7 +13711,9 @@ class ComponentHandling
  * Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen. 
  * Darstellung von Variablen nur in Kategorien kann einfacher gelöst werden. Da reicht der Link.
  *
- *  __construct                 $WebfrontConfigID anlegen it den IDs der vorhandenen Webfronts
+ *  __construct                 $WebfrontConfigID anlegen mit den IDs der vorhandenen Webfronts
+ *
+ *  get_Webfronts               alle Visulaisierungsinstanzen auslesen
  *  get_WebfrontConfigID
  *  createLinkinWebfront       fuer Stromheizung
  *  CreateLinkWithDestination
@@ -13410,26 +13723,29 @@ class ComponentHandling
  *  write_wfc                   rekursive private für Ausgabe Ergebnis read_wfc
  *  search_wfc
  *  read_wfc                    Webfront Konfig auslesen, die max Tiefe für die Sublevels angeben
+ *  read_wfcByInstance
  *
  *  read_WebfrontConfig         IPS_GetConfiguration und update internal memory of class
  *  write_WebfrontConfig        IPS_SetConfiguration from internal memory und IPS_ApplyChanges
- *  GetItems
+ *  GetItems                    ersetzt WFC_GetItems wenn configID nicht false
  *      GetItem
  *  update_itemListWebfront
  *  UpdateItems
  *      UpdateItem
  *  AddItem
+ *  DeleteItem
+ *
  *  ReloadAllWebFronts
  *  GetWFCIdDefault
  *  exists_WFCItem
  *  PrepareWFCItemData
- *  CreateWFCItem
- *  CreateWFCItemTabPane
- *  CreateWFCItemSplitPane
- *  CreateWFCItemCategory
- *  CreateWFCItemExternalPage
- *  CreateWFCItemWidget
- *  UpdateConfiguration
+ *  CreateWFCItem               ersetzt CreateWFCItem wenn configID false
+ *  CreateWFCItemTabPane        ersetzt CreateWFCItemTabPane
+ *  CreateWFCItemSplitPane      ersetzt CreateWFCItemSplitPane
+ *  CreateWFCItemCategory       ersetzt CreateWFCItemCategory
+ *  CreateWFCItemExternalPage   ersetzt CreateWFCItemExternalPage
+ *  CreateWFCItemWidget         ersetzt CreateWFCItemWidget
+ *  UpdateConfiguration         ersetzt WFC_UpdateConfiguration wenn configID false
  *  UpdateParentID
  *  UpdatePosition
  *  DeleteWFCItems
@@ -13467,10 +13783,13 @@ class WfcHandling
 
     /* legt schon eine Menge Variablen an:
      * die installierten Module
-     * wenn Stromheizung oder CustomComponents werden ie passenden Kategorien auch gleich angelegt
+     * wenn Stromheizung oder CustomComponents werden die passenden Kategorien auch gleich angelegt
      * die ID des Default Webfront Konfigurators
      * und als Tabelle alle Webfronts mit dem Namen als ID, kann mit get_WebfrontConfigID abgefragt werden
-     * 
+     *
+     * abhängig von configId werden die Standard Interfaces (false) oder die eigenen Interfaces verwendet, gilt für:
+     *      GetItems
+     *
      */
 	public function __construct($configID=false,$debug=false)
 		{
@@ -13527,8 +13846,7 @@ class WfcHandling
         $this->WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
 	    //echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n\n";
     	$this->WebfrontConfigID=array();
-        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug        
-        $alleInstanzen = $modulhandling->getInstancesByType(6);                 // alle Visualisiserungen
+        $alleInstanzen = $this->get_Webfronts();                 // alle Visualisiserungen auslesen
         foreach ($alleInstanzen as $index => $instanz)
             {
             $instance=IPS_GetInstance($instanz["OID"]);
@@ -13543,6 +13861,14 @@ class WfcHandling
 	    	//echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
     		}
 	    //echo "\n"; */       
+        }
+
+    /* alle Visualisierungen auslesen 
+    */
+    public function get_Webfronts()
+        {
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug        
+        return($modulhandling->getInstancesByType(6));                 // alle Visualisiserungen    
         }
 
     /* Abfrage als Tabelle alle Webfronts mit dem Namen als ID
@@ -13658,7 +13984,7 @@ class WfcHandling
 
     private function write_wfc($input,$indent,$level)
 	    {
-    	if ((sizeof($input) > 0) && ($level>0) )
+    	if (is_array($input) && (sizeof($input) > 0) && ($level>0) )
 	    	{
 		    foreach ($input as $index => $entry)
 			    {
@@ -13671,12 +13997,13 @@ class WfcHandling
 	    	}	
     	}
 
-    /* rekursive Funktion, in einer WFC Struktur einen Namen suchen */
-
+    /* rekursive Funktion, in einer WFC Struktur einen Namen suchen 
+     * die STruktur wird als array übergeben
+     */
     private function search_wfc($input,$search,$tree)
 	    {
     	$result="";
-	    if (sizeof($input) > 0)
+	    if (is_array($input) && (sizeof($input) > 0) )
 		    {
     		foreach ($input as $index => $entry)
 	    		{
@@ -13708,141 +14035,28 @@ class WfcHandling
      * Gibt ein Array $resultWebfront als return Wert zurück
      * Webfront Configurator Instanzen ermitteln
      *
+     * soll auch für Kachelvisualisierung funktionieren, keine Anzeige aktuell da woanders gespeichert
+     *
+     *
      *
      *
      **************************************/
 
     public function read_wfc($level=10,$debug=false)
 	    {
-    	//echo "\n";
+    	if ($debug) echo "   read_wfc($level aufgerufen:\n";
         $resultWebfront=array();
 	    $WebfrontConfigID=array();
-        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug        
-        $alleInstanzen = $modulhandling->getInstancesByType(6);                 // alle Visualisiserungen
+        $alleInstanzen = $this->get_Webfronts();                 // alle Visualisiserungen auslesen
         foreach ($alleInstanzen as $index => $instanz)
             {
             $webfront=IPS_GetName($instanz["OID"]);   
 
             $instance=IPS_GetInstance($instanz["OID"]);
             $WebfrontConfigID[IPS_GetName($instanz["OID"])]=$instance["InstanceID"];
-            //if ($debug) echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz["OID"]),25)." ID : ".$instance["InstanceID"]."  (".$instanz["OID"].")\n";
-            $resultWebfront[$webfront] = $this->read_wfcByInstance($instanz["OID"],$level);            // funktioniert noch nicht für die Kacheln
+            if ($debug) echo "   Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz["OID"]),25)." ID : ".$instance["InstanceID"]."  (".$instanz["OID"].")\n";
+            $resultWebfront[$webfront] = $this->read_wfcByInstance($instanz["OID"],$level,$debug);            // funktioniert noch nicht für die Kacheln
             }        
-        /*
-    	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
-	    foreach ($alleInstanzen as $instanz)
-		    {
-            $webfront=IPS_GetName($instanz);             
-
-    		$result=IPS_GetInstance($instanz);
-	    	$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		    //echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
-    		if (true)	
-                {
-                $resultWebfront[$webfront] = $this->read_wfcByInstance($instanz,$level);
-                }
-            else
-    			{   // false if debug Auslesen der aktuellen detaillierten Einträge pro Webfront Configurator 
-	    		//echo "    ".IPS_GetConfiguration($instanz)."\n";
-		    	//$config=json_decode(IPS_GetConfiguration($instanz));
-			    //$config->Items = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
-    			//print_r($config);
-		
-	    		$ItemList = $this->GetItems($instanz);
-                //print_r($ItemList);
-		    	$wfc_tree=array(); $root="";
-                for ($i=0;$i<5;$i++)        // mehrere Durchläufe
-                    {
-                    $count=0;
-    			    foreach ($ItemList as $entry)
-	    			    {
-    	    			if ($entry["ParentID"] != "")
-	    	    			{
-                            // Liste der Einträge ist flat es gibt immer einen entry und einen parent 
-		    		    	//echo "   WFC Eintrag:    ".$entry["ParentID"]." (Parent)  ".$entry["ID"]." (Eintrag)\n";
-    			    		$result = $this->search_wfc($wfc_tree,$entry["ParentID"],"");
-	    			    	//echo "  search_wfc: ".$entry["ParentID"]." mit Ergebnis \"".$result."\"  ".substr($result,1,strlen($result)-2)."\n";
-		    			    if ($result == "")
-			    			    {
-                                if ( ($root != "") && ($entry["ParentID"]==$root) ) // parent not found, unclear if root 
-                                    {
-    					    	    $wfc_tree[$entry["ParentID"]][$entry["ID"]]=array();
-	    					        $wfc_tree[$entry["ParentID"]]["."]=$entry["ParentID"];
-		    				        $wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    			    			    if ($debug) echo "   Root -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-                                    $count++;
-                                    }
-		    		    		}
-			    		    else
-				    		    {
-    				    		$tree=explode(".",substr($result,1,strlen($result)-2));
-	    				    	if ($tree) 
-		    				    	{
-			    			 	    //print_r($tree); 
-    				    			if ($tree[0]=="")
-	    				    			{
-		    				    		$wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-			    				    	if ($debug) echo "   -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";						
-                                        $count++;
-				    				    }
-    				    			else	
-	    				    			{
-		    				    		//echo "Tiefe : ".sizeof($tree)." \n";
-			    				    	switch (sizeof($tree))
-				    				    	{
-					    				    case 1:
-						    				    $wfc_tree[$tree[0]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    							    			if ($debug) echo "   -> ".$tree[0].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-                                                $count++;
-	    							    		break;
-		    							    case 2:
-			    							    $wfc_tree[$tree[0]][$tree[1]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    			    							if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-                                                $count++;
-	    			    						break;
-		    			    				case 3:
-			    			    				$wfc_tree[$tree[0]][$tree[1]][$tree[2]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-				    			    			if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-                                                $count++;
-					    			    		break;
-						    			    case 4:
-							    			    $wfc_tree[$tree[0]][$tree[1]][$tree[2]][$tree[3]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    								    		if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$tree[3].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-                                                $count++;
-	    								    	break;
-    	    								default:
-	    	    								echo "Fehler, groessere Tiefe als programmiert.\n";																		
-		    	    						}
-			    	    				}								
-				    	    		}	
-					    	    }						
-    		    			}
-	    		    	else        // Root Eintrag, parent ist leer
-		    		    	{
-                            if ($root=="") 
-                                {
-			    		        if ($debug) echo "WFC Root Eintrag (nicht mehr als einer pro Configurator):    ".$entry["ID"]." (Eintrag)\n";
-                                $root=$entry["ID"];
-                                }
-                            elseif ($root != $entry["ID"]) echo "******* mehrere Root Eintraege !!\n"; 
-                            else {} // alles ok   
-    				    	}
-	    			    }   // ende foreach, alle Konfiguratoren abgeschlossen
-                    //echo "*************".$count."\n";
-                    } //ende for 2x  
-                $resultWebfront[$webfront]=$wfc_tree;
-		    	if ($debug)
-                    {
-                    echo "\n================ WFC Tree ".$webfront."=====\n";	
-			        //print_r($wfc_tree);
-    			    $this->write_wfc($wfc_tree,"",$level);	
-	    		    //echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		    	    // alle Instanzen dargestellt 
-			        //echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
-    			    //print_r($result);
-                    }
-	    		}   // ende debug       
-		    }       // ende foreach     -- bereits oben    */
         return ($resultWebfront);    
     	}   // ende function
 
@@ -13851,6 +14065,7 @@ class WfcHandling
 
     public function read_wfcByInstance($instanz,$level,$debug=false)
         {
+        if ($debug) echo "read_wfcByInstance($instanz ...\n";
         $ItemList = $this->GetItems($instanz);          // wenn Instanz false wird die interne ItemList genommen
         if (is_array($ItemList))
             {
@@ -13874,7 +14089,7 @@ class WfcHandling
     					    	    $wfc_tree[$entry["ParentID"]][$entry["ID"]]=array();
 	    					        $wfc_tree[$entry["ParentID"]]["."]=$entry["ParentID"];
 		    				        $wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    			    			    if ($debug) echo "   Root -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+    			    			    if ($debug>1) echo "   Root -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
                                     $count++;
                                     }
 		    		    		}
@@ -13887,7 +14102,7 @@ class WfcHandling
     				    			if ($tree[0]=="")
 	    				    			{
 		    				    		$wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-			    				    	if ($debug) echo "   -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";						
+			    				    	if ($debug>1) echo "   -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";						
                                         $count++;
 				    				    }
     				    			else	
@@ -13897,22 +14112,22 @@ class WfcHandling
 				    				    	{
 					    				    case 1:
 						    				    $wfc_tree[$tree[0]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    							    			if ($debug) echo "   -> ".$tree[0].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+    							    			if ($debug>1) echo "   -> ".$tree[0].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
                                                 $count++;
 	    							    		break;
 		    							    case 2:
 			    							    $wfc_tree[$tree[0]][$tree[1]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    			    							if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+    			    							if ($debug>1) echo "   -> ".$tree[0].".".$tree[1].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
                                                 $count++;
 	    			    						break;
 		    			    				case 3:
 			    			    				$wfc_tree[$tree[0]][$tree[1]][$tree[2]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-				    			    			if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+				    			    			if ($debug>1) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
                                                 $count++;
 					    			    		break;
 						    			    case 4:
 							    			    $wfc_tree[$tree[0]][$tree[1]][$tree[2]][$tree[3]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-    								    		if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$tree[3].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+    								    		if ($debug>1) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$tree[3].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
                                                 $count++;
 	    								    	break;
     	    								default:
@@ -13962,7 +14177,7 @@ class WfcHandling
 
 		    	if ($debug)
                     {
-                    echo "\n================ WFC Tree ".$webfront."=====\n";	
+                    //echo "\n================ WFC Tree ".$webfront."=====\n";	
 			        //print_r($wfc_tree);
     			    $this->write_wfc($wfc_tree,"",$level);	
 	    		    //echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
@@ -14005,17 +14220,21 @@ class WfcHandling
      * schrittweise alle eliminieren, ab IPS 6.3 wird von Symcon umgestellt
      */
 
-    /* die Webfront Config für die Items ausgeben
-     * instanz : Wert extern, false intern für eine bestimmte Instanz die mit read_WebfrontConfig eingelesen wurde
+    /* die Webfront Config für die Items ausgeben, legacy mode wenn configID beim construct übergeben wird
+     * Parameter instanz 
+     *     Wert,extern: mit IPS_GetConfiguration($instanz) 
+     *     false intern: für eine bestimmte Instanz >configWebfront["Items"] die mit read_WebfrontConfig eingelesen wurde
      */
-
     public function GetItems($instanz=false)
         {
         if ($this->configID) return(WFC_GetItems($this->configID));                       // interop mode needs instance
         //$ItemList = WFC_GetItems($instanz);
         if ($instanz)        // aus der externen Quelle, direkt aus der Instanz Konfig auslesen
             {
-            $ItemList = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items,true);
+            $config=json_decode(IPS_GetConfiguration($instanz),true);
+            //print_r($config);
+            if (isset($config["Items"])) $ItemList = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items,true);
+            else return (false);
             }
         else            // aus dem internen Abbild auslesen
             {
@@ -14025,11 +14244,79 @@ class WfcHandling
         return ($ItemList);
         }
 
-    /* die Webfront Config für ein Item oder wenn false für alle Items ausgeben
-     * die ItemId ist kein Index, daher alle Einträge durchgehen und vergleichen
+    /* Items mit einem Namen oder dem Beginn des selben Namens finden, Ausgabe als array
+     * benötigt read_WebfrontConfig(instanz) zum Einlesen der Konfiguration
      */
+    public function GetItemsByName($name=false)
+        {
+        $nameID=array();   
+        $result=array();
+        if (isset($this->configWebfront["Items"])) 
+            {
+            $ItemList = json_decode($this->configWebfront["Items"],true);      // aus dem internen Abbild auslesen 
+            foreach ($ItemList as $index => $configItem)
+                {
+                //echo "-------$index "; print_R($configItem);
+                $nameID[$configItem["ID"]]=$index;
+                if ($configItem["ID"]==$name) return ($configItem);
+                if (strpos($configItem['ID'], $name)===0) 
+                    {
+                    if (isset($result[$configItem["ID"]])) echo "Warning, GetItemsByName, $name found already.\n"; 
+                    $result[$configItem["ID"]]=$index; 
+                    }
+                }            
+            if ($name==false) return ($nameID);
+            elseif (sizeof($result)>0) return ($result);
+            else echo "Warning, GetItemsByName, $name not found.\n";
+            }
+        else 
+            {
+            echo "Warning, GetItemsByName, no data in class, use read_WebfrontConfig(instanz).\n";
+            return (false);
+            }
+        }
 
-     public function GetItem($ItemId=false,$instanz=false)  
+    /* Items mit einem Namen oder dem Beginn des selben Namens als Parent finden, Ausgabe als array
+     * benötigt read_WebfrontConfig(instanz) zum Einlesen der Konfiguration
+     * bricht nicht ab wenn der Name genau gefunden wird, da mehrere Treffer sicher sind
+     */
+    public function GetItemsByParentName($name=false)
+        {
+        $nameID=array();   
+        $result=array();
+        if (isset($this->configWebfront["Items"])) 
+            {
+            $ItemList = json_decode($this->configWebfront["Items"],true);      // aus dem internen Abbild auslesen 
+            foreach ($ItemList as $index => $configItem)
+                {
+                //echo "-------$index "; print_R($configItem);
+                $nameID[$configItem["ID"]]=$index;
+                //if ($configItem["ParentID"]==$name) return ($configItem);
+                if (strpos($configItem['ParentID'], $name)===0) 
+                    {
+                    $result[$configItem["ID"]]=$index;
+                    //$result[$configItem["ID"]]=$configItem["Configuration"];
+                    //$result[$configItem["ID"]]=$configItem;
+                    //$result[$configItem["ID"]]=$configItem["ClassName"];
+                    }
+                }            
+            if ($name==false) return ($nameID);
+            elseif (sizeof($result)>0) return ($result);
+            else echo "Warning, GetItemsByParentName, $name not found.\n";
+            }
+        else 
+            {
+            echo "Warning, GetItemsByParentName, no data in class, use read_WebfrontConfig(instanz).\n";
+            return (false);
+            }
+        }
+
+    /* die Webfront Config für ein Item oder wenn false für alle Items ausgeben, gleich wie exists_WFCItem
+     * die ItemId ist ein Index und kein Name, daher alle Einträge durchgehen und mit ID vergleichen
+     * Item ID muss vollstaendig überein stimmen
+     *
+     */
+    public function GetItem($ItemId=false,$instanz=false)  
         {
         $configItems=$this->GetItems($instanz);
         $nameID=array();
@@ -14379,7 +14666,12 @@ class WfcHandling
             else echo "unchanged.\n";                
             return (true);
             }
-        else return (false);
+        else 
+            {
+            echo "Warning, UpdateParentID, $ItemId not found in Webfront Config.\n";
+            //print_R($this->itemListWebfront);
+            return (false);
+            }
         }
 
     /* Update Position schwierig wenn das Element egerade erzeugt wurde, da die Item ID noch nicht in der internen Config ist */
@@ -14490,8 +14782,7 @@ class WfcHandling
         //print_r($wfcTree);	
         if ($debug) echo "-----------------------------\n";
         $WebfrontConfigID=array();
-        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug        
-        $alleInstanzen = $modulhandling->getInstancesByType(6);                 // alle Visualisiserungen
+        $alleInstanzen = $this->get_Webfronts();                 // alle Visualisiserungen auslesen
         foreach ($alleInstanzen as $index => $instanz)
             {
             $instance=IPS_GetInstance($instanz["OID"]);

@@ -387,7 +387,7 @@ class SeleniumHandler
                 else 
                     {
                     //echo "initHost Fehler erkannt :\"$failureShort\"\n";
-                    if ($debug) echo "  -->selenium Webdriver mit Session $session nicht gestartet. Noch einmal ohne Session probieren. Fehlermeldung $failureShort n";
+                    if ($debug) echo "  -->selenium Webdriver mit Session $session nicht gestartet. Noch einmal ohne Session probieren. Fehlermeldung $failureShort \n";
                     }
                 $this->handle=array();      // Handle array loeschen
                 try { 

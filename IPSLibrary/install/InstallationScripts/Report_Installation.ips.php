@@ -19,9 +19,19 @@
 	 
 	/**@defgroup Report
 	 *
-	 * Script zur Visualisierung von Daten mit Highcharts, so ei auch das Wetter und andere Charts
+	 * Script zur Visualisierung von Daten mit Highcharts, so auch das Wetter und andere Charts
+     * modernisiert mit neuen Darstellungen für Easycharts und alternativ zu Money mit einem speziellen Tab
 	 *
 	 *
+     *
+     * Installationsschritte:
+     *      Initialisierung, Modul Handling Vorbereitung
+     *      Webfront Vorbereitung, kein anlegen der Webfront Configuratoren Administartor und User, die müssen schon woanders angeelgt worden sein
+     *      Program Installation, Constants, Associations etc.
+     *      Report Config abarbeiten
+     *      WebFront Installation
+     *
+     *
 	 * @file          Report_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
@@ -136,80 +146,6 @@
 	if ($Mobile_Enabled==true)  		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');	
 	if ($Retro_Enabled==true)   		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 
-if (false)          // wird nicht mehr benötigt, old school
-    {
-	/* Webfront GUID herausfinden */
-	$WebfrontConfigID=array();
-	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
-	foreach ($alleInstanzen as $instanz)
-		{
-		$result=IPS_GetInstance($instanz);
-		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		echo "Webfront Konfigurator Name : ".IPS_GetName($instanz)." ID : ".$result["InstanceID"]."\n";
-		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		/* alle Instanzen dargestellt */
-		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
-		//print_r($result);
-	    }
-	
-	echo "\nVorgesehene Webfronts für die Darstellung aus dem .ini File:\n";
-	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-	if ($WFC10_Enabled==true)
-		{
-		/* kann ich selber herausfinden, ist die Admistrator ID von der Konfigurator Instanz des Webfront, es gibt auch noch User */
-		//$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-    	$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
-		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
-		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
-		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
-		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
-		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
-		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
-		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
-		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
-		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
-		echo "WF10 \n";
-		echo "  Path          : ".$WFC10_Path."\n";
-		echo "  ConfigID      : ".$WFC10_ConfigId."\n";
-		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
-		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
-		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
-		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
-		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
-		echo "  TabItem       : ".$WFC10_TabItem."\n";
-		echo "  TabName       : ".$WFC10_TabName."\n";
-		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
-		echo "  TabOrder      : ".$WFC10_TabOrder."\n";
-		}
-
-	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-	if ($WFC10User_Enabled==true)
-		{
-		echo "WF10User \n";
-    	$WFC10User_ConfigId       = $WebfrontConfigID["User"];
-		$WFC10User_Path       = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		}
-
-	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	if ($Mobile_Enabled==true)              // funktinoiert auch mit Defaultwerten
-		{
-		echo "Mobile \n";
-		$Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');
-		$Mobile_PathOrder     = $moduleManager->GetConfigValueIntDef('PathOrder', 'Mobile',15);
-		$Mobile_PathIcon      = $moduleManager->GetConfigValueDef('PathIcon', 'Mobile','Graph');
-		$Mobile_Name          = $moduleManager->GetConfigValueDef('Name', 'Mobile', 'Report');
-		$Mobile_Order         = $moduleManager->GetConfigValueIntDef('Order', 'Mobile',15);
-		$Mobile_Icon          = $moduleManager->GetConfigValueDef('Icon', 'Mobile','Image');
-		}
-
-	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	if ($Retro_Enabled==true)
-	   {
-		echo "Retro \n";
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		}
-    } // ende if false
 
 /*******************************
  *
@@ -240,10 +176,10 @@ if (false)          // wird nicht mehr benötigt, old school
 	//IPS_SetIcon($scriptIdCountPlus,  'HollowArrowUp');
 	//IPS_SetIcon($scriptIdCountMinus, 'HollowArrowDown');
 
-/*
+    /*
 	$timerId_Refresh     = CreateTimer_CyclicBySeconds ('CalculateWattValues', $scriptIdActionScript, IPSPC_REFRESHINTERVAL_WATT) ;
 	$timerId_Refresh     = CreateTimer_CyclicByMinutes ('CalculateKWHValues',  $scriptIdActionScript, IPSPC_REFRESHINTERVAL_KWH) ;
-*/
+    */
 
 	$associationsTypeAndOffset   = array(
 	                               IPSRP_TYPE_WATT        => 'Watt',
@@ -304,7 +240,7 @@ if (false)          // wird nicht mehr benötigt, old school
 	$variableIdTimeOffset  = CreateVariable(IPSRP_VAR_TIMEOFFSET,  1 /*Integer*/, $categoryIdCommon,  40, '',                                null,                   0, '');
 	$variableIdTimeCount   = CreateVariable(IPSRP_VAR_TIMECOUNT,   1 /*Integer*/, $categoryIdCommon,  50, '',                                null,                   1, '');
 
-   echo "Defaultwerte für Zwischenspeicherung Werte lezter Auswahl der Periode, Speicherung in Kategorie $categoryIdCommon:\n";
+    echo "Defaultwerte für Zwischenspeicherung Werte lezter Auswahl der Periode, Speicherung in Kategorie $categoryIdCommon:\n";
     // defaultwerte, Speicherung letzter Wert, wird verwendet beim Schalten zwischen den Perioden
     // function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
     $variableIdPeriodYear  = CreateVariableByName($categoryIdCommon,"PeriodYearLast",   1 /*Integer*/,false,false,   5000);
@@ -472,8 +408,8 @@ if (false)          // wird nicht mehr benötigt, old school
 		CreateLink('Type/Offset',       $variableIdTypeOffset,  $categoryIdRight, 10);
 		CreateLink('Zeitraum',          $variableIdPeriodCount, $categoryIdRight, 20);
 		CreateLink('Chart',             $variableIdChartHtml,   $categoryIdRight, 40);
-        CreateLink('AddSelector',       $ReportDataSelectorID,   $categoryIdRight, 10);
-        CreateLink('DataTable',         $ReportDataTableID,   $categoryIdRight, 110);
+        CreateLink('AddSelector',       $ReportDataSelectorID,  $categoryIdRight, 10);
+        CreateLink('DataTable',         $ReportDataTableID,     $categoryIdRight, 110);
         
         $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
         foreach ($wfc as $index => $entry)                              // Index ist User, Administrator

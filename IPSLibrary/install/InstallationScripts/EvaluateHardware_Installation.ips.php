@@ -51,7 +51,13 @@
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(400);                 // max. Scriptlaufzeit definieren
     $startexec=microtime(true);
-    $debug=false;
+    
+    if ($_IPS['SENDER']=="Execute") 
+        {
+        echo "Script Execute, Darstellung automatisch mit Debug aktiviert. Kein Aufruf des EvaluateHardware Scripts.\n";
+        $debug=true;
+        }
+    else $debug=false;
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     $moduleManager    = new ModuleManagerIPS7('EvaluateHardware',$repository);
@@ -107,7 +113,7 @@
     $messageTableID          = CreateVariable("MessageTable", 3, $categoryId_DetectDevice,1010,"~HTMLBox",null,null,"");
 
     echo "DetectTopologies Tabelle erstellen.\n";
-    $categoryId_DetectTopologies        = CreateCategory('DetectTopologies',        $CategoryIdData, 20);
+    $categoryId_DetectTopologies        = CreateCategory('DetectTopologies',        $CategoryIdData, 30);
     $pname="DetectTopologies";                                         // keine Standardfunktion, da Inhalte Variable
     $nameID=["View1","View2", "View3"];
     $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable
@@ -115,6 +121,15 @@
     $topologyTableID                = CreateVariableByName($categoryId_DetectTopologies,"TopologyViewTable", 3,"~HTMLBox", "", 1010);
     $topologyControlTableID         = CreateVariableByName($categoryId_DetectTopologies,"TopologyControlTable", 3, "~HTMLBox","", 1030);
     $topologyConfigTableID          = CreateVariableByName($categoryId_DetectTopologies,"TopologyConfigTable", 3, "","", 1100);
+
+    echo "Webbrowser Cookies and Configuration Tabelle erstellen.\n";
+    $categoryId_BrowserCookies        = CreateCategory('WebfrontCookies',        $CategoryIdData, 40);
+    $pname="WebfrontCookies";                                         // keine Standardfunktion, da Inhalte Variable
+    $nameID=["View1","View2", "View3"];
+    $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable
+    $actionViewWebbrowserTableID      = CreateVariableByName($categoryId_BrowserCookies,"ViewBrowserOn", 1,$pname,"",1020,$scriptIdImproveDeviceDetection);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+    $webbrowserCookiesTableID         = CreateVariableByName($categoryId_BrowserCookies,"BrowserCookieTable", 3,"~HTMLBox", "", 1010);
+
 
     if (  (isset($installedModules["OperationCenter"])) && (isset($installedModules["DetectMovement"]))  )
         {    
@@ -335,6 +350,38 @@
                         ),
                     );	           
 
+
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,["Scope" => "Administrator","EmptyCategory"=>false],true);            //true für Debug
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+
+        /*-------------------------------------*/
+
+        $configWF["TabPaneItem"]="BrowserCookies"; 
+        $configWF["TabPaneOrder"]=2030; 
+
+        echo "====================================================================================================\n";
+        echo "Webfront Browser Cookies $tabPaneParent.".$configWF["TabPaneItem"]." erzeugen:\n";
+
+        $webfront_links=array(
+            "BrowserCookies" => array(
+                $actionViewWebbrowserTableID => array(
+                        "NAME"				=> "Ansichten",
+                        "ORDER"				=> 210,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),        
+                $webbrowserCookiesTableID => array(
+                        "NAME"				=> "BrowserCookies",
+                        "ORDER"				=> 220,
+                        "ADMINISTRATOR" 	=> true,
+                        "USER"				=> false,
+                        "MOBILE"			=> false,
+                            ),
+                "CONFIG" => array("type" => "link"),
+                        ),
+                    );	           
+
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,["Scope" => "Administrator","EmptyCategory"=>false],true);            //true für Debug
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
 
@@ -418,16 +465,18 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);
-	echo "\n";
-	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
-	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware.". Wird jetzt aufgerufen.\n";
-	echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-    echo "====================================================================================\n";
-	echo IPS_RunScriptWait($scriptIdEvaluateHardware);
-	echo "====================================================================================\n";
-	echo "Script Evaluate Hardware bereits abgeschlossen. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-	
+    if ($debug==false)          // anders rum, wenn nicht als Script von der Console aufgerufen auch EvaluateHarwdare starten
+        {
+        $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);
+        echo "\n";
+        echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
+        echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware.". Wird jetzt aufgerufen.\n";
+        echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+        echo "====================================================================================\n";
+        echo IPS_RunScriptWait($scriptIdEvaluateHardware);
+        echo "====================================================================================\n";
+        echo "Script Evaluate Hardware bereits abgeschlossen. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+        }
 	
 	
 	

@@ -36,7 +36,16 @@
      *	        IPS_RunScript($scriptIdStartpageWrite);         Startpage_schreiben
      *
      *
-     *
+     * Wichtige Schritte der Installation:
+     *      Initialisierung, Modul Handling Vorbereitung
+     *      Initialisierung für Monitor On/Off Befehle und Bedienung VLC zum Fernsehen. Scripts verwenden wenn im Pfad ein Blank vorkommt.
+     *      Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
+     *      Webfront Konfiguration einlesen
+     *      Webfront Variablen und Profile für Visualisiserung anlegen
+     *      Initialisierung der Timer
+     *      Initialisierung und Herstellung Webfront für OpenWeatherMap
+	 *      WebFront Administrator Startpage Installation
+	 *      WebFront User Startpage Installation          
      *
      *
 	 * @file          Startpage_Installation.ips.php
@@ -169,10 +178,18 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+
+/*******************************
+ *
+ * Webfront Variablen und Profile für Visualisiserung anlegen
+ *
+ ********************************/
+
     $profileOps = new profileOps();
     echo "Darstellung der Variablenprofile für Startpage im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("HTMLBox.NoTitle"=>"~HTMLBox", );
     $profileOps->synchronizeProfiles($profilname,true);             //true für Debug
+
 
     /* Uebersicht ist die Variable für die Darstellung der Seite 
      * Startpagetype wird von der Startpage Write Funktion verwendet verwendet
@@ -265,7 +282,9 @@
 		$categoryId_OW_WebFront         = CreateCategoryPath($WFC10_OW_Path);                       // Kategorie in der Visualization
 
         $wfcHandling->read_WebfrontConfig($configWFront["Administrator"]["ConfigId"]);         // register Webfront Confígurator ID
-		$WFC10_OW_TabPaneItem="OpenWeatherTPA";$WFC10_OW_TabItem=""; $WFC10_OW_TabPaneParent="TPWeather"; $WFC10_OW_TabPaneOrder=100; $WFC10_OW_TabPaneName="OpenWeather"; $WFC10_OW_TabPaneIcon="Cloudy";
+		$WFC10_OW_TabPaneItem="OpenWeatherTPA";$WFC10_OW_TabItem=""; $WFC10_OW_TabPaneParent="TPWeather"; $WFC10_OW_TabPaneOrder=100; $WFC10_OW_TabPaneIcon="Cloudy";
+        //$WFC10_OW_TabPaneName="OpenWeather";
+        $WFC10_OW_TabPaneName="";                       // Platz sparen in der ersten Leiste des alten Webfronts
 		$wfcHandling->DeleteWFCItems( $WFC10_OW_TabPaneItem.$WFC10_OW_TabItem);           // delete alle panes mit "OpenWeatherTPA"
 
         /* früher von Weatherforecast angelegt: gibts nicht mehr : TabPaneItem=TPWeather, TabPaneParent=roottp, TabPaneName= , TabPaneOrder=10, TabPaneExclusive=false , TabPaneIcon=Cloud */
@@ -276,8 +295,10 @@
 		//CreateWFCItemExternalPage ($WFC10_ConfigId, $WFC10_TabPaneItem.$WFC10_TabItem, $WFC10_TabPaneItem, $WFC10_TabOrder, $WFC10_TabName, $WFC10_TabIcon, "user\/IPSWeatherForcastAT\/Weather.php", 'false' /*BarBottomVisible*/);
 		//CreateWFCItemCategory  ($WFC10_ConfigId, $WFC10_OW_TabPaneItem.$WFC10_OW_TabItem,   $WFC10_OW_TabPaneItem,   $WFC10_OW_TabPaneOrder, '', $WFC10_OW_TabPaneIcon, $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 		
-        /* in TPWeather wieder das Pane OpenWeatherTPA anlegen */
-        $wfcHandling->CreateWFCItemCategory  ( $WFC10_OW_TabPaneItem,  "roottp" ,   $WFC10_OW_TabPaneOrder, "", $WFC10_OW_TabPaneIcon, $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+        /* in TPWeather wieder das Pane OpenWeatherTPA und die Category anlegen */
+		$wfcHandling->CreateWFCItemTabPane   ( $WFC10_OW_TabPaneParent, "roottp" , $WFC10_OW_TabPaneOrder, $WFC10_OW_TabPaneName, $WFC10_OW_TabPaneIcon);
+        $wfcHandling->CreateWFCItemCategory  ( $WFC10_OW_TabPaneItem,  $WFC10_OW_TabPaneParent,   10, "", "", $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+        //$wfcHandling->CreateWFCItemCategory  ( $WFC10_OW_TabPaneItem,  "roottp" ,   $WFC10_OW_TabPaneOrder, "", $WFC10_OW_TabPaneIcon, $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 
 		EmptyCategory($categoryId_OW_WebFront);
 		IPS_SetHidden($categoryId_OW_WebFront, true); 		/* alte Links ausräumen und in der normalen Viz Darstellung verstecken */	
@@ -394,14 +415,9 @@
 
         }
 
-
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
-	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * WebFront Administrator Installation
+	 * WebFront Administrator Startpage Installation
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	
@@ -417,7 +433,11 @@
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
 		echo "\nWebportal Administrator: Startpage Kategorie installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."/".IPS_GetName(IPS_GetParent($categoryId_AdminWebFront))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($categoryId_AdminWebFront)))."\n";
-		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+		$WFC10_OW_TabPaneParent="TPStartpage";
+        //$WFC10_OW_TabPaneItem="StartpageTPA";$WFC10_OW_TabItem="";  $WFC10_OW_TabPaneOrder=10; 
+        //$WFC10_OW_TabPaneName="StartPage";
+        //$WFC10_OW_TabPaneName="";                       // Platz sparen in der ersten Leiste des alten Webfronts
+        /* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 
 		echo "    Startpage Kategorie installieren als: ".$config["Path"]." und Inhalt löschen und dann verstecken.\n";
 		$categoryId_WebFront         = CreateCategoryPath($config["Path"]);
@@ -433,7 +453,11 @@
 
 		$tabItem = $config["TabPaneItem"].$config["TabItem"];	
 		echo "       Create ID ".$tabItem." in ".$config["TabPaneParent"].".\n";
-		$wfcHandling->CreateWFCItemCategory  ($tabItem,   $config["TabPaneParent"],   $config["TabPaneOrder"], '', $config["TabPaneIcon"], $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+        //$nameIds=$wfcHandling->GetItemsByName("roott"); echo "Look for ItemID of root : ".json_encode($nameIds)." \n";
+        //$wfcHandling->UpdateParentID("roottp", "");        // Hotfix da rootp überschrieben wurde
+        $wfcHandling->CreateWFCItemTabPane   ($WFC10_OW_TabPaneParent, "roottp" , $config["TabPaneOrder"], "", $config["TabPaneIcon"]);
+        $wfcHandling->CreateWFCItemCategory  ($tabItem,   $WFC10_OW_TabPaneParent,   10, '', "" , $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		//$wfcHandling->CreateWFCItemCategory  ($tabItem,   $config["TabPaneParent"],   10, '', $config["TabPaneIcon"] , $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
 		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFront,  100);
 		CreateLinkByDestination('Ansicht', $switchScreenID,    $categoryId_WebFront,  20);
@@ -443,7 +467,7 @@
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * WebFront User Installation
+	 * WebFront User Startpage Installation
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 		

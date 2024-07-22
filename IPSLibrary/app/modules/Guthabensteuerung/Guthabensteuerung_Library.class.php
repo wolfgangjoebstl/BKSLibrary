@@ -261,6 +261,34 @@
             }
 
         /* die optionalen Webfronts für Selenium und Money sind jetzt konfigurierbar
+         *             "Webfront"                      => array(
+                            "Administrator"     => array(
+                                    "Selenium"      => array(           // es gibt kein Module mit Selenium ini Dateien, daher etwas improvisieren und Namen hier definieren
+                                        "Enabled"           => true,
+                                        "Path"              => "Visualization.WebFront.Administrator.Selenium",
+                                        "ParentModule"      => 'IPSModuleManagerGUI',
+                                        //"ConfigId"          => $WebfrontConfigID["Administrator"],              
+                                        //"TabPaneParent"     => $tabPaneParent,
+                                        "TabPaneItem"       => "Selenium", 
+                                        "TabPaneOrder"      => 1010,    
+                                               ),
+                                    "Money"      => array(
+                                        "Enabled"           => true,
+                                        "Path"              => "Visualization.WebFront.Administrator.Money",
+                                        "TabPaneItem"       => "Money", 
+                                        "TabPaneOrder"      => 1010,                                          
+                                        "TabPaneParent"     => "roottp",
+                                        "TabPaneIcon"       => "Dollar",                                      
+                                        "TabItem"           => "Money", 
+
+                                               ),
+                                            ),
+                                        ),
+        *
+        * Typisches Ergebnis ist:
+        *       ["TabPaneParent"]
+        *
+        *
         */
         public function getWebfrontsConfiguration($tabPane,$debug=false)
             {
@@ -1969,16 +1997,49 @@
 
         }       // ende class yahooApi
 
-    /* class API von Zamg, Geosphere
-     *  __construct
+    /* class API von Zamg, Geosphere, historisierte Daten von deren Server holen
+     * alternative Regenermittlung aus Klimatabellen ZAMG
      *
-     *  getDataZamgApi
+     *  __construct         nicht benutzt
+     *  getDataZamgApi      stores as data in class, analysis takes place in other functions
+     *  getIndexNearPosOfGrid
+     *  getAvailableModules
+     *  showData
+     *  getDataAsTimeSeries
      *
+     * 
+     * TAWES, sind die tatsächlichen Stationen, zu ungenau für die Ermittlung von tatsächlichen Niederschlägen
+     * https://dataset.api.hub.geosphere.at/v1/             bringt Beispiele wie es weitergehen kann, json Antwort
+     * https://dataset.api.hub.geosphere.at/v1/datasets     Abfragen für Überblick der Datenbanken, json Antwort
+     * https://dataset.api.hub.geosphere.at/v1/datasets?type=grid       Welche Datenbanken gibt es für grid, json Antwort
+     * https://data.hub.geosphere.at/dataset/spartacus-v2-1d-1km   API Beschreibung, html Seite, kann Niederschlag und nur Min/Maxtemperatur, keinen Tagesmittelwert, plus Sonnenstunden/Radiation
+     * https://data.hub.geosphere.at/dataset/spartacus-v2-1m-1km   API Beschreibung Monatswerte, diesmal mit einem Temperaturmittelwert
+     * https://dataset.api.hub.geosphere.at/v1/grid/historical/spartacus-v2-1d-1km
+     * https://data.hub.geosphere.at/dataset/inca-v1-1h-1km
+     * https://dataset.api.hub.geosphere.at/v1/grid/historical/spartacus-v2-1d-1km?parameters=RR&parameters=SA&parameters=TN&parameters=TX&start=2022-02-01T00%3A00%3A00.000Z&end=2023-10-22T00%3A00%3A00.000Z&bbox=48.239622%2C16.349017%2C48.358455%2C16.488851&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022
+     * 
+     *
+     * Aufruf zum Beispiel:
+     * $zamg = new zamgApi();
+     * $modules=$zamg->getAvailableModules();
+     * $module="/grid/historical/spartacus-v2-1d-1km";
+     * $config["StartTime"]=strtotime("1.1.2022");
+     * $result = $zamg->getDataZamgApi(["RR","TN","TX"],$module, $config, false);           // true debug, RR,SA,TN,TX or TM
+     * $zamg->showData();            // Zusammenfassung der Datensatzlage
+     *     // Feldweg 1   N48.3806, E16.3056 ,  Lorenz Böhler Gasse 6 N48.2443, E16.37622
+     * $pos1[0]=["north"=>48.3806,"east"=>16.3056,"name"=>"Feldweg1"];
+     * $pos1[1]=["north"=>48.2443,"east"=>16.3762,"name"=>"LorenzBoehlerGasse70"];
+     * $zamg->getIndexNearPosOfGrid($pos1);
+     * $subindex=array();
+     * foreach ($pos1 as $pos) $subindex[]=$pos["diff"]["subindex"];
+     * $series = $zamg->getDataAsTimeSeries(["RR"],$subindex);                  subindex ist zB [14,60]
      *
      */
 
     class zamgApi
         {
+
+        var $modul;
 
         protected $data=array();
 
@@ -1995,19 +2056,26 @@
         function getDataZamgApi($data,$modul,$config=false,$debug=false)
             {
             if ($debug) echo "getDataZamgApi(\n";
+            $this->modul=$modul;
             if (isset($config["StartTime"])) $start = "&start=".date("Y-m-d\TH:i:s.000\Z",$config["StartTime"]);
             else $start = "&start=2022-01-01T00:00:00.000Z";
             if (isset($config["EndTime"]))   $end =   "&end=".date("Y-m-d\TH:i:s.000\Z",$config["EndTime"]);
             else $end =   "&end=".date("Y-m-d\TH:i:s.000\Z");
-
+            if (isset($config["Dif"])) $dif=$config["Dif"]; else $dif=0.07;
+            if (isset($config["Pos"])) $bbox=$this->bbox($config["Pos"],$dif);
+            else $bbox='&bbox=48.24%2C16.30%2C48.39%2C16.38';
+            //$bbox='&bbox=48.20%2C16.20%2C48.40%2C16.60';
             $url='https://dataset.api.hub.geosphere.at/v1'.$modul;
             //parameters=RR&parameters=SA&parameters=TN&parameters=TX
-            $parameters="?";
-            foreach ($data as $data) $parameters .= "&parameters=".$data;
+            $parameters="";
+            foreach ($data as $data1) $parameters .= "&parameters=".$data1;
             //$ch = curl_init('https://dataset.api.hub.geosphere.at/v1/grid/historical/spartacus-v2-1d-1km?parameters=RR&parameters=SA&parameters=TN&parameters=TX&start=2022-02-01T00%3A00%3A00.000Z&end=2023-10-22T00%3A00%3A00.000Z&bbox=48.25%2C16.30%2C48.39%2C16.37&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
             //$ch = curl_init($url.'?parameters=RR&parameters=SA&parameters=TN&parameters=TX&start=2022-02-01T00%3A00%3A00.000Z&end=2023-10-22T00%3A00%3A00.000Z&bbox=48.25%2C16.30%2C48.39%2C16.37&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
             //$ch = curl_init($url.'?'.$parameters.'&start=2022-02-01T00%3A00%3A00.000Z&end=2023-10-22T00%3A00%3A00.000Z&bbox=48.25%2C16.30%2C48.39%2C16.37&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
-            $ch = curl_init($url.'?'.$parameters.$start.$end.'&bbox=48.25%2C16.30%2C48.39%2C16.37&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
+            //$ch = curl_init($url.'?'.$parameters.$start.$end.'&bbox=48.24%2C16.30%2C48.39%2C16.38&output_format=geojson&filename=SPARTACUS+-+Spatial+Dataset+for+Climate+in+Austria+Datensatz_20220201_20231022');
+            //$ch = curl_init($url.'?'.$parameters.$start.$end.'&bbox=48.24%2C16.30%2C48.39%2C16.38&output_format=geojson');
+            if ($debug) echo 'URL : '.$url.'?'.$parameters.$start.$end.$bbox.'&output_format=geojson'."\n";
+            $ch = curl_init($url.'?'.$parameters.$start.$end.$bbox.'&output_format=geojson');
             curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:application/json'));
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             $result = curl_exec($ch);
@@ -2016,38 +2084,179 @@
             return($result);
             }
 
-        /* when grid da ist fetched, it is possible to find the index of the grid based data bear our pos
+        /* Beispielsausgaben:  
+         *     &bbox=48.0%2C16.2%2C48.4%2C16.6
+         *                              &bbox=48.00%2C16.20%2C48.40%2C16.60
+         * &end=2024-07-07T11:19:01.000Z&bbox=48.30%2C16.30%2C48.30%2C16.50&output_format=geojson
+         * &end=2024-07-07T11:17:11.000Z&bbox=48.00%2C16.20%2C48.40%2C16.60&output_format=geojson
+         * &end=2024-07-07T11:15:13.000Z&bbox=48.24%2C16.30%2C48.39%2C16.38&output_format=geojson
          */
-        function getIndexNearPosOfGrid(&$pos1)
+        private function bbox($pos,$dif=0.007)
             {
+            $lat1=false; $lng1=false; $lat2=false; $lng2=false;
+
+            foreach ($pos as $index => $entry)  
+                {
+                $lat=round($entry["north"],2);
+                $lng=round($entry["east"],2);                
+                if ($lat1 !== false)              // Wert bekannt, kleinster Wert wird gespeichert
+                    {
+                    if ($lat < $lat1) $lat1=$lat;
+                    }
+                else $lat1=$lat;
+                if ($lat2 !== false)
+                    {
+                    if ($lat > $lat2) $lat2=$lat;
+                    }
+                else $lat2=$lat;        
+                if ($lng2 !== false)
+                    {
+                    if ($lng > $lng2) $lng2=$lng;
+                    } 
+                else $lng2=$lng+$dif;
+                if ($lng1 !== false)
+                    {
+                    if ($lng < $lng1) $lng1=$lng;
+                    } 
+                else $lng1=$lng;
+                $lat1=number_format(round($lat1-$dif,2),2,".");
+                $lat2=number_format(round($lat2+$dif,2),2,".");
+                $lng1=number_format(round($lng1-$dif,2),2,".");
+                $lng2=number_format(round($lng2+$dif,2),2,".");
+                $bbox='&bbox='.$lat1."%2C".$lng1."%2C".$lat2."%2C".$lng2;   
+                //echo "Ergebnis Berechnung bbox für $lat $lng: ".str_pad($bbox,20)."\n";
+                }                 
+            return ($bbox);
+            }
+
+        /* when grid da ist fetched, it is possible to find the index of the grid based data near our pos
+         * pos1 data are north, east, name per each site, expanded with length to each grid parameter, as index of grid parameter
+         * data about available positions  in class is analysed, index is [features,]
+         *
+         */
+        function getIndexNearPosOfGrid(&$pos1, $debug=false)
+            {
+            if ($debug) echo "getIndexNearPosOfGrid : ".json_encode($pos1)."\n";
             foreach ($this->data as $index=>$entry) 
                 {
                 $d=0; $dmax=2;
                 if ( ($index=="features") )     // der Reihe nach die Punkte
                     {
+                    //echo "  analyse index : features.type:\n";
                     foreach ($entry as $subindex => $subentry)
                         {
-                        //echo "$subindex ".$subentry["type"]."\n";
+                        if ($debug) echo "   analyse index : features.$subindex.geometry.type/coordinates : ".$subentry["geometry"]["type"]." N".nf($subentry["geometry"]["coordinates"][1],4)."  E".nf($subentry["geometry"]["coordinates"][0],4)."\n";
                         foreach ($pos1 as $posIndex => $pos)
                             {
-                            $abstand = abs($subentry["geometry"]["coordinates"][1]-$pos1[$posIndex]["north"])+abs($subentry["geometry"]["coordinates"][0]-$pos1[$posIndex]["east"]);
+                            if ($debug) echo "         $posIndex ";
+                            $x=($subentry["geometry"]["coordinates"][1]-$pos["north"]);
+                            $y=($subentry["geometry"]["coordinates"][0]-$pos["east"]);
+                            //$abstand = abs($subentry["geometry"]["coordinates"][1]-$pos1[$posIndex]["north"])+abs($subentry["geometry"]["coordinates"][0]-$pos1[$posIndex]["east"]);
+                            $abstand = sqrt($x*$x+$y*$y);
                             if (( (isset($pos1[$posIndex]["diff"]["min"])) && ($abstand<$pos1[$posIndex]["diff"]["min"]) ) || (isset($pos1[$posIndex]["diff"]["min"])===false) )
                                 {
                                 $pos1[$posIndex]["diff"]["min"]=$abstand;
                                 $pos1[$posIndex]["diff"]["subindex"]=$subindex;
                                 }
+                            if ($debug) echo "     ".$pos["north"]."  ".$pos["east"]." : $abstand \n";
                             }
-                        //echo "$subindex ".$subentry["geometry"]["type"]." N".nf($subentry["geometry"]["coordinates"][1],4)."  E".nf($subentry["geometry"]["coordinates"][0],4);
-                        //echo "     $abstand    ".$pos1["north"]."  ".$pos1["east"]."   ".($subentry["geometry"]["coordinates"][1]-$pos1["north"])." * ".($subentry["geometry"]["coordinates"][0]-$pos1["east"]);
-                        //echo "\n";
                         }
-                    //echo "\n";
+                    if ($debug) echo "\n";
                     }
                 }
             return (true);
             }
 
-        /* zamg hat einen Überblick über alle Module
+        /* when grid data ist fetched, there is information of actual positions
+         * pos1 data are north, east, name per each site, expanded with length to each grid parameter, as index of grid parameter
+         * data about available positions  in class is analysed, index is [features,]
+         *
+         * features [n] 
+         *
+         */
+        function getPosOfGrid($debug=false)
+            {
+            $points=array();
+            if ($debug) echo "getPosOfGrid \n";
+            foreach ($this->data as $index=>$entry) 
+                {
+                $d=0; $dmax=2;
+                if ( ($index=="features") )     // der Reihe nach die Punkte
+                    {
+                    //echo "  analyse index : features.type:\n";
+                    foreach ($entry as $subindex => $subentry)
+                        {
+                        if ($debug) echo "   analyse index : features.$subindex.geometry.type/coordinates : ".$subentry["geometry"]["type"]." N".nf($subentry["geometry"]["coordinates"][1],4)."  E".nf($subentry["geometry"]["coordinates"][0],4)."\n";
+                        $points[$subindex]['lat']=$subentry["geometry"]["coordinates"][1];
+                        $points[$subindex]['lng']=$subentry["geometry"]["coordinates"][0];
+/*                      foreach ($pos1 as $posIndex => $pos)
+                            {
+                            if ($debug) echo "         $posIndex ";
+                            $x=($subentry["geometry"]["coordinates"][1]-$pos["north"]);
+                            $y=($subentry["geometry"]["coordinates"][0]-$pos["east"]);
+                            //$abstand = abs($subentry["geometry"]["coordinates"][1]-$pos1[$posIndex]["north"])+abs($subentry["geometry"]["coordinates"][0]-$pos1[$posIndex]["east"]);
+                            $abstand = sqrt($x*$x+$y*$y);
+                            if (( (isset($pos1[$posIndex]["diff"]["min"])) && ($abstand<$pos1[$posIndex]["diff"]["min"]) ) || (isset($pos1[$posIndex]["diff"]["min"])===false) )
+                                {
+                                $pos1[$posIndex]["diff"]["min"]=$abstand;
+                                $pos1[$posIndex]["diff"]["subindex"]=$subindex;
+                                }
+                            if ($debug) echo "     ".$pos["north"]."  ".$pos["east"]." : $abstand \n";
+                            }  */
+                        }
+                    if ($debug) echo "\n";
+                    }
+                }
+            return ($points);
+            }
+
+        /* zamg hat einen Überblick über alle verfügbaren Module
+         *     /grid/forecast/chem-v1-1h-12km 
+         *     /grid/forecast/chem-v1-1h-4km 
+         *     /grid/forecast/ensemble-v1-1h-2500m 
+         *     /grid/forecast/nowcast-v1-15min-1km 
+         *     /grid/forecast/nwp-v1-1h-2500m 
+         *     /grid/historical/apolis_short-v1-1d-100m 
+         *     /grid/historical/inca-v1-1h-1km 
+         *     /grid/historical/snowgrid_cl-v2-1d-1km 
+         *     /grid/historical/spartacus-v1-1d-1km 
+         *     /grid/historical/spartacus-v1-1m-1km 
+         *     /grid/historical/spartacus-v2-1d-1km         ********
+         *     /grid/historical/spartacus-v2-1m-1km 
+         *     /grid/historical/spartacus-v2-1q-1km 
+         *     /grid/historical/spartacus-v2-1y-1km 
+         *     /grid/historical/winfore-v1-1d-1km 
+         *     /grid/historical/winfore-v2-1d-1km 
+         *     /station/current/tawes-v1-10min 
+         *     /station/historical/histalp-v1-1y 
+         *     /station/historical/klima-v1-10min 
+         *     /station/historical/klima-v1-1d 
+         *     /station/historical/klima-v1-1h 
+         *     /station/historical/klima-v1-1m 
+         *     /station/historical/klima-v2-10min 
+         *     /station/historical/klima-v2-1d 
+         *     /station/historical/klima-v2-1h              ************* 4026	Stockerau Flugplatz  rr und li
+         *     /station/historical/klima-v2-1m 
+         *     /station/historical/synop-v1-1h 
+         *     /station/historical/tawes-v1-10min 
+         *     /timeseries/forecast/chem-v1-1h-12km 
+         *     /timeseries/forecast/chem-v1-1h-4km 
+         *     /timeseries/forecast/ensemble-v1-1h-2500m 
+         *     /timeseries/forecast/nowcast-v1-15min-1km 
+         *     /timeseries/forecast/nwp-v1-1h-2500m 
+         *     /timeseries/historical/apolis_short-v1-1d-100m 
+         *     /timeseries/historical/inca-v1-1h-1km 
+         *     /timeseries/historical/snowgrid_cl-v2-1d-1km 
+         
+         *     /timeseries/historical/spartacus-v1-1d-1km 
+         *     /timeseries/historical/spartacus-v1-1m-1km 
+         *     /timeseries/historical/spartacus-v2-1d-1km       
+         *     /timeseries/historical/spartacus-v2-1m-1km 
+         *     /timeseries/historical/spartacus-v2-1q-1km 
+         *     /timeseries/historical/spartacus-v2-1y-1km 
+         *
+         *     /timeseries/historical/winfore-v1-1d-1km 
+         *     /timeseries/historical/winfore-v2-1d-1km
          */
         function getAvailableModules()
             {
@@ -2062,20 +2271,30 @@
 
         /* einen Überblick bekommen über die gespeicherten Daten
          */
-        function showData()
+        function showData($debug=false)
             {
             echo "showData fetched from web:\n";
             $pos1=array();
             //print_r($this->data);             // zu gross
-            foreach ($this->data as $index=>$entry)             // modul /grid/historical/spartacus-v2-1d-1km
+            echo "Index found in received data: ";
+            foreach ($this->data as $index=>$entry) echo "$index ";
+            echo "\n";
+            if ($this->modul=="/grid/historical/spartacus-v2-1d-1km")
                 {
-                echo "$index ";
+                echo "Zamg Tageswerte.\n";
+                echo $this->data["detail"];
+                }
+            echo "Data of selected Index : \n";
+            foreach ($this->data as $index=>$entry)             // modul /grid/historical/spartacus-v2-1d-1km    timestamps and features ignored
+                {
                 if ( ($index=="media_type") || ($index=="type") || ($index=="version") || ($index=="bbox") )
                     {
+                    echo "   ".str_pad($index,22).": ";
                     print_R($entry);
                     }
                 echo "\n";
                 }
+            echo "----\n";
             // creates timeSeries
             foreach ($this->data as $index=>$entry) 
                 {
@@ -2161,7 +2380,9 @@
          * data format, wir brauchen nur die folgenden indexe
          *      timestamps->subindex
          *      features  ->subindex->properties->parameters->RR->data->ref->value      // monthly Table
-         *
+         * Parameter:
+         *            $indexToFetch ist zB [14,60]
+         *            $data         ist zB  ["RR"], defaultwert ["RR"]
          */
         function getDataAsTimeSeries($data,$indexToFetch,$debug=false) 
             {

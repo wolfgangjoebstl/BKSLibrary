@@ -21,6 +21,7 @@
  * vorhandene classes
  *      Gartensteuerung
  *      GartensteuerungControl extends Gartensteuerung
+ *      GartensteuerungStatistics
  *
  * verschiedene Funktionen um innerhalb und ausserhalb des Moduls Autosteuerung eine Giessanlage anzusteuern
  *
@@ -47,6 +48,59 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
+	/******************
+	 *
+	 * Vorbereitung und Ermittlung der Basisinformationen wie 
+	 *
+	 * Übergabe der Konfiguration, als Funktion, hat den Vorteil und funktioniert auch mit RemoteAccess
+	 *   $this->variableTempID=get_aussentempID();  oder eine OID 
+	 *   $this->variableID=get_raincounterID();     oder eine OID oder ein Wert aus CustomComponents
+	 *
+	 * $this->regenStatistik	wird zweimal berechnet, in construct und in listRainEvents
+     * hier berechnen um für die Giessdauerberechung bereits den Wert für letzten Regen die letzten 2 und 48 Stunden zu haben
+     *
+     * aus dem Archive werden sich nur die letzten 2 Tage für Temperatur und die letzten 10 Tage für Regen genommen
+	 *
+     * es werden in Program.IPSLibrary.data.modules.Gartensteuerung Kategorien angelegt
+     *          Gartensteuerung-Auswertung
+     *          Statistiken
+     *
+     * Funktionen, Überblick:
+     *      __construct
+     *      getCategoryRegisterID                       von CustomComponents die Counter Category finden
+     *
+     *      getConfig_aussentempID                      tempId aus dem Ergebnis der Auswertung von setGartensteuerungConfiguration
+     *      getConfig_raincounterID                     siehe oben
+     *      getRainRegisters
+     *      getConfig_xID
+     *      getConfig_waterPumpID
+     *      getConfig_valveControlIDs
+     *      getConfig_RemoteAccess_Address
+     *
+     *      setGartensteuerungConfiguration
+     *      getConfig_Gartensteuerung
+     *
+     *      control_xID
+     *      control_waterPump
+     *      getKreisfromCount
+     *      control_waterValves
+     *
+     *      fromdusktilldawn
+     *      Giessdauer
+     *
+     *      listEvents
+     *      getRainValues
+     *      writeKalendermonateHtml         Ausgabe der Regenereignisse (ermittelt mit listrainevents) mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
+     *      writeOverviewMonthsHtml
+     *
+     *  andere functions wurden in statistik übernommen
+     *
+     * Aufrufparameter: starttime, starttime2 
+     * Default ist Auswertung der letzten 2 und 10 Tage, kann beim Aufruf angepasst werden. 
+     * Eingabe für Defaultwerte ist 0
+     * 
+	 ************************************************/
+
 class Gartensteuerung
 	{
 	var         $installedmodules;                                  // welche Module sind installiert und können verwendet werden
@@ -54,7 +108,8 @@ class Gartensteuerung
 	protected 	$archiveHandlerID;
 	protected	$debug;
 
-	protected	$tempwerte, $tempwerteLog, $werteLog, $werte;
+	protected	$tempwerte, $tempwerteLog, $werteLog, $werte;       // temperatur und regen
+
 	protected	$variableTempID, $variableID;                       // Aussentemperatur und Regensensor
 	protected 	$GartensteuerungConfiguration;
 	
@@ -76,62 +131,7 @@ class Gartensteuerung
 	protected   $switchCategoryHeatId, $groupCategoryHeatId , $prgCategoryHeatId;
     protected   $CategoryIdData,$CategoryIdApp;
 
-	/******************
-	 *
-	 * Vorbereitung und Ermittlung der Basisinformationen wie 
-	 *
-	 * Übergabe der Konfiguration, als Funktion, hat den Vorteil und funktioniert auch mit RemoteAccess
-	 *   $this->variableTempID=get_aussentempID();  oder eine OID 
-	 *   $this->variableID=get_raincounterID();     oder eine OID oder ein Wert aus CustomComponents
-	 *
-	 * $this->regenStatistik	wird zweimal berechnet, in construct und in listRainEvents
-     * hier berechnen um für die Giessdauerberechung bereits den Wert für letzten Regen die letzten 2 und 48 Stunden zu haben
-     *
-     * aus dem Archive werden sich nur die letzten 2 Tage für Temperatur und die letzten 10 Tage für Regen genommen
-	 *
-     * es werden in Program.IPSLibrary.data.modules.Gartensteuerung Kategorien angelegt
-     *          Gartensteuerung-Auswertung
-     *          Statistiken
-     *
-     * Funktionen, Überblick:
-     *  getCategoryRegisterID                       von CustomComponents die Counter Category finden
-     *
-     *  getConfig_aussentempID                      tempId aus dem Ergebnis der Auswertung von setGartensteuerungConfiguration
-     *  getConfig_raincounterID                     siehe oben
-     *  getRainRegisters
-     *  getConfig_xID
-     *  getConfig_waterPumpID
-     *  getConfig_valveControlIDs
-     *  getConfig_RemoteAccess_Address
-     *
-     *  setGartensteuerungConfiguration
-     *  getConfig_Gartensteuerung
-     *
-     *  control_xID
-     *  control_waterPump
-     *  getKreisfromCount
-     *  control_waterValves
-     *
-     *  fromdusktilldawn
-     *  Giessdauer
-     *  listRainEvents
-     *  listRainDays
-     *  getRainevents
-     *  writeRainEventsHtml
-     *  listEvents
-     *  getRainEventsFromIncrements
-     *  getRainValues
-     *  getRainValuesFromIncrements
-     *  getRainStatistics
-     *  writeKalendermonateHtml
-     *  writeOverviewMonthsHtml
-     *
-     * Aufrufparameter: starttime, starttime2 
-     * Default ist Auswertung der letzten 2 und 10 Tage, kann beim Aufruf angepasst werden. 
-     * Eingabe für Defaultwerte ist 0
-     * 
-	 ************************************************/
-		
+
 	public function __construct($starttime=0,$starttime2=0,$debug=false)
 		{
         $dosOps = new dosOps();
@@ -366,6 +366,8 @@ class Gartensteuerung
             if ($debug) echo "Read Configuration direkt from GartensteuerungConfiguration.\n";
             $Configuration = $this->GartensteuerungConfiguration;
             if (isset($Configuration["Configuration"])) $Configuration = $Configuration["Configuration"];
+            //print_R($Configuration);
+            return (["IncrementID"=>$this->RainRegisterIncrementID,"CounterID"=>$this->RainRegisterCounterID]);
             }
         elseif (is_array($config)) $Configuration = $config;
         else
@@ -408,6 +410,7 @@ class Gartensteuerung
         $this->RainRegisterCounterID   = false;
 		if ( ( (isset($Configuration["RAINCOUNTER"]))==true) && ($Configuration["RAINCOUNTER"]!==false) )
 			{
+            if ($debug) echo "[Raincounter=>".$Configuration["RAINCOUNTER"]."]\n";
             /* wenn die Variable in der Config angegeben ist diese nehmen, sonst die eigene Funktion aufrufen */
     		if ((integer)$Configuration["RAINCOUNTER"]==0) 
 	    		{
@@ -669,6 +672,42 @@ class Gartensteuerung
 		return ($Server);
 		}
 
+    /* getConfig_Modes
+     * alle config Routinen haben selbe Parameter, lokale config bearbeiten, debug
+     *
+     */
+    public function getConfig_Modes($config=false,$debug=false) 
+        {
+        if ($debug || $this->debug) 
+            {
+            echo "getConfig_Modes aufgerufen.\n";
+            $debug = $debug || $this->debug;
+            }
+        if ($config===false) $Configuration = $this->GartensteuerungConfiguration;
+        else $Configuration = $config;
+        $text="";
+
+        $text .= "Betriebsart: ";
+        if ($Configuration["Configuration"]["Statistics"]=="ENABLED") $text .= "Statistik ";
+        if (strtoupper($Configuration["Configuration"]["DataQuality"])=="ENABLED") $text .= "Datenqualität ";
+
+        if ($Configuration["Configuration"]["Irrigation"]=="ENABLED") 
+            {
+            $text .= ",Bewässerung ";
+            if ($Configuration["Configuration"]["PowerPump"]=="ENABLED") 
+                {
+                $text .= "mit Energiemessung ";
+                if ( (isset($Configuration["Configuration"]["CheckPower"])) && ($Configuration["Configuration"]["CheckPower"]!==null) )
+                    {
+                    $text .= "Register : ".$Configuration["Configuration"]["CheckPower"]."  ";
+                    }
+                }
+            if ($Configuration["Configuration"]["Mode"]=="Switch") $text .= "und Ventilsteuerung";
+            }
+        $text .= "---Ende\n";
+        return ($text);
+        }
+
     /* Konfiguration auswerten und standardisiseren 
 			"KREISE" => 5,
 			"TEMPERATUR-MITTEL" => 19,    // Wenn Aussentemperatur im Mittel ueber diesen Wert UND Niederschlag kleiner REGN48H dann Giessen 
@@ -714,7 +753,8 @@ class Gartensteuerung
             // Darstellung Webfronts, individuelle Tabs einstellen
             configfileParser($configConf["Configuration"], $config["Configuration"], ["STATISTICS","Statistics","statistics"],"Statistics" ,"ENABLED");  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["IRRIGATION","Irrigation","irrigation"],"Irrigation" ,"ENABLED");  
-            configfileParser($configConf["Configuration"], $config["Configuration"], ["POWERPUMP","PowerPump","powerpump","PowerPump",],"PowerPump" ,"ENABLED");  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["POWERPUMP","Powerpump","powerpump","PowerPump",],"PowerPump" ,"ENABLED");  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["DATAQUALITY","Dataquality","dataquality","DataQuality",],"DataQuality" ,"ENABLED");  
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["MODE","Mode","mode"],"Mode" ,"Switch");          //Default, mit automatischen Regenkreisumschalter  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["WATERPUMP","WaterPump","Waterpump","waterpump"],"WaterPump" ,false);  
@@ -724,6 +764,8 @@ class Gartensteuerung
             configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTERHISTORY","Raincounterhistory","RainCounterHistory","raincounterhistory"],"RainCounterHistory",null);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["AUSSENTEMP","Aussentemp","AusenTemp","aussentemp"],"AussenTemp",null);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["REMOTEACCESSADR","RemoteAccessAdr","Remoteaccessadr","remoteaccessadr"],"RemoteAccessAdr",null);
+
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["REPORTS","Reports","reports","Report"],"Reports",[]);
 
             /* courtesy for old functions */
             configfileParser($configConf["Configuration"], $config["Configuration"], ["DEBUG","Debug","debug"],"DEBUG",false);
@@ -736,7 +778,9 @@ class Gartensteuerung
                 if ($debug) echo"   $i:".$config["Configuration"]["KREIS".$i]."\n";
                 }
 
+            $config["Configuration"]["RainCounterInput"]=$config["Configuration"]["RainCounter"];
             $config["Configuration"]["RainCounter"]=$this->getConfig_raincounterID($config["Configuration"], "Increment", $debug);
+            $config["Configuration"]["RainCounterIncrement"]=$config["Configuration"]["RainCounter"];
             $config["Configuration"]["AussenTemp"]=$this->getConfig_aussentempID($config["Configuration"], $debug);
             $config["Configuration"]["RemoteAccessAdr"]=$this->getConfig_RemoteAccess_Address($config["Configuration"], $debug);   
             $config["Configuration"]["WaterPump"]=$this->getConfig_waterPumpID($config["Configuration"], $debug);
@@ -990,38 +1034,45 @@ class Gartensteuerung
 	 *
 	 ***************************************************************************/
 
-	function Giessdauer($GartensteuerungConfiguration)
+	function Giessdauer($debug=false)
 		{
+		if ($this->debug || $debug) $debug=true;
 
 		//global $log_Giessanlage;
-
+        $variableTempID=$this->variableTempID;
+        $variableRainID=$this->variableID;
 		$giessdauerVar=0;
-	
+        $endtime=time();
+        $starttime=$endtime-60*60*24*2;         // die letzten zwei Tage für Temperatur 
+        $starttime2=$endtime-60*60*24*10;       // die letzten 10 Tage für Regen
+
 		$Server=RemoteAccess_Address();
-		if ($this->debug)
-			{
-			echo"--------Giessdauerberechnung:\n";
-			}
+		if ($debug) echo "Gartensteuerung::Giessdauer, Aufruf für Berechnung der Giessdauer : 0,10 oder 20 Minuten\n";
+			
 		If ($Server=="")
 			{
-			$variableTempName = IPS_GetName($this->variableTempID);
-			$variableName = IPS_GetName($this->variableID);
+            $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+			$variableTempName = IPS_GetName($variableTempID);
+			$variableRainName = IPS_GetName($variableRainID);
+    		if ($debug) echo "Regen und Temperaturdaten, lokale Daten -> Temp: $variableTempName ($variableTempID) Rain: $variableRainName ($variableRainID) \n\n";		
+            $tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);                // 1 für tägliche Aggregation der Temperaturwerte
+            $werteLog = AC_GetLoggedValues($archiveHandlerID, $variableRainID, $starttime2, $endtime,0);
 			}
 		else
 			{
 			$rpc = new JSONRPC($Server);
-			$variableTempName = $rpc->IPS_GetName($this->variableTempID);
-			$variableName = $rpc->IPS_GetName($this->variableID);
-			if ($this->debug)
-				{
-				echo "   Daten vom Server : ".$Server."\n";
-				}
+			$variableTempName = $rpc->IPS_GetName($variableTempID);
+			$variableRainName = $rpc->IPS_GetName($variableRainID);
+			if ($debug) echo "   Daten vom Server : $Server -> Temp: $variableTempName ($variableTempID) Rain: $variableRainName ($variableRainID)\n";
+            $archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            $tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
+            $werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableRainID, $starttime2, $endtime,0);
 			}
 
 		//$AussenTemperaturGesternMax=get_AussenTemperaturGesternMax();
-		$AussenTemperaturGesternMax=$this->tempwerte[1]["Max"];
+		$AussenTemperaturGesternMax=$tempwerte[1]["Max"];
 		//$AussenTemperaturGestern=AussenTemperaturGestern();
-		$AussenTemperaturGestern=$this->tempwerte[1]["Avg"];
+		$AussenTemperaturGestern=$tempwerte[1]["Avg"];
 	
 		$letzterRegen=0;
 		$regenStand=0;
@@ -1030,9 +1081,9 @@ class Gartensteuerung
 		$regenStandAnfang=0;  /* für den Fall dass gar keine Werte gelogged wurden */
 		$regenStandEnde=0;
 		$RegenGestern=0;
-		/* Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen */
-
-		foreach ($this->werteLog as $wert)
+		
+        // Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen, Berechnung geht von einem Counter aus 
+		foreach ($werteLog as $wert)
 			{
     		//echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
 			$regenStandAnfang=$wert["Value"];
@@ -1051,24 +1102,10 @@ class Gartensteuerung
 				}
 			$regenStand=$regenStandEnde-$regenStandAnfang;
 			}
-		if ($this->debug)
-			{
-			echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h." 10 Tage : ".$regenStand." mm.\n";
-			}
-		$letzterRegen=0;
-		$RefWert=0;
-		foreach ($this->werte as $wert)
-			{
-			if ($RefWert == 0) { $RefWert=round($wert["Avg"]); }
-			if ( ($letzterRegen==0) && (($RefWert)-round($wert["Avg"])>0) )
-				{
-		   		$letzterRegen=$wert["MaxTime"]; 		/* MaxTime ist der Wert mit dem groessten Niederschlagswert, also am Ende des Regens, und MinTime daher immer am Anfang des Tages */
-				}
-			}
-		if ( isset($werte[1]["Avg"]) == true ) {	$RegenGestern=$werte[1]["Avg"]; }
-		$letzterRegenStd=(time()-$letzterRegen)/60/60;
+		if ($debug) echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h." 10 Tage : ".$regenStand." mm.\n";
 
-		if ($this->debug)
+
+		if ($debug)
 			{
 			echo "Letzter erfasster Regenwert : ".date("d.m H:i",$letzterRegen)." also vor ".$letzterRegenStd." Stunden.\n";
 	 		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > ".$GartensteuerungConfiguration["TEMPERATUR-MITTEL"]."° sein).\n";
@@ -1120,14 +1157,7 @@ class Gartensteuerung
 			.number_format($AussenTemperaturGestern, 1, ",", "")."/"
 			.number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad.";
 		SetValue($this->GiessDauerInfoID,$textausgabe2);
-		if ($this->debug==false)
-			{
-			//$log_Giessanlage->message($textausgabe);
-			}
-		else
-			{
-			echo $textausgabe;
-			}
+		if ($debug) echo $textausgabe;
 		return $giessdauerVar;
 		}
 
@@ -1186,13 +1216,52 @@ class Gartensteuerung
         return ($regenWerte);
         }
 
+    /* Tempwerte in die Class einlesen
+     *
+     */
+    public function getTempRainValues($debug=false)
+        {
+        $endtime=time();
+        $starttime=$endtime-60*60*24*7;  /* die letzten zwei Tage, für Auswertung sieben Tage nehmen */
+        $starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage */
+
+        $Server=RemoteAccess_Address();
+        If ($Server=="")
+            {
+            echo "Regen und Temperaturdaten, lokale Daten: Temp $variableTempID Rain $variableID \n\n";		
+            //AC_ReAggregateVariable ($archiveHandlerID, $variableID);  
+            //$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            $tempwerte = AC_GetAggregatedValues($archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);                // 1 für tägliche Aggregation der Temperaturwerte
+            $variableTempName = IPS_GetName($variableTempID);
+            $werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
+            $werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);	/* Tageswerte agreggiert */
+            $werteStd = AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);	/* Stundenwerte agreggiert */
+            $variableName = IPS_GetName($variableID);
+            if (count($tempwerte)<2) AC_ReAggregateVariable ($archiveHandlerID, $variableTempID);  
+            }
+        else
+            {
+            echo "Regen und Temperaturdaten vom Server : ".$Server."\n\n";
+            $rpc = new JSONRPC($Server);
+            $archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            $tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
+            $tempwerteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableTempID, $starttime, $endtime,0);			
+            $variableTempName = $rpc->IPS_GetName($variableTempID);
+            $werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
+            //$werte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);
+            //$werteStd = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);  // funktioniert nicht kann nicht zusammenzaehlen, mittelt immer
+            $variableName = $rpc->IPS_GetName($variableID);
+            }
+        }
 
 	/*******************
-     * writeKalendermonateHtml
+     * Gartensteuerung::writeKalendermonateHtml                 depricated, wird nicht mehr eingesetzt
      * Ausgabe der Regenereignisse (ermittelt mit listrainevents) mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
+     * Spalten:  Regenbeginn | Regenende | Dauer Min | Menge mm  |  max mm/Stunde
+     *
 	 */
 
-	public function writeKalendermonateHtml()
+	public function writeKalendermonateHtml($kalendermonate)
 		{
         $html="";
     	$html.='<table frameborder="1" width="100%">';
@@ -1210,9 +1279,13 @@ class Gartensteuerung
         }
 
 	/*******************
-     * writeOverviewMonthsHtml
+     * Gartensteuerung::writeOverviewMonthsHtml
      * Ausgabe der Regenmenge/dauer (ermittelt mit listrainevents) als html Tabelle Jahre versus Monate zum speichern/anzeigen in einer hml Box
      * Input ist ein Array mit Index MM.JJ oder Index und Value/Timestamp
+     * verschieden Datenwuellen möglich, unterscheidung mit Mode
+     * mode=1   Index ist bereits MM.YY, Wert ist ein scalar und kann direkt verwendet werden
+     * mode=2   Index ist ein aufsteigender Wert, Wert ist ein array mit Value/TimeStamp
+     *
 	 */
 	public function writeOverviewMonthsHtml($monthlyValues=array(),$mode=1,$debug=false)
 		{
@@ -1220,6 +1293,8 @@ class Gartensteuerung
         $startjahr=(integer)date("Y",time());
         $minjahr=$startjahr;
         //print_r($monthlyValues);
+        $type="sum";                   // default is mode=1 und type=sum
+        $dv=10000;    // sum10k 
         $summe=array();
         if (is_array($mode))
             {
@@ -1228,7 +1303,11 @@ class Gartensteuerung
             if (isset($mode["mode"])) $mode = $mode["mode"];
             else $mode=1;
             }
-        echo "writeOverviewMonthsHtml Mode $mode Type $type \n";
+        if ($debug) 
+            {
+            echo "\n";
+            echo "writeOverviewMonthsHtml Mode $mode Type $type \n";
+            }
         if ($mode==1)           // Index ist bereits MM.YY
             {
             foreach ($monthlyValues as $date=>$regenmenge)
@@ -1251,7 +1330,7 @@ class Gartensteuerung
                     }
                 }
             }
-        elseif ($mode==2)                // Index ist ein aufsteigender Wert
+        elseif ($mode==2)                // Index ist ein aufsteigender Wert, Wert ist ein array mit Value/TimeStamp
             {
             foreach ($monthlyValues as $index=>$entry)
                 {
@@ -1311,7 +1390,11 @@ class Gartensteuerung
             $html.="<tr> <td>".$j."</td>";
             for ($i=$startjahr;$i>=$minjahr;$i--) 
                 {
-                if (isset($tabelle[$j][$i])==true) $html.="<td> ".number_format($tabelle[$j][$i],1,",","")." </td>";
+                if (isset($tabelle[$j][$i])==true) 
+                    {
+                    if ($type=="sum10k") $html.="<td> ".number_format($tabelle[$j][$i]/$dv,1,",","")." </td>";
+                    else $html.="<td> ".number_format($tabelle[$j][$i],1,",","")." </td>";
+                    }
                 else $html.="<td> </td>";
                 }
             $html.= " </tr> ";
@@ -1320,16 +1403,13 @@ class Gartensteuerung
         $html.="<tr> <td>Summe</td>";
         for ($i=$startjahr;$i>=$minjahr;$i--) 
             {
-            if ($type=="sum")
+            if (isset($summe[$i])==true)
                 {
-                if (isset($summe[$i])==true) $html.="<td> ".number_format($summe[$i]["value"],1,",","")." </td>";
-                else $html.="<td> </td>";
+                if ($type=="sum")        $html.="<td> ".number_format($summe[$i]["value"],1,",","")." </td>";
+                elseif ($type=="sum10k") $html.="<td> ".number_format($summe[$i]["value"]/$dv,0,",","")." </td>";
+                else                     $html.="<td> ".number_format(($summe[$i]["value"]/$summe[$i]["count"]),1,",","")." </td>";
                 }
-            else
-                {
-                if (isset($summe[$i])==true) $html.="<td> ".number_format(($summe[$i]["value"]/$summe[$i]["count"]),1,",","")." </td>";
-                else $html.="<td> </td>";
-                }
+            else $html.="<td> </td>";
             }
         $html.= " </tr> ";
 
@@ -1344,6 +1424,11 @@ class Gartensteuerung
  * GartensteuerungControl
  *
  * Umsetzung von Befehlen
+ *
+ *
+ * Funktionen
+ *      __construct
+ *      start
  *
  */
 
@@ -1381,36 +1466,54 @@ class GartensteuerungControl extends Gartensteuerung
 
 /************************************************************
  *
- * GartensteuerungStatistics, Klimaberechnungen
+ * GartensteuerungStatistics, Klimaberechnungen auf Basis Daten von Zamg/geosphere
+ * erstellt die Tabellen mit der Übersicht der gemessenen Werte
  *
- * 
+ *  __construct
+ *  setWerteStore               verwendet einen internen werte store, also array auf das alle routinen zugreifen können
+ *  getRainStatistics
+ *  getRainEventsFromIncrements
+ *  getRainAmountSince
+ *  getRainValuesFromIncrements
+ *  listRainEvents
+ *  listRainDays
+ *  getRainevents
+ *  writeRainEventsHtml
+ *
+ *
+ *
  *
  */
 
 class GartensteuerungStatistics extends Gartensteuerung
 	{
     protected $archiveOps;                              // class for archives, general use
+    protected $ipsTables;                       // schöne Tabelle zeichnen
     protected $werteStore = array();                  // Inputwete für Berechnung, nur einmal erfassen
 
     function __construct($debug=false)
         {
         $this->werteStore = array();
         $this->archiveOps = new archiveOps();
+        $this->ipsTables = new ipsTables();
+
+        if ($debug) echo "GartensteuerungStatistics construct aufgerufen. Debug Mode.\n";
+
         parent::__construct(0,0,$debug);                    // keine Start und Endtime übergeben
         }
 
 
-    /* GartensteuerungStatistics::
+    /* GartensteuerungStatistics::setWerteStore
      * nur in dieser class, es gibt einen werte Speicher
-     * und verschiedene Möglichkeitren die Daten dorthin einzulesen
+     * und verschiedene Möglichkeiten die Daten dorthin einzulesen
      */
-    public function setWerteStore($rainregs,$mode="INCREMENT")
+    public function setWerteStore($rainregs=false,$mode="INCREMENT",$debug=false)
         {
         $endtime=time();
         $starttime=$endtime-60*60*24*100;                // 10 Tage
         if (is_array($rainregs))
             {
-            if (isset($rainregs["Url"]))
+            if (isset($rainregs["Url"]))            // manuelles overwrite remote
                 {
                 $url=$rainregs["Url"];
                 echo "setWerteStore, remote Server mit url $url \n";
@@ -1426,10 +1529,75 @@ class GartensteuerungStatistics extends Gartensteuerung
                     }
                 echo "get Werte from Remote Server, last 100 days, data $archiveHandlerID, $variableID , $starttime, $endtime \n";
                 $werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID , $starttime, $endtime,0);
-                print_R($werteLog);
+                if ($debug) print_R($werteLog);
+                }
+            else                // manuelles overwrite lokal
+                {
+                $archiveHandlerID=$this->archiveOps->getArchiveID();   
+                if ( (strtoupper($mode)=="INCREMENT") && (isset($rainregs["IncrementID"])) )
+                    {
+                    $variableID = $rainregs["IncrementID"];
+                    }
+                elseif (isset($rainregs["CounterID"]))
+                    {
+                    $variableID = $rainregs["CounterID"];
+                    }
+                $werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID , $starttime, $endtime,0);
+                if ($debug) print_R($werteLog);
                 }
             }
+        else            // erster Wert ist false oder kein Array, default
+            {
+            $archiveHandlerID=$this->archiveOps->getArchiveID();   
+			$werteLog = AC_GetLoggedValues($archiveHandlerID, $this->variableID, $starttime, $endtime,0);
+            $this->tempwerte = AC_GetAggregatedValues($archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);                // 1 für tägliche Aggregation der Temperaturwerte
+            }
+        $this->werteStore =  $werteLog;   
         }
+
+    /* show Werte Store
+     *
+     */
+    public function showWerteStore($debug=false)
+        {
+        //print_R($this->werteStore);
+        $config=array();
+        $config["DataType"]="Array";
+        $config["OIdtoStore"]="Rain";
+        $config["manAggregate"]="daily";                     // verwendet archivierte Daten statt manuell zu integrieren, zu viele Daten, zusammenfassen, 0 stündlich, 1 täglich, 2 wöchentlich
+        $config["ShowTable"]["align"]="daily";
+        $this->archiveOps->getValues($this->werteStore,$config,$debug);          // true,2 Debug, Werte einlesen
+
+        $config["OIdtoStore"]="Temp";
+        $config["Aggregated"]="daily";                     // verwendet archivierte Daten statt manuell zu integrieren, zu viele Daten, zusammenfassen, 0 stündlich, 1 täglich, 2 wöchentlich
+        $this->archiveOps->getValues($this->tempwerte,$config,$debug);          // true,2 Debug, Werte einlesen
+
+        $config["AggregatedValue"]=["Avg","Min","MinTime","Max","MaxTime"];                   // es werden immer alle Werte eingelesen
+        $config["ShowTable"]["output"]="realTable";
+        $result = $this->archiveOps->showValues(false,$config);
+        $display = $this->ipsTables->checkDisplayConfig($this->ipsTables->getColumnsName($result,$debug),$debug);
+        print_R($display);
+        $display = [
+                    "TimeStamp"                        => ["header"=>"Date","format"=>"DayMonth"],
+                    //"29877"                        => ["header"=>"MittelTemp","format"=>"°"],
+                    "TempMin"                        => ["header"=>"MinTemp","format"=>"°"],
+                    "TempMinTime"                        => ["header"=>"MinTime","format"=>"HourMin"],
+                    "TempMax"                        => ["header"=>"MaxTemp","format"=>"°"],
+                    "TempMaxTime"                        => ["header"=>"MaxTime","format"=>"HourMin"],
+                    "Rain"                        => ["header"=>"Regen","format"=>"mm"],
+                    ];
+        $config=array();
+        $config["html"]=false;
+        $config["text"]=true;
+        $config["insert"]["Header"]    = true;
+        $config["transpose"]=false;
+        $config["reverse"]=true;          // die Tabelle in die andere Richtung sortieren
+        ksort($result);
+        $html = $this->ipsTables->showTable($result, $display,$config,false);     // true/2 für debug , braucht einen Zeilenindex
+
+        }
+
+
 
 	/* GartensteuerungStatistics::getRainStatistics
      * verwendet getRainEventsFromIncrements, getRainValuesFromIncrements
@@ -1519,7 +1687,8 @@ class GartensteuerungStatistics extends Gartensteuerung
         }
 
 
-    /* noch eine Routine um die Regenereignisse herauszuarbeiten
+    /* GartensteuerungStatistics::
+     * noch eine Routine um die Regenereignisse herauszuarbeiten
      * Die Variable die im Namen ein _Counter am Ende hat ist das Input Register mit einem Zählerstand, 
      * Counter2 sollte der Zählerstand sein der um den rewset des registers durch einen Stromausfall bereinigt ist und den Zählerstand richtig weiterschreibt.
      *
@@ -1663,7 +1832,7 @@ class GartensteuerungStatistics extends Gartensteuerung
      * $this->regenStand2h, $this->regenStand48h ermitteln/updaten
      *
      */
-    public function getRainAmountSince()
+    public function getRainAmountSince($debug=false)
         {
         $rainReg = $this->getRainRegisters("Increment");
         if (sizeof($this->werteStore)==0)
@@ -1673,14 +1842,17 @@ class GartensteuerungStatistics extends Gartensteuerung
             $configCleanUpData["deleteSourceOnError"]=false;
             $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
             $config["CleanUpData"] = $configCleanUpData;                   
-            echo "ArchiveOps::getValues($rainReg \n";
-            $result = $this->archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen, Werte sind auch in der archiveOps class
+            if ($debug) echo "ArchiveOps::getValues($rainReg \n";
+            $result = $this->archiveOps->getValues($rainReg,$config,$debug);          // true,2 Debug, Werte einlesen, Werte sind auch in der archiveOps class
             $this->werteStore = $result["Values"];
             }
         else {
-            echo "Werte von ".date("d.m.Y H:i:s",$this->werteStore[array_key_first($this->werteStore)])." bis ".date("d.m.Y H:i:s",$this->werteStore[array_key_last($this->werteStore)])."\n";
-            echo "Bereits Werte im Speicher, insgesamt ".sizeof($this->werteStore)."\n";
-        }
+            if ($debug)
+                {
+                echo "Werte von ".date("d.m.Y H:i:s",$this->werteStore[array_key_first($this->werteStore)])." bis ".date("d.m.Y H:i:s",$this->werteStore[array_key_last($this->werteStore)])."\n";
+                echo "Bereits Werte im Speicher, insgesamt ".sizeof($this->werteStore)."\n";
+                }
+            }
 
 		$this->regenStand2h=0;
 		$this->regenStand48h=0;
@@ -1840,7 +2012,8 @@ class GartensteuerungStatistics extends Gartensteuerung
 		return ($this->regenStatistik);
 		}
 
-    /* die letzten Regentage
+    /* GartensteuerungStatistics::listRainDays
+     * die letzten Regentage ermitteln, dazu die Regenwerte einlesen
      *
      */
 	function listRainDays($days=10,$variableID=false,$debug=false)
@@ -1869,10 +2042,11 @@ class GartensteuerungStatistics extends Gartensteuerung
 		return ($regenStatistik);
 		}
 
-    /* getRainevents
+    /* GartensteuerungStatistics::getRainevents
      *
      * Routinen nur mehr an einem Ort. liefert Regenstatistik und ändert einen class parameter: letzterRegen
      * benötigt ein inkrementelles Regenregister, Counter mit steigenden Werten, array mit [Value,TimeStamp], der erste Wert ist der höchste Wert
+     * wird von listRainDays aufgerufen, das die Daten bereit stellt
      *
      * Rain2h oder 48h extra berechnen.
      *
@@ -2014,9 +2188,9 @@ class GartensteuerungStatistics extends Gartensteuerung
 		return ($regenStatistik);            
         }
 
-	/*******************
-     *
-     * Ausgabe der Regenereignisse (ermittelt mit listRainEvents, getRainevents) mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
+	/* GartensteuerungStatistics::writeRainEventsHtml
+     * Ausgabe der Regenereignisse ermittelt mit listRainEvents und darin aufgerufen getRainevents) 
+     * mit Beginn, Ende, Dauer etc als html Tabelle zum speichern in einer hml Box
 	 */
 
 	public function writeRainEventsHtml($rainevents)
@@ -2037,6 +2211,181 @@ class GartensteuerungStatistics extends Gartensteuerung
         return($html);
         }
 
+    /* GartensteuerungStatistics::writeOverviewIntervalHtml depricated besser ipsTables verwenden
+     * soll Tage und Monate darstellen
+     * Ausgabe der Regenmenge/dauer (ermittelt mit listrainevents) als html Tabelle Jahre versus Monate zum speichern/anzeigen in einer hml Box
+     * Input ist ein Array mit Index MM.JJ oder Index und Value/Timestamp
+     *
+     * verschieden Datenquellen möglich, unterscheidung mit Mode/Config
+     *
+     * mode=1   Index ist bereits MM.YY, Wert ist ein scalar und kann direkt verwendet werden
+     * mode=2   Index ist ein aufsteigender Wert, Wert ist ein array mit Value/TimeStamp
+     * mode=3   Darstellung Tage über Werte
+     * type     sum
+     *
+	 */
+	public function writeOverviewIntervalHtml($Values=array(),$mode=1,$debug=false)
+		{
+        // umgestellt auf intern 4stellige Jahreszahlen
+        $startjahr=(integer)date("Y",time());
+        $minjahr=$startjahr;
+        //print_r($Values);
+        $type="sum";                   // default is mode=1 und type=sum
+        $table="months";
+        $dv=10000;    // sum10k 
+        $summe=array();
+        if (is_array($mode))
+            {
+            if (isset($mode["type"])) $type = $mode["type"];
+            else $type="sum";
+            if (isset($mode["mode"])) $mode = $mode["mode"];
+            else $mode=1;
+            if (isset($mode["table"])) $table = $mode["table"];
+            else $table="months";
+            }
+        if ($debug) 
+            {
+            echo "\n";
+            echo "writeOverviewMonthsHtml Table $table Mode $mode Type $type \n";
+            }
+        if ($table=="months")
+            {
+            if ($mode==1)           // Index ist bereits MM.YY
+                {
+                foreach ($Values as $date=>$regenmenge)
+                    {
+                    $MonatJahr=explode(".",$date);
+                    $monat=(integer)$MonatJahr[0]; $jahr=(integer)$MonatJahr[1];
+                    if ($jahr<100) $jahr += 2000;
+                    if ($jahr<$minjahr) $minjahr=$jahr;
+                    $tabelle[$monat][$jahr]=$regenmenge;
+
+                    if (isset($summe[$jahr])) 
+                        {
+                        $summe[$jahr]["value"] += $regenmenge;
+                        $summe[$jahr]["count"]++;
+                        }
+                    else 
+                        {
+                        $summe[$jahr]["value"] = $regenmenge;
+                        $summe[$jahr]["count"] = 1;
+                        }
+                    }
+                }
+            elseif ($mode==2)                // Index ist ein aufsteigender Wert, Wert ist ein array mit Value/TimeStamp
+                {
+                foreach ($Values as $index=>$entry)
+                    {
+                    $date=date("m.Y",$entry["TimeStamp"]);
+                    $regenmenge=$entry["Value"];
+                    $MonatJahr=explode(".",$date);              // index 0 ist Monat, 1 ist Jahr
+                    $monat=(integer)$MonatJahr[0]; $jahr=(integer)$MonatJahr[1];
+                    if ($jahr<$minjahr) $minjahr=$jahr;
+                    $tabelle[$monat][$jahr]=$regenmenge;                
+                    
+                    if (isset($summe[$jahr])) 
+                        {
+                        $summe[$jahr]["value"] += $regenmenge;
+                        $summe[$jahr]["count"]++;
+                        }
+                    else 
+                        {
+                        $summe[$jahr]["value"] = $regenmenge;
+                        $summe[$jahr]["count"] = 1;
+                        }
+                    }
+                }
+            else            // Index ist ein aufsteigender Wert, aber es gibt noch einen Kanal identifier danach
+                {
+                foreach ($Values as $index=>$entry)
+                    {
+                    foreach ($entry as $channel=>$subentry)
+                        {
+                        $date=date("m.Y",$subentry["TimeStamp"]);
+                        $regenmenge=$subentry["Value"];
+                        $MonatJahr=explode(".",$date);              // index 0 ist Monat, 1 ist Jahr
+                        $monat=(integer)$MonatJahr[0]; $jahr=(integer)$MonatJahr[1];
+                        if ($jahr<$minjahr) $minjahr=$jahr;
+                        $tabelle[$monat][$jahr]=$regenmenge;                
+                        
+                        if (isset($summe[$jahr])) 
+                            {
+                            $summe[$jahr]["value"] += $regenmenge;
+                            $summe[$jahr]["count"]++;
+                            }
+                        else 
+                            {
+                            $summe[$jahr]["value"] = $regenmenge;
+                            $summe[$jahr]["count"] = 1;
+                            }
+                        }
+                    }
+                }
+            if ($debug) print_R($tabelle);
+            $html="";
+            $html.='<table frameborder="1" width="100%">';
+            $html.="<th> <tr> <td> Monat </td> ";
+            for ($i=$startjahr;$i>=$minjahr;$i--) {$html.="<td> ".$i." </td>";}
+            $html.= " </tr> </th>";
+            for ($j=1;$j<=12;$j++)          // Monate sind die zeilen
+                {
+                $html.="<tr> <td>".$j."</td>";
+                for ($i=$startjahr;$i>=$minjahr;$i--) 
+                    {
+                    if (isset($tabelle[$j][$i])==true) 
+                        {
+                        if ($type=="sum10k") $html.="<td> ".number_format($tabelle[$j][$i]/$dv,1,",","")." </td>";
+                        else $html.="<td> ".number_format($tabelle[$j][$i],1,",","")." </td>";
+                        }
+                    else $html.="<td> </td>";
+                    }
+                $html.= " </tr> ";
+                }
+            // Summe/Mean
+            $html.="<tr> <td>Summe</td>";
+            for ($i=$startjahr;$i>=$minjahr;$i--) 
+                {
+                if (isset($summe[$i])==true)
+                    {
+                    if ($type=="sum")        $html.="<td> ".number_format($summe[$i]["value"],1,",","")." </td>";
+                    elseif ($type=="sum10k") $html.="<td> ".number_format($summe[$i]["value"]/$dv,0,",","")." </td>";
+                    else                     $html.="<td> ".number_format(($summe[$i]["value"]/$summe[$i]["count"]),1,",","")." </td>";
+                    }
+                else $html.="<td> </td>";
+                }
+            $html.= " </tr> ";
+
+            $html.="</table>";
+            }
+        else
+            {
+            /* Ausgabe der Tabelle nach Spalten zweiter index und Zeilen erster Index
+             * hier werden die ersten 30 Tage zurückgerechnet ab heute übernommen, Routine beginnt ab Beginn rückwärts zu zählen  
+             */
+            foreach ($Values as $index=>$entry)
+                    {
+                    $date=date("m.Y",$entry["TimeStamp"]);
+                    $regenmenge=$entry["Value"];
+                    $MonatJahr=explode(".",$date);              // index 0 ist Monat, 1 ist Jahr
+                    $monat=(integer)$MonatJahr[0]; $jahr=(integer)$MonatJahr[1];
+                    if ($jahr<$minjahr) $minjahr=$jahr;
+                    $tabelle[$monat][$jahr]=$regenmenge;                
+                    
+                    if (isset($summe[$jahr])) 
+                        {
+                        $summe[$jahr]["value"] += $regenmenge;
+                        $summe[$jahr]["count"]++;
+                        }
+                    else 
+                        {
+                        $summe[$jahr]["value"] = $regenmenge;
+                        $summe[$jahr]["count"] = 1;
+                        }
+                    }
+      
+            }
+        return($html);
+        }   
 
     }
 	

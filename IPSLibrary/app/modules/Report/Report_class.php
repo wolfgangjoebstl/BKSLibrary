@@ -47,7 +47,7 @@
      *      getValueConfiguration 
      *      getConfiguration
      *      getcategoryIdCommon
-     *      ChangeSetting     
+     *      ChangeSetting                   Aufruf aus dem Webfront   
      *      CheckValueSelection
      *      Navigation
 	 *      ActivateTimer

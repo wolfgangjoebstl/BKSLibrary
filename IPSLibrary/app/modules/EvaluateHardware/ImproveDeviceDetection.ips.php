@@ -19,7 +19,9 @@
 
     /* Teil des Evaluate Hardware Moduls
      *
-     * Webfront: Bearbeitung der Buttons für das Webfront Werte in LocalData
+     * Webfront: Bearbeitung der Buttons 
+     *              für das Webfront Werte in LocalData
+     *              für das Webfront Werkzeugschlüssel
      *
      * Execute:  Analyse der Konfigurationsdateien und Abgleich mit der gespeicherten Parametrierung
      *
@@ -29,7 +31,9 @@
      *
      */
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");    
 
     IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
     IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
@@ -63,19 +67,23 @@
      ****************************/
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-    if (!isset($moduleManager))
-        {
-        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-        $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
-        }
+    $moduleManager    = new ModuleManagerIPS7('EvaluateHardware',$repository);  
     $installedModules = $moduleManager->GetInstalledModules();
 
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-    $categoryId_DetectDevice        = IPS_GetObjectIDByName('DetectDevice',        $CategoryIdData);
-    $actionSortMessageTableID          = IPS_GetObjectIDByName("SortTableBy",$categoryId_DetectDevice);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-    $messageTableID          = IPS_GetObjectIDByName("MessageTable", $categoryId_DetectDevice);
+	$CategoryIdData                 = $moduleManager->GetModuleCategoryID('data');
+    $categoryId_DetectDevice        = getCategoryIdByName($CategoryIdData,'DetectDevice');
+    $actionSortMessageTableID       = getVariableIDByName($categoryId_DetectDevice,"SortTableBy");
+    $messageTableID                 = getVariableIDByName($categoryId_DetectDevice,"MessageTable");
 
-    $moduleManagerCC = new IPSModuleManager('CustomComponent',$repository);
+    // Cookies tabelle in Tab BrowserCookies
+    $categoryId_BrowserCookies      = getCategoryIdByName($CategoryIdData, "WebfrontCookies");                  // Achtung false ist wie 0
+    $actionViewWebbrowserTableID    = getVariableIDByName($categoryId_BrowserCookies,"ViewBrowserOn");
+    $webbrowserCookiesTableID       = getVariableIDByName($categoryId_BrowserCookies, "BrowserCookieTable");
+
+    $categoryId_DetectTopologies    = getCategoryIdByName($CategoryIdData, "DetectTopologies");                  // Achtung false ist wie 0
+    $actionViewMessageTableID       = getVariableIDByName($categoryId_DetectTopologies,"ViewTableOn");
+
+    $moduleManagerCC = new ModuleManagerIPS7('CustomComponent',$repository);
 	$CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
     $hardwareStatusCat      = IPS_GetObjectIDByName("HardwareStatus",$CategoryIdDataCC);
     $valuesDeviceTableID    = IPS_GetObjectIDByName("ValuesTable", $hardwareStatusCat);	
@@ -85,6 +93,7 @@
 	$scriptIdImproveDeviceDetection   = IPS_GetScriptIDByName('ImproveDeviceDetection', $CategoryIdApp);
 
     $ipsOps = new ipsOps();
+    $ipsTables = new ipsTables();               // fertige Routinen für eine Tabelle in der HMLBox verwenden    
 
     $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
@@ -103,7 +112,6 @@
 	
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-
 
     /* gleiche Funktion wie Evaluate_Overview */
 
@@ -134,6 +142,12 @@
         //echo "OperationCenter ist installiert.\n";
         IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
         $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library
+        }
+
+    if (isset($installedModules["Startpage"])) 
+        {
+        IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
+        IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
         }
 
     /* Sortierfunktionen für zwei tabellen
@@ -225,6 +239,39 @@
                     SetValue($valuesDeviceTableID,$output);
                     }
 
+                break;
+            case $actionViewWebbrowserTableID:                      // Cookies Table
+                SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+                $webBrowserLibrary = new webBrowserLibrary();               // Teil der Startpage_Library
+                $tableAccess = $webBrowserLibrary->getTable_webfrontAccess();
+                $config=array();
+                $config["html"]    = true;
+                $config["insert"]["Header"]    = true;
+                switch ($_IPS['VALUE'])
+                    {
+                    case 0:
+                        $config["sort"] = "nameOfID";
+                        break;
+                    case 1:
+                        $config["sort"] = "Updated";
+                        break;
+                    default:
+                        break;
+                    }
+                echo "View ".$_IPS['VALUE']." ".count($tableAccess)." ".$config["sort"];
+                $html = $ipsTables->showTable($tableAccess, false ,$config,false);                // true Debug
+                SetValue($webbrowserCookiesTableID,$html);                        
+                break;
+            case $actionViewMessageTableID:
+                SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+                switch ($_IPS['VALUE'])
+                    {
+                    case 0:
+                        break;
+
+                    default:
+                        break;
+                    }                    
                 break;
             default:
                 echo "Do not know ".$_IPS['VARIABLE']."\n";

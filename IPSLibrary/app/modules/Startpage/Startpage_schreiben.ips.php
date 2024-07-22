@@ -125,6 +125,7 @@
 
     $webOps = new webOps();
     $dosOps = new dosOps();
+    $js = new jsSnippets();
 
     $startpage = new StartpageHandler();
     $configuration=$startpage->getStartpageConfiguration();
@@ -327,7 +328,8 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         //SetValue($variableIdHTML,'<div class="cuw-container"><iframe class="cuw-responsive-iframe" style="width:100%; height:800px; border:none;" name="StartPage" src="../user/Startpage/StartpageTopology.php"></iframe></div>'); 
         
         //$html  = '<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>';
-        $html .= '<script type="text/javascript">';
+        $htmlScript  = '<script type="text/javascript">';
+        
         /*$html .= '  var intervalId = window.setInterval(function(){
                         reportWindowSize();
                         }, 5000);
@@ -338,16 +340,15 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
                         };
                     window.onresize = reportWindowSize;                     
                     ';  */
-        $html .= '  function reportWindowSize () {
+        $ready  = 'function reportWindowSize () {
                         let varheight=Math.round(window.innerHeight * 0.85);
                         document.getElementById("frame-status").innerHTML = "Size " + window.innerHeight + " (" + varheight + ") x " + window.innerWidth + "  " + Date();
-                        };
-                    $("#frame-status").on("click", function() {
+                        }'."\n";
+        $ready .= 'document.querySelector("#frame-status").addEventListener("click", (e) => {            
                         reportWindowSize ();
-                        });
-                    window.onresize = reportWindowSize;                     
-                    ';   
-        $html .= '  function reportBrowserVersion() {
+                        });'."\n";
+        $ready .= 'window.onresize = reportWindowSize;  '."\n";   
+        $ready .= 'function reportBrowserVersion() {
                         var Sys = {};  
                         var ua = navigator.userAgent.toLowerCase();  
                         var s;  
@@ -361,20 +362,24 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
                         if (Sys.chrome) return ("Chrome: " + Sys.chrome);  
                         if (Sys.opera) return ("Opera: " + Sys.opera);  
                         if (Sys.safari) return ("Safari: " + Sys.safari); 
-                        }                 
-                    $("#frame-browser").on("click", function() {
+                        }  '."\n";                
+        $ready .= 'document.querySelector("#frame-browser").addEventListener("click", (e) => {                         
                         document.getElementById("frame-browser").innerHTML = reportBrowserVersion ();
-                        });  ';
-        $html .= '  var fullScreen=0;
+                        });  '."\n";
+        $ready .= 'var fullScreen=0;
                     function toggleFullScreen(elem) {
                         if (fullScreen==0) { elem.requestFullscreen(); fullScreen=1; return ("Full Screen"); }
                         else { document.exitFullscreen(); fullScreen=0; return ("Standard Screen"); } 
-                        }    
-                    $("#frame-fullscreen").on("click", function() {
+                        }   '."\n"; 
+        $ready .= 'document.querySelector("#frame-fullscreen").addEventListener("click", (e) => {
                         document.getElementById("frame-fullscreen").innerHTML =  toggleFullScreen(document.documentElement);
-                        });  ';                        
-        $html .= '';
-        $html .= '</script>';
+                        });  '."\n";                        
+
+        $htmlScript .= $js->ready($ready);
+        $htmlScript .= '</script>';
+        
+        $html = "";
+        $html .= $htmlScript;
         $html .= '<div style="box-sizing: border-box;">';
         //$html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="width:100%; height:1000px; position:absolute; top:0; left: 0">';
         switch ($startPageType)

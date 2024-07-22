@@ -54,7 +54,8 @@ $(document).ready(function(){
 		
 	function analyseConfig(obj) {
 		var result;
-		result = JSON.parse(obj);
+		try { result = JSON.parse(obj); }
+		catch (e) { alert (e + "\n" + obj); }
 		if (typeof result.startofscript == "undefined") alert ("startofscript not available");
 		else {
 			var result1 = JSON.parse(result.startofscript);

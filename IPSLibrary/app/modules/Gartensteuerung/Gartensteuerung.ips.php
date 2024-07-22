@@ -17,6 +17,7 @@
  * Gartensteuerung
  *
  * wird nur mit den Timern aufgerufen und steuert die Giessanlage
+ * Webfront Aufrufe sind in WebfrontControl script
  * erstellt auch eine Regenstatistik, daher auch ohne Gartenpumpe/ventile sinnvoll
  *
  * Betriebsarten Aus/EinmalEin/Auto
@@ -78,31 +79,11 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
         $extraLog=true;             // zusaetzliche Nachrichten im Log
         }
 
-    if ($debug) echo "Konfiguration der Gartensterung analysieren:\n";
-    $gartensteuerung           = new Gartensteuerung(0,0,$debug);   // default, default, debug=false
-    $gartensteuerungStatistics = new GartensteuerungStatistics($debug);   // default, default, debug=false          parent clas ist Gartensteuerung
+    if ($debug) echo "Konfiguration der Gartensteuerung analysieren:\n";
+    $gartensteuerung           = new Gartensteuerung(0,0);   // default, default, debug=false
+    $gartensteuerungStatistics = new GartensteuerungStatistics();   // default, default, debug=false          parent clas ist Gartensteuerung
     $GartensteuerungConfiguration =	$gartensteuerung->getConfig_Gartensteuerung();
     $configuration=$GartensteuerungConfiguration["Configuration"];
-    if ($debug) 
-        {
-        print_R($GartensteuerungConfiguration);
-        echo "Betriebsart: ";
-        if ($GartensteuerungConfiguration["Configuration"]["Statistics"]=="ENABLED") echo "Statistik ";
-        if ($GartensteuerungConfiguration["Configuration"]["Irrigation"]=="ENABLED") 
-            {
-            echo ",Bewässerung ";
-            if ($GartensteuerungConfiguration["Configuration"]["PowerPump"]=="ENABLED") 
-                {
-                echo "mit Energiemessung ";
-                if ( (isset($GartensteuerungConfiguration["Configuration"]["CheckPower"])) && ($GartensteuerungConfiguration["Configuration"]["CheckPower"]!==null) )
-                    {
-                    echo "Register : ".$GartensteuerungConfiguration["Configuration"]["CheckPower"]."  ";
-                    }
-                }
-            if ($GartensteuerungConfiguration["Configuration"]["Mode"]=="Switch") echo "und Ventilsteuerung";
-            }
-        echo "---Ende\n";
-        }
 
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
@@ -118,7 +99,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 
 				Nachrichtenspeicher initialisieren
 				
-	wir such in der Modul Kategorie nach einer Kategorie die Nachricht enthält und dort nach Input			
+	wir suchen in der Modul Kategorie nach einer Kategorie die Nachricht enthält und dort nach Input			
 				
 *************************************************************/
 
@@ -209,12 +190,13 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	echo "\n";
 	echo "Gartensteuerung Script  ID : ".$GartensteuerungScriptID."  (".IPS_GetName(IPS_GetParent($GartensteuerungScriptID))."/".IPS_GetName($GartensteuerungScriptID).")\n";
 	echo "Giessanlage             ID : ".$GiessAnlageID."  (".IPS_GetName(IPS_GetParent($GiessAnlageID))."/".IPS_GetName($GiessAnlageID).")\n";
-	echo "\nStatus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
-	echo "Status Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";
+	echo "\n";
+    echo "Status Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
+	echo "Status Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n";
+	echo "\n";
 	echo "AussenTemperatur        ID : ".$variableTempID."  (".IPS_GetName(IPS_GetParent($variableTempID))."/".IPS_GetName($variableTempID).")    ".GetValue($variableTempID)."°C \n";
 	echo "RainCounter             ID : ".$variableID."  (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")    ".GetValue($variableID)."mm \n";
 	echo "\n";
-	echo "Timerprogrammierung: \n";
 	echo "Timerprogrammierung: \n";
 	echo "  AllOff Timer 1 ID : ".$allofftimer1ID."   ".(IPS_GetEvent($allofftimer1ID)["EventActive"]?"Ein":"Aus")."\n";
     echo "  AllOff Timer 2 ID : ".$allofftimer2ID."   ".(IPS_GetEvent($allofftimer2ID)["EventActive"]?"Ein":"Aus")."\n";
@@ -224,7 +206,8 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	echo "  Hourly Timer ID   : ".$SlowUpdateTimerID."   ".(IPS_GetEvent($SlowUpdateTimerID)["EventActive"]?"Ein":"Aus")."\n";
 	echo "\n";
 	echo "Gartensteuerungs Konfiguration:\n";               // $GartensteuerungConfiguration["Configuration"]
-	print_r($configuration);
+    echo "  ".$gartensteuerung->getConfig_Modes();
+	//print_r($configuration);
 	if ( (isset($configuration["DEBUG"])) && ($configuration["DEBUG"]==true) )
 	   {
 	   echo "  Debugmeldungen eingeschaltet.\n";
@@ -244,7 +227,6 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 
 	$Count=floor(GetValue($GiessCountID)/2+GetValue($GiessCountOffsetID));
     echo "Giesscount Count : ".$Count."  ";
-
 
     $statusVentile=array();
     if ( (($configuration["ValveControl"])!==null) && (sizeof($configuration["ValveControl"])>0) )
@@ -272,7 +254,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 
 	echo "Jetzt umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
 	$endtime=time();
-	$starttime=$endtime-60*60*24*3;  /* die letzten zwei Tage, sicherheitshalber drei nehmen */
+	$starttime=$endtime-60*60*24*7;  /* die letzten zwei Tage, für Auswertung sieben Tage nehmen */
 	$starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage */
 
 	$Server=RemoteAccess_Address();
@@ -299,8 +281,8 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 		$tempwerteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableTempID, $starttime, $endtime,0);			
 		$variableTempName = $rpc->IPS_GetName($variableTempID);
 		$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
-		$werte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);
-		$werteStd = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);
+		//$werte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);
+		//$werteStd = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);  // funktioniert nicht kann nicht zusammenzaehlen, mittelt immer
 		$variableName = $rpc->IPS_GetName($variableID);
 		}
 
@@ -323,28 +305,37 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
     /*
     echo "Aussentemperaturwerte Log:\n";	
 	foreach ($tempwerteLog as $wert) { echo date("d.m H:i",$wert["TimeStamp"])."  ".$wert["Value"]."\n"; }
-	*/
-	
+	print_r($wert);
+    */
+
   	$anzahl=count($tempwerteLog);
+    echo "Aussentemperaturwerte Aggregiert Log, ";	
  	echo "Agg. Variable: ".$variableTempName." mit ".$anzahl." Werte \n";
- 	echo "   Durchschnittstemp heute   : ".number_format($tempwerte[0]["Avg"], 1, ",", "")." Grad\n";
- 	echo "   Durchschnittstemp gestern : ".number_format($tempwerte[1]["Avg"], 1, ",", "")." Grad\n";
- 	echo "   Maxtemperatur heute       : ".number_format($tempwerte[0]["Max"], 1, ",", "")." Grad um ".date("H:i \a\m d.m",($tempwerte[0]["MaxTime"]))."\n";
- 	echo "   Maxtemperatur gestern     : ".number_format($tempwerte[1]["Max"], 1, ",", "")." Grad um ".date("H:i \a\m d.m",($tempwerte[1]["MaxTime"]))."\n";
- 	echo "   Mintemperatur heute       : ".number_format($tempwerte[0]["Min"], 1, ",", "")." Grad um ".date("H:i \a\m d.m",($tempwerte[0]["MinTime"]))."\n";
- 	echo "   Mintemperatur gestern     : ".number_format($tempwerte[1]["Min"], 1, ",", "")." Grad um ".date("H:i \a\m d.m",($tempwerte[1]["MinTime"]))."\n";
+	foreach ($tempwerte as $tempwert) { echo date("D d.m",$tempwert["TimeStamp"])."  ".nf($tempwert["Avg"],"°")." Max  ".nf($tempwert["Max"],"°")." um ".date("H:i",$tempwert["MaxTime"])." Min  ".nf($tempwert["Min"],"°")." um ".date("H:i",$tempwert["MinTime"])."\n"; }
+    //print_r($tempwerte);
+    if (false)
+        {
+        echo "   Durchschnittstemp heute   : ".number_format($tempwerte[0]["Avg"], 1, ",", "")." Grad\n";
+        echo "   Durchschnittstemp gestern : ".number_format($tempwerte[1]["Avg"], 1, ",", "")." Grad\n";
+        echo "   Maxtemperatur heute       : ".number_format($tempwerte[0]["Max"], 1, ",", "")." Grad um ".date("H:i \a\m d.m",($tempwerte[0]["MaxTime"]))."\n";
+        echo "   Maxtemperatur gestern     : ".number_format($tempwerte[1]["Max"], 1, ",", "")." Grad um ".date("H:i \a\m d.m",($tempwerte[1]["MaxTime"]))."\n";
+        echo "   Mintemperatur heute       : ".number_format($tempwerte[0]["Min"], 1, ",", "")." Grad um ".date("H:i \a\m d.m",($tempwerte[0]["MinTime"]))."\n";
+        echo "   Mintemperatur gestern     : ".number_format($tempwerte[1]["Min"], 1, ",", "")." Grad um ".date("H:i \a\m d.m",($tempwerte[1]["MinTime"]))."\n";
+        }
  	//echo "Dauer heute : ".number_format(($tempwerte[0]["Duration"]/60/60), 1, ",", "")."Stunden \n";
  	//echo "LastTime    : ".date("d.m H:i",($tempwerte[0]["LastTime"]))." \n";
  	//echo "   TimeStamp   : ".date("d.m H:i",($tempwerte[1]["TimeStamp"]))." \n";
  	
 	$anzahl=count($werteLog);
  	echo "\nGeloggte Werte der Regen-Variable in den letzten 10 Tagen: ".$variableName." mit ".$anzahl." Werte\n\n";
-		
+	foreach ($werteLog as $wert) { echo date("d.m H:i",$wert["TimeStamp"])."  ".$wert["Value"]."\n"; }
+	//print_R($werteLog);
+
 	//foreach ($gartensteuerungStatistics->regenStatistik as $regeneintrag)
     $regenStatistik = $gartensteuerungStatistics->listRainEvents();
-    print_R($regenStatistik);
+    //print_R($regenStatistik);             //   Beispiel  [1720376247] => Array( [Beginn] => 1720376247, [Ende] => 1720378510,  [Regen] => 0.9,   [Max] => 6 )
     $rainRegs=$gartensteuerungStatistics->getRainRegisters();
-    print_r($rainRegs);
+    //print_r($rainRegs);
     $gartensteuerungStatistics->getRainAmountSince();
 
     foreach ($regenStatistik as $regeneintrag)     // Register regenStatistik wird nicht mehr vom construct geschrieben
@@ -483,8 +474,9 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	*/
 
 	echo "Zum Vergleich als Funktion berechnen :\n";
-	SetValue($GiessTimeID,$gartensteuerung->Giessdauer($configuration));            // umgestellt auf Sub Configuration
-	echo "Giessdauer wurde festgelegt mit ".GetValue($GiessTimeID)." Min.\n";
+    $dauer = $gartensteuerung->Giessdauer($configuration,true);             // true für Debug
+	//SetValue($GiessTimeID,$dauer);            // umgestellt auf Sub Configuration
+	echo "Giessdauer wurde festgelegt mit $dauer Min.\n";
 	/* SetValue($GiessTimeID,giessdauer());
 	$textausgabe="Giesszeit berechnet mit ".GetValue($GiessTimeID)." Minuten da ".number_format($RegenGestern, 1, ",", "")." mm Regen vor "
 						.number_format(($LetzterRegen/60/60), 1, ",", "")." Stunden. Temperatur gestern "
@@ -591,6 +583,11 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
  *
  * vereinfacht ausgedrückt, werden 5 Minuten vorher die Details in Giesstime berechnet. Dann kommt der timerdawnId und danach wird im Minutentakt der updateTimer aufgerufen.
  * Die Giesssteuerung erfolgt im UpdateTimer
+ *
+ * Einmal am Tag die Statistik Seite updaten, Regenmenge per monat, Regendauer per Monat und die letzten Regenereignisse in der Vergangenheit
+ *          SetValue($gartensteuerungStatistics->StatistikBox1ID,$gartensteuerungStatistics->writeOverviewMonthsHtml($gartensteuerungStatistics->RegenKalendermonate));
+ *          SetValue($gartensteuerungStatistics->StatistikBox2ID,$gartensteuerungStatistics->writeOverviewMonthsHtml($gartensteuerungStatistics->DauerKalendermonate));
+ *           SetValue($gartensteuerungStatistics->StatistikBox3ID,$gartensteuerungStatistics->writeRainEventsHtml($gartensteuerungStatistics->listRainEvents(100)));
  *
  ****************************************************************/
 

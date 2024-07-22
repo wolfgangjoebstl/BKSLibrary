@@ -87,7 +87,7 @@
 		//echo "Cookie '" . $cookie_name . "' is set, Value is: " . $_COOKIE[$cookie_name];
 		$identifier = $_COOKIE[$cookie_name];
 		}
-
+	/*
 	$inputData=array();
 	foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $key => $entry)
 		{
@@ -112,8 +112,8 @@
     $config["format"]["header-id"]="hrow";          // make it short				
     $text = $ipsTables->showTable($inputData, false ,$config, false);                // true Debug
 
-    echo $text;	
-		
+    echo $text;	*/
+		echo $showEvaluateHardware->showTableHtml();
 		
 		?>
 	</body>

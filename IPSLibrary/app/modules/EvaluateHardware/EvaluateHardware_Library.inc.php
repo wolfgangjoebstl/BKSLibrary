@@ -897,13 +897,18 @@ class TopologyLibraryManagement
 /**************************************************************
  *
  * Webfront Darstellungs Unterstützung
+ *      __construct
+ *      setTopologyConfig
+ *      showControlLine
+ *      showTopologyTableFrame
+ *      showTableHtml
  *
  */
 
 class showEvaluateHardware
     { 
 
-    protected $topologyControlTableID,$topologyConfigTableID;
+    protected $topologyControlTableID,$topologyConfigTableID,$topologyTableID;
     protected $topologyConfig;
 
     /* construct, wichtige Variablen und Konfigurationen zur Darstellung
@@ -917,8 +922,9 @@ class showEvaluateHardware
         $categoryId_DetectTopologies = @IPS_GetCategoryIDByName('DetectTopologies', $CategoryIdData);
         if ($categoryId_DetectTopologies)
             {
-            $this->topologyControlTableID = IPS_GetVariableIDByName("TopologyControlTable",$categoryId_DetectTopologies);   
-            $this->topologyConfigTableID = IPS_GetVariableIDByName("TopologyConfigTable",$categoryId_DetectTopologies);
+            $this->topologyControlTableID  = IPS_GetVariableIDByName("TopologyControlTable",$categoryId_DetectTopologies);   
+            $this->topologyConfigTableID   = IPS_GetVariableIDByName("TopologyConfigTable",$categoryId_DetectTopologies);
+            $this->topologyTableID         = IPS_GetVariableIDByName("TopologyViewTable",$categoryId_DetectTopologies);
             }
         }
 
@@ -934,6 +940,7 @@ class showEvaluateHardware
     public function showControlLine($configInput=false)
         {
         $table=false;
+        $js = new jsSnippets();
         if (is_array($configInput)) $config = $configInput;
         if (isset($config["display"]))
             {
@@ -944,41 +951,140 @@ class showEvaluateHardware
                 else $header=$entry;
                 $table .= "<th>".$header."</th>";
                 }
-            $table .= "</tr></table>";
+            $table .= "</tr><tr>";
+            foreach ($config["display"] as $index=>$entry)
+                {
+                if ((is_array($entry)) && (isset($entry["header"]))) $header=$entry["header"];
+                else $header=$entry;
+                if (isset($config["analyse"][$header]))
+                    {
+                    $table .= "<td>".count($config["analyse"][$header])."</td>";
+                    }
+                else $table .= "<td>".$header."</td>";
+                }  
+            $table .= "</tr><tr>";
+            $col=0; $test=3;
+            foreach ($config["display"] as $index=>$entry)
+                {
+                if ((is_array($entry)) && (isset($entry["header"]))) $header=$entry["header"];
+                else $header=$entry;
+                if (isset($config["analyse"][$header]))
+                    {
+                    $inputId = "eh".str_pad($col, 2, 0, STR_PAD_LEFT)."input";    
+                    $listId = "eh".str_pad($col, 2, 0, STR_PAD_LEFT)."list";
+                    $formId = "eh".str_pad($col, 2, 0, STR_PAD_LEFT).$header;
+                    $input  = '<form id="'.$formId.'" onsubmit="checkformtable(event)">';
+                    //$input  .= '<input name="formulaCell">';
+                    $input  .= '<input list="'.$inputId.'" name="formulaCell" id="'.$listId.'">';
+                    $input  .= '<datalist id="'.$inputId.'">';
+                    $i=0;
+                    foreach ($config["analyse"][$header] as $dataValue => $subentry)
+                        {
+                        $input  .= '<option value="'.$dataValue.'">';
+                        if ($i++>5) break;
+                        }
+                    $input  .= '</datalist>';
+                    $input .= '</form>';
+                    $table .= "<td>".$input."</td>";
+                    $col++;
+                    }
+                else $table .= "<td>".$header."</td>";
+                } 
+            $table .= "</tr>";                         
+            $table .= "</table>";
             }
         $html  = "";
-        //$html  .= '<script type="text/javascript" src="/user/EvaluateHardware/jquery-3.7.1.min.js"></script>';        // diese oder eine ähnliche Datei sollte bereits geladen sein
-        //$html  .= '<script type="text/javascript" src="/user/EvaluateHardware/EvaluateHardware.js" ></script>';       // kein Verweis auf externe javascript Dateien ohne iframe
+                        /*
+                    //$input = '<form action="/user/EvaluateHardware/EvaluateHardware_Receiver.php" method="post">';           // open new page with php file name
+                    //$input = '<form action="/user/EvaluateHardware/EvaluateHardware_Receiver.php" method="get">';           // open new page with php file name, get uses new url to open webpage
+                    //$input = '<form action="#" onsubmit="return validateFormOnSubmit(this);">';                             // opens same page again, with browser as get info
+                    //$input = '<form action="javascript:handleIt()">';                                                       // über onsubmit bereits vor der form validation
+                    $input = '<form id="eingabeTabelle" method="POST" enctype="multipart/form-data" onsubmit="checkformtable(event)">';              // onsubmit ruft das javascript auf, sicherstellen das nicht auch noch das post gestartet wird mit preventDefault
+                    //$input = '<form id="eingabeTabelle">';                                                                      // gleich im javascript abfangen, etwas unübersichtlicher, aber ziemlich üblich
+                    $input .= '  <label for="browser">Choose your browser from the list:</label>
+                            <input list="browsers" name="formulaCell" id="browser">
+                            <datalist id="browsers">
+                                <option value="Edge">
+                                <option value="Firefox">
+                                <option value="Chrome">
+                                <option value="Opera">
+                                <option value="Safari">
+                            </datalist>
+                            <input type="submit" value="Absenden">
+                            </form>';
 
+                    $input2 = '<form id="eingabeTabelle2" method="POST" enctype="multipart/form-data" onsubmit="checkformtable(event)"> <input name="formulaCell"> </form>';
+                    //$input2 = '<form id="eingabeTabelle2"> <input type="text" id="cell3" name="formulaCell3"> </form>';
+                    $input3 = '<form id="eingabeTabelle3"> <input name="formulaCell"> </form>';                             // mit einem eigenen document.getElementById(\'eingabeTabelle3\').addEventListener(\'submit\', function(e) { e.preventDefault(); ..... });';    
+                    if ($col==$test) $table .= "<td>".$input."</td>";
+                    elseif ($col==4) $table .= "<td>".$input2."</td>";
+                    elseif ($col==5) $table .= "<td>".$input3."</td>";
+                    else $table .= "<td>".count($config["analyse"][$header])."</td>";
+                    */
+        /*$html  .= '<script type="text/javascript" src="/user/EvaluateHardware/jquery-3.7.1.min.js"></script>';        // diese oder eine ähnliche Datei sollte bereits geladen sein
+        //$html  .= '<script type="text/javascript" src="/user/EvaluateHardware/EvaluateHardware.js" ></script>';       // kein Verweis auf externe javascript Dateien ohne iframe
+        //$html .= '$("#evhw-go").click(function(){document.getElementById("evhw-go").innerHTML = "empty image picture";});';
+	    //$html .= '$("#ev-send-ajax-id").click(function(){ ';                                                                                                                          //jquery ausdesignen, an vanilla javascript gewöhnen
+        $ready .= 'document.querySelector("#ev-send-ajax-id").addEventListener("click", (e) => {
+		              //document.getElementById("ev-inf-ajax-id").innerHTML = "ajax request will be send";
+		              EVtrigger_ajax("button-ev3", "Cookie", "evaluatehardware", "");
+		              //document.getElementById("ev-inf-ajax-id").innerHTML = "ajax request was send" + Date();
+		              });'; 
+        $ready .= '  document.getElementById(\'eingabeTabelle3\').addEventListener(\'submit\', function(e) {
+                        e.preventDefault();
+                        // Bearbeiten Sie die Formulardaten
+                        var element = document.getElementById(\'formulaCell\');
+                        const form = new FormData(e.target); 
+                        const formula = form.get("formulaCell");
+                        alert (formula);
+                        });';           
+        //$ready .= '  const goodTime = `${new Date().getHours()}:${new Date().getMinutes()}:${new Date().getSeconds()}`;   ';                          
+                                                */
+
+        $identifier="ev";
+        /* ready definiert die Listener. Allerdings ruft das Form auch bereits eine function auf, ohne listener gelöst
+         * siehe https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit_event
+         */
 
         $html .= '<script type="text/javascript">';
-        //$html .= '$(document).ready(function(){ ';                        // jquery nicht rechtzeitig geladen
-        $html .= 'function ready(callback){                                     // in case the document is already rendered
-                if (document.readyState!=\'loading\') callback();           // modern browsers
-                else if (document.addEventListener) document.addEventListener(\'DOMContentLoaded\', callback);
-                // IE <= 8
-                else document.attachEvent(\'onreadystatechange\', function(){
-                    if (document.readyState==\'complete\') callback();
-                    });
-            }
-            ready(function(){               ';                              // do something
-        //$html .= '   alert("loaded");';                                   // wird ausgegeben wenn die html Variable im Webfront geschrieben wird oder die Tans im Webfront geändert werden
-        $html .= '     if (typeof trigger_ajax !== "undefined") { document.getElementById("evhw-go").innerHTML = "look here, got loaded, trigger_ajax somewhere else defined"; }
-                       else {
-                            document.getElementById("evhw-go").innerHTML = "look here, got loaded";
-                            }';
-        $html .= '     function EVtrigger_ajax(id, action, module, config) {
+        $ready  = "";
+        $ready .= '  if (typeof trigger_ajax !== "undefined") { document.getElementById("evhw-go").innerHTML = "look here, got loaded, trigger_ajax somewhere else defined"; }
+                     else { document.getElementById("evhw-go").innerHTML = "look here, got loaded"; }
+                ';
+ 
+        $ready .= '  var el = document.getElementById("evhw-go");
+                 ';
+        $ready .= '  setInterval(function() {
+                        var currentTime = new Date(),
+                            hours = currentTime.getHours(),
+                            minutes = currentTime.getMinutes(),
+                            seconds = currentTime.getSeconds(),
+                            ampm = hours > 11 ? "PM" : "AM";
+                        seconds = seconds <10 ? "0"+seconds : seconds;
+                        hours = hours < 10 ? "0+hours" : hours;
+                        minutes = minutes < 10 ? "0"+minutes : minutes;
+                    el.innerHTML = hours + ":" + minutes + ":" + seconds + " " + ampm;
+                            }, 1000);  
+                 ';                             
+        $ready .= '  document.querySelector("#evhw-go").addEventListener("click", (e) => { document.getElementById("evhw-go").innerHTML = "ready steady go"; });
+                ';
+        $ready .= '  document.querySelector("#ev-send-ajax-id").addEventListener("click", (e) => {
+		              '.$identifier.'_trigger_ajax("button-ev3", "Cookie", "evaluatehardware", "");
+		              });'; 
+
+        $html .= $js->ready($ready);  
+        $html .= '     function '.$identifier.'_trigger_ajax(id, action, module, config) {
                             //$.ajax({type: "POST", url: "/user/EvaluateHardware/EvaluateHardware_Receiver.php", data: "&id="+id+"&action="+action+"&module="+module+"&info="+info});
                             var result;			// will become object after assignment
-                            action=EVreadCookie("identifier-symcon-evaluatehardware");
+                            action='.$identifier.'_readCookie("identifier-symcon-evaluatehardware");
                             ajax.post("/user/EvaluateHardware/EvaluateHardware_Receiver.php", 
                                     {id:id,action:action,module:module,info:config},
                                     function(data, status){	
-                                        var configws = EVVanalyseConfig(data);
+                                        var configws = '.$identifier.'_analyseConfig(data);
                                         document.getElementById("ev-inf-ajax-id").innerHTML = "Ajax Response: \'"+configws+"\'   "+status + "   " + action + "   " + Date();
                                         });
                                 };';
-       $html .= '     function EVanalyseConfig(obj) {
+       $html .= '     function '.$identifier.'_analyseConfig(obj) {
                         var result;
                         result = JSON.parse(obj);
                         if (typeof result.module == "undefined") alert ("module identifier not available");
@@ -1007,12 +1113,12 @@ class showEvaluateHardware
                             }
                         return obj;
                         };';                                	
-       $html .= '     function EVVanalyseConfig(obj) {
+       $html .= '     function '.$identifier.'_analyseConfig(obj) {
                         var result;
                         result = JSON.parse(obj);
                         return obj;
                         };';  
-       $html .= '     function EVreadCookie(name) {
+       $html .= '     function '.$identifier.'_readCookie(name) {
                         var nameEQ = encodeURIComponent(name) + "=";
                         var ca = document.cookie.split(\';\');
                         for (var i = 0; i < ca.length; i++) {
@@ -1025,16 +1131,6 @@ class showEvaluateHardware
                         return null;
                         };
                 ';   
-
-        //$html .= '$("#evhw-go").click(function(){document.getElementById("evhw-go").innerHTML = "empty image picture";});';
-        $html .= 'document.querySelector("#evhw-go").addEventListener("click", (e) => { document.getElementById("evhw-go").innerHTML = "empty image picture";});
-                ';
-	    //$html .= '$("#ev-send-ajax-id").click(function(){ ';                                                                                                                          //jquery ausdesignen, an vanilla javascript gewöhnen
-        $html .= 'document.querySelector("#ev-send-ajax-id").addEventListener("click", (e) => {
-		              //document.getElementById("ev-inf-ajax-id").innerHTML = "ajax request will be send";
-		              EVtrigger_ajax("button-ev3", "Cookie", "evaluatehardware", "");
-		              //document.getElementById("ev-inf-ajax-id").innerHTML = "ajax request was send" + Date();
-		              });'; 
         $html .= '  var ajax = {};
                     ajax.x = function () {
                         if (typeof XMLHttpRequest !== \'undefined\') {
@@ -1093,13 +1189,166 @@ class showEvaluateHardware
                         ajax.send(url, callback, \'POST\', query.join(\'&\'), async)
                     };
                 ';
-        $html .= '   });  ';  
-        $html .= '</script>';  
-        if ($table) $html .= '<div id="evhw-tableheader">'.$table."</div>";              
+        $html .= 'function handleIt() {        alert("hello");       } ';
+
+        /* empfängt die Filter 
+         * siehe auch https://developer.mozilla.org/en-US/docs/Web/API/Event/target
+         *
+         *  let submitter = e.submitter;let handler = submitter.id;console.log(formula); alert (handler + ":" + formula);
+         */
+        $html .= 'const checkformtable = (e) => {    
+                        const form = new FormData(e.target);    
+                        const formula = form.get("formulaCell");   // gleicher Name, Unterscheidung über
+                        e.preventDefault();
+                         '.$identifier.'_trigger_ajax(formula + ":" + e.target.id, "Filter", "evaluatehardware", "");           // id, action, module, config
+                         //alert(formula + ":" + e.target.id);
+                         return false };';
+        $html .= '</script>';
+                        $id="greenheadergray"; $size=0; $text="";
+                        $text .= "<style>";
+                        $text .= '.'.$id.' { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';          // table style
+                        if ($size==0) $text.='font-size: 100%; width: 100%;';
+                        elseif ($size==-1) $text.='font-size:50%vw; max-width: 900px ';        // responsive font size
+                        else $text.='font-size: 150%; width: 100%;';
+                        $text.='color:black; border-collapse: collapse;  }';
+                        //$wert .= '<font size="1" face="Courier New" >';
+                        $text .= '.'.$id.' td th { border: 1px solid #ddd; padding: 8px; }';
+                        $text .= '.'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
+                        $text .= '.'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
+                        $text .= '.'.$id.' tr:hover {background-color: #ddd;}';
+                        $text .= '.'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
+                        $text .= "</style>";  
+        $html .= $text;                
+        if ($table) $html .= '<div id="evhw-tableheader" class="'.$id.'">'.$table."</div>";              
         $html .= '<div id="evhw-go" style="display:inline">look here</div>';
 	    $html .= '<div id="ev-inf-ajax-id" style="display:inline; padding:5px">or maybe here</div>';
 	    $html .= '<div id="ev-send-ajax-id" style="display:inline; padding:5px">then press here</div>';   
         SetValue($this->topologyControlTableID,$html);
+        }
+    /* die Topologie Tabelle zeigen und manipulieren wie zB
+     *          sortieren
+     */
+    public function showTopologyTableFrame($configInput=false)
+        {
+        $html = "";
+        $ipsTables = new ipsTables();               // fertige Routinen für eine Tabelle in der HMLBox verwenden
+        $inputData=array();
+        foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $key => $entry)
+            {
+            $inputData[$key]=$entry;
+            if (IPS_VariableExists($key)) $inputData[$key]["Value"]=GetValueIfFormatted($key);
+            }
+
+        $config["text"]    = true;
+        $config["insert"]["Header"]    = true;
+        $config["insert"]["Index"]    = true;
+        //$config["html"]    = 'html';                        // Ausgabe als html formatierte Tabelle
+        $config["format"]["class-id"]="topy";           // make it short
+        $config["format"]["header-id"]="hrow";          // make it short
+        $config["display"] = [
+                        "Index"                     => ["header"=>"OID","format"=>"OID"],
+                        "Name"                      => "ObjectName",
+                        "Value"                     => "Wert",
+                        "0"                         => "Modul",
+                        "1"                         => "Place",
+                        "2"                         => "Type",
+                        "3"                         => "Device",
+                        "4"                         => "newName",
+                    ];
+        $config["process"] = ["Place" => "extend"];
+        $config["filter"] = ["Type"  => "zimmer"];
+        $text = $ipsTables->showTable($inputData, false ,$config, true);                // true Debug
+
+
+        /* HTML Box benötigt Javascript Componente und individuellen Identifier
+        *  Elements sind:  status      reportWindowSize
+        *                  browser     reportBrowserVersion
+        *                  fullscreen  toggleFullScreen
+        */
+        $identifier="individuell";
+
+        $html = "";
+        $html .= '<script type="text/javascript">';
+        $ready  = "";
+        $ready .= '  document.querySelector("#'.$identifier.'-status").addEventListener("click", (e) => {
+                        '.$identifier.'reportWindowSize ();
+                        });
+                    ';   
+        $ready .= '  document.querySelector("#'.$identifier.'-browser").addEventListener("click", (e) => {
+                        document.getElementById("'.$identifier.'-browser").innerHTML = '.$identifier.'reportBrowserVersion ();
+                        });  
+                ';
+        $ready .= '  document.querySelector("#'.$identifier.'-fullscreen").addEventListener("click", (e) => {
+                        document.getElementById("'.$identifier.'-fullscreen").innerHTML =  '.$identifier.'toggleFullScreen(document.documentElement);
+                        });  
+                ';   
+        $html .= $js->ready($ready);  
+        $html .= '  function '.$identifier.'reportWindowSize () {
+                        let varheight=Math.round(window.innerHeight * 0.85);
+                        document.getElementById("'.$identifier.'-status").innerHTML = "Size " + window.innerHeight + " (" + varheight + ") x " + window.innerWidth + "  " + Date();
+                        };
+                    window.onresize = '.$identifier.'reportWindowSize;                     
+                ';
+        $html .= '  function '.$identifier.'reportBrowserVersion() {
+                        var Sys = {};  
+                        var ua = navigator.userAgent.toLowerCase();  
+                        var s;  
+                        (s = ua.match(/msie ([\d.]+)/)) ? Sys.ie = s[1] :  
+                        (s = ua.match(/firefox\/([\d.]+)/)) ? Sys.firefox = s[1] :  
+                        (s = ua.match(/chrome\/([\d.]+)/)) ? Sys.chrome = s[1] :  
+                        (s = ua.match(/opera.([\d.]+)/)) ? Sys.opera = s[1] :  
+                        (s = ua.match(/version\/([\d.]+).*safari/)) ? Sys.safari = s[1] : 0; 
+                        if (Sys.ie) return ("IE: " + Sys.ie);  
+                        if (Sys.firefox) return ("Firefox: " + Sys.firefox);  
+                        if (Sys.chrome) return ("Chrome: " + Sys.chrome);  
+                        if (Sys.opera) return ("Opera: " + Sys.opera);  
+                        if (Sys.safari) return ("Safari: " + Sys.safari); 
+                        }  
+                  ';                     
+        $html .= '  var fullScreen=0;
+                    function '.$identifier.'toggleFullScreen(elem) {
+                        if (fullScreen==0) { elem.requestFullscreen(); fullScreen=1; return ("Full Screen"); }
+                        else { document.exitFullscreen(); fullScreen=0; return ("Standard Screen"); } 
+                        } 
+                ';   
+        $html .= '</script>';
+        $html .= '<div style="box-sizing: border-box;">';
+        $html .= '  <iframe id="'.$identifier.'-start" name="EvaluateHardware" src="../user/EvaluateHardware/EvaluateHardware.php" style="width:100%; height:85vh; ">';
+        $html .= '      </iframe>';
+        $html .= '  </div>';
+        $html .= '<div id="'.$identifier.'-status" style="font-size: 1hm; display:inline; float:left;">Statusangaben hier clicken</div>';        
+        $html .= '<div id="'.$identifier.'-browser" style="font-size: 1hm; display:inline; padding: 5px;">Browser hier clicken</div>';        
+        $html .= '<div id="'.$identifier.'-fullscreen" style="font-size: 1hm; display:inline; float:right;">Fullscreen hier clicken</div>';  
+        SetValue($this->topologyTableID,$html);
+        }
+
+    public function showTableHtml()
+        {
+        $ipsTables = new ipsTables();               // fertige Routinen für eine Tabelle in der HMLBox verwenden
+        $inputData=array();
+        foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $key => $entry)
+            {
+            $inputData[$key]=$entry;
+            if (IPS_VariableExists($key)) $inputData[$key]["Value"]=GetValueIfFormatted($key);
+            }
+        $config["text"]    = false;						// kein echo
+        $config["insert"]["Header"]    = true;
+        $config["insert"]["Index"]    = true;
+        $config["html"]    = 'html';    
+        $config["display"] = [
+                        "Index"                     => ["header"=>"OID","format"=>"OID"],
+                        "Name"                      => "ObjectName",
+                        "Value"                     => "Wert",					
+                        "0"                         => "Modul",
+                        "1"                         => "Place",
+                        "2"                         => "Type",
+                        "3"                         => "Device",
+                        "4"                         => "newName",
+                    ];
+        $config["format"]["class-id"]="topy";           // make it short
+        $config["format"]["header-id"]="hrow";          // make it short				
+        $text = $ipsTables->showTable($inputData, false ,$config, false);                // true Debug
+        return $text;	
         }
 
     }    

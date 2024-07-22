@@ -29,23 +29,27 @@
 		$moduleInfos = $moduleManager->GetModuleInfos($module);
 		$repository  = $moduleInfos['Repository'];
 	}
-	switch ($id) 
+	$response=array();
+	$response["module"]="startpage";
+	
+	switch ($id) 		// return always as json
 		{
 		case "button-eins":
-			$result=Startpage_SetPage($action, $module, $id, "TopologyReceiver", $info);
-			echo $id;
+			$response[$id]             = Startpage_SetPage($action, $module, $id, "TopologyReceiver", $info);
+			$response["startofscript"] = Startpage_getData($action, "configuration");
+			echo json_encode($response);			// format is as JSON
 			break;
 		case "startofscript":
 			$result=Startpage_SetPage($action, $module, $id, "TopologyReceiver", $info);
-			$result = Startpage_getData($action, "configuration");
-			$response[$id]=$result;
+			$response[$id] = Startpage_getData($action, "configuration");
 			echo json_encode($response);			// format is as JSON
 			break;
 		default:
 			$result=Startpage_SetPage($action, $module, $id, "TopologyReceiver", $info);
 			IPSLogger_Inf(__file__, 'StartpageTopology_Receiver mit Id '.$id.' Cookie '.$action.' und Ergebnis '.$result);	
 			$result = Startpage_getData($action);
-			echo $id.":".$result;
+			$response[$id]=$result;
+			echo json_encode($response);			// format is as JSON
 			break;
 		}
 	//echo "was here";

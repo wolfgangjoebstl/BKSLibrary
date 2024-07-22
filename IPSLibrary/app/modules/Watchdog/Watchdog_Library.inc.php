@@ -363,7 +363,7 @@ class seleniumChromedriverUpdate extends watchDog
 
 	public function __construct($debug=false)
 		{
-        if ($debug) echo "class SeleniumChromedriver, Construct Parent class OperationCenter.\n";
+        if ($debug) echo "class SeleniumChromedriverUpdate, Construct Parent class watchDog.\n";
         $this->debug=$debug;
         $this->ipsOps = new ipsOps();   
         $this->dosOps = new dosOps();        
@@ -446,19 +446,28 @@ class seleniumChromedriverUpdate extends watchDog
         {
         $result=false;
         $debug=$this->debug;
+        if ($debug) echo "identifyFileByVersion($file,..). Input array to identify version has ".count($version)." entries.\n";
         if ($this->selDirContent)
             {
             $found = $this->dosOps->findfiles($this->selDirContent,$file);
             if ($found)
                 {
-                if ($debug) echo "Aktuelles chromedriver.exe gefunden. Version vergleichen.\n";   
                 $size=filesize($this->selDir.$file);
+                if ($debug) echo "   Actual chromedriver.exe found. Compare versions fo find size $size.\n";   
                 foreach ($version as $index => $info)
                     {
-                    if ($info["Size"]==$size) { $result=$index; break; }
+                    if ($info["Size"]==$size) 
+                        {
+                        if ($debug) echo "   Found $index, successful.\n";
+                        return ($index); 
+                        }
                     }
+                echo "File with $size not found in inventory.\n";
                 }
+            else echo "File $file not found.\n";
             }
+        else echo "Inhalt vom selDir nicht vorhanden selDirContent.\n";
+        if ($debug) echo "   Not found, version maybe older or not latest of its kind.\n";
         return ($result); 
         }
 
@@ -501,21 +510,25 @@ class seleniumChromedriverUpdate extends watchDog
         return ($status);
         }
 
-    /* copyChromeDriver
+    /* seleniumChromedriverUpdate::copyChromeDriver
      * return status:
      *      false   Fehler beim Abarbeiten des Commandfiles
      *      true    Commandfile abgearbeitet
      *      101     kein Target Dir
      *      102     Target bereits vorhanden
+     *      103     kein Target File vorhanden
      */
     function copyChromeDriver($sourceFile,$targetDir,$debug=false)
         {
-        $targetDir = $this->dosOps->correctDirName($targetDir);
-        $path=pathinfo($sourceFile);                // sourceFiel aufdroeseln
+        $targetDir = $this->dosOps->correctDirName($targetDir);                 // TargetDir muss Windows naming haben wenn Windows, also Backslash Dir Names
+        $targetDir = $this->dosOps->convertDirName($targetDir,true);            // immer DOS style, Windows command kann nur backslash
+        $path=pathinfo($sourceFile);                // sourceFile aufdroeseln
         $filename=$path['basename'];
         $sourceDir=$this->dosOps->correctDirName($path['dirname']);
-        if ($targetDir===false) return (101);
+        $targetDir=$this->dosOps->correctDirName($targetDir,$debug);                      // true debug
+
         if ($debug) echo "copyChromeDriver($sourceFile,$targetDir) aufgerufen.\n";
+        if ($targetDir===false) return (101);
         if (file_exists($targetDir.$filename)===false)
             {
             //$selDir = 'C:\\Scripts\\Selenium\\';
@@ -532,14 +545,14 @@ class seleniumChromedriverUpdate extends watchDog
             $command = $processDir."copyChromeDriver.bat";
             if ($debug) $this->dosOps->readFile($processDir."copyChromeDriver.bat");
             $status = $this->sysOps->ExecuteUserCommand($command,"",false,true);                   // false do not show true wait
-            if (file_exists($sourceFile)) echo "  Source file available.\n";
-            if (file_exists($targetDir.$filename)) echo "Copy ".$targetDir.$filename." successfull.\n"; 
-            else
+            if ($debug) 
                 {
-                $this->filename=false;
-                return (103);
-               }
-            echo "Status on copying $sourceFile with command $command : $status \n";
+                echo "Status on copying $sourceFile with command $command : \"$status\" \n";
+                if (file_exists($sourceFile)) echo "  Source file available.\n";
+                if (file_exists($targetDir.$filename)) echo "Copy ".$targetDir.$filename." successfull.\n"; 
+                else echo "What happend now ?\n";
+                }
+            if (file_exists($targetDir.$filename)===false) {$filename=false; $status=103;}
             $this->filename=$filename;
             return ($status);
             }
