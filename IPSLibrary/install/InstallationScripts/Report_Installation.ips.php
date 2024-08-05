@@ -17,12 +17,12 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */
 	 
-	/**@defgroup Report
+	/**@defgroup Report Installation
 	 *
 	 * Script zur Visualisierung von Daten mit Highcharts, so auch das Wetter und andere Charts
      * modernisiert mit neuen Darstellungen für Easycharts und alternativ zu Money mit einem speziellen Tab
 	 *
-	 *
+	 * mit dodelte kann man das Frontend neu aufbauen, immer dann wenn sich die Tabnamen ändern, Install dann zweimal aufrufen
      *
      * Installationsschritte:
      *      Initialisierung, Modul Handling Vorbereitung
@@ -69,6 +69,8 @@
 	echo "CustomComponent Version : ".$ergebnisCustoComponent."\n";
 	$ergebnisHighCharts=$moduleManager->VersionHandler()->GetVersion('IPSHighcharts')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
 	echo "IPSHighcharts Version   : ".$ergebnisHighCharts."\n";
+
+    $dodelete=false;            // Webfront Report Tabs delete
 
     echo "\n";
     $knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
@@ -386,7 +388,7 @@
         echo "\n";
         echo "Webfront SplitPane mit Parameter : ConfigId ".$configWf["ConfigId"]." TabItem ".$configWf["TabItem"]." TabPaneItem ".$configWf["TabPaneItem"]." TabPaneParent ".$configWf["TabPaneParent"];
         echo " TabPaneOrder ".$configWf["TabPaneOrder"]." TabPaneName ".$configWf["TabPaneName"]." TabPaneIcon ".$configWf["TabPaneIcon"]."\n";
-        $wfcHandling->DeleteWFCItems("Report");         // alles was mit report anfängt
+        if ($dodelete) $wfcHandling->DeleteWFCItems("Report");         // alles was mit report anfängt
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
         $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
         //$wfcHandling->deletePane ($WFC10_ConfigId);
@@ -434,8 +436,11 @@ if (false)
 		echo "Kategorien erstellt, Main: ".$categoryId_WebFront." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
-		echo "Webfront ".$WFC10_ConfigId." löscht TabItem :".$tabItem."\n";
-		DeleteWFCItems($WFC10_ConfigId, $tabItem);
+		if ($dodelete) 
+            {
+            echo "Webfront ".$WFC10_ConfigId." löscht TabItem :".$tabItem."\n";
+		    DeleteWFCItems($WFC10_ConfigId, $tabItem);
+            }
 		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
 		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName."2",     $WFC10_TabIcon, 1 /*Vertical*/, 360 /*Width*/, 0 /*Target=Pane1*/, 1/*UsePixel*/, 'true');

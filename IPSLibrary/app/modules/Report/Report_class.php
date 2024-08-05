@@ -17,7 +17,7 @@
 	 */    
 
 
-	/**
+	/** Report_class
      *
      * umgestellt auf IPS7, Verzeichnis webfront\user wird durch user ersetzt
      * OperationCenter um den ModulMagerIps7 und HighchartIps7 erweitert 
@@ -39,7 +39,7 @@
      *          abhängig vom Identifier und seinem angehängtem Index wird 
      *          CheckValueSelection     die Einträge überpüft
 	 *		    RebuildGraph            und den Graphen neu zeichnet
-     *          compileConfiguration    die gemeinsame Konfiguration erstellen, soweit für alle Darstellungsformen gleich
+     *          compileConfiguration    die gemeinsame Konfiguration für Highcharts erstellen, soweit für alle Darstellungsformen gleich
      *
      *      __construct
      *      setConfiguration
@@ -557,12 +557,8 @@
 			    $associationsValues[$count]=$displaypanel;
 			    $count++;
 				}
-            if ($this->debug) 
-                {
-                //print_r($associationsValues);           // das sind die einzelnen Darstellungsvarianten der Graphen
-                echo "RebuildGraph for $count avialable Association, graphs (".json_encode($associationsValues)."):\n";
-                foreach ($this->valueConfig as $valueIdx=>$valueData) echo "    $valueIdx ".json_encode($valueData)."\n";
-                }
+            if ($this->debug)   echo "RebuildGraph for $count avialable Association, graphs (".json_encode($associationsValues)."):\n";
+            if ($this->debug>1) foreach ($this->valueConfig as $valueIdx=>$valueData) echo "    $valueIdx ".json_encode($valueData)."\n";
 
 			$variableIdChartType = IPS_GetObjectIDByIdent(IPSRP_VAR_TYPEOFFSET, $this->categoryIdCommon);
 			$variableIdPeriod    = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
@@ -582,7 +578,7 @@
 			                        IPSRP_TYPE_OFF         		=> 'Off',
 			                        IPSRP_TYPE_PIE         		=> 'Pie');
 
-            if ($this->debug) echo "Einstellungen ChartType : ".GetValue($variableIdChartType)."  Period : ".GetValue($variableIdPeriod)."\n";
+            if ($this->debug>1) echo "Einstellungen ChartType : ".GetValue($variableIdChartType)."  Period : ".GetValue($variableIdPeriod)."\n";
             /* Plausicheck and if not part of configuration go back to default values */
 			if (!array_key_exists(GetValue($variableIdChartType), $valueTypeList)) 
                 {
@@ -607,7 +603,7 @@
             $CfgDaten['chart']['backgroundColor']  = "#ddeedd";
 			//$CfgDaten['legend']['backgroundColor']  = "#f6f6f6";
             $CfgDaten['legend']['align']  = "center";
-            if ($this->debug) echo "Background set\n";
+            if ($this->debug>1) echo "Background set\n";
 
 	    	//$CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
 
@@ -634,30 +630,30 @@
 			$CfgDaten['HighChart']['Width']  = 0; 			// in px,  0 = 100%
 			$CfgDaten['HighChart']['Height'] = 700; 		// in px
 			//$CfgDaten['HighChart']['Height'] = 'Auto'; 		// in px
-            if ($this->debug) 
+            if ($this->debug>1) 
                 {
                 echo "Chart Default Configuration : \n";
                 print_r($CfgDaten);
                 }
 			switch (GetValue($variableIdPeriod)) {
 				case IPSRP_PERIOD_HOUR:
-                    if ($this->debug) echo "IPSRP_PERIOD_HOUR\n";	 
+                    if ($this->debug>1) echo "IPSRP_PERIOD_HOUR\n";	 
                     $aggType = -1; 
                     break;	// es werden alle Werte bearbeitet
 				case IPSRP_PERIOD_DAY:   
-                    if ($this->debug) echo "IPSRP_PERIOD_DAY\n";
+                    if ($this->debug>1) echo "IPSRP_PERIOD_DAY\n";
                     $aggType = -1; 
                     break;   // es werden alle Werte bearbeitet
 				case IPSRP_PERIOD_WEEK:  
-                    if ($this->debug) echo "IPSRP_PERIOD_WEEK\n";
+                    if ($this->debug>1) echo "IPSRP_PERIOD_WEEK\n";
                     $aggType = 0; 
                     break;   // es wird vorher stündlich aggregiert 
 				case IPSRP_PERIOD_MONTH: 
-                    if ($this->debug) echo "IPSRP_PERIOD_MONTH\n";
+                    if ($this->debug>1) echo "IPSRP_PERIOD_MONTH\n";
                     $aggType = 1; 
                     break;	
 				case IPSRP_PERIOD_YEAR:  
-                    if ($this->debug) echo "IPSRP_PERIOD_YEAR\n";
+                    if ($this->debug>1) echo "IPSRP_PERIOD_YEAR\n";
                     $aggType = 1; 
                     break;	// es wird vorher täglich aggregiert
 				default:
@@ -683,7 +679,7 @@
 				$valueType = $valueData[IPSRP_PROPERTY_VALUETYPE];
 				if ($valueData[IPSRP_PROPERTY_DISPLAY])            /* in der Config Tabelle aktiv eingestellt */
 					{   /* hier sollte nur einmal eine Anzeige aktiv sein */
-                    if ($this->debug) echo "-------------------------------\n";
+                    if ($this->debug>1) echo "-------------------------------\n";
 					$variableIdValueDisplay   = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $this->categoryIdCommon);  /* auslesen vom linken Auswahlfeld */
 					$variableIdValueKWH       = @IPS_GetVariableIDByName(IPSRP_VAR_VALUEKWH.$valueIdx,  $this->categoryIdValues);
 					$variableIdValueWatt      = @IPS_GetVariableIDByName(IPSRP_VAR_VALUEWATT.$valueIdx, $this->categoryIdValues);
@@ -710,7 +706,16 @@
 					$serie['marker']['states']['hover']['radius']    = 4;
 					$serie['marker']['states']['hover']['lineWidth'] = 1;
 
-					if ($this->debug) echo str_pad($valueData["Name"],35)." Anzeige vom Chart Typ : ".$chartType."   ".$valueIdx." durchgehen. ".(GetValue($variableIdValueDisplay)?"für Anzeige konfiguriert":"")."  \n";
+					if ($this->debug) 
+                        {
+                        echo str_pad($valueData["Name"],35)." Anzeige vom Chart Typ : ".$chartType."   ".$valueIdx." durchgehen. ";
+                        if (GetValue($variableIdValueDisplay))
+                            { 
+                            echo "für Anzeige konfiguriert.\n";
+                            echo "-------------------------------";
+                            }
+                        echo "  \n";
+                        }
 					//print_r($valueData);
 					
 					switch ($chartType) /* Auswahlfeld erste Zeile */
@@ -784,6 +789,7 @@
 						case IPSRP_TYPE_WATT:
                             if (GetValue($variableIdValueDisplay)) 
                                 {
+                                if ($this->debug) echo "selected IPSRP_TYPE_WATT:\n";
                                 $CfgDaten['plotOptions']['series']['stacking']     =	 'normal';
                                 $displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
                                 $this->compileConfiguration($CfgDaten,$report_config[$displaypanel], $chartType);          // CfgDaten is pointer
@@ -810,6 +816,7 @@
 						case IPSRP_TYPE_EURO:								/* mit Tachoanzeigen, Test */
                             if (GetValue($variableIdValueDisplay)) 
                                 {
+                                if ($this->debug) echo "selected IPSRP_TYPE_EURO:\n";
                                 $displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
                                 $this->compileConfiguration($CfgDaten,$report_config[$displaypanel], $chartType);          // CfgDaten is pointer
                                 }                        
@@ -838,6 +845,7 @@
 						case IPSRP_TYPE_KWH:                         /* Graphendarstellung */
                             if (GetValue($variableIdValueDisplay)) 
                                 {
+                                if ($this->debug) echo "selected IPSRP_TYPE_KKWH:\n";
                                 //echo "kWh ".GetValue($variableIdValueDisplay);
                                 $displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
                                 $this->compileConfiguration($CfgDaten,$report_config[$displaypanel], $chartType);          // CfgDaten is pointer
@@ -866,7 +874,7 @@
                                     if ($this->debug)
                                         { 
 								        echo "     Kurve : ".$name." \n";
-								        print_r($defserie); echo "\n";
+								        //print_r($defserie); echo "\n";
                                         }
                                     $serie['name'] = $name;
 
@@ -1034,7 +1042,7 @@
 					    }           // ende switch charttype
 				    }           //  ende if Channel in der Config Tabelle aktiv eingestellt 
 			    }       // ende foreach
-			if ($this->debug) 
+			if ($this->debug>1) 
                 {
                 echo "Evaluiere CfgDaten in (".$CfgDaten["ContentVarableId"].")  ".IPS_GetName($CfgDaten["ContentVarableId"]).": result in ".$CfgDaten["RunMode"]."\n";
                 echo "   Darstellung von ".date("d.m.y H:i:s",$CfgDaten["StartTime"])." bis ".date("d.m.y H:i:s",$CfgDaten["EndTime"])." \n";
@@ -1086,7 +1094,8 @@
 			WriteContentWithFilename ($CfgDaten, $tmpFilename);      
 		    }
 
-        /* compile the Highchart Config File 
+        /* compileConfiguration , edit and compile the Highchart Config File 
+         *
          * CfgDaten             wird als Pointer übergeben, ist die Highcharts Config
          * $report_config       ist die eigentliche Konfiguration aus dem Konfig File
          *
@@ -1104,7 +1113,10 @@
          *      configuration
          *      configseries
          *      Module
-         *      series
+         *      series                          die Datenquellen mit zusätzlichen parametern
+         *          type
+         *          ID
+         *          display                     definiert ob es ein Mittelwert sein soll
          *      title,type,aggregate
          *
          * Bei Easy und Eaysytrend wird eine zusätzliche Tabelle geschrieben
@@ -1116,13 +1128,15 @@
             {
             /* Konfiguration vorverarbeiten, series kann automatisch erstellt werden 
              * funktioniert für EASYCHART und EASYTREND
-             * EASYCHART verweist in einem Array auf anzuzeigende Depotnamen. Der Link geht je Depotnamen auf die Depotkonfiguration als jso encoded. Diese könnten auch variable erstellt werden
+             * EASYCHART verweist in einem Array auf anzuzeigende Depotnamen. Der Link geht je Depotnamen auf die Depotkonfiguration als json encoded. Diese könnten auch variable erstellt werden
              *
              */
             $ReportDataSelectorID = IPS_GetObjectIdByName("ReportDataSelector", $this->categoryIdData); 
             $select=GetValue($ReportDataSelectorID);
             $selectAssociation=array();
-
+            /* wir erwarten $report_config['series'], wenn andere Indexe da sind umbauen
+             */
+            // eigene Config nur für EasyChart
             if (isset($report_config["configuration"]))                                 // die Serien können für die Charts Darstellung  manuell ausgewählt werden, keine vorkonfigurierte verwenden
                 {
                 unset ($report_config["series"]);                                       // selber erstellen
@@ -1150,7 +1164,8 @@
                     $report_config["series"][$name]=$result;
                     }
                 }
-            if (isset($report_config["configSeries"]))                              // die Serie kann für die Charts Darstellung  manuell ausgewählt werden, keine vorkonfigurierte verwenden
+            // eigene Config nur für EasyTrend, es werden auch Mittelwerte und Trends automatisch hinzugefügt 
+            if (isset($report_config["configSeries"]))                              // eigene Config für EasyTrends die Serie kann für die Charts Darstellung manuell ausgewählt werden, keine vorkonfigurierte verwenden
                 {
                 unset ($report_config["series"]);                                       // selber erstellen
                 if ($this->debug) echo "compileConfiguration: alternative Configuration at Easytrend for Series Display detected, create series from config var, use selection $select:\n";
@@ -1223,11 +1238,6 @@
                 $serie=array();         // imer neu initialisiseren
                 $scale=0;
                 /* Name sind die einzelnen Kurven und defserie die Konfiguration der einzelnen Kurven */
-                if ($this->debug)
-                    { 
-                    echo "RebuildGraph: Kurve : ".$name." ermitteln : ".json_encode($defserie)."\n";
-                    //print_r($defserie); echo "\n";
-                    }
                 $serie['name'] = $name;
 
                 if (isset($report_config["step"])) $serie['step'] = $report_config["step"];
@@ -1239,12 +1249,67 @@
                 else $module=$moduleDefault;
 
                 $analyseConfig = ["StartTime"=>$CfgDaten["StartTime"],"EndTime"=>$CfgDaten["EndTime"]];
+                if ($this->debug)
+                    { 
+                    echo "RebuildGraph: Kurve : ".$name." ermitteln, Module $module : ".json_encode($defserie)."\n";
+                    //print_r($defserie); echo "\n";
+                    }
 
-                 /* für EASY und EASYTREND die Serie der Daten selbst schreiben und nicht auf ein Archiv verweisen 
+                 /* für EASY,EASYTREND und PROFESSIONAL die Serie der Daten selbst schreiben und nicht auf ein Archiv verweisen 
                   * compile configuration Highcharts
                   */
                 switch ($module)                   
                     {
+                    case "PROFESSIONAL":
+                        $oid=$defserie['Id'];
+                        $analyseConfig1=$analyseConfig;
+                        $analyseConfig1["Aggregated"]="daily";
+                        $analyseConfig1["meansRoll"]["direction"]="Backward";                            // Messwertedarstellung 0 ist der älteste Wert, der nächste Wert ist schon teil des Mittelwertes
+                        $analyseConfig1["meansRoll"]["TimeStampPos"]="End";                                             // wenn nicht Mid, wird zum Zeitstempel, an dem berechnet wurde abgespeichert
+                        $resultAll = $archiveOps->getValues($oid,$analyseConfig1,($this->debug));                    
+                        if ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLL") )
+                            {
+                            if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Wochen verarbeiten.\n";
+                            $result=$resultAll["MeansRoll"]["Var"];
+                            }
+                        elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLLMONTH") )
+                            {
+                            if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Monate verarbeiten.\n";
+                            $result=$resultAll["MeansRoll"]["Month"];
+                            }
+                        elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="MEANSROLLWEEK") )
+                            {
+                            if ($this->debug) echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Woche verarbeiten.\n";
+                            $result=$resultAll["MeansRoll"]["Week"];
+                            }
+                        elseif ( (isset($defserie["display"])) && (strtoupper($defserie["display"])=="TRENDMONTH") )
+                            {
+                            if ($this->debug) 
+                                {
+                                echo "Modul Professional ".count($result)." Werte aus dem laufenden Mittelwert für Monateverarbeiten.\n";
+                                if (isset($defserie["display"])) echo "Einstellung ".$defserie["display"]." wurde nicht erkannt\n";
+                                }
+                            $result=$resultAll["Description"]["Interval"]["Month"]["MeansVar"];
+                            //print_r($result);
+                            }
+                        else 
+                            {
+                            $result=$resultAll["Values"];                 // true mit Debug, aus dem Archiv geladene Datenserie nicht einschränken
+                            if ($this->debug) echo "Modul Professional ".count($result)." Werte verarbeiten. Display normale Werte.\n";
+                            }
+                        $scale=1;
+                        $showmax=0; $showcount=0;
+                        if ( ($this->debug) && ($showmax>0) ) echo "      Darstellung der Daten für die Anzeige von $module:\n";
+                        foreach ($result as $entry)
+                            {
+                            //if ($scale==0) $scale=100/$entry["Value"];
+                            if ( ($this->debug) && ($showcount < $showmax) ) echo "      ".date("d.m. H:i:s",$entry["TimeStamp"])."  ".($entry["Value"]*$scale)."\n";
+                            $showcount++;
+                            if (isset($entry["Value"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Value"]*$scale)];
+                            if (isset($entry["Avg"])) $serie['data'][] = ["TimeStamp" =>  $entry["TimeStamp"],"y" => ($entry["Avg"]*$scale)];               // auch für aggregated Werte
+                            }
+
+                        break;
                     case "EASYTREND":
                     case "EASY":
                         $oid=$defserie['Id'];
@@ -1333,6 +1398,7 @@
                     }
                 else
                     {
+                    if ($this->debug) echo "Serie Type ".$defserie[IPSRP_PROPERTY_VALUETYPE]."\n";
                     /* wenn nicht Status alle Einheiten im array yaxis sammeln */
                     if (isset($yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]])) {}
                     else
@@ -1343,7 +1409,7 @@
                         }
                     }
                 $serie['marker']['enabled'] = false;
-                if ($this->debug) echo "RebuildGraph: Serie $index wurde ermittelt, wird jetzt abgespeichert.\n";
+                if ($this->debug) echo "RebuildGraph: Serie $index wurde ermittelt, wird jetzt als Index $index abgespeichert.\n";
                 $CfgDaten['series'][$index++] = $serie;
                 }   /* ende foreach */
 

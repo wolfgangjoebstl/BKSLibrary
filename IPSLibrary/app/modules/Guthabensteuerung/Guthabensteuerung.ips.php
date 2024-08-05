@@ -62,7 +62,10 @@
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(100);                              // kein Abbruch vor dieser Zeit, funktioniert nicht für linux basierte Systeme
 
-    $debug   = false;                           // zusätzliche Ausgaben unterdrücken, ist auch die Webfront ActionScript Routine hier
+    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren
+	else $debug=false;
+    //$debug   = false;                           // zusätzliche Ausgaben unterdrücken, ist auch die Webfront ActionScript Routine hier
+
     $doQuery = false;                             // Abfrage mit Selenium Host starten
     $startexec=microtime(true);    
     //echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";         //keine Ausgabe da auch vom Webfront aufgerufen 
@@ -121,7 +124,7 @@
             break;
         case "SELENIUM":
             IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
-            //echo "Do Init for Operating Mode Selenium.\n";
+            if ($debug) echo "Do Init for Operating Mode Selenium.\n";
             $seleniumOperations = new SeleniumOperations();        
             $CategoryId_Mode        = CreateCategory('Selenium',                $CategoryIdData, 20);
             $startImacroID          = IPS_GetObjectIdByName("StartSelenium",    $CategoryId_Mode);	
@@ -144,7 +147,7 @@
                 IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
                 $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
                 $processDir = $seleniumChromedriverUpdate->getprocessDir();
-                //echo "Watchdog Directory : $processDir\n";            
+                if ($debug) echo "Watchdog Directory : $processDir\n";            
                 }
             else $SeleniumOnID=false;
             if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
@@ -155,8 +158,10 @@
                 $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
                 $selDir        = $seleniumChromedriverUpdate->getSeleniumDirectory();
                 $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
+                if ($debug) echo "get filesize of all chromedriver versions.\n";
                 $version       = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
                 $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
+                if ($debug) echo "Chromedriver activated.\n";
                 }
             break;
         case "NONE":
@@ -185,8 +190,11 @@
     // Wenn YahooApi aufgebaut wird
     if (isset($GuthabenAllgConfig["Api"]))
         {
+        if ($debug) echo "Use Money $ Tab for additional Tables.\n";
         $CategoryId_Finance  = IPS_GetObjectIdByName('Finance',$CategoryIdData);                    // Kategorie, wenn Kategorie nicht gefunden wird ist diese Variable und alle abhängigen davon danach false 
-    
+        $vertiButtons=["Update","Calculate","Sort","TargetValues"];
+        $webOps->setSelectButtons($vertiButtons,$CategoryId_Finance);
+
         $updateApiTableID    = @IPS_GetObjectIdByName("Update",$CategoryId_Finance);           // button 
         $calculateApiTableID = @IPS_GetObjectIdByName("Calculate",$CategoryId_Finance);           // button
         $sortApiTableID      = @IPS_GetObjectIdByName("Sort",$CategoryId_Finance);           // button 
@@ -210,6 +218,7 @@
 	 *
 	 ******************************************************************/
 
+    if ($debug) echo "initialize Timer.\n";
     $tim1ID = IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
     if ($tim1ID==false) echo "Fehler Timer Aufruftimer nicht definiert.\n";
     $tim12ID = IPS_GetEventIDByName("Lunchtimer", $_IPS['SELF']);
@@ -236,7 +245,7 @@
         }
 
     $maxcount=count($phoneID);
-
+    if ($debug) echo "Init finished.\n";
 
 /******************************************************
  *
@@ -664,14 +673,50 @@ if ($_IPS['SENDER']=="WebFront")
                 $getChromedriver    = true;
                 break;
             default:
-                echo "GuthabenSteuerung, unknown ActionID Variable : $variable";
+                $buttonsId = $webOps->getSelectButtons(); 
+                $selectButton=false;
+                foreach ($buttonsId as $id => $button)
+                    {
+                    if ($variable == $button["ID"]) 
+                        { 
+                        $selectButton=$id;  
+                        $webOps->selectButton($id);             // umfärben wenn gedrückt wurde
+                        //print_r($buttonsId[$id]);
+                        break; 
+                        }
+                    } 
+                if ($selectButton===false) echo "GuthabenSteuerung, unknown ActionID Variable : $variable";
                 break;
             }            //end switch
         }
+
+
 	}           // ende if
 
+    if ($selectButton)
+        {
+            switch ($selectButton)
+                {
+                case 0:
+                    $reguestedActionApi="Update";
+                    break;
+                case 1:
+                    $reguestedActionApi="Calculate";
+                    break;   
+                case 2:
+                    $reguestedActionApi="Sort";
+                    break;   
+                case 3:
+                    $reguestedActionApi="TargetValues";
+                    break;   
+                default:
+                    echo "unknown";
+                    break;             
+                }
 
-    if ($reguestedAction)                           // StartAction im Selenioum/Tools , ein bestimmter Einzel Aufruf aus Hosts für Selenium
+        }
+
+    if ($reguestedAction)                           // StartAction im Selenium/Tools , ein bestimmter Einzel Aufruf aus Hosts für Selenium
         {
             $startexec=microtime(true);
             $configTabs = $guthabenHandler->getSeleniumHostsConfig();
@@ -890,6 +935,36 @@ if ($_IPS['SENDER']=="WebFront")
                     }                               
                 $result = $ipsTables->showTable($inputData, $display,$config,false);     // true für debug
                 SetValue($financeTableID,$result);
+                break;
+            case "TargetValues":
+                $targets = $yahoofin->getResult("TargetValue", 2);                //true,1 oder 2 für Debug, die einzelnen Targets raussuchen und dann in getResultHistory mit getValues analysieren
+                $config=array();
+                $config["Split"] = $seleniumEasycharts->getEasychartSplitConfiguration("Short");
+                $config["Aggregated"]="monthly";
+                $config["StartTime"]=time()-365*24*60*60;
+                $result = $yahoofin->getResultHistory("TargetValue", $config, $debug);                //false,true,2,3 für Debug, ruft getValues auf für die Analyse mit der selben Debug Einstellung, Index ist Short
+                $config["ShowTable"]["output"]="realTable";                         // keine echo textausgabe mehr
+                $config["ShowTable"]["align"]="daily";                   // beinhaltet auch aggregate 
+                $resultShow = $yahoofin->archiveOps->showValues(false,$config,$debug);
+
+                $display=array(); $first=true;
+                $displayCols = $ipsTables->checkDisplayConfig($ipsTables->getColumnsName($resultShow,$debug),$debug);
+                foreach ($displayCols as $id => $entry)
+                    {
+                    if ($first || ($id=="TimeStamp"))
+                        {
+                        $display["TimeStamp"] = array("header"=>"Date","format"=>"Date",);
+                        $first=false;
+                        } 
+                    if ($id!="TimeStamp") $display[$id]=$entry;
+                    }
+                $config=array();
+                $config["html"]=true;
+                $config["text"]=true;
+                $config["insert"]["Header"]    = true;
+                $config["transpose"]=true;
+                $html = $ipsTables->showTable($resultShow, $display,$config,false);     // true/2 für debug , braucht einen Zeilenindex
+                SetValue($financeTableID,$html);
                 break;
             default:
                 break;        

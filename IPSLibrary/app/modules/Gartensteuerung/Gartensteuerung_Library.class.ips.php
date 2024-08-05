@@ -108,9 +108,10 @@ class Gartensteuerung
 	protected 	$archiveHandlerID;
 	protected	$debug;
 
-	protected	$tempwerte, $tempwerteLog, $werteLog, $werte;       // temperatur und regen
+    protected   $werteStore = array();                  // Inputwerte für Berechnung, nur einmal erfassen, bereits in parent class
+	protected	$tempwerte, $tempwerteLog, $werteLog, $werte;       // temperatur und regen, mit Log am Schluss die geloggten, sonst die Aggregierten Werte
 
-	protected	$variableTempID, $variableID;                       // Aussentemperatur und Regensensor
+	protected	$variableTempID, $variableID, $serverID;                       // Aussentemperatur und Regensensor
 	protected 	$GartensteuerungConfiguration;
 	
 	public 		$regenStatistik;
@@ -201,12 +202,9 @@ class Gartensteuerung
 
 		/* getConfiguration */
         $this->categoryRegisterID = $this->getCategoryRegisterID();
-		//$this->variableTempID = $this->getConfig_aussentempID();                                // wenn keine Konfig vorhanden wird false gemeldet
-		//$this->variableID = $this->getConfig_raincounterID();           // benötigt categoryRegisterID, wenn keine Konfig vorhanden wird false gemeldet
-        $this->variableTempID   = $this->GartensteuerungConfiguration["Configuration"]["AussenTemp"];
-        $this->variableID       = $this->GartensteuerungConfiguration["Configuration"]["RainCounter"];
-		//$Server=$this->getConfig_RemoteAccess_Address();                // wenn keine Konfig vorhanden wird false gemeldet
-        $Server                 = $this->GartensteuerungConfiguration["Configuration"]["RemoteAccessAdr"];
+        $this->variableTempID     = $this->GartensteuerungConfiguration["Configuration"]["AussenTemp"];           // this->getConfig_aussentempID() wenn keine Konfig vorhanden wird false gemeldet
+        $this->variableID         = $this->GartensteuerungConfiguration["Configuration"]["RainCounter"];          // this->getConfig_raincounterID( benötigt categoryRegisterID, wenn keine Konfig vorhanden wird false gemeldet
+        $this->serverID           = $this->GartensteuerungConfiguration["Configuration"]["RemoteAccessAdr"];      // this->getConfig_RemoteAccess_Address()  wenn keine Konfig vorhanden wird false gemeldet
 
 		if ($this->debug)
 			{
@@ -221,35 +219,6 @@ class Gartensteuerung
         $this->werteStore   = array();
 
         /*    
-		If ( ($Server=="") || ($Server==false) )
-			{
-  			//$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];             // lokaler ArchiveHandler definiert
-            if ($this->variableTempID)
-                {
-			    $this->tempwerteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableTempID, $starttime, $endtime,0);		
-	   		    $this->tempwerte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);	// Tageswerte agreggiert 
-                }
-            if ($this->variableID)
-                {
-			    $this->werteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
-		   	    $this->werte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableID, 1, $starttime2, $endtime,0);	    // Tageswerte agreggiert
-                print_r($this->werte);
-                }
-			}
-		else
-			{
-			$rpc = new JSONRPC($Server);
-			$this->archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];         // lokaler ArchiveHandler wird vom Remote Hander überschrieben
-			$this->tempwerteLog = $rpc->AC_GetLoggedValues($this->archiveHandlerID, $this->variableTempID, $starttime, $endtime,0);		
-   			$this->tempwerte = $rpc->AC_GetAggregatedValues($this->archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);
-			$this->werteLog = $rpc->AC_GetLoggedValues($this->archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
-			$this->werte = $rpc->AC_GetAggregatedValues($this->archiveHandlerID, $this->variableID, 1, $starttime2, $endtime,0);
-			if ($this->debug)
-				{
-				echo "   Daten vom Server : ".$Server."\n";
-				}
-			}
-
 		// Letzen Regen ermitteln, alle Einträge der letzten 10 Tage durchgehen n getRainevents
         $this->regenStatistik = $this->getRainevents($this->werteLog);              // fertige Routine, alle übergebenen Werte bearbeiten. Zweiter Parameter begrenzt Anzahl der gefundenen Events 
 
@@ -358,7 +327,8 @@ class Gartensteuerung
 	public function getConfig_raincounterID($config=false,$mode="Increment",$debug=false)
 		{
         $resultArray=false;  
-        if ($debug || $this->debug) $debug=true;   
+        if (($debug!==false) && ($debug || $this->debug)) $debug=true;  
+
         if ($debug) echo "getConfig_raincounterID aufgerufen. Mode is $mode. Config ist ".json_encode($config)."\n";  
         $CounterAuswertungID=$this->getCategoryRegisterID();          
         if ($config===false) 
@@ -1037,8 +1007,9 @@ class Gartensteuerung
 	function Giessdauer($debug=false)
 		{
 		if ($this->debug || $debug) $debug=true;
-
-		//global $log_Giessanlage;
+        $GartensteuerungConfiguration=$this->GartensteuerungConfiguration["Configuration"];
+		
+        //global $log_Giessanlage;
         $variableTempID=$this->variableTempID;
         $variableRainID=$this->variableID;
 		$giessdauerVar=0;
@@ -1046,33 +1017,12 @@ class Gartensteuerung
         $starttime=$endtime-60*60*24*2;         // die letzten zwei Tage für Temperatur 
         $starttime2=$endtime-60*60*24*10;       // die letzten 10 Tage für Regen
 
-		$Server=RemoteAccess_Address();
-		if ($debug) echo "Gartensteuerung::Giessdauer, Aufruf für Berechnung der Giessdauer : 0,10 oder 20 Minuten\n";
-			
-		If ($Server=="")
-			{
-            $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			$variableTempName = IPS_GetName($variableTempID);
-			$variableRainName = IPS_GetName($variableRainID);
-    		if ($debug) echo "Regen und Temperaturdaten, lokale Daten -> Temp: $variableTempName ($variableTempID) Rain: $variableRainName ($variableRainID) \n\n";		
-            $tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);                // 1 für tägliche Aggregation der Temperaturwerte
-            $werteLog = AC_GetLoggedValues($archiveHandlerID, $variableRainID, $starttime2, $endtime,0);
-			}
-		else
-			{
-			$rpc = new JSONRPC($Server);
-			$variableTempName = $rpc->IPS_GetName($variableTempID);
-			$variableRainName = $rpc->IPS_GetName($variableRainID);
-			if ($debug) echo "   Daten vom Server : $Server -> Temp: $variableTempName ($variableTempID) Rain: $variableRainName ($variableRainID)\n";
-            $archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-            $tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
-            $werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableRainID, $starttime2, $endtime,0);
-			}
+        $this->getTempRainValues();
 
 		//$AussenTemperaturGesternMax=get_AussenTemperaturGesternMax();
-		$AussenTemperaturGesternMax=$tempwerte[1]["Max"];
-		//$AussenTemperaturGestern=AussenTemperaturGestern();
-		$AussenTemperaturGestern=$tempwerte[1]["Avg"];
+        //$AussenTemperaturGestern=AussenTemperaturGestern();
+		$AussenTemperaturGesternMax=$this->tempwerte[1]["Max"];
+		$AussenTemperaturGestern=$this->tempwerte[1]["Avg"];
 	
 		$letzterRegen=0;
 		$regenStand=0;
@@ -1083,31 +1033,51 @@ class Gartensteuerung
 		$RegenGestern=0;
 		
         // Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen, Berechnung geht von einem Counter aus 
-		foreach ($werteLog as $wert)
-			{
-    		//echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
-			$regenStandAnfang=$wert["Value"];
-			If (($letzterRegen==0) && ($wert["Value"]>0))
-				{
-				$letzterRegen=$wert["TimeStamp"];
-				$regenStandEnde=$wert["Value"];
-				}
-			if (((time()-$wert["TimeStamp"])/60/60)<2)
-	   			{
-				$regenStand2h=$regenStandEnde-$regenStandAnfang;
-				}
-			if (((time()-$wert["TimeStamp"])/60/60)<48)
-				{
-				$regenStand48h=$regenStandEnde-$regenStandAnfang;
-				}
-			$regenStand=$regenStandEnde-$regenStandAnfang;
-			}
-		if ($debug) echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h." 10 Tage : ".$regenStand." mm.\n";
-
-
+        if (false)
+            {
+            foreach ($werteLog as $wert)
+                {
+                //echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+                $regenStandAnfang=$wert["Value"];
+                If (($letzterRegen==0) && ($wert["Value"]>0))
+                    {
+                    $letzterRegen=$wert["TimeStamp"];
+                    $regenStandEnde=$wert["Value"];
+                    }
+                if (((time()-$wert["TimeStamp"])/60/60)<2)
+                    {
+                    $regenStand2h=$regenStandEnde-$regenStandAnfang;
+                    }
+                if (((time()-$wert["TimeStamp"])/60/60)<48)
+                    {
+                    $regenStand48h=$regenStandEnde-$regenStandAnfang;
+                    }
+                $regenStand=$regenStandEnde-$regenStandAnfang;
+                }
+            }
+        foreach ($this->werteLog as $wert)
+            {
+            //echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+            $regenStand+=$wert["Value"];
+            If (($letzterRegen==0) && ($wert["Value"]>0))
+                {
+                $letzterRegen=$wert["TimeStamp"];
+                }
+            if (((time()-$wert["TimeStamp"])/60/60)<2)
+                {
+                $regenStand2h=$regenStand;
+                }
+            if (((time()-$wert["TimeStamp"])/60/60)<48)
+                {
+                $regenStand48h=$regenStand;
+                }
+            }
+        $letzterRegenStd=round((time()-$letzterRegen)/60/60,1);
+        if ($debug) echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h." 10 Tage : ".$regenStand." mm.\n";
 		if ($debug)
 			{
-			echo "Letzter erfasster Regenwert : ".date("d.m H:i",$letzterRegen)." also vor ".$letzterRegenStd." Stunden.\n";
+            //print_R($GartensteuerungConfiguration);
+			if ($letzterRegen) echo "Letzter erfasster Regenwert : ".date("d.m H:i",$letzterRegen)." also vor ".$letzterRegenStd." Stunden.\n";
 	 		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > ".$GartensteuerungConfiguration["TEMPERATUR-MITTEL"]."° sein).\n";
  			if ($AussenTemperaturGesternMax>($GartensteuerungConfiguration["TEMPERATUR-MAX"]))
  				{
@@ -1216,8 +1186,8 @@ class Gartensteuerung
         return ($regenWerte);
         }
 
-    /* Tempwerte in die Class einlesen
-     *
+    /* Tempwerte in die Class einlesen, wird von Giesssdauer verwendet
+     * ersetzt Routinen in construct, bewusstere Weise des Einlesens der Werte
      */
     public function getTempRainValues($debug=false)
         {
@@ -1225,32 +1195,34 @@ class Gartensteuerung
         $starttime=$endtime-60*60*24*7;  /* die letzten zwei Tage, für Auswertung sieben Tage nehmen */
         $starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage */
 
-        $Server=RemoteAccess_Address();
-        If ($Server=="")
+        If ($this->serverID=="")
             {
-            echo "Regen und Temperaturdaten, lokale Daten: Temp $variableTempID Rain $variableID \n\n";		
+            if ($this->variableTempID) $this->tempwerte = AC_GetAggregatedValues($this->archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);	// Tageswerte agreggiert 
+            if ($this->variableID)     $this->werteLog = AC_GetLoggedValues($this->archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
+            if ($debug) echo "Regen und Temperaturdaten, lokale Daten: Temp ".$this->variableTempID." Rain ".$this->variableID." \n\n";		
             //AC_ReAggregateVariable ($archiveHandlerID, $variableID);  
             //$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-            $tempwerte = AC_GetAggregatedValues($archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);                // 1 für tägliche Aggregation der Temperaturwerte
-            $variableTempName = IPS_GetName($variableTempID);
-            $werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
-            $werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);	/* Tageswerte agreggiert */
-            $werteStd = AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);	/* Stundenwerte agreggiert */
-            $variableName = IPS_GetName($variableID);
-            if (count($tempwerte)<2) AC_ReAggregateVariable ($archiveHandlerID, $variableTempID);  
+            //$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);                // 1 für tägliche Aggregation der Temperaturwerte
+            //$werteLog = AC_GetLoggedValues($archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
+            //$werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);	// Tageswerte agreggieren geht nur mit counter, increments funktionieren nicht 
+            //$werteStd = AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);	// Stundenwerte agreggieren geht nur mit counter, increments funktionieren nicht
+            
+            $variableTempName = IPS_GetName($this->variableTempID);
+            $variableRainName = IPS_GetName($this->variableID);
+            if (count($this->tempwerte)<2) AC_ReAggregateVariable ($this->archiveHandlerID, $this->variableTempID);  
             }
         else
-            {
-            echo "Regen und Temperaturdaten vom Server : ".$Server."\n\n";
-            $rpc = new JSONRPC($Server);
+            {  
+			$rpc = new JSONRPC($this->serverID);
+			$variableTempName = $rpc->IPS_GetName($variableTempID);
+			$variableRainName = $rpc->IPS_GetName($variableRainID);
+			if ($debug) echo "   Daten vom Server : ".$this->serverID." -> Temp: $variableTempName (".$this->variableTempID.") Rain: $variableRainName (".$this->variableID.")\n";
             $archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-            $tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
-            $tempwerteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableTempID, $starttime, $endtime,0);			
-            $variableTempName = $rpc->IPS_GetName($variableTempID);
-            $werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
+            if ($this->variableTempID) $this->tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $this->variableTempID, 1, $starttime, $endtime,0);
+            if ($this->variableID)     $this->werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $this->variableD, $starttime2, $endtime,0);                
+            //$tempwerteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableTempID, $starttime, $endtime,0);			
             //$werte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);
             //$werteStd = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);  // funktioniert nicht kann nicht zusammenzaehlen, mittelt immer
-            $variableName = $rpc->IPS_GetName($variableID);
             }
         }
 
@@ -1471,6 +1443,11 @@ class GartensteuerungControl extends Gartensteuerung
  *
  *  __construct
  *  setWerteStore               verwendet einen internen werte store, also array auf das alle routinen zugreifen können
+ *  showWerteStore
+ *
+ *  setRainStore                verwendet werte Store für parent class
+ *  setTempStore 
+ *
  *  getRainStatistics
  *  getRainEventsFromIncrements
  *  getRainAmountSince
@@ -1478,9 +1455,10 @@ class GartensteuerungControl extends Gartensteuerung
  *  listRainEvents
  *  listRainDays
  *  getRainevents
+ *
  *  writeRainEventsHtml
- *
- *
+ *  writeOverviewIntervalHtml           allgemeine Darstellung, nicht fertig
+ *  showDataQualityRegs
  *
  *
  */
@@ -1489,14 +1467,13 @@ class GartensteuerungStatistics extends Gartensteuerung
 	{
     protected $archiveOps;                              // class for archives, general use
     protected $ipsTables;                       // schöne Tabelle zeichnen
-    protected $werteStore = array();                  // Inputwete für Berechnung, nur einmal erfassen
 
     function __construct($debug=false)
         {
-        $this->werteStore = array();
+        //$this->werteStore = array();
         $this->archiveOps = new archiveOps();
         $this->ipsTables = new ipsTables();
-
+ 
         if ($debug) echo "GartensteuerungStatistics construct aufgerufen. Debug Mode.\n";
 
         parent::__construct(0,0,$debug);                    // keine Start und Endtime übergeben
@@ -1687,7 +1664,8 @@ class GartensteuerungStatistics extends Gartensteuerung
         }
 
 
-    /* GartensteuerungStatistics::
+    /* GartensteuerungStatistics::getRainEventsFromIncrements
+     *
      * noch eine Routine um die Regenereignisse herauszuarbeiten
      * Die Variable die im Namen ein _Counter am Ende hat ist das Input Register mit einem Zählerstand, 
      * Counter2 sollte der Zählerstand sein der um den rewset des registers durch einen Stromausfall bereinigt ist und den Zählerstand richtig weiterschreibt.
@@ -1720,9 +1698,8 @@ class GartensteuerungStatistics extends Gartensteuerung
         $regenMenge=false;
         echo "getRainEventsFromIncrements, diese Register als Input verwenden: ".json_encode($rainRegs)."\n";
 
-        $archiveOps = new archiveOps();
-        $archiveHandlerID=$archiveOps->getArchiveID();
-        $config = $archiveOps->getConfig();
+        $archiveHandlerID=$this->archiveOps->getArchiveID();
+        $config = $this->archiveOps->getConfig();
         $configCleanUpData = array();
         $configCleanUpData["deleteSourceOnError"]=false;
         $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
@@ -1741,7 +1718,7 @@ class GartensteuerungStatistics extends Gartensteuerung
             if (sizeof($this->werteStore)==0)
                 {
                 echo "ArchiveOps::getValues($rainReg \n";
-                $result = $archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen
+                $result = $this->archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen
                 $this->werteStore = $result["Values"];
                 }
             else echo "Bereits Werte im Speicher, insgesamt ".sizeof($this->werteStore)."\n";
@@ -1895,9 +1872,9 @@ class GartensteuerungStatistics extends Gartensteuerung
         $zeit=date("d.m.y",time()); 
         
         echo "getRainValuesFromIncrements, Regenmenge bisher : $regenMenge mm, diese Register als Input verwenden: ".json_encode($rainRegs)."\n";
-        $archiveOps = new archiveOps();
-        $archiveHandlerID=$archiveOps->getArchiveID();
-        $config = $archiveOps->getConfig();
+
+        $archiveHandlerID=$this->archiveOps->getArchiveID();
+        $config = $this->archiveOps->getConfig();
         $configCleanUpData = array();
         $configCleanUpData["deleteSourceOnError"]=false;
         $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
@@ -1907,7 +1884,7 @@ class GartensteuerungStatistics extends Gartensteuerung
             {
             if (sizeof($this->werteStore)==0)         // nur Nachladen wenn noch keine Werte im Speicher
                 {            
-                $result = $archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen
+                $result = $this->archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen
                 $this->werteStore = $result["Values"];
                 }
             else echo "Bereits Werte im Speicher, insgesamt ".sizeof($this->werteStore)."\n";                
@@ -2385,7 +2362,127 @@ class GartensteuerungStatistics extends Gartensteuerung
       
             }
         return($html);
-        }   
+        }  
+
+    /* als html tabelle einen üBerblick über die verwendeten register zeigen
+     * alle regenregister ermitteln, schauen ob beim Regenregister auch eine Temperatur dabei ist
+     * daran die verfügbarkeit des Gerätes festmachen
+     * die regenregister aus der Config ausgeben
+     *
+     * verwendet ComponentHandling, DeviceManagement
+     */
+    public function showDataQualityRegs($debug=false)
+        {
+
+        $componentHandling = new ComponentHandling();
+        $DeviceManager     = new DeviceManagement();                // für Anzeige der Components
+
+        $resultRain=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "RAIN_COUNTER"],"Install",false);        /* passende Geräte aus Elements anhand keywords suchen*/
+        $count=(sizeof($resultRain));				
+
+        $html = "";
+        $html .= "<table border=1>";
+        $html .= "<tr>";
+
+        $html .= "<td>".$count."</td>";
+        foreach ($resultRain as $name => $entry) 
+            {
+            $html .= "<td>".$entry["OID"]."</td>";
+            $html .= "<td colspan=2>".$entry["Name"]."</td>";
+            }
+        $html .= "</tr><tr><td>Rain</td>";    
+        foreach ($resultRain as $index => $entry) 
+            {
+            $html .= "<td>".$entry["COID"]."</td>";
+            //$html .= "<td></td>";
+            $html .= "<td>".GetValueIfFormatted($entry["COID"])."</td><td>".date("d.m H:i",IPS_GetVariable($entry["COID"])["VariableChanged"])."</td>";
+            $result=$this->getConfig_raincounterID($entry["Name"],"",false); 
+            $resultRain[$index]["IncrementID"] = $result["IncrementID"];
+            $resultRain[$index]["CounterID"]   = $result["CounterID"];
+            }
+        $html .= "</tr><tr><td>Increment</td>";    
+        foreach ($resultRain as $index => $entry) 
+            {
+            $html .= "<td>".$entry["IncrementID"]."</td>";
+            //$html .= "<td></td>";
+            $html .= "<td>".GetValueIfFormatted($entry["IncrementID"])."</td><td>".date("d.m H:i",IPS_GetVariable($entry["IncrementID"])["VariableChanged"])."</td>";
+            }
+        $html .= "</tr><tr><td>Counter</td>";    
+        foreach ($resultRain as $index => $entry) 
+            {
+            $html .= "<td>".$entry["CounterID"]."</td>";
+            //$html .= "<td></td>";
+            $html .= "<td>".GetValueIfFormatted($entry["CounterID"])."</td><td>".date("d.m H:i",IPS_GetVariable($entry["CounterID"])["VariableChanged"])."</td>";
+            }
+        $resultTemp=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],"Install",false);        /* passende Geräte aus Elements anhand keywords suchen*/
+        $html .= "</tr><tr><td>Temp</td>";   
+        foreach ($resultRain as $index=>$entry)
+            {
+            $found=false;
+            foreach ($resultTemp as $item)
+                {   
+                if ($item["OID"] == $entry["OID"]) $found=$item;
+                }
+            if ($found)
+                {
+                $html .= "<td>".$found["COID"]."</td>";
+                $html .= "<td>".GetValueIfFormatted($found["COID"])."</td><td>".date("d.m H:i",IPS_GetVariable($found["COID"])["VariableChanged"])."</td>";
+                $resultRain[$index]["TempCOID"]=$found["COID"];
+                }
+            else 
+                {
+                $html .= "<td></td><td></td><td></td>";
+                $resultRain[$index]["TempCOID"]=false;                      // Netatmo zB liefert keine Tempwerte im selben Gerät
+                //$resultRain[$index]["TempCOID"]=$entry["COID"];           // Netatmo zB liefert keine Werte wenn nicht regnet
+                }
+            }
+        $html .= "</tr><tr><td>Data</td>";   
+        foreach ($resultRain as $index=>$entry)
+            {
+            if ($entry["TempCOID"])
+                {
+                $config=array();
+                $config["StartTime"]="18.6.2022";
+                $config["OIdtoStore"]="Temp";             // oid wird auch ausserhalb geändert
+                $config["maxDistance"]=4;               // 4 Stunden
+                $config["manAggregate"]="daily";
+                $config["returnResult"]="Description";                  // nur die Beschreibung des Datensatzes ausgeben
+                $ergebnis = $this->archiveOps->getValues($entry["TempCOID"],$config,$debug);           // 2 erweitertes debug
+                $html .= "<td colspan=3><table border=1>";
+                $duration=$ergebnis["Intervals"]["ende"]-$ergebnis["Intervals"]["anfang"];
+                $html .= "<tr><td>".date("d.m.Y H:i",$ergebnis["Intervals"]["anfang"])."</td><td>".date("d.m.Y H:i",$ergebnis["Intervals"]["ende"])."</td><td>".nf($duration,"s")."</td></tr>";    
+                $html .= "</table></td>";
+                $resultRain[$index]["Gaps"]=$this->archiveOps->warnings["Hours"];
+                }
+            else $html .= "<td></td><td></td><td></td>";
+            }
+
+        $html .= "</tr><tr><td>Gaps</td>";   
+        foreach ($resultRain as $index=>$entry)
+            {
+            if ($entry["TempCOID"])
+                {
+                $html .= "<td colspan=3><table border=1>";
+                foreach ($entry["Gaps"] as $time=>$item)
+                    {
+                    $duration=$item["EndTime"]-$item["StartTime"];
+                    $html .= "<tr><td>".date("d.m.Y H:i",$item["StartTime"])."</td><td>".date("d.m.Y H:i",$item["EndTime"])."</td><td>".nf($duration,"s")."</td></tr>";    
+                    }
+                $html .= "</table></td>";                
+                }
+            else $html .= "<td></td><td></td><td></td>";
+            }
+        $html .= "</tr><tr><td>Regs</td>";  
+        $html .= "<td colspan=6><table border=1>";
+        $html .= "<tr><td>Temperatur</td><td>". $this->variableTempID."</td><td>".IPS_GetName($this->variableTempID)."/".IPS_GetName(IPS_GetParent($this->variableTempID))."</td></tr>";
+        $html .= "<tr><td>Regen</td><td>". $this->variableID."</td><td>".IPS_GetName($this->variableID)."/".IPS_GetName(IPS_GetParent($this->variableID))."</td></tr>";
+        $html .= "</table</td></tr>";
+        
+        $html .= "</table>";
+
+        return($html);
+        }
+
 
     }
 	

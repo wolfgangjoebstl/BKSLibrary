@@ -32,7 +32,8 @@
  *
  ****************************************************************/
 
-
+    ini_set('memory_limit', '1024M');                        // können grosse Dateien werden
+    
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -42,6 +43,8 @@
     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
     IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
+    IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              
+
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -49,6 +52,15 @@
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 		$moduleManager = new IPSModuleManager('Gartensteuerung',$repository);
 		}
+
+    $installedModules   = $moduleManager->GetInstalledModules();
+    if (isset($installedModules["OperationCenter"]))   
+        {
+        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');            
+        }   
+
+    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren
+	else $debug=false;
 
     /******************************************************
      *
@@ -89,6 +101,7 @@
     $archiveOps = new archiveOps();
     $archiveHandlerID=$archiveOps->getArchiveID();
 
+    $webOps = new webOps();
     $geoOps = new geoOps();
     $ipsTables = new ipsTables();
 
@@ -103,8 +116,38 @@
     $GartensteuerungConfiguration =	$gartensteuerung->getConfig_Gartensteuerung();
     $configuration=$GartensteuerungConfiguration["Configuration"];                          // Abkürzung
 
+    $gartensteuerungStatistics = new GartensteuerungStatistics(false);   // debug=false
+
+    // Schöne Karte der abgefragten Messpunkte zeichnen
+	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+	$GMs=$modulhandling->getInstances('GoogleMaps');
+	//print_r($GMs);
+    $count=0;
+    foreach ($GMs as $GoogleMapInstance)
+        {
+        if ($debug) echo "    ".$GoogleMapInstance."   ".IPS_GetName($GoogleMapInstance)." / ".IPS_GetName(IPS_GetParent($GoogleMapInstance))."\n";
+        if ($count==0) $mapsID=$GoogleMapInstance;
+        if ( ($count>0) && (IPS_GetParent($GoogleMapInstance)=="Startpage") ) $mapsID=$GoogleMapInstance;
+        $count++;
+        }
+    if ($debug) echo "GoogleMaps Instance ($count): $mapsID \n";
+
+    $oids = $modulhandling->getInstances('Location Control');           // jede IP Symcon Instanz hat ihre geografischen Ort hinterlegt, wenn der User es eingegeben hat
+    $pos1=array();
+    //$pos1[0]=["north"=>48.3806,"east"=>16.3056,"name"=>"Feldweg1"];
+    //$pos1[1]=["north"=>48.2443,"east"=>16.3762,"name"=>"LorenzBoehlerGasse70"];
+    foreach ($oids as $oid) $config=json_decode(IPS_GetConfiguration($oid),true);
+    $pos=json_decode($config["Location"],true);            // als array
+    //print_r($pos);
+    $pos1[]=["north"=>$pos["latitude"],"east"=>$pos["longitude"],"name"=>IPS_GetName(0)];           // eigenen Standort verwenden
+
     $controlDataQuality=false;
     $useExistingData=false;
+
+    if ($debug) 
+        {
+        $controlDataQuality="TempTage";             // Simulate KeyPress  
+        }
 
 if ($_IPS['SENDER']=="WebFront")
 	{    
@@ -231,7 +274,7 @@ if ($_IPS['SENDER']=="WebFront")
             $associationsValues[$count]=$displaypanel;
             $count++;
             }        
-        $webOps = new webOps();
+
         $webOps->setSelectButtons($associationsValues,$categoryIdSelectReports);
         $buttonsId = $webOps->getSelectButtons(); 
         //echo $variableID;
@@ -263,6 +306,9 @@ if ($_IPS['SENDER']=="WebFront")
                 case 3:
                     $controlDataQuality="TempTage";
                     break;   
+                case 4:
+                    $controlDataQuality="DataQuality";
+                    break;
                 default:
                     echo "unknown";
                     break;             
@@ -279,11 +325,11 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
     $zamg = new zamgApi();        
     $geoOps = new geoOps();
     $charts = new ipsCharts();
-    $pos1=array();
+    //$pos1=array();
     // Feldweg 1   N48.3806, E16.3056 
     // Lorenz Böhler Gasse 6 N48.2443, E16.37622
     //$pos1[0]=["north"=>48.3806,"east"=>16.3056,"name"=>"Feldweg1"];
-    $pos1[1]=["north"=>48.2443,"east"=>16.3762,"name"=>"LorenzBoehlerGasse70"];
+    //$pos1[1]=["north"=>48.2443,"east"=>16.3762,"name"=>"LorenzBoehlerGasse70"];
     $points=array();
     foreach ($pos1 as $index => $entry)
         {
@@ -298,10 +344,6 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
     $result = $zamg->getDataZamgApi(["RR","SA","TM"],$module, $config, false);           // true debug, RR,SA,TN,TX or TM
     //$useExistingData=true;    // Daten werden jedes mal neu geladen
     $pointGrid=$zamg->getPosOfGrid(false);          // false no Debug
-
-    // Schöne Karte der abgefragten Messpunkte zeichnen
-    
-    $mapsID=14506;
 
     $map = [];
     $map['zoom'] = 11;          // 20  5 ist ganz Europa
@@ -344,6 +386,7 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
     switch ($controlDataQuality)
         {
         case "RegenMonat":
+            if ($debug) echo "DataQuality Regenmonat:\n";        
             $pname="AnotherSelector";
             $tabs =  ["Update"];
             //$color = [0x481ef1,0xf13c1e,0x1ef127];
@@ -379,6 +422,7 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
             SetValue($chartID,$htmlc);
             break;
         case "TempMonat":
+            if ($debug) echo "DataQuality TempMonat:\n"; 
             $pname="AnotherSelector";
             $tabs =  ["WertImJahr","Jahresmittelwert","Monatswerte"];
             $color = [0x481ef1,0xf13c1e,0x1ef127];
@@ -452,8 +496,102 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
 
             break;        
         case "RegenTage":
+            if (isset($configuration["Reports"]["RegenTage"]))
+                {
+                echo "Wir stellen zusätzliche Auswertungen zur Verfügung. Konfigurierbar ist :\n";
+                $configRegenTage=$configuration["Reports"];
+
+                $config=array();
+                $config["StartTime"]="1.6.2023";
+                $configCleanUpData = array();
+                $configCleanUpData["range"] = ["max" => 190, "min" => 0,];
+                $configCleanUpData["SuppressZero"]=true;
+                $configCleanUpData["deleteSourceOnError"]=true;             // true Fehler nicht in die Werte übernehmen
+                $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
+                $config["CleanUpData"] = $configCleanUpData;    
+                //$config["ShowTable"]["align"]="monthly";
+
+                $pos=array();
+                foreach ($configRegenTage["RegenTage"] as $entry)
+                    {
+                    if (isset($entry["data"]))
+                        {
+                        //echo "Read Data from ".$entry["name"]." of ".$entry["data"].":\n----------------------------------------\n";
+                        $inputID=$entry["data"];
+                        $config["OIdtoStore"]=$entry["OIdtoStore"];
+                        $archiveOps->getValues($inputID,$config,$debug);
+                        }
+                    elseif (isset($entry["increment"]))
+                        {
+                        //echo "Read Increment from ".$entry["name"]." of ".$entry["increment"].":\n----------------------------------------\n";
+                        $resultIncrement=$gartensteuerung->getConfig_raincounterID($entry["increment"]);            // neu initialisiseren, noch empty from remote fetch
+                        $inputID=$resultIncrement["IncrementID"];
+                        $config["OIdtoStore"]=$entry["OIdtoStore"];
+                        $archiveOps->getValues($inputID,$config,$debug);
+                        }
+                    elseif (isset($entry["zamg"]))
+                        {
+                        //echo "Read zamg data from ".$entry["name"]." of ".json_encode($entry["pos"])."for ".json_encode($entry["zamg"]).":\n----------------------------------------\n";
+                        $module=$entry["module"];
+                        $dataset=$entry["zamg"];
+                        //$config["StartTime"]=strtotime("1.1.2022");
+                        $config["Dif"]=0.01;
+                        $config["Pos"][]=$entry["pos"];
+                        $result = $zamg->getDataZamgApi($dataset,$module, $config, $debug);           // true debug, RR,SA,TN,TX or TM
+                        $pos1=array();
+                        $pos1[]=$entry["pos"];
+                        $pos[]=$entry["pos"];           // alle Positionen abspeichern
+                        $zamg->getIndexNearPosOfGrid($pos1,$debug);           //true für Debug
+                        //print_R($pos1);
+                        $subindex=array();
+                        foreach ($pos1 as $id=>$pos) 
+                            {
+                            //print_r($pos["diff"]);
+                            if ($debug) echo " $id : ".str_pad($pos["name"],50)."   ".$pos["diff"]["subindex"]."  ".$pos["diff"]["min"]."\n";
+                            $subindex[$id]=$pos["diff"]["subindex"];
+                            }
+                        //print_r($subindex);
+                        if  ((count($subindex)==1) && (isset($subindex[0])) )
+                            {
+                            $series = $zamg->getDataAsTimeSeries(["RR"],$subindex);          // true Debug
+                            $config["DataType"]="Array";
+                            $config["OIdtoStore"]=$entry["OIdtoStore"];
+                            $archiveOps->getValues($series["RR"][$subindex[0]],$config,false);
+                            }
+                        else print_r($subindex);
+                        }
+                    }
+
+                $config["ShowTable"]["output"]="realTable";                         // keine echo textausgabe mehr
+                $config["ShowTable"]["align"]="daily";                   // beinhaltet auch aggregate 
+                $result = $archiveOps->showValues(false,$config);
+
+
+                $display = $ipsTables->checkDisplayConfig($ipsTables->getColumnsName($result,$debug),$debug);
+                //print_R($display);
+                // Noch nicht fertig programmiert !!!!!!!!!!!!!!!
+                $display = [
+                            "TimeStamp"                        => ["header"=>"Date","format"=>"Date"],
+                            "LBG70alt"                        => ["header"=>"lbgNetamo","format"=>"mm"],
+                            "LBG70neu"                        => ["header"=>"lbgHomematic","format"=>"mm"],
+                            "LorenzBoehlerGasse70"          => ["header"=>"lbg70-Gasse","format"=>"mm"],
+                            "BKS01alt"         => ["header"=>"bksHMalt","format"=>"mm"],
+                            "BKS01neu"         => ["header"=>"bksHMneu","format"=>"mm"],
+                            "Feldweg1"                      => ["header"=>"bksFeldweg","format"=>"mm"],
+                            ];
+                $config=array();
+                $config["html"]=true;
+                //$config["text"]=true;
+                $config["insert"]["Header"]    = true;
+                //$config["transpose"]=true;
+                $config["reverse"]=true;          // die Tabelle in die andere Richtung sortieren
+
+                $html = $ipsTables->showTable($result, $display,$config,false);
+                            SetValue($tableID, $html);
+                            }
             break;
         case "TempTage":
+            if ($debug) echo "DataQuality TempTage:\n";
             $rainRegs=$gartensteuerung->getRainRegisters();
             $variableTempID   = $configuration["AussenTemp"];
             $variableTempName = IPS_GetName($variableTempID);
@@ -469,18 +607,20 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
             $configCleanUpData["SuppressZero"]=true;
             $configCleanUpData["deleteSourceOnError"]=true;             // true Fehler nicht in die Werte übernehmen
             $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
-            //$config["Aggregated"]="daily";                     // verwendet archivierte Daten stt manuell zu integrieren, zu viele Daten, zusammenfassen, 0 stündlich, 1 täglich, 2 wöchentlichj
+            //$config["Aggregated"]="daily";                     // verwendet archivierte Daten stt manuell zu integrieren, zu viele Daten, zusammenfassen, 0 stündlich, 1 täglich, 2 wöchentlich
+            $config["OIdtoStore"]="Rain";             // oid wird auch ausserhalb geändert
             $config["manAggregate"]="daily";                // aggregiert geloogte Werte ohne Aggregation manuell
             $config["CleanUpData"] = $configCleanUpData;    
             $config["ShowTable"]["align"]="minutely";    
-            $archiveOps->getValues($rainRegs["IncrementID"],$config,false);          // true,2 Debug, Werte einlesen
+            $archiveOps->getValues($rainRegs["IncrementID"],$config,$debug);          // true,2 Debug, Werte einlesen
 
             //Temperaturwerte
             $config=array();
             $config["StartTime"]=$starttime;
+            $config["OIdtoStore"]="Temp";             // oid wird auch ausserhalb geändert
             $config["Aggregated"]="daily";                     // verwendet archivierte Daten statt manuell zu integrieren, zu viele Daten, zusammenfassen, 0 stündlich, 1 täglich, 2 wöchentlich
             $config["ShowTable"]["align"]="daily";
-            $archiveOps->getValues($variableTempID,$config,false);          // true,2 Debug, Werte einlesen
+            $archiveOps->getValues($variableTempID,$config,$debug);          // true,2 Debug, Werte einlesen
 
             // Zusammenfassen
             $config["AggregatedValue"]=["Avg","Min","MinTime","Max","MaxTime"];                   // es werden immer alle Werte eingelesen
@@ -491,12 +631,12 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
 
             $display = [
                 "TimeStamp"                    => ["header"=>"Date",        "format"=>"DayMonth"],
-                "29877"                        => ["header"=>"MittelTemp",  "format"=>"°"],
-                "29877Min"                     => ["header"=>"MinTemp",     "format"=>"°"],
-                "29877MinTime"                 => ["header"=>"MinTime",     "format"=>"HourMin"],
-                "29877Max"                     => ["header"=>"MaxTemp",     "format"=>"°"],
-                "29877MaxTime"                 => ["header"=>"MaxTime",     "format"=>"HourMin"],
-                "34831"                        => ["header"=>"Regen",       "format"=>"mm"],
+                "Temp"                        => ["header"=>"MittelTemp",  "format"=>"°"],
+                "TempMin"                     => ["header"=>"MinTemp",     "format"=>"°"],
+                "TempMinTime"                 => ["header"=>"MinTime",     "format"=>"HourMin"],
+                "TempMax"                     => ["header"=>"MaxTemp",     "format"=>"°"],
+                "TempMaxTime"                 => ["header"=>"MaxTime",     "format"=>"HourMin"],
+                "Rain"                        => ["header"=>"Regen",       "format"=>"mm"],
                         ];
             $config=array();
             $config["html"]=true;
@@ -508,6 +648,10 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
             $html = $ipsTables->showTable($result, $display,$config,false);     // true/2 für debug , braucht einen Zeilenindex
             SetValue($tableID, $html);
             break;
+        case "DataQuality":   
+            $html=$gartensteuerungStatistics->showDataQualityRegs();         
+            SetValue($table2ID,$html);  
+            break;          
         }
     SetValue($tableID,$html);
     }
@@ -592,10 +736,8 @@ if ($controlDataQuality)            // zamg Reports mit statistischen Daten erze
         $archiveOps->quickStore($series["TM"]);               // muss das richtige Format haben
         $archiveOps->showValues(false,[],true);         //true für debug
         }
-    echo "---\n";
-    $gartensteuerung = new GartensteuerungStatistics(false);   // debug=false
-    //print_R($series["TM"][60]);         // Input für Ausgabe Tabelle Index ist MM.YY
-    echo $gartensteuerung->writeOverviewMonthsHtml($series["TM"][86],["mode"=>2,"type"=>"mean"]);          // sollte beide Formate können, mode=2 ist [TimeStamp/Value]
+    echo "---\n";    //print_R($series["TM"][60]);         // Input für Ausgabe Tabelle Index ist MM.YY
+    echo $gartensteuerungStatistics->writeOverviewMonthsHtml($series["TM"][86],["mode"=>2,"type"=>"mean"]);          // sollte beide Formate können, mode=2 ist [TimeStamp/Value]
 
 
 

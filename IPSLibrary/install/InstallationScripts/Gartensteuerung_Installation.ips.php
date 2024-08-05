@@ -60,7 +60,8 @@
     
     $wfcHandling =  new WfcHandling();
 
-    $debug=false;
+    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren
+	else $debug=false;
 
 /*******************************
  *
@@ -195,7 +196,7 @@
     $buttonIds=false;
     if (strtoupper($GartensteuerungConfiguration["Configuration"]["DataQuality"])=="ENABLED") 
         {
-        echo "Buttons zur Anzeige von historischen Daten:\n";
+        echo "Buttons zur Anzeige von historischen Daten, Configuration DataQuality enabled:\n";
         $gartensteuerungReports=$GartensteuerungConfiguration["Configuration"]["Reports"];
         $count=0;
         $associationsValues = array();
@@ -204,7 +205,8 @@
             echo "     Profileintrag $count : ".$displaypanel."  \n";
             $associationsValues[$count]=$displaypanel;
             $count++;
-            }        
+            } 
+        if ($count==0) echo "No Reports configured in Configuration. Do at least RegenMonat, TempMonat, RegenTage, TempTage .\n";       
         $webOps = new webOps(true);
         $webOps->setConfigButtons(9000);                    // order in ID display
         $buttonIds = $webOps->createSelectButtons($associationsValues,$categoryIdSelectReports, $scriptIdWebfrontControl);
@@ -214,7 +216,7 @@
         $color = [0x481ef1,0xf13c1e,0x1ef127];
         $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
 	    $AnotherSelectorID 		= CreateVariable3("AnotherSelector", 1, $categoryIdSelectReports, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-	    $ReportSelectorID 		= CreateVariable3("ReportSelector",  3, $categoryIdSelectReports, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String  es wird in lesbaren Format die Betriebsart gespeichert */
+	    $ReportSelectorID 		= CreateVariable3("ReportSelector",  3, $categoryIdSelectReports, 0, "" ,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String  es wird in lesbaren Format die Betriebsart gespeichert */
 		}      
 
 

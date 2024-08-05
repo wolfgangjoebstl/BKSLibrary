@@ -103,7 +103,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 				
 *************************************************************/
 
-
+    $ipsOps = new ipsOps();  
     $dosOps = new dosOps();    
     $systemDir     = $dosOps->getWorkDirectory(); 
 
@@ -227,25 +227,48 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 
 	$Count=floor(GetValue($GiessCountID)/2+GetValue($GiessCountOffsetID));
     echo "Giesscount Count : ".$Count."  ";
+    $oid = $configuration["ValveControl"]["KREIS".(string)($Count+1)];
+    $message="Ventil ".IPS_GetName($oid)." ($oid) auf ";
+    echo $message;             
+    $childs = IPS_GetChildrenIDs($oid);
+    //print_R($childs);
+    foreach ($childs as $child) 
+        {
+        $name = IPS_GetName($child);
+        if ($name=="STATE") 
+            {
+            $statusVentile[$oid]=GetValue($child);
+            echo "$name ($child ) ";
+            echo (GetValue($child)?"Ein":"Aus");
+            echo "\n";
+            }
+        }
 
     $statusVentile=array();
     if ( (($configuration["ValveControl"])!==null) && (sizeof($configuration["ValveControl"])>0) )
         {
-        $oid = $configuration["ValveControl"]["KREIS".(string)($Count+1)];
-        $message="Ventil ".IPS_GetName($oid)." ($oid) auf ein.";
-        echo $message."\n";             
+        $maxValve=sizeof($configuration["ValveControl"]);
+        echo "Ventilstatus für $maxValve Ventile ermitteln:\n";
         foreach ($configuration["ValveControl"] as $oid)
             {
+            //$oid = $configuration["ValveControl"]["KREIS".(string)($id+1)];
+            $message="Ventil ".IPS_GetName($oid)." ($oid) auf ";
+            echo "    $message";             
             $childs = IPS_GetChildrenIDs($oid);
             //print_R($childs);
             foreach ($childs as $child) 
                 {
                 $name = IPS_GetName($child);
-                if ($name=="STATE") $statusVentile[$oid]=GetValue($child);
-                //echo "$child $name\n";
+                if ($name=="STATE") 
+                    {
+                    $statusVentile[$oid]=GetValue($child);
+                    echo "$name ($child ) ";
+                    echo (GetValue($child)?"Ein":"Aus");
+                    echo "\n";
+                    }
                 }
             }
-        print_r($statusVentile);
+        //print_r($statusVentile);
         }
     else echo "   Keine Ventile konfiguriert.\n";
 

@@ -121,6 +121,8 @@
 
     $ipsOps = new ipsOps();    
     $webOps = new webOps();                                     // Webfront Operationen
+    $profileOps = new profileOps();             // Profile verwalten, local geht auch remote
+
 	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
 
     if (isset($installedModules["Amis"]))
@@ -196,12 +198,16 @@
         $depotTableID           = CreateVariableByName($CategoryId_Finance,"DepotTable", 3, "~HTMLBox",false, 20);		// CreateVariable ($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
         $depotGraphID           = CreateVariableByName($CategoryId_Finance,"DepotGraph", 3, "~HTMLBox",false, 30);		// CreateVariable ($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
+        $vertiButtons=["Update","Calculate","Sort","TargetValues"];
+        $buttonIds = $webOps->createSelectButtons($vertiButtons,$CategoryId_Finance, $GuthabensteuerungID);
+        /*
         $profilName=$webOps->createButtonProfileByName("Update");
         $updateApiTableID          = CreateVariableByName($CategoryId_Finance,"Update", 1,$profilName,"",10,$GuthabensteuerungID);           // button profile is Integer
         $profilName=$webOps->createButtonProfileByName("Calculate");
         $calculateApiTableID          = CreateVariableByName($CategoryId_Finance,"Calculate", 1,$profilName,"",20,$GuthabensteuerungID);           // button profile is Integer
         $profilName=$webOps->createButtonProfileByName("Sort");
         $sortApiTableID          = CreateVariableByName($CategoryId_Finance,"Sort", 1,$profilName,"",30,$GuthabensteuerungID);           // button profile is Integer
+        */
         }
 
 /********************************************************
@@ -284,11 +290,13 @@
                 $SeleniumHtmlStatusID   = CreateVariableByName($CategoryId_Mode,"Status",          3, "~HTMLBox", "", 600);
                 $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
                 $nameID=["None"];
+                echo "Update Profile $pname with ".json_encode($nameID)."\n";
                 $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                 $updateChromedriverID          = CreateVariableByName($CategoryId_Mode,"UpdateChromeDriver", 1,$pname,"",120,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
                 $pname="StartStoppChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
                 $nameID=["Start","Stopp","Reset"];
+                echo "Update Profile $pname with ".json_encode($nameID)."\n";
                 $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                 $startstoppChromedriverID      = CreateVariableByName($CategoryId_Mode,"StartStoppChromeDriver", 1,$pname,"",200,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
@@ -301,15 +309,16 @@
                 $processDir=$dosOps->correctDirName($configWatchdog["WatchDogDirectory"]);
                 echo "Watchdog Directory : $processDir\n";            
                 }
-            $categoryDreiID = $seleniumOperations->getCategory("DREI");                
-            echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";  
 
+            //$categoryDreiID = $seleniumOperations->getCategory("DREI");                
+            //echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";  
             if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
                 {
                 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
                 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
                 IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
+                echo "\n";
                 echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
                 $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
                 $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
@@ -328,18 +337,19 @@
                     $dosOps->writeDirStat($selDir);                    // Ausgabe eines Verzeichnis 
                     $selDirContent = $dosOps->readdirToArray($selDir);                   // Inhalt Verzeichnis als Array
                     //print_R($selDirContent);
-                    $found = $dosOps->findfiles($selDirContent,"chromedriver-alt.exe");
+                    $found = $dosOps->findfiles($selDirContent,"chromedriver-alt.exe");                // true debug, wir suchen ein altes file mit dem minus als Trennzeichen zur Version nicht _
                     if ($found)
                         {
-                        echo "Altes chromedriver.exe gefunden. Loeschen \"".$found[0]."\"\n";   
+                        echo "Altes chromedriver-xxx.exe gefunden. Wegen Kompatibilität jetzt loeschen \"".$found[0]."\"\n";   
                         $dosOps->deleteFile($selDir.$found[0]);
                         }
                     $found = $dosOps->findfiles($selDirContent,"chromedriver.exe");
                     if ($found)
                         {
+                        echo "Datei chromedriver.exe gefunden. Versuche Version zu bestimmen.\n";   
                         $SeleniumUpdate = new SeleniumUpdate();
                         $tabs=$SeleniumUpdate->findTabsfromVersion($version, $actualVersion);
-
+                        echo "   Active Selenium version is $actualVersion . Latest version available $latestVersion \n";
                         SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
                         $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
                         $webOps->createActionProfileByName($pname,$tabs,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
@@ -351,9 +361,11 @@
             $getChromedriverID=false;   
             if ( (isset($GuthabenAllgConfig["Selenium"]["getChromeDriver"])) && ($GuthabenAllgConfig["Selenium"]["getChromeDriver"]) )
                 {
+                echo "\n";
                 echo "Chromedriver automatisch und manuell von Webpage laden.\n";
                 $pname="GetChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
                 $nameID=["Get"];
+                echo "Update Profile $pname with ".json_encode($nameID)."\n";
                 $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                 $getChromedriverID          = CreateVariableByName($CategoryId_Mode,"GetChromeDriver", 1,$pname,"",125,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 // vorhandene Versionen, Details über heruntergeladene Version hier speichern
@@ -392,21 +404,22 @@
                 $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
 
                 echo "Ergebnisse mit detaillierten Informationen über den Inhalt der Downloadpage abspeichern:\n";
-                print_r($result);
-
+                //foreach ($result as $nr => $entry) echo str_pad($nr,5).str_pad($entry["version"],25)."\n";          // url zweiter Parameter
+                //print_r($result);
+                $extraDebug=false;
                 foreach ($result as $version => $entry)
                     {
-                    echo "Wir beginnem mit Version $version.\n";
+                    echo "   Check Version ".str_pad($version,5).str_pad($entry["version"],25)."  ";
                     $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
-                    $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+                    if ($extraDebug) $dosOps->writeDirStat($dir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
                     $filename="chromedriver-win64.zip";
-                    $file = $dosOps->findfiles($files,$filename,true);       //Debug
+                    $file = $dosOps->findfiles($files,$filename,($extraDebug>1));       //Debug
                     if ($file) 
                         {
                         echo "    ---> delete file.\n";
                         $dosOps->deleteFile($dir.$filename);
                         }
-                    $file = $dosOps->findfiles($files,"chromedriver_$version.exe",true);       //Debug
+                    $file = $dosOps->findfiles($files,"chromedriver_$version.exe",($extraDebug>1));       //Debug
                     if ($file) 
                         {
                         echo "    --> File $version vorhanden.\n";
@@ -498,8 +511,8 @@
 	 *
 	 ************************************************************************/
 
-	createProfilesByName("Euro");
-	createProfilesByName("MByte");
+	$profileOps->createKnownProfilesByName("Euro");
+	$profileOps->createKnownProfilesByName("MByte");
 
 	/* Create Web Pages */
 
@@ -1025,19 +1038,29 @@
 
                             ),                // sonst wird Finance ein Category Pane und kein wie gewollt Splitpane
                     );
+            if ($buttonIds)                 // es wurden Buttons für die Linke Seite erstellt
+                {
+                $order=200;    
+                foreach ($buttonIds as $id => $button)
+                    {
+                    $order += 10;
+                    $webfront_links["Finance"]["Right"][$button["ID"]]["NAME"]=" ";
+                    $webfront_links["Finance"]["Right"][$button["ID"]]["ORDER"]=$order;
+                    $webfront_links["Finance"]["Right"][$button["ID"]]["ADMINISTRATOR"]=true;
+                    }
 
-            $webfront_links["Finance"]["Right"][$updateApiTableID]["NAME"]=" ";
-            $webfront_links["Finance"]["Right"][$updateApiTableID]["ORDER"]=200;
-            $webfront_links["Finance"]["Right"][$updateApiTableID]["ADMINISTRATOR"]=true;
+                /*  $webfront_links["Finance"]["Right"][$updateApiTableID]["NAME"]=" ";
+                    $webfront_links["Finance"]["Right"][$updateApiTableID]["ORDER"]=200;
+                    $webfront_links["Finance"]["Right"][$updateApiTableID]["ADMINISTRATOR"]=true;
 
-            $webfront_links["Finance"]["Right"][$calculateApiTableID]["NAME"]=" ";
-            $webfront_links["Finance"]["Right"][$calculateApiTableID]["ORDER"]=210;
-            $webfront_links["Finance"]["Right"][$calculateApiTableID]["ADMINISTRATOR"]=true;
+                    $webfront_links["Finance"]["Right"][$calculateApiTableID]["NAME"]=" ";
+                    $webfront_links["Finance"]["Right"][$calculateApiTableID]["ORDER"]=210;
+                    $webfront_links["Finance"]["Right"][$calculateApiTableID]["ADMINISTRATOR"]=true;
 
-            $webfront_links["Finance"]["Right"][$sortApiTableID]["NAME"]=" ";
-            $webfront_links["Finance"]["Right"][$sortApiTableID]["ORDER"]=220;
-            $webfront_links["Finance"]["Right"][$sortApiTableID]["ADMINISTRATOR"]=true;
-
+                    $webfront_links["Finance"]["Right"][$sortApiTableID]["NAME"]=" ";
+                    $webfront_links["Finance"]["Right"][$sortApiTableID]["ORDER"]=220;
+                    $webfront_links["Finance"]["Right"][$sortApiTableID]["ADMINISTRATOR"]=true;*/
+                }
             $webfront_links["Finance"]["Left"][$financeTableID]["NAME"]="FinanceTable";
             $webfront_links["Finance"]["Left"][$financeTableID]["ORDER"]=200;
             $webfront_links["Finance"]["Left"][$financeTableID]["ADMINISTRATOR"]=true;

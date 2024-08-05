@@ -2043,6 +2043,15 @@
 
         protected $data=array();
 
+        /* format time to make zamg request
+         */
+        protected function formatTimeStamp($timeStamp)
+            {
+            if (is_string($timeStamp)) $timeStamp=strtotime($timeStamp);
+            $time = date("Y-m-d\TH:i:s.000\Z",$timeStamp);
+            return($time);
+            }
+
         /* zamgApi::getDataZamgApi
          * stores as data in class, analysis takes place in other functions
          *
@@ -2057,9 +2066,9 @@
             {
             if ($debug) echo "getDataZamgApi(\n";
             $this->modul=$modul;
-            if (isset($config["StartTime"])) $start = "&start=".date("Y-m-d\TH:i:s.000\Z",$config["StartTime"]);
+            if (isset($config["StartTime"])) $start = "&start=".$this->formatTimeStamp($config["StartTime"]);           //keine blanks im request
             else $start = "&start=2022-01-01T00:00:00.000Z";
-            if (isset($config["EndTime"]))   $end =   "&end=".date("Y-m-d\TH:i:s.000\Z",$config["EndTime"]);
+            if (isset($config["EndTime"]))   $end =   "&end   = ".$this->formatTimeStamp($config["EndTime"]);
             else $end =   "&end=".date("Y-m-d\TH:i:s.000\Z");
             if (isset($config["Dif"])) $dif=$config["Dif"]; else $dif=0.07;
             if (isset($config["Pos"])) $bbox=$this->bbox($config["Pos"],$dif);
@@ -2094,7 +2103,7 @@
         private function bbox($pos,$dif=0.007)
             {
             $lat1=false; $lng1=false; $lat2=false; $lng2=false;
-
+            //print_r($pos);
             foreach ($pos as $index => $entry)  
                 {
                 $lat=round($entry["north"],2);
@@ -2129,7 +2138,7 @@
             return ($bbox);
             }
 
-        /* when grid da ist fetched, it is possible to find the index of the grid based data near our pos
+        /* when grid data is fetched, it is possible to find the index of the grid based data near our pos
          * pos1 data are north, east, name per each site, expanded with length to each grid parameter, as index of grid parameter
          * data about available positions  in class is analysed, index is [features,]
          *

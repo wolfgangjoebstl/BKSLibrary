@@ -93,7 +93,8 @@
     IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
     IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
-    $debug=false;               // weniger Informationen im Echo erhöhen die Übersichtlichkeit
+    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren wenn im Attended Mode
+	else $debug=false;
 
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();

@@ -1070,6 +1070,7 @@ class SeleniumYahooFin extends SeleniumHandler
     private $duetime,$retries;              //für retry timer
     private $symbols,$index;                       // die auf Finance abufragenden Symbole
     protected $debug;
+    public $archiveOps;                     // class speichert die Daten, daher public
 
     /* Initialisierung der Register die für die Ablaufsteuerung zuständig sind
      */
@@ -1084,6 +1085,8 @@ class SeleniumYahooFin extends SeleniumHandler
         $this->CategoryIdDataYahooFin = IPS_GetObjectIdByName("YAHOOFIN",$this->CategoryIdData);        
         $this->IndexToSymbols = CreateVariableByName($this->CategoryIdDataYahooFin,"IndexToSymbols",1);        
         $this->index=0;             // fängt immer mit Null an
+
+        $this->archiveOps=new archiveOps();
         }
 
     function getResultCategory()
@@ -1241,13 +1244,13 @@ class SeleniumYahooFin extends SeleniumHandler
 
     /* YAHOOFIN, alle Werte aus der Kategorie lesen 
      * die ermittelten Werte als Array speichern, Basis sind die, die in getErgebnis stehen
-     *
+     * die Category Result heisst YAHOOFIN, dort die Variable mit name suchen. Darin stehen als archivierte Objekte diie ShortNames
      */
 
     function getResult($name="TargetValue", $debug=false)
         {
         $result=array();
-        $archiveOps=new archiveOps();
+        //$archiveOps=new archiveOps();
         $categoryIdResult = $this->getResultCategory();
         if ($debug) echo "seleniumYahooFin::getResult, get the target values with name \"$name\" from $categoryIdResult and write them to an array.\n";
     
@@ -1263,15 +1266,21 @@ class SeleniumYahooFin extends SeleniumHandler
 
         // Ergebnis erstellen und ausgeben, verwendet this->symbols
         $ergebnis=array();
-        foreach ($this->getErgebnis($debug) as $index => $entry)
+        foreach ($this->getErgebnis($debug&&false) as $index => $entry)
             {
-            if ($debug) echo $index."  ";
+            if ($debug) echo str_pad($index,3)."  ";                                            // laufende Nummer
             if ( (isset($entry["Short"])) && (isset($entry["Index"])) ) 
                 {
-                if ($debug) echo $entry["Short"]."   ".$entry["Index"]."\n";
+                if ($debug) echo str_pad($entry["Short"],12)."   ".str_pad($entry["Index"],20)."  ";
                 $ergebnis[$entry["Index"]]["Short"]=$entry["Short"];
-                if (isset($result[$entry["Short"]])) $ergebnis[$entry["Index"]]["Target"] = $result[$entry["Short"]];
+                if (isset($result[$entry["Short"]])) 
+                    {
+                    $ergebnis[$entry["Index"]]["Target"] = $result[$entry["Short"]];
+                    if ($debug) echo $result[$entry["Short"]];
+                    }
+                if ($debug) echo "\n";
                 }
+            elseif ($debug) echo "not known \n";
             //print_R($entry);
             }
         return ($ergebnis);
@@ -1280,13 +1289,15 @@ class SeleniumYahooFin extends SeleniumHandler
     /* YAHOOFIN, alle Werte aus der Kategorie lesen, die ermittelten Werte als Array speichern
      * debug und configParameter durchreichen für getValues
      * auch target Values brauchen die Split Bearbeitung in GetValues
+     *
+     * für Debug von einer bestimmten Aktie gibt es ein debugTarget
      */
 
     function getResultHistory($name="TargetValue", $config=array(), $debug=false)
         {
         $result=array();
-        $archiveOps=new archiveOps();
-        $archiveID = $archiveOps->getArchiveID();
+        //$archiveOps=new archiveOps();
+        $archiveID = $this->archiveOps->getArchiveID();
         $seleniumEasycharts = new SeleniumEasycharts();
         $categoryIdResult = $this->getResultCategory();
 
@@ -1305,15 +1316,17 @@ class SeleniumYahooFin extends SeleniumHandler
             }
     
         $configGetV=array();
+        if (isset($config["StartTime"])) $configGetV["StartTime"]  = $config["StartTime"];               // 1 jahr zurück reicht wahrscheinlich
+        if (isset($config["Aggregated"])) $configGetV["Aggregated"]  = $config["Aggregated"];               // vorzugsweise monthly
         $configGetV["manAggregate"]  = false;      // sonst tägliche Aggregation mit unerwartetem Ausgang
         if (isset($config["Interpolate"])) $configGetV["Interpolate"]   = $config["Interpolate"];
         $parent = IPS_GetObjectIdByName($name,$categoryIdResult);         // kein Identifier, darf in einer Ebene nicht gleich sein
         $childrens = IPS_GetChildrenIDs($parent);
         foreach($childrens as $children)
             {
+            $short=IPS_GetName($children);
             if (isset($config["Split"]))
                 {
-                $short=IPS_GetName($children);
                 //echo "Look for Split of $children ($short).";              // Targetnaming is Short, need Index
                 if (isset($config["Split"][$short])) 
                     {
@@ -1324,9 +1337,10 @@ class SeleniumYahooFin extends SeleniumHandler
                 //$split = $seleniumEasycharts->getSplitfromOid($children);                   // sucht die OID in den Depot Configurations, targets sind aber nicht im Depotconfig
                 }    
             $status = AC_GetLoggingStatus($archiveID,$children);
-            echo "getValues für $children (".IPS_GetName($children).") mit Status ".($status?"Logged":"NoLog")." aufrufen:\n";
-            if ($children==$debugTarget) $ergebnis = $archiveOps->getValues($children,$configGetV,5);                                   // 5 analysiert die Mittelwertbildung
-            else $ergebnis = $archiveOps->getValues($children,$configGetV,$debug);                 // true mit Debug    
+            echo "getValues für $children ($short) mit Status ".($status?"Logged":"NoLog")." aufrufen:\n";
+            $configGetV["OIdtoStore"]=$short;
+            if ($children==$debugTarget) $ergebnis = $this->archiveOps->getValues($children,$configGetV,5);                                   // 5 analysiert die Mittelwertbildung
+            else $ergebnis = $this->archiveOps->getValues($children,$configGetV,$debug);                 // true mit Debug    
             //$result[IPS_GetName($children)]["Actual"]=GetValue($children);
             //$result[IPS_GetName($children)]["History"]=$ergebnis;
             $result[IPS_GetName($children)]=$ergebnis;
@@ -1433,6 +1447,10 @@ class SeleniumYahooFin extends SeleniumHandler
      * index ist die interene Steuerung der Aktivitäten je Short
      * num ausgelesen von IndextoSymbols gibt das aktuelle Short aus der Tabelle vor
      *
+     *      pressConsentButton
+     *      goToShareLink
+     *      getJahresKursziel     
+     *     
      */
     public function runAutomatic($step=0)
         {
@@ -5177,22 +5195,38 @@ class SeleniumEasychartModul extends SeleniumHandler
     /* evaluate Depotbook verwendet Kosten und Stueck um den Wert des Depots zu berechnen
      * calcOrderbook nicht mehr notwendig, es gibt bereits Stueck und Kosten
      * createDepotBook wird vorher aufgerufen und generiert das depotbook
-     * Depotbook wird um zusätzliche Daten erweitert
+     * bereits verkaufte Aktien werden daher in dieser Aufstellung nicht berücksichtigt
+     *
+     * Input:
+     *      Depotbook wird um zusätzliche Daten erweitert
+     *      Werte der shares über den Zeitverlauf, Aktienkurse
+     *      Config über Ausgestaltung der Funktion
+     *
+     * Berechnungsschritte und Ausgaben
+     *
+     *      failure werden nicht ausgegeben
+     *      $depotbook["Value"]=$resultValues;   index ist Date "ymd", columns are TimeStamp, Value and ID
+     *      $depotbook["Table"]=$depotTable;
      *
      */
 
-    public function evaluateDepotBook(&$depotbook,$resultShares, $debug=false)
+    public function evaluateDepotBook(&$depotbook,$resultShares, $config=false, $debug=false)
         {
+        $showdepottable=false;
+        $showtimetable=false;           // schöne Zeitreihe über die Enwticklung des Depots
+        $budget=200000;
         $spend=0; $actual=0;
-        if ($debug)
+        if ($debug>1)
             {
             echo "\n";
             echo "evaluateDepotBook, es gibt ".count($depotbook)." Einträge:\n";
             }
         $countMax=false;
 
-        /* die Depotwerte zu jedem Zeitpunkt berechnen, Grundgerüst anlegen und vorhandene Werte auswerten */
-        echo "Grundgeruest anlegen:\n";
+        /* Depotbook durchgehen, die Depotwerte zu jedem Zeitpunkt berechnen, Grundgerüst anlegen und vorhandene Werte auswerten 
+         * anlegen von resultValues und valuebook
+         */
+        if ($debug) echo "evaluateDepotBook aufgerufen, jetzt Grundgeruest anlegen:\n";
         $valuebook=array();
         $failures=array();
         $resultValues=array();
@@ -5234,12 +5268,13 @@ class SeleniumEasychartModul extends SeleniumHandler
         //echo "\n";
 
         /* Tabelle Darstellung in depotTable damit auch als html angezeigt werden kann
-         * Werte vom depotbook werden nur übernommen wenne s einen Kurs in resultshares gibt
+         * Werte vom depotbook werden nur übernommen wenn es einen Kurs in resultshares gibt
+         * erzeugt depotTable, mit laufender zeilennummerierung, Spalten ID Name priceBuy cost pcs priceactual timestamp change value
          */
-        echo "Tabelle berechnen:\n";
+        if ($debug) echo "Tabelle berechnen:\n";
         $knownValues=array();
         $depotTable=array();
-        if ($debug) echo str_pad("",130)."|           Geld         Geld Acc         Wert         Wert Acc\n";
+        if ($showdepottable) echo str_pad("",130)."|           Geld         Geld Acc         Wert         Wert Acc\n";
         $row=0;
         foreach ($depotbook as $id => $book)
             {
@@ -5247,17 +5282,17 @@ class SeleniumEasychartModul extends SeleniumHandler
             if (isset($resultShares[$id]))              // wenn nicht mehr im actualDepot keine Ausgabe
                 {
                 $depotTable[$row]["ID"]=$id;
-                if ($debug)echo str_pad($id,15);
+                if ($showdepottable) echo str_pad($id,15);
                 if (isset($resultShares[$id]["Info"]["Name"]))  
                     {
                     $depotTable[$row]["Name"]=$resultShares[$id]["Info"]["Name"];   
-                    if ($debug)
+                    if ($showdepottable)
                         {
                         echo str_pad($resultShares[$id]["Info"]["Name"],50);
                         echo str_pad($resultShares[$id]["Description"]["Count"],6, " ", STR_PAD_LEFT)." ";
                         }
                     }
-                elseif ($debug)  echo str_pad("",57);
+                elseif ($showdepottable)  echo str_pad("",57);
                     
                 //print_R($book);
                 if ($book["Stueck"]>0)                // unwahrscheinlich, dass keine Stueck hier vorkommen
@@ -5266,7 +5301,7 @@ class SeleniumEasychartModul extends SeleniumHandler
                     $depotTable[$row]["priceBuy"]=$kursKauf;
                     $depotTable[$row]["cost"]=$book["Kosten"];
                     $depotTable[$row]["pcs"]=$book["Stueck"];
-                    if ($debug) echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT);        
+                    if ($showdepottable) echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT);        
                     if (isset($resultShares[$id]["Info"]["Name"])) $depotbook[$id]["Name"]=$resultShares[$id]["Info"]["Name"];
                     }
                 else 
@@ -5274,6 +5309,7 @@ class SeleniumEasychartModul extends SeleniumHandler
                     echo "evaluateDepotBook, Fehler Depotbook ist leer für $id\n";
                     }
                 $spend += $book["Kosten"]; 
+                $budget -= $book["Kosten"];
                 if (isset($resultShares[$id]["Description"]["Latest"])) 
                     {
                     $latest = $resultShares[$id]["Description"]["Latest"]["Value"];
@@ -5287,12 +5323,15 @@ class SeleniumEasychartModul extends SeleniumHandler
                         $depotTable[$row]["priceActualTimeStamp"]=$resultShares[$id]["Description"]["Latest"]["TimeStamp"];
                         $depotTable[$row]["change"]=($latest/$kursKauf-1);
                         $depotTable[$row]["value"]=$latest*$book["Stueck"];
-                        echo "->";
-                        echo str_pad(nf($latest,"€"),16, " ", STR_PAD_LEFT)." (".date("d.m.Y H:i:s",$resultShares[$id]["Description"]["Latest"]["TimeStamp"]).") ";
-                        echo "  ".str_pad(nf(($latest/$kursKauf-1)*100,"%"),10, " ", STR_PAD_LEFT);
-                        echo str_pad(nf($book["Kosten"],"€"),16, " ", STR_PAD_LEFT).str_pad(nf($spend,"€"),16, " ", STR_PAD_LEFT);
-                        echo str_pad(nf($latest*$book["Stueck"],"€"),16, " ", STR_PAD_LEFT).str_pad(nf($actual,"€"),16, " ", STR_PAD_LEFT);
-                        echo "\n";
+                        if ($showdepottable)
+                            {
+                            echo "->";
+                            echo str_pad(nf($latest,"€"),16, " ", STR_PAD_LEFT)." (".date("d.m.Y H:i:s",$resultShares[$id]["Description"]["Latest"]["TimeStamp"]).") ";
+                            echo "  ".str_pad(nf(($latest/$kursKauf-1)*100,"%"),10, " ", STR_PAD_LEFT);
+                            echo str_pad(nf($book["Kosten"],"€"),16, " ", STR_PAD_LEFT).str_pad(nf($spend,"€"),16, " ", STR_PAD_LEFT);
+                            echo str_pad(nf($latest*$book["Stueck"],"€"),16, " ", STR_PAD_LEFT).str_pad(nf($actual,"€"),16, " ", STR_PAD_LEFT);
+                            echo "\n";
+                            }
                         }
                     }
                 else 
@@ -5312,9 +5351,9 @@ class SeleniumEasychartModul extends SeleniumHandler
                 }
             else echo "evaluateDepotBook, Fehler Eintrag in Depotbook aber nicht in resultshares.\n";
             }
-        if ($debug) 
+        //if ($debug)           // wir brauchen ein verrechnungskonto für Erlöse, werden jetzt nicht berücksichtigt
             {
-            echo "Gesamtergebnis Depot ist Kosten ".nf($spend,"€")." und Wert ".nf($actual,"€")."\n";
+            echo "Gesamtergebnis Depot ist vom Budget ".nf($budget,"€")." mit den Kosten ".nf($spend,"€")." ein Wert von ".nf($actual,"€")."\n";
             }
 
         /* wir fangen mit dem ältesten Datum an und arbeiten uns in die Gegenwart, 
@@ -5323,17 +5362,17 @@ class SeleniumEasychartModul extends SeleniumHandler
          * ab und zu fehlen Einträge, diese sollten vorher vervollständigt werden, hier werden bereits bekannte werte als knownValues geführt
          * knownValues sind die latestWerte ausser sie wurden berits einmal erkannt
          */  
-        echo "Deoptbook Wert zeitlicher Verlauf:\n";
-        echo "Index      ";
+        if ($debug) echo "Deoptbook Wert zeitlicher Verlauf:\n";
+        if ($showtimetable) echo "Index      ";
         foreach ($depotbook as $id => $book)
             {
-            if ($book["Stueck"]>0)  echo str_pad($book["Name"],22);                
+            if ($book["Stueck"]>0) { if ($showtimetable) echo str_pad($book["Name"],22);  }              
             }
-        echo "\n";
+        if ($showtimetable) echo "\n";
         $once=false;            // false, keinen Verlauf ausgeben
         foreach ($resultValues as $indexTimeDay => $entry)
             {
-            echo $indexTimeDay."   ";
+            if ($showtimetable) echo $indexTimeDay."   ";
             foreach ($depotbook as $id => $book)
                 {
                 if ($book["Stueck"]>0) 
@@ -5354,10 +5393,10 @@ class SeleniumEasychartModul extends SeleniumHandler
                         if (isset($failure[$indexTimeDay]["ID"]["Missing"])) $failure[$indexTimeDay]["ID"]["Missing"] .= " ".$id;
                         else $failure[$indexTimeDay]["ID"]["Missing"] = $id;                        
                         }
-                    echo str_pad(nf($wert,""),22);
+                    if ($showtimetable) echo str_pad(nf($wert,""),22);
                     }
                 }
-            echo nf($resultValues[$indexTimeDay]["Value"],"")."\n";
+            if ($showtimetable) echo nf($resultValues[$indexTimeDay]["Value"],"")."\n";
             }
         ksort($failure);
         //if ($debug) print_R($failure);
