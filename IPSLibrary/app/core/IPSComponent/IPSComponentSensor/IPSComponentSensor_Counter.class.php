@@ -144,7 +144,9 @@
 		 * @public
 		 *
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
-		 * an das entsprechende Module zu leiten.
+		 * an das entsprechende Module zu leiten. Damit landet variableId und der neue Wert hier.
+         * Danach wird der Wert verspeichert und geloggt. Das geht auch Remote auf weiteren Servern.
+         *
 		 *
 		 * @param integer $variable ID der auslösenden Variable
 		 * @param string $value Wert der Variable
@@ -155,36 +157,10 @@
 			echo "IPSComponentSensor_Counter:HandleEvent, Counter Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			//IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
-			$debug=true;
+			$debug=false;
 			$log=new Counter_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben
 			$result=$log->Counter_LogValue($value, $debug);
             $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID,$debug);   
-
-			/*if ($this->RemoteOID != Null)
-				{
-				//print_r($this);
-				//print_r($module);
-				//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-				$params= explode(';', $this->RemoteOID);
-				//print_r($params);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-					if (count($para)==2)
-						{
-						$Server=$this->remServer[$para[0]]["Url"];
-						if ($this->remServer[$para[0]]["Status"]==true)
-							{
-							//echo "Server : ".$Server."\n";
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Remote OID: ".$roid."\n";
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}*/
 			}
 
 		/**
@@ -208,7 +184,10 @@
 	 * legt dazu zwei Kategorien im eigenen data Verzeichnis ab
 	 * Counter_Auswertung und Counter_Nachrichten
 	 *
-	 * In der Kategorie Auswertung wird ein Spiegelregister und Bearbeitungsregister für einen kontinuierlichen Anstieg des Counterwertes angelegt
+	 * In der Kategorie Auswertung wird ein Spiegelregister variableLogId mit der Differenz abgelegt 
+     * wenn ein Counter als Input, dann wird die Differenz zum Vorwert in CounterLogId berechnet
+     *
+     * Der Counter selbst wird nicht mehr gespeichert, Kompensation für einen kontinuierlichen Anstieg des Counterwertes zu kompliziert.
 	 * in Offset_Name werden Differenzen zwischen den gelesenen Registerwerten zB bei Spannungsausfall kompensiert
 	 * in Name_Counter steht der aktuelle Wert inklusive Offset
      *
@@ -266,7 +245,7 @@
 
             $dosOps= new dosOps();
             //$this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
-			echo "Construct IPSComponentSensor Counter Logging for Variable ID : ".$variable." with Config ".json_encode($this->configuration)."\n";
+			if ($this->debug) echo "Construct IPSComponentSensor Counter Logging for Variable ID : ".$variable." with Config ".json_encode($this->configuration)."\n";
 			
 			/****************** Variablennamen herausfinden und/oder berechnen 
 			$this->variable=$variable;
@@ -359,8 +338,8 @@
          *  Zusätzlich wird benötigt:
          *
          *  counterLogID        iD vom Spiegelregister als Float, $variablename."_Counter"
-         *  counter2LogID
-         *  counterOffsetLogID
+         *  counter2LogID       nicht benutzt
+         *  counterOffsetLogID  wird jedesmal wenn diff negativ ist erhöht, sonst keine Funktion
          *
          **************/
 
@@ -394,7 +373,7 @@
                         }
                     else            // wirklich ein Counter der nach oben zählt
                         {
-                        $value = $value+GetValue($this->counterOffsetLogID);            // Offset dazuzählen damit Stromausfälle und Resets berücksichtigt werden können
+                        //$value = $value+GetValue($this->counterOffsetLogID);            // Offset dazuzählen damit Stromausfälle und Resets berücksichtigt werden können
                         $diff=$value-GetValue($this->counterLogID);
                         if ($debug)                 // im Debug Mode falsche Werte einschleusen
                             {
@@ -434,8 +413,8 @@
 					}
 				else
 					{
-					//SetValue($this->counterOffsetLogID,GetValue($this->counterOffsetLogID)-$diff);
-                    SetValue($this->counterOffsetLogID,-$diff);
+					SetValue($this->counterOffsetLogID,GetValue($this->counterOffsetLogID)-$diff);
+                    //SetValue($this->counterOffsetLogID,-$diff);
 					}						
                 
                 /*$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);

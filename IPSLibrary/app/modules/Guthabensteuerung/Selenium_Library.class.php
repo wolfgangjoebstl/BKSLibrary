@@ -66,7 +66,7 @@ require_once(IPS_GetKernelDir().'scripts\vendor\autoload.php');
  * readFailure
  * updateHandles        schreibt $handle in die class 
  * analyseFailure
- * initHost
+ * initHost             ein Chrome Webdriver Fenster aufmachen
  * getHost
  * updateUrl
  * getUrl
@@ -114,7 +114,8 @@ class SeleniumHandler
 
         }
 
-    /* Typische Konfiguration, die übergeben wird und in jeder Klasse gespeichert werden:
+    /* SeleniumHandler::setConfiguration
+     * Typische Konfiguration, die übergeben wird und in jeder Klasse gespeichert werden:
         "DREI"       =>  array (
         "URL"       => "www.drei.at",
         "CLASS"     => "SeleniumDrei",
@@ -129,18 +130,143 @@ class SeleniumHandler
         $this->configuration = $configuration;
         }
 
+    /* SeleniumHandler::getConfiguration
+     * liest die Koniguration
+     */
     public function getConfiguration()
         {
         return($this->configuration);
         }
 
-    /* InputCsv unterstützen
+
+    /* SeleniumHandler::getInputJsonFiles 
+     *      Dir anhand der Config.InputDir bestimmen
+     *      filename anhand der Config.InputFile bestimmen
+     *
+     *
+     * Input ist config aus inputJson, Beispielroutine    
+            $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+            foreach ($config as $host => $entry)     {
+                switch (strtoupper($host))        {
+                    case "YAHOOFIN"
+                        ->getInputJsonFiles($entry["INPUTJSON"])
+     */
+    function getInputJsonFiles($config,$debug=false)
+        {
+        if ($debug) echo "getInputJsonFiles(".json_encode($config)."\n";
+        $dosOps = new dosOps();
+        $archiveOps = new archiveOps();
+        if ( ($inputDir = $this->getDirInputJson($config,$debug))===false) return(false);                        //Input Verzeichnis suchen 
+        if ( ($filesToRead = $this->getFilesInputJson($config,$debug))===false) return (false);
+
+        if ($debug) echo "    Files to Read from : ".json_encode($filesToRead)."<br>";
+
+        if (false)
+            {
+            $config=$archiveOps->setConfigForAddValues($config);           //parse config file, done twice, also in readFileCsv
+            $indexCols=$config["Index"];
+            $debug1=false;
+            $fileinfo = $dosOps->writeDirToArray($inputDir, $filesToRead); 
+            //print_R($fileinfo);                                                     // das sind nur die Filenamen und Directories
+            //$files = $fileinfo;                     // files wird von readFileCsv ergänzt um Einzelwerte
+            foreach ($filesToRead as $file)
+                {
+                $result=array();                                // keine Summe aus allen Dateien machen, sondern Datei für Datei auswerten, daher vorher immer init
+                $dateityp=@filetype( $inputDir.$file );     
+                if ($debug) echo "    Check $dateityp $inputDir$file \n";
+                if ($dateityp == "file")
+                    {
+                    $index=false;
+                    foreach ($fileinfo as $index => $entry) 
+                        {
+                        if (isset($entry["Filename"]))
+                            {
+                            if ($entry["Filename"] == $file) break;     
+                            }
+                        else echo "No Filename as index where we can add information : ".json_encode($entry)."\n";
+                        }
+                    if ($debug) echo "    Filename $file als $index gefunden.\n";               
+                    $fileOps = new fileOps($inputDir.$file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
+                    //$index=[];                            // erste Zeile als Index übernehmen
+                    //$index=["Date","Time","Value"];         // Date und Time werden gemerged
+                    //if (isset($config$index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
+                    //$index=["DateTime","Value","Estimate","Dummy"];
+                                                // Ergebnis
+                    //if ($debug1) echo "readFileCsv mit Config ".json_encode($config)." und Index ".json_encode($indexCols)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
+                    $status = $fileOps->readFileCsv($result,$config,$indexCols,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
+                    //print_r($fileOps->analyze);
+                    //print_R($status);
+                    //echo "-----------\n";  print_r($status["columns"]);
+                    $firstDate = array_key_first($status["lines"]);
+                    $lastDate  = array_key_last ($status["lines"]);
+                    $periode = $lastDate-$firstDate;
+                    $count=sizeof($status["lines"]);
+                    $interval=$periode/($count-1);
+                    if ($debug) echo "beinhaltet $count Werte von ".date("d.m.Y H:i",$firstDate)." bis ".date("d.m.Y H:i",$lastDate)." , Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." \n";
+                    $fileinfo[$index]["Count"] = $count;
+                    $fileinfo[$index]["FirstDate"] = $firstDate;
+                    $fileinfo[$index]["LastDate"]  = $lastDate;
+                    $fileinfo[$index]["Periode"]  = $periode;
+                    $fileinfo[$index]["Interval"]  = $interval;
+                    $fileinfo[$index]["Analyze"]  = $fileOps->analyze;
+                    }
+                }
+            }
+        return ($fileinfo);
+        }
+
+    /* SeleniumHandler::getFilesInputJson
+     * filenamen anhand der Config.InputFile bestimmen, arbeitet als Filter auf die Dateien die im Verzeichnis gespeichert sind
+     */
+    function getFilesInputJson($config,$debug=false)
+        {
+        if ($debug) echo "getFilesInputJson(".json_encode($config)."\n";
+        $dosOps = new dosOps();
+        if ($inputDir = $this->getDirInputJson($config,$debug))                        //Input Verzeichnis suchen 
+            {
+            if ($debug) 
+                {
+                echo "Look for Input files in ";
+                $dosOps->writeDirStat($inputDir);                    // Ausgabe eines Verzeichnis   
+                }
+            $files=$dosOps->readdirToArray($inputDir);                                      
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
+        if (isset($config["InputFile"]))
+            {
+            $filename=$config["InputFile"];
+            if ($debug) echo "Input Filename is \"$filename\".\n";
+            $filesToRead = $dosOps->findfiles($files,$filename,false);           // true für Debug
+            if ($filesToRead==false) return (false);
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt       
+        return ($filesToRead);
+        }
+
+    /* SeleniumHandler::getDirInputJson
+     * Dir anhand der Config.InputDir bestimmen
+     */
+    function getDirInputJson($config,$debug=false)
+        {
+        if ($debug) echo "getDirInputJson(".json_encode($config)."\n";
+        $dosOps = new dosOps();
+        if (isset($config["InputDir"]))                        //Input Verzeichnis suchen 
+            {
+            $inputDir=$config["InputDir"];
+            $verzeichnis=$dosOps->getWorkDirectory();
+            return ($dosOps->correctDirName($verzeichnis.$inputDir));          // richtiges Abschlusszeichen / oder \
+            }
+        else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
+        }
+
+    /* SeleniumHandler::getInputCsvFiles 
+     * InputCsv unterstützen
      * Input ist config aus inputCsv, Beispielroutine    
-     $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
-     foreach ($config as $host => $entry)     {
-        switch (strtoupper($host))        {
-            case "LOGWIEN"
-                ->getInputCsvFiles($entry["INPUTCSV"])
+            $config = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+            foreach ($config as $host => $entry)     {
+                switch (strtoupper($host))        {
+                    case "LOGWIEN"
+                        ->getInputCsvFiles($entry["INPUTCSV"])
      */
     function getInputCsvFiles($config,$debug=false)
         {
@@ -201,7 +327,9 @@ class SeleniumHandler
             }
         return ($fileinfo);
         }
-    /* files anhand der Config bestimmen
+
+    /* SeleniumHandler::getFilesInputCsv
+     * files anhand der Config bestimmen
      */
     function getFilesInputCsv($config,$debug=false)
         {
@@ -228,7 +356,8 @@ class SeleniumHandler
         return ($filesToRead);
         }
 
-    /* Dir anhand der Config bestimmen
+    /* SeleniumHandler::getDirInputCsv
+     * Dir anhand der Config bestimmen
      */
     function getDirInputCsv($config,$debug=false)
         {
@@ -243,7 +372,8 @@ class SeleniumHandler
         else return (false);         // nicht weitermachen wenn diser Input Parameter fehlt                    
         }
 
-    /* TargetId anhand der Config bestimmen
+    /* SeleniumHandler::getTargetIdInputCsv
+     * TargetId anhand der Config bestimmen
      */
     function getTargetIdInputCsv($config,$debug=false)
         {
@@ -265,7 +395,8 @@ class SeleniumHandler
         return($oid);
         }
 
-    /* handle ist gespeichert mit Index als webIndex und der Wert dem kurzen Namen, dem iodentifier, Tab
+    /* SeleniumHandler::syncHandles   handles for tabs
+     * handle ist gespeichert mit Index als webIndex und der Wert dem kurzen Namen, dem iodentifier, Tab
      */
 
     function syncHandles($handles, $debug=false)
@@ -281,30 +412,25 @@ class SeleniumHandler
         return($result);
         }
 
-    /* feststellen ob ein key bereits als Tab verwendet wird */
-
+    /* SeleniumHandler::isTab   handles for tabs
+     * feststellen ob ein key bereits als Tab verwendet wird 
+     */
     function isTab($tab)
         {
         if ($this->handle)
             {            
             foreach ($this->handle as $key => $entry)    // index ist 0...x
                 {
+                echo "    compare $entry with $tab to return $key.\n";
                 if ($entry == $tab) return($key);
                 }
             }
         return(false);
         }
 
-
-    /* einen abgespeicherten Fehler vollständig auslesen */
-
-    function readFailure()
-        {
-        return($this->failure);
-        }
-
-    /* schreibt $handle in die class */
-
+    /* SeleniumHandler::updateHandles      handles for tabs
+     * schreibt $handle in die class 
+     */
     function updateHandles($handle, $debug=false)
         {
         if ($debug) echo "updateHandles, with basic check of validity: $handle\n";
@@ -332,10 +458,17 @@ class SeleniumHandler
             }
         }
 
-    /* initHost und andere try catch Fehlermeldungen von Selenium analysieren und in eine leserliche Form bringen
-     *
+    /* SeleniumHandler::readFailure
+     * einen abgespeicherten Fehler vollständig auslesen 
      */
+    function readFailure()
+        {
+        return($this->failure);
+        }
 
+    /* SeleniumHandler::analyseFailure
+     * initHost und andere try catch Fehlermeldungen von Selenium analysieren und in eine leserliche Form bringen
+     */
     function analyseFailure($failure,$debug=false)
         {
         $this->failure = $failure;
@@ -357,10 +490,17 @@ class SeleniumHandler
         return($failureShort);
         }
 
-    /* $hostIP      'http://10.0.0.34:4444/wd/hub'
+    /* SeleniumHandler::initHost
+     *
+     * verwendet RemoteWebDriver::create für eine neue Chrome/Firefox Instanz
+     * verwendet RemoteWebDriver::createBySessionID für ein neues Tab
+     *
+     * $hostIP      'http://10.0.0.34:4444/wd/hub'
      * browser   Chrome
      *
      * es wird eine SessionID übergeben, das ist aber nur die ID der Variable die die SessionID beinhaltet
+     * wenn bei Session ein Fehler dann noch einmal ohne Sesion probieren
+     *
      * webDriver ist static und steht allen übergeordneten classes zur Verfügung
      * 
      */
@@ -368,7 +508,13 @@ class SeleniumHandler
         {
         $result=array();
         if ($this->active===false) return;
-        if ( (strtoupper($browser))=="CHROME") $capabilities = DesiredCapabilities::chrome();
+        if ( (strtoupper($browser))=="CHROME") 
+            {
+            $options = new ChromeOptions();
+            $options->addArguments(array('--disable-search-engine-choice-screen'));
+            $capabilities = DesiredCapabilities::chrome();
+            $capabilities->setCapability(ChromeOptions::CAPABILITY, $options);
+            }
         if ($sessionID && (GetValue($sessionID)!="") )
             {
             $session=GetValue($sessionID);
@@ -441,7 +587,9 @@ class SeleniumHandler
         return($this->syncHandles(static::$webDriver->getWindowHandles()));
         }
 
-    /* eine Webseite als Tab öffnen, 
+    /* SeleniumHandler::getHost  verwendet webDriver
+     *
+     * eine Webseite als Tab öffnen, 
      * zur Wiedererkennung von bereits geöffneten Tabs gibt es einen Index (einfacher Name)
      * Intern in der class gespeichert ist im array handle eine Tabelle mit handle => tab index
      * wenn der tab index bereits bekannt ist wird zum Handle gesprungen.
@@ -457,11 +605,12 @@ class SeleniumHandler
         //print_R($this->handle);
         if  ($tab !== false) 
             {
-            $tabHandle=$this->isTab($tab); 
+            $tabHandle=$this->isTab($tab);          // vergleicht array handle
             if ($tabHandle)
                 {
                 if ($debug) echo "Handle für $host schon bekannt, switchTo $tab ($tabHandle).\n";
                 static::$webDriver->switchTo()->window($tabHandle);
+                echo "->done.\n";
                 }
             else
                 {
@@ -502,8 +651,9 @@ class SeleniumHandler
         return ($tabHandle);
         }
 
-    /* wenn bereits richtiger Tab, dann nur Url updaten */
-
+    /* updateUrl 
+     * wenn bereits richtiger Tab, dann nur Url updaten 
+     */
     function updateUrl($url,$debug=false)
         {
         $url = $this->checkUrl($url);
@@ -775,7 +925,6 @@ class SeleniumHandler
      * false DIV :
      * <div style="width: 608px">
      */
-
     function analyseHtml($page,$displayMode=false,$commandEntry=false)
         {
         $pageLength = strlen($page);
@@ -852,8 +1001,9 @@ class SeleniumHandler
 
         }
 
-    /* innerHtml funktioniert bei PhP nicht
-     * Routine nicht verwendet, für später um DOM auszuprobieren
+    /* SeleniumHandler::DOMinnerHTML
+     * innerHtml funktioniert bei PhP nicht
+     * Routine noch nicht verwendet, für später um DOM auszuprobieren, mit einenm Browser basiertem Javascript gelöst, ohne jquery
      */
 
     function DOMinnerHTML(DOMNode $element) 
@@ -869,16 +1019,16 @@ class SeleniumHandler
         return $innerHTML; 
         } 
 
-    /* query and filter an html with DOM
-        $textfeld    = GetValue($easyResultID);
-        $xPathQuery  = '//div[@*]';
-        $filterAttr  = 'style';
-        $filterValue ="width: 608px";
+    /* eleniumHandler::queryFilterHtml
+     * query and filter an html with DOM
+     *   $textfeld    = GetValue($easyResultID);
+     *   $xPathQuery  = '//div[@*]';
+     *   $filterAttr  = 'style';
+     *   $filterValue ="width: 608px";
      * resultat sind alle Ergebnisse hintereinander in einem DOM, also arbeitet wie ein Filter
      *
      * DomDocument ist das xml/html Objekt mit den passenden Methoden dafür, dom in diesem Fall der Speicher, mit dem auch andere Operationen durchgeführt werden können
      */
-
     function queryFilterHtml($textfeld,$xPathQuery,$filterAttr,$filterValue,$debug=false)
         {
         $innerHTML="";
@@ -1043,6 +1193,9 @@ class SeleniumHandler
  *      __construct
  *      getResultCategory
  *      setConfiguration
+ *      setConfigInputJson
+ *      getConfigInputJson
+ *
  *      getSymbolsfromConfig            aus dem Easycharts Configuration File, dem Orderbook die passenden Shortnames für yahoo finance herauslesen
  *      updateSymbols
  *      getIndexToSymbols 
@@ -1056,16 +1209,16 @@ class SeleniumHandler
  *      processResultHistory
  *
  *      runAutomatic
- *      pressConsentButtonIf
- *      goToShareLink
- *      getJahresKursziel
+ *          pressConsentButtonIf
+ *          goToShareLink
+ *          getJahresKursziel
  *
  *
  */
 
 class SeleniumYahooFin extends SeleniumHandler
     {
-    private $configuration;                 //array mit Datensaetzen
+    protected $configuration,$configInputJson;                 //array mit Configuration und InputJson
     private $CategoryIdDataYahooFin;         // sub Kategorie YAHOOFIN in RESULT
     private $duetime,$retries;              //für retry timer
     private $symbols,$index;                       // die auf Finance abufragenden Symbole
@@ -1094,14 +1247,25 @@ class SeleniumYahooFin extends SeleniumHandler
         return($this->CategoryIdDataYahooFin);
         }
 
-
-    /* Konfiguration ausgeben, min Function
+    /* Konfiguration übernehmen, min Function
      */
     public function setConfiguration($configuration)
         {
         //echo "YahooFin setConfiguration \n";
         $this->configuration = $configuration;
         $this->updateSymbols();
+        }
+
+    /* InputJson übernehmen, min Function
+     */
+    public function setConfigInputJson($configuration)
+        {
+        $this->configInputJson = $configuration;
+        }
+
+    public function getConfigInputJson()
+        {
+        return($this->configInputJson);
         }
 
     /* aus dem Easycharts Configuration File, dem Orderbook die passenden Shortnames für yahoo finance herauslesen
@@ -1330,16 +1494,16 @@ class SeleniumYahooFin extends SeleniumHandler
                 //echo "Look for Split of $children ($short).";              // Targetnaming is Short, need Index
                 if (isset($config["Split"][$short])) 
                     {
-                    echo "Split of $children ($short) -> found as ".json_encode($config["Split"][$short]).".\n";
+                    if ($debug) echo "Split of $children ($short) -> found as ".json_encode($config["Split"][$short]).".\n";
                     $configGetV["Split"]=$config["Split"][$short];
                     //$debug=2;
                     }
                 //$split = $seleniumEasycharts->getSplitfromOid($children);                   // sucht die OID in den Depot Configurations, targets sind aber nicht im Depotconfig
                 }    
             $status = AC_GetLoggingStatus($archiveID,$children);
-            echo "getValues für $children ($short) mit Status ".($status?"Logged":"NoLog")." aufrufen:\n";
+            if ($debug) echo "getValues für $children ($short) mit Status ".($status?"Logged":"NoLog")." aufrufen:\n";
             $configGetV["OIdtoStore"]=$short;
-            if ($children==$debugTarget) $ergebnis = $this->archiveOps->getValues($children,$configGetV,5);                                   // 5 analysiert die Mittelwertbildung
+            if ($children==$debugTarget) $ergebnis = $this->archiveOps->getValues($children,$configGetV,$debug);                                   // 5 analysiert die Mittelwertbildung
             else $ergebnis = $this->archiveOps->getValues($children,$configGetV,$debug);                 // true mit Debug    
             //$result[IPS_GetName($children)]["Actual"]=GetValue($children);
             //$result[IPS_GetName($children)]["History"]=$ergebnis;
@@ -1456,17 +1620,21 @@ class SeleniumYahooFin extends SeleniumHandler
         {
         if (isset($this->configuration["MaxCall"])) $maxCall=$this->configuration["MaxCall"]*2;
         else $maxCall=5;
+        $inputDir = $this->getDirInputJson($this->getConfigInputJson());
+        echo "Input Dir $inputDir \n";
+
+        // index zählt die abgefragten symboile, step einfach nur von 0 bis Abbruch immer um eins höher
         echo "*** runAutomatic SeleniumYahooFin Step $step. ".$this->index."/$maxCall.\n";
         switch ($step)
             {
             case 0:         // yahoo consent
                 echo "--------\n0: check if there is consent window, accept.\n";
-                $result=$this->pressConsentButtonIf();          // den Consent Button clicken, wenn er noch da ist, spätestens nach 2 Sekunden aufgeben
+                $result=$this->pressConsentButtonIf($this->debug);          // den Consent Button clicken, wenn er noch da ist, spätestens nach 2 Sekunden aufgeben
                 if  ($result === false) echo "Consent Button not found.";
-
+                else echo "Consent Button pressed";
                 break;
-            case ($this->index+1):
-                echo "--------\n".($this->index+1).": ";
+            case 1:
+                echo "--------\n1: Index ".($this->index).": ";
                 $num=GetValue($this->IndexToSymbols);
                 if ( ($num>(count($this->symbols))) || (isset($this->symbols[($num)])) ) 
                     { 
@@ -1479,53 +1647,72 @@ class SeleniumYahooFin extends SeleniumHandler
                     $shareID=$this->symbols[($num)]["Short"];
                     echo "go to url with \"$shareID\".\n";
                     //$this->index++;
-                    $result=$this->goToShareLink($shareID);
+                    $result=$this->goToShareLink($shareID,$this->debug);
                     echo $result;
                     }
-                else $this->index+=3;
+                else $this->index+=5;
                 break;
-            case ($this->index+2):
-                echo "--------\n";
-                echo ($this->index+2).": get Ergebnis.\n";
+            case 2:
+                echo "--------\n2 Index ".($this->index).": get Ergebnis.\n";
+                /* aus der html tabelle ein array machen    /html/body/div[1]/div/div/div[1]/div/div[3]/div[1]/div/div[1]/div/div/div/div[2]
+                 * und als File speichern
+                 */
+                $ergebnis = $this->getFinanzStartseite();           // get Text eines div
+                $fileOps = new fileOps($inputDir."ergebnis.txt");             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
+                $fileOps->writeFileJson($ergebnis,$this->debug);
+                $page=$this->getInnerHtml();
+                $fileOps = new fileOps($inputDir."ergebnis.html");             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
+                $fileOps->writeFileJson($page,$this->debug);
+
                 $ergebnis = $this->getJahresKursziel();
                 $num=GetValue($this->IndexToSymbols);
                 $this->symbols[($num)]["Target"]=$ergebnis;
-                $this->index+=2;
                 $this->addIndexToSymbols(1);                // index um eins weiterzählen
                 //echo $ergebnis;
                 $result=json_encode($this->symbols);
                 return(["Ergebnis" => $result]);                                //Zwischenergebnis wegspeichern 
                 break;
-            case ($this->index+3):
-                echo "--------\n";
-                echo ($this->index+3).": ready.\n";
+            case 3:
+                echo "--------\n3 Index ".($this->index).": ready.\n";                
+                /* https://de.finance.yahoo.com/quote/SAP/key-statistics/  wegspeichern              */
+                break;
+            case 4:
+                echo "--------\n4 Index ".($this->index).": ready.\n";
+                break;                
+            case 5:
+                echo "--------\n5 Index ".($this->index).": ready.\n";
                 $result=json_encode($this->symbols);
                 return(["Ergebnis" => $result]); 
-                break;               
+                break; 
+
+
             default:
                 return (false);
             }
 
         }
 
-    /* Consent on Privacy, press Button
+    /* YAHOOFIN, Consent on Privacy, press Button
      */
-    function pressConsentButtonIf()
+    function pressConsentButtonIf($debug=false)
         {        
         /* Consent Window click xpath
          * /html/body/div/div/div/div/form/div[2]/div[2]/button
+         * //*[@id="consent-page"]/div/div/div/form/div[2]/div[2]/button[1]
+         * /html/body/div/div/div/div/form/div[2]/div[2]/button[1]
          */
-        $xpath='/html/body/div/div/div/div/form/div[2]/div[2]/button';
-        return($this->pressButtonIf($xpath));
+        $xpath='/html/body/div/div/div/div/form/div[2]/div[2]/button[1]';
+        return($this->pressButtonIf($xpath,$debug));
         }
 
     /* goto share link
      *  das ist ein Link hier hin: https://de.finance.yahoo.com/quote/SAP?p=SAP
      *
      */
-    function goToShareLink($shareID)
+    function goToShareLink($shareID,$debug)
         {
         $url='de.finance.yahoo.com/quote/'.$shareID.'?p='.$shareID;
+        if ($debug) echo "goToShareLink $url \n";
         return($this->updateUrl($url));
         } 
 
@@ -1552,6 +1739,24 @@ class SeleniumYahooFin extends SeleniumHandler
                 $result = floatval($ergebnis);
                 echo "\"$ergebnis\" ergibt $result";
                 return($result);
+                }
+            else echo $ergebnis;
+            }
+        return (false);
+        }
+
+    /* get complete Table
+     */
+    function getFinanzStartseite()
+        {
+        $xpath='/html/body/div[1]/div/div/div[1]/div/div[3]/div[1]/div/div[1]/div/div/div/div[2]';
+        $ergebnis = $this->getTextIf($xpath,$this->debug);
+        if ($ergebnis !== false)
+            {
+            if ($this->debug) echo "found fetch data, length is ".strlen($ergebnis)."\n";  
+            if ((strlen($ergebnis))>3) 
+                {
+                return($ergebnis);
                 }
             else echo $ergebnis;
             }
@@ -1591,7 +1796,7 @@ class SeleniumYahooFin extends SeleniumHandler
 
 class SeleniumLogWien extends SeleniumHandler
     {
-    private $configuration;                     //array mit Datensaetzen
+    protected $configuration;                     //array mit Datensaetzen
     protected $CategoryIdDataLoGWien;           // Kategrie als Speicherort
     private $duetime,$retries;              //für retry timer
     protected $debug;
@@ -1735,7 +1940,7 @@ class SeleniumLogWien extends SeleniumHandler
                 $result = $this->getGelesenIf();
                 break;  
             case 10:
-                echo "--------\n10: Read Energy Value.\n";             
+                echo "--------\n10: Read Energy Value of LogWien.\n";             
                 $result = $this->getEnergyValueIf(true);                // true für Debug
                 if ($result===false) return ("retry");
                 if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
@@ -1976,7 +2181,7 @@ class SeleniumLogWien extends SeleniumHandler
 
 class SeleniumEVN extends SeleniumHandler
     {
-    private $configuration;                     //array mit Datensaetzen
+    protected $configuration;                     //array mit Datensaetzen
     protected $CategoryIdDataEVN;           // Kategrie als Speicherort
     private $duetime,$retries;              //für retry timer
     protected $debug;
@@ -2192,7 +2397,7 @@ class SeleniumEVN extends SeleniumHandler
                     }
                 break; 
             case 8:
-                echo "--------\n8: Read Energy Value.\n";             
+                echo "--------\n8: Read Energy Value from EVN.\n";             
                 $result = $this->getEnergyValueIf(true);                // true für Debug
                 if ($result===false) return (["goto" => 7]);
                 if ($this->debug) echo "Ergebnis ------------------\n$result\n-----------------\n"; 
@@ -5059,6 +5264,7 @@ class SeleniumEasychartModul extends SeleniumHandler
         $shares = $this->createJointConfiguration();
         //print_r($shares);
         $orderbook=$this->getEasychartConfiguration();
+        //print_r($orderbook);
         foreach ($orderbook as $id => $book)
             {
             // Split Bearbeitung anfangen
@@ -5084,16 +5290,22 @@ class SeleniumEasychartModul extends SeleniumHandler
                 }
             $result=$this->calcOrderBook($book);            // für jede Aktie
             if ($debug) echo str_pad($id,15).str_pad($result["pcs"],7);
-            if ($result["pcs"]>0) 
+            if ($result["pcs"]>0)                                               // sonst gar nicht interessant
                 {
-                if (isset($shares[$id]["Name"])) 
-                    {
-                    $depotbook[$id]["Name"]=$shares[$id]["Name"];      // funktioniert nicht wenn neue Aktien dazukommen
-                    if ($debug) echo str_pad($shares[$id]["Name"],25);
-                    }
-                elseif ($debug)  echo str_pad("   do not find ",25);
+                if (isset($shares[$id]["Name"]))        $depotbook[$id]["Name"]=$shares[$id]["Name"];      // funktioniert nicht wenn neue Aktien dazukommen
                 $kursKauf=$result["cost"]/$result["pcs"];
-                if ($debug)echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT).str_pad(nf($result["cost"],"€"),14, " ", STR_PAD_LEFT);      
+                if (isset($book["Depot"]))              $depotbook[$id]["Depot"]=$book["Depot"];            
+
+                if ($debug)
+                    {    
+                    if (isset($shares[$id]["Name"]))    echo str_pad($shares[$id]["Name"],25);
+                    else                                echo str_pad("   do not find ",25);
+                    if (isset($shares[$id]["Depot"]))   echo str_pad(json_encode($shares[$id]["Depot"]),25);
+                    else                                echo str_pad("   do not find ",25);
+                    if (isset($book["Depot"]))          echo str_pad($book["Depot"],25);
+                    else                                echo str_pad("   do not find ",25);
+                    echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT).str_pad(nf($result["cost"],"€"),14, " ", STR_PAD_LEFT);      
+                    }
                 $depotbook[$id]["Stueck"] = $result["pcs"];
                 $depotbook[$id]["Kosten"] = $result["cost"];
                 $depotbook[$id]["ID"]=$id;
@@ -5301,6 +5513,7 @@ class SeleniumEasychartModul extends SeleniumHandler
                     $depotTable[$row]["priceBuy"]=$kursKauf;
                     $depotTable[$row]["cost"]=$book["Kosten"];
                     $depotTable[$row]["pcs"]=$book["Stueck"];
+                    $depotTable[$row]["depot"]=$book["Depot"];
                     if ($showdepottable) echo str_pad(nf($kursKauf,"€"),14, " ", STR_PAD_LEFT);        
                     if (isset($resultShares[$id]["Info"]["Name"])) $depotbook[$id]["Name"]=$resultShares[$id]["Info"]["Name"];
                     }
@@ -5351,7 +5564,7 @@ class SeleniumEasychartModul extends SeleniumHandler
                 }
             else echo "evaluateDepotBook, Fehler Eintrag in Depotbook aber nicht in resultshares.\n";
             }
-        //if ($debug)           // wir brauchen ein verrechnungskonto für Erlöse, werden jetzt nicht berücksichtigt
+        if ($debug)           // wir brauchen ein Verrechnungskonto für Erlöse, werden jetzt nicht berücksichtigt
             {
             echo "Gesamtergebnis Depot ist vom Budget ".nf($budget,"€")." mit den Kosten ".nf($spend,"€")." ein Wert von ".nf($actual,"€")."\n";
             }
@@ -5400,8 +5613,10 @@ class SeleniumEasychartModul extends SeleniumHandler
             }
         ksort($failure);
         //if ($debug) print_R($failure);
-        $depotbook["Value"]=$resultValues;
-        $depotbook["Table"]=$depotTable;
+        // Übergabe des Ergebnis als Anreicherung von depotbook
+        $depotbook["Value"] = $resultValues;
+        $depotbook["Table"] = $depotTable;                                                      // Tabelle für Ausgabe
+        $depotbook["Sum"]   = ["Budget"=>$budget,"Kosten"=>$spend,"Wert"=>$actual,];                        // zusätzliche Zusammenfassung
         return(true);
         }
 
@@ -5938,7 +6153,7 @@ class SeleniumOperations
         if ($handler) 
             {
             if ($debug) echo "Handler sind bereits in der Datenbank gespeichert und verfügbar. Sync with Selenium\n";    
-            $seleniumHandler->updateHandles($handler);
+            $seleniumHandler->updateHandles($handler,$debug);       // hab Probleme mit offenen Handles obwohl tab geschlossen ist
             }
 
         /* WebDriver starten */
@@ -5960,7 +6175,8 @@ class SeleniumOperations
                 echo "initHost für $webDriverUrl abgeschlossen. Resultat verfügbare bekannte Handles ".json_encode($result)."\n";
                 echo "Sync jetzt aktuelle verfügbare WebDriver Handles with Selenium\n";    
                 }
-            $seleniumHandler->updateHandles(json_encode($result));
+            $seleniumHandler->handle=array();                                   // init, da updateHandles nur ergänzt und nicht vorhandene löscht
+            $seleniumHandler->updateHandles(json_encode($result),$debug);       // die neuen Handles kommen eh über result rein, result wird von syncHandles bedient
             $this->initResultStorage( $configTabs);           // Kategorien passend zur Konfiguration für Ergebnisse aufbauen
             $handler=array();
             $runSelenium=array();                   // array of classes
@@ -5978,13 +6194,14 @@ class SeleniumOperations
                         {
                         if ($step==0) echo "======================================Start with Index $index, ".$date->format("H:i:s.v")." Laufzeit bis jetzt: ".round(microtime(true)-$startexec,2)." Sekunden\n";
                         else         echo "================================Continue [$step] with Index $index, ".$date->format("H:i:s.v")." Laufzeit bis jetzt: ".round(microtime(true)-$startexec,2)." Sekunden\n";
+                        echo json_encode($entry)."\n";
                         }
                     if (isset($entry["URL"]))
                         {
                         $url=$entry["URL"];
                         if ($step == 0) 
                             {
-                            if ($debug) echo "automatedQuery: Öffne Seite $url :\n";
+                            if ($debug) echo "automatedQuery: Öffne Seite $url : mit getHost für $index \n";
                             $steps[$index]=0;
                             $debugAll=true;
                             }
@@ -6009,6 +6226,8 @@ class SeleniumOperations
                                     if (isset($entry["URL"])) $config["URL"]=$entry["URL"];                                    
                                     $runSelenium[$index]->setConfiguration($config);
                                     }
+                                if (isset($entry["INPUTJSON"])) $runSelenium[$index]->setConfigInputJson($entry["INPUTJSON"]);    
+                                //if (isset($entry["INPUTCSV"]))  $runSelenium[$index]->setConfigInputCsv($entry["INPUTCSV"]); 
                                 }
                             // ------> hier der eigentliche Aufruf des einzelnen Schritts der Webautomatisiserung <--------------
                             $result = $runSelenium[$index]->runAutomatic($steps[$index]);

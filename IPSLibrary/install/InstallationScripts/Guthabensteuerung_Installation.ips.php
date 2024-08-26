@@ -72,6 +72,9 @@
     $dosOps->setMaxScriptTime(400); 
 	$startexec=microtime(true);
 
+    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren
+	else $debug=false;
+
     $errorWarning=false;            // Zusammenfassung ob es etwas zum anschauen gibt oder nicht
 
     $DoInstall=true; 
@@ -562,7 +565,8 @@
         // Es gibt Selenium Webdriver, die kann man wieder starten, so wie bei Guthaben StartSelenium,  CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,""
         $pname="SeleniumAktionen";                                         // keine Standardfunktion, da Inhalte Variable
 
-        $configTabs = $guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+        $configSeleniumHosts = $guthabenHandler->getSeleniumHostsConfig();
+        $configTabs = $configSeleniumHosts["Hosts"];
         $nameID=array();
         foreach ($configTabs as $tab => $config) $nameID[]=$tab;
         //$nameID=["Easy","YahooFin", "EVN"];
@@ -574,6 +578,33 @@
         $nameID=["morning","lunchtime", "evening"];
         $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
         $actionGroupWebID          = CreateVariableByName($CategoryId_Mode,"StartGroupCall", 1,$pname,"",1010,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
+        echo " Config der einzelenen Hosts durvhgehen und eventuell Verzeichnissse erzeugen:\n";
+
+        $runSelenium=array();
+        foreach ($configSeleniumHosts["Hosts"] as $host=>$config)
+            {
+            $categoryID = $seleniumOperations->getCategory($host);          // legt auch gleichzeitig die Kategorie an
+            echo "Host ".str_pad($host,22)."| $categoryID  ".json_encode($config)."\n";
+            $runSelenium[$host] = new $config["CLASS"]();
+            $runSelenium[$host]->setConfiguration($config);
+            }
+        echo "=========================================\n";        
+        foreach ($configSeleniumHosts["Hosts"] as $host=>$config)
+            {
+            $config=$runSelenium[$host]->getConfiguration();
+            echo "Host ".str_pad($host,22)."|   ".json_encode($config)."\n";
+            $configInput=false;
+            if (isset($config["INPUTJSON"]["InputDir"])) $configInput=$config["INPUTJSON"];
+            if (isset($config["INPUTCSV"]["InputDir"])) $configInput=$config["INPUTCSV"];
+            if ($configInput)
+                {
+                $inputDir = $runSelenium[$host]->getDirInputJson($configInput,$debug);
+                $status=is_dir($inputDir);
+                echo "Directory found: $inputDir ".($status?"Available":"Not Avail")."\n";
+                if ($status===false) $dosOps->mkdirtree($inputDir);
+                }
+            }                
         }
 
     if ($DoInstall)         // siehe weiter oben, lokaler Switch

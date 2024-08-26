@@ -1,4 +1,4 @@
-<?
+<?php
 
 /* eingefuegt von den Timer Events beim Schalten von Stromheizung Switches */
 

@@ -969,7 +969,7 @@ class Logging
         $name="SensorMirror_".$this->variablename;
         //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float */
         //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,$this->variableProfile);       /* 2 float */
-        echo "Sensor_Logging:do_init_sensor construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
+        if ($this->debug) echo "Sensor_Logging:do_init_sensor construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
         switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
             case "POWER":           /* Power Wirkleistung und Wirkenergie von AMIS, oder aus einem Homematic Register direkt */
@@ -1039,14 +1039,17 @@ class Logging
 
         $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
         $name="CounterMirror_".$this->variablename;
-        echo "    Counter_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).") Type is ".$this->variableTypeReg."\n";
-        echo "    Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile." \n";
         $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);             /* Selbe Werte wie geloggte Variable als Default übernehmen*/
 
         /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Counter",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Counter",$this->CategoryIdData);
-        echo "    Create Logging Register ".$this->variablename." as ".$this->variableType." with Profile ".$this->variableProfile." \n";
+        if ($this->debug) 
+            {
+            echo "    Counter_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).") Type is ".$this->variableTypeReg."\n";
+            echo "    Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile." \n";
+            echo "    Create Logging Register ".$this->variablename." as ".$this->variableType." with Profile ".$this->variableProfile." \n";
+            }
         $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */

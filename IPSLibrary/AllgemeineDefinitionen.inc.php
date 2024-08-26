@@ -44,7 +44,10 @@
       *         eventLogEvaluate    extends statistics
       *         meansRollEvaluate   extends statistics
       *         maxminCalc          extends statistics
+      *
       * App_Convert_XmlToArray
+      *
+      *
       * jsSnippets              Aufbau von javascript basierten html Seiten
       * ipsTables               Darstellung von html basierten Tabellen
       * ipsCharts               Chartdarstellung rund um die Highcharts Funktionen
@@ -3771,24 +3774,27 @@ class archiveOps
                         if (isset($entries[$oid]["TimeStamp"]))         // Value hat ja nur Value=*** bekommen, wird nicht gefunden als source for target
                             {
                             //print_R($entries[$oid]);
-                            if ($pullwrite===false) $pullwrite=$oid;                            // Source gefunden
-                            //else echo "Too many sources for target to overwrite.\n";
-                            if (isset($entries[$oid]["Value"])) $targetValue=$entries[$oid]["Value"];
-                            else $targetValue=$entries[$oid]["Avg"];
-                            $targetTimeStamp = $entries[$oid]["TimeStamp"];
-                            //adjust timestamp if appropriate
-                            $adjustSource=false; $adjustTarget=false;
-                            if (isset($config["ShowTable"]["adjust"]))         // nur wenn eine Datenreihe verschoben werden soll
-                                {                            
-                                foreach ($config["ShowTable"]["adjust"] as $lookforName => $shiftTime)
-                                    {
-                                    if (IPS_GetName($pullwrite)==$lookforName) $adjustSource=$shiftTime;         //entweder target oder source werden verschoben
-                                    if (IPS_GetName($overwrite)==$lookforName) $adjustTarget=$shiftTime;
-                                    }                        
-                                //echo "Abgleichen der Zeitstempel Source: $adjustSource und Target: $adjustTarget ";
-                                if ($adjustSource) $targetTimeStamp = strtotime($adjustSource, strtotime(date("d.m.Y",$entries[$oid]["TimeStamp"])));
-                                else $targetTimeStamp = strtotime(date("d.m.Y",$entries[$oid]["TimeStamp"]));
-                                //if ($adjustTarget) echo "Target cannot be adjusted. Change $shiftTime from + to - or vice versa.\n";
+                            if ($pullwrite===false) 
+                                {
+                                $pullwrite=$oid;                            // Source gefunden, immer die erste gefundene nehmen
+                                //else echo "Too many sources for target to overwrite.\n";
+                                if (isset($entries[$oid]["Value"])) $targetValue=$entries[$oid]["Value"];
+                                else $targetValue=$entries[$oid]["Avg"];
+                                $targetTimeStamp = $entries[$oid]["TimeStamp"];
+                                //adjust timestamp if appropriate
+                                $adjustSource=false; $adjustTarget=false;
+                                if (isset($config["ShowTable"]["adjust"]))         // nur wenn eine Datenreihe verschoben werden soll
+                                    {                            
+                                    foreach ($config["ShowTable"]["adjust"] as $lookforName => $shiftTime)
+                                        {
+                                        if (IPS_GetName($pullwrite)==$lookforName) $adjustSource=$shiftTime;         //entweder target oder source werden verschoben
+                                        if (IPS_GetName($overwrite)==$lookforName) $adjustTarget=$shiftTime;
+                                        }                        
+                                    //echo "Abgleichen der Zeitstempel Source: $adjustSource und Target: $adjustTarget ";
+                                    if ($adjustSource) $targetTimeStamp = strtotime($adjustSource, strtotime(date("d.m.Y",$entries[$oid]["TimeStamp"])));
+                                    else $targetTimeStamp = strtotime(date("d.m.Y",$entries[$oid]["TimeStamp"]));
+                                    //if ($adjustTarget) echo "Target cannot be adjusted. Change $shiftTime from + to - or vice versa.\n";
+                                    }
                                 }
                             $overwrite=false;                                       // sehr gut, gefunden
                             }
@@ -3801,8 +3807,9 @@ class archiveOps
                     }
                 if ($pullwrite && $target)                      // source für das target gefunden, dort Werte hinzufügen, dazu correct einfach als Index hochzählen
                     {
-                    $valuesAdd[$target][$correct]["Value"]=$targetValue;            // source nicht mehr relevant, sondern nur wo werden die Wert gespeichert
-                    $valuesAdd[$target][$correct]["TimeStamp"]=$targetTimeStamp;
+                    // mit Source oder mit Delta
+                    $valuesAdd[$target][$pullwrite][$correct]["Value"]=$targetValue;            // source nicht mehr relevant, sondern nur wo werden die Wert gespeichert
+                    $valuesAdd[$target][$pullwrite][$correct]["TimeStamp"]=$targetTimeStamp;
                     $correct++;
                     }    
                 // schlussendlich die Anzeige als tabelle
@@ -5517,7 +5524,7 @@ class archiveOps
         {
         //$debug=true;
         // check ob genug Daten da sind 
-        if (is_countable($this->result[$oid]["Values"]))
+        if ( (isset($this->result[$oid]["Values"])) && (is_countable($this->result[$oid]["Values"])) )
             {
             $count = @count($this->result[$oid]["Values"]);
             //if ($count<40) print_r($this->result[$oid]["Values"]);
@@ -10471,7 +10478,7 @@ class sysOps
 
     /********
      * sysOps
-     *Returns used memory (either in percent (without percent sign) or free and overall in bytes)
+     * Returns used memory (either in percent (without percent sign) or free and overall in bytes)
      *
      *****************************/
 
@@ -11535,7 +11542,7 @@ class dosOps
 			}
 		} 
 
-    /* eine Datei ausgeben 
+    /* eine Datei als echo ausgeben 
      * default sind alle Zeilen
      */
 
@@ -11552,6 +11559,27 @@ class dosOps
             fclose($handle);
             }
         }
+
+    /* eine Datei als String ausgeben 
+     * default sind alle Zeilen
+     */
+
+    function readFileToString($fileName, $maxLine=0)
+        {
+        $result="";
+        if ( (($handle = fopen($fileName, "r")) !== false) )      // nur machen wenn filename  richtig
+            {
+            $row=1;
+            while (($data = fgets($handle)) !== false) 
+                {
+                if ($row++ != $maxLine) $result .= $data;
+                else break;
+                }
+            fclose($handle);
+            }
+        return($result);
+        }
+
 
    /* eine Datei löschen 
     */
@@ -11698,9 +11726,11 @@ class dosOps
  *
  * readFileFixedFirstline
  * readFileFixed
+ * readFileFixedLine
  *
  * readFileCsvFirstLine     liest nur die erste Zeil eines csv Files, damit bekommt man den Index
  * readFileCsv              wandelt eine csv Datei in ein Array um, erste Zeile kann als Index für die Umwandlung verwendet werden
+ * readFileCsvParseConfig
  *
  * backcupFileCsv           das alte File wegspeichern als.old.csv
  *
@@ -11747,7 +11777,6 @@ class fileOps
      * UTF-8 ist auch ein Multibyte Format, Standardfunktionen wie trin, substr, strpos etc. funktionieren nicht mehr
      *
      */
-
     function readFileFixedFirstline($convert="ASCII",$debug=false)
         {
         $delimiter=array();
@@ -12541,6 +12570,29 @@ class fileOps
             fwrite($handle,"\n");
             */
             }
+        fclose($handle);
+        }
+
+    /*
+     * writefileJson
+     * schreibt einen String in die Datei $this->filename, wenn nicht vorhanden (false) dann in $this->newFileName
+     *
+     ***********/
+
+    function writeFileJson(&$result, $debug=false)
+        {
+        if ($this->fileName === false) $filename=$this->newFileName;
+        else $filename=$this->fileName;
+
+        if ($debug) echo "Neuer Filename $filename zum Schreiben.\n";
+        if ($debug) 
+            {
+            echo "writeFileJson: Analyse des Input Arrays: \n";
+            }
+        
+        if (is_file($filename)) unlink($filename);      // in ein leeres File schrieben
+        $handle=fopen($filename, "a");
+        fwrite($handle,$result);             // den Index aus dem result File übernehmen
         fclose($handle);
         }
 

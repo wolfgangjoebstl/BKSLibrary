@@ -39,6 +39,8 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
+    ini_set('memory_limit', '128M');                        // können grosse Dateien werden
+
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
     IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");

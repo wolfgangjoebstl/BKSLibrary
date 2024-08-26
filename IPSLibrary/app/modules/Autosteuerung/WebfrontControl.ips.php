@@ -1,4 +1,4 @@
-<?
+<?php
 
 /* Webfront_Control für Autosterung
  * deckt den Rest der nicht von Autosterung script direkt gemacht wird.
@@ -54,7 +54,9 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     else $PushSoundID="unknown";
 
     //echo "gefunden: $MonitorModeID $SchalterMonitorID\n";
-    $debug=true;
+    if ($_IPS['SENDER']=="Execute") $debug=true;
+    else $debug=false;
+
     $operate=new AutosteuerungOperator($debug);    
     $auto=new Autosteuerung();
     $ipsOps = new ipsOps();
@@ -139,7 +141,7 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
             {
             foreach ($config["Key"] as $index => $entry)
                 {
-                echo "Index $index :  ".$entry["OID"]."\n";
+                if ($debug) echo "Index $index :  ".$entry["OID"]."\n";
                 //print_r($entry);
                 $powerLockActuatorOID=$entry["OID"];    
                 }
@@ -167,7 +169,6 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
 if ($_IPS['SENDER']=="WebFront")
 	{
 	/* vom Webfront aus gestartet */
-	$debug=false;	// keine Echo Ausgaben
     $value=$_IPS['VALUE'];
     SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);             // für alle Schater weiter unten in Ordnung
 	switch ($_IPS['VARIABLE'])
@@ -175,12 +176,12 @@ if ($_IPS['SENDER']=="WebFront")
         case $powerLock_ID:
             if ($value>90)
                 {
-                echo "Lock";
+                if ($debug) echo "Lock";
                 HM_WriteValueInteger ($powerLockActuatorOID, "LOCK_TARGET_LEVEL",1);                // 0 zusperren, 1 aufsperren, 2 öffnen  Achtung auch 1 kann bereits die Türe öffnen
                 }
             if ($value<10) 
                 {
-                echo "Open"; 
+                if ($debug) echo "Open"; 
                 HM_WriteValueInteger ($powerLockActuatorOID, "LOCK_TARGET_LEVEL",0);                // 0 zusperren, 1 aufsperren, 2 öffnen  Achtung auch 1 kann bereits die Türe öffnen
                 }
             SetValue($powerLock_ID,50);

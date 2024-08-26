@@ -1,4 +1,4 @@
-<?
+<?php
 
 	/*
 	 * This file is part of the IPSLibrary.
@@ -7318,14 +7318,17 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
     protected $config=array();                  // internal configuration
 
     protected $htmlLogging=true;
+
+    protected $debug;                       // additional Debug Function
     
     /**************************/
 
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
-		echo "AutosteuerungAlarmanlage Logfile Construct\n";
+		//echo "AutosteuerungAlarmanlage Logfile Construct\n";
         $this->configuration = $this->set_Configuration();
-		
+		$this->debug=false;
+
 		/******************************* Init *********/
 		$this->log_File=$logfile;
 		$this->nachrichteninput_Id=$nachrichteninput_Id;			
@@ -7340,12 +7343,20 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
 		$this->InitLogNachrichten($type,$profile);          /*  ruft das Geraete spezifische InitMesagePuffer() auf */
 		}
 
+    function setDebug($debug)
+        {
+        $this->debug=$debug;    
+        }
+
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
 		{
         // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
 		$this->zeile[$i] = CreateVariableByName($vid,"Zeile".$i,$type,$profile,"",$i*10,$scriptIdHeatControl);
 		}
 
+    /*
+     * kümmert sich ums Logging
+     */
 	function InitMesagePuffer($type=3,$profile="")
 		{	
         //echo "Installed Modules : ".json_encode($this->installedmodules)."\n";
@@ -7360,11 +7371,14 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
 			}
 		else
 			{
-			echo "   auch Wenn 'Ohne' angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt.\n";
-			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$this->categoryIdData."  (".IPS_GetName($this->categoryIdData).")\n";
+            if ($this->debug)
+                {
+                echo "   auch Wenn 'Ohne' angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt.\n";
+                echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$this->categoryIdData."  (".IPS_GetName($this->categoryIdData).")\n";
+                echo "Nchrichten input Id ".$this->nachrichteninput_Id."   Vid $vid   \n";
+                }
 			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Nachrichtenverlauf-Sicherheit",$this->categoryIdData);	/* <<<<<<< change here */
 			$vid=@IPS_GetObjectIDByName("Nachricht_Input",$this->nachrichteninput_Id);							/* <<<<<<< change here */
-            echo "Nchrichten input Id ".$this->nachrichteninput_Id."   Vid $vid   \n";
 			if ($vid==false) 
 				{
 				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Alarmanlage InitMessagePuffer, keine Kategorie Sicherheit in '.$this->nachrichteninput_Id);
@@ -7391,7 +7405,10 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
             }            
 		}
 
-
+    /* 
+     * holt sich die Config wenn operationCenter installiert ist
+     * benutzt getComponent 
+     */
     public function getPowerLockEnvironmentConfig($debug=false)
         {
         $config=array();
@@ -7400,22 +7417,22 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
             $componentHandling = new ComponentHandling();
             $DeviceManager     = new DeviceManagement();
 
-            echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+            if ($this->debug) echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
             IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 
             $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
 
             // Aktuator
-            $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",true);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+            $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",$this->debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
             $countPowerLock=(sizeof($resultKey));				
 
             // Status
-            $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",true);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+            $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",$this->debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
             $countPowerLock+=(sizeof($resultState));				
 
             if ($countPowerLock>0)
                 {
-                echo "Es wird ein PowerLock von Homematic verwendet. Die Darstellung erfolgt unter Alarmanlage/Tab Sicherheit:\n";
+                if ($this->debug) echo "Es wird ein PowerLock von Homematic verwendet. Die Darstellung erfolgt unter Alarmanlage/Tab Sicherheit:\n";
                 $config["Count"] = $countPowerLock;               // Summe State und Key Instances
                 $config["State"] = $resultState;
                 $config["Key"]   = $resultKey;                }
@@ -7427,7 +7444,7 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
         }
 
 
-    /* Homematic Türshlösser sind nicht vollständig in IP Symcon integriert
+    /* Homematic Türschlösser sind nicht vollständig in IP Symcon integriert
      * sind aber erstaunlich robust, aber wahrscheinlich unzuverlässig, weiter ausprobieren
      */
     public function setPowerLockProfiles($config,$debug=false)
@@ -7437,7 +7454,7 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
             $resultKey=$config["Key"];
             $resulttext="Alle Tuerschloesser Aktuatoren ausgeben ($countPowerLock):\n";            
             $resulttext.=$DeviceManager->writeCheckStatus($resultKey);          
-            echo $resulttext;
+            if ($this->debug) echo $resulttext;
             //print_r($resultKey);
             foreach ($resultKey as $homematic=>$entry)
                 {
@@ -7446,7 +7463,7 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
             $resultState=$config["State"];
             $resulttext="Alle Tuerschloesser Stati ausgeben ($countPowerLock):\n";            
             $resulttext.=$DeviceManager->writeCheckStatus($resultState);          
-            echo $resulttext;
+            if ($this->debug) echo $resulttext;
             //print_r($resultState);
             foreach ($resultState as $homematic=>$entry)
                 { 
