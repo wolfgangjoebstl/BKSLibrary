@@ -2511,17 +2511,20 @@ class profileOps
     {
 
     var $rpc;               // rpc für remote server, wenn server nicht local
+    protected $debug;       // zusaetzliches Debug
 
-    function __construct($server="local")
+    function __construct($server="local",$debug=false)
         {
         if (strtoupper($server) != "LOCAL") 
             {
             $this->rpc = new JSONRPC($server);
             }
         else $this->rpc=false;
+        $this->debug = $debug;
         }
 
-    /* Profile lokal oder Remote auslesen, das config array auslesen
+    /* profileOps::GetVariableProfile
+     * Profile lokal oder Remote auslesen, das config array auslesen
      */
     function GetVariableProfile($pname)
         {
@@ -2530,7 +2533,8 @@ class profileOps
         return ($profile);
         }
 
-    /* Profile lokal oder Remote auslesen, das config array auslesen
+    /* VariableProfileExists
+     * Profile lokal oder Remote auslesen, das config array auslesen
      */
     function VariableProfileExists($pname)
         {
@@ -2538,12 +2542,12 @@ class profileOps
         else return IPS_VariableProfileExists($pname);
         }
 
-    /* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
-    * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
-    * $rpc ist entweder eine class oder false
-    *
-    */
-
+    /* CreateVariableProfile
+     * Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
+     * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
+     * $rpc ist entweder eine class oder false
+     *
+     */
     function CreateVariableProfile($pname, $type)
         {
         if ($this->VariableProfileExists($pname))
@@ -2587,7 +2591,8 @@ class profileOps
         else IPS_SetVariableProfileValues ($pname, $minValue,$maxValue,$stepSize);
         }
 
-    /* Profile Associations lokal oder Remote auslesen
+    /* GetVariableProfileAssociations 
+     * Profile Associations lokal oder Remote auslesen
      */
     function GetVariableProfileAssociations($pname)
         {
@@ -2595,7 +2600,8 @@ class profileOps
         return ($profile["Associations"]);
         }
 
-    /* Profile Associations lokal oder Remote schreiben
+    /* SetVariableProfileAssociation
+     * Profile Associations lokal oder Remote schreiben
      */
     function SetVariableProfileAssociation($pname,$pos,$name,$icon,$color)
         {
@@ -2614,17 +2620,17 @@ class profileOps
         $countOld = sizeof($profileOld);
         if ( ($countOld > $count) && ($count>0) )  
             {
-            echo "Delete some Profile ( $countOld > $count )\n";
+            if ($this->debug) echo "Delete some Profile ( $countOld > $count )\n";
             foreach ($profileOld as $num => $assoc)
                 {
                 if ($num>($count-1)) 
                     {
-                    echo "Delete Profile Association $num mit Wert ".$assoc["Value"].".\n";
+                    if ($this->debug) echo "Delete Profile Association $num mit Wert ".$assoc["Value"].".\n";
                     //print_r($assoc);
                     //$this->DeleteVariableProfileAssociation($pname, $num);                  // ist num die vierte Instanz oder das Profil 6
                     $this->DeleteVariableProfileAssociation($pname, $assoc["Value"]);
                     }
-                else echo "Keep   Profile Association $num.\n";
+                elseif ($this->debug) echo "Keep   Profile Association $num.\n";
                 }
             }
         foreach ($profile as $num => $assoc)
@@ -3072,13 +3078,19 @@ class webOps
     {
 
     var $pnames=array();
-    var $categoryId;
+    protected $categoryId;
 
     // Default Values
     var $order=10;                                  // position of Buttons
     var $color       = 0x235643;                        // color of button
     var $colorSelect = 0x897654;                  // color of selected button
     var $modulName   = "";                      // Before Profilname to differ between modules
+
+    // Navigation variables
+    protected $variableTypeOffsetID,$variableTimeOffsetID,$variableTimeCount;
+    protected $variablePeriodCountID,$variablePeriodYearID,$variablePeriodMonthID,$variablePeriodWeekID,$variablePeriodDayID,$variablePeriodHourID;
+    protected $associationsWithIndex=array();
+
 
     var $debug=false;
 
@@ -3088,7 +3100,8 @@ class webOps
         if ($debug) echo "Aufruf class webOps\n";    
         }
 
-    /* SpezialProfile für Action Aufrufe aus dem Webfront, erzeugt eine Zeile aus einzelnen Buttons die ein Script initieren 
+    /* webOps::createActionProfileByName
+     * SpezialProfile für Action Aufrufe aus dem Webfront, erzeugt eine Zeile aus einzelnen Buttons die ein Script initieren 
      *  pname ist der Name
      *  nameID ein Array aus einzelnen Einträgen
      *  style ist 1 wenn ein Selector mit der Auswahl von Defaultwerten aufgerufen werden kann
@@ -3155,7 +3168,8 @@ class webOps
             }
         }
 
-    /* die umgekehrte Funktion, Profil analysieren, zuordnung Einzelbuttons aus dem Profil
+    /* webOps::
+     * die umgekehrte Funktion, Profil analysieren, zuordnung Einzelbuttons aus dem Profil
      * wenn style false einfach das Association array mit Icon und Color ausgeben
      * wenn style true das Assciation array verkürzen auf Value=>Name verkuerzen
      */
@@ -3178,8 +3192,54 @@ class webOps
         }
 
 
+	/* webOps::createProfileAssociations
+     * Anlegen eines Profils mit Associations, Kopie von CreateProfile_Associations aus dem IPSInstaller, siehe auch createActionProfileByName
+	 *
+	 * der Befehl legt ein Profile an und erzeugt für die übergebenen Werte Assoziationen
+	 *
+	 * @param string $Name Name des Profiles
+	 * @param string $Associations[] Array mit Wert und Namens Zuordnungen
+	 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+	 * @param integer $Color[] Array mit Farbwerten im HTML Farbcode (z.b. 0x0000FF für Blau). Sonderfall: -1 für Transparent
+	 * @param boolean $DeleteProfile Profile löschen und neu generieren
+	 *
+	 */
+	function createProfileAssociations ($Name, $Associations, $Icon="", $Color=-1, $DeleteProfile=true) 
+        {
+		if ($DeleteProfile) {
+			@IPS_DeleteVariableProfile($Name);
+		}
+		@IPS_CreateVariableProfile($Name, 1);
+		IPS_SetVariableProfileText($Name, "", "");
+		IPS_SetVariableProfileValues($Name, 0, 0, 0);
+		IPS_SetVariableProfileDigits($Name, 0);
+		IPS_SetVariableProfileIcon($Name, $Icon);
+        $count=0;
+        $associationWithIndex=array();
+		foreach($Associations as $Idx => $IdxName) 
+            {
+            if (is_numeric($Idx)) $count=$Idx;
+			if ($IdxName == "") 
+                {
+			    // Ignore
+			    } 
+            elseif (is_array($Color)) 
+                {
+				IPS_SetVariableProfileAssociation($Name, $count, $IdxName, "", $Color[$Idx]);
+		        } 
+            else 
+                {
+				IPS_SetVariableProfileAssociation($Name, $count, $IdxName, "", $Color);
+			    }
+            $associationWithIndex[$IdxName]=$count;
+            $count++;
+		    }
+        return($associationWithIndex);
+	    }
 
-    /* SpezialProfile für Action Aufrufe aus dem Webfront 
+
+    /* webOps::
+     * SpezialProfile für Action Aufrufe aus dem Webfront 
      * verwendet von Guthabensteuerung, für einzelne Buttons zum Draufdrücken
      *      pname ist der Name des Button, der Link auf den Button sollte dann "" sein oder der Button Teil des Webfronts
      *      die Farbe wird optional übergeben
@@ -3202,12 +3262,16 @@ class webOps
         // Rest der Profilkonfiguration sicherheitshalber immer überarbeiten             
         IPS_SetVariableProfileValues($pname, 0, 0, 0);      //PName, Minimal, Maximal, Schrittweite muss 0 sein für einen Button
         IPS_SetVariableProfileAssociation($pname, 0, $button, "", $color); //P-Name, Value, Assotiation, Icon, Color=grau
-        if ($create) echo "Button $button mit Aktions Profil ".$pname." erstellt.\n";
-        else echo "Button $button mit Aktions Profil ".$pname." überarbeitet.\n";	
+        if ($this->debug) 
+            {
+            if ($create) echo "Button $button mit Aktions Profil ".$pname." erstellt.\n";
+            else echo "Button $button mit Aktions Profil ".$pname." überarbeitet.\n";	
+            }
         return $pname;	
         }
 
-    /* eine Reihe von Buttons anlegen, die untereinander ein Auswahlfeld ergeben  
+    /* webOps::
+     * eine Reihe von Buttons anlegen, die untereinander ein Auswahlfeld ergeben  
      * pnames ist ein array
      * es braucht die categoryId und scriptId, werden auch in die class gespeichert
      *
@@ -3242,7 +3306,8 @@ class webOps
         return ($result);
         }
 
-    /* set color of Button
+    /* webOps::
+     * set color of Button
      */
 
     function setButtonColors($color = 0x235643, $colorSelect = 0x897654)                  // color of button and selected button
@@ -3251,7 +3316,8 @@ class webOps
         $this->colorSelect = $colorSelect;
         }
 
-    /* save Button Parameters as configuration in class for other functions
+    /* webOps::
+     * save Button Parameters as configuration in class for other functions
      *
      */
     function setSelectButtons($pnames,$categoryId)
@@ -3260,7 +3326,8 @@ class webOps
         $this->categoryId   = $categoryId;
         }
 
-    /* save other default parameters for Button in class
+    /* webOps::
+     * save other default parameters for Button in class
      */
     function setConfigButtons($order=10,$modulName="")
         {
@@ -3270,7 +3337,8 @@ class webOps
         }
 
 
-    /* get the Button Id
+    /* webOps::
+     * get the Button Id
      * needs pnames, categoryId stored in class by setSelectButtons used by createSelectButtons
      */
     function getSelectButtons($debug=false)
@@ -3296,8 +3364,9 @@ class webOps
         return ($result);
         }
 
-    /* select the Button Id
-     *
+    /* webOps::
+     * select the Button Id
+     * verändert in der Profildarstellung für die jeweilige Association die Farbe
      */
     function selectButton($select)
         {
@@ -3307,6 +3376,222 @@ class webOps
             if ($index == $select) IPS_SetVariableProfileAssociation($buttonId["NAME"]."Profil", 0, $buttonId["NAME"], "", $this->colorSelect); 
             else IPS_SetVariableProfileAssociation($buttonId["NAME"]."Profil", 0, $buttonId["NAME"], "", $this->color); 
             }
+        }
+
+    /* webOps::createNavigation
+     * alle haben die selbe category Variable, aufpassen
+     *
+     *
+     */
+    public function createNavigation($categoryId,$scriptIdActionScript=false,$debug=false)
+        {
+        if ($debug) echo "createNavigation($categoryId,$scriptIdActionScript ..) \n";
+        $this->categoryId   = $categoryId;
+        $categoryId_Navigation  	= CreateCategory('Navigation', $categoryId, 21);
+
+        $pname='AD_PeriodAndCount';
+        $associationsPeriodAndCount  = array(
+                                    'HOUR'      => 'Stunde',
+                                    'DAY'       => 'Tag',
+                                    'WEEK'      => 'Woche',
+                                    'MONTH'     => 'Monat',
+                                    'YEAR'      => 'Jahr',
+                                    'SEPARATOR' => ' ',
+                                    'MINUS'     => '-',
+                                    'VALUE'     => '1',
+                                    'PLUS'      => '+',
+                                    );
+        if ($scriptIdActionScript !== false)
+            {
+            $this->associationsWithIndex = $this->createProfileAssociations ($pname,   $associationsPeriodAndCount, "Clock");
+            $this->variablePeriodCountID = CreateVariableByName($categoryId,              'PeriodAndCount',    1 , "AD_PeriodAndCount", false, 20, $scriptIdActionScript);      // kein Icon zum definieren
+            SetValue($this->variablePeriodCountID,1);           // Set Defaultwert
+            }
+        else 
+            {
+            $this->variablePeriodCountID = @IPS_GetVariableIDByName('PeriodAndCount',$categoryId);
+            /*$associations=IPS_GetVariableProfile($pname)["Associations"];
+            //print_R($associations);
+            $this->associationsWithIndex = $associationsPeriodAndCount;             // Index ist PLUS, MINUS etc
+            $assos=array();
+            foreach ($associations as $association)
+                {
+                $assos[$association["Name"]]=$association["Value"];                        // 2=7
+                }
+            print_r($assos);
+            foreach ($this->associationsWithIndex as $index=> $entry)
+                {
+                if (isset($assos[$entry])) $this->associationsWithIndex[$index] =  $assos[$entry];    
+                }*/
+            $this->associationsWithIndex = array(
+                                    'HOUR'      => 0,
+                                    'DAY'       => 1,
+                                    'WEEK'      => 2,
+                                    'MONTH'     => 3,
+                                    'YEAR'      => 4,
+                                    'SEPARATOR' => 5,
+                                    'MINUS'     => 6,
+                                    'VALUE'     => 7,
+                                    'PLUS'      => 8,
+                                    );
+            }
+
+        // function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        //$this->variableTypeOffsetID  = CreateVariableByName($categoryId,'TypeAndOffset',    1 , false, false, 10, $scriptIdActionScript,  IPSRP_TYPE_KWH, 'Clock');
+        $this->variableTimeOffsetID  = CreateVariableByName($categoryId,"TimeOffset",  1, false,false,   40);
+	    $this->variableTimeCountID   = CreateVariableByName($categoryId,"TimeCount" ,  1, false,false,   50);
+
+        $this->variablePeriodYearID  = CreateVariableByName($categoryId_Navigation,   "PeriodYearLast",    1 , false,false,   5000);
+        $this->variablePeriodMonthID = CreateVariableByName($categoryId_Navigation,   "PeriodMonthLast",   1 , false,false,   5010);
+        $this->variablePeriodWeekID  = CreateVariableByName($categoryId_Navigation,   "PeriodWeekLast",    1 , false,false,   5020);
+        $this->variablePeriodDayID   = CreateVariableByName($categoryId_Navigation,   "PeriodDayLast",     1 , false,false,   5030);
+        $this->variablePeriodHourID  = CreateVariableByName($categoryId_Navigation,   "PeriodHourLast",    1 , false,false,   5040);
+
+
+        return($this->variablePeriodCountID);
+        }
+
+    /* webOps::doNavigation 
+     * eine ungewöhnliche aber sehr kompakte Darstellungsform.
+     * categoryId stored in class by setSelectButtons used by createSelectButtons
+     * Es gibt zwei Profile die individuell zur Runtime angepasst werden, das bedeutet auch einen Update der Profil Associations, damit der neue Wert angezeigt werden kann
+     * Bearbeitet werden dadurch folgende Einstellungen
+     *      $variableIdCount  aus der Zeile PeriodAndCount
+     *      $variableIdOffset aus der Zeile TypeAndOffset
+     * die anderen Werte werden geradlinig transparent abgespeichert
+     *
+     * anhand des Wertes der beiden Profile kann erkannt werden in welcher Variable man ist 
+     *
+     */
+
+    public function doNavigation($variableId, $value)
+        {
+        /* Wert 10 ist Stunde, 11 Tag, 12 Woche */
+        $lastValue = GetValue($variableId);
+        SetValue($variableId, $value);
+        $variableIdCount = $this->variableTimeCountID;
+        //print_R($this->associationsWithIndex);
+        $restoreOldValue = false;
+        $updateLastValue = false;
+        Switch($value) {
+            case $this->associationsWithIndex["MINUS"]:
+                if (GetValue($variableIdCount) > 1) {
+                    SetValue($variableIdCount, GetValue($variableIdCount) - 1);
+                }
+                IPS_SetVariableProfileAssociation('AD_PeriodAndCount', $this->associationsWithIndex["VALUE"], GetValue($variableIdCount), "", -1);
+                $updateLastValue = true;
+                $restoreOldValue = true;
+                break;
+            case $this->associationsWithIndex["PLUS"]:
+                SetValue($variableIdCount, GetValue($variableIdCount) + 1);
+                IPS_SetVariableProfileAssociation('AD_PeriodAndCount', $this->associationsWithIndex["VALUE"], GetValue($variableIdCount), "", -1);
+                $restoreOldValue = true;
+                $updateLastValue = true;
+                echo "plus";
+                break;
+            /*case "PREV":
+                SetValue($variableIdOffset, GetValue($variableIdOffset) - 1);
+                IPS_SetVariableProfileAssociation('IPSReport_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
+                $restoreOldValue = true;
+                break;
+            case "NEXT":
+                if (GetValue($variableIdOffset) < 0) {
+                    SetValue($variableIdOffset, GetValue($variableIdOffset) + 1);
+                }
+                IPS_SetVariableProfileAssociation('IPSReport_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);          // es wird nur eine Association umgestellt auf den aktuellen Wert
+                $restoreOldValue = true;
+                break;*/
+            case $this->associationsWithIndex["VALUE"]:
+            case $this->associationsWithIndex["SEPARATOR"]:
+                SetValue($variableId, $lastValue);
+                break;
+            case $this->associationsWithIndex["HOUR"]:
+                SetValue($variableIdCount, GetValue($this->variablePeriodHourID));
+                IPS_SetVariableProfileAssociation('AD_PeriodAndCount', $this->associationsWithIndex["VALUE"], GetValue($variableIdCount), "", -1);
+                break;
+            case $this->associationsWithIndex["DAY"]:
+                SetValue($variableIdCount, GetValue($this->variablePeriodDayID));
+                IPS_SetVariableProfileAssociation('AD_PeriodAndCount', $this->associationsWithIndex["VALUE"], GetValue($variableIdCount), "", -1);
+                break;
+            case $this->associationsWithIndex["WEEK"]:
+                SetValue($variableIdCount, GetValue($this->variablePeriodWeekID));
+                IPS_SetVariableProfileAssociation('AD_PeriodAndCount', $this->associationsWithIndex["VALUE"], GetValue($variableIdCount), "", -1);
+                break;
+            case $this->associationsWithIndex["MONTH"]:
+                SetValue($variableIdCount, GetValue($this->variablePeriodMonthID));
+                IPS_SetVariableProfileAssociation('AD_PeriodAndCount', $this->associationsWithIndex["VALUE"], GetValue($variableIdCount), "", -1);
+                break;
+            case $this->associationsWithIndex["YEAR"]:
+                SetValue($variableIdCount, GetValue($this->variablePeriodYearID));
+                IPS_SetVariableProfileAssociation('AD_PeriodAndCount', $this->associationsWithIndex["VALUE"], GetValue($variableIdCount), "", -1);
+                break;
+            default:
+                // other Values
+            }
+        if ($updateLastValue)
+            {
+            switch ($lastValue)
+                {
+                case $this->associationsWithIndex["HOUR"]:
+                    SetValue($this->variablePeriodHourID,GetValue($variableIdCount));
+                    break;
+                case $this->associationsWithIndex["DAY"]:
+                    SetValue($this->variablePeriodDayID,GetValue($variableIdCount));
+                    break;
+                case $this->associationsWithIndex["WEEK"]:
+                    SetValue($this->variablePeriodWeekID,GetValue($variableIdCount));
+                    break;
+                case $this->associationsWithIndex["MONTH"]:
+                    SetValue($this->variablePeriodMonthID,GetValue($variableIdCount));
+                    break;
+                case $this->associationsWithIndex["YEAR"]:
+                    SetValue($this->variablePeriodYearID,GetValue($variableIdCount));
+                    break;
+                default:
+                    echo "Dont know";
+                    break;
+                }    
+            }
+        if ($restoreOldValue)  
+            {
+            //echo "restore $lastValue";
+            IPS_Sleep(200);
+            SetValue($variableId, $lastValue);
+            }
+        //echo "Neuer Wert ist ".GetValue($variableId)."\n";
+        }
+
+    /* webOps::createNavigation
+     * alle haben die selbe category Variable, aufpassen
+     *
+     *
+     */
+    public function getNavPeriode($variableId,$debug=false)
+        {
+        $periode=false;
+        $lastValue = GetValue($variableId);            
+            switch ($lastValue)
+                {
+                case $this->associationsWithIndex["HOUR"]:
+                    $periode=GetValue($this->variablePeriodHourID)*60*60;
+                    break;
+                case $this->associationsWithIndex["DAY"]:
+                    $periode=GetValue($this->variablePeriodDayID)*24*60*60;
+                    break;
+                case $this->associationsWithIndex["WEEK"]:
+                    $periode=GetValue($this->variablePeriodWeekID)*7*24*60*60;
+                    break;
+                case $this->associationsWithIndex["MONTH"]:
+                    $periode=GetValue($this->variablePeriodMonthID)*30*24*60*60;
+                    break;
+                case $this->associationsWithIndex["YEAR"]:
+                    $periode=GetValue($this->variablePeriodYearID)*365*24*60*60;
+                    break;
+                default:
+                    echo "Dont know";
+                    break;
+                }
+        return($periode); 
         }
 
     }
@@ -4009,7 +4294,7 @@ class archiveOps
                 }
             else 
                 {
-                echo "Warning, retrieving Logging Data for $oid from ".$config["StartTime"]." to ".$config["EndTime"]." results to empty or fail.\n";
+                if ($config["Warning"]) echo "Warning, retrieving Logging Data for $oid from ".$config["StartTime"]." to ".$config["EndTime"]." results to empty or fail.\n";
                 $werte=array();
                 }
             } while (count($werte)==10000);
@@ -4074,10 +4359,15 @@ class archiveOps
      *      means.Full          pointer auf die class für die Mittelwertsberechnung
      *      means.Day           pointer auf die class
      *
+     * unterschiedliche Arten der Berechnung des Aggregates, Increment = [0,1,2]
+     *      0 gut geeignet für 15 Minuten Energiewerte, wird nur bei Daily verwendet
+     *      1 für nicht so standardisiserte Werte, keine Berücksichtigung der aufgelaufenen Werte zwischen den Einzelwerten
+     *      2 für Zählerwerte, Differenz dist dei Aggregation
+     *
      */
     public function manualDailyAggregate(&$result,$werte,$config,$debug=false)
         {
-        //$debug=true;
+        //$debug=true;            // overwrite for failure analysis
 
         // Configuration config klären
         if (isset(($config["manAggregate"]))===false) $config["manAggregate"]=true;
@@ -4095,7 +4385,7 @@ class archiveOps
                 case "1":
                 case "daily":
                     $manAggregate=1;
-                    $increment=0;                       // unterschiedliche Funktionen bei der Integration der Werte     
+                    $increment=0;                       // unterschiedliche Funktionen bei der Integration der Werte, geeignet für 15 Minutenwerte     
                     break;
                 case "2":
                 case "weekly";
@@ -4180,6 +4470,7 @@ class archiveOps
                 $showAgg=false;                 // Anzeige des Ergebnisses nach Ende einer Periode
                 if ($debug) 
                     {
+                    echo "   Init, Mode Aggregate/Increment $manAggregate/$increment:\n";
                     echo "   Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
                     $dailyStart = strtotime(date("d.m.Y", $wert['TimeStamp']));
                     $dailyDelay=($wert['TimeStamp']-$dailyStart)/60;
@@ -4250,7 +4541,8 @@ class archiveOps
                             $result[$index]["TimeStamp"]=$altzeit;
                             $countPeriode--;
                             $count2=$countPeriode;          // eh nur zum anzeigen
-                            $result[$index]["Avg"]=$ergebnisTag/$countPeriode;
+                            if ($countPeriode!=0) $result[$index]["Avg"]=$ergebnisTag/$countPeriode;            // Fehler abfangen und lieber keinen Wert
+                            else $result[$index]["Avg"]=0;
                             $countPeriode=2; 
                             }
                         if ($direction=="future")
@@ -4260,7 +4552,8 @@ class archiveOps
                             $result[$index]["TimeStamp"]=$zeit;
                             $countPeriode++;
                             $count2=$countPeriode;          // eh nur zum anzeigen
-                            $result[$index]["Avg"]=$ergebnisTag/$countPeriode;
+                            if ($countPeriode!=0) $result[$index]["Avg"]=$ergebnisTag/$countPeriode;
+                            else $result[$index]["Avg"]=0;
                             $countPeriode=0; 
                             }
                         $result[$index]["Value"]=$ergebnisTag;
@@ -4536,7 +4829,7 @@ class archiveOps
             elseif ($debug>1)  echo "    getValues normal debug\n";
             $count = count($werte);
             $duration=0; $span=0;                   //default Werte für ein leeeres Array
-            if ($count==0) echo "     Warnung, ein leeres Array übergeben, keine Eintraege gefunden.\n";
+            if ($count==0) { if ($config["Warning"]) echo "     Warnung, ein leeres Array übergeben, keine Eintraege gefunden.\n"; }
             else
                 {
                 $firstTime = $werte[array_key_last($werte)]["TimeStamp"];
@@ -6046,6 +6339,7 @@ class statistics
         configfileParser($logInput, $config, ["LOGCHANGE","LogChange","logChange","logchange" ],"LogChange" ,["pos"=>5,"neg"=>5]);      // in Prozent auf den Vorwert
 
         configFileParser($logInput, $config, ["debug","DEBUG","Debug"],"Debug",[]);   // Selective Debugging
+        configFileParser($logInput, $config, ["warning","WARNING","Warning"],"Warning",true);   // echo Warning messages
 
         configFileParser($logInput, $config, ["showtable","SHOWTABLE","Showtable","ShowTable"],"ShowTable",null);   // Darstellungsoptionen für showValues
 
@@ -9750,7 +10044,7 @@ class ipsOps
 		Debug ("Empty Category ID=$CategoryId");
 	    }
 
-    /* createVariableByName as class function with additional features
+    /* ipsOps::createVariableByName as class function with additional features
      * Variable oder Kategorie wird nur angelegt wenn sie noch nicht vorhanden ist
      *
      */
@@ -9817,6 +10111,21 @@ class ipsOps
 					'                       "Type"    => \''.$type.'\','."\n".
 					'                       "Profile" => \''.$profile.'\'),'."\n";        
         return $VariableId;
+        }
+
+    function updateIncludeFile($VariableId)
+        {
+        $name=IPS_GetName($VariableId);
+        $variableType=IPS_GetVariable($VariableId);
+        $type=$variableType["VariableType"];
+        if (isset($variableType["VariableProfile"]))                $profile=$variableType["VariableProfile"];
+        elseif (isset($variableType["VariableCustomProfile"])) $profile=$variableType["VariableCustomProfile"];
+        else $profile="";
+
+	    $this->includefile.='"'.$name.'" => array("OID"     => \''.$VariableId.'\','."\n".
+					'                       "Name"    => \''.$name.'\','."\n".
+					'                       "Type"    => \''.$type.'\','."\n".
+					'                       "Profile" => \''.$profile.'\'),'."\n";        
         }
 
     function getIncludeFile()
@@ -14365,6 +14674,8 @@ class WfcHandling
     private $configWebfront;                                                // interne Configuration eines Webfronts als Array einlesen, dann modifizieren und wieder schreiben
     private $itemListWebfront;                                              // Zuordnung index 0..x und itemID - das ist der Name
 
+    protected $linkTable;                               // ale Links die seit der initialisiserung geschrieben wurden
+
     /* legt schon eine Menge Variablen an:
      * die installierten Module
      * wenn Stromheizung oder CustomComponents werden die passenden Kategorien auch gleich angelegt
@@ -14447,8 +14758,9 @@ class WfcHandling
 	    //echo "\n"; */       
         }
 
-    /* alle Visualisierungen auslesen 
-    */
+    /* WfcHandling::
+     * alle Visualisierungen auslesen 
+     */
     public function get_Webfronts()
         {
         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug        
@@ -14539,6 +14851,85 @@ class WfcHandling
             }
         }
 
+
+    /* initiateLinkTable
+     * ein json string eines arrays mit allen Links, Namen und ID
+     * parentId => TargetID
+     */
+    public function initiateLinkTable()
+        {
+        $this->linkTable=array();
+        }
+
+	/* WfcHandling::createLinkByDestination
+     * Anlegen eines Links
+	 *
+	 * Die Funktion sucht in der spezifizierten Parent Kategorie alle vorhandenen Links und überprüft ob einer der
+	 * Links bereits auf das zu verknüpfende Objekt verweist. Wenn kein Link gefunden wurde wird ein neuer angelegt,
+	 * anderenfalls wird Position und Name existierenden Links auf den neuen Wert gesetzt.
+	 *
+	 * @param string $Name Name des Links im logischen Objektbaum
+	 * @param integer $LinkChildId ID des zu verknüpfenden Objekts
+	 * @param integer $ParentId ID des übergeordneten Objekts im logischen Objektbaum
+	 * @param integer $Position Positionswert des Objekts
+	 * @param string $ident Identifikator für das Objekt
+	 * @return integer ID der Variable
+	 *
+	 */
+	public function createLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") 
+        {
+		$LinkId    = false;
+		$ObjectIds = IPS_GetChildrenIDs ($ParentId);
+		foreach ($ObjectIds as $ObjectId) 
+            {
+			$Object = IPS_GetObject ($ObjectId);
+			if ($Object['ObjectType']==6 /*Link*/) 
+                {
+				$Link = IPS_GetLink($ObjectId);
+				if ($Link['TargetID']==$LinkChildId) 
+                    {
+					$LinkId = $ObjectId;
+					break;
+				    }
+			    }
+		    }
+
+		if ($LinkId === false) 
+            {
+			$LinkId = IPS_CreateLink();
+			IPS_SetParent($LinkId, $ParentId);
+			IPS_SetPosition($LinkId, $Position);
+		    }
+		IPS_SetLinkTargetID($LinkId, $LinkChildId);
+		if ($ident<>"") { IPS_SetIdent($LinkId, $ident); }
+		IPS_SetName($LinkId, $Name);
+		$this->updateObjectData($LinkId, $Position);
+        $this->linkTable[$ParentId][$LinkChildId]=$LinkId;
+		return $LinkId;
+	    }
+
+	protected function updateObjectData($ObjectId, $Position, $Icon="") 
+        {
+		$ObjectData = IPS_GetObject ($ObjectId);
+		$ObjectPath = IPS_GetLocation($ObjectId);
+		if ($ObjectData['ObjectPosition'] <> $Position and $Position!==false) 
+            {
+			Debug ("Set ObjectPosition='$Position' for Object='$ObjectPath' ");
+			IPS_SetPosition($ObjectId, $Position);
+		    }
+		if ($ObjectData['ObjectIcon'] <> $Icon and $Icon!==false) 
+            {
+			Debug ("Set ObjectIcon='$Icon' for Object='$ObjectPath' ");
+			IPS_SetIcon($ObjectId, $Icon);
+		    }
+    	}
+
+    /* deliver the content of the linkTable
+     */
+    public function getLinkTable()
+        {
+        return(json_encode($this->linkTable));
+        }
 
     /* echo der installierten Webfront Konfiguratoren, IDs werden in construct angelegt */
 

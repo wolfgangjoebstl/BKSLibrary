@@ -643,7 +643,13 @@ if($_IPS['SENDER'] == "TimerEvent")
             $gartensteuerungStatistics->getRainStatistics($input);  // die Werte berechnen, die in der nächsten Routine verwendet werden   
             SetValue($gartensteuerungStatistics->StatistikBox1ID,$gartensteuerungStatistics->writeOverviewMonthsHtml($gartensteuerungStatistics->RegenKalendermonate));
             SetValue($gartensteuerungStatistics->StatistikBox2ID,$gartensteuerungStatistics->writeOverviewMonthsHtml($gartensteuerungStatistics->DauerKalendermonate));
-            SetValue($gartensteuerungStatistics->StatistikBox3ID,$gartensteuerungStatistics->writeRainEventsHtml($gartensteuerungStatistics->listRainEvents(100)));
+
+            $regenereignis=array();
+            $gartensteuerungStatistics->getRainEventsFromIncrements($regenereignis,[],false);             // regenereignis ist der Retourwert, false, true, 2 ist der Debugmode
+            //print_R($regenereignis);
+            SetValue($gartensteuerungStatistics->StatistikBox3ID,$gartensteuerungStatistics->writeRainEventsHtml($regenereignis));
+
+            //SetValue($gartensteuerungStatistics->StatistikBox3ID,$gartensteuerungStatistics->writeRainEventsHtml($gartensteuerungStatistics->listRainEvents(100)));           // alte Implementierung
 			break;
 
 		/*

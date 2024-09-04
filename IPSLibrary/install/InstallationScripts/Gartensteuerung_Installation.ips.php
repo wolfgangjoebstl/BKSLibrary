@@ -4,11 +4,12 @@
 	 *
 	 * Script zur Ansteuerung der Giessanlage in BKS oder statistische Auswertungen in LBG
      * hier ist das Installationsskript, um Variablen und Tabs vorzubereiten
-     * es gibt bis zu 3 Tabs
+     *
+     * es gibt bis zu 4 Tabs
      *      Gartensteuerung     das Hauptmodul für die Beregnung
      *      Statistik           Regenstatistik, Dauer, Intensität von lokaler Wetterstation
      *      Powerpump           Leistung und Energieverbrauch, Fehlermeldungen wenn kein Wasser etc.
-     *
+     *      DataQuality         eine Art Maintenance, unterstützung bei der Einschätzung der Qualität der Daten, Aufgebaut wie Reporting
      *
 	 *
 	 * @file          Gartensteuerung_Installation.ips.php
@@ -27,12 +28,15 @@
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
     IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');    	
-		 
+
+    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren
+	else $debug=false;
+
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+		if ($debug) echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('Gartensteuerung',$repository);
 		}
 
@@ -40,28 +44,28 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion();
-	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	echo " ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Gartensteuerung');
-	echo "\nGartensteuerung Version : ".$ergebnis;
+    $version      = $moduleManager->VersionHandler()->GetScriptVersion();
+	$state        = $moduleManager->VersionHandler()->GetModuleState();
+	$modulversion = $moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+	$ergebnis     = $moduleManager->VersionHandler()->GetVersion('Gartensteuerung');
+	if ($debug) 
+        {
+        echo "\nKernelversion : ".IPS_GetKernelVersion();
+    	echo "\nIPS Version : ".$version." ".$state;
+	    echo "\nIPSModulManager Version : ".$modulversion;
+        echo "\nGartensteuerung Version : ".$ergebnis;
+        }
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-    $ipsOps = new ipsOps();    
-    $webOps = new webOps();                     // Buttons anlegen, sind auch Profile, werden aber bei Install angelegt
-    $profileOps = new profileOps();             // Profile verwalten, local geht auch remote
+    $ipsOps      = new ipsOps();    
+    $webOps      = new webOps($debug);                     // Buttons anlegen, sind auch Profile, werden aber bei Install angelegt
+    $profileOps  = new profileOps();             // Profile verwalten, local geht auch remote
     
-    $wfcHandling =  new WfcHandling();
-
-    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren
-	else $debug=false;
+    $wfcHandling = new WfcHandling();
+    $fullinitiate = false;                  // false, kein löschen der Kategorien
 
 /*******************************
  *
@@ -69,10 +73,7 @@
  *
  ********************************/
 
-	echo "\n";
 	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	echo "Default WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
-	
 	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
 
 /*******************************
@@ -105,7 +106,12 @@
 	if ($WFC10_Enabled==true)		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];		
 	if ($WFC10User_Enabled==true)   $WFC10User_ConfigId       = $WebfrontConfigID["User"];
   
-    $ipsOps->writeConfigWebfrontAll($configWFront);             // Ausgabe ini Informationen
+	if ($debug) 
+        {
+        echo "\n";
+        echo "Default WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+        $ipsOps->writeConfigWebfrontAll($configWFront);             // Ausgabe ini Informationen
+        }
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -135,8 +141,11 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-    echo "\n";
-    echo "Darstellung der benötigten Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
+	if ($debug) 
+        {
+        echo "\n";
+        echo "Darstellung der benötigten Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
+        }
 	$profilname=array("Minuten"=>"update");
     $profileOps->synchronizeProfiles($profilname);
 
@@ -153,21 +162,25 @@
 	$scriptIdGartensteuerung   		= IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	$scriptIdWebfrontControl   		= IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 
+    /*
 	$includefile="<?php";                      //  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht , verwendet von CreateVariable3
 	$includefile.="\n".'function ParamList() {
-		return array('."\n";
+		return array('."\n";    */
+
+    // Variableprofile für ersten Tab Gartensteuerung anlegen
 
     // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 	/* CreateVariable3 wie unten legt automatisch die Infos im Include File an */
 
-    echo "Create GiessAnlagenProfil und Variable GiessAnlage.\n";
+    if ($debug) echo "Create GiessAnlagenProfil und Variable GiessAnlage.\n";
 	$pname="GiessAnlagenProfil";
     $tabs =  ["Aus","EinmalEin","Auto"];
     $color = [0x481ef1,0xf13c1e,0x1ef127];
     $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
-	$GiessAnlageID 		= CreateVariable3("GiessAnlage", 1, $categoryId_Gartensteuerung, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	//$GiessAnlageID 		= CreateVariable3("GiessAnlage", 1, $categoryId_Gartensteuerung, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessAnlageID 		= $ipsOps->createVariableByName($categoryId_Gartensteuerung,"GiessAnlage",    1, "GiessAnlagenProfil", false, 0, $scriptIdWebfrontControl);  /* 0 Boolean 1 Integer 2 Float 3 String */
 
-    echo "Create GiessKreisProfil und Variable Giesskreis.\n";
+    if ($debug) echo "Create GiessKreisProfil und Variable Giesskreis.\n";
 	$pname="GiessKreisProfil";
     $tabsToChoose  = ["1","2","3","4","5","6","7","8"];
     $colorToChoose = [0x481ef1,0xf13c1e,0x1ef127,0xF6E3CE,0x2EFE64,0xB40486,0x04B486,0x8404B6];
@@ -183,31 +196,32 @@
     //print_r($tabs);
     $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
 
-	$GiessKreisID		= CreateVariable3("GiessKreis",1,$categoryId_Gartensteuerung, 10,  $pname,$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	//$GiessKreisID		= CreateVariable3("GiessKreis",1,$categoryId_Gartensteuerung, 10,  $pname,$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessKreisID		= $ipsOps->createVariableByName($categoryId_Gartensteuerung,"GiessKreis",     1, $pname,false, 10,$scriptIdWebfrontControl, ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	$pname="GiessConfigProfil";
     $tabs =  ["Morgen","Abend"];
     $color = [0x481ef1,0x1ef127];
     $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
-	$GiessKonfigID 		= CreateVariable3("GiessStartzeitpunkt",0,$categoryId_Register, 300, $pname,$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	//$GiessKonfigID 		= CreateVariable3("GiessStartzeitpunkt",0,$categoryId_Register, 300, $pname,$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessKonfigID		= $ipsOps->createVariableByName($categoryId_Gartensteuerung,"GiessStartzeitpunkt",     0, $pname,false, 300,$scriptIdWebfrontControl, ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
-    // Umschalter auf der inken Seite wenn DataQuality Pane aktiviert ist
+    // Umschalter auf der linken Seite wenn DataQuality Pane aktiviert ist
 
     $buttonIds=false;
     if (strtoupper($GartensteuerungConfiguration["Configuration"]["DataQuality"])=="ENABLED") 
         {
-        echo "Buttons zur Anzeige von historischen Daten, Configuration DataQuality enabled:\n";
+        if ($debug) echo "Buttons zur Anzeige von historischen Daten, Configuration DataQuality enabled:\n";
         $gartensteuerungReports=$GartensteuerungConfiguration["Configuration"]["Reports"];
         $count=0;
         $associationsValues = array();
         foreach ($gartensteuerungReports as $displaypanel=>$values)
             {
-            echo "     Profileintrag $count : ".$displaypanel."  \n";
+            if ($debug) echo "     Profileintrag $count : ".$displaypanel."  \n";
             $associationsValues[$count]=$displaypanel;
             $count++;
             } 
         if ($count==0) echo "No Reports configured in Configuration. Do at least RegenMonat, TempMonat, RegenTage, TempTage .\n";       
-        $webOps = new webOps(true);
         $webOps->setConfigButtons(9000);                    // order in ID display
         $buttonIds = $webOps->createSelectButtons($associationsValues,$categoryIdSelectReports, $scriptIdWebfrontControl);
 
@@ -215,8 +229,33 @@
         $tabs =  ["Aus","Ein","Auto"];
         $color = [0x481ef1,0xf13c1e,0x1ef127];
         $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
-	    $AnotherSelectorID 		= CreateVariable3("AnotherSelector", 1, $categoryIdSelectReports, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-	    $ReportSelectorID 		= CreateVariable3("ReportSelector",  3, $categoryIdSelectReports, 0, "" ,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String  es wird in lesbaren Format die Betriebsart gespeichert */
+	    //$AnotherSelectorID 		= CreateVariable3("AnotherSelector", 1, $categoryIdSelectReports, 0, $pname,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+    	$AnotherSelectorID 		= $ipsOps->createVariableByName($categoryIdSelectReports,"AnotherSelector", 1, $pname, false, 0, $scriptIdWebfrontControl);  /* 0 Boolean 1 Integer 2 Float 3 String */
+
+        $PeriodeSelectorID=$webOps->createNavigation($categoryIdSelectReports,$scriptIdWebfrontControl);            // wird nicht im include geführt, Möglichkeit es nachträglich einzutragen
+        $ipsOps->updateIncludeFile($PeriodeSelectorID);
+
+        /*
+        $pname='Gartensteuerung_PeriodAndCount';
+        $associationsPeriodAndCount  = array(
+                                    'HOUR'      => 'Stunde',
+                                    'DAY'       => 'Tag',
+                                    'WEEK'      => 'Woche',
+                                    'MONTH'     => 'Monat',
+                                    'YEAR'      => 'Jahr',
+                                    'SEPARATOR' => ' ',
+                                    'MINUS'     => '-',
+                                    'VALUE'     => '1',
+                                    'PLUS'      => '+',
+                                    );
+        $webOps->createProfileAssociations ($pname,   $associationsPeriodAndCount);
+	    //$PeriodeSelectorID 		= CreateVariable3("PeriodeSelector", 1, $categoryIdSelectReports, 0, $pname,$scriptIdWebfrontControl,null,""  ); 
+    	$PeriodeSelectorID 		= $ipsOps->createVariableByName($categoryIdSelectReports,"PeriodeSelector", 1, $pname, false, 0, $scriptIdWebfrontControl);   */
+
+	    //$ReportSelectorID 		= CreateVariable3("ReportSelector",  3, $categoryIdSelectReports, 0, "" ,$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String  es wird in lesbaren Format die Betriebsart gespeichert */
+    	$ReportSelectorID 		= $ipsOps->createVariableByName($categoryIdSelectReports,"ReportSelector", 3, "", false, 0, $scriptIdWebfrontControl);  /* 0 Boolean 1 Integer 2 Float 3 String */
+        $WebConfigLinkIdsID 		= $ipsOps->createVariableByName($categoryIdSelectReports,"WebConfigLinkIds", 3, "", false, 0);  // 3 String, json encoded
+        SetValue($WebConfigLinkIdsID,"");
 		}      
 
 
@@ -230,60 +269,87 @@
      *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 		
+	// Nachrichtenzeilen werden automatisch von der Logging Klasse beim ersten Aufruf gebildet 
 	$categoryId_Nachrichten			= CreateCategory('Nachrichtenverlauf-Gartensteuerung',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	/* Nachrichtenzeilen werden automatisch von der Logging Klasse beim ersten Aufruf gebildet */
+
+    // Tab Statistik mit mehreren Variablen zur Darstellung netter html Boxen
 
 	$CategoryId_Statistiken			= CreateCategory('Statistiken',   $CategoryIdData, 200);
 	$StatistikBox1ID				= CreateVariable("Regenmengenkalender"   ,3,$CategoryId_Statistiken,  40, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$StatistikBox2ID				= CreateVariable("Regendauerkalender"   ,3,$CategoryId_Statistiken,  40, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$StatistikBox3ID				= CreateVariable("Regenereignisse" ,3,$CategoryId_Statistiken,  20, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
+    // Tab Gartensteuerung die Variablen anlegen
 		
 	// CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-	/* CreateVariable3 wie unten legt automatisch die Infos im Include File an */
-	$GiessAnlageID 		= CreateVariable3("GiessAnlage", 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessKreisID		= CreateVariable3("GiessKreis",1,$categoryId_Gartensteuerung, 10, "GiessKreisProfil",$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessTimeID		= CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "Minuten",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessTimeRemainID	= CreateVariable3("GiessTimeRemain",1,$categoryId_Gartensteuerung,  30, "Minuten",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessKreisInfoID	= CreateVariable3("GiessKreisInfo",3,$categoryId_Gartensteuerung,  40, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessDauerInfoID	= CreateVariable3("GiessDauerInfo",3,$categoryId_Gartensteuerung,  50, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	/* CreateVariable3 wie unten legt automatisch die Infos im Include File an 
+	$GiessAnlageID 		= CreateVariable3("GiessAnlage", 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdWebfrontControl,null,""  ); 
+	$GiessKreisID		= CreateVariable3("GiessKreis",1,$categoryId_Gartensteuerung, 10, "GiessKreisProfil",$scriptIdWebfrontControl,null,"" ); 
+	$GiessTimeID		= CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "Minuten",null,null,"" ); 
+	$GiessTimeRemainID	= CreateVariable3("GiessTimeRemain",1,$categoryId_Gartensteuerung,  30, "Minuten",null,null,"" ); 
+	$GiessKreisInfoID	= CreateVariable3("GiessKreisInfo",3,$categoryId_Gartensteuerung,  40, "~HTMLBox",null,null,"" ); 
+	$GiessDauerInfoID	= CreateVariable3("GiessDauerInfo",3,$categoryId_Gartensteuerung,  50, "~HTMLBox",null,null,"" ); 
 
-	$tableID	        = CreateVariable3("Tabelle",  3,$categoryIdSelectReports,  30, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$table1ID	        = CreateVariable3("Tabelle1", 3,$categoryIdSelectReports,  540, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$table2ID	        = CreateVariable3("Tabelle2", 3,$categoryIdSelectReports,  550, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$chartID	        = CreateVariable3("Chart",    3,$categoryIdSelectReports,  100, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$mapID	            = CreateVariable3("GoogleMap",3,$categoryIdSelectReports,  500, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-
-	$GiessCountID		= CreateVariable3("GiessCount",1,$categoryId_Register, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessCountOffsetID	= CreateVariable3("GiessCountOffset",1,$categoryId_Register, 210, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessPauseID 		= CreateVariable3("GiessPause",1,$categoryId_Register, 20, "Minuten",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessAnlagePrevID 	= CreateVariable3("GiessAnlagePrev",1,$categoryId_Register, 200, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessCountID		= CreateVariable3("GiessCount",1,$categoryId_Register, 10, "",null,null,"" ); 
+	$GiessCountOffsetID	= CreateVariable3("GiessCountOffset",1,$categoryId_Register, 210, "",null,null,"" ); 
+	$GiessPauseID 		= CreateVariable3("GiessPause",1,$categoryId_Register, 20, "Minuten",null,null,"" ); 
+	$GiessAnlagePrevID 	= CreateVariable3("GiessAnlagePrev",1,$categoryId_Register, 200, "",null,null,"" ); 
 	
+	$tableID	        = CreateVariable3("Tabelle",  3,$categoryIdSelectReports,  30, "~HTMLBox",null,null,"" ); 
+	$table1ID	        = CreateVariable3("Tabelle1", 3,$categoryIdSelectReports,  540, "~HTMLBox",null,null,"" ); 
+	$table2ID	        = CreateVariable3("Tabelle2", 3,$categoryIdSelectReports,  550, "~HTMLBox",null,null,"" ); 
+	$chartID	        = CreateVariable3("Chart",    3,$categoryIdSelectReports,  100, "~HTMLBox",null,null,"" ); 
+	$mapID	            = CreateVariable3("GoogleMap",3,$categoryIdSelectReports,  500, "~HTMLBox",null,null,"" );  */
+
+    // Tab Dataquality die Variablen anlegen
+
+	$GiessTimeID		= $ipsOps->createVariableByName($categoryId_Gartensteuerung,"GiessTime",      1, "Minuten", false, 30 ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessTimeRemainID	= $ipsOps->createVariableByName($categoryId_Gartensteuerung,"GiessTimeRemain",1, "Minuten",false, 30  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessKreisInfoID	= $ipsOps->createVariableByName($categoryId_Gartensteuerung,"GiessKreisInfo", 3, "~HTMLBox",false, 40  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessDauerInfoID	= $ipsOps->createVariableByName($categoryId_Gartensteuerung,"GiessDauerInfo", 3, "~HTMLBox",false, 50  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	$GiessCountID		= $ipsOps->createVariableByName($categoryId_Register,"GiessCount",        1, "",false, 10  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessCountOffsetID	= $ipsOps->createVariableByName($categoryId_Register,"GiessCountOffset",  1, "",false, 210  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessPauseID 		= $ipsOps->createVariableByName($categoryId_Register,"GiessPause",        1, "Minuten",false, 20  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessAnlagePrevID 	= $ipsOps->createVariableByName($categoryId_Register,"GiessAnlagePrev",   1, "",false, 200  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	$tableID	        = $ipsOps->createVariableByName($categoryIdSelectReports,"Tabelle",       3, "~HTMLBox",false, 30  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$table1ID	        = $ipsOps->createVariableByName($categoryIdSelectReports,"Tabelle1",       3, "~HTMLBox",false, 540  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$table2ID	        = $ipsOps->createVariableByName($categoryIdSelectReports,"Tabelle2",       3, "~HTMLBox",false, 550  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$chartID	        = $ipsOps->createVariableByName($categoryIdSelectReports,"Chart",         3, "~HTMLBox",false, 100  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$mapID	            = $ipsOps->createVariableByName($categoryIdSelectReports,"GoogleMap",         3, "~HTMLBox",false, 500  ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 
-	$includefile.=');'."\n";
-	$includefile.='}'."\n".'?>';
+	/*
+    $includefile.=');'."\n";
+	$includefile.='}'."\n".'?>';*/
+    	
+    $includefile = $ipsOps->getIncludeFile()."\n";                // Log der Create Variables als includefile
 	//echo ".....".$includefile."\n";
 
+    $filename = "not used";
 	if ($RemoteVis_Enabled==false)
 	   { /* keine Remote Visualisierung, daher inc File für andere schreiben */
 		$filename=IPS_GetKernelDir()."scripts\IPSLibrary/app/modules/Gartensteuerung/Gartensteuerung.inc.php";
 		if (!file_put_contents($filename, $includefile)) {
       	  throw new Exception('Create File '.$filename.' failed!');
     			}
-	   echo "\nFilename:".$filename;
 		}
 		
 	// Add Scripts, they have auto install
 	//IPS_RunScript($scriptIdGartensteuerung);
 	//IPS_RunScript($scriptIdNachrichtenverlauf);
-	
-	echo "\nData Kategorie : ".$CategoryIdData;
-	echo "\nApp  Kategorie : ".$CategoryIdApp;
-	echo "\nScriptID #1    : ".$scriptIdGartensteuerung;
-	echo "\nScriptID #2    : ".$scriptIdWebfrontControl;
-	echo "\n";
+	if ($debug) 
+        {
+        echo "\nFilename inlude File : ".$filename;
+        echo "\nData Kategorie       : ".$CategoryIdData;
+        echo "\nApp  Kategorie       : ".$CategoryIdApp;
+        echo "\nScriptID #1          : ".$scriptIdGartensteuerung;
+        echo "\nScriptID #2          : ".$scriptIdWebfrontControl;
+        echo "\n";
+        }
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -296,12 +362,12 @@
 	 * Trennung in Kategorien erfolgt durch - Zeichen nach Auswertung und Nachrichten
 	 */
 	 
-	echo "\nLinks für Webfront Administrator und User identifizieren :\n";
+	if ($debug) echo "\nLinks für Webfront Administrator und User identifizieren :\n";
 	$webfront_links=array();
 	$Category=IPS_GetChildrenIDs($CategoryIdData);
 	foreach ($Category as $CategoryId)
 		{
-		echo "  Category    ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
+		if ($debug) echo "  Category    ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
 		$Params = explode("-",IPS_GetName($CategoryId)); 
 		$SubCategory=IPS_GetChildrenIDs($CategoryId);
 		foreach ($SubCategory as $SubCategoryId)
@@ -313,7 +379,7 @@
                 }
 			}
 		}
-	echo "\n";
+	if ($debug) echo "\n";
 	//print_r($webfront_links);		// werden noch nicht ausgewertet
 	//echo "\n";
 
@@ -324,7 +390,7 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-    echo "Timer aufsetzen :\n";
+    if ($debug) echo "Timer aufsetzen :\n";
     /* Timer zum Giessstopp, zu diesem Zeitpunkt alles ausschalten - sicherheitshalber */
     $eid2 = @IPS_GetEventIDByName("Giessstopp1", $scriptIdGartensteuerung);
     if ($eid2==false)
@@ -422,25 +488,29 @@
 		/* Kategorien werden erstellt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
         $config = $configWFront["Administrator"];
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
-		echo "====================================================================================\n";
-		echo "Webportal Administrator :Gartensteuerung Kategorie installieren in: ".$categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."/".IPS_GetName(IPS_GetParent($categoryId_AdminWebFront))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($categoryId_AdminWebFront)))."\n";
-		echo "    Gartensteuerung Kategorie installieren als: ".$config["Path"]." und Inhalt löschen und dann verstecken.\n";		
-
+        if ($debug) 
+            {
+            echo "====================================================================================\n";
+            echo "Webportal Administrator :Gartensteuerung Kategorie installieren in: ".$categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."/".IPS_GetName(IPS_GetParent($categoryId_AdminWebFront))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($categoryId_AdminWebFront)))."\n";
+            echo "    Gartensteuerung Kategorie installieren als: ".$config["Path"]." und Inhalt löschen und dann verstecken.\n";		
+            }
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($config["Path"]);
-		EmptyCategory($categoryId_WebFrontAdministrator);
+		if ($fullinitiate) $ipsOps->emptyCategory($categoryId_WebFrontAdministrator);
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontAdministrator, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontAdministrator, 20);
-		echo "     Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+		if ($debug) echo "     Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
 		
 		/* Webfront Konfiguration erstellen */
-		
-		echo "\nWebportal Administrator:  in Webfront Konfigurator ID ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") die ID Admin für die gesamte Kategorie Visualization installieren.\n";
-		echo "       Create Admin in roottp (hardcoded).\n";
+		if ($debug) 
+            {
+            echo "\nWebportal Administrator:  in Webfront Konfigurator ID ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") die ID Admin für die gesamte Kategorie Visualization installieren.\n";
+            echo "       Create Admin in roottp (hardcoded).\n";
+            }
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   800, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
-		echo "       Delete/hide IDs root und dwd.\n";
+		if ($debug) echo "       Delete/hide IDs root und dwd.\n";
 		//DeleteWFCItems($WFC10_ConfigId, "root");
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);		
@@ -452,20 +522,20 @@
 		$tabItem = $config["TabPaneItem"].$config["TabItem"];
 		if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
 		 	{
-			echo "      löscht TabItem ID ".$tabItem."\n";
+			if ($debug) echo "      löscht TabItem ID ".$tabItem."\n";
 			DeleteWFCItems($WFC10_ConfigId, $tabItem);
 			}
 		else
 			{
-			echo "      TabItem ID ".$tabItem." nicht mehr vorhanden.\n";
+			if ($debug) echo "      TabItem ID ".$tabItem." nicht mehr vorhanden.\n";
 			}	
 
-        echo "   Webfront für Giessanlage entspreechend Konfiguration anlegen [Giessanlage|Statistik|Gartenpumpe]:\n";
-        echo "     erzeugt TabPaneItem :".$config["TabPaneItem"]." in ".$config["TabPaneParent"]."\n";
+        if ($debug) echo "   Webfront für Giessanlage entspreechend Konfiguration anlegen [Giessanlage|Statistik|Gartenpumpe]:\n";
+        if ($debug) echo "     erzeugt TabPaneItem :".$config["TabPaneItem"]." in ".$config["TabPaneParent"]."\n";
         CreateWFCItemTabPane   ($WFC10_ConfigId, $config["TabPaneItem"], $config["TabPaneParent"],  $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]); /* Autosteuerung Haeuschen */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["Irrigation"])=="ENABLED")
             {
-            echo "     ConfOption Giessanlage, erzeugt Split TabItem :".$tabItem." mit Name ".$config["TabName"]." in ".$config["TabPaneItem"]." und darunter die Items Left und Right.\n";
+            if ($debug) echo "     ConfOption Giessanlage, erzeugt Split TabItem :".$tabItem." mit Name ".$config["TabName"]." in ".$config["TabPaneItem"]." und darunter die Items Left und Right.\n";
             CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $config["TabPaneItem"],    $config["TabOrder"],     $config["TabName"],     $config["TabIcon"], 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
             CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
             CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
@@ -490,7 +560,7 @@
 
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["Statistics"])=="ENABLED")                //tabItem0
             {
-            echo "     ConfOption Statistik, erzeugt SplitPaneItem :".$tabItem."0 in ".$config["TabPaneItem"]."\n";
+            if ($debug) echo "     ConfOption Statistik, erzeugt SplitPaneItem :".$tabItem."0 in ".$config["TabPaneItem"]."\n";
             $categoryIdLeft0  = CreateCategory('Left0',  $categoryId_WebFrontAdministrator, 10);
             $categoryIdRight0 = CreateCategory('Right0', $categoryId_WebFrontAdministrator, 20);
             CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."0",           $config["TabPaneItem"],    100,     "Statistik",     "Rainfall", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
@@ -505,7 +575,7 @@
 
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["PowerPump"])=="ENABLED")                 //tabItem1
             {
-            echo "     ConfOption Gartenpumpe, erzeugt SplitPaneItem :".$tabItem."1 in ".$config["TabPaneItem"]."\n";                
+            if ($debug) echo "     ConfOption Gartenpumpe, erzeugt SplitPaneItem :".$tabItem."1 in ".$config["TabPaneItem"]."\n";                
             $categoryIdLeft1  = CreateCategory('Left1',  $categoryId_WebFrontAdministrator, 10);
             $categoryIdRight1 = CreateCategory('Right1', $categoryId_WebFrontAdministrator, 20);
             CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."1",           $config["TabPaneItem"],    100,     "PowerPump",     "Electricity", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
@@ -513,7 +583,7 @@
             CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."1".'_Right',  $tabItem."1",   20, '', '', $categoryIdRight1  /*BaseId*/, 'false' /*BarBottomVisible*/);
             if ( (isset($GartensteuerungConfiguration["Configuration"]["CheckPower"])) && ($GartensteuerungConfiguration["Configuration"]["CheckPower"]!==null) )
                 {
-                echo "Gartenpumpe überprüft durch POWER Register : ".$GartensteuerungConfiguration["Configuration"]["CheckPower"]."\n";
+                if ($debug) echo "Gartenpumpe überprüft durch POWER Register : ".$GartensteuerungConfiguration["Configuration"]["CheckPower"]."\n";
                 $powerID = $GartensteuerungConfiguration["Configuration"]["CheckPower"];
                 CreateLinkByDestination("Leistung Gartenpumpe", $powerID ,    $categoryIdRight1,  150);
 
@@ -521,7 +591,7 @@
             }
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["DataQuality"])=="ENABLED") 
             {
-            echo "     ConfOption Datenqualität, erzeugt SplitPaneItem :".$tabItem."2 in ".$config["TabPaneItem"]."\n";                
+            if ($debug) echo "     ConfOption Datenqualität, erzeugt SplitPaneItem :".$tabItem."2 in ".$config["TabPaneItem"]."\n";                
             $categoryIdLeft2  = CreateCategory('Left2',  $categoryId_WebFrontAdministrator, 10);
             $categoryIdRight2 = CreateCategory('Right2', $categoryId_WebFrontAdministrator, 20);
             CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."2",           $config["TabPaneItem"],    100,     "DataQuality",     "Stars", 1 /*Vertical*/, 10 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
@@ -530,17 +600,24 @@
             
             if ($buttonIds)                 // es wurden Buttons für die Linke Seite erstellt
                 {
+                // die Buttons auf der linken Seite
     	        $categoryIdButtonGroup  = CreateVariableByName($categoryIdLeft2, "Select Report", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
                 foreach ($buttonIds as $id => $button)
                     {
                     CreateLinkByDestination(" ", $button["ID"], $categoryIdButtonGroup, $id+100);         // kein Name, sonst zu Viel Platzbedarf, Profil hat einen Namen, geht nicht mit CreateLink
                     }
-                CreateLinkByDestination("Selector", $AnotherSelectorID, $categoryIdRight2,   50);    
-                CreateLinkByDestination("Tabelle",  $tableID ,          $categoryIdRight2,  150);
-                CreateLinkByDestination("Tabelle1", $table1ID ,         $categoryIdRight2,  560);
-                CreateLinkByDestination("Tabelle2", $table2ID ,         $categoryIdRight2,  570);
-                CreateLinkByDestination("Chart",    $chartID ,          $categoryIdRight2,  250);
-                CreateLinkByDestination("Map",      $mapID ,            $categoryIdRight2,  500);
+                //und die Buttons und Charts auf der rechten Seite
+                $wfcHandling->initiateLinkTable();
+                $wfcHandling->createLinkByDestination("Selector", $AnotherSelectorID, $categoryIdRight2,   50);  
+                $wfcHandling->createLinkByDestination("Periode",  $PeriodeSelectorID, $categoryIdRight2,   60);  
+
+                $wfcHandling->createLinkByDestination("Tabelle",  $tableID ,          $categoryIdRight2,  150);
+                $wfcHandling->createLinkByDestination("Tabelle1", $table1ID ,         $categoryIdRight2,  560);
+                $wfcHandling->createLinkByDestination("Tabelle2", $table2ID ,         $categoryIdRight2,  570);
+                $wfcHandling->createLinkByDestination("Chart",    $chartID ,          $categoryIdRight2,  250);
+                $wfcHandling->createLinkByDestination("Map",      $mapID ,            $categoryIdRight2,  500);
+                SetValue($WebConfigLinkIdsID,$wfcHandling->getLinkTable());
+                print_R(json_decode($wfcHandling->getLinkTable(),true));
                 }
             }
 		}
@@ -639,7 +716,7 @@
         } 
 
 
-/************************************************************************************************/
+/***********************************************************************************************
 
 function CreateVariable3($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 	{
@@ -650,6 +727,7 @@ function CreateVariable3($Name, $Type, $ParentId, $Position=0, $Profile="", $Act
 					'                       "Type"    => \''.$Type.'\','."\n".
 					'                       "Profile" => \''.$Profile.'\'),'."\n";
 	return $oid;
-	}
+	}           */
+
 
 ?>

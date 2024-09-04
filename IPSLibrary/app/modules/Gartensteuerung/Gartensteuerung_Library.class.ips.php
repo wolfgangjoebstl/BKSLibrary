@@ -1,17 +1,18 @@
 <?php
 
 /*
-	 * @defgroup Gartensteuerung_Library
-	 * @{
-	 *
-	 * Script zur Ansteuerung der Giessanlage in BKS
-	 *
-	 *
-	 * @file          Gartensteuerung_library.ips.php
-	 * @author        Wolfgang Joebstl
-	 * @version
-	 *  Version 2.50.52, 07.08.2014<br/>
-*/
+ * @defgroup Gartensteuerung_Library
+ * @{
+ *
+ * Script zur Ansteuerung der Giessanlage in BKS
+ * kann auch in anderen Berreichen eingesetzt werden, ermittelt statistische Daten der zamg/geosphere
+ * liest Regendaten aus und unterstützt beim Überblick der zentralen Register
+ *
+ * @file          Gartensteuerung_library.ips.php
+ * @author        Wolfgang Joebstl
+ * @version
+ *  Version 2.50.52, 07.08.2014<br/>
+ */
 
 
 /************************************************************
@@ -22,6 +23,7 @@
  *      Gartensteuerung
  *      GartensteuerungControl extends Gartensteuerung
  *      GartensteuerungStatistics
+ *      GartensteuerungMaintenance
  *
  * verschiedene Funktionen um innerhalb und ausserhalb des Moduls Autosteuerung eine Giessanlage anzusteuern
  *
@@ -76,6 +78,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
      *      getConfig_waterPumpID
      *      getConfig_valveControlIDs
      *      getConfig_RemoteAccess_Address
+     *      getConfig_Modes                             Welche Tabs werden aktiviert
+     *      getConfig_Reports                           Einzelne Reports in der DataQuality Tab
      *
      *      setGartensteuerungConfiguration
      *      getConfig_Gartensteuerung
@@ -132,11 +136,12 @@ class Gartensteuerung
 	protected   $switchCategoryHeatId, $groupCategoryHeatId , $prgCategoryHeatId;
     protected   $CategoryIdData,$CategoryIdApp;
 
+    protected   $ipsOps,$dosOps;                                    // eine class reicht
 
 	public function __construct($starttime=0,$starttime2=0,$debug=false)
 		{
-        $dosOps = new dosOps();
-        $ipsOps = new ipsOps();
+        $this->dosOps = new dosOps();
+        $this->ipsOps = new ipsOps();
 
 		$this->debug=$debug;
         if ($this->debug) echo "Gartensteuerung: construct aufgerufen. Debug Mode.\n";
@@ -178,10 +183,10 @@ class Gartensteuerung
 
 		$this->GartensteuerungConfiguration=$this->setGartensteuerungConfiguration();
         
-        $NachrichtenID    = $ipsOps->searchIDbyName("Nachrichtenverlauf-Gartensteuerung",$this->CategoryIdData);                // needle ist Nachricht
-        $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
+        $NachrichtenID      = $this->ipsOps->searchIDbyName("Nachrichtenverlauf-Gartensteuerung",$this->CategoryIdData);                // needle ist Nachricht
+        $NachrichtenInputID = $this->ipsOps->searchIDbyName("Input",$NachrichtenID);
 
-        $systemDir     = $dosOps->getWorkDirectory();         
+        $systemDir     = $this->dosOps->getWorkDirectory();         
 		$this->log_Giessanlage=new Logging($systemDir."Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
 
         if ($this->debug)
@@ -247,6 +252,21 @@ class Gartensteuerung
 			
 		if ($this->debug) { echo "\n\n"; }  */
 		}
+
+    public function getRainRegsFromComponent()
+        {
+        $componentHandling = new ComponentHandling();
+        //$DeviceManager     = new DeviceManagement();                // für Anzeige der Components
+        $resultRain=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "RAIN_COUNTER"],"Install",false);        /* passende Geräte aus Elements anhand keywords suchen*/ 
+        return($resultRain);           
+        }
+
+    public function getTempRegsFromComponent()
+        {
+        $componentHandling = new ComponentHandling();
+        $resultTemp=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],"Install",false);        /* passende Geräte aus Elements anhand keywords suchen*/
+        return($resultTemp);           
+        }
 
     /* Gartensteuerung::getCategoryRegisterID
      * von CustomComponents die Counter Category finden 
@@ -616,7 +636,6 @@ class Gartensteuerung
      * Angabe des Register für die RemoteAccessAdr
      *
      */
-
 	function getConfig_RemoteAccess_Address($config=false,$debug=false)
 		{
         if ($debug || $this->debug) echo "getConfig_RemoteAccess_Address aufgerufen.\n";     
@@ -678,6 +697,107 @@ class Gartensteuerung
         return ($text);
         }
 
+
+    /* getConfig_Reports
+     * alle config Routinen haben selbe Parameter, lokale config bearbeiten, debug
+     * im DataQuality Tab gibt es verschiedene Möglichkeiten Reports darzustellen
+     * Die verschiedenen Reports werden über den type oder den Key ausgewählt, es folgen dann Unterparameter
+     *
+                        "RegenMonat"        => array(   ),    // Zamg Abfrage der Monatswerte für Regen in einem 1km Grid
+                        "TempMonat"         => array(   ),
+                        "RegenTage"        => array(   
+                                0 => array(                                 // erstes Element, Wetterstation von BKS auslesen, Regenwerte, alte Daten 
+                                        "name"          =>  "BKS01alt",
+                                        "OIdtoStore"    =>  "BKS01alt",
+                                        "data"          =>  "BKS-VIS::Wetterstation",
+                                        ),
+                                1 => array(                                 // Wetterstation von BKS auslesen, Regenwerte, neue Daten 
+                                        "name"          =>  "BKS01neu",
+                                        "OIdtoStore"    =>  "BKS01neu",
+                                        "data"          =>  "BKS-VIS::Garten-Wetterstation:Messwerte",
+                                        ),
+                                2 => array(                                 // Wetterstation von BKS auslesen, Regenwerte, neue Daten 
+                                        "name"          =>  "LBG70alt",
+                                        "OIdtoStore"    =>  "LBG70alt",
+                                        "increment"     =>  "Regenmesser Balkon",
+                                        ),                
+                                3 => array(                                 // Wetterstation von BKS auslesen, Regenwerte, neue Daten 
+                                        "name"          =>  "LBG70neu",
+                                        "OIdtoStore"    =>  "LBG70neu",
+                                        "increment"     =>  "WetterstationBalkon:Klima",
+                                        ), 
+                                4  => array(                                 // Wetterstation von BKS auslesen, Regenwerte, neue Daten 
+                                        "name"          =>  "Feldweg1",
+                                        "OIdtoStore"    =>  "Feldweg1",
+                                        "module"        =>  "/grid/historical/spartacus-v2-1d-1km",
+                                        "pos"           =>  ["north"=>48.3806,"east"=>16.3056,"name"=>"Feldweg1"],
+                                        "zamg"          =>  ["RR","TN","TX"],
+                                        ),
+                                5  => array(
+                                        "name"          =>  "LorenzBoehlerGasse70",
+                                        "OIdtoStore"    =>  "LorenzBoehlerGasse70",
+                                        "module"        =>  "/grid/historical/spartacus-v2-1d-1km",
+                                        "pos"           =>  ["north"=>48.2443,"east"=>16.3762,"name"=>"LorenzBoehlerGasse70"],
+                                        "zamg"          =>  ["RR","TN","TX"],
+                                        ),              
+                                    ),
+                        "TempTage"         => array(    
+
+                                                            ),
+                        "DataQuality"      => array(    
+
+                                                            ),
+                        "Maintenance"      => array(                                                // name may differ from type, type defines functionality
+                                        "type"                      =>  "Maintenance",
+                                        "targetRainRegInc"          =>  "Wetterstation",
+                                                            ),
+                                ),                                
+
+     */
+    public function getConfig_Reports($config=false,$targettype=false,$debug=false) 
+        {
+        if ($debug || $this->debug) 
+            {
+            echo "getConfig_Reports aufgerufen.\n";
+            $debug = ($debug || $this->debug) + ($debug && $this->debug);
+            }
+        if ($config===false) $configInput = $this->GartensteuerungConfiguration["Configuration"]["Reports"];
+        else $configInput = $config;
+
+        $configConf=array();                    // Ergebnis Array für die Konfiguration
+        $reports=array("RegenMonat","TempMonat","RegenTage","TempTage","DataQuality","Maintenance");
+        foreach ($configInput as $index => $subconfig)
+            {
+            configfileParser($subconfig, $conf, ["Type","TYPE","type"],"type" ,$index);         // Type kann extra angegeben werden, sonst ist es der Index
+            $type=$conf["type"];
+            $configConf[$type]["type"]=$type;
+            configfileParser($subconfig, $configConf[$type], ["Name","NAME","name"],"name" ,$index);         // Name kann extra angegeben werden, sonst ist es der Index
+            $typeRport=$configConf[$type]["type"];  
+            if (in_array($typeRport,$reports)) 
+                {
+                if ($debug>1) echo "   Type \"$typeRport\" found, will be report in Tab DataQuality.\n"; 
+                switch ($typeRport)
+                    {
+                    case "Maintenance":                 // Parameter von maintenance finden
+                        configfileParser($subconfig, $configConf[$type], ["targetRainRegInc","targetrainreginc","targetReg","TARGETRAIN"],"targetRainRegInc" ,null);
+                        break;
+                    case "RegenTage":
+                        if ( (isset($subconfig["type"])) || (isset($subconfig["name"])) || (isset($subconfig["data"])) ) 
+                            {
+                            configfileParser($subconfig, $configConf[$type], ["data","Data","DATA"],"data" ,[]);
+                            }
+                        else foreach ($subconfig as $subindex => $data) $configConf[$type]["data"][$subindex] = $data;
+                        break;   
+                    }   
+                if ($targettype && ($targettype==$typeRport)) return($configConf[$type]);
+
+                }
+            else echo "   Type \"$typeRport\" not found.\n";
+            }
+        //print_R($configConf);
+        return($configConf);
+        }
+
     /* Konfiguration auswerten und standardisiseren 
 			"KREISE" => 5,
 			"TEMPERATUR-MITTEL" => 19,    // Wenn Aussentemperatur im Mittel ueber diesen Wert UND Niederschlag kleiner REGN48H dann Giessen 
@@ -711,10 +831,9 @@ class Gartensteuerung
 
         /* vernünftiges Logdirectory aufsetzen */    
         configfileParser($configInput, $config, ["LogDirectory" ],"LogDirectory" ,"/Gartensteuerung/");  
-        $dosOps = new dosOps();
-        $systemDir     = $dosOps->getWorkDirectory(); 
+        $systemDir     = $this->dosOps->getWorkDirectory(); 
         if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
-        $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
+        $config["LogDirectory"] = $this->dosOps->correctDirName($systemDir.$config["LogDirectory"]);
         configfileParser($configInput, $configConf, ["Configuration","Config","configuration","CONFIG","CONFIGURATION"],"Configuration" ,null);  
         if (($configConf["Configuration"] != null) && (count($configConf["Configuration"])>0))          //sizeof ist zu spezialisisert
             {
@@ -736,6 +855,7 @@ class Gartensteuerung
             configfileParser($configConf["Configuration"], $config["Configuration"], ["REMOTEACCESSADR","RemoteAccessAdr","Remoteaccessadr","remoteaccessadr"],"RemoteAccessAdr",null);
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["REPORTS","Reports","reports","Report"],"Reports",[]);
+            $config["Configuration"]["Reports"] = $this->getConfig_Reports($config["Configuration"]["Reports"]);
 
             /* courtesy for old functions */
             configfileParser($configConf["Configuration"], $config["Configuration"], ["DEBUG","Debug","debug"],"DEBUG",false);
@@ -1688,78 +1808,89 @@ class GartensteuerungStatistics extends Gartensteuerung
 
     public function getRainEventsFromIncrements(&$regenereignis, $rainRegs=array(),$debug=false)
         {
-        if ($debug) echo "getRainEventsFromIncrements mit ".json_encode($rainRegs)." Register aufgerufen. Rain Register from class ID ".$this->RainRegisterIncrementID." .\n";
-        //$debug=false;
+        if ($debug>2) echo "getRainEventsFromIncrements mit ".json_encode($rainRegs)." Register aufgerufen. Rain Register from class ID ".$this->RainRegisterIncrementID." .\n";
+        $debug1=false;          // einlesen der Daten
         //if ($this->RainRegisterIncrementID>0) $rainRegs[0]=$this->RainRegisterIncrementID;
         if (($this->RainRegisterIncrementID>0) && (sizeof($rainRegs)==0)) $rainRegs[0]=$this->RainRegisterIncrementID;          // Default register verwenden
-        $init=true;             // beim ersten Mal
-        $i=0;                   // Zaehler Regenereignisse
-        $lasttime=time();       // von der Jetztzeit zurückarbeiten
-        $regenMenge=false;
-        echo "getRainEventsFromIncrements, diese Register als Input verwenden: ".json_encode($rainRegs)."\n";
+        if ($debug) echo "getRainEventsFromIncrements, diese Register als Input verwenden: ".json_encode($rainRegs)."\n";
 
         $archiveHandlerID=$this->archiveOps->getArchiveID();
-        $config = $this->archiveOps->getConfig();
+        //$config = $this->archiveOps->getConfig();                         // das ist ja die ganze config, alle Archive Variablen, passt hier gar nicht
+        $config=array();
+        $config["StartTime"]="1.8.2024";
         $configCleanUpData = array();
         $configCleanUpData["deleteSourceOnError"]=false;
         $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
         $config["CleanUpData"] = $configCleanUpData;    
 
+        /* Es gibt ein inkrementales Regenregister in der CustomComponents Auswertung. Da kann ich dann schön die Regendauer pro Monat auswerten
+            * es werden auch die Regenereignisse gefunden.
+        $endtime=time();
+        $starttime2=$endtime-60*60*24*3650;   // die letzten 10 Jahre Niederschlag
+        //$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+        $werteLog = AC_GetLoggedValues($this->archiveHandlerID, $rainReg, $starttime2, $endtime,0);
+        /* Auswertung von Agreggierten Werten funktioniert leider bei inkrementellen Countern nicht */
+
         foreach ($rainRegs as $rainReg)
             {
-            /* Es gibt ein inkrementales Regenregister in der CustomComponents Auswertung. Da kann ich dann schön die Regendauer pro Monat auswerten
-             * es werden auch die Regenereignisse gefunden.
-    		$endtime=time();
-	    	$starttime2=$endtime-60*60*24*3650;   // die letzten 10 Jahre Niederschlag
-  		    //$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-    		$werteLog = AC_GetLoggedValues($this->archiveHandlerID, $rainReg, $starttime2, $endtime,0);
-            /* Auswertung von Agreggierten Werten funktioniert leider bei inkrementellen Countern nicht */
-
-            if (sizeof($this->werteStore)==0)
+            if (sizeof($this->werteStore)==0)                   // nur ein register gleichzeitig im wertestore
                 {
-                echo "ArchiveOps::getValues($rainReg \n";
-                $result = $this->archiveOps->getValues($rainReg,$config,2);          // true,2 Debug, Werte einlesen
+                if ($debug>2) echo "ArchiveOps::getValues($rainReg \n";
+                $result = $this->archiveOps->getValues($rainReg,$config,$debug1);          // true,2 Debug, Werte einlesen
                 $this->werteStore = $result["Values"];
                 }
             else echo "Bereits Werte im Speicher, insgesamt ".sizeof($this->werteStore)."\n";
-            $regen=0;               // Regenmenge während einem Regenereignis
-            $lastwert=0;   $zeit=0;
-            $ende=true; $maxmenge=0;
-			foreach ($this->werteStore as $wert)
-				{
-                if ($wert["Value"]!=0)              // nur positive Regenmengen akzeptieren, Warnung bei größer 10
+            }
+
+        $this->ipsOps->intelliSort($this->werteStore, "TimeStamp",SORT_DESC,$debug);                   // $sort=SORT_ASC
+
+        if ($debug>2) 
+            {
+            echo "Check ob eingelesene Werte in Ordnung, ersten Wete ausgeben, Richtung aktuell in die Vergangenheit:\n";
+            $count=0; $countMax=12;
+            foreach ($this->werteStore as $index => $wert)
+                {
+                echo str_pad($index,10)."   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    \n";
+                if ($count++>$countMax) break;
+                }
+            }
+
+        $init=true;             // beim ersten Mal
+        $i=0;                   // Zaehler Regenereignisse
+        $lasttime=time();       // von der Jetztzeit zurückarbeiten
+        $regenMenge=false;
+
+        $regen=0;               // Regenmenge während einem Regenereignis
+        $lastwert=0;   $zeit=0;
+        $ende=true; $maxmenge=0;
+        if ($debug>1) echo "Eingelesene Werte analysieren, wir haben increments:\n";
+        foreach ($this->werteStore as $wert)
+            {
+            if ($wert["Value"]!=0)              // nur positive Regenmengen akzeptieren, Warnung bei größer 10
+                {
+                if ($wert["Value"]<0) 
                     {
-                    if ($wert["Value"]<0) 
+                    echo "   Fehler, negativer Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
+                    }
+                else
+                    {
+                    if ($wert["Value"]>10) echo "     Warnung, ungewöhnlicher Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
+                    $regen+=$wert["Value"];
+                    if ($debug>1) echo " Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    \n";
+                    if ($init===true)               // beim aller-ersten Mal ist es true, wir starten mit i=0
                         {
-                        echo "   Fehler, negativer Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
+                        //$regenereignis[$i]["Ende"]=$wert["TimeStamp"];
+                        $regenereignisEnde=$wert["TimeStamp"];
+                        $regenMenge=$regen;          // Unterschied false und 0
+                        $init=false;    
                         }
-                    else
+                    else            // ab dem zweiten gemessenen Regenfall
                         {
-                        if ($wert["Value"]>10) echo "     Warnung, ungewöhnlicher Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
-                        $regen+=$wert["Value"];
-                        if ($init===true)               // beim aller-ersten Mal ist es true, wir starten mit i=0
+                        $zeit= ($lasttime-$wert["TimeStamp"])/60;     // vergangene Zeit zwischen zwei Regenwerten in Minuten messen                    
+                               
+                        if ((abs($zeit))>60)                                   // Zeit zwischen Regenwerten, 60 Minuten überschritten, ein Regenereignis wurde gefunden
                             {
-                            if ($debug>1) echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    ";
-                            //$regenereignis[$i]["Ende"]=$wert["TimeStamp"];
-                            $regenereignisEnde=$wert["TimeStamp"];
-                            $regenMenge=0;          // Unterschied false und 0
-                            $init=false;    
-                            }
-                        else 
-                            {
-                            $zeit= ($lasttime-$wert["TimeStamp"])/60;     // vergangene Zeit zwischen zwei Regenwerten in Minuten messen                    
-                            $menge=60/$zeit*$wert["Value"];
-                            $regenMenge+=$wert["Value"];
-                            if ($menge>$maxmenge) $maxmenge=$menge;
-                            if ($debug>1) 
-                                {
-                                echo number_format($regenMenge,1,",","")."mm | ".number_format($zeit,1,",","")."Min ".number_format($menge,1,",","")."l/Std   ".$regen."\n";
-                                echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    ";                                            // für die naechste Zeile
-                                }
-                            }       
-                        if ((abs($zeit))>60)                                   // Zeit zwischen Regenwerten, 60 Minuten überschritten, ein regenereignis wurde gefunden
-                            {
-                            $regenereignis[$i]["Regen"]=$regen;
+                            $regenereignis[$i]["Regen"]=$regenMenge;
                             $regenereignis[$i]["Max"]=$maxmenge;
                             if ($zeit>0)
                                 {
@@ -1773,7 +1904,7 @@ class GartensteuerungStatistics extends Gartensteuerung
                                 $regenereignis[$i]["Beginn"]=$regenereignisEnde;
                                 $dauer = ($regenereignis[$i]["Ende"]-$regenereignis[$i]["Beginn"])/60;      // in Minuten
                                 }
-                            if ( ($debug) && ($regen>1) )           // mehr als 1mm, es gibt viele Einzelwerte
+                            //if ( ($debug) && ($regen>1) )           // mehr als 1mm, es gibt viele Einzelwerte
                                 {
                                 echo "Beginn ".date("d.m.Y H:i:s",$regenereignis[$i]["Beginn"])."  Ende ".date("d.m.Y H:i:s",$regenereignis[$i]["Ende"])." Dauer ".nf($dauer,"min",14)." Regen ".nf($regenereignis[$i]["Regen"],"mm")." Max ".nf($regenereignis[$i]["Max"],"mm")."\n";     
                                 }
@@ -1781,25 +1912,32 @@ class GartensteuerungStatistics extends Gartensteuerung
                             $regenereignisEnde=$wert["TimeStamp"]; 
                             $maxmenge=0; 
                             }
-                        $lastwert=$wert["Value"]; 
-                        $lasttime=$wert["TimeStamp"]; 
+                        $menge=60/$zeit*$wert["Value"];
+                        $regenMenge+=$wert["Value"];
+                        if ($menge>$maxmenge) $maxmenge=$menge;
+                        if ($debug>1) 
+                            {
+                            echo number_format($regenMenge,1,",","")."mm | ".nf($zeit,"Min")." ".number_format($menge,1,",","")."l/Std   ".$regen."\n";
+                            }
                         }
-                    }                                               // ende Werte != 0
-				}                                           // ende foreach werte
-            $regenereignis[$i]["Regen"]=$regen;
-            if ($zeit>0)
-                {
-                $regenereignis[$i]["Beginn"]=$lasttime; 
-                $regenereignis[$i]["Ende"]=$regenereignisEnde;  
-                }
-            else
-                {
-                $regenereignis[$i]["Ende"]=$lasttime; 
-                $regenereignis[$i]["Beginn"]=$regenereignisEnde;  
-                }
-            $regenereignis[$i]["Max"]=$maxmenge;
-            if ($debug) echo "\n";
-    		}                                       // ende foreach rainregs
+                    $lastwert=$wert["Value"]; 
+                    $lasttime=$wert["TimeStamp"]; 
+                    }
+                }                                               // ende Werte != 0
+            }
+        $regenereignis[$i]["Regen"]=$regen;
+        if ($zeit>0)
+            {
+            $regenereignis[$i]["Beginn"]=$lasttime; 
+            $regenereignis[$i]["Ende"]=$regenereignisEnde;  
+            }
+        else
+            {
+            $regenereignis[$i]["Ende"]=$lasttime; 
+            $regenereignis[$i]["Beginn"]=$regenereignisEnde;  
+            }
+        $regenereignis[$i]["Max"]=$maxmenge;
+        if ($debug) echo "\n";
         return ($regenMenge);
         }
 
@@ -1814,7 +1952,8 @@ class GartensteuerungStatistics extends Gartensteuerung
         $rainReg = $this->getRainRegisters("Increment");
         if (sizeof($this->werteStore)==0)
             {
-            $config = $this->archiveOps->getConfig();
+            //$config = $this->archiveOps->getConfig();                 // das ist ja die ganze config, alle Archive Variablen, passt hier gar nicht
+            $config=array();
             $configCleanUpData = array();
             $configCleanUpData["deleteSourceOnError"]=false;
             $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
@@ -1874,7 +2013,8 @@ class GartensteuerungStatistics extends Gartensteuerung
         echo "getRainValuesFromIncrements, Regenmenge bisher : $regenMenge mm, diese Register als Input verwenden: ".json_encode($rainRegs)."\n";
 
         $archiveHandlerID=$this->archiveOps->getArchiveID();
-        $config = $this->archiveOps->getConfig();
+        //$config = $this->archiveOps->getConfig();                        // das ist ja die ganze config, alle Archive Variablen, passt hier gar nicht
+        $config=array();
         $configCleanUpData = array();
         $configCleanUpData["deleteSourceOnError"]=false;
         $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
@@ -2373,11 +2513,7 @@ class GartensteuerungStatistics extends Gartensteuerung
      */
     public function showDataQualityRegs($debug=false)
         {
-
-        $componentHandling = new ComponentHandling();
-        $DeviceManager     = new DeviceManagement();                // für Anzeige der Components
-
-        $resultRain=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "RAIN_COUNTER"],"Install",false);        /* passende Geräte aus Elements anhand keywords suchen*/
+        $resultRain=$this->getRainRegsFromComponent();
         $count=(sizeof($resultRain));				
 
         $html = "";
@@ -2414,7 +2550,7 @@ class GartensteuerungStatistics extends Gartensteuerung
             //$html .= "<td></td>";
             $html .= "<td>".GetValueIfFormatted($entry["CounterID"])."</td><td>".date("d.m H:i",IPS_GetVariable($entry["CounterID"])["VariableChanged"])."</td>";
             }
-        $resultTemp=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],"Install",false);        /* passende Geräte aus Elements anhand keywords suchen*/
+        $resultTemp=$this->getTempRegsFromComponent();  /* passende Geräte aus Elements anhand keywords suchen*/
         $html .= "</tr><tr><td>Temp</td>";   
         foreach ($resultRain as $index=>$entry)
             {
@@ -2485,5 +2621,42 @@ class GartensteuerungStatistics extends Gartensteuerung
 
 
     }
-	
+
+
+/* es geht darum durchgängige nur auf Increments basierende Archive zu erzeugen
+ *
+ */
+
+class GartensteuerungMaintenance extends Gartensteuerung
+	{
+    protected $archiveOps;                              // class for archives, general use
+    protected $ipsTables;                       // schöne Tabelle zeichnen
+
+    function __construct($debug=false)
+        {
+        $this->archiveOps = new archiveOps();
+        $this->ipsTables = new ipsTables();
+ 
+        if ($debug) echo "GartensteuerungStatistics construct aufgerufen. Debug Mode.\n";
+
+        parent::__construct(0,0,$debug);                    // keine Start und Endtime übergeben
+        }
+    /* Zuordnung index=>name
+     */
+    function getAssociations($config)
+        {
+        $count=0;
+        $associationsValues = array();
+        foreach ($config as $displaypanel=>$values)
+            {
+            if (isset($values["type"])) $type = $values["type"];
+            else $type = $displaypanel;
+            $associationsValues[$count]=$type;
+            $count++;
+            }
+        return($associationsValues);
+        }
+
+    }
+
 ?>
