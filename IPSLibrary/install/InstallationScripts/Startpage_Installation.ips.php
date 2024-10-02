@@ -141,7 +141,7 @@
         if ($debug) 
             {
             echo "Schreibe Batchfile zum automatischen Start und Stopp von VLC in Verzeichnis $unterverzeichnis:\n";
-            echo "Hinweis: Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";  +
+            echo "Hinweis: Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";  
             }
         if ( isset($configuration["Directories"]["VideoLan"]) == true ) $command=$configuration["Directories"]["VideoLan"];
         else $command='C:/Program Files/VideoLAN/VLC/VLC.exe';
