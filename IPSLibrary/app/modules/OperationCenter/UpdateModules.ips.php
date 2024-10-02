@@ -83,6 +83,8 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
     $moduleManager->UpdateAllModules();
     */
 
+    print_r($loadfromrepository);
+
         /* dieser Block geht manchmal nicht da er direkt auf das Brownson Repository geht */
     /*
     $moduleManager = new IPSModuleManager();
@@ -90,6 +92,7 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
     */
         $ende=true; 
         $log=array();
+        $count=0; $countmax=1;
         
         foreach ($loadfromrepository as $upd_module)
         {
@@ -106,8 +109,14 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
             $log[]="Load Module ".$upd_module." completed    Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden";   
             echo "-----------------------------------------------------------------------------------------------------------------------------\n";
             $LBG_module->InstallModule(true);
-            $log[]="Install Module ".$upd_module." completed    Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden";            
-            if (exectime($startexec) > 80 )
+            $log[]="Install Module ".$upd_module." completed    Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden";
+            if ($count++>=$countmax) 
+                {
+                echo "\nUpdate noch nicht abgeschlossen, noch einmal aufrufen.\n";
+                if (isset ($installedModules["OperationCenter"])) $log_Install->LogMessage("Update noch nicht abgeschlossen, noch einmal aufrufen.");
+                break;
+                }           
+            if (exectime($startexec) > 30 )
                 {
                 print_r($log);                    
                 echo "\nUpdate noch nicht abgeschlossen, noch einmal aufrufen.\n";

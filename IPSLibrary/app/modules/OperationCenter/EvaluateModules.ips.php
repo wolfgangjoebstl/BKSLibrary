@@ -7,6 +7,7 @@
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ('IPSUtils.inc.php', 'IPSLibrary::app::core::IPSUtils');
  
+    IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
    	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    
@@ -22,12 +23,16 @@
     echo "IPS Kerneldir für Scripts: ".IPS_GetKernelDir()."\n";
 
     $systemDir     = $dosOps->getWorkDirectory(); 
-    echo "Privates SystemDir für Logging : $systemDir \n";     
-    $ls=$dosOps->readdirToArray($systemDir);
-    print_R($ls);
-        
+    if ($debug)
+        {
+        echo "Privates SystemDir für Logging : $systemDir \n";     
+        $ls=$dosOps->readdirToArray($systemDir);
+        print_R($ls);
+        }
+
     $verzeichnis = IPS_GetKernelDir()."scripts/IPSLibrary/config/";
     $ls=$dosOps->readdirToArray($verzeichnis);
+    print_R($ls);
     if ($ls===false) echo "********Fehler Verzeichnis $verzeichnis nicht vorhanden.\n";
     else 
         {
@@ -57,7 +62,8 @@
 	// Repository
 	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 
-	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+	//$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+    $moduleManager = new ModuleManagerIPS7('', '', sys_get_temp_dir(), true);
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();

@@ -13,7 +13,7 @@
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include ("IPSInstaller.inc.php",                  "IPSLibrary::install::IPSInstaller");
-	IPSUtils_Include ("IPSFileVersionHandler.class.php",   	  "IPSLibrary::install::IPSModuleManager::IPSVersionHandler");
+	//IPSUtils_Include ("IPSFileVersionHandler.class.php",   	  "IPSLibrary::install::IPSModuleManager::IPSVersionHandler");
 	IPSUtils_Include ("IPSScriptHandler.class.php",            "IPSLibrary::install::IPSModuleManager::IPSScriptHandler");
 	IPSUtils_Include ("IPSFileHandler.class.php",              "IPSLibrary::install::IPSModuleManager::IPSFileHandler");
 	IPSUtils_Include ("IPSBackupHandler.class.php",            "IPSLibrary::install::IPSModuleManager::IPSBackupHandler");
@@ -64,7 +64,7 @@
 		public function __construct($moduleName='', $sourceRepository='', $logDirectory='', $silentMode=false) {
 			global $_IPS;
 
-            echo "construct ModuleManagerIPS7:\n";
+            //echo "construct ModuleManagerIPS7:\n";
 			$_IPS['ABORT_ON_ERROR'] = true;
 			$_IPS['MODULEMANAGER']  = $this;
 
@@ -426,7 +426,7 @@
 			}
 			$infos = $this->versionHandler->GetModuleInfos($moduleName);
 			if ($this->versionHandler->IsModuleInstalled($moduleName)) {
-				$versionHandler = new IPSFileVersionHandler($moduleName);
+				$versionHandler = new FileVersionHandlerIPS7($moduleName);
 				$infos['Installed']      = 'Yes';
 				$infos['CurrentVersion'] = $versionHandler->GetScriptVersion();
 				$infos['State']          = $versionHandler->GetModuleState();
@@ -731,8 +731,7 @@
 		 * @param string $sourceRepository Pfad/Url zum Source Repository, das zum Laden verwendet werden soll
 		 * @param boolean $overwriteUserFiles bestehende User Files mit Default überschreiben
 		 */
-		public function LoadModule($sourceRepository='', $overwriteUserFiles=false) {
-             return(false);  
+		public function LoadModule($sourceRepository='', $overwriteUserFiles=false) { 
 			if ($sourceRepository=='') {
 				$sourceRepository = $this->sourceRepository;
 			}
@@ -1092,9 +1091,30 @@
 
 	}
 
+   /**
+    * @class IPSFileVersionHandler
+    *
+    * Implementierung einer Versions-Verwaltung der IPSLibrary Module auf Basis Files
+    *
+    * @author Andreas Brauneis
+    * @version
+    * Version 2.50.1, 17.02.2012<br/>
+	* class IPSFileVersionHandler extends IPSVersionHandler {
+    */
 
-	class FileVersionHandlerIPS7 extends IPSFileVersionHandler {
+	class FileVersionHandlerIPS7 extends IPSVersionHandler {
 		
+        const FILE_INSTALLED_MODULES       = 'IPSLibrary/config/InstalledModules.ini';
+		const FILE_AVAILABLE_MODULES       = 'IPSLibrary/config/AvailableModules.ini';
+		const FILE_KNOWN_MODULES           = 'IPSLibrary/config/KnownModules.ini';
+		const FILE_KNOWN_REPOSITORIES      = 'IPSLibrary/config/KnownRepositories.ini';
+		const FILE_KNOWN_USERREPOSITORIES  = 'IPSLibrary/config/KnownUserRepositories.ini';
+		const FILE_REPOSITORY_VERSIONS     = 'IPSLibrary/config/RepositoryVersions.ini';
+		const FILE_CHANGELIST              = 'IPSLibrary/config/ChangeList.ini';
+		const FILE_REQUIRED_MODULES        = 'IPSLibrary/config/RequiredModules.ini';
+ 		const FILE_DOWNLOADLIST_PATH       = "IPSLibrary/install/DownloadListFiles/";
+		const FILE_DOWNLOADLIST_SUFFIX     = '_FileList.ini';
+
         // muss eigene Variablen definieren
         private $fileNameAvailableModules;      
 		private $fileNameInstalledModules;
@@ -1130,6 +1150,19 @@
 			$this->ReloadVersionData();
 		}
 
+
+		public function ReloadVersionData() {
+			$this->LoadFileInstalledModules();
+			$this->LoadFileKnownRepositories();
+			$this->LoadFileKnownModules();
+			$this->LoadFileRepositoryVersions();
+			$this->LoadFileChangeList();
+			$this->LoadFileRequiredModules();
+
+			if (!array_key_exists($this->moduleName, $this->installedModules)) {
+				$this->installedModules[$this->moduleName] = '';
+			}
+		}
         	
 		private function LoadFileRequiredModules() {
 			if (file_exists($this->fileNameRequiredModules)) {
@@ -1192,6 +1225,17 @@
 		}
 
 		/**
+		 * @public
+		 *
+		 * Speicherung der Versions Daten
+		 *
+		 * @param string $moduleName Name des Modules
+		 */
+		protected function StoreModuleVersions() {
+			$this->WriteFileInstalledModules();
+		}
+		
+        /**
 		 * Overwrite BuildKnownModules
 		 *
 		 * Erzeugt das File KnownModules, hier ohne echo Ausgabe
@@ -1238,7 +1282,7 @@
 							$replaceModule = true;
 						} elseif ($versionHandler->CompareVersionsEqual($knownModules[$moduleName]['Version'], $availableVersion)
 								  and $versionHandler->IsModuleInstalled($moduleName)) {
-							$versionHandler   = new IPSFileVersionHandler($moduleName);
+							$versionHandler   = new FileVersionHandlerIPS7($moduleName);
 							if ($versionHandler->GetModuleRepository()==$repository) {
 								$replaceModule = true;
 							}
@@ -1251,7 +1295,7 @@
 							$knownModules[$moduleName]['Description'] = $moduleDescription;
 							$knownModules[$moduleName]['Path']        = $modulePath;
 							if ($this->IsModuleInstalled($moduleName)) {
-								$versionHandler   = new IPSFileVersionHandler($moduleName);
+								$versionHandler   = new FileVersionHandlerIPS7($moduleName);
 							}
 							$knownModules[$moduleName]['LastRepository'] = $versionHandler->GetModuleRepository();
 							$changeList[$moduleName] = $changeListModule;
@@ -1309,6 +1353,54 @@
 			$this->LoadFileChangeList();
 			$this->LoadFileRequiredModules();
 		}
+
+
+		/**
+		 * @public
+		 *
+		 * Erhöht die Versionsnummer im entsprechenden Download File und legt den übergebenen Text 
+		 * unter der ChangeList des Modules ab.
+		 * 
+		 */
+		public function IncreaseModuleVersion($changeText, $installationRequired=false) {
+			$file       = parse_ini_file($this->fileNameDownloadList, true);
+			$version    = $file['Version'];
+			$version    = $this->VersionToArray($version);
+			$version[2] = (int)$version[2] + 1;
+			unset($version[4]);
+			if ($version[3]=='') {
+				unset($version[3]);
+			}
+			$version = implode('.',$version);
+
+			$file['Version'] = $version;
+			if ($installationRequired) {
+				$file['InstallVersion'] = $version;
+			}
+			$file['ChangeList'][$version] = $changeText;
+			
+			$fileContent = '';
+			foreach ($file as $section=>$sectionValue) {
+				if ($section=='Version' or $section=='InstallVersion' or $section=='ModuleNamespace') {
+					$fileContent .= $section.'="'.$sectionValue.'"'.PHP_EOL;
+				} else {
+					$fileContent .= '['.$section.']'.PHP_EOL;
+					foreach ($sectionValue as $property=>$value) {
+						if ($section=='ChangeList' or $section=='RequiredModules') {
+							$fileContent .= $property.'="'.$value.'"'.PHP_EOL;
+						} else {
+							foreach ($value as $key=>$data) {
+								$fileContent .= $property.'[]="'.$data.'"'.PHP_EOL;
+							}
+						}
+					}
+				}
+			}
+			file_put_contents($this->fileNameDownloadList, $fileContent);
+		}
+
+
+
 
     }
 
@@ -1531,7 +1623,7 @@
 		 * @param string $namespace Namespace des INI Files
 		 */
 		public function __construct($iniFileName, $namespace="") {
-            echo "construct IniConfigHandlerIPS7 ini-File : $iniFileName Namespace : \"$namespace\"\n";
+            //echo "construct IniConfigHandlerIPS7 ini-File : $iniFileName Namespace : \"$namespace\"\n";
 			$this->iniFileName = $this->GetFileName($iniFileName, $namespace);
 			$this->LoadFile($this->iniFileName);
             //print_R($this->configData);
