@@ -280,6 +280,14 @@
 	$StatistikBox2ID				= CreateVariable("Regendauerkalender"   ,3,$CategoryId_Statistiken,  40, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$StatistikBox3ID				= CreateVariable("Regenereignisse" ,3,$CategoryId_Statistiken,  20, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
+    $pname="UpdateRainEvents";
+    $tabs =  ["Update"];
+    //$color = [0x481ef1,0xf13c1e,0x1ef127];
+    $color = [0x481ef1];
+    $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+    $UpdateRainEventsSelectorID 		= $ipsOps->createVariableByName($categoryIdSelectReports,"UpdateRainEvents", 1, $pname, false, 0, $scriptIdWebfrontControl);  /* 0 Boolean 1 Integer 2 Float 3 String */
+
+
     // Tab Gartensteuerung die Variablen anlegen
 		
 	// CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
@@ -568,7 +576,9 @@
             CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."0".'_Right',  $tabItem."0",   20, '', '', $categoryIdRight0  /*BaseId*/, 'false' /*BarBottomVisible*/);
             CreateLinkByDestination("Regenmengenkalender", $StatistikBox1ID ,    $categoryIdLeft0,  140);
             CreateLinkByDestination("Regendauerkalender", $StatistikBox2ID ,    $categoryIdLeft0,  140);
-            CreateLinkByDestination("Regenereignisse", $StatistikBox3ID ,    $categoryIdRight0,  150);
+
+            CreateLinkByDestination("UpdateRainEvents",$UpdateRainEventsSelectorID, $categoryIdRight0,  120);
+            CreateLinkByDestination("Regenereignisse", $StatistikBox3ID ,           $categoryIdRight0,  150);
             }
 
 		/* zusaetzliches Webfront Tab für Auswertungen über die Stromaufnahme der Gartenpumpe */

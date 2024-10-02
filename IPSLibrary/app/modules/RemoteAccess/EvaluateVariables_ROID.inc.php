@@ -1,27 +1,27 @@
 <?php
 function GuthabensteuerungList() { return array(
-"Phone_Cost" => array(
-         "OID" => 17479, 
-         "Name" => "Phone_Cost", 
-         "Typ" => 2, 
-         "Order" => "500", 
-             	),
 "StartImacro" => array(
          "OID" => 14828, 
          "Name" => "StartImacro", 
          "Typ" => 1, 
-         "Order" => "501", 
+         "Order" => "500", 
              	),
 "Phone_Load" => array(
          "OID" => 15501, 
          "Name" => "Phone_Load", 
          "Typ" => 2, 
-         "Order" => "502", 
+         "Order" => "501", 
              	),
 "ScriptTimer" => array(
          "OID" => 28552, 
          "Name" => "ScriptTimer", 
          "Typ" => 3, 
+         "Order" => "502", 
+             	),
+"Phone_Cost" => array(
+         "OID" => 17479, 
+         "Name" => "Phone_Cost", 
+         "Typ" => 2, 
          "Order" => "503", 
              	),
 "Phone_CL_Change" => array(
@@ -30,22 +30,22 @@ function GuthabensteuerungList() { return array(
          "Typ" => 2, 
          "Order" => "504", 
              	),
+"StatusWebread" => array(
+         "OID" => 43116, 
+         "Name" => "StatusWebread", 
+         "Typ" => 3, 
+         "Order" => "505", 
+             	),
 "checkScriptCounter" => array(
          "OID" => 31530, 
          "Name" => "checkScriptCounter", 
          "Typ" => 1, 
-         "Order" => "505", 
+         "Order" => "506", 
              	),
 "ScriptCounter" => array(
          "OID" => 40928, 
          "Name" => "ScriptCounter", 
          "Typ" => 1, 
-         "Order" => "506", 
-             	),
-"StatusWebread" => array(
-         "OID" => 43116, 
-         "Name" => "StatusWebread", 
-         "Typ" => 3, 
          "Order" => "507", 
              	),
 

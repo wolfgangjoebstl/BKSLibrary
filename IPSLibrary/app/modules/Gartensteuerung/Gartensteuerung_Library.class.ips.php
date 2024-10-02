@@ -765,7 +765,7 @@ class Gartensteuerung
         else $configInput = $config;
 
         $configConf=array();                    // Ergebnis Array für die Konfiguration
-        $reports=array("RegenMonat","TempMonat","RegenTage","TempTage","DataQuality","Maintenance");
+        $reports=array("RegenMonat","TempMonat","RegenTage","TempTage","GeoSphere","DataQuality","Maintenance");
         foreach ($configInput as $index => $subconfig)
             {
             configfileParser($subconfig, $conf, ["Type","TYPE","type"],"type" ,$index);         // Type kann extra angegeben werden, sonst ist es der Index
@@ -787,12 +787,15 @@ class Gartensteuerung
                             configfileParser($subconfig, $configConf[$type], ["data","Data","DATA"],"data" ,[]);
                             }
                         else foreach ($subconfig as $subindex => $data) $configConf[$type]["data"][$subindex] = $data;
-                        break;   
+                        break;  
+                    case "GeoSphere":
+                        configfileParser($subconfig, $configConf[$type], ["pos","POS","Pos"],"Pos" ,null);
+                        break;
                     }   
                 if ($targettype && ($targettype==$typeRport)) return($configConf[$type]);
 
                 }
-            else echo "   Type \"$typeRport\" not found.\n";
+            else echo "   Type \"$typeRport\" not found.\n";            // Type nicht im register, array $reports
             }
         //print_R($configConf);
         return($configConf);
@@ -1374,7 +1377,7 @@ class Gartensteuerung
      * Gartensteuerung::writeOverviewMonthsHtml
      * Ausgabe der Regenmenge/dauer (ermittelt mit listrainevents) als html Tabelle Jahre versus Monate zum speichern/anzeigen in einer hml Box
      * Input ist ein Array mit Index MM.JJ oder Index und Value/Timestamp
-     * verschieden Datenwuellen möglich, unterscheidung mit Mode
+     * verschiedene Datenquellen möglich, Unterscheidung mit Mode
      * mode=1   Index ist bereits MM.YY, Wert ist ein scalar und kann direkt verwendet werden
      * mode=2   Index ist ein aufsteigender Wert, Wert ist ein array mit Value/TimeStamp
      *
@@ -1587,13 +1590,14 @@ class GartensteuerungStatistics extends Gartensteuerung
 	{
     protected $archiveOps;                              // class for archives, general use
     protected $ipsTables;                       // schöne Tabelle zeichnen
+    public $startTime;
 
     function __construct($debug=false)
         {
         //$this->werteStore = array();
         $this->archiveOps = new archiveOps();
         $this->ipsTables = new ipsTables();
- 
+        $this->startTime =(time()-(10*24*60*60));           // 10 Tage zurück
         if ($debug) echo "GartensteuerungStatistics construct aufgerufen. Debug Mode.\n";
 
         parent::__construct(0,0,$debug);                    // keine Start und Endtime übergeben
@@ -1788,9 +1792,9 @@ class GartensteuerungStatistics extends Gartensteuerung
      *
      * noch eine Routine um die Regenereignisse herauszuarbeiten
      * Die Variable die im Namen ein _Counter am Ende hat ist das Input Register mit einem Zählerstand, 
-     * Counter2 sollte der Zählerstand sein der um den rewset des registers durch einen Stromausfall bereinigt ist und den Zählerstand richtig weiterschreibt.
+     * Counter2 sollte der Zählerstand sein der um den Reset des Registers durch einen Stromausfall oder bei einem Gerätetausch bereinigt ist und den Zählerstand richtig weiterschreibt.
      *
-     * da das alles viel zu kompliziert ist den incrementellen registerwert nehmen. Im einfachen Registernamen gespeichert:
+     * da das alles viel zu kompliziert ist den incrementellen Registerwert nehmen. Im einfachen Registernamen gespeichert:
      *
      * rainRegs ist ein array mit Inputregistern die miteinenader die Niederschlagswerte ergeben
      *
@@ -1804,7 +1808,10 @@ class GartensteuerungStatistics extends Gartensteuerung
      * beim ersten Mal ein regenereignis Ende mit diesem timestamp anlegen, dabei sich von der Jetztzeit zurückarbeiten
      * wenn die Zeit zwischen zwei Regenmesswerten > 60 Minuten betraegt, den Beginn eintragen und ein neues regenereignis beginnen
      *
-     ***/
+     * Für die Ausgabe ein array zur Verfügung stellen
+     * es können die für die Auswertung zu verwendenden Register als Parameter übergeben, sonst werden die Defaultregister verwendet
+     *
+     */
 
     public function getRainEventsFromIncrements(&$regenereignis, $rainRegs=array(),$debug=false)
         {
@@ -1817,7 +1824,8 @@ class GartensteuerungStatistics extends Gartensteuerung
         $archiveHandlerID=$this->archiveOps->getArchiveID();
         //$config = $this->archiveOps->getConfig();                         // das ist ja die ganze config, alle Archive Variablen, passt hier gar nicht
         $config=array();
-        $config["StartTime"]="1.8.2024";
+        //$config["StartTime"]="1.8.2024";
+        $config["StartTime"]=$this->startTime;
         $configCleanUpData = array();
         $configCleanUpData["deleteSourceOnError"]=false;
         $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
@@ -1863,68 +1871,96 @@ class GartensteuerungStatistics extends Gartensteuerung
         $regen=0;               // Regenmenge während einem Regenereignis
         $lastwert=0;   $zeit=0;
         $ende=true; $maxmenge=0;
-        if ($debug>1) echo "Eingelesene Werte analysieren, wir haben increments:\n";
-        foreach ($this->werteStore as $wert)
+        if ($debug>1) echo "Eingelesene Werte analysieren, wir haben increments:\n";   // und einen aufsteigenden normalen Index [0,1,2,...,n]
+        foreach ($this->werteStore as $index=>$wert)
             {
-            if ($wert["Value"]!=0)              // nur positive Regenmengen akzeptieren, Warnung bei größer 10
+            $text="";
+            if ($debug>1) $text = " ".str_pad($index,8)."Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    ";          // Jede Zeile beginnt so 
+            if ($wert["Value"]==0) 
                 {
-                if ($wert["Value"]<0) 
+                //echo "      Fehler, 0mm Increments, nicht berücksichtigen. \n";
+                //$text .= "Warnung , 0mm Wert\n";
+                $text="";
+                }
+            elseif ($wert["Value"]<0)               // nur positive Regenmengen akzeptieren, Warnung bei größer 10
+                {
+                echo "     Fehler, negative Increments, nicht berücksichtigen.\n";
+                $text .= "Fehler, negativer Wert\n";
+                }
+            else
+                {
+                if ($wert["Value"]>10) echo "     Warnung, ungewöhnlicher Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
+
+                // eine Stunde ab jetzt in die Vergangenheit
+                $index1=$index; $timestamp1=$wert["TimeStamp"]; $regenProStunde=0; $count=0;
+                do  { 
+                    $regenProStunde+=$this->werteStore[$index1]["Value"]; 
+                    $index1++; 
+                    if (isset($this->werteStore[$index1]["TimeStamp"])===false) break;
+                    $duration=$timestamp1-$this->werteStore[$index1]["TimeStamp"]; 
+                    $count++;
+                    if ($count==10) $text .= "*";               // Starkregen
+                    } while ( ($duration<=(60*60)) && ($count<34) );
+                if ($count<10) $text .= " "; 
+                $text .= str_pad(nf($regenProStunde,1),7," ",STR_PAD_LEFT)." l/Std ".str_pad("(".$count.")",6)."  ";        // alles in Text speichern damit Regenende noch vorher ausgegeben werden kann
+                
+                
+                if ($init===true)               // beim aller-ersten Mal ist es true, wir starten mit i=0
                     {
-                    echo "   Fehler, negativer Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
-                    }
-                else
-                    {
-                    if ($wert["Value"]>10) echo "     Warnung, ungewöhnlicher Wert: ".$wert["Value"]." vom ".date("D d.m.Y H:i",$wert["TimeStamp"])."\n";
+                    //$regenereignis[$i]["Ende"]=$wert["TimeStamp"];
+                    $regenereignisEnde=$wert["TimeStamp"];
                     $regen+=$wert["Value"];
-                    if ($debug>1) echo " Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("D d.m.Y H:i",$wert["TimeStamp"])."    \n";
-                    if ($init===true)               // beim aller-ersten Mal ist es true, wir starten mit i=0
-                        {
-                        //$regenereignis[$i]["Ende"]=$wert["TimeStamp"];
-                        $regenereignisEnde=$wert["TimeStamp"];
-                        $regenMenge=$regen;          // Unterschied false und 0
-                        $init=false;    
-                        }
-                    else            // ab dem zweiten gemessenen Regenfall
-                        {
-                        $zeit= ($lasttime-$wert["TimeStamp"])/60;     // vergangene Zeit zwischen zwei Regenwerten in Minuten messen                    
-                               
-                        if ((abs($zeit))>60)                                   // Zeit zwischen Regenwerten, 60 Minuten überschritten, ein Regenereignis wurde gefunden
-                            {
-                            $regenereignis[$i]["Regen"]=$regenMenge;
-                            $regenereignis[$i]["Max"]=$maxmenge;
-                            if ($zeit>0)
-                                {
-                                $regenereignis[$i]["Beginn"]=$lasttime;     // letzter Wert ist der Beginnwert
-                                $regenereignis[$i]["Ende"]=$regenereignisEnde;
-                                $dauer = ($regenereignis[$i]["Ende"]-$regenereignis[$i]["Beginn"])/60;      // in Minuten
-                                }
-                            else
-                                {
-                                $regenereignis[$i]["Ende"]=$lasttime;     // letzter Wert ist der Beginnwert
-                                $regenereignis[$i]["Beginn"]=$regenereignisEnde;
-                                $dauer = ($regenereignis[$i]["Ende"]-$regenereignis[$i]["Beginn"])/60;      // in Minuten
-                                }
-                            //if ( ($debug) && ($regen>1) )           // mehr als 1mm, es gibt viele Einzelwerte
-                                {
-                                echo "Beginn ".date("d.m.Y H:i:s",$regenereignis[$i]["Beginn"])."  Ende ".date("d.m.Y H:i:s",$regenereignis[$i]["Ende"])." Dauer ".nf($dauer,"min",14)." Regen ".nf($regenereignis[$i]["Regen"],"mm")." Max ".nf($regenereignis[$i]["Max"],"mm")."\n";     
-                                }
-                            $regen=0; $i++;
-                            $regenereignisEnde=$wert["TimeStamp"]; 
-                            $maxmenge=0; 
-                            }
-                        $menge=60/$zeit*$wert["Value"];
-                        $regenMenge+=$wert["Value"];
-                        if ($menge>$maxmenge) $maxmenge=$menge;
-                        if ($debug>1) 
-                            {
-                            echo number_format($regenMenge,1,",","")."mm | ".nf($zeit,"Min")." ".number_format($menge,1,",","")."l/Std   ".$regen."\n";
-                            }
-                        }
-                    $lastwert=$wert["Value"]; 
-                    $lasttime=$wert["TimeStamp"]; 
+                    $regenMenge=$regen;          // Unterschied false und 0
+                    $init=false;  
+                    $text .= "Init und automatisch auch Ende Regenereignis.\n";  
                     }
-                }                                               // ende Werte != 0
-            }
+                else            // ab dem zweiten gemessenen Regenfall
+                    {
+                    $zeit= ($lasttime-$wert["TimeStamp"])/60;     // vergangene Zeit zwischen zwei Regenwerten in Minuten messen                    
+                            
+                    if ((abs($zeit))>60)                                   // Zeit zwischen Regenwerten, 60 Minuten überschritten, ein Regenereignis wurde gefunden
+                        {
+                        //$regenereignis[$i]["Regen"]=$regenMenge;
+                        $regenereignis[$i]["Regen"]=$regen;
+                        $regenereignis[$i]["Max"]=$maxmenge;
+                        if ($zeit>0)
+                            {
+                            $regenereignis[$i]["Beginn"]=$lasttime;     // letzter Wert ist der Beginnwert
+                            $regenereignis[$i]["Ende"]=$regenereignisEnde;
+                            $dauer = ($regenereignis[$i]["Ende"]-$regenereignis[$i]["Beginn"])/60;      // in Minuten
+                            }
+                        else
+                            {
+                            $regenereignis[$i]["Ende"]=$lasttime;     // letzter Wert ist der Beginnwert
+                            $regenereignis[$i]["Beginn"]=$regenereignisEnde;
+                            $dauer = ($regenereignis[$i]["Ende"]-$regenereignis[$i]["Beginn"])/60;      // in Minuten
+                            }
+                        //if ( ($debug) && ($regen>1) )           // mehr als 1mm, es gibt viele Einzelwerte
+                            {
+                            if ($debug) echo "Beginn ".date("d.m.Y H:i:s",$regenereignis[$i]["Beginn"])."  Ende ".date("d.m.Y H:i:s",$regenereignis[$i]["Ende"])." Dauer ".nf($dauer,"min",14)." Regen ".nf($regenereignis[$i]["Regen"],"mm")." Max ".nf($regenereignis[$i]["Max"],"mm")."/Std\n";     
+                            }
+                        $regen=0; $i++;
+
+                        $regenereignisEnde=$wert["TimeStamp"]; 
+                        $maxmenge=0; 
+                        }
+                    $regen+=$wert["Value"];
+                    $regenMenge+=$wert["Value"];
+                    if (isset($this->werteStore[$index+1]["TimeStamp"])) 
+                        {
+                        $dauerregen = ($this->werteStore[$index]["TimeStamp"]-$this->werteStore[$index+1]["TimeStamp"])/60;     // in Minuten
+                        $menge=60/$dauerregen*$wert["Value"];                 // zeit ist die Dauer von der zukünftigen bis zur aktuellen Regenmeldung, Dauerregen die Dauer von jetzt bis zur vorigen Regenmeldung
+                        if ($menge>$maxmenge) $maxmenge=$menge;
+                        $text .= nf($regen,"mm",12)."|".nf($regenMenge,"mm",12)."| Dauer ".nf($zeit,"Min",6)."| hochgerechnet ".number_format($menge,1,",","")."l/Std   \n";
+                        }
+                    else $text .= nf($regen,"mm",12)."|".nf($regenMenge,"mm",12)."| Dauer ".nf($zeit,"Min",6)."   \n";
+
+                    }
+                $lastwert=$wert["Value"]; 
+                $lasttime=$wert["TimeStamp"]; 
+                }
+            if ($debug>1) echo $text;
+            }               // ende foreach
         $regenereignis[$i]["Regen"]=$regen;
         if ($zeit>0)
             {
@@ -2623,7 +2659,9 @@ class GartensteuerungStatistics extends Gartensteuerung
     }
 
 
-/* es geht darum durchgängige nur auf Increments basierende Archive zu erzeugen
+/*****************************************************************************************************************
+ * 
+ * es geht darum durchgängige nur auf Increments basierende Archive zu erzeugen
  *
  */
 
@@ -2641,6 +2679,7 @@ class GartensteuerungMaintenance extends Gartensteuerung
 
         parent::__construct(0,0,$debug);                    // keine Start und Endtime übergeben
         }
+
     /* Zuordnung index=>name
      */
     function getAssociations($config)

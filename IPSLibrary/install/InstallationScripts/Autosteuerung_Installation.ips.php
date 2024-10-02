@@ -19,11 +19,22 @@
 	/**@defgroup Autosteuerung::Autosteuerung_Installation
 	 *
 	 * Script um automatisch irgendetwas ein und auszuschalten
-	 * Installationsroutine, Vorbereitung der Webfronts und Unitialisierung der wichtigsten Variablen abhängig von den freigeschalteteten Funktionen
+	 * Installationsroutine:
+     *      Initialisiserung, Modul Handling Vorbereitung
+     *      Webfronts Vorbereitung und Konfiguration aus ini Datei 
+     *      Variablen Profile für lokale Darstellung anlegen, sind die selben wie bei Remote Access
+     *      spezielle Sicherheitsfunktionen bearbeiten, nur wenn PowerLock eingesetzt wir
+     *      Links für Webfront identifizieren
+     *      Bearbeite AutosetSwitch
+     *          Initialisierung der wichtigsten Variablen abhängig von den freigeschalteten Funktionen
+     *      Programme für Schalter registrieren nach OID des Events, CreateEvent
+     *      Timer Konfiguration
+     *      Webfront Installation
+     *
      *
      * Webfront Erstellung wurde bereits auf verschiedene Arten automatisisert
      * aktuell drei Varianten gleichzeitig in Betrieb, muss harmonisiert werden
-     *
+     * es werden aktuell keine webfront scripts installiert und verwendet
      *
      *
 	 *
@@ -42,7 +53,8 @@
     $startexec=microtime(true);     /* Laufzeitmessung */
     
     $updateEvents=true;            // shall be true
-    $installWebfront=true;          // extended formatting mit Autosteuerung_GetWebFrontConfiguration()
+    $installWebfront=false;          // extended formatting mit Autosteuerung_GetWebFrontConfiguration()
+    $incomplete=false;              // alle benötigten Module sind vorhanden
     
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -60,23 +72,29 @@
 		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
 		}
 
+    if ($_IPS['SENDER']=="Execute") $debug=false;            // Mehr Ausgaben produzieren wenn im Attended Mode
+	else $debug=false;
+
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	$ergebnis1=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	$ergebnis2=$moduleManager->VersionHandler()->GetVersion('Autosteuerung');
-	//echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
-	//echo "\nIPS ModulManager Version   : ".$ergebnis1;
-	//echo "\nModul Autosteuerung Version : ".$ergebnis2."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
-	
+    if ($debug)
+        {
+        $ergebnis1=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+        $ergebnis2=$moduleManager->VersionHandler()->GetVersion('Autosteuerung');
+        echo "\nIP Symcon Kernelversion     : ".IPS_GetKernelVersion();
+        echo "\nIPS ModulManager Version    : ".$ergebnis1;
+        echo "\nModul Autosteuerung Version : ".$ergebnis2."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
+        }
+
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	//echo $inst_modules."\n";
+	if ($debug) echo $inst_modules."\n";
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -94,7 +112,25 @@
         { 
         echo "Modul OperationCenter ist NICHT installiert.\n"; 
         $categoryId_AutosteuerungAlexa    =        false;
+        $incomplete=true;
         }
+
+	if (isset ($installedModules["EvaluateHardware"])) 
+        { 
+        echo "  Modul EvaluateHardware ist installiert.\n"; 
+        IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+        IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');           // sonst werden die Event Listen überschrieben
+        IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+        }
+    else $incomplete=true;
+
+    if (isset($installedModules["DetectMovement"]))
+        {
+        echo "  Modul DetectMovement ist installiert.\n"; 
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        }
+    else $incomplete=true;
 
     $ipsOps = new ipsOps();
     $wfcHandling =  new WfcHandling();
@@ -115,13 +151,16 @@
 	
 	$modulhandling = new ModuleHandling();
 	$Alexa=$modulhandling->getInstances("Alexa");
-	$countAlexa = sizeof($Alexa);
-	echo "Es gibt insgesamt ".$countAlexa." Alexa Instanzen.\n";
-	if ($countAlexa>0)
-		{
-		$config=IPS_GetConfiguration($modulhandling->getInstances("Alexa")[0]);
-		echo "   ".$config."\n";
-		}	
+	$countAlexa = sizeof($Alexa);                                       // später verwendet
+    if ($debug)
+        {
+        echo "Es gibt insgesamt ".$countAlexa." Alexa Instanzen.\n";
+        if ($countAlexa>0)
+            {
+            $config=IPS_GetConfiguration($modulhandling->getInstances("Alexa")[0]);
+            echo "   ".$config."\n";
+            }	
+        }
 
     if (isset($installedModules["Stromheizung"])==true)
 	    {
@@ -143,9 +182,8 @@
  *
  ********************************/
 
-	echo "\n";
 	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	echo "Default WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+	if ($debug) echo "\nDefault WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
 	
 	$WebfrontConfigID = $wfcHandling->get_WebfrontConfigID();
 
@@ -183,7 +221,7 @@
  *
  * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	echo "Darstellung der Variablenprofile im lokalem Bereich für Autosteuerungsfunktionen, wenn fehlt anlegen:\n";
+	if ($debug) echo "Darstellung der Variablenprofile im lokalem Bereich für Autosteuerungsfunktionen, wenn fehlt anlegen:\n";
 	$profilname=array("AusEinAuto"=>"update","AusEin"=>"update","AusEin-Boolean"=>"update","NeinJa"=>"update","Null"=>"update","SchlafenAufwachenMunter"=>"update","AusEinAutoP1P2P3P4"=>"update",);
     $profileOps->synchronizeProfiles($profilname);    
 
@@ -193,9 +231,9 @@
  * nur wenn PowerLock eingesetzt wird, danach suchen und ein paar kosmetische Tätigkeiten ansetzen
  */
 
-	echo "Darstellung der Variablenprofile für PowerLock im lokalem Bereich, wenn fehlt anlegen:\n";
+	if ($debug) echo "Darstellung der Variablenprofile für PowerLock im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("PowerLockBefehl"=>"update","PowerLockStatus"=>"update", );
-    $profileOps->synchronizeProfiles($profilname,true);             //true für Debug
+    $profileOps->synchronizeProfiles($profilname,$debug);             //true für Debug
 
     $componentHandling = new ComponentHandling();
     $DeviceManager     = new DeviceManagement();
@@ -232,6 +270,70 @@
         {
         echo "Es wird ein PowerLock von Homematic verwendet. Die Darstellung erfolgt unter Alarmanlage/Tab Sicherheit:\n";
 
+        }
+
+/*----------------------------------------------------------------------------------------------------------------------------
+ * Unterstützung für Anwesenheitserkennung und Visualisiserung
+ * config automatisch erweitern für Anzeige eines Floorplans
+ * check function as UC01 in HandleAlexaEvents
+ */
+
+    echo "TopologyPlusLinks erzeugen, Basis ist die unified Topology. Ableitung eines php files für die Darstellung eines Floorplans\n";
+    $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
+    $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
+
+    $registerFloorplan=new AutosteuerungConfigurationFloorplan();            // $scriptIdAutosteuerung weglassen. damit werden keine Events erzeugt
+
+    /* IPSDetectDeviceHandler_GetEventConfiguration die einzige Tabelle mit Event und Raumzuordnung, händisch !!!
+     * seit Implementierung EvaluateHardware sind alle Informationen in EvaluateHardware_Configuration gespeichert: get_UnifiedTopology
+     * mit Autosteuerung Install mitnehmen
+     */
+
+    $topology=get_UnifiedTopology();
+    $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$channelEventList,1);        // true,2 for Debug, 1 für Warnings  Verwendet ~ in den Ortsangaben, dadurch werden die Orte wieder eindeutig ohne den Pfad zu wissen
+
+    /* beeinflussung des Ergebnisses in EvaluateHardware_Configuration
+     */
+
+    // Erstellung Floorplan für diese lokale Topologie
+    $result = $DetectDeviceHandler->evalTopology("LBG70",false);          // verwendet topology ohne Erweiterungen, true für Anzeige der topologie
+    $object=false;
+    $topo="Bewegung";                       // bei TOPO gibt es einheitliche Namen
+    $floorplan=array();
+    foreach ($result as $index => $entry)
+        {
+        if (isset($entry["Index"]))
+            {
+            if (isset($topologyPlusLinks[$entry["Index"]]))
+                {
+                $data=$topologyPlusLinks[$entry["Index"]];
+	    		for ($i=0;$i<$entry["Hierarchy"];$i++) echo "   ";
+		    	echo str_pad($entry["Name"],80-($entry["Hierarchy"]*3))."| ";
+                if ((isset($data["OBJECT"]["Movement"])) && $object)
+                    {
+                    echo json_encode($data["OBJECT"]["Movement"]);
+                    }
+                if ((isset($data["TOPO"]["ROOM"])) && $topo)
+                    {
+                    echo json_encode($data["TOPO"]["ROOM"]);
+                    foreach ($data["TOPO"]["ROOM"] as $index => $type)
+                        {
+                        if ($type==$topo) $floorplan[$entry["Name"]]=$index;
+                        }
+                    }
+                echo "\n";
+                }
+            else echo "Warning, no Data \n";                // OBJECT wurde für den Raum nicht angelegt
+            }
+        else "Warning, no Index\n";
+        }
+
+    //print_R($floorplan);
+
+    foreach ($floorplan as $room=>$index)
+        {
+        //registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
+        $registerFloorplan->registerAutoEvent($index,"ROOM","","");
         }
 
 /*******************************
@@ -338,6 +440,20 @@
          */
     	switch (strtoupper($AutoSetSwitch["NAME"]))
 			{
+            case "FLOORPLAN":
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Floorplan'));  
+
+                /* Setup Standard Variables */
+                echo "   Variablen für Floorplan in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";	
+
+                $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
+                if (isset($webFrontConfiguration[$AutoSetSwitch["TABNAME"]])===false) echo "Achtung, ohne einen Eintrag in Autosteuerung_GetWebFrontConfiguration geht gar nichts.\n";
+
+                if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
+                    {  				
+			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputHtml;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste, welche mussman hier entscheiden */				
+                    }            
+                break;    
 			case "ANWESENHEITSERKENNUNG":
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Erkennung'));            
 				
@@ -799,8 +915,10 @@
 	registerAutoEvent($AnwesenheitssimulationID, $eventType, "par1", "par2");
 	*/
 	
-	/* Programme für Schalter registrieren nach OID des Events */
-	/*
+	/*****************************************************************
+     * 
+     * Programme für Schalter registrieren nach OID des Events, CreateEvent
+	 *
 	 * war schon einmal ausgeklammert, wird aber intuitiv von der Install Routine erwartet dass auch die Events registriert werden
 	 *
 	 */
@@ -869,12 +987,12 @@
 /*----------------------------------------------------------------------------------------------------------------------------
  *
  * WebFront Installation
- * Vereinheitlichung der unterschiedlichen über die Vergangenheit angewachseneen Methoden
+ * Vereinheitlichung der unterschiedlichen über die Vergangenheit angewachsenen Methoden
  *
  * ----------------------------------------------------------------------------------------------------------------------------*/
 
 	echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
-	print_r($webfront_links);
+	//print_r($webfront_links);
     foreach ($webfront_links as $OID => $webfront_link)
 		{
         $tab = $webfront_link["TAB"];
@@ -906,7 +1024,7 @@
 	echo "Entsprechend den Webfront Links wird das Webfront automatisch aufgebaut:\n";
 	echo "  Tab ".$configWFront["Administrator"]["TabPaneName"]."(".$configWFront["Administrator"]["TabPaneItem"].")\n";
 
-    $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
+    $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];         // Zusatzparametrierung
 	foreach ($webfront_links as $Name => $webfront_group)
 	   	{
 		echo "    Subtab:    ".$Name."  ";
@@ -917,18 +1035,18 @@
             }
         echo "\n";
         }
-    echo "****************Ausgabe Webfront Links               ";    
-	print_r($webfront_links);
+    if ($debug==false) { 
+        echo "****************Ausgabe Webfront Links               ";    
+	    print_r($webfront_links); 
+        }
 
-    if (false)
-        {
-        if ( ($WFC10_Enabled) && (isset($configWFront["Administrator"])) )
+    /*  if ( ($WFC10_Enabled) && (isset($configWFront["Administrator"])) )
             {
             $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
 
             // Init for all Webfronts, necessary only once
             $categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
-            $wfcHandling->CreateWFCItemCategory('Admin',   "roottp",   0, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+            $wfcHandling->CreateWFCItemCategory('Admin',   "roottp",   0, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   , 'true' );
             $wfcHandling->UpdateVisibility("root",false);	            // gibts eh nicht, aber wenn verstecken			
             $wfcHandling->UpdateVisibility("dwd",false);                // gibts eh nicht, aber wenn verstecken
 
@@ -953,69 +1071,68 @@
             $configWF = $configWFront["User"];
             echo "\n\n===================================================================================================\n";
             $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
-            }           
-        }
-    else    
+            }           */
+
+    // mit easysetup das Webfront erstellen
+    if (isset($configWFront["Administrator"])) 
         {
-        if (isset($configWFront["Administrator"])) 
+        /* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben 
+        *
+        * typische Struktur, festgelegt im ini File:
+        *
+        * roottp/AutoTPA (Autosteuerung)/AutoTPADetails und /AutoTPADetails2
+        *
+        */
+        
+        $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+        echo "====================================================================================\n";
+        echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
+        echo "Webportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
+        /* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+        CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+        
+        @WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
+        @WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
+
+        /*************************************/
+        $configWF = $configWFront["Administrator"];
+        /* Neue Tab für untergeordnete Anzeigen wie eben Autosteuerung und andere schaffen */
+        echo "\nWebportal Administrator.Autosteuerung Datenstruktur installieren in: ".$configWF["Path"]." \n";
+        $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]);
+        $ipsOps->emptyCategory($categoryId_WebFrontAdministrator);
+        /* in der normalen Viz Darstellung verstecken */
+        IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
+
+        /*************************************/
+        
+        /* TabPaneItem anlegen, etwas kompliziert geloest */
+        $tabItem = $configWF["TabPaneItem"].$configWF["TabItem"];
+        if ( exists_WFCItem($WFC10_ConfigId, $configWF["TabPaneItem"]) )
             {
-            /* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben 
-            *
-            * typische Struktur, festgelegt im ini File:
-            *
-            * roottp/AutoTPA (Autosteuerung)/AutoTPADetails und /AutoTPADetails2
-            *
-            */
-            
-            $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
-            echo "====================================================================================\n";
-            echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
-            echo "Webportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
-            /* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-            CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
-            
-            @WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
-            @WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
-
-            /*************************************/
-            $configWF = $configWFront["Administrator"];
-            /* Neue Tab für untergeordnete Anzeigen wie eben Autosteuerung und andere schaffen */
-            echo "\nWebportal Administrator.Autosteuerung Datenstruktur installieren in: ".$configWF["Path"]." \n";
-            $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWF["Path"]);
-            $ipsOps->emptyCategory($categoryId_WebFrontAdministrator);
-            /* in der normalen Viz Darstellung verstecken */
-            IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
-
-            /*************************************/
-            
-            /* TabPaneItem anlegen, etwas kompliziert geloest */
-            $tabItem = $configWF["TabPaneItem"].$configWF["TabItem"];
-            if ( exists_WFCItem($WFC10_ConfigId, $configWF["TabPaneItem"]) )
-                {
-                echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  löscht TabItem : ".$configWF["TabPaneItem"]."\n";
-                DeleteWFCItems($WFC10_ConfigId, $configWF["TabPaneItem"]);
-                }
-            else
-                {
-                echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  TabItem : ".$configWF["TabPaneItem"]." nicht mehr vorhanden.\n";
-                }	
-            echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$configWF["TabPaneItem"]." in ".$configWF["TabPaneParent"]."\n";
-            CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);
-
-            $configWF = $configWFront["Administrator"];
-            $configWF["TabPaneParent"]=$configWF["TabPaneItem"];          // überschreiben wenn roottp, wir sind jetzt bereits eins drunter, Autosteuerungs Auto wurde bereits angelegt
-            echo "\n\n===================================================================================================\n";
-            $wfcHandling =  new WfcHandling($WFC10_ConfigId);
-            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
-            } 
-
-        if (isset($configWFront["User"]))
+            echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  löscht TabItem : ".$configWF["TabPaneItem"]."\n";
+            DeleteWFCItems($WFC10_ConfigId, $configWF["TabPaneItem"]);
+            }
+        else
             {
-            $configWF = $configWFront["User"];
-            echo "\n\n===================================================================================================\n";
-            $wfcHandling =  new WfcHandling($WFC10User_ConfigId);
-            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
-            } 
+            echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  TabItem : ".$configWF["TabPaneItem"]." nicht mehr vorhanden.\n";
+            }	
+        echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$configWF["TabPaneItem"]." in ".$configWF["TabPaneParent"]."\n";
+        CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);
+
+        $configWF = $configWFront["Administrator"];
+        $configWF["TabPaneParent"]=$configWF["TabPaneItem"];          // überschreiben wenn roottp, wir sind jetzt bereits eins drunter, Autosteuerungs Auto wurde bereits angelegt
+        echo "\n\n===================================================================================================\n";
+        $wfcHandling =  new WfcHandling($WFC10_ConfigId);
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+        } 
+
+    if (isset($configWFront["User"]))
+        {
+        $configWF = $configWFront["User"];
+        echo "\n\n===================================================================================================\n";
+        $wfcHandling =  new WfcHandling($WFC10User_ConfigId);
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
+        } 
 
         /*******************************************************
         *
@@ -1036,26 +1153,26 @@
     if ($installWebfront) 
         {
         $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration();
-        if ($WFC10_Enabled && false)         // alte Art für Administrator Webfront Installation
+        /* if ($WFC10_Enabled && false)         // alte Art für Administrator Webfront Installation
             {
             if ( isset($webFrontConfiguration["Administrator"]) == true )
-                {	/* neue Art der Konfiguration */
+                {	// neue Art der Konfiguration 
                 $webFrontConfig=$webFrontConfiguration["Administrator"];
                 echo "Neue Webfront Konfiguration mit Unterscheidung Administrator, User und Mobile.\n";
                 }
             else
-                {	/* alte Art der Konfiguration */
+                {	// alte Art der Konfiguration 
                 echo "Alte Webfront Konfiguration nur für Administrator.\n";
                 $webFrontConfig=$webFrontConfiguration;
                 }
-            /* Default Path ist Visualization.WebFront.Administrator.Autosteuerung, die folgenden beiden Befehle wurden weiter oben bereits durchgeführt */
+            // Default Path ist Visualization.WebFront.Administrator.Autosteuerung, die folgenden beiden Befehle wurden weiter oben bereits durchgeführt 
             //$categoryId_WebFrontAdministartor                = CreateCategoryPath($WFC10_Path);
             //CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
 
             $order = 10;
             foreach($webFrontConfig as $tabName=>$tabData) 
                 {
-                /* tabname muss einer der oben kreierten Tabs sein, sonst Fehler */
+                // tabname muss einer der oben kreierten Tabs sein, sonst Fehler 
                 if (isset($tabs[$tabName])===false) { echo "\nFalsche Konfiguration in Autosteuerung. Tabname ".$tabName." stimmt nicht mit WebConfiguration ueberein.\n"; break; } 
                 $tabCategoryId	= CreateCategory($tabName, $categoryId_WebFrontAdministrator, $order);			
                 foreach($tabData as $WFCItem) {
@@ -1063,11 +1180,11 @@
                     switch($WFCItem[0]) 
                         {
                         case IPSHEAT_WFCSPLITPANEL:
-                            CreateWFCItemSplitPane ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+                            CreateWFCItemSplitPane ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2],$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
                             break;
                         case IPSHEAT_WFCCATEGORY:
                             $categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
-                            CreateWFCItemCategory ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+                            CreateWFCItemCategory ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2],$order, $WFCItem[3],$WFCItem[4], $categoryId, 'false');
                             break;
                         case IPSHEAT_WFCGROUP:
                         case IPSHEAT_WFCLINKS:
@@ -1092,44 +1209,30 @@
                         }
                     }
                 }
-            }           // ende webfront admistrator install 
+            }           // ende webfront admistrator install  
 
-        /*----------------------------------------------------------------------------------------------------------------------------
-        *
-        * WebFront User Installation
-        *
-        * ----------------------------------------------------------------------------------------------------------------------------*/
-
+        // WebFront User Installation
         if ($WFC10User_Enabled && false)            // alte Art ein User Webfront zu erstellen
             {
-            /* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen 
-            *
-            * typische Struktur, festgelegt im ini File:
-            *
-            * roottp/AutoTPU (Autosteuerung)/AutoTPUDetails
-            *
-            */
-
+            // Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen 
+            // typische Struktur, festgelegt im ini File:
+            // roottp/AutoTPU (Autosteuerung)/AutoTPUDetails
             $categoryId_UserWebFront=CreateCategoryPath("Visualization.WebFront.User");
             echo "====================================================================================\n";
             echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
             echo "Webportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
-            CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_UserWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_UserWebFront   , 'true' );
 
             @WFC_UpdateVisibility ($WFC10User_ConfigId,"root",false	);				
             @WFC_UpdateVisibility ($WFC10User_ConfigId,"dwd",false	);
 
-            /*************************************/
-
-            /* Neue Tab für untergeordnete Anzeigen wie eben Autosteuerung und andere schaffen */
+            // Neue Tab für untergeordnete Anzeigen wie eben Autosteuerung und andere schaffen 
             echo "\nWebportal User.Autosteuerung Datenstruktur installieren in: ".$WFC10User_Path." \n";
             $categoryId_WebFrontUser         = CreateCategoryPath($WFC10User_Path);
             EmptyCategory($categoryId_WebFrontUser);
             echo "Kategorien erstellt, Main: ".$categoryId_WebFrontUser."\n";
-            /* in der normalen Viz Darstellung verstecken */
+            // in der normalen Viz Darstellung verstecken 
             IPS_SetHidden($categoryId_WebFrontUser, true); //Objekt verstecken		
-
-            /*************************************/
             
             $tabItem = $WFC10User_TabPaneItem.$WFC10User_TabItem;
             if ( exists_WFCItem($WFC10User_ConfigId, $tabItem) )
@@ -1144,14 +1247,14 @@
             echo "Webfront ".$WFC10User_ConfigId." erzeugt TabItem :".$WFC10User_TabPaneItem." in ".$WFC10User_TabPaneParent."\n";
             CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
             
-            /* wenn nur ein Tab benötigt wird, ohne Teilung */
-            CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem,   $WFC10User_TabPaneItem,    $WFC10User_TabOrder,     $WFC10User_TabName,     $WFC10User_TabIcon, $categoryId_WebFrontUser /*BaseId*/, 'false' /*BarBottomVisible*/);
+            // wenn nur ein Tab benötigt wird, ohne Teilung 
+            CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem,   $WFC10User_TabPaneItem,    $WFC10User_TabOrder,     $WFC10User_TabName,     $WFC10User_TabIcon, $categoryId_WebFrontUser , 'false' );
 
             if (false)
                 {
                 CreateWFCItemTabPane   ($WFC10User_ConfigId, $tabItem,               $WFC10User_TabPaneItem,    $WFC10User_TabOrder,     $WFC10User_TabName,     $WFC10User_TabIcon);
                 $categoryId_WebFrontTab = $categoryId_WebFrontUser;
-                CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem.'_Group',   $tabItem,   10, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
+                CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem.'_Group',   $tabItem,   10, '', '', $categoryId_WebFrontTab   , 'false' );
                 }
 
             foreach ($webfront_links as $OID => $webfront_link)
@@ -1164,10 +1267,8 @@
                 }
             }
 
-        /* installiert entsprechend webfront_links -> OID -> array
-        *
-        */
-        //if ($Mobile_Enabled)                // imer noch aktiv
+        // installiert entsprechend webfront_links -> OID -> array
+        //if ($Mobile_Enabled)                // imer noch aktiv  */
         if (isset($configWFront["Mobile"]))
             {
             $configWF = $configWFront["Mobile"];
@@ -1249,128 +1350,121 @@
             }
 
 
-    // auch im IPSLight Modul herumpfuschen
-    if (isset($installedModules["IPSLight"])==true)
-	    {
-
-        /*----------------------------------------------------------------------------------------------------------------------------
-        *
-        * WebFront Installation für IPS Light wenn User konfiguriert
-        *
-        * ----------------------------------------------------------------------------------------------------------------------------*/
-
-        echo "\n======================================================\n";
-        echo "Webportal User für IPS Light installieren:  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.";
-        echo "\n======================================================\n\n";
-        
-        $moduleManagerLight = new IPSModuleManager('IPSLight');
-
-        $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPS','2.50');
-        $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.2');
-        $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
-        $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSComponent','2.50.1');
-        $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSMessageHandler','2.50.1');
-
-        IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");
-        IPSUtils_Include ("IPSLight.inc.php",                "IPSLibrary::app::modules::IPSLight");
-        IPSUtils_Include ("IPSLight_Constants.inc.php",      "IPSLibrary::app::modules::IPSLight");
-        IPSUtils_Include ("IPSLight_Configuration.inc.php",  "IPSLibrary::config::modules::IPSLight");
-
-        $CategoryIdData     = $moduleManagerLight->GetModuleCategoryID('data');
-        $CategoryIdApp      = $moduleManagerLight->GetModuleCategoryID('app');
-
-        $categoryIdSwitches = CreateCategory('Switches', $CategoryIdData, 10);
-        $categoryIdGroups   = CreateCategory('Groups',   $CategoryIdData, 20);
-        $categoryIdPrograms = CreateCategory('Programs', $CategoryIdData, 30);
-        
-        echo " Category IDs:\n";
-        echo "    Data         :".$CategoryIdData."\n";
-        echo "    App          :".$CategoryIdApp."\n";
-        echo "    Switches     :".$categoryIdSwitches."\n";	
-        echo "    Groups       :".$categoryIdGroups."\n";		
-        echo "    Programs     :".$categoryIdPrograms."\n\n";	
-
-        echo " Webfront Configurations:\n";		
-        $WFC10User_Enabled    		= $moduleManagerLight->GetConfigValueDef('Enabled', 'WFC10User',false);
-        if ($WFC10User_Enabled==true)
+        // auch im IPSLight Modul herumpfuschen
+        if (isset($installedModules["IPSLight"])==true)
             {
-            $WFC10User_ConfigId       	= $WebfrontConfigID["User"];		
-            $WFC10User_Path    	 		= $moduleManagerLight->GetConfigValue('Path', 'WFC10User');
-            $WFC10User_TabPaneItem    	= $moduleManagerLight->GetConfigValue('TabPaneItem', 'WFC10User');
-            $WFC10User_TabPaneParent  	= $moduleManagerLight->GetConfigValue('TabPaneParent', 'WFC10User');
-            $WFC10User_TabPaneName    	= $moduleManagerLight->GetConfigValue('TabPaneName', 'WFC10User');
-            $WFC10User_TabPaneIcon    	= $moduleManagerLight->GetConfigValue('TabPaneIcon', 'WFC10User');
-            $WFC10User_TabPaneOrder   	= $moduleManagerLight->GetConfigValueInt('TabPaneOrder', 'WFC10User');	
-            echo "WF10 User \n";
-            echo "  Path          : ".$WFC10User_Path."\n";
-            echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
-            echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
-            echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
-            echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
-            echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
-            echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
-        
-            }	
+
+            /*----------------------------------------------------------------------------------------------------------------------------
+            *
+            * WebFront Installation für IPS Light wenn User konfiguriert
+            *
+            * ----------------------------------------------------------------------------------------------------------------------------*/
+
+            echo "\n======================================================\n";
+            echo "Webportal User für IPS Light installieren:  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.";
+            echo "\n======================================================\n\n";
+            
+            $moduleManagerLight = new IPSModuleManager('IPSLight');
+
+            $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPS','2.50');
+            $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.2');
+            $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
+            $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSComponent','2.50.1');
+            $moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSMessageHandler','2.50.1');
+
+            IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");
+            IPSUtils_Include ("IPSLight.inc.php",                "IPSLibrary::app::modules::IPSLight");
+            IPSUtils_Include ("IPSLight_Constants.inc.php",      "IPSLibrary::app::modules::IPSLight");
+            IPSUtils_Include ("IPSLight_Configuration.inc.php",  "IPSLibrary::config::modules::IPSLight");
+
+            $CategoryIdData     = $moduleManagerLight->GetModuleCategoryID('data');
+            $CategoryIdApp      = $moduleManagerLight->GetModuleCategoryID('app');
+
+            $categoryIdSwitches = CreateCategory('Switches', $CategoryIdData, 10);
+            $categoryIdGroups   = CreateCategory('Groups',   $CategoryIdData, 20);
+            $categoryIdPrograms = CreateCategory('Programs', $CategoryIdData, 30);
+            
+            echo " Category IDs:\n";
+            echo "    Data         :".$CategoryIdData."\n";
+            echo "    App          :".$CategoryIdApp."\n";
+            echo "    Switches     :".$categoryIdSwitches."\n";	
+            echo "    Groups       :".$categoryIdGroups."\n";		
+            echo "    Programs     :".$categoryIdPrograms."\n\n";	
+
+            echo " Webfront Configurations:\n";		
+            $WFC10User_Enabled    		= $moduleManagerLight->GetConfigValueDef('Enabled', 'WFC10User',false);
+            if ($WFC10User_Enabled==true)
+                {
+                $WFC10User_ConfigId       	= $WebfrontConfigID["User"];		
+                $WFC10User_Path    	 		= $moduleManagerLight->GetConfigValue('Path', 'WFC10User');
+                $WFC10User_TabPaneItem    	= $moduleManagerLight->GetConfigValue('TabPaneItem', 'WFC10User');
+                $WFC10User_TabPaneParent  	= $moduleManagerLight->GetConfigValue('TabPaneParent', 'WFC10User');
+                $WFC10User_TabPaneName    	= $moduleManagerLight->GetConfigValue('TabPaneName', 'WFC10User');
+                $WFC10User_TabPaneIcon    	= $moduleManagerLight->GetConfigValue('TabPaneIcon', 'WFC10User');
+                $WFC10User_TabPaneOrder   	= $moduleManagerLight->GetConfigValueInt('TabPaneOrder', 'WFC10User');	
+                echo "WF10 User \n";
+                echo "  Path          : ".$WFC10User_Path."\n";
+                echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
+                echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
+                echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
+                echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
+                echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
+                echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
+            
+                }	
 
 
-        if ($WFC10User_Enabled) {
-            $categoryId_WebFrontUser                = CreateCategoryPath($WFC10User_Path);
-            /* in der normalen Viz Darstellung verstecken */
-            IPS_SetHidden($categoryId_WebFrontUser, true); //Objekt verstecken	
-            EmptyCategory($categoryId_WebFrontUser);
-            echo "================= ende empty categories \ndelete ".$WFC10User_TabPaneItem."\n";	
-            DeleteWFCItems($WFC10User_ConfigId, $WFC10User_TabPaneItem);
-            echo "================= ende delete ".$WFC10User_TabPaneItem."\n";			
-            echo " CreateWFCItemTabPane : ".$WFC10User_ConfigId. " ".$WFC10User_TabPaneItem. " ".$WFC10User_TabPaneParent. " ".$WFC10User_TabPaneOrder. " ".$WFC10User_TabPaneName. " ".$WFC10User_TabPaneIcon."\n";
-            CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem,  $WFC10User_TabPaneParent, $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
-            echo "================ende create Tabitem \n";
-            $webFrontConfig = IPSLight_GetWebFrontUserConfiguration();
-            $order = 10;
-            foreach($webFrontConfig as $tabName=>$tabData) {
-                echo "================create ".$tabName."\n";
-                $tabCategoryId	= CreateCategory($tabName, $categoryId_WebFrontUser, $order);
-                foreach($tabData as $WFCItem) {
-                    $order = $order + 10;
-                    switch($WFCItem[0]) {
-                        case IPSLIGHT_WFCSPLITPANEL:
-                            CreateWFCItemSplitPane ($WFC10User_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
-                            break;
-                        case IPSLIGHT_WFCCATEGORY:
-                            $categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
-                            CreateWFCItemCategory ($WFC10User_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
-                            break;
-                        case IPSLIGHT_WFCGROUP:
-                        case IPSLIGHT_WFCLINKS:
-                            $categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
-                            if ($WFCItem[0]==IPSLIGHT_WFCGROUP) {
-                                $categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
+            if ($WFC10User_Enabled) {
+                $categoryId_WebFrontUser                = CreateCategoryPath($WFC10User_Path);
+                /* in der normalen Viz Darstellung verstecken */
+                IPS_SetHidden($categoryId_WebFrontUser, true); //Objekt verstecken	
+                EmptyCategory($categoryId_WebFrontUser);
+                echo "================= ende empty categories \ndelete ".$WFC10User_TabPaneItem."\n";	
+                DeleteWFCItems($WFC10User_ConfigId, $WFC10User_TabPaneItem);
+                echo "================= ende delete ".$WFC10User_TabPaneItem."\n";			
+                echo " CreateWFCItemTabPane : ".$WFC10User_ConfigId. " ".$WFC10User_TabPaneItem. " ".$WFC10User_TabPaneParent. " ".$WFC10User_TabPaneOrder. " ".$WFC10User_TabPaneName. " ".$WFC10User_TabPaneIcon."\n";
+                CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem,  $WFC10User_TabPaneParent, $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
+                echo "================ende create Tabitem \n";
+                $webFrontConfig = IPSLight_GetWebFrontUserConfiguration();
+                $order = 10;
+                foreach($webFrontConfig as $tabName=>$tabData) {
+                    echo "================create ".$tabName."\n";
+                    $tabCategoryId	= CreateCategory($tabName, $categoryId_WebFrontUser, $order);
+                    foreach($tabData as $WFCItem) {
+                        $order = $order + 10;
+                        switch($WFCItem[0]) {
+                            case IPSLIGHT_WFCSPLITPANEL:
+                                CreateWFCItemSplitPane ($WFC10User_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+                                break;
+                            case IPSLIGHT_WFCCATEGORY:
+                                $categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+                                CreateWFCItemCategory ($WFC10User_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+                                break;
+                            case IPSLIGHT_WFCGROUP:
+                            case IPSLIGHT_WFCLINKS:
+                                $categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
+                                if ($WFCItem[0]==IPSLIGHT_WFCGROUP) {
+                                    $categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
+                                }
+                                $links      = explode(',', $WFCItem[3]);
+                                $names      = $links;
+                                if (array_key_exists(4, $WFCItem)) {
+                                    $names = explode(',', $WFCItem[4]);
+                                }
+                                foreach ($links as $idx=>$link) {
+                                    $order = $order + 1;
+                                    CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+                                }
+                                break;
+                            default:
+                                trigger_error('Unknown WFCItem='.$WFCItem[0]);
                             }
-                            $links      = explode(',', $WFCItem[3]);
-                            $names      = $links;
-                            if (array_key_exists(4, $WFCItem)) {
-                                $names = explode(',', $WFCItem[4]);
-                            }
-                            foreach ($links as $idx=>$link) {
-                                $order = $order + 1;
-                                CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
-                            }
-                            break;
-                        default:
-                            trigger_error('Unknown WFCItem='.$WFCItem[0]);
                         }
                     }
                 }
             }
-        }
 
-        }               // alles aus
-
-
-
-
-/***************************************************************************************/
-
-}       // install Webfront
+        }        // install Webfront
 
 	ReloadAllWebFronts(); /* es wurde das Autosteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
 		

@@ -88,7 +88,7 @@
      * writeTemperature
      * writeHumidity
      *
-     * showGraphWidget
+     * showGraphWidget                  Darstellung von Zeichnungen
      *
      * showHierarchy
      * drawTable
@@ -106,7 +106,10 @@
      *
      * tempTableLine
      *
+     * writeStartpageLink
      * writeStartpageStyle
+     * writeStartpageScript
+     *
      * findIcon
      * findeVarSerie
      * aggregateOpenWeather
@@ -128,6 +131,7 @@
 
 		protected $configuration = array();				// die angepasste, standardisierte Konfiguration
 		protected $aussentemperatur, $innentemperatur;
+        protected $sumrain, $actualrain;
 		
         public $newstyle;                               // wenn true, IPS 7 oder größer, kein Webfront Verzeichnis, alles im User anlegen
 		public $picturedir, $imagedir, $icondir;			// hier sind alle Bilder für die Startpage abgelegt
@@ -239,6 +243,8 @@
                 $this->scriptHighchartsID = @IPS_GetScriptIDByName("IPSHighcharts", $categoryHighchartsID);
                 }
             //echo "StartpageHandler, construct, Highcharts App Category : $categoryHighchartsID and ScriptID : $this->scriptHighchartsID\n";
+
+            $this->sumrain=0; $this->actualrain=0;
             }
 
 
@@ -538,7 +544,9 @@
                 }                
 	    	/* html file schreiben, Anfang Style für alle gleich */
 			$wert="";
-		    $wert.= $this->writeStartpageStyle("");
+            $wert.= $this->writeStartpageLink("");             // gemeinsamer Linkbereich
+		    $wert.= $this->writeStartpageStyle("");             // gemeinsames Style
+            $wert.= $this->writeStartpageScript("");            // gemeinsames Script
             switch ($PageType)
                 {
                 case 4:        // Hierarchie
@@ -3460,7 +3468,7 @@
                 }
 
             $wert .= $this->showTemperatureTable($colspan,false,$debug);            // keine Config übergeben
-            $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
+            $wert .= $this->additionalTableLines($colspan,$debug);
             $wert .= $this->showWeatherTable($weather);
 
             $wert.='</table>';
@@ -3565,7 +3573,24 @@
 				}
 			return ($wert);
 			}
-		
+
+        /* StartpageHandler::writeStartpageLink
+         *
+         * Die Startpage benötigt einen gemeinsamen Linkbereich, diesen hier zusammenfassen
+         * wenn input false ist, 
+         *
+         **************************************/
+
+	    function writeStartpageLink($input=false)
+	        {
+            $wert="";
+            // Cloudfare, fontawesome 
+            //<script src="https://kit.fontawesome.com/01ba222891.js" crossorigin="anonymous"></script>
+	    	//$wert='<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">'."\n";
+            //<i class="fas fa-tint"></i>
+            return ($wert);
+            }
+
         /* StartpageHandler::writeStartpageStyle
          *
          * Die Tabelle benötigt einen gemeinsamen Style, diesen hier zusammenfassen
@@ -3627,7 +3652,181 @@
 	        $wert.='</style>';
 	        return($wert);
 	        }
-	
+
+        /* StartpageHandler::writeStartpageScript
+         *
+         * Die Tabelle benötigt einen gemeinsamen Script Bereich, diesen hier zusammenfassen
+         *
+         **************************************/
+
+	    function writeStartpageScript($input=false)
+	        {
+            $wert="";
+            if ($this->isAdditionalTableLinesOfRainchart()) 
+                {    
+                //print_r($this->installedModules);                                   // nur dann das Script einfügen
+                if (isset($this->installedModules["Gartensteuerung"]))
+                    {
+                    IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
+                    IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');
+                    $debug=false;
+                    ini_set('memory_limit', '128M');                        // können grosse Dateien werden
+                    $archiveOps = new archiveOps();                         // braucht richtig Arbeitsspeicher, 15 MB ca. auf LBG70
+                    $ipsTables = new ipsTables();
+                    $ipsOps = new ipsOps();
+
+                    $gartensteuerung           = new Gartensteuerung(0,0,$debug);   // default, default, debug=false
+                    $rainRegs=$gartensteuerung->getRainRegisters();
+                    $endtime=time();
+                    $starttime=$endtime-60*60*24*7;  /* die letzten 7 Tage, für Auswertung nebeneinander */
+
+                    $config=array();
+                    $config["StartTime"]=$starttime;
+                    $config["OIdtoStore"]="Rain";             // oid wird auch ausserhalb geändert
+                    $config["maxDistance"]=false;               // kein Distance Check von 4 Stunden, üblicherweise nur bei temperatur
+                    $ergebnis = $archiveOps->getValues($rainRegs["IncrementID"],$config,$debug);         // true,2 debug
+                    $config["ShowTable"]["output"]="realTable";
+                    $config["ShowTable"]["align"]="hourly";                   // beinhaltet auch aggregate , daily
+                    $result = $archiveOps->showValues(false,$config);
+                    $rainhours=array(); 
+                    $index=0; $acttime=strtotime(date("d.m.Y H:00",$starttime)); $subindex=0;
+                    if ($debug) echo "Starttime ist ".date("d.m H:00",$starttime)." $starttime=$acttime\n";
+                    $this->sumrain=0;
+                    foreach ($result as $entry)          // links ist die Vergangenheit, Stunden an denen es nicht regnet werden ergänzt
+                        {
+                        $thistime=strtotime(date("d.m.Y H:00",$entry["TimeStamp"]));
+                        while ($thistime > $acttime) {
+                            $rainhours[$index]["Value"]=0;
+                            $rainhours[$index]["TimeStamp"]=$acttime;
+                            if ($debug) echo str_pad(date("d.m H",$rainhours[$index]["TimeStamp"])."  ".$rainhours[$index]["Value"],70).str_pad($subindex,4)." $thistime > $acttime  \n";
+                            $acttime += 60*60;          // 1 Stunde
+                            $index++; $subindex++;
+                            if ($subindex>10000) break;
+                        } 
+                        $subindex=0;
+                        $rainhours[$index]["Value"]=$entry["Rain"];
+                        $this->sumrain += $entry["Rain"];
+                        $rainhours[$index]["TimeStamp"]=$entry["TimeStamp"];
+                        if ($debug) echo str_pad(date("d.m H",$rainhours[$index]["TimeStamp"])."  ".$rainhours[$index]["Value"],70)."\n";
+                        $index++;
+                        $acttime += 60*60;          // 1 Stunde
+                        }
+                    while ($acttime < $endtime) {
+                        $rainhours[$index]["Value"]=0;
+                        $rainhours[$index]["TimeStamp"]=$acttime;
+                        if ($debug) echo str_pad(date("d.m H",$rainhours[$index]["TimeStamp"])."  ".$rainhours[$index]["Value"],70).str_pad($subindex,4)." $acttime < $endtime  \n";
+                        $acttime += 60*60;          // 1 Stunde
+                        $index++; $subindex++;
+                        if ($subindex>10000) break;
+                    } 
+                    if ($debug) 
+                        {
+                        echo "regenwerte mit 0 wenn kein regen:\n";
+                        foreach ($rainhours as $entry)          // links ist die Vergangenheit, niedrige pos
+                            {
+                            echo str_pad(date("d.m H",$entry["TimeStamp"])."  ".$entry["Value"],70)."\n";
+                            }
+                        }
+                    // Arrays für die Daten und Zeitstempel
+                    $timestamps = [];
+                    $values = [];
+                    $lastDay = ""; // Variable für den Vergleich des letzten Wochentags
+
+                    // Daten aufbereiten
+                    foreach ($rainhours as $entry) {
+                        // Wochentag ermitteln und auf 2 Buchstaben kürzen
+                        $currentDay = substr(date("D", $entry['TimeStamp']), 0, 2);
+
+                        // Nur den Wochentag beim ersten Auftreten anzeigen, danach Leerzeichen
+                        if ($currentDay != $lastDay) {
+                            $timestamps[] = $currentDay; // Wochentag setzen
+                            $lastDay = $currentDay;
+                        } else {
+                            $timestamps[] = ""; // Leeres Label für folgende gleiche Tage
+                        }
+                        $values[] = $entry['Value']; // Werte in das Array speichern
+                    }
+
+                    // Die Daten für Chart.js vorbereiten (JSON-Format für JavaScript)
+                    $jsTimestamps = json_encode($timestamps);
+                    $jsValues = json_encode($values);
+
+            $wert  = '<script src="https://kit.fontawesome.com/01ba222891.js" crossorigin="anonymous"></script>'."\n";
+	    	$wert .= '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>'."\n";
+	    	$wert .= '<script>
+                var ctx = document.getElementById("myChart").getContext("2d");';
+                // Definiere das Plugin für den Text innerhalb des Diagramms
+            /* $wert .= 'const textPlugin = {
+                    id: "textPlugin",
+                    afterDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        ctx.save();
+
+                        // Position und Stil des Textes
+                        ctx.font = "16px Arial";
+                        ctx.fillStyle = "black";
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+
+                        // Beispieltext und Position (du kannst hier den gewünschten Wert oder Text einfügen)
+                        const text = "100 mm"; // Beispieltext, kann dynamisch sein
+                        const x = chart.chartArea.width / 2 + chart.chartArea.left; // X-Position in der Mitte
+                        const y = chart.chartArea.height / 2 + chart.chartArea.top; // Y-Position in der Mitte
+
+                        // Text zeichnen
+                        ctx.fillText(text, x, y);
+
+                        ctx.restore();
+                    }
+                }; '; */
+            $wert .= 'var chart = new Chart(ctx, {
+                    type: "line", // Diagrammtyp: Linie
+                    data: {
+                        labels: '.$jsTimestamps.', // Zeitstempel als X-Achse
+                        datasets: [{
+                            label: "Verlauf der Archiv-Variable",
+                            data: '.$jsValues.',';       // Werte der Archiv-Variable
+                            //borderColor: "rgba(75, 192, 192, 1)", // Farbe der Linie
+            $wert .= '      borderColor:"#1665a2",
+                            fill: false,                         // Keine Füllung unter der Linie
+                            pointRadius: 0                  // Keine Punkte auf der Linie
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false, // Verhindert, dass das Diagramm das Canvas überdeckt
+                        plugins: {
+                            legend: {
+                                display: false // Legende deaktivieren
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                ticks: {
+                                    maxRotation: 0, // Keine Drehung der Beschriftung
+                                    autoSkip: false, // Automatisches Auslassen deaktivieren
+                                },
+                                grid: {
+                                    display: false // Rasterlinien auf der X-Achse deaktivieren
+                                }                    
+                            },
+                            y: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: "mm"
+                                }
+                            }
+                        }';             // Ende Scales
+            //$wert .= '  plugins: [textPlugin]';        // Füge das Plugin für den Text hinzu                        
+            $wert .= '}
+                });
+                </script>'."\n"; }
+                }
+	        return($wert);
+	        }
+
 		/*************************************************************************************************
 	     *
 	     * Funktion für OpenweatherMap Darstellung, Zuordnung Symbole zum Cloudy Wert
@@ -4393,20 +4592,52 @@
         /* additionalTableLines
          * additional Table Lines werden zwischen temperatur und Wetteranzeige eingebaut
          * mehrer Zeilen, index => [ Name, Type, OID,  ]
+         * gibt auch den Zeilenvorschub aus mit tr, notwendig wenn mehrere Zeilen
+         *
+         * verwendet font awesome icon library : https://fontawesome.com/search?q=rain&o=r&m=free&s=solid&f=classic
          */
-			
-	    function additionalTableLines($format="")
+	    function additionalTableLines($format="",$debug=false)
 	        {
 	        $wert="";
 	        if ( (isset($this->configuration["Display"]["AddLine"])) && (sizeof($this->configuration["Display"]["AddLine"])>0) )
 	            {
+                if ($debug) { echo "additionalTableLines($format wurde aufgerufen, Konfiguration:\n"; print_r($this->configuration["Display"]["AddLine"]); }
 	            foreach($this->configuration["Display"]["AddLine"] as $tablerow)
 	                {
-                    if ( (isset($tablerow["Type"])) && (strtoupper($tablerow["Type"])=="INFOFIELD") ) ;     // do nothing
-                    else   
+                    if (isset($tablerow["Type"])) $type=$tablerow["Type"];
+                    else $type="unknown";
+                    switch (strtoupper($tablerow["Type"]))
                         {
-                        //echo "   Eintrag : ".$tablerow["Name"]."  ".$tablerow["OID"]."  ".$tablerow["Icon"]."\n";
-                        $wert.='<td '.$format.' bgcolor="#c1c1c1"><addText>'.$tablerow["Name"].'</addText></td><td  bgcolor="#c1c1c1"><addText">'.number_format(GetValue($tablerow["OID"]), 1, ",", "" ).'°C</addText></td>';
+                        case "INFOFIELD":     // do nothing
+                            break;
+                        case "RAINCHART":     // nice plotted chart of the rainamaount in the last week
+                            if ($this->sumrain>0)
+                                {
+                                if ($debug) echo "Anzeige Rainchart, da Regenmenge in der letzten Woche ".$this->sumrain."mm:\n";
+                                $wert.='<tr>';
+                                //$wert.='<table><tr><td>';
+                                $wert.='<td style="text-align: center; vertical-align: middle;" bgcolor="#c1c1c1">';
+                                //$wert.='<td><table><tr><td >';
+                                //$wert.='</td><td>';
+                                //$wert.='<i class="fas fa-tint"></i>';         // nicht die letzte version 6.6
+                                $wert.='<i class="fa-solid fa-cloud-rain" style="font-size: 50px; color: #1665a2;"></i>';  // <i class="fa-solid fa-cloud-rain" style="color: #1665a2;"></i>
+                                /*$wert.='<svg width="100" height="100" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" fill="#3498db">
+                                            <path d="M32 2C19.3 2 10 21.2 10 32c0 9.9 8.1 18 18 18s18-8.1 18-18c0-10.8-9.3-30-18-30zM32 46c-7.7 0-14-6.3-14-14 0-6.4 5.5-18.8 14-27 8.5 8.2 14 20.6 14 27 0 7.7-6.3 14-14 14z"/>
+                                            </svg>'; */
+                                //$wert.='</td></tr></table>';
+                                $wert.='<br><addText>'.$this->sumrain.'mm</addText>';
+                                $wert.='</td>';
+                                $wert.='<td colspan="2" bgcolor="#c1c1c1">';
+                                $wert.='<div style="max-width: 400px; margin: auto;">
+                                            <canvas id="myChart" width="400" height="100"></canvas></div></td>';
+                                //$wert.='</td></tr></table>';
+                                $wert.='</tr>';
+                                }
+                            break;
+                        default:   
+                            //echo "   Eintrag : ".$tablerow["Name"]."  ".$tablerow["OID"]."  ".$tablerow["Icon"]."\n";
+                            $wert.='<tr><td '.$format.' bgcolor="#c1c1c1"><addText>'.$tablerow["Name"].'</addText></td><td  bgcolor="#c1c1c1"><addText">'.number_format(GetValue($tablerow["OID"]), 1, ",", "" ).'°C</addText></td></tr>';
+                            break;
                         }
 	                }
 	            //print_r($this->configuration["AddLine"]);
@@ -4416,6 +4647,22 @@
 	        return ($wert);
 	        }
 	
+        /* isAdditionalTableLinesOfRainchart
+         * rausfinden ob ich das script mit den Ragenparametern starten soll 
+         */
+        public function isAdditionalTableLinesOfRainchart()
+            {
+            $result=false;
+	        if ( (isset($this->configuration["Display"]["AddLine"])) && (sizeof($this->configuration["Display"]["AddLine"])>0) )
+	            {
+	            foreach($this->configuration["Display"]["AddLine"] as $tablerow)
+	                {
+                    if ((isset($tablerow["Type"])) && (strtoupper($tablerow["Type"])=="RAINCHART")) $result=true;
+                    }
+                }
+            return ($result);
+            }
+
         /* bottomTableLines()
          * die Bottom Table Line ist am unteren Ende des Bild und Wetter Bildschirms angesiedelt
          * Darstellung vereinheitlicht mit this->evaluateEntry,  für Config dort schauen 

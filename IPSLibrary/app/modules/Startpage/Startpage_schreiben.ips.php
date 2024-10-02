@@ -21,16 +21,22 @@
     * umgestellt auf IPS7, Verzeichnis webfront\user wird durch user ersetzt
     * OperationCenter um den ModulMagerIps7 und HighchartIps7 erweitert 
     *
+    * Umstellung auf moderne Darstellung im Laufen
+    *  22  Frame, Standarddarstellung
+    *  23  Station, Wetterstation
+    *
+    * ein iFrame wird von einigen script Befehlen vorangestellt. Diese übernehmen die Ermittlung der Windows Size, der Browser Version und die Umschaltung des Browsers in den Full Mode 
+    *
     *----------------------------
     * schreiben des Startpage html Strings in der htmlbox der Startpage
     *
     * es gibt verschiedene Darstellungsarten, diese können zentral für alle Webfronts per Einstellung geändert werden
-    * Bei der Datsellung Frame kann die Formatierung der Seite pro Browser konfiguriert werden
+    * Bei der Darstellung Frame kann die Formatierung der Seite pro Browser konfiguriert werden
     * es werden dazu browser cookies in der Datenbank gespeichert.
     *
     * die Darstellung selbst erfolgt über die Library mit $startpage->StartPageWrite
     *
-    * Deise routine wird alle 8 Minuten vom Timer aufgerufen
+    * Diese routine wird alle 8 Minuten vom Timer aufgerufen
     * Routine bearbeitet auch die Tastendrücke am Webfront
     *
     * Bilder im Verzeichnis werden verkleinert um die Darstellung im Webfront zu beschleunigen
@@ -53,7 +59,8 @@
     *
     * responsive iFrame, iFrame ist eine eigene Webpage, beginne html5 Dokument mit
     * <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    * * { box-sizing: border-box;}          damit die Größe auf die Box geht und nicht auf den Inhalt
+    * 
+    * { box-sizing: border-box;}          damit die Größe auf die Box geht und nicht auf den Inhalt
     * meta kann man nutzen für die Erkennung von kleinen Bildschirmen
     * @media only screen and (max-width: 768px) { [class*="col-"] { width: 100%; }  bislang hatten alle cols unterschiedliche Breiten
     * <img src="img_girl.jpg" style="max-width:100%;height:auto;">
@@ -79,6 +86,7 @@
     * <div class="row">  <div class="col-3">...</div> <div class="col-9">...</div>   </div>
     *
     * Herausforderungen, Stylerules, div im 16/9 Format macht das erste Problem, iFrame nutzt den zur Verfügung gestellten Platz, sonst default size 150x100
+    *
     * <div style="padding-bottom:56.25%; position:relative; display:block; width: 100%">
     *       <iframe width="100%" height="100%  name="StartPage" src="../user/Startpage/StartpageTopology.php" frameborder="0" allowfullscreen="" style="position:absolute; top:0; left: 0"></iframe></div>
     * Bild und Wettertabelle teilen sich den verfügbaren Platz
@@ -87,6 +95,12 @@
     * 
     * aktuell ist die Wettertabelle nicht oben angeordnet, sondern unten
     *
+    * weitere Informationen:
+    *
+    * Unterstützt extra Debug für manuelles script execute
+    * unbeschränkten Arbeitsspeicher
+    * Modulmanager für IPS7
+    * classes: ipsOps, webOps, jsSnippets
 	*
     **************************************/
 

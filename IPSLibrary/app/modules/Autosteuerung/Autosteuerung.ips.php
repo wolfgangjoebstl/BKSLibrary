@@ -23,10 +23,11 @@
  *
  * funktioniert nur mit elektrischen Heizkoerpern
  *
+ * Funktionen
+ *      Initialisierung
+ *      verwendet die module IPSComponent, IPSLight (wegen Kompatibilität), Stromheizung, EvaluateHardware
+ *
  ***********************************************************/
-
-//Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
 
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -40,7 +41,8 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
  *
  *************************************************************/
 
-    $debug=false;
+    if ($_IPS['SENDER']=="Execute") $debug=true;
+    else $debug=false; 
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -53,19 +55,17 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
 
 	if ( isset($installedModules["IPSLight"]) === true )
 		{
-        echo "Module IPSLight ist installiert.\n";            
-        //include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+        if ($debug) echo "Module IPSLight ist installiert.\n";            
         IPSUtils_Include ("IPSLight.inc.php","IPSLibrary::app::modules::IPSLight");
         }
 	if ( isset($installedModules["Stromheizung"]) === true )
 		{
-        echo "Module Stromheizung ist installiert.\n"; 
-		//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
-        IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung");
+        if ($debug) echo "Module Stromheizung ist installiert.\n"; 
+        if ($debug) IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung");
 		}
     if (isset($installedModules["EvaluateHardware"]))
         {
-        echo "Module EvaluateHardware ist installiert.\n";             
+        if ($debug) echo "Module EvaluateHardware ist installiert.\n";             
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
         }
 
@@ -364,7 +364,7 @@ if ($_IPS['SENDER']=="TimerEvent")
      * Aufgaben 60sec Anwesendtimer
      *      Monitor ein/ausschalten     $AutoSetSwitches["MonitorMode"]["NAME"]
      *      Anwesendheit Status         $StatusAnwesend=$operate->Anwesend();
-     *
+     *      Anzeige Bewegung auf Tabelee/Topologie    writeTopologyTable
      *
 	 * lassen sich aber nicht in der event gesteuerten Parametrierung einstellen
 	 *

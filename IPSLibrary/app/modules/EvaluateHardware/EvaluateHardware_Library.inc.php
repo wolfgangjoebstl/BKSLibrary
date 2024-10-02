@@ -682,10 +682,11 @@ class TopologyLibraryManagement
      *
      * Noch einmal Schritt für Schritt beschrieben:
      * das deviceList Array Eintrag für Eintrag durchgehen, nur wenn es einen Eintrag Instances gibt weiter machen
-     * den Namen des Eintrages mit dem deviceInstances Objekt abgleichen, 
+     * den Namen des Eintrages mit dem deviceInstances Objekt der class abgleichen, alle erstellten topology instances sind hier gespeichert 
      *    wenn noch nicht vorhanden einen neue Device Instanz erzeugen
      *    wenn vorhanden alle Instanzen aus dem deviceList Eintrag durchgehen und mit $channelEventList abgleichen
-     *          alle Einträge sollen im selben raum sein dann passts
+     *          alle Einträge sollen im selben Raum sein dann passts
+     *          es werden Warnings ausgegeben, aber die fehler nicht automatisch korrigiert
      *
      *    wenn $config["Use"]["Device"])=="ACTUATORS"
      *          in topology einen neuen key mit Actuators anlegen
@@ -705,7 +706,6 @@ class TopologyLibraryManagement
             echo "sortTopologyInstances called, Modul DetectMovement not installed, return as false.\n"; 
             return(false);
             }   
-        $references = $DetectDeviceHandler->topologyReferences($topology,$debug);
         if (isset($config["Sort"]))
             {
             if (strtoupper($config["Sort"])=="KATEGORIE") $sortCateg=true;
@@ -718,11 +718,12 @@ class TopologyLibraryManagement
         $parent=$this->topID;
         if ($debug) 
             {
-            echo "sortTopologyInstances aufgerufen: Input ist die Devicelist mit ".count($deviceList)." Geraete Eintraegen. \n";
+            echo "sortTopologyInstances aufgerufen: Input ist die Devicelist mit ".count($deviceList)." Geraete Eintraegen. Der Reihe nach durchgehen. \n";
             echo "Base Category ist ".IPS_GetName($parent)." ($parent) ";
-            if ($sortCateg) echo ", wir sortieren in Kategorien. \n";
-            else echo ", wir sortieren in Topology Instanzen. \n";
+            if ($sortCateg) echo ", wir sortieren in Kategorien (angefordert). \n";
+            else echo ", wir sortieren in Topology (default). \n";
             }
+        $references = $DetectDeviceHandler->topologyReferences($topology,($debug>1));
         foreach ($deviceList as $name => $entry)            // name is unique in devicelist
             {
             //echo "$i   $name\n";
@@ -774,7 +775,12 @@ class TopologyLibraryManagement
                             $devId = IPS_GetObjectIDByName ("Device Liste", $InstanzID);
                             IPS_SetHidden($devId,true);
                             }
-                        else echo "      >>>Warnung, eine Device Instanz mit dem Namen $name ($InstanzID) unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es, sie hat aber keine Children die man verstecken kann.\n";
+                        else 
+                            {
+                            $childs = IPS_GetChildrenIDs($InstanzID);
+                            if (count($childs)) echo "      >>>Warnung 183, eine Device Instanz mit dem Namen $name ($InstanzID) unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es, sie hat aber keine gleichnamigen Children die man verstecken kann.\n";
+                            else echo "      >>>Warnung 192, eine Device Instanz mit dem Namen $name ($InstanzID) unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es, sie hat aber keine Children die man verstecken kann.\n";
+                            }
                         IPS_SetPosition($InstanzID,900);
                         // Abgleich Topology DeviceInstance mit channelEventList, deviceEventList und topology ob der room stimmt
                         $room=$DetectDeviceHandler->findRoom($instances,$channelEventList,$topology);                   // alle Instanzen aus einem deviceList Eintrag durchgehen und mit $channelEventList abgleichen, eine Rauminformation daraus ableiten, Plausicheck inklusive
@@ -785,14 +791,22 @@ class TopologyLibraryManagement
                             //print_r($deviceEventList[$InstanzID]);
                             if ($room != $deviceEventList[$InstanzID][1]) 
                                 {
-                                if ($room != "") echo "      !!!Fehler, die Channels und das Device sind in unterschiedlichen Räumen: \"$room\" \"".$deviceEventList[$InstanzID][1]."\" Zweiten Begriff übernehmen.\n";
+                                if ($room != "") echo "      !!!Fehler 097, die Channels und das Device sind in unterschiedlichen Räumen: \"$room\" \"".$deviceEventList[$InstanzID][1]."\" Zweiten Begriff übernehmen.\n";
+                                else echo "      >>>Warnung 112, Erster Raum ist leer in Topology, bitte einen Eintrag durchführen.\n";
+                                if ($deviceEventList[$InstanzID][1] == "") echo "      >>>Warnung, Zweiter Raum ist leer für ".IPS_GetName($InstanzID)." ($InstanzID): ".json_encode($deviceEventList[$InstanzID])."\n";
                                 $room = $deviceEventList[$InstanzID][1];
                                 $entryplace=$DetectDeviceHandler->uniqueNameReference($room,$references);
                                 }
                             }
+                        else echo "      >>>Warnung, Instanz $InstanzID nicht in der $deviceEventList. Eigentlich unmöglich ?\n";
                         // room eindeutig machen wenn tilde im Namen
                         if ( ($entryplace) && (isset($topology[$entryplace])) )
                             {
+                            if ($debug)
+                                {
+                                //echo "      >>>Info, Tilde im Raum, auflösen : $entryplace aus ".json_encode($topology[$entryplace]).".\n";
+                                echo "      >>>Info, Tilde im Raum, auflösen : $entryplace aus ".$topology[$entryplace]["Path"].".\n";
+                                }
                             $newentry=$topology[$entryplace];
                             }
                         else $newentry=array();

@@ -1,18 +1,28 @@
 <?php
 
 /*
-	 * @defgroup Startpage Update
-	 *
-	 * Script zur Darstellung von besonderen graphischen Aufmachern
-     * siehe auch   https://www.timeanddate.de/mond/oesterreich/wien oder
-     *              https://www.timeanddate.de/sonne/oesterreich/wien
-	 *              https://www.timeanddate.de/astronomie/nachthimmel/
-	 *
-	 * @file          Startpage_Update.ips.php
-	 * @author        Wolfgang Joebstl
-	 * @version
-	 *  Version 2.50.52, 07.08.2014<br/>
-*/
+ * @defgroup Startpage Update
+ *
+ * Script zur Darstellung von besonderen graphischen Aufmachern
+ * siehe auch   https://www.timeanddate.de/mond/oesterreich/wien oder
+ *              https://www.timeanddate.de/sonne/oesterreich/wien
+ *              https://www.timeanddate.de/astronomie/nachthimmel/
+ *
+ * beinhaltet die Klassen
+ *      geoOps
+ *      moonPhase
+ *
+ * in geoOps wird auch ein Canvas gezeichnet, Integration erfolgt über direkte erstellung des Javascript codes zum zeichnen des Canvas
+ * dh der Code zeichnet direkt ohne Abfragen, also bei einer Änderung erfolgt eine Neuerstellung
+ *
+ *
+ *
+ *
+ * @file          Startpage_Update.ips.php
+ * @author        Wolfgang Joebstl
+ * @version
+ *  Version 2.50.52, 07.08.2014<br/>
+ */
 
 	IPSUtils_Include ('Astronomy.inc.php', 'IPSLibrary::app::modules::Startpage');
 	IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');

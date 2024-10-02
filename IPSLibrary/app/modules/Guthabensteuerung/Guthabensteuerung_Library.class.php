@@ -2068,7 +2068,7 @@
             $this->modul=$modul;
             if (isset($config["StartTime"])) $start = "&start=".$this->formatTimeStamp($config["StartTime"]);           //keine blanks im request
             else $start = "&start=2022-01-01T00:00:00.000Z";
-            if (isset($config["EndTime"]))   $end =   "&end   = ".$this->formatTimeStamp($config["EndTime"]);
+            if (isset($config["EndTime"]))   $end =   "&end=".$this->formatTimeStamp($config["EndTime"]);
             else $end =   "&end=".date("Y-m-d\TH:i:s.000\Z");
             if (isset($config["Dif"])) $dif=$config["Dif"]; else $dif=0.07;
             if (isset($config["Pos"])) $bbox=$this->bbox($config["Pos"],$dif);
@@ -2106,8 +2106,9 @@
             //print_r($pos);
             foreach ($pos as $index => $entry)  
                 {
-                $lat=round($entry["north"],2);
-                $lng=round($entry["east"],2);                
+                //print_R($entry);
+                $lat=round(floatval($entry["north"]),2);            // shall deal with string and real numbers
+                $lng=round(floatval($entry["east"]),2);                
                 if ($lat1 !== false)              // Wert bekannt, kleinster Wert wird gespeichert
                     {
                     if ($lat < $lat1) $lat1=$lat;
@@ -2288,7 +2289,7 @@
             echo "Index found in received data: ";
             foreach ($this->data as $index=>$entry) echo "$index ";
             echo "\n";
-            if ($this->modul=="/grid/historical/spartacus-v2-1d-1km")
+            if (($this->modul=="/grid/historical/spartacus-v2-1d-1km") && $debug)
                 {
                 echo "Zamg Tageswerte.\n";
                 echo $this->data["detail"];

@@ -314,6 +314,101 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
         return($result);    
         }
 
+    /* function überall verwenden zu Adressierung von Variablen
+      */
+    function universalOid($oid,$debug=false)
+        {
+        $result=array();
+        $server = explode("::",$oid);
+        $size = sizeof($server);
+        if ($size==2)
+            {
+            $remServer	  = RemoteAccessServerTable(2,$debug);
+            if (isset($remServer[$server[0]])) $url=$remServer[$server[0]]["Url"];
+            else echo "Warning, no url found in RemoteAccess data.\n";
+            $rpc = new JSONRPC($url);
+            if ($debug) echo "Server $url : ".$rpc->IPS_GetName(0)." Search for Name at Program.IPSLibrary.data.core.IPSComponent.Counter-Auswertung\n";
+            $path = explode(".",$server[1]);
+            $dirs = sizeof($path);
+            if ($dirs>1)        // wir haben einen path
+                {
+                $newID=0; 
+                foreach ($path as $item)    
+                    {
+                    $actualID=$newID;
+                    $newID=$rpc->IPS_GetObjectIDByName($item,$actualID);
+                    if ($newID===false) break;
+                    if ($debug) echo ".$newID";
+                    }
+                if ($newID===false) 
+                    {
+                    echo "Warning, no name found in $path";
+                    return (false);
+                    }
+                $remOID=$newID;
+                }
+            else                // wir glauben zu wissen wo die Datei erwartet wird   
+                {
+                $prgID=$rpc->IPS_GetObjectIDByName("Program",0);
+                $ipsID=$rpc->IPS_GetObjectIDByName("IPSLibrary",$prgID);
+                $dataID=$rpc->IPS_GetObjectIDByName("data",$ipsID);
+                $coreID=$rpc->IPS_GetObjectIDByName("core",$dataID);
+                $compID=$rpc->IPS_GetObjectIDByName("IPSComponent",$coreID);
+                $CounterAuswertungID=$rpc->IPS_GetObjectIDByName("Counter-Auswertung",$compID);
+                $remOID=@$rpc->IPS_GetObjectIDByName($server[1],$CounterAuswertungID);
+                if ($remOID===false) 
+                    {
+                    echo "Warning, no name found in Program.IPSLibrary.data.core.IPSComponent.Counter-Auswertung";
+                    return (false);
+                    }
+                }
+            $result["Server"]=$rpc;
+            $result["OID"]=$remOID;
+            return ($result);
+            }
+        else
+            {
+            $path = explode(".",$server);
+            $dirs = sizeof($path);
+            if ($dirs>1)        // wir haben einen path
+                {
+                $newID=0; 
+                foreach ($path as $item)    
+                    {
+                    $actualID=$newID;
+                    $newID=IPS_GetObjectIDByName($item,$actualID);
+                    if ($newID===false) break;
+                    if ($debug) echo ".$newID";
+                    }
+                if ($newID===false) 
+                    {
+                    echo "Warning, no name found in $path";
+                    return (false);
+                    }
+                $oid=$newID;
+                }
+            else                // wir glauben zu wissen wo die Datei erwartet wird   
+                {
+                $prgID=IPS_GetObjectIDByName("Program",0);
+                $ipsID=IPS_GetObjectIDByName("IPSLibrary",$prgID);
+                $dataID=IPS_GetObjectIDByName("data",$ipsID);
+                $coreID=IPS_GetObjectIDByName("core",$dataID);
+                $compID=IPS_GetObjectIDByName("IPSComponent",$coreID);
+                $CounterAuswertungID=IPS_GetObjectIDByName("Counter-Auswertung",$compID);
+                $oid=@IPS_GetObjectIDByName($result[0],$CounterAuswertungID);
+                if ($oid===false) 
+                    {
+                    echo "Warning, no name found in $path";
+                    return (false);
+                    }
+                }
+            $result["Server"]=false;
+            $result["OID"]=$oid;
+            return ($result);
+            }
+        }
+
+
     /*
     *
     *   Configfile Parser   Unit, UNIT Einheit etc  wenn in der Config eines der Synonyme vorhanden ist wird es gemappt (&$inputArray, &$outputArray, [Synonym,2,3,4],$tag,$defaultValue)
@@ -3404,8 +3499,8 @@ class webOps
         if ($scriptIdActionScript !== false)
             {
             $this->associationsWithIndex = $this->createProfileAssociations ($pname,   $associationsPeriodAndCount, "Clock");
-            $this->variablePeriodCountID = CreateVariableByName($categoryId,              'PeriodAndCount',    1 , "AD_PeriodAndCount", false, 20, $scriptIdActionScript);      // kein Icon zum definieren
-            SetValue($this->variablePeriodCountID,1);           // Set Defaultwert
+            $this->variablePeriodCountID = CreateVariableByName($categoryId,              'PeriodAndCount',    1 , "AD_PeriodAndCount", false, 20, $scriptIdActionScript,1);      // kein Icon zum definieren, Defaultwert nur beim anlegen
+            //SetValue($this->variablePeriodCountID,1);           // Set Defaultwert muss extern geschehen, wenn die Variable das erste Mal angelegt
             }
         else 
             {
@@ -3561,7 +3656,7 @@ class webOps
         //echo "Neuer Wert ist ".GetValue($variableId)."\n";
         }
 
-    /* webOps::createNavigation
+    /* webOps::getNavPeriode
      * alle haben die selbe category Variable, aufpassen
      *
      *
@@ -7968,7 +8063,8 @@ class App_Convert_XmlToArray
     const NAME_CONTENT = '@content';
     const NAME_ROOT = '@root';
     var $level;                                     // parsing DOM
-    var $result;                                    // store
+    var $result;                                    // store ergebnis, used in recursive function walkHtml
+    var $listfound=array();
 
     public function __construct()
         {
@@ -7977,8 +8073,10 @@ class App_Convert_XmlToArray
 
 
     /* App_Convert_XmlToArray::analyseHtml ein html analysieren, ist nur eine Orientierungsfunktion, besser DOM verwenden
-     * das erste Mal aufgtaucht im SeleniumHandler
-     * es wird zeichenweise analysiert
+     * das erste Mal aufgtaucht im SeleniumHandler, es handelt sich um einen selbstgebauten html/xml parser
+     * es wird zeichenweise analysiert, einfacher Algorythmus:
+     *   ident      für die aktuelle Hioerarchie, wir fangen mit 0 an, ein ident Zähler ist auch ein Space Zeichen
+     *
      *
      * hier werden die bekannten Search Algorithmen unterstützt
      *
@@ -8319,6 +8417,125 @@ class App_Convert_XmlToArray
             }
 
         return $innerHTML;
+        }
+
+
+    /* queryFilterHtml    siehe auch SeleniumHandler
+     * xpath Tutorial:  https://www.w3schools.com/xml/xpath_syntax.asp
+     *      nodename    selects all nodes with name nodename
+     *      /           selects from the root node, absolute path
+     *      //selection selects from the current node that match the selection, relative path
+     *      //*[@id]    selects all elements with an id
+     *
+     *      //@lang     slects all attributes that are named lang , will not work as we look only for elements
+     *
+     * query and filter an html with DOM
+     *   $textfeld    = GetValue($easyResultID);
+     *   $xPathQuery  = '//div[@*]';       selects all div with at least one attribute of any kind
+     *   $filterAttr  = 'style';
+     *   $filterValue ="width: 608px";
+     * resultat sind alle Ergebnisse hintereinander in einem DOM, also arbeitet wie ein Filter
+     * alternativ kann das array foundlist verwendet werden
+     *
+     * DomDocument ist das xml/html Objekt mit den passenden Methoden dafür, dom in diesem Fall der Speicher, mit dem auch andere Operationen durchgeführt werden können
+     */
+    function queryFilterHtml($textfeld,$xPathQuery,$filterAttr,$filterValue,$debug=false)
+        {
+        $innerHTML="";
+        if ($debug) echo "---- queryFilterHtml(...,$xPathQuery,$filterAttr,$filterValue)\n";
+        //echo "$textfeld\n";                                                                       // lieber nicht verwenden, wird wahrscheinlich sehr unübersichtlich
+
+        //$dom = DOMDocument::loadHTML($textfeld);          // non static forbidden
+        $dom = new DOMDocument;     
+        libxml_use_internal_errors(true);               // Header, Nav and Section are html5, may cause a warning, so suppress     
+        $dom->loadHTML($textfeld);                  // den Teil der Homepage hineinladen
+        libxml_use_internal_errors(false);
+        $xpath = new DOMXpath($dom);
+        //echo $dom->saveHTML();
+        //echo "-------Auswertungen--------------->\n";
+
+        /*  
+        $links = $dom->getElementsByTagName('div');
+        foreach ($links as $book) 
+            {
+            echo $book->nodeValue, PHP_EOL;
+            }  */
+
+        // Tutorial query https://www.w3schools.com/xml/xpath_syntax.asp
+        //$links = $xpath->query('//div[@class="blog"]//a[@href]');
+        $links = $xpath->query($xPathQuery);
+        if ($debug) echo "Insgesamt ".count($links)." gefunden für \"$xPathQuery\"\n";
+
+        $count=0; $maxcount=5;          // max 5 Einträge im debug darstellen, aber alle einsammeln
+        $result=array();                // für walkHtml Auswertung
+
+        // alle Ergebnisse in ein neues DOM speichern 
+        $tmp_doc = new DOMDocument();   
+        $xmlArray = new App_Convert_XmlToArray();           // class aus AllgemeineDefinitionen, convert html/xml printable string to an array
+        foreach ($links as $a) 
+            {
+            //$attribute=$a->getAttribute('@*');  if ($attribute != "") echo $attribute."\n";
+            //echo $a->textContent,PHP_EOL;
+
+            $style = $a->getAttribute($filterAttr);
+            if ( ($filterValue=="") || (strpos($filterValue,"*")!==false) || ($style == $filterValue) )
+                {
+                $found=true;
+                if (strpos($filterValue,"*")!==false)           // * als Einzelchar oder am Ende eines Suchstrings wie ein Filter
+                    {
+                    $pos = strpos($filterValue,"*");
+                    //if ($pos>0) echo substr($style,0,$pos)." == ".substr($filterValue,0,$pos)."\n";
+                    if ( ($pos==0) || (substr($style,0,$pos) == substr($filterValue,0,$pos)) )
+                        {
+                        // gefunden, andernfalls wird found doch wieder false
+                        }
+                    else $found=false;
+                    }
+                if ($found)
+                    {
+                    if ($debug) echo "   -> found:  ".$a->nodeName." , ".$a->nodeType." $style\n";
+                    $ergebnis=["name"=>$a->nodeName,"attribute"=>$style];
+                    $this->listfound[]=$ergebnis;
+                    $result[$count] = $xmlArray->walkHtml($a,false);                                        // Ergebnis noch etwas unklar, wir sammeln mal
+                    //if (($count)<$maxcount) if ($debug) print_R($result[($count)]);
+                    $count++;
+                    $tmp_doc->appendChild($tmp_doc->importNode($a,true));                 
+                    //echo $innerHTML;
+                    }
+                }
+            }
+        $innerHTML .= $tmp_doc->saveHTML();                      
+        return ($innerHTML);
+        }
+
+    /* den Style als Array rausziehen 
+     * input ist ein DOM, wahrscheinlich von queryFilterHtml erzeugt
+     * aus der Sammlung von Objekten jetzt die benötigten Einträge rausziehen
+     * jetzt geht es auf die Attribute, sonst wäre ja kein innerhtml notwendig und wir könnten gleich den text verwenden, text hat aber keine xml Namen mehr dabei
+     *
+     * Beispiel von Selenium:
+            $innerHtml = $this->queryFilterHtml($page,'//div[@*]','style',"width: 608px",$this->debug);         //  suche in der aktuellen Position nach div mit beliebigen Attributen
+            $ergebnis = $this->extractFilterHtml($innerHtml,'//a[@*]','title',true);             // true für Debug            
+            $this->analyseHtml($page,true);                 // true alles anzeigen
+     *
+     */
+
+    function extractFilterHtml($textfeld,$xPathQuery,$filterAttr,$debug=false)
+        {
+        $result=array();
+        if ($debug) echo "---- extractFilterHtml(...,$filterAttr)\n";
+        $dom = new DOMDocument; 
+        $dom->loadHTML($textfeld);
+        $xpath = new DOMXpath($dom);
+        $links = $xpath->query($xPathQuery);
+        echo "Insgesamt ".count($links)." gefunden für \"$xPathQuery\"\n";
+        foreach ($links as $a) 
+            {
+            //$attribute=$a->getAttribute('@*');  if ($attribute != "") echo $attribute."\n";
+            //echo $a->textContent,PHP_EOL;
+            $result[] = $a->getAttribute($filterAttr);
+            }
+        return ($result);
         }
 
     }       // end of class
@@ -9371,26 +9588,45 @@ class ipsCharts
  * ipsOps, Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
  *
  * __construct              als Constructor wird entweder nichts oder der Modulname übergeben
- * ipsVersion
+ *
+ * ipsVersion               die IPS version ausgeben, als Major, Minor Array
  * ipsVersion7check         true wenn IPS Version groesser 6
+ *
+ * isMemberOfCategoryName   ead path and check if Category with name is part of
  * path                     gibt den IPS Category Path als string return aus
+ * getChildrenIDsOfType
  * totalChildren            die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen
  *     countChildren           rekursive Funktion dafür.
+ *
+ * mb_str_pad               str pad für alle typen von chars, auch solche wie ö etc
+ *
  * searchIDbyName
  * get_ScriptIDs
- * readWebfrontConfig
+ * readWebfrontConfig       Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items
  * getMediaListbyType
  *
  * configWebfront
+ * writeConfigWebfrontAll
+ * writeConfigWebfront
+ *
  * intelliSort              nach einem sub index sortieren
  * serializeArrayAsPhp
  * serialize_array
+ * serializeArrayAsJavascript
+ *
  * emptyCategory            rekursiv
+ * createVariableByName
+ * updateIncludeFile
+ * getVariableIDByName
+ * createCategoryByName
+ * getCategoryIdByName
  *
  * trimCommand
  *
  * adjustTimeFormat
  * strtotimeFormat
+ *
+ *
  *
  ******************************************************/
 
@@ -9400,6 +9636,8 @@ class ipsOps
     var $module;
     var $includefile;
 
+    /* einfaches construct, bereitet include file vor
+     */
     function __construct($module="")
         {
         if ($module != "") $this->module = $module;
@@ -9530,7 +9768,6 @@ class ipsOps
      * nimmt gleich den ersten Treffer in der Reihe von Children
      *
      */
-    
     public function searchIDbyName($needle, $oid)
         {
 		$resultOID=IPS_GetObject($oid);
@@ -9553,8 +9790,8 @@ class ipsOps
         return (false);
         }
 
-    /* ipsOps, gibt rekursiv alle scripts nach dem Namen aus */
-
+    /* ipsOps, gibt rekursiv alle scripts nach dem Namen aus 
+     */
     function get_ScriptIDs(&$scriptNames, $scriptComponentsID)
         {    
         $childrens=IPS_getChildrenIDs($scriptComponentsID);
@@ -9579,11 +9816,9 @@ class ipsOps
             }
         }
         
-
     /* ipsOps::readWebfrontConfig, Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items
      *
      */
-
     public function readWebfrontConfig($WFC10_ConfigId, $debug)
         {
         if ($debug) echo "Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items:\n";
@@ -9650,7 +9885,6 @@ class ipsOps
 
     /* ipsOps::getMediaListbyType, Mit Medialist arbeiten. Sind alle Objekte mit Typ Media, Nutzung der zusätzlichen Features 
      */
-
     function getMediaListbyType($type, $debug=false)
         {
         $medias=IPS_GetMediaList();
@@ -9882,7 +10116,6 @@ class ipsOps
      * zuerst die Zeilen und die Spalten durchgehen und ein Array mit den sortierenden Elementen anlegen
      *
      */
-
     function intelliSort(&$inputArray, $orderby, $sort=SORT_ASC, $debug=false)
         {
         $first=true;
@@ -9909,7 +10142,7 @@ class ipsOps
         else return false;
         }
 
-    /* ipsOps, array serialize 
+    /* ipsOps, array serialize to Php 
      *
      * liest die keys der ersten Ebene und rekursiv ruft es dieselbe routine für weitere Ebenen auf
      * erstellt einen php array Definition für das echte array
@@ -9919,7 +10152,6 @@ class ipsOps
      * depth        gibt die Anzahl der bereits erfolgten rekursiven Aufrufe wieder
      *
      */
-
     function serializeArrayAsPhp(&$arrayInput, &$text, $depth = 0, $ident=0, $debug=false)
         {
         $arrayStart=false;
@@ -9974,8 +10206,8 @@ class ipsOps
         return $text;
         } 
 
-    /* ipsOps, serialize array */
-
+    /* ipsOps, serialize array 
+     */
     function serialize_array(&$array, $root = '$root', $depth = 0)
         {
         $items = array();
@@ -10007,6 +10239,50 @@ class ipsOps
             }
         }
 
+    /* ipsOps, array serialize to Javascript 
+     *
+     * liest die keys der ersten Ebene und rekursiv ruft es dieselbe routine für weitere Ebenen auf
+     * erstellt eine javascript object array Definition 
+     *
+     * arrayInput   ist das array als array formattiert
+     * text         ist der String in dem das javascript formatierte object array hineinkopiert wird
+     *
+     * text ist der Anfang der array definition, wie zum beispiel var segmente =
+     *
+     */
+    function serializeArrayAsJavascript(&$arrayInput, &$text, $debug=false)
+        {
+        $arrayStart=false;
+        $items = array();       // Zwischenspeicher
+
+        if ($debug) echo "["; 
+        $text .= "["; 
+
+        /* alle Eintraeg des Array durchgehen, sind immer key value Pärchen, zuerst die sub array abarbeiten und dann die einzelnen Pärchen drucken */
+        foreach($arrayInput as $value)             // foreach mit referenz, der Eintrag wird verändert
+            {
+            if(is_array($value))
+                {
+                if ($debug) echo "{";
+                $text .= "{";
+                foreach ($value as $field => $entry)
+                    {
+                    if ($debug) echo "$field : $entry,";
+                    $text .= "$field : $entry,";
+                    }
+                if ($debug) echo "},\n";
+                $text .= "},\n";
+                }
+            else
+                {
+                if ($debug) echo "$value,";
+                $text .= "$value,";
+                }
+            }
+        if ($debug) echo "];\n"; 
+        $text .= "];\n"; 
+        return $text;
+        } 
 
 	/** ipsOps::emptyCategory, Löschen des Inhalts einer Kategorie inklusve Inhalt
 	 *
@@ -11361,15 +11637,16 @@ class dosOps
         return $status;
         }
 
-    /*****************************************************************
-    * 
-    * Einen Verzeichnisbaum erstellen. Routine scheitert wenn es bereits eine Datei gibt, die genauso wie das Verzeichnis heisst. Dafür einen Abbruchzähler vorsehen.
-    * alle Backslash auf slash umstellen, wenn kein slash am Schluss den Teil bis zum letzten Slash ignorieren
-    * zwei Schleifen inneinander
-    * erste Schleife prüft solange bis Verzeichnis vorhanden oder 20 Iterationen vergangen sind
-    * zweite Schleife verkürzt den Verzeichnispfad solange bis es möglich ist ein Verzeichnis zu erstellen
-    *
-    **/
+    /* dosOps::mkdirtree
+     * 
+     * Einen Verzeichnisbaum erstellen. Routine scheitert wenn es bereits eine Datei gibt, die genauso wie das Verzeichnis heisst. Dafür einen Abbruchzähler vorsehen.
+     * alle Backslash auf slash umstellen, wenn kein slash am Schluss den Teil bis zum letzten Slash ignorieren
+     * zwei Schleifen inneinander
+     * erste Schleife prüft solange bis Verzeichnis vorhanden oder 20 Iterationen vergangen sind
+     * zweite Schleife verkürzt den Verzeichnispfad solange bis es möglich ist ein Verzeichnis zu erstellen
+     *
+     *
+     */
     function mkdirtree($directory,$debug=false)
         {
         $directory = str_replace('\\','/',$directory);
@@ -11986,13 +12263,17 @@ class dosOps
         else
             {
             echo "Kein Verzeichnis mit dem Namen \"".$bilderverzeichnis."\" vorhanden.\n";
-            $dirstruct=explode("/",$bilderverzeichnis);
+            $oss = IPS_GetKernelPlatform();
+            $win=($oss=="windows");
+            if ($win) $seperator="\\"; 
+            else $seperator="/";
+            $dirstruct=explode($seperator,$bilderverzeichnis);
             //print_r($dirstruct);
             $directoryPath="";
             foreach ($dirstruct as $directory)
                 {
                 $directoryOK=$directoryPath;
-                $directoryPath.=$directory."/";
+                $directoryPath.=$directory.$seperator;
                 if ( is_dir ( $directoryPath ) ) {;}
                 else
                     {
@@ -12897,6 +13178,29 @@ class fileOps
         if ($debug) 
             {
             echo "writeFileJson: Analyse des Input Arrays: \n";
+            }
+        
+        if (is_file($filename)) unlink($filename);      // in ein leeres File schrieben
+        $handle=fopen($filename, "a");
+        fwrite($handle,$result);             // den Index aus dem result File übernehmen
+        fclose($handle);
+        }
+
+    /*
+     * writefilePhp wie writefileJson
+     * schreibt einen String in die Datei $this->filename, wenn nicht vorhanden (false) dann in $this->newFileName
+     *
+     ***********/
+
+    function writeFilePhp(&$result, $debug=false)
+        {
+        if ($this->fileName === false) $filename=$this->newFileName;
+        else $filename=$this->fileName;
+
+        if ($debug) echo "Neuer Filename $filename zum Schreiben.\n";
+        if ($debug) 
+            {
+            echo "writeFilePhp: Analyse des Input Files: \n";
             }
         
         if (is_file($filename)) unlink($filename);      // in ein leeres File schrieben
@@ -16425,7 +16729,9 @@ class WfcHandling
         if ($this->paneConfig !== false) 
             {
             if ($debug) echo json_encode($this->paneConfig);
+            print_r($this->paneConfig);
             if (isset($this->paneConfig["width"])) { $width=$this->paneConfig["width"]; echo "Width is $width.\n"; }
+            if (isset($this->paneConfig[0][6])) { $width=$this->paneConfig[0][6]; echo "Width is $width , Parameter 7.\n"; }
             }
         if ($debug) echo "\n";
         //CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);

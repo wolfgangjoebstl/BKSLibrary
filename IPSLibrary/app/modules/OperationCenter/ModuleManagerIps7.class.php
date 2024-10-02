@@ -18,7 +18,6 @@
 	IPSUtils_Include ("IPSFileHandler.class.php",              "IPSLibrary::install::IPSModuleManager::IPSFileHandler");
 	IPSUtils_Include ("IPSBackupHandler.class.php",            "IPSLibrary::install::IPSModuleManager::IPSBackupHandler");
 	IPSUtils_Include ("IPSLogHandler.class.php",               "IPSLibrary::install::IPSModuleManager::IPSLogHandler");
-	IPSUtils_Include ("IPSIniConfigHandler.class.php",         "IPSLibrary::app::core::IPSConfigHandler");
 
 	/**
 	 * @class IPSModuleManager
@@ -64,6 +63,8 @@
 		 */
 		public function __construct($moduleName='', $sourceRepository='', $logDirectory='', $silentMode=false) {
 			global $_IPS;
+
+            echo "construct ModuleManagerIPS7:\n";
 			$_IPS['ABORT_ON_ERROR'] = true;
 			$_IPS['MODULEMANAGER']  = $this;
 
@@ -73,20 +74,20 @@
 			$this->moduleName           = $moduleName;
 
 			// Create ConfigHandler for ModuleManager INI File
-			$this->managerConfigHandler = new IPSIniConfigHandler($this->GetModuleInitializationFile('IPSModuleManager'));
+			$this->managerConfigHandler = new IniConfigHandlerIPS7($this->GetModuleInitializationFile('IPSModuleManager'));
 
 			$this->sourceRepository = $sourceRepository;
 			if ($this->sourceRepository=='') {
-				$this->sourceRepository = $this->managerConfigHandler->GetValue(IPSConfigHandler::SOURCEREPOSITORY, '');
+				$this->sourceRepository = $this->managerConfigHandler->GetValue(ConfigHandlerIPS7::SOURCEREPOSITORY, '');
 			}
 			$this->sourceRepository = IPSFileHandler::AddTrailingPathDelimiter($this->sourceRepository);
 
 			// Create Log Handler
 			if ($logDirectory=='') {
 				if (function_exists('IPS_GetLogDir')) {
-					$logDirectory = $this->managerConfigHandler->GetValueDef(IPSConfigHandler::LOGDIRECTORY, '', IPS_GetLogDir());
+					$logDirectory = $this->managerConfigHandler->GetValueDef(ConfigHandlerIPS7::LOGDIRECTORY, '', IPS_GetLogDir());
 				} else {
-					$logDirectory = $this->managerConfigHandler->GetValueDef(IPSConfigHandler::LOGDIRECTORY, '', IPS_GetKernelDir().'logs/');
+					$logDirectory = $this->managerConfigHandler->GetValueDef(ConfigHandlerIPS7::LOGDIRECTORY, '', IPS_GetKernelDir().'logs/');
 				}
 			}
 			$this->logHandler = new IPSLogHandler(get_class($this), $logDirectory, $moduleName, true, $silentMode);
@@ -112,7 +113,7 @@
 				$this->logHandler->Log('Module Download Ini File doesnt exists -> Load Ini File "'.$repositoryDownloadIniFile.'"');
 				$this->fileHandler->LoadFiles(array($repositoryDownloadIniFile), array($localDownloadIniFile));
 			}
-			$this->fileConfigHandler = new IPSIniConfigHandler($this->GetModuleDownloadListFile(IPS_GetKernelDir().'scripts/'));
+			$this->fileConfigHandler = new IniConfigHandlerIPS7($this->GetModuleDownloadListFile(IPS_GetKernelDir().'scripts/'));
 
 			// ConfigHandler for Module INI File
 			$moduleIniFile = $this->GetModuleInitializationFile($moduleName);
@@ -123,7 +124,7 @@
 				$this->fileHandler->LoadFiles(array($moduleRepositoryDefaultIniFile), array($moduleLocalDefaultIniFile));
 				$this->fileHandler->CreateScriptsFromDefault(array($moduleLocalDefaultIniFile));
 			}
-			$this->moduleConfigHandler  = new IPSIniConfigHandler($moduleIniFile);
+			$this->moduleConfigHandler  = new IniConfigHandlerIPS7($moduleIniFile);
 
 			// Increase PHP Timeout for current Session
 			$timeLimit = $this->managerConfigHandler->GetValueIntDef('TimeLimit', '', '300'); /*5 Minuten*/
@@ -334,7 +335,7 @@
 		   if ($type<>'app' and $type<>'config' and $type<>'data') {
 		      throw new Exception('Unknown Category Type '.$type);
 		   }
-			$namespace  = $this->fileConfigHandler->GetValue(IPSConfigHandler::MODULENAMESPACE);
+			$namespace  = $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::MODULENAMESPACE);
 			$namespace  = str_replace('::app::','::'.$type.'::',$namespace);
 		   $path       = 'Program.'.str_replace('::','.',$namespace);
 
@@ -533,11 +534,11 @@
 
 				switch ($fileTypeSection) {
 					case 'App':
-						$namespace = $this->fileConfigHandler->GetValue(IPSConfigHandler::MODULENAMESPACE);
+						$namespace = $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::MODULENAMESPACE);
 						$fullScriptName   = $baseDirectory.'::'.$namespace.'::'.$script;
 						break;
 					case 'Config':
-						$namespace = $this->fileConfigHandler->GetValue(IPSConfigHandler::MODULENAMESPACE);
+						$namespace = $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::MODULENAMESPACE);
 						$namespace = str_replace('IPSLibrary::app', 'IPSLibrary::config', $namespace);
 						$fullScriptName   = $baseDirectory.'::'.$namespace.'::'.$script;
 						break;
@@ -599,11 +600,11 @@
 
 				switch ($fileTypeSection) {
 					case 'App':
-						$namespace = $this->fileConfigHandler->GetValue(IPSConfigHandler::MODULENAMESPACE);
+						$namespace = $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::MODULENAMESPACE);
 						$fullScriptName   = $baseDirectory.'::'.$namespace.'::'.$script;
 						break;
 					case 'Config':
-						$namespace = $this->fileConfigHandler->GetValue(IPSConfigHandler::MODULENAMESPACE);
+						$namespace = $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::MODULENAMESPACE);
 						$namespace = str_replace('IPSLibrary::app', 'IPSLibrary::config', $namespace);
 						$fullScriptName   = $baseDirectory.'::'.$namespace.'::'.$script;
 						break;
@@ -703,8 +704,8 @@
 			$this->LoadModuleFiles('DownloadFiles','Install',  $sourceRepository, $overwriteUserFiles);
 			$this->fileConfigHandler = new IPSIniConfigHandler($this->GetModuleDownloadListFile(IPS_GetKernelDir().'scripts/'));
 
-			$newVersion = $this->fileConfigHandler->GetValueDef(IPSConfigHandler::SCRIPTVERSION, null, 
-			                                                    $this->fileConfigHandler->GetValue(IPSConfigHandler::SCRIPTVERSION));
+			$newVersion = $this->fileConfigHandler->GetValueDef(ConfigHandlerIPS7::SCRIPTVERSION, null, 
+			                                                    $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::SCRIPTVERSION));
 			$this->versionHandler->SetVersionLoading($newVersion);
 			$this->versionHandler->SetModuleRepository($sourceRepository);
 
@@ -713,12 +714,12 @@
 			$backupList      = $this->GetScriptList($fileKey, $fileTypeSection, $this->backupHandler->GetBackupDirectory());
 
 			//$this->backupHandler->CreateBackup($localList, $backupList);
-            print_r($repositoryList); 
+            //print_r($repositoryList); 
 			$this->fileHandler->LoadFiles($repositoryList, $localList);
 			if ($fileKey=='DefaultFiles') {
 				$this->fileHandler->CreateScriptsFromDefault($localList, $overwriteUserFiles);
 			}
-            print_R($localList);
+            //print_R($localList);
 			$this->RegisterModuleFiles($fileKey, $fileTypeSection, $localList);
 		}
 
@@ -731,16 +732,19 @@
 		 * @param boolean $overwriteUserFiles bestehende User Files mit Default überschreiben
 		 */
 		public function LoadModule($sourceRepository='', $overwriteUserFiles=false) {
+             return(false);  
 			if ($sourceRepository=='') {
 				$sourceRepository = $this->sourceRepository;
 			}
 			$sourceRepository = IPSFileHandler::AddTrailingPathDelimiter($sourceRepository);
-
+            echo "LoadModule $sourceRepository, $overwriteUserFiles Start with DownloadFiles:\n";
 			$this->LoadModuleFiles('DownloadFiles','Install',  $sourceRepository, $overwriteUserFiles);
-			$this->fileConfigHandler = new IPSIniConfigHandler($this->GetModuleDownloadListFile(IPS_GetKernelDir().'scripts/'));
+			$this->fileConfigHandler = new IniConfigHandlerIPS7($this->GetModuleDownloadListFile(IPS_GetKernelDir().'scripts/'));
 
-			$newVersion = $this->fileConfigHandler->GetValueDef(IPSConfigHandler::SCRIPTVERSION, null, 
-			                                                    $this->fileConfigHandler->GetValue(IPSConfigHandler::SCRIPTVERSION));
+            echo "File Config Handler Get Value Default:\n";
+			$newVersion = $this->fileConfigHandler->GetValueDef(ConfigHandlerIPS7::SCRIPTVERSION, null, 
+			                                                    $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::SCRIPTVERSION));
+            echo "SetVersion Loading:\n";                                                             
 			$this->versionHandler->SetVersionLoading($newVersion);
 			$this->versionHandler->SetModuleRepository($sourceRepository);
 
@@ -769,8 +773,11 @@
 		 * @param string $forceInstallation wenn true, wird auch eine Installation ausgeführt, wenn sich die Version des Modules nicht geändert hat
 		 */
 		public function InstallModule($forceInstallation = true) {
-			$newVersion = $this->fileConfigHandler->GetValueDef(IPSConfigHandler::INSTALLVERSION, null, 
-			                                                    $this->fileConfigHandler->GetValue(IPSConfigHandler::SCRIPTVERSION));
+            echo "InstallModule Option : ".($forceInstallation?"Force installation":"")."\n";
+            $this->fileConfigHandler = new IniConfigHandlerIPS7($this->GetModuleDownloadListFile(IPS_GetKernelDir().'scripts/'));
+			$newVersion = $this->fileConfigHandler->GetValueDef(ConfigHandlerIPS7::INSTALLVERSION, null, 
+			                                                    $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::SCRIPTVERSION));
+            echo "NewVersion $newVersion\n";                                                                
 			if (!$this->versionHandler->IsVersionInstalled($newVersion) or $forceInstallation) {
 				$this->versionHandler->SetVersionInstalling($newVersion);
 				$moduleManager = $this;
@@ -914,7 +921,7 @@
 				$this->DeleteWFCItems($this->moduleConfigHandler->GetValueDef('TabPaneItem', 'WFC10', ''),
 				                      $this->moduleConfigHandler->GetValueBoolDef('TabPaneExclusive', 'WFC10', false));
 
-				$namespace  = $this->fileConfigHandler->GetValue(IPSConfigHandler::MODULENAMESPACE);
+				$namespace  = $this->fileConfigHandler->GetValue(ConfigHandlerIPS7::MODULENAMESPACE);
 				$this->DeleteModuleObjects($this->GetModuleCategoryPath('app'));
 				$this->DeleteModuleObjects($this->GetModuleCategoryPath('data'));
 				$this->DeleteModuleObjects($this->GetModuleCategoryPath('config'));
@@ -981,11 +988,11 @@
 			$fileTypeSection='WebFront';
 			echo "DeployModuleFilesWebFront $fileKey $fileTypeSection $sourceRepository \n";
 			$localList       = $this->GetScriptListWebfront($fileKey, $fileTypeSection, IPS_GetKernelDir().'scripts/');	
-            print_r($localList);
+            //print_r($localList);
 			$repositoryList  = $this->GetScriptList($fileKey, $fileTypeSection, $sourceRepository);
 			$backupList      = $this->GetScriptList($fileKey, $fileTypeSection, $backupHandler->GetBackupDirectory());
 			//$this->backupHandler->CreateBackup($repositoryList, $backupList);
-            print_R($repositoryList);
+            //print_R($repositoryList);
             $this->fileHandler->FilterEqualFiles($localList, $repositoryList);
 			
             /* $sourceOut      = array();
@@ -1013,8 +1020,8 @@
 				};
                 echo "\n";
 			}  */
-            print_r($localList);
-            print_R($repositoryList);
+            //print_r($localList);
+            //print_R($repositoryList);
 		}
 
 		/**
@@ -1219,10 +1226,10 @@
 						echo '   '.$moduleName.'could NOT be found in '.$repository.PHP_EOL;
 					} else {
 						if ($debug) echo '   Processing '.$moduleName.' in '.$repository.PHP_EOL;
-						$configHandler    = new IPSIniConfigHandler($localDownloadIniFile);
-						$availableVersion = $configHandler->GetValue(IPSConfigHandler::SCRIPTVERSION);
-						$changeListModule = $configHandler->GetValueDef(IPSConfigHandler::CHANGELIST, null, array());
-						$requiredModulesOfModule = $configHandler->GetValueDef(IPSConfigHandler::REQUIREDMODULES, null, array());
+						$configHandler    = new IniConfigHandlerIPS7($localDownloadIniFile);
+						$availableVersion = $configHandler->GetValue(ConfigHandlerIPS7::SCRIPTVERSION);
+						$changeListModule = $configHandler->GetValueDef(ConfigHandlerIPS7::CHANGELIST, null, array());
+						$requiredModulesOfModule = $configHandler->GetValueDef(ConfigHandlerIPS7::REQUIREDMODULES, null, array());
 
 						$replaceModule = false;
 						if (!array_key_exists($moduleName, $knownModules)) {
@@ -1304,6 +1311,338 @@
 		}
 
     }
+
+
+   /**
+    * @class IPSConfigurationException
+    *
+    * Definiert eine Konfigurations Exception
+    *
+    */
+   class ConfigurationExceptionIPS7 extends Exception {
+   }
+
+   /**
+    * @class IPSConfigHandler
+    *
+    * Definiert einen IPSConfigHandler, dieser bietet die Möglichkeit Konfigurations
+    * Parameter zu lesen und zu speichern
+    *
+    * @author Andreas Brauneis
+    * @version
+    * Version 2.50.1, 31.01.2012<br/>
+    */
+
+	abstract class ConfigHandlerIPS7 {
+		const SCRIPTVERSION    = 'Version';           // Current Module Verison (Script)
+		const INSTALLVERSION   = 'InstallVersion';    // Current Module Verison (Installation)
+		const MODULENAMESPACE  = 'ModuleNamespace';   // Module Namespace
+		const SOURCEREPOSITORY = 'SourceRepository';  // Pfad/Url zum Source Repository
+		const LOGDIRECTORY     = 'LogDirectory';      // Logging Directory
+		const CHANGELIST       = 'ChangeList';        // ChangeList
+		const REQUIREDMODULES  = 'RequiredModules';   // Required Modules
+
+		protected $configData              = array();
+
+		/**
+		 * abstract ConfigHandlerIPS7::ExistsValue
+		 *
+		 * Retourniert Existenz eines Parameters
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @return boolean liefert Existenz des übergebenen Parameters
+		 */
+		public function ExistsValue($key, $section=null) {
+			if ($section==null) {
+				return array_key_exists($key,$this->configData);
+			} else {
+				return (array_key_exists($section,$this->configData) and array_key_exists($key,$this->configData[$section]));
+			}
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert den Wert eines übergebenen Parameters
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @return string liefert den Wert des übergebenen Parameters
+		 * @throws IPSConfigurationException wenn der betroffene Parameter nicht gefunden wurde
+		 */
+		public function GetValue($key, $section=null) {
+            //echo "GetValue $key from \n";
+            //print_R($this->configData);
+			if (!$this->ExistsValue($key, $section)) {
+				throw new ConfigurationExceptionIPS7('Configuration Value with Key='.$key.' could NOT be found (Section="'.$section.'")',
+				                                    E_USER_ERROR);
+			} elseif ($section==null) {
+				return $this->configData[$key];
+			} else {
+				return $this->configData[$section][$key];
+			}
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert den integer Wert eines übergebenen Parameters
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @return integer liefert den Wert des übergebenen Parameters
+		 * @throws IPSConfigurationException wenn der betroffene Parameter nicht gefunden wurde
+		 */
+		public function GetValueInt ($key, $section=null) {
+			return (int)$this->GetValue($key, $section);
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert den boolean Wert eines übergebenen Parameters
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @return boolean liefert den Wert des übergebenen Parameters
+		 * @throws IPSConfigurationException wenn der betroffene Parameter nicht gefunden wurde
+		 */
+		public function GetValueBool ($key, $section=null) {
+			$value = $this->GetValue($key, $section);
+			if ($value=='false') {
+				return false;
+			} elseif ($value=='true') {
+				return true;
+			} else {
+				return (boolean)$value;
+			}
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert den float Wert eines übergebenen Parameters
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @return float liefert den Wert des übergebenen Parameters
+		 * @throws IPSConfigurationException wenn der betroffene Parameter nicht gefunden wurde
+		 */
+		public function GetValueFloat ($key, $section=null) {
+			return (float)$this->GetValue($key, $section);
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert den Wert eines übergebenen Parameters, konnte der Wert des übergebenen Parameters nicht
+		 * gefunden werden, wird der übergebene Default Wert retourniert.
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @param string $defaultValue Default Wert wenn Parameter nicht gefunden wurde
+		 * @return string liefert den Wert des übergebenen Parameters
+		 */
+		public function GetValueDef($key, $section=null, $defaultValue="") {
+			if ($section==null) {
+				if ($this->ExistsValue($key, $section)) {
+					$result = $this->configData[$key];
+				} else {
+					$result = $defaultValue;
+				}
+			} else {
+				if ($this->ExistsValue($key, $section)) {
+					$result = $this->configData[$section][$key];
+				} else {
+					$result = $defaultValue;
+				}
+			}
+			return $result;
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert den integer Wert eines übergebenen Parameters, konnte der Wert des übergebenen Parameters nicht
+		 * gefunden werden, wird der übergebene Default Wert retourniert.
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @param string $defaultValue Default Wert wenn Parameter nicht gefunden wurde
+		 * @return integer retouniert den Wert des übergebenen Parameters
+		 */
+		public function GetValueIntDef($key, $section=null, $defaultValue="") {
+			return (int)$this->GetValueDef($key, $section, $defaultValue);
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert den boolean Wert eines übergebenen Parameters, konnte der Wert des übergebenen Parameters nicht
+		 * gefunden werden, wird der übergebene Default Wert retourniert.
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @param string $defaultValue Default Wert wenn Parameter nicht gefunden wurde
+		 * @return boolean retouniert den Wert des übergebenen Parameters
+		 */
+		public function GetValueBoolDef ($key, $section=null, $defaultValue="") {
+			$value = $this->GetValueDef($key, $section, $defaultValue);
+			if ($value=='false') {
+				return false;
+			} elseif ($value=='true') {
+				return true;
+			} else {
+				return (boolean)$value;
+			}
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert den float Wert eines übergebenen Parameters, konnte der Wert des übergebenen Parameters nicht
+		 * gefunden werden, wird der übergebene Default Wert retourniert.
+		 *
+		 * @param string $key Name des Parameters
+		 * @param string $section Name der Parameter Gruppe, kann auch leer sein
+		 * @param string $defaultValue Default Wert wenn Parameter nicht gefunden wurde
+		 * @return float retouniert den Wert des übergebenen Parameters
+		 */
+		public function GetValueFloatDef ($key, $section=null, $defaultValue="") {
+			return (float)$this->GetValueDef($key, $section, $defaultValue);
+		}
+
+	}
+
+
+
+
+	class IniConfigHandlerIPS7 extends ConfigHandlerIPS7 {
+
+		private $iniFileName="";
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung INI File ConigurationHandlers
+		 *
+		 * @param string $iniFileName Name der INI Datei.
+		 * @param string $namespace Namespace des INI Files
+		 */
+		public function __construct($iniFileName, $namespace="") {
+            echo "construct IniConfigHandlerIPS7 ini-File : $iniFileName Namespace : \"$namespace\"\n";
+			$this->iniFileName = $this->GetFileName($iniFileName, $namespace);
+			$this->LoadFile($this->iniFileName);
+            //print_R($this->configData);
+		}
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung INI File ConfigHandlers
+		 *
+		 * @param string $iniFileName Name der INI Datei.
+		 * @param string $namespace Namespace des INI Files
+		 */
+		private function LoadFile () {
+			if (!file_exists($this->iniFileName)) {
+				throw new Exception('script '.$this->iniFileName.' could NOT be found!', E_USER_ERROR);
+			}
+			$this->configData = parse_ini_file($this->iniFileName, true);
+		}
+
+		private function GetFileName ($iniFileName, $namespace="") {
+			if ($namespace=="") {
+				$result = $iniFileName;
+			} else {
+				$result = IPS_GetKernelDir().'scripts/'.str_replace('::','/',$namespace).'/'.$iniFileName;;
+			}
+			$result = str_replace('\\','/',$result);
+			return $result;
+		}
+	}
+
+
+
+  /**
+    * @class IPSUtilException
+    *
+    * Definiert eine IPSUtilException Exception
+    *
+    */
+	class UtilExceptionIPS7 extends Exception {
+	}
+
+	/**
+	 * Function zum Include anderer Scripte
+	 *
+	 * Usage:
+	 * <pre>IPSUtils_Include('IPSLogger.inc.php', 'IPSLibrary::app::core::IPSLogger');</pre>
+	 *
+ 	 * @param string $file File das inkludiert werden soll
+	 * @param string $namespace namespace des Files, dass inkludiert werden soll (gibt den relativen Pfad vom IPS scripts Verzeichnis an)
+	 */
+	function Utils_IncludeIPS7($file, $namespace="") {
+	   if ($namespace!=="") {
+	      $file = IPS_GetKernelDir().'scripts/'.str_replace('::','/',$namespace).'/'.$file;
+	   }
+	   if (!file_exists($file)) {
+			throw new Exception('script '.$file.' could NOT be found!', E_USER_ERROR);
+	   }
+	   //echo "IPSUtils_Include of $file".PHP_EOL;
+	   include_once $file;
+	}
+
+	/** ObjektId aus Pfad ermittlen
+	 *
+	 * Der Befehl ermittelt aus einer Pfadangabe (zB. "IPSLibrary.IPSUtils.IPSUtils.inc.php") die ID des Scriptes
+	 *
+	 * @param string $path Pfadangabe
+	 * @param string $returnFalse wenn true, retouniert die Funktion false wenn das übergebene Object nicht gefunden wurde
+	 * @return integer ID des Objektes
+	 *
+	 */
+	function Util_ObjectIDByPathIPS7($path, $returnFalse=false) {
+		$categoryList = explode('.',$path);
+		if (count($categoryList)==1 and is_numeric($categoryList[0])) {
+		   return (int)$categoryList[0];
+		}
+
+		$objId    = 0;
+		$parentId = 0;
+		foreach ($categoryList as $idx=>$category) {
+			$objId = @IPS_GetObjectIDByIdent($category, $parentId);
+			if ($objId===false) {
+				$objId=@IPS_GetObjectIDByName($category, $parentId);
+			}
+			if ($objId===false) {
+				if ($returnFalse) {
+					return false;
+				} else {
+					throw new UtilExceptionIPS7('"'.$category.'" could NOT be found while searching for Path '.$path);
+				}
+			}
+			$parentId = $objId;
+		}
+		return $objId;
+	}
+
+	/** Ident aus Object ID ermittlen
+	 *
+	 * @param integer $objId ID des Objektes
+	 * @param string Ident des Objektes
+	 *
+	 */
+	if (!function_exists('IPS_GetIdent')) {
+		function IPS_GetIdent($objId) {
+			$object = IPS_GetObject($objId);
+			$ident  = $object['ObjectIdent'];
+			return $ident;
+		}
+	}
+
+
 
 	/** @}*/
 ?>

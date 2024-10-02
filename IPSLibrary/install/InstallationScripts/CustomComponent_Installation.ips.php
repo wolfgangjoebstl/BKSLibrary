@@ -21,6 +21,13 @@
 	 * Script für zusätzliche eigene Komponenten und Programme rund um die Verarbeitung der Hardware Komponenten
 	 * baut das gesamte Webfront mit Administrator und User auf
 	 * korrigiert diverse Einstellungen, loescht nicht konfigurierte Webfrontends
+     * Für die Installation von Channels von neuen und umbenannten geräten wird dieses Script nicht mehr verwendet. Geht alles über remote Access.
+     * Die Bewegungsregister werden über EvaluateMotion abgeändert und installiert
+     *
+     *
+     * Besondere Abschnitte bei der Installation
+     *
+     *
 	 *
 	 * @file          CustomComponent_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -38,7 +45,6 @@
     *
     ********************************/
 
-	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 

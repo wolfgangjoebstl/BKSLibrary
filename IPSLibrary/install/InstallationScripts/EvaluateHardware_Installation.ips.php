@@ -465,7 +465,7 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-    if ($debug==false)          // anders rum, wenn nicht als Script von der Console aufgerufen auch EvaluateHarwdare starten
+    if ($debug==false)          // anders rum, wenn nicht als Script von der Console aufgerufen auch EvaluateHardare starten
         {
         $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);
         echo "\n";

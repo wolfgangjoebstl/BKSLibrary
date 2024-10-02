@@ -147,6 +147,9 @@
 	{
 		// Standard-Dateiname .....
 		$tmpFilename = IPS_GetKernelDir() . $path . "\\" . $filename;
+        // Standard Path, make if necessary
+		$dosOps=new dosOps();
+        $dosOps->mkdirtree(IPS_GetKernelDir() . $path . "\\");
 
 		// schreiben der Config Daten
 		$handle = fopen($tmpFilename,"w");

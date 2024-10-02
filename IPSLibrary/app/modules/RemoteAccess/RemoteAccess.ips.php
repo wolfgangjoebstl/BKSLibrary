@@ -64,10 +64,10 @@
 	echo $inst_modules."\n\n";
 
 	echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
-	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "   Modul Guthabensteuerung ist NICHT installiert.\n"; }
-	//if (isset ($installedModules["Gartensteuerung"])) { 	echo "  Modul Gartensteuerung ist installiert.\n"; } else { echo "Modul Gartensteuerung ist NICHT installiert.\n";}
-	if (isset ($installedModules["Amis"])) { 				echo "  Modul Amis ist installiert.\n"; } else { echo "   Modul Amis ist NICHT installiert.\n"; }
-	if (isset ($installedModules["OperationCenter"])) { 				echo "  Modul OperationCenter ist installiert.\n"; } else { echo "   Modul OperationCenter ist NICHT installiert.\n"; }
+	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; }  else { echo "   Modul Guthabensteuerung ist NICHT installiert.\n"; }
+	//if (isset ($installedModules["Gartensteuerung"])) { 	        echo "  Modul Gartensteuerung ist installiert.\n"; }    else { echo "Modul Gartensteuerung ist NICHT installiert.\n";}
+	if (isset ($installedModules["Amis"])) { 				        echo "  Modul Amis ist installiert.\n"; }               else { echo "   Modul Amis ist NICHT installiert.\n"; }
+	if (isset ($installedModules["OperationCenter"])) { 			echo "   Modul OperationCenter ist installiert.\n"; }   else { echo "   Modul OperationCenter ist NICHT installiert.\n"; }
 	echo "\n";
 
  /******************************************************
@@ -80,6 +80,11 @@
 		{
 		IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        echo "  Modul DetectMovement ist installiert.\n"; 
+        } 
+    else 
+        { 
+        echo "   Modul DetectMovement ist NICHT installiert.\n"; 
 		}
 
 	/************************************************************************************************

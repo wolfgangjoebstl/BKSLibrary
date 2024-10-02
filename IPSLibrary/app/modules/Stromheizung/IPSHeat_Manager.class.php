@@ -268,7 +268,7 @@
                     $plusLink[$soid]=$name;
                     break;          
                 default:
-                    echo "       ->> WARNING, Identifier \"$identifier\" unknown !!!!\n";  
+                    if ($debug) echo "       ->> WARNING, Identifier \"$identifier\" unknown !!!!\n";  
                     break;                                                     
                 }                       // end switch
             //if ($debug) echo "\n";

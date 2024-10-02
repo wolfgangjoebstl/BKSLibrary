@@ -30,6 +30,10 @@
  * EinmalEin unterschiedlich ob Switch oder Auto Mode
  * Im SwitchMode kann der Giesskreis direkt selektiert werden
  *
+ * Statistik
+ *
+ *
+ *
  * DataQuality, Reportfunktionen:
  *
  * Es gibt Buttons untereinander, das sind die Konfigurationen/Dashboards. 
@@ -86,6 +90,7 @@
 	$categoryId_Gartensteuerung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
 	$categoryId_Register    		= CreateCategory('Gartensteuerung-Register',   $CategoryIdData, 200);
     $categoryIdSelectReports        = CreateCategory('SelectReports',              $CategoryIdData, 300);
+    $CategoryId_Statistiken			= CreateCategory('Statistiken',   $CategoryIdData, 200);
 
 	$GiessAnlagePrevID 	= @IPS_GetVariableIDByName("GiessAnlagePrev",$categoryId_Register);
 	$GiessCountID		= @IPS_GetVariableIDByName("GiessCount",$categoryId_Register);
@@ -96,6 +101,9 @@
 	$GiessTimeID	    = @IPS_GetVariableIDByName("GiessTime", $categoryId_Gartensteuerung); 
 	$GiessPauseID 	    = @IPS_GetVariableIDByName("GiessPause",$categoryId_Register);
 	$GiessTimeRemainID	= @IPS_GetVariableIDByName("GiessTimeRemain", $categoryId_Gartensteuerung); 
+
+    $StatistikBox3ID			= @IPS_GetVariableIDByName("Regenereignisse" ,$CategoryId_Statistiken); 
+    $UpdateRainEventsSelectorID = @IPS_GetVariableIDByName("UpdateRainEvents",$categoryIdSelectReports);            // Regenereignisse in Form bekommen
 
     $AnotherSelectorID 	= @IPS_GetVariableIDByName("AnotherSelector", $categoryIdSelectReports);            // Auswahl Darstellungsoptionen
     $ReportSelectorID   = @IPS_GetVariableIDByName("ReportSelector", $categoryIdSelectReports);            // Auswahl Periode für Darstellung
@@ -285,6 +293,12 @@
                     SetValue($GiessCountID,$giessCount);
                     $gartensteuerung->control_waterValves($giessCount);                      // umrechnen auf fiktiven $GiessCount    
                     }
+                break;
+            case $UpdateRainEventsSelectorID:
+                $regenereignis=array();
+                $gartensteuerungStatistics->getRainEventsFromIncrements($regenereignis,[],false);             // regenereignis ist der Retourwert, false, true, 2 ist der Debugmode
+                $html = $gartensteuerungStatistics->writeRainEventsHtml($regenereignis);
+                SetValue($StatistikBox3ID,$html);
                 break;
             case $AnotherSelectorID:                        // das ist der Selektor Rechts oben, macht unterschiedliches abhängig vom ausgewählten Dashboard/Report
                 $value=$_IPS['VALUE'];
@@ -508,7 +522,7 @@
                             "backgroundColor" => 0x050607,
                                     ) ,
                                                 );
-                $report = GetValueIfFormatted($AnotherSelectorID);                                              
+                $report = GetValueIfFormatted($AnotherSelectorID);          // verschiedene Darstellung im Chart, specialConf für createChartFromArray                                        
                 switch ($report) 
                     {
                     case "Monatswerte":
@@ -723,6 +737,89 @@
                 ksort($result);
                 $html = $ipsTables->showTable($result, $display,$config,false);     // true/2 für debug , braucht einen Zeilenindex
                 SetValue($tableID, $html);
+                break;
+            case "GeoSphere":
+                if (isset($configuration["Reports"]["GeoSphere"]))          // Index ist jetzt der Type
+                    {
+                    //echo "Geosphere Type hier duchführen:\n";
+                    if (isset($configuration["Reports"]["GeoSphere"]["Pos"])) 
+                        {
+                        //echo "Positionen zum Auswählen machen, sonst default Position aus dem System.\n";
+                        $positionen=$configuration["Reports"]["GeoSphere"]["Pos"];
+                        }
+                    else 
+                        {
+                        //print_r($configuration["Reports"]["GeoSphere"]);
+                        $positionen=$pos1;
+                        }
+                    //print_r($configuration["Reports"]["GeoSphere"]["Pos"]);
+                    } 
+                $tabs=array();
+                foreach ($positionen as $index => $entry) $tabs[]=$entry["name"];
+                //print_R($tabs);
+                $pname="AnotherSelector";
+                $color = [0x481ef1,0xf13c1e,0x1ef127];
+                $webOps->createActionProfileByName($pname,$tabs,0,$color);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+                        
+                IPS_SetHidden($linkTable[$AnotherSelectorID],false);
+                IPS_SetHidden($linkTable[$PeriodeSelectorID],false);
+
+                $periode=$webOps->getNavPeriode($PeriodeSelectorID);
+                if ($periode>(20*24*60*60)) $transpose=false;
+                $startTime=time()-$periode;
+
+                $module="/grid/historical/spartacus-v2-1d-1km";             // verfügbare Module siehe vorherige Routine
+
+                $config=array();
+                $config["StartTime"]=$startTime;
+                $config["Dif"]=0.04;
+                $config["Pos"][0]=$positionen[(integer)GetValue($AnotherSelectorID)];                   // es braucht einen Index, auch wenn es nur eine Position ist
+                $result = $zamg->getDataZamgApi(["RR","SA","TN","TX"],$module, $config, false);           // true debug, RR,SA,TN,TX or TM
+                //$zamg->showData();                // ur für Debug, keine zusätzliche funktion
+
+                $zamg->getIndexNearPosOfGrid($positionen);            // erweitert $pos1
+                $subindex=array();
+                foreach ($positionen as $id=>$pos) 
+                    {
+                    //echo " $id : ".str_pad($pos["name"],50)."   ".$pos["diff"]["subindex"]."  ".$pos["diff"]["min"]."\n";    
+                    $subindex[]=$pos["diff"]["subindex"];
+                    $index=$pos["diff"]["subindex"];
+                    }
+                $series = $zamg->getDataAsTimeSeries(["RR","SA","TN","TX"],$subindex);      // keine mittlere Temperatur bei Tageswerten nur min und Max ohne Zeitstempel
+
+                $debug=false;
+                $config=array();    
+                $config["AggregatedValue"]=["Avg","Min","MinTime","Max","MaxTime"];                   // es werden immer alle Werte eingelesen
+                $config["ShowTable"]["output"]="realTable";
+                $config["OIdtoStore"]="TN";             // oid wird auch ausserhalb geändert
+                $archiveOps->quickStore($series["TN"],$config,$debug);               // muss das richtige Format haben
+                $config["OIdtoStore"]="TX";             // oid wird auch ausserhalb geändert
+                $archiveOps->quickStore($series["TX"],$config,$debug);               // muss das richtige Format haben
+                $config["OIdtoStore"]="RR";             // oid wird auch ausserhalb geändert
+                $archiveOps->quickStore($series["RR"],$config,$debug);               // muss das richtige Format haben
+                $result = $archiveOps->showValues(false,$config,$debug);         //true für debug
+
+                $display = $ipsTables->checkDisplayConfig($ipsTables->getColumnsName($result,$debug),$debug);
+                //print_R($display);
+
+                $display = [
+                            "TimeStamp"                        => ["header"=>"Date","format"=>"DayMonth"],
+                            "TN"                        => ["header"=>"MinTemp","format"=>"°"],
+                            "TX"                        => ["header"=>"MaxTemp","format"=>"°"],
+                            "RR"                        => ["header"=>"Regen","format"=>"mm"],
+                            ];
+                $config=array();
+                $config["html"]=true;
+                //$config["text"]=true;             // sonst zusätzlich als echo
+                $config["insert"]["Header"]    = true;
+                $config["transpose"]=false;
+                $config["reverse"]=true;          // die Tabelle in die andere Richtung sortieren
+                ksort($series);    
+                //echo "-----------------\n";
+                $html = $ipsTables->showTable($result, $display,$config,false);     // true/2 für debug , braucht einen Zeilenindex
+                SetValue($table2ID, $html);
+
+                //echo "ask zamg for place ".GetValueIfFormatted($AnotherSelectorID)." and for periode ".nf($periode,"sec");
                 break;
             case "DataQuality":   
                 $html=$gartensteuerungStatistics->showDataQualityRegs();         

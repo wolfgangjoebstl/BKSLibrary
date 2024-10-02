@@ -180,7 +180,8 @@
 	/********************************* 
 	 *
 	 * Klasse überträgt die Werte an einen remote Server und schreibt lokal in einem Log register mit
-	 *
+	 * Achtung Klasse ist zweimal deklariert, einmal hier und einmal im ComponentSensor_Climate
+     *
 	 * legt dazu zwei Kategorien im eigenen data Verzeichnis ab
 	 * Counter_Auswertung und Counter_Nachrichten
 	 *

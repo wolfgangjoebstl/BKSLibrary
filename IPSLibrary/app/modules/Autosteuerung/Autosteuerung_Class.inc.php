@@ -21,16 +21,18 @@
  *
  * Übersicht verwendete Klassen
  *   AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
- *   AutosteuerungConfiguration, abstract class für:
+ *   AutosteuerungConfiguration, abstract class als konfigurierbarer Eventhandler:
  *       AutosteuerungConfigurationAlexa 
  *       AutosteuerungConfigurationHandler
+ *       AutosteuerungConfigurationFloorplan   
  *   AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung) 
  *   Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind. 
  *   AutosteuerungFunktionen, abstract class für:
  *       AutosteuerungRegler
  *       AutosteuerungAnwesenheitsSimulation
  *       AutosteuerungAlexa
- *       AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung *
+ *       AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung 
+ *
  *       AutosteuerungAlarmanlage
  *
  * Im Detail, das php script Autosteuerung_class ist eine Sammlung aus unterschiedlichen Klassen:
@@ -399,7 +401,8 @@ class AutosteuerungHandler
 
 /*****************************************************************************************************
  *
- * Allgemeiner Handler (Abstract)  zum Anlegen der Konfigurationszeilen im config File
+ * Allgemeiner Handler (Abstract)  zum Anlegen der Konfigurationszeilen im config File und Verwaltung der konfigurierten Events auf Variablenveränderung
+ * begrenzt auf 3 Parameter
  *
  *    AutosteuerungConfiguration, abstract class für:
  *       AutosteuerungConfigurationAlexa 
@@ -416,12 +419,24 @@ class AutosteuerungHandler
  *              getAutoEvent  
  *
  * im construct wird der Messagehandler uebergeben
- * mit Create Event wird ein Event für den Messagehandler angelegt 
+ * mit registerAutoEvent das Create Event verwendet wird ein Event für den Messagehandler angelegt 
  * mit storeEventConfiguration wird das Config File wieder geschrieben
  *
  * Exkurs, Unterschied $this-> und self::
  * this referenziert auf die Instanz, bei static Variablen ist es die selbe Variable für alle Instanzen die mit self adressiert werden kann
  *
+ * es wird eine Liste von Events angelegt und im Configfile abgelegt. Wenn das Event feuert wird Autosteuerung aufgerufen
+ * in $this->eventConfigurationAuto wird die Konfiguration aus dem file eingelesen und in der class gespeichert, das array wird in der richtigen class angelegt
+ * wenn noch keine Konfiguration im File vorhanden ist wird InitEventConfiguration aufgerufen
+ * ein update der class config ohne speicherung im File erfolgt mit Set_EventConfigurationAuto 
+ * das Speichern im File übernimmt StoreEventConfiguration
+ *
+ * Wenn es um Events geht die angelegt werden:
+ * die Konfiguration ist auf die üblichen drei Parameter begrenzt und kann mit RegisterAutoEvent angelegt werden
+ * wenn sich eine Variable verändert feuert das Event
+ *
+ * wenn es um eine allgemeine Konfigurationsverwaltung geht:
+ * RegisterAutoEvent wird nicht verwendet, sondern eine andere neue Routine die das erstellen der Konfiguration übernimmt
  *
  **************************************************************************************************************/ 
 
@@ -431,10 +446,11 @@ abstract class AutosteuerungConfiguration
 		/**
 		 * @public
 		 *
-		 * Initialisierung des IPSMessageHandlers
-		 *
+		 * Initialisierung des IPSMessageHandlers, übergibt optional script das bei CreateEvent verwendet wird, hier Autosteuerung
+		 * wenn false wird kein Event erzeugt aber die Konfiguration erweitert
+         *
 		 */
-		public function __construct($scriptID) {
+		public function __construct($scriptID=false) {
 			$this->scriptID=$scriptID;
 		}
 
@@ -553,13 +569,17 @@ abstract class AutosteuerungConfiguration
 		 * @private
 		 *
 		 * Speichert die aktuelle Event Konfiguration
+         * die Speicherung erfolgt immer in Gruppen von drei Parametern
 		 *
+         * wenn der identifier keine Variable ist dann wird nur der Kommentar anders dargestellt
+         *
 		 * @param string[] $configuration Konfigurations Array
 		 */
-		private function StoreEventConfiguration($configuration)
+		private function StoreEventConfiguration($configuration,$comment="")
 		   {
 			// Build Configuration String
 			$configString = '$'.$this->identifier.' = array(';
+            if ($comment != "") $configString .= PHP_EOL.chr(9).chr(9).chr(9).'/* This is the new comment area : '.$comment.' */';
 			//echo "----> wird jetzt gespeichert:\n";
 			//print_r($configuration);
 
@@ -567,6 +587,7 @@ abstract class AutosteuerungConfiguration
 				{
 				//echo "   process ".$variableId."  (".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName($variableId).")\n";
 				//print_r($params);
+                // if (IPS_ObjectExists($variableId))
 				if ( is_numeric((string)$variableId) )
 					{
 					$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
@@ -612,6 +633,12 @@ abstract class AutosteuerungConfiguration
 		 * Events neu registrieren
 		 * Parameter werden ueberschrieben, wenn sie vorher leer waren
 		 * Parameter werden nicht ueberschrieben wenn sie aktuell leer sind 
+         *
+         * die Struktur im Config ist immer gleich
+         *
+		 *				$configuration[$variableId][$i]   = $eventType;             On_Update oder On_Change
+		 *				$configuration[$variableId][$i+1] = $componentParams;       eine Liste von Parametern
+		 *				$configuration[$variableId][$i+2] = $moduleParams;          eine weitere Liste von Parametern
 		 *		
 		 ********************************************************************************/	
 
@@ -669,7 +696,7 @@ abstract class AutosteuerungConfiguration
 				}
 				//print_r($configuration);
 				$this->StoreEventConfiguration($configuration);
-				$this->CreateEvent($variableId, $eventType, $this->scriptID);
+				if ($this->scriptID) $this->CreateEvent($variableId, $eventType, $this->scriptID);
    		}
 		
 		/************************************************************************
@@ -872,6 +899,27 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
 
 	} 
 
+/* die Konfiguration für die Anzeige von Stati der Hausautomatisierung auf einem svg Floorplan, als Ablöse für Anwesend
+ *
+ * beim ersten Aufruf gibt es jede Menge Fehlermeldungen aber es wird ein Config file am Ende des config Files angelegt
+ * es wird Get_EventConfigurationAuto() aufgerufen. Wenn die function Floorplan_GetEventConfiguration noch nicht existiert wird InitEventConfiguration aufgerufen
+ * die abstract class ist AutosteuerungConfiguration
+ *
+ * das sind Schwestermodule von detectmovement und evaluateHardware
+ * die detectMovement Library ist umfangreicher und für die Behandlung von Events ausgelegt. bei Topology wurde dieses konzept aber ebenfalls ausgehebelt
+ * es gibt aber parallelen, die abstract class ist der DetectHandler
+ * Wenn die function GetEventConfiguration noch nicht existiert wird InitEventConfiguration aufgerufen
+ */ 
+class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
+	{
+	
+	protected $eventConfigurationAuto = array();
+	protected $scriptID;
+	protected $functionName="Floorplan_GetEventConfiguration";
+	protected $identifier="floorplanConfiguration";
+	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+
+	} 
 
 /*****************************************************************************************************
  *
@@ -1418,7 +1466,7 @@ class AutosteuerungOperator
      * Verarbeitet die Informationen aus function Autosteuerung_Anwesend
      *
      * zwei Ausgabemöglichkeiten, html oder als Array
-     * es wird das Array logicAnwesend au der Config durchgegangen und nach Index OR oder AND durchsucht, 
+     * es wird das Array logicAnwesend aus der Config durchgegangen und nach Index OR oder AND durchsucht, 
      * Eintrag wird nach oid=>topology ausgewertet
      *
      *
@@ -1459,7 +1507,7 @@ class AutosteuerungOperator
 					$result1=GetValueBoolean($oid);                     // Status und wann geändert auslesen
 					$statusChanged=IPS_GetVariable($oid)["VariableChanged"];
 
-                    $result = $result || $result1;
+                    $result = $result || $result1;          // Anwesenheitsauswertung
 
 					if (isset($topology["Delayed"])) 
                         {
@@ -1516,7 +1564,7 @@ class AutosteuerungOperator
                 $first=true;
                 foreach ($operation as $oid=>$topology)
 					{
-					$result = $result && GetValue($oid);
+					$result = $result && GetValue($oid);            // Anwesenheitsauswertung
 
                     if ($first) $first=false;
                     else $operator.=",";

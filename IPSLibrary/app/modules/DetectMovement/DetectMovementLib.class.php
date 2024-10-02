@@ -2808,7 +2808,7 @@
 	 *
 	 ****************************************************************************************/
 
-    /* intermediate Topology class
+    /* intermediate Topology class, wird von DetectDeviceHandler und DetectDeviceListHandler erweitert
      *
 	 * von den extended Classes mindestens geforderte Funktionen übergangsmaessig definieren
 	 *	abstract function Get_Configtype();
@@ -2824,7 +2824,7 @@
      *  copyUnknownIndexes	
      *  create_TopologyConfigurationFile        die entsprechende function im Config File für die Topologie erstellen : $getTopology User muss einsortieren und die Topologie definieren
      *  create_UnifiedTopologyConfigurationFile  das ergebnis ebenfalls im Configuration File abspeichern, zur kontrolle, kann nicht editiert werden
-     *  mergeTopologyObjects
+     *  mergeTopologyObjects                    topologypluslinks erzeugen, ein Abbild der Gesamtkonfiguration
      *  topologyReferences
      *  uniqueNameReference
      *  evalTopology
@@ -2863,8 +2863,9 @@
          *
          */
 
-        /* create_Topology 
-         * in webfront als Kategorien entsprechend topology config anlegen, entweder true/false oder ein Array mit Parameter
+        /* DetectHandlerTopology::create_Topology 
+         *
+         * in webfront als Kategorien entsprechend vom Benutzer angelegter topology config get_Topology() anlegen, entweder true/false oder ein Array mit Parameter
          *      ID      die Startkategorie, wenn false dann den Webfront Path von EvaluateHardware nehmen
          *      Init    wenn true vorher die World Topologie loeschen, 
          *      Use     nur bestimmte Kategorien erstellen Place, Room, DeviceGroup
@@ -2879,9 +2880,9 @@
          *          Children array of all parents refering to it
          *
          * es gibt die Möglichkeit die Config abzusetzen mit Childrens, rekursiv aufrufen
+         * ruft create_TopologyChildrens auf
          *
          */
-
         public function create_Topology($input=false,$debug=false)
             {
             if ($debug) echo "create_Topology aufgerufen: Config ".json_encode($input)."\n";
@@ -2943,7 +2944,8 @@
             return($this->topology);
             }
 
-        /* create_TopologyChildrens
+        /* DetectHandlerTopology::create_TopologyChildrens
+         *
          * input ist die Sub Topologie die jetzt in topology eingeordnet werden muss
          *      Struktur zumindest Type, Parent und Name, 
          *              optional Config, Childrens oder verschiedene Infos für Startpage Display, neuerdings zusammengefasst in Config
@@ -3060,7 +3062,8 @@
                 }
 
             }
-
+        /* von obiger function aufgerufen
+         */
         private function copyUnknownIndexes($entry,$excludes)
             {
             $result=array();
@@ -3074,9 +3077,10 @@
             }
 
         /* DetectHandlerTopology::create_TopologyConfigurationFile
+         *
          * Filename kommt von Get_ConfigFilename also self::$configFileName für Topology : IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php'
          * File mit Filename wird eingelesen und $getTopology gesucht
-         *
+         * wenn nicht vorhanden wird ein leerer Eintrag erstellt, verwendet dazu insertNewFunction
          */
         public function create_TopologyConfigurationFile($debug=false)
             {
@@ -3135,6 +3139,10 @@
             }
 
         /* DetectHandlerTopology::create_UnifiedTopologyConfigurationFile
+         *
+         * get_Topology ist der Gesamtüberblick vom Benutzer erstellt für alle Standorte
+         * get_UnifiedTopology ist die Erweiterung um die bekannten Informationen
+         *
          * Filename kommt von Get_ConfigFilename also self::$configFileName für Topology : IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php'
          * File mit Filename wird eingelesen und $get_UnifiedTopology gesucht
          * während get_Topology der allgemeine input des users ist, ist $getUnifiedTopology die übergeordnete Topologie, ähnlich der Function devicelist
@@ -3188,7 +3196,8 @@
             }
 
 
-        /* mergeTopologyObjects
+        /* DetectHandlerTopology::mergeTopologyObjects
+         *
          * Verbindung der Topologie mit der Object und instanzen Konfiguration. Ergebnis ist $topologyPlusLinks,  nur einsortieren, keine Links erzeugen, das macht updateLinks
          * übernimmt topology und $objectsConfig, siehe weiter unten, objectsConfig = $DetectDeviceHandler->Get_EventConfigurationAuto();        vulgo aka channelEventList
          *
@@ -3200,16 +3209,24 @@
          * in der objectsConfig gilt, 
          *  Index            Register or Instance OID
          *  Index Subarray:  0 Topology  1 Array of Rooms seperated by , 2 Array of Registertype seperated by , 
-         *        optional:  3 ROOM|DEVICE
+         *        optional:  3 ROOM|DEVICE  4     5
          *    
          * 42539 : Zentralzimmer Bewegung[0] => Topology, [1] => Zentralzimmer,  [2] => Brightness
          *
          * Die objectsConfig aka channelEventList der Reihe nach durchgehen, wir haben die OID der Register als Index. Format siehe oben
          *      ich brauch einen Raum oder mehrere, aus der Raumangabe auch mit ~ den uniqueName rausbekommen
          *          für den Raum muss es in topology zumindest eine OID geben
+         *          wenn mehrere Räume angegeben wurden, werden die Objekte in allen Räumen angelegt
          *              es können jetzt auch mehrstufige hierarchische Gewerke aufgebaut werden
          *              zB Weather besteht aus Temperatur und Feuchtigkeit
          *          abhängig von den weiteren Parametern, mehr als drei:
+         *              wenn mehr als drei ist der vierte Parameter ROOM oder Device, damit wird TOPO befüllt
+         *
+         *              wenn weniger oder gleich viel als drei Parameter
+         *                  es ist ein Gewerk angegeben oder ein Gewerk und eine Übergruppe
+         *                      es wird ein OBJECT angelegt
+         *                  es ist kein Gewerk angegeben
+         *                      es wird eine INSTANCE angelegt
          *
          * in der Topology muss es zumindest den Ort oder die Orte geben, die mit Par 1 übergeben wurde
          * erst nach dem Einsortieren ist klar wieviele Werte pro Raum vorhanden sind
@@ -3221,13 +3238,12 @@
          *
          *
          */
-
         function mergeTopologyObjects($topology, $objectsConfig, $debug=false)
             {
-            if ($debug>1) echo "mergeTopologyObjects mit Informationen aus einer DetectDeviceHandler Configuration aufgerufen, in die Topologie einsortieren:\n";
+            if ($debug) echo "mergeTopologyObjects mit Informationen aus einer DetectDeviceHandler Configuration aufgerufen, in die Topologie einsortieren:\n";
             if (isset($this->installedModules["Stromheizung"])) 
                 {                                                
-                if ($debug>1)echo "    Stromheizung Modul installiert, Actuator definieren\n"; 
+                if ($debug>1)echo "    Stromheizung Modul installiert, Actuator definieren.\n"; 
                 IPSUtils_Include ("IPSHeat.inc.php",  "IPSLibrary::app::modules::Stromheizung");   
                 $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
                 }
@@ -3235,16 +3251,18 @@
                 * ausser es wird die Baseline mit ~ angegben, name~baseline bedeutet wir suchen einen index dessen Pfad name und baseline enthält
                 * reference ist der key der 
                 */
-            $references = $this->topologyReferences($topology,$debug);              // aus einer Topology eine Reference machen welche uniqueNames einem mehrdeutigen Name zugeordnet sind, unter index Path abspeichern
+            $references = $this->topologyReferences($topology,$debug>1);              // aus einer Topology eine Reference machen welche uniqueNames einem mehrdeutigen Name zugeordnet sind, unter index Path abspeichern
             $text="";                
             $topologyPlusLinks=$topology;               // Topologie ins Ergebnis Array übernehmen
+            //echo "Beispiel Waschkueche in topology ausgeben:"; print_r($topology["Waschkueche"]);
+            if ($debug) echo "Register aus objectsConfig der Reihe nach durchgehen:\n";
             foreach ($objectsConfig as $index => $entry)                    // Register der Reihe nach durchgehen, Informationen über den Raum analysieren
                 {
-                if ($debug>1) 
+                if ($debug) 
                     {
                     $newText=$entry[0]; 
                     for ($i=1;$i<count($entry);$i++) $newText.="|".$entry[$i];                 //entry 0 ist immer Topology, gar nicht erst einmal kontrollieren, für alle Elemente machen, können mehr als 3 sein
-                    if ($newText != $text) echo "$index   \"$newText\"\n";          // nur die geänderten Zeilen ausgeben
+                    if ($newText != $text) echo str_pad($index,10).str_pad(IPS_GetName($index),40)." \"$newText\"\n";          // nur die geänderten Zeilen ausgeben
                     $text=$newText;
                     }
                 $name=IPS_GetName($index);
@@ -3253,10 +3271,10 @@
 
                 if ( ($entry[1]!="") && (sizeof($entry1)>0) )           // es wurden ein oder mehrere Räume definiert
                     {
-                    foreach ($entry1 as $entryplace)         // alle Räume durchgehen
+                    foreach ($entry1 as $entryplace)         // alle Räume durchgehen, es können auch Raumangaben mit einer tilde und einem übergeordneten Ort
                         {
                         $place=$this->uniqueNameReference($entryplace,$references);         // für eine Raumangabe Wohzimmer~LBG70 den uniquename Wohnzimmer__1 finden
-                        if ( isset($topology[$place]["OID"]) != true ) 
+                        if ( isset($topology[$place]["OID"]) != true )                      // es gibt den UnqueName oder er wurde gar nicht vorher gefunden
                             {
                             if ($debug) echo "   Fehler, zumindest erst einmal die Kategorie \"$place\" in function get_Topology() von EvaluateHardware_Configuration anlegen.\n";
                             }
@@ -3264,12 +3282,12 @@
                             {
                             $oid=$topology[$place]["OID"];
                             //print_r($topology[$place]);
-                            if (count($entry)>3)
+                            if (count($entry)>3)                        // wir haben Zusatzparameter, nicht nur Ort und Gewerk, danach kommt noch ROOM oder DEVICE
                                 {
                                 $entry3=strtoupper($entry[3]);
                                 if (isset($entry[4])) $newname = $entry[4];
                                 else $newname = IPS_GetName($index);
-                                echo "mergeTopologyObjects mit zusätzlichen Informationen anlegen : ".str_pad(IPS_GetName($index)."($index)",50)." => ".$entry[0].",".$entry[1].",".$entry[2].",$entry3,$newname .\n";
+                                if ($debug) echo "        mergeTopologyObjects mit zusätzlichen Informationen in TOPO anlegen : ".str_pad(IPS_GetName($index)."($index)",50)." => ".$entry[0].",".$entry[1].",".$entry[2].",$entry3,$newname .\n";
                                 switch ($entry3)    
                                     {
                                     case "ROOM":
@@ -3287,7 +3305,7 @@
                                         $plusLink=array();
                                         if (isset($topology[$place]["Actuators"][IPS_GetName($index)]))
                                             {
-                                            echo "      DEVICE,Actuator given as ".IPS_GetName($index).": ";
+                                            if ($debug) echo "      DEVICE,Actuator given as ".IPS_GetName($index).": ";
                                             $configActuators = $topology[$place]["Actuators"][IPS_GetName($index)];         // das Objekt aus der devicelist
                                             foreach ($configActuators as $subindex => $subconfigActuator)                // there is also a port
                                                 {
@@ -3299,7 +3317,7 @@
                                                 else    
                                                     {
                                                     $identifier = strtoupper($subconfigActuator["Category"]).strtoupper($subconfigActuator["Type"]);
-                                                    $plusLink=$ipsheatManager->checkActuators($subconfigActuator["Name"],$identifier,);
+                                                    $plusLink=$ipsheatManager->checkActuators($subconfigActuator["Name"],$identifier,$debug);
                                                     /* echo "Identifier for Actuator $newname : $identifier";
                                                     switch ($identifier)
                                                         {
@@ -3330,7 +3348,7 @@
                                                         }                       // end switch  */
                                                     }
                                                 }                       // end foreach
-                                            echo " \n";
+                                            if ($debug) echo " \n";
                                             }                       // end ifset
                                         else $plusLink[$index]=$newname;
                                         $topologyPlusLinks[$place]["TOPO"][$entry3][$newname]=$plusLink;          // TOPO -> ROOM -> oid of source -> link name
@@ -3339,19 +3357,20 @@
                                         break;    
                                     }           // end switch entry3
                                 }       // end more entries than 3
-                            else
+                            else                                        // Standardprocedure Topology, Raum|Räume, Gewerk|Gewerk und Übergruppe
                                 {
                                 $size=sizeof($entry2);              // Gewerk, Type der Register überprüfen
-                                if ($entry2[0]=="") $size=0;
+                                if ($entry2[0]=="") $size=0;            // Kein Gewerk angegeben
                                 if ($size == 1)         // es wurde ein Gewerk angeben, zB Temperatur, vorne einsortieren 
                                     {	
                                     if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
                                     //CreateLinkByDestination($name, $index, $oid, 1000);	
                                     //$topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
-                                    $plusLink=array();
+                                    if (isset($topologyPlusLinks[$place]["OBJECT"][$entry2[0]])) $plusLink = $topologyPlusLinks[$place]["OBJECT"][$entry2[0]];          // Wert wird ergänzt
+                                    else $plusLink=array();
                                     if (isset($topology[$place]["Actuators"][IPS_GetName($index)]))
                                         {
-                                        echo "      DEVICE,Actuator given as ".IPS_GetName($index).": ";
+                                        if ($debug) echo "      DEVICE,Actuator given as ".IPS_GetName($index).": ";
                                         $configActuators = $topology[$place]["Actuators"][IPS_GetName($index)];         // das Objekt aus der devicelist
                                         foreach ($configActuators as $subindex => $subconfigActuator)                // there is also a port
                                             {
@@ -3363,17 +3382,21 @@
                                             else    
                                                 {
                                                 $identifier = strtoupper($subconfigActuator["Category"]).strtoupper($subconfigActuator["Type"]);
-                                                $plusLink=$ipsheatManager->checkActuators($subconfigActuator["Name"],$identifier,true);
+                                                $plusLink=$ipsheatManager->checkActuators($subconfigActuator["Name"],$identifier,$debug);
                                                 }
                                             }   	    // ende foreach
-                                        echo " \n";
+                                        if ($debug) echo " \n";
                                         }
-                                    else $plusLink[$index]=$name;
+                                    else 
+                                        {
+                                        $plusLink[$index]=$name;
+                                        if ($debug) echo "      OBJECT,Sensor ".$entry[2]." given as $index => $name .\n";
+                                        }
                                     $topologyPlusLinks[$place]["OBJECT"][$entry2[0]]=$plusLink;          // OBJECT -> TYPE -> oid of source -> link name
                                     }
-                                elseif ($size == 2)         // eine zusätzliche Hierarchie einführen, der zweite Wert ist die Übergruppe 
+                                elseif ($size == 2)         // eine zusätzliche Hierarchie einführen, der zweite Wert im Gewerk ist die Übergruppe 
                                     {
-                                    if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                    if ($debug>1) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".json_encode($entry[2])."\n";
                                     //CreateLinkByDestination($name, $index, $oid, 1000);	
                                     $topologyPlusLinks[$place]["OBJECT"][$entry2[1]][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
                                     } 
@@ -3408,28 +3431,42 @@
             return ($topologyPlusLinks);
             }
 
-        /* aus einer Topology eine Reference machen welche uniqueNames einem mehrdeutigen Name zugeordnet sind, unter index Path abspeichern
+        /* DetectHandlerTopology::topologyReferences oder eben die übergeordneten classes wie DetectDeviceHandler und DetectDeviceListHandler
+         * die Topology ist mittlerweile unter get_UifiedTopology gespeichert
+         * aus einer Topology eine Reference machen welche uniqueNames einem mehrdeutigen Name zugeordnet sind, unter index Path abspeichern
          * Wohnzimmer ist Wohnzimmer.LBG70 und Wohnzimmer.BKS01
-         * auch in findRoom benutzt.
+         * auch in findRoom und mergeTopologyObjects benutzt.
+         *
+         * Struktur Topology:
+         *      Index  =>  Entry [Name, Path, ...]
+         * Struktur references:
+         *      Name => Path => Entry
+         *
          */
         public function topologyReferences($topology,$debug=false)
             {
             $references=array();
             foreach ($topology as $topindex => $topentry)
                 {
+                if ($debug) echo "  ".str_pad($topindex,22);
                 if (!( (isset($topentry["Name"])) && (isset($topentry["Path"])) )) 
                     {
-                    if ($debug>1) 
-                        {
-                        echo "Warning, incomplete array on $topindex:\n";
-                        print_R($topentry);          // Eintrag fehlt
-                        }
+                    if ($debug) echo "  Warning, topologyReferences, incomplete array, Name or Path ar missing entries.";
+                    if ($debug>1) print_R($topentry);          // Eintrag fehlt
                     }
-                else $references[$topentry["Name"]][$topentry["Path"]] = $topindex;               // für einen namen alle Einträge durchgehen, der wo die bvaseline im key ist den index übernehmen
+                else 
+                    {
+                    $references[$topentry["Name"]][$topentry["Path"]] = $topindex;               // für einen namen alle Einträge durchgehen, der wo die bvaseline im key ist den index übernehmen
+                    if ($debug) echo "  ".str_pad($topentry["Path"],42);
+                    }
+                if ($debug) echo "\n";
                 }
             return($references);
             }
 
+        /* DetectHandlerTopology::findRoom
+         *
+         */
         public function findRoom($instances,$channelEventList,$topology)
             {
             $references = $this->topologyReferences($topology);
@@ -3461,8 +3498,12 @@
             return($room);
             }
 
-        /* Raumangabe kann eine Tilde enthalten, entsprechend auflösen
-         * References wird aus topology erzeugt
+        /* uniqueNameReference
+         * Raumangabe kann eine Tilde enthalten, entsprechend auflösen
+         * References wird aus topology erzeugt, name->reference(path), das heisst unter einem nicht eindeutigen namen sind mehrere Pfade gespeichert, jeder Pfad referenziert auf den unique Name
+         * wenn der zweite teil der Tilde nicht im Pfad gefunden wird wird trotzdem der erste Teil als Ergebnis ausgegeben
+         * wenn keine tilde wird der ursprüngliche Name wieder als resultat ausgegeben
+         * wenn tilde wird der erste name in der references tabelle gesucht, wenn er gefunden wird dann ist das resultat der unique name
          */
         public function uniqueNameReference($entryplace,$references,$debug=false)
             {
@@ -3487,18 +3528,32 @@
                                 $place=$found;
                                 if ($debug>1) echo "  => $place\n";
                                 }
+                            else 
+                                {
+                                echo "Fehler,uniqueNameReference findet ".$placeName[0]." nicht in references.\n";
+                                return (false);
+                                }
                             }
                         else $place=$entryplace;
 
             return ($place);
             }
 
-		/**
+		/* evalTopology
 		 *
 		 * Topologie als Tree darstellen
+         * Der Beginn des Trees muss angegeben werden, kann World sein oder LBG70 oder mehrere wie LBG70, BKS01
 		 *
 		 */
-	    public function evalTopology($lookfor,$hierarchy=0)
+	    public function evalTopology($lookfor,$output=false)
+            {
+            $result = array();
+            $this->evalTopologyRecursive($lookfor,0,$result,$output);
+            return ($result);
+            }
+
+
+	    private function evalTopologyRecursive($lookfor,$hierarchy,&$result,$output)
 		    {
     		if (is_array($lookfor)==true ) 
 	    		{
@@ -3507,34 +3562,40 @@
 				    {
     				//for ($i=0;$i<$hierarchy;$i++) echo "   ";
 	    			//echo $item."\n";
-		    		$this->evalTopology($item,$hierarchy);
+		    		$this->evalTopologyRecursive($item,$hierarchy,$result,$output);
 			    	}
     			//print_r($lookfor);
 	    		}
-		    else 
+		    else                // lookfor ist eine Bezeichnung
 			    {
     			$goal=$lookfor;	
-	    		for ($i=0;$i<$hierarchy;$i++) echo "   ";
-		    	echo $goal."\n";
+                if ($output)
+                    {
+                    for ($i=0;$i<$hierarchy;$i++) echo "   ";
+                    echo $goal."\n";
+                    }
 			    foreach ($this->topology as $index => $entry)
 				    {
     				if ($index == $goal) 
 	    				{
+                        $entry["Index"]=$index;
+                        $entry["Hierarchy"]=$hierarchy;
+                        $result[]=$entry;
 		    			if (isset($entry["Children"]) == true )
 			    			{
 				    		if ( sizeof($entry["Children"]) > 0 )
     							{
 	    						//print_r($entry["Children"]);
 		    					$hierarchy++;
-			    				$this->evalTopology($entry["Children"],$hierarchy);
+			    				$this->evalTopologyRecursive($entry["Children"],$hierarchy,$result,$output);
 				    			}
 					    	}	
     					}
 	    			}
 		    	}
-    		}
+    		}           // ende evalTopology
 
-        }
+        }    // ende class
 
 	/*******************************************************************************
 	 *
@@ -3609,6 +3670,9 @@
 			return self::$configFileName;
 			}	
 
+        /* DetectDeviceHandler::Get_Topology
+         * gibt this->topology aus, muss vorher gesetzt werden, mit DetectHandlerTopology::create_Topology gemacht
+         */
 		public function Get_Topology()
 			{
 			return($this->topology);

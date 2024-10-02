@@ -1019,7 +1019,7 @@ class SeleniumHandler
         return $innerHTML; 
         } 
 
-    /* eleniumHandler::queryFilterHtml
+    /* SeleniumHandler::queryFilterHtml
      * query and filter an html with DOM
      *   $textfeld    = GetValue($easyResultID);
      *   $xPathQuery  = '//div[@*]';
@@ -1999,12 +1999,15 @@ class SeleniumLogWien extends SeleniumHandler
      *  /html/body/div/main/form/fieldset/section[2]/c-textfield/input
      *
      *  /html/body/app-root/app-partner-detail/div/main/div/div/div[2]/div/div/div[3]/div[2]/p
+     *
+     *  /html/body/div/main/form/fieldset/div[4]/div[1]/button[1]
      */
 
     function enterLogInButtonIf()
         {
         if ($this->debug) echo "enterLogInButton ";
-        $xpath='/html/body/app-root/app-start/div/app-header/header/div/button';
+        //$xpath='/html/body/app-root/app-start/div/app-header/header/div/button';
+        $xpath='/html/body/div/main/form/fieldset/div[4]/div[1]/button[1]';
         $result = $this->getHtmlIf($xpath,$this->debug);
         if ($result !== false)
             {
@@ -2025,22 +2028,41 @@ class SeleniumLogWien extends SeleniumHandler
         {
         /*  <button   /html/body/app-root/app-start/div/app-header/header/div/button 
            //*[@id="top"]/app-header/header/div/button   
-        $this->sendKeysToFormIf($xpath,$password);              // cloudg06        */
+        $this->sendKeysToFormIf($xpath,$password);              // cloudg06        
+        *
+        * /html/body/div/main/form/fieldset/div[3]/c-textfield[1]/input
+        */
         //$xpath = '/html/body/app-root/app-start/div/app-header/header/div/button';              // Login Button Top Right
         //$xpath = '//*[@id="top"]/app-header/header/div/button';
         //$this->pressButtonIf($xpath,true);                                                      // true debug  
-        $xpath = '/html/body/div/main/form/fieldset/section[2]/c-textfield/input';              // extra Form username
+        //$xpath = '/html/body/div/main/form/fieldset/section[2]/c-textfield/input';              // extra Form username
+        $xpath = '/html/body/div/main/form/fieldset/div[3]/div[2]/div/button/span';
+        $result = $this->getHtmlIf($xpath,$this->debug);
+        if ($result !== false)
+            {
+            echo "found fetch data, length is ".strlen($result)."\n";
+            print $result;
+            return;
+            }
+        else
+            {
+        $xpath = '/html/body/div/main/form/fieldset/div[3]/c-textfield[1]/input';              // extra Form username
         $this->sendKeysToFormIf($xpath,$username);
         /* press Button Weiter 
          * /html/body/div/main/form/fieldset/section[3]/div[1]/button[1]
          */
-        $xpath = '/html/body/div/main/form/fieldset/section[3]/div[1]/button[1]';
+        //$xpath = '/html/body/div/main/form/fieldset/section[3]/div[1]/button[1]';
+        $xpath = '/html/body/div/main/form/fieldset/div[4]/div[1]/button[1]';
         $this->pressButtonIf($xpath,true);          
+            }
         }
 
     /* login entry username und password
      * 
      * /html/body/div/main/form/fieldset/section[2]/c-textfield/input
+     *
+     * beim Password Fenster ist die email oben bereits eingetragen 
+     * /html/body/div/main/form/fieldset/div[3]/div[2]/div/button/span
      * 
      */
     function enterLoginPassword($password)

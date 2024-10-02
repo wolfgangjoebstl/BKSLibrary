@@ -63,25 +63,31 @@
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
+	if (!isset($moduleManager)) 
+        {
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('Startpage',$repository);
-	}
+	    }
+	else echo "ModuleManager Variable already set --> but by whom ? \n";
+
+    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren wenn im Attended Mode
+	else $debug=false;
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	//echo "\nKernelversion           : ".IPS_GetKernelVersion();
-	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version             : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	echo " ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Startpage');
-	echo "\nStartpage       Version : ".$ergebnis;
+    if ($debug)
+        {
+        $ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
+        echo "\nIPS Version             : ".$ergebnis;
+        $ergebnis=$moduleManager->VersionHandler()->GetModuleState();
+        echo " ".$ergebnis;
+        $ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+        echo "\nIPSModulManager Version : ".$ergebnis;
+        $ergebnis=$moduleManager->VersionHandler()->GetVersion('Startpage');
+        echo "\nStartpage       Version : ".$ergebnis;
+        }
 
     $installedModules = $moduleManager->GetInstalledModules();
 	
@@ -92,9 +98,6 @@
     IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
     IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
     IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
-
-    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren wenn im Attended Mode
-	else $debug=false;
 
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
@@ -107,21 +110,23 @@
  * Initialisierung für Monitor On/Off Befehle und Bedienung VLC zum Fernsehen. Scripts verwenden wenn im Pfad ein Blank vorkommt.
  *
  ********************************/
-
-    echo "\n\n";
-    echo "Kernel Version (Revision) ist              : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
-    echo "Kernel Datum ist                           : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
-    echo "Kernel Startzeit ist                       : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
-    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
-    echo "Kernel Install Dir ist auf                 : ".IPS_GetKernelDirEx()."\n";
-    $operatingSystem = $dosOps->getOperatingSystem();
-    echo "OperatingSystem ist                        : $operatingSystem\n";
+    if ($debug)
+        {
+        echo "\n\n";
+        echo "Kernel Version (Revision) ist              : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+        echo "Kernel Datum ist                           : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+        echo "Kernel Startzeit ist                       : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
+        echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+        echo "Kernel Install Dir ist auf                 : ".IPS_GetKernelDirEx()."\n";
+        $operatingSystem = $dosOps->getOperatingSystem();
+        echo "OperatingSystem ist                        : $operatingSystem\n";
+        }
 	$verzeichnis     = $dosOps->getWorkDirectory();
     if ($verzeichnis===false) 
         {
-        echo "Fehler, Work directory nicht verfügbar. bitte erstellen.\n";
+        echo "Fehler, Work directory (zB C:/Scripts/) nicht verfügbar. bitte erstellen.\n";
         }
-    else
+    else if ($debug)
         {
         echo "Kernel Working Directory ist auf           :  $verzeichnis\n";
         echo "\n";
@@ -133,7 +138,11 @@
     
     if (($dosOps->getOperatingSystem()) == "WINDOWS")
         {
-        echo "Schreibe Batchfile zum automatischen Start und Stopp von VLC in Verzeichnis $unterverzeichnis:\n";
+        if ($debug) 
+            {
+            echo "Schreibe Batchfile zum automatischen Start und Stopp von VLC in Verzeichnis $unterverzeichnis:\n";
+            echo "Hinweis: Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";  +
+            }
         if ( isset($configuration["Directories"]["VideoLan"]) == true ) $command=$configuration["Directories"]["VideoLan"];
         else $command='C:/Program Files/VideoLAN/VLC/VLC.exe';
         if ( isset($configuration["Directories"]["Playlist"]) == true ) $playlist=$configuration["Directories"]["Playlist"];	
@@ -150,9 +159,9 @@
         fwrite($handle2,"\r\n");
         fclose($handle2);
         }
-    else echo "Unix System. Kein Handling von externen Programmen. \n";
+    else echo "Warning, Unix System. Kein Handling von externen Programmen. \n";
 
-    echo "Hinweis: Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";  
+
 
 /*******************************
  *
