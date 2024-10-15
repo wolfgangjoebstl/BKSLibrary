@@ -2,7 +2,8 @@
     /**@addtogroup ipscomponent
      * @{
      *
-      *
+     * DEPRICATED
+     *
      * @file          IPSComponentRGB_PhilipsHUE.class.php
      * @author        Wolfgang Joebstl, inspiriert von Andreas Brauneis
      *

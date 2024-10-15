@@ -3,7 +3,7 @@
      * @{
      *
       *
-     * @file          IPSComponentRGB_PHUE.class.php
+     * @file          IPSComponentRGB_PHUE2.class.php
      * @author        Wolfgang Joebstl, inspiriert von Andreas Brauneis
      *
      *
@@ -12,9 +12,18 @@
 	/**
 	 * @class IPSComponentRGB_PHUE
 	 *
-	 * Definiert ein IPSComponentRGB_PHUE Object, das ein IPSComponentRGB Object fuer PhilipsHUE implementiert.
+	 * Definiert ein IPSComponentRGB_PHUE2 Object, das ein IPSComponentRGB Object fuer PhilipsHUE implementiert.
 	 *
-	 * verwendet nun das IPSModul "Philips HUE" , damit sind keine neue Anpassungen oder Adaptierungen notwendig
+	 * verwendet nun das IPSModul "Philips HUE V2" , mit der Besonderheit das es keine Modulspezifischen Funktionen mehr gibt
+     * die Steuerung erfolgt direkt über das Webfront, entweder Kachel oder Classic Version
+     * Gruppen, Zonen, Räume werden direkt aus den Mitteln von Hue unterstützt
+     *
+     * was macht dann IPSComponent noch, siehe weiter unten den Überblick der implementierten Funktionen
+     *
+     *
+     *
+     *
+     *
      *
      * Versionsgeschichte:
      * Dann sind Anpassungen für das SymconHUE Modul erfolgt, einfachere Ansteuerung der Hue Funktionen über die Bridge und nicht mehr direkt
@@ -32,26 +41,29 @@
      * PHUE_SceneSet($InstanceID, $Value)           Mit dieser Funktion ist es möglich eine Szene für die Gruppe zu aktiveren.
      * PHUE_SwitchMode($InstanceID, $Value)         Mit dieser Funktion ist es möglich das Gerät ein- bzw. auszuschalten.
      *
-	 *
-     * __construct
-     * HandleEvent
-     * GetComponentParams
-     * SetStateHUE
-     * SetState
-     * SetAlert
+	 * Überblick über implementierte Funktionen:
      *
-     * calculateXY
-     * getColorPointsForModel
+     *      __construct             $lampOID kann man beim construct übergeben werden
+     *      HandleEvent             Leermeldung
+     *      GetComponentParams      Info über class geben
+     * 
+     *      SetState        Zustand Setzen
+     *      SetAlert        Sets the alert state. 'select' blinks once, 'lselect' blinks repeatedly, 'none' turns off blinking
      *
+     *      calculateXY
+     *      getColorPointsForModel
      *
+     * depricated functions
+     *      SetStateHUE
 	 */
 
 	IPSUtils_Include ('IPSComponentRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
 	IPSUtils_Include ("IPSLogger.inc.php", "IPSLibrary::app::core::IPSLogger");
 
-	class IPSComponentRGB_PHUE extends IPSComponentRGB {
+	class IPSComponentRGB_PHUE2 extends IPSComponentRGB {
 
 		private $lampOID;
+        private $statusId=false,$helligkeitId=false,$farbeId=false,$farbtemperaturId=false;             // die einzelnen Variablen, werden jetzt direkt gesetztm´, nicht mehr über Modul
 			
     
         /**
@@ -70,6 +82,15 @@
 		public function __construct($lampOID) 
 			{
 			$this->lampOID = $lampOID;
+            $cids = IPS_GetChildrenIDs($this->lampOID);           // für jede Instanz die Children einsammeln
+            foreach($cids as $cid)
+                {
+                $regName=IPS_GetName($cid);
+                if ($regName=="Status")         $this->statusId=$cid;
+                if ($regName=="Helligkeit")     $this->helligkeitId=$cid;
+                if ($regName=="Farbtemperatur") $this->farbtemperaturId=$cid;
+                if ($regName=="Farbe")          $this->farbeId=$cid;                  
+                }
             }
 
         /**
@@ -99,46 +120,7 @@
 			return (get_class($this).','.$this->lampOID.',');
         }
 
-        
-        /**
-         * @public  DEPRICIATED
-         *
-         * @brief Zustand Setzen 
-         *
-         * @param boolean $power RGB Gerät On/Off
-         * @param integer $color RGB Farben (Hex Codierung)
-         * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
-         */
-        public function SetStateHUE($power, $color, $level) {
-            if (!$power) {
-                $cmd = '"on":false';  
-            } else {
-
-			   $rotDec = (($color >> 16) & 0xFF);
-			   $gruenDec = (($color >> 8) & 0xFF);
-			   $blauDec = (($color >> 0) & 0xFF); 
-			   $color_array = array($rotDec,$gruenDec,$blauDec);
-			   
-			   $modelID = $this->modelID;
-			   
-			   //Convert RGB to XY values
-			   $values = $this->calculateXY($color_array, $modelID);
-			  
-			   //IPSLight is using percentage in variable Level, Hue is using [0..255] 
-			   $level = round($level * 2.55);
-			   $cmd 	= '"bri":'.$level.', "xy":['.$values->x.','.$values->y.'], "on":true'; 
-			   
-            }
-			
-			$type	 = 'Lights'; //Type of Command
-			$request = 'PUT';	 //Type of Request
-            
-			//Send command to Hue lamp
-			//$this->hue_SendLampCommand($type, $request, $cmd);
-			HUE_SetValue($this->lampOID, "STATE",$power);
-			HUE_SetValue($this->lampOID, "COLOR",$color);
-			HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
-        }
+     
 
         /**
          * @public
@@ -155,37 +137,48 @@
          */
 		public function SetState($power, $color, $level=512, $ambience=false) 
 			{
-            $debug=true;
+            $debug=false;
 			if (!$power) 
 				{
-			    if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."\n";
+			    if ($debug) echo "IPSComponentRGB_HUE2 SetState mit Power ".($power?"Ein":"Aus")."\n";
 				//HUE_SetValue($this->lampOID, "STATE",$power);
-                PHUE_SwitchMode($this->lampOID, $power);
+                //PHUE_SwitchMode($this->lampOID, $power);
+                RequestAction($this->statusId, $power);
 				} 
 			elseif ($ambience)                      // als Ambience ELD Lampe aufgerufen
 				{
 				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
-    			if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Mired $color  Level $level  Typ ".($ambience?"Ambience":"RGB")."    \n";
-				$level = round($level * 2.54);
-                PHUE_SwitchMode($this->lampOID, $power);
-                PHUE_CTSet($this->lampOID, $color);                     // geht das nicht mehr ?
-                PHUE_DimSet($this->lampOID, $level);
+    			if ($debug) echo "IPSComponentRGB_HUE2 SetState ".$this->lampOID." mit Power ".($power?"Ein":"Aus")."  Mired $color  Level $level  Typ ".($ambience?"Ambience":"RGB")."    \n";
+                if ($color>1000) $color = 1000000/$color;           // probably Kelvin, convert to mired
+                RequestAction($this->statusId, $power);
+                RequestAction($this->helligkeitId, $level);
+                RequestAction($this->farbtemperaturId, $color);
+                //$helligkeitId=false,$farbeId=false,$farbtemperaturId=false;
+				//$level = round($level * 2.54);
+                //PHUE_SwitchMode($this->lampOID, $power);
+                //PHUE_CTSet($this->lampOID, $color);                     // geht das nicht mehr ?
+                //PHUE_DimSet($this->lampOID, $level);
 				//echo "Level:".$level."\n";				
 				}
-			elseif ($level==512)	                // als Dimmer aufgerufen
+			elseif ($level==512)	                // als Dimmer aufgerufen, color wird als level verwendet
                 {
-                $level = round($color * 2.54);
+                //$level = round($color * 2.54);
     			if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Level $color ($level)   \n";
-                PHUE_SwitchMode($this->lampOID, $power);
-                PHUE_DimSet($this->lampOID, $level);
+                RequestAction($this->statusId, $power);
+                RequestAction($this->helligkeitId, $color);
+                //PHUE_SwitchMode($this->lampOID, $power);
+                //PHUE_DimSet($this->lampOID, $level);
                 }
             else                                    // als RGB aufgerufen
 				{
     			if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Color ".dechex($color)."   Level ".$level."  Typ ".($ambience?"Ambience":"RGB")."    \n";
-				$level = round($level * 2.54);
-                PHUE_SwitchMode($this->lampOID, $power);
-                PHUE_ColorSet($this->lampOID, $color);
-                PHUE_DimSet($this->lampOID, $level);
+                RequestAction($this->statusId, $power);
+                RequestAction($this->helligkeitId, $level);
+                RequestAction($this->farbeId, $color);
+				//$level = round($level * 2.54);
+                //PHUE_SwitchMode($this->lampOID, $power);
+                //PHUE_ColorSet($this->lampOID, $color);
+                //PHUE_DimSet($this->lampOID, $level);
 				//echo "IPSComponentRGB_PHUE SetState mit Power ".($power?"Ein":"Aus")."      \n";
 				//echo "IPSComponentRGB_PHUE SetState mit  Color ".dechex($color)." \n";
 				//echo "IPSComponentRGB_PHUE SetState mit Level ".$level."      \n";
@@ -218,7 +211,8 @@
 		 */
 		public function SetAlert( $alert_type = 'select' ) 
             {
-            PHUE_AlertSet($this->lampOID, $alert_type);
+            echo "SetAlert nicht implementiert";
+            //PHUE_AlertSet($this->lampOID, $alert_type);
             /*
 			 $type	 	= 'Lights'; //Type of Command
 			 $request 	= 'PUT';	 //Type of Request
@@ -227,7 +221,11 @@
              */
 		    }
 		
-		/**
+
+	
+    /**********************depricated ones */
+
+		/**     depricated
 		 *  @brief Converts colour value from RGB to XY 
 		 *  
 		 *  @param [in] $color Color in RGB
@@ -295,7 +293,7 @@
 			return new cgpoint2($cx, $cy);
 		}
 		
-        /**
+        /**  depricated
 		 *  @brief Returns the color gamut of a specific Philips light model
 		 *  
 		 *  @param [in] $model ID of the lamp model
@@ -347,7 +345,7 @@
 			return $colorPoints;
 		}
 
-		/**
+		/** depricated
 		 * @brief Find the distance between two points.
 		 *
 		 * @param one
@@ -362,7 +360,7 @@
 			return $dist;
 		}
 		
-		/**
+		/** depricated
 		 *  @brief Find the closest point on a line. This point will be within reach of the lamp.
 		 *
 		 * @param A the point where the line starts
@@ -390,7 +388,7 @@
 			return $newPoint;
 		}
 
-		/**
+		/** depricated
 		 *  @brief Calculates crossProduct of two 2D vectors / points
 		 * 
 		 * @param p1 first point used as vector
@@ -402,7 +400,7 @@
 			return ($p1->x * $p2->y - $p1->y * $p2->x);
 		}
 
-		/**
+		/** depricated
 		 * @brief Method to see if the given XY value is within the reach of the lamps.
 		 *
 		 * @param p the point containing the X,Y value
@@ -438,7 +436,8 @@
     }
 	
 	// @cond Ignore this class in doxygen
-	/**
+
+	/**  depricated
     *
     * Helper class to ease translation from Philips C-coding
 	* Implements CGPoint class from iOS SDK
@@ -455,8 +454,50 @@
 	  $this->y = $_y;
 	}
 	
+
+       
+        /**
+         * @public  DEPRICIATED
+         *
+         * @brief Zustand Setzen 
+         *
+         * @param boolean $power RGB Gerät On/Off
+         * @param integer $color RGB Farben (Hex Codierung)
+         * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
+         */
+        public function SetStateHUE($power, $color, $level) {
+            if (!$power) {
+                $cmd = '"on":false';  
+            } else {
+
+			   $rotDec = (($color >> 16) & 0xFF);
+			   $gruenDec = (($color >> 8) & 0xFF);
+			   $blauDec = (($color >> 0) & 0xFF); 
+			   $color_array = array($rotDec,$gruenDec,$blauDec);
+			   
+			   $modelID = $this->modelID;
+			   
+			   //Convert RGB to XY values
+			   $values = $this->calculateXY($color_array, $modelID);
+			  
+			   //IPSLight is using percentage in variable Level, Hue is using [0..255] 
+			   $level = round($level * 2.55);
+			   $cmd 	= '"bri":'.$level.', "xy":['.$values->x.','.$values->y.'], "on":true'; 
+			   
+            }
+			
+			$type	 = 'Lights'; //Type of Command
+			$request = 'PUT';	 //Type of Request
+            
+			//Send command to Hue lamp
+			//$this->hue_SendLampCommand($type, $request, $cmd);
+			HUE_SetValue($this->lampOID, "STATE",$power);
+			HUE_SetValue($this->lampOID, "COLOR",$color);
+			HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
+        }
+
 	};
 	// @endcond
-	
+
     /** @}*/
 ?>
