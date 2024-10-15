@@ -3155,7 +3155,7 @@
             if ($debug) echo "create_UnifiedTopologyConfigurationFile: Filename for function get_UnifiedTopology is $fileNameFull\n";
             if (!file_exists($fileNameFull)) 
                 {
-                throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+                throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);           // zumindes das Config File muss es geben
                 }
             if (is_array($topology)===false) $topology=$this->topology; 
             

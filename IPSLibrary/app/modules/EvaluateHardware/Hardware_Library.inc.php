@@ -845,6 +845,9 @@ class HardwareDenonAVR extends Hardware
  * erweitert HardwareHomematic um
  *      getDeviceCheck      vereinfacht
  *      getDeviceParameter
+ *      getDeviceChannels
+ *      getDeviceInformation
+ *      checkConfig
  */
 
 class HardwareHomematicExtended extends HardwareHomematic
@@ -882,7 +885,7 @@ class HardwareHomematicExtended extends HardwareHomematic
      * In entry gibt es ["CONFIG"]["Address"] mit der Homematic Adresse
      *
      * DeviceList wird nicht abgeändert
-     *
+     * verwendet einheitlich getHomematicDeviceType
      */
 
     public function getDeviceCheck(&$deviceList, &$name, $type, $entry, $debug=false)
@@ -927,6 +930,7 @@ class HardwareHomematicExtended extends HardwareHomematic
      * Instances
      *
      *
+     * verwendet einheitlich getHomematicDeviceType
      *
      */
 
@@ -965,8 +969,7 @@ class HardwareHomematicExtended extends HardwareHomematic
      * mit $DeviceManager->getHomematicDeviceType wird der Typedev bestimmt (Type, Name, RegisterAll, Register ... )
      * Typedev ist der fertige Channel Eintrag, es wird RegisterAll und Name besonders hervorgehoben und doppelt abgespeichert
      *
-     * getHomematicDeviceType und HomematicDeviceType finden sich in OperationCenter_Library
-     *
+     * verwendet einheitlich getHomematicDeviceType
      */
 
     public function getDeviceChannels(&$deviceList,$name, $type, $entry, $debug=false)              // class HardwareHomematic
@@ -1311,6 +1314,9 @@ class HardwareNetatmoWeather extends Hardware
     }
 
 /* Homematic - Objektorientiertes class Management für Geräte (Hardware)
+ *
+ * siehe auch class HardwareHomematicExtended extends HardwareHomematic versucht einen klareren Blick auf die Aufgaben
+ *
  * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
  * Homematic hat ein eigenes Naming scheme mit : da ein Gerät mehrere Instanzen haben kann. name Gerät:Instanz
  *
@@ -1339,7 +1345,6 @@ class HardwareHomematic extends Hardware
 	
     /*
      */
-
 	public function __construct($config=false,$debug=false)
 		{
         $this->socketID = "{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}";
@@ -1378,6 +1383,9 @@ class HardwareHomematic extends Hardware
      *
      * DeviceList wird nicht abgeändert
      *
+     * verwendet bereits 
+     *      DeviceManager->getHomematicHMDevice($instanz,2)
+     *      DeviceManager->getHomematicDeviceType($instanz,0)
      */
 
     public function getDeviceCheck(&$deviceList, &$name, $type, $entry, $debug=false)
@@ -1499,6 +1507,11 @@ class HardwareHomematic extends Hardware
      *
      *
      *
+     * verwendet DeviceManager 
+     *      DeviceManager->getHomematicHMDevice($instanz,2)
+     *      TYPEDEV         DeviceManager->getHomematicDeviceType($instanz,0)
+     *      Information     DeviceManager->getHomematicHMDevice($instanz,1)
+     *      TypeDevice      DeviceManager->getHomematicHMDevice($instanz,0);
      */
 
     public function getDeviceParameter(&$deviceList,$name, $type, $entry, $debug=false)
@@ -1628,6 +1641,12 @@ class HardwareHomematic extends Hardware
      *
      * getHomematicDeviceType und HomematicDeviceType finden sich in OperationCenter_Library
      *
+     *
+     * verwendet DeviceManager 
+     *   available port check on address : DeviceManager->getHomematicHMDevice($instanz,2)
+     *   detailed typedef         DeviceManager->getHomematicDeviceType($instanz,4)
+     *      Information     DeviceManager->getHomematicHMDevice($instanz,1)
+     *      TypeDevice      DeviceManager->getHomematicHMDevice($instanz,0);
      */
 
     public function getDeviceChannels(&$deviceList,$name, $type, $entry, $debug=false)              // class HardwareHomematic
@@ -1834,7 +1853,11 @@ class HardwareHomematic extends Hardware
 
 /* Philips HUE 
  * simple Implementation, means individual functions only for construct, getDeviceParameter
+ * change to reading of ConfigurationForm to get more information of typedev in DeviceManagement_Hue
  *
+ *      construct
+ *      getDeviceParameter
+ *      getDeviceChannels
  */
 
 class HardwareHUE extends Hardware
@@ -1847,6 +1870,13 @@ class HardwareHUE extends Hardware
         $this->socketID = "{6EFF1F3C-DF5F-43F7-DF44-F87EFF149566}";             // I/O oder Splitter ist der Socket für das Device
         $this->bridgeID = "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}";             // Configurator
         $this->deviceID = "{83354C26-2732-427C-A781-B3F5CDF758B1}";             // das Gerät selbst
+        $this->setInstalledModules();
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            if ($debug) echo "class DeviceManagement aufgerufen:\n";   
+            $this->DeviceManager = new DeviceManagement_Hue($debug); 
+            }
         parent::__construct($config,$debug);        
         }
 
@@ -1855,83 +1885,34 @@ class HardwareHUE extends Hardware
      * Antwort ist ein Geräteeintrag
      *
      * Standard wäre:         $deviceList[$name]["Type"]=$type; $entry["NAME"]=$name; $deviceList[$name]["Instances"][]=$entry;
+     *                              entry[TYPEDEV], entry[OID], entry[NAME],entry[CONFIG] bereits übernommen 
+     *                                  TYPE_SWITCH | TYPE_AMBIENT | TYPE_DIMMER
      */
-
     public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
         {
+        //$debug=true;    
         /* Fehlerpüfung, erfolgt bereits checkDevice, bei doppelten Namen wird entweder ein uniqueName erstellt oder abgebrochen
-        //$debug=true;
         if (isset($deviceList[$name])) 
             {
             echo "          >>HardwareHUE::getDeviceParameter, Fehler, Name \"".$name."\" bereits definiert.\n";
             return(false);
             }            
         /* Durchführung */
-        if ($debug) echo "          getDeviceParameters:HUE     aufgerufen. Eintrag \"$name\" hinterlegt.\n";            
-        $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
-        //echo "getDeviceParameters:HUE ".str_pad($name,22)." : ".json_encode($result)."\n";
-        if (isset($result["DeviceType"])) 
+        if ($debug) echo "          getDeviceParameters:HUE     aufgerufen. Eintrag \"$name\" hinterlegt.\n";      
+        if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];               // Name wird übergeben für Debug
+        else $entry["NAME"]=$name;
+        if (isset($this->installedModules["OperationCenter"])) 
             {
-            switch (strtoupper($result["DeviceType"]))
+            if (isset($entry["OID"]))
                 {
-                case "LIGHTS":
-                    $entry["TYPEDEV"]="TYPE_SWITCH";         // kann groups, lights, sensor  mehr Unterschied gibts nicht, wir wollen es genauer wissen
-                    if (isset($entry["OID"]))
-                        {
-                        $cids = IPS_GetChildrenIDs($entry["OID"]); 
-                        $register=array();
-                        foreach($cids as $cid) $register[strtoupper(IPS_GetName($cid))]=$cid;
-                        if (isset($register["FARBMODUS"]))                                          // es gibt das Register Farbmodus und das kann man auslesen
-                                {
-                                $modus = GetValueIfFormatted($register["FARBMODUS"]);
-                                //echo "getDeviceParameters:HUE ".str_pad($name,22)." : ".$modus."    ".json_encode($result)."\n";
-                                if (strtoupper($modus)=="FARBTEMPERATUR") $entry["TYPEDEV"]="TYPE_AMBIENT"; 
-                                else            // schwierige Unterscheidung zwischen Dimmer und RGB
-                                    {
-                                    if ( (isset($register["FARBE"])) && (GetValue($register["FARBE"])==0) ) $entry["TYPEDEV"]="TYPE_DIMMER";
-                                    }
-                                }
-                        }
-                    break;
-                case "GROUPS":
-                    $entry["TYPEDEV"]="TYPE_GROUP";
-                    if (isset($entry["OID"]))
-                        {
-                        if ($debug) echo "               Hue Group with OID : ".$entry["OID"]." available. Childrens are :\n";
-                        $cids = IPS_GetChildrenIDs($entry["OID"]); 
-                        $register=array();
-                        foreach($cids as $cid) $register[strtoupper(IPS_GetName($cid))]=$cid;                         
-                        //print_r($register);
-                        if (isset($register["FARBMODUS"]))                                          // es gibt das Register Farbmodus und das kann man auslesen
-                                {
-                                $modus = GetValueIfFormatted($register["FARBMODUS"]);
-                                //echo "getDeviceParameters:HUE ".str_pad($name,22)." : ".$modus."    ".json_encode($result)."\n";
-                                if (strtoupper($modus)=="FARBTEMPERATUR") $entry["TYPEDEV"]="TYPE_AMBIENT"; 
-                                else            // schwierige Unterscheidung zwischen Dimmer und RGB
-                                    {
-                                    if ( (isset($register["FARBE"])) && (GetValue($register["FARBE"])==0) ) $entry["TYPEDEV"]="TYPE_DIMMER";
-                                    }
-                                }                        
-                        }
-                    break;
-                case "SENSORS":
-                    $entry["TYPEDEV"]="TYPE_SENSOR";
-                    if (isset($entry["OID"]))
-                        {
-                        echo "               getDeviceParameters:HUE, Eintrag \"$name\", Hue Sensor with OID : ".$entry["OID"]." available. Childrens are :\n";
-                        $cids = IPS_GetChildrenIDs($entry["OID"]);
-                        $register=array();
-                        foreach($cids as $cid) $register[strtoupper(IPS_GetName($cid))]=$cid;                         
-                        print_r($register);
-                        }
-                    break;                                           
+                $instanz=$entry["OID"];
+                $typedev    = $this->DeviceManager->getHueDeviceType($instanz,0,$entry,$debug>1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                //if ($debug) echo "    TYPEDEV: $typedev";
+                $entry["TYPEDEV"]=$typedev;
                 }
-
-            }
+            }      
 
         $deviceList[$name]["Type"]=$type;
-        if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"]; 
-        else $entry["NAME"]=$name;
         $deviceList[$name]["Instances"][]=$entry;
         return (true);
         }
@@ -1947,12 +1928,15 @@ class HardwareHUE extends Hardware
     public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)                 // class Hardware
         {
         if ($debug) echo "          HardwareHUE::getDeviceChannels, aufgerufen für ".$entry["OID"]." mit $name $type.\n";
+        if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];               // Name wird übergeben für Debug
+        else $entry["NAME"]=$name;
+
         //print_r($deviceList[$name]["Instances"]);
         //print_r($entry);
         $oids=array();
         foreach ($deviceList[$name]["Instances"] as $port => $register)             // wir sind bei den Channels, also kann man instances bereits analysieren
             {
-            $oids[$register["OID"]]=$port;
+            $oids[$register["OID"]]=$port;              // also für den Fall das ein Device mehrere Instances hat, eigentlich nur bei Homematic der Fall
             }
         if (isset($oids[$entry["OID"]])===false) 
             {
@@ -1961,56 +1945,63 @@ class HardwareHUE extends Hardware
             }
         foreach ($oids as $oid => $port)
             {
-            $typedev=false;
-            if ($debug>1) echo "             analyse result from getDeviceParameter : ".json_encode($deviceList[$name]["Instances"][$port])."\n";
-            if (isset($deviceList[$name]["Instances"][$port]["TYPEDEV"])) $typedev = $deviceList[$name]["Instances"][$port]["TYPEDEV"];
-            else echo "         TYPEDEV not found in : ".json_encode($deviceList[$name]["Instances"][$port])."  \n";
-            $typedevRegs=array();
-            $cids = IPS_GetChildrenIDs($oid);           // für jede Instanz die Children einsammeln
-            $register=array();
-            if ($debug>1) echo "                  $typedev : ";
-            foreach($cids as $cid)
+            if (isset($this->installedModules["OperationCenter"])) 
                 {
-                $regName=IPS_GetName($cid);
-                if ($debug>1) echo $regName.",";
-                $register[]=$regName;
-                switch ($typedev)
-                    {
-                    case "TYPE_SWITCH":
-                    case "TYPE_GROUP":
-                        if ($regName=="Status") $typedevRegs["STATE"]=$regName;
-                        break;
-                    case "TYPE_DIMMER":
-                        if ($regName=="Status")     $typedevRegs["STATE"]=$regName;
-                        if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
-                        break;
-                    case "TYPE_AMBIENT":
-                        if ($regName=="Status")         $typedevRegs["STATE"]=$regName;
-                        if ($regName=="Helligkeit")     $typedevRegs["LEVEL"]=$regName;
-                        if ($regName=="Farbtemperatur") $typedevRegs["AMBIENCE"]=$regName;
-                        break;
-                    case "TYPE_RGB":                                                        // keine Ahnung wie es zu diesem Type kommt
-                        if ($regName=="Status") $typedevRegs["STATE"]=$regName;
-                        if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
-                        if ($regName=="Farbe") $typedevRegs["COLOR"]=$regName;                      // muss aber nicht stimmen
-                        break;
-
-                    case "TYPE_SENSOR":
-                        break;
-                    }
+                $typedevRegs    = $this->DeviceManager->getHueDeviceType($oid,3,$entry,true);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                $deviceList[$name]["Channels"][$port]=$typedevRegs;
                 }
-            if ($debug>1) echo "\n";
-            sort($register);
-            $registerNew=array();
-            $oldvalue="";        
-            /* gleiche Einträge eliminieren */
-            foreach ($register as $index => $value)
+            else
                 {
-                if ($value!=$oldvalue) {$registerNew[]=$value;}
-                $oldvalue=$value;
-                } 
-            $deviceList[$name]["Channels"][$port]["RegisterAll"]=$registerNew;
-            $deviceList[$name]["Channels"][$port][$typedev]=$typedevRegs;
+                $typedev=false;
+                if ($debug>1) echo "             analyse result from getDeviceParameter : ".json_encode($deviceList[$name]["Instances"][$port])."\n";
+                if (isset($deviceList[$name]["Instances"][$port]["TYPEDEV"])) $typedev = $deviceList[$name]["Instances"][$port]["TYPEDEV"];
+                else echo "         TYPEDEV not found in : ".json_encode($deviceList[$name]["Instances"][$port])."  \n";
+                $typedevRegs=array();
+                $cids = IPS_GetChildrenIDs($oid);           // für jede Instanz die Children einsammeln
+                $register=array();
+                if ($debug>1) echo "                  $typedev : ";
+                foreach($cids as $cid)
+                    {
+                    $regName=IPS_GetName($cid);
+                    if ($debug>1) echo $regName.",";
+                    $register[]=$regName;
+                    switch ($typedev)
+                        {
+                        case "TYPE_SWITCH":
+                        case "TYPE_GROUP":
+                            if ($regName=="Status") $typedevRegs["STATE"]=$regName;
+                            break;
+                        case "TYPE_DIMMER":
+                            if ($regName=="Status")     $typedevRegs["STATE"]=$regName;
+                            if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
+                            break;
+                        case "TYPE_AMBIENT":
+                            if ($regName=="Status")         $typedevRegs["STATE"]=$regName;
+                            if ($regName=="Helligkeit")     $typedevRegs["LEVEL"]=$regName;
+                            if ($regName=="Farbtemperatur") $typedevRegs["AMBIENCE"]=$regName;
+                            break;
+                        case "TYPE_RGB":                                                        // keine Ahnung wie es zu diesem Type kommt
+                            if ($regName=="Status") $typedevRegs["STATE"]=$regName;
+                            if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
+                            if ($regName=="Farbe") $typedevRegs["COLOR"]=$regName;                      // muss aber nicht stimmen
+                            break;
+                        case "TYPE_SENSOR":
+                            break;
+                        }
+                    }
+                if ($debug>1) echo "\n";
+                sort($register);
+                $registerNew=array();
+                $oldvalue="";        
+                /* gleiche Einträge eliminieren */
+                foreach ($register as $index => $value)
+                    {
+                    if ($value!=$oldvalue) {$registerNew[]=$value;}
+                    $oldvalue=$value;
+                    } 
+                $deviceList[$name]["Channels"][$port]["RegisterAll"]=$registerNew;
+                $deviceList[$name]["Channels"][$port][$typedev]=$typedevRegs;
+                }
             if (isset($deviceList[$name]["Name"])) $deviceList[$name]["Channels"][$port]["Name"]=$deviceList[$name]["Name"];
             else $deviceList[$name]["Channels"][$port]["Name"]=$name;
             }
@@ -2021,7 +2012,11 @@ class HardwareHUE extends Hardware
 
     }
 
-
+/* Logitechs Harmony, seldon used to control infrared remote controlled devices
+ * 
+ * simple Implementation, means individual functions only for construct, getDeviceParameter
+ *      construct
+ */
 class HardwareHarmony extends Hardware
 	{
 	
@@ -2038,6 +2033,12 @@ class HardwareHarmony extends Hardware
     }
 
 
+/* depricated
+ * FHT Family, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ *
+ *
+ *
+ */
 class HardwareFHTFamily extends Hardware
 	{
 	
@@ -2193,14 +2194,12 @@ class HardwareFHTFamily extends Hardware
 
     }
 
-/*********************************
- * 
+/* depricated
  * FS20Family, genaue Auswertung nur mehr an einer, dieser Stelle machen 
  *
  *
  *
- ****************************************/
-
+ */
 class HardwareFS20Family extends Hardware
 	{
 	
@@ -2355,14 +2354,11 @@ class HardwareFS20Family extends Hardware
     }
 
 
-/*********************************
- * 
+/* depricated 
  * FS20ExFamily, genaue Auswertung nur mehr an einer, dieser Stelle machen 
  *
  *
- *
- ****************************************/
-
+ */
 class HardwareFS20ExFamily extends Hardware
 	{
 	

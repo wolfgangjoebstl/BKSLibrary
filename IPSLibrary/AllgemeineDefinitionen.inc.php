@@ -8051,9 +8051,13 @@ class maxminCalc extends statistics
  * Converting XML to an array isn't easy. But if you convert it, then it's a lot easier to use.
  * As you and I both know, this isn't the best way of doing things. After years of playing around with the DOMDocument, I created this class to convert an XML string to a well formatted PHP Array.
  *
- *  analyseHtml            string analyse eine html files, nur zur Orientiuerung sinnvoll wenn kein Webpage Debugger F12 zur Verfügung steht
- *  XmlToArray
- *  DOMDocumentToArray
+ *  analyseHtml             string analyse eine html files, nur zur Orientierung sinnvoll wenn kein Webpage Debugger F12 zur Verfügung steht
+ *  XmlToArray              Convert a given XML String to Array
+ *      DOMDocumentToArray
+ *  walkHtml                recursiver walk durch ein DOM object, speichert ein array mit dem Resultat
+ *  innerHTML               returns a string with the HTML content from a DOMDocument node element ($elm)
+ *  queryFilterHtml         query with standard xpath an html with DOM and filter the result of attributes for tagnames as style 
+ *  extractFilterHtml       the html result of queryFilterHtml als arry speichern 
  *
  */
 
@@ -8226,7 +8230,7 @@ class App_Convert_XmlToArray
                                 )
                  [@attributes] => Array( [class] => dropdown-menu wmax-400 wmax-lg-600 d-print-none, [x-placement] => bottom-start))
      *
-     *
+     * uses DOMDocumentToArray
      * @param string $xmlString
      * @return array|boolean false for failure
      */
@@ -8354,7 +8358,7 @@ class App_Convert_XmlToArray
     
     /* rekursive Funktion, auf der Suche nach 
      * DomElement wird übergeben mit childNodes und attributes
-     * return Wert ist this->result
+     * return Wert ist this->result, verwendet this->level
      */
     public function walkHtml($link,$debug=false)
         {
@@ -8430,7 +8434,7 @@ class App_Convert_XmlToArray
      *      //@lang     slects all attributes that are named lang , will not work as we look only for elements
      *
      * query and filter an html with DOM
-     *   $textfeld    = GetValue($easyResultID);
+     *   $textfeld    = GetValue($easyResultID);                ( html Datei, wie sie von einer Homepage geladen wird)
      *   $xPathQuery  = '//div[@*]';       selects all div with at least one attribute of any kind
      *   $filterAttr  = 'style';
      *   $filterValue ="width: 608px";
@@ -8509,7 +8513,7 @@ class App_Convert_XmlToArray
         }
 
     /* den Style als Array rausziehen 
-     * input ist ein DOM, wahrscheinlich von queryFilterHtml erzeugt
+     * input ist ein html/xml string aus einem DOM Format erzeugt, wahrscheinlich von queryFilterHtml erzeugt
      * aus der Sammlung von Objekten jetzt die benötigten Einträge rausziehen
      * jetzt geht es auf die Attribute, sonst wäre ja kein innerhtml notwendig und wir könnten gleich den text verwenden, text hat aber keine xml Namen mehr dabei
      *

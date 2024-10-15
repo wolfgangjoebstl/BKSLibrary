@@ -38,8 +38,13 @@
  *      SeleniumChromedriver    extend OperationCenter
  *      HomematicOperation      extend OperationCenter
  *      PingOperation           extend OperationCenter
+ *      CamOperation            extend OperationCenter
  *
  * DeviceManagement
+ *      DeviceManagement_FS20       extends DeviceManagement
+ *      DeviceManagement_Homematic  extends DeviceManagement
+ *      DeviceManagement_Hue        extends DeviceManagement
+ *
  * statusDisplay
  * parsefile
  * TimerHandling
@@ -7146,9 +7151,9 @@ class CamOperation extends OperationCenter
  *
  *      getHomematicDeviceList
  *      getHomematicType
- *      HomematicDeviceType
- *      getHomematicDeviceType
- *      getHomematicHMDevice         hier neue Geräte anlegen, damit sie erkannt werden
+ *      HomematicDeviceType             wird von getHomematicDeviceType aufgerufen
+ *      getHomematicDeviceType          das ist die function, die von der HardwareLibrary aufgerufen wird
+ *      getHomematicHMDevice            hier neue Geräte anlegen, damit sie erkannt werden, gibt für eine Homematic Instanz/Kanal eines Gerätes den Device Typ aus HM Inventory aus
  *
  * DeviceManagement_FS20
  *      getFS20Type
@@ -7242,7 +7247,6 @@ class DeviceManagement
 	 * Wenn Parameter true dann Ausgabe als Array mit den Fehlermeldungen wenn Geräte über längeren Zeitraum nicht erreichbar sind
 	 *
 	 */
-
 	function HardwareStatus($text=false,$debug=false)
 		{
         if ($debug) echo "HardwareStatus($text,..) aufgerufen:\n";
@@ -7848,7 +7852,7 @@ class DeviceManagement
         }
 
 	/*
-	 * DeviceManagement::countHardwareStatus vorab rausfinden ob es Werte giubt bevor eine Tabelle erzeugt wird
+	 * DeviceManagement::countHardwareStatus vorab rausfinden ob es Werte gibt bevor eine Tabelle erzeugt wird
 	 *
 	 */
 	function countHardwareStatus($hwStatus,$filter=false,$debug=false)
@@ -8084,7 +8088,6 @@ class DeviceManagement
      * wenn das Ergebnisfile älter als 48 Stunden auch
      *
      */
-
     private function updateHmiReport($HMI,$debug=false, $supress=false, $callCreateReport=false)
         {
         $result=false; 
@@ -8165,8 +8168,7 @@ class DeviceManagement
      * Beim Namen werden Untergruppierungen nach dem Doppelpunkt entfernt und nur der eigentliche Namen davor verglichen.
      * Es ist nicht erlaubt das dieser Name für eine Serialnummer,also ein Gerät, unterschiedlich ist
 	 *
-	 *****************************************************************************/
-
+     */
 	function addHomematicSerialList_Typ($debug=false)
 		{
 		if ($debug) echo "\nInsgesamt gibt es ".sizeof($this->HomematicSerialNumberList)." Homematic CCUs.\n";
@@ -8215,8 +8217,8 @@ class DeviceManagement
 	 * DeviceManagement::addHomematicSerialList_RSSI
 	 * die Homematic Liste der Seriennummern wird um weitere Informationen erweitert:  RSSI
 	 *
-	 *****************************************************************************/
-
+	 *
+     */
 	function addHomematicSerialList_RSSI($debug=false)
 		{
 		/* Tabelle vorbereiten, RSSI Werte ermitteln */
@@ -8402,8 +8404,8 @@ class DeviceManagement
 	 * DeviceManagement::getHomematicDeviceList
 	 * alle Homematic Geräte erfassen und in einer grossen Tabelle ausgeben
 	 *
-	 *****************************************************************************/
-
+	 *
+     */
 	function getHomematicDeviceList($debug=false)
 		{
 
@@ -8508,7 +8510,6 @@ class DeviceManagement
     * um welchen Typ von Homematic Geraet es sich handeln koennte,
     * es wird nur HM_TYPE_BUTTON, HM_TYPE_SWITCH, HM_TYPE_DIMMER, HM_TYPE_SHUTTER unterschieden
     */
-
     function getHomematicType($instanz)
         {
         $cids = IPS_GetChildrenIDs($instanz);
@@ -8612,7 +8613,7 @@ class DeviceManagement
 
 
     /*********************************
-     * DeviceManagement::DeviceManagement
+     * DeviceManagement::HomematicDeviceType
      * Homematic Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
      *
      * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
@@ -8661,8 +8662,8 @@ class DeviceManagement
      *
      *
      *
-     ****************************************/
-
+     *
+     */
     private function HomematicDeviceType($register, $outputVersion=false, $debug=false)
         {
         /* register in registernew umkopieren, dabei alle Einträge sortieren und gleiche, doppelte Einträge entfernen */
@@ -9066,8 +9067,8 @@ class DeviceManagement
      *
      * HomematicDeviceType siehe oben
      *
-     ***********************************************/
-
+     *
+     */
     function getHomematicDeviceType($instanz, $outputVersion=false, $debug=false)
 	    {
         if ($debug) echo "          getHomematicDeviceType : $instanz  \"".IPS_GetName($instanz)."\" Modus : $outputVersion\n";
@@ -9094,8 +9095,8 @@ class DeviceManagement
      * Neue Geräte mit dem Device Type der in der Fehlermeldung angegeben wurde hinzufügen. Neue Kategorie nur anlegen wenn keine vergleichbare Funktion gefunden wurde.
      * HomematicDeviceType muss eventuell auch angepasst werden
      *
-     ***********************************************/
-	 		
+     *
+     */		
 	function getHomematicHMDevice($instanz, $output=false, $debug=false)
 		{
         $matrix=false;
@@ -9523,6 +9524,14 @@ class DeviceManagement_FS20 extends DeviceManagement
 
 /* Hardware spezifische Device management Class
  * für Homeematic wenig Routinen bereits rausgelöst
+ *
+ * verwendete functions
+ *      construct
+ *      HomematicFehlermeldungen            den Status der HomematicCCU auslesen, alle Fehlermeldungen
+ *      showHomematicFehlermeldungen        Ausgabe Fehler Status als html für Webfront
+ *      showHomematicFehlermeldungenLog
+ *      updateHomematicErrorLog
+ *
  */
 class DeviceManagement_Homematic extends DeviceManagement
 	{
@@ -9904,11 +9913,724 @@ class DeviceManagement_Homematic extends DeviceManagement
 
     } /* ende class DeviceManagement_Homematic */
 
+/**************************************************
+ * Hardware spezifische Device management Class
+ * verwendet Hue Modul und daraus die Rückmeldung aus dem ConfigurationForm, dieses etwas umständlich auswerten
+ *
+ * für Hue typische Routinen rauslösen
+ */
+class DeviceManagement_Hue extends DeviceManagement
+	{
+
+    protected $itemslist=array(); 
+
+    public function __construct($debug)
+        {
+        if ($debug) echo "DeviceManagement_Hue construct started.\n";
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        $oids = $modulhandling->getInstances('HUEConfigurator');   //   HUEDiscovery  0
+        if (isset($oids[0])) 
+            {
+            $oid=$oids[0];
+            $config=json_decode(IPS_GetConfigurationForm($oid),true);
+            if ($debug) echo "Instance of Configurator for Library Philips HUE found: $oid  ".IPS_GetName($oid)."\n";
+            $actions = $this->lookforkeyinarray($config,"actions",$debug>2);
+            $values  = $this->lookforkeyinarray($actions,"values",$debug>2);
+            if ($values) $this->createItemlist($values,$debug>1);                                //erzeugt itemlist
+            }
+        parent::__construct($debug>1);                       // wenn ein eigenes construct dann auch das übergeordnete aifrufen
+        }
+    
+    /* einen besonderen key finden, liese sich auch recursive anstellen
+     */
+    private function lookforkeyinarray($config,$key,$debug)
+        {
+        $actions=false;
+        
+        if (is_array($config))
+            {
+            foreach ($config as $type => $item)
+                {
+                if ($debug) 
+                    {
+                    echo "    ".str_pad($type,23)." | ";
+                    if (is_array($item)) echo sizeof($item);
+                    echo "\n";  
+                    }
+                if ($type==$key) $actions=$item; 
+                if (is_array($item)) foreach ($item as $index => $entry) 
+                    {
+                    if ($debug) 
+                        {                    
+                        echo "        ".str_pad($index,20)." | ";
+                        if (is_array($entry)) echo sizeof($entry);
+                        echo "\n"; 
+                        }
+                    if ($index==$key) $actions=$entry; 
+                    if ($index=="de") ;                             // Schönheitskorrektur für mehr Übersichtlichkeit
+                    elseif (is_array($entry)) foreach ($entry as $topic => $subentry)
+                        {
+                        if ($debug) 
+                            {                         
+                            echo "           ".str_pad($topic,17)." | ";
+                            if (is_array($subentry)) echo sizeof($subentry);
+                            echo "\n";   
+                            }
+                        if ($topic==$key) $actions=$subentry;
+                        }  
+                    }
+                }
+            }
+        else echo "lookforkeyinarray, warning, no array provided.\n";
+        return $actions;
+        }
+
+    /* die itemlist erzeugen
+     */
+    private function createItemlist($values,$debug) 
+        {
+        if ($debug) echo "createItemlist for ".sizeof($values)." items called.\n";
+        foreach ($values as $itemIndex => $itemConfig)
+            {
+            if (isset($itemConfig["instanceID"]))
+                {
+                $instanceID=$itemConfig["instanceID"];
+                $this->itemslist[$instanceID] = $itemConfig;   
+                }
+            }
+        foreach ($this->itemslist as $oid => $entry)
+            {
+            if ($debug) echo str_pad($oid,12).str_pad($entry["DisplayName"],34).str_pad($entry["Type"],34)."\n";
+            switch ($entry["Type"])
+                {
+                case "Extended color light":
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_RGB";
+                    break;
+                case "Color temperature light":
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_AMBIENT";
+                    break;
+                case "Dimmable light":
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_DIMMER";
+                    break;
+                case "Room":
+                case "Zone":            // eine Gruppierung, aber wahrscheinlich örtlich abgegrenzt
+                    // damit kann die Topologie abgeglichen werden
+                    //print_r($entry);
+                    break;
+                case "Daylight":
+                case "LightGroup":              // ein alter Begriff
+                    break;
+                case "ZLLSwitch":
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_BUTTON";            // am Register ButtonEvent kann man erahnen welche Taste wie gedrückt wurde
+                    break;
+                default:
+                    echo "createItemlist, warning, do not know key ".$entry["Type"]."\n";
+                    print_r($entry);
+                    break;
+                }
+            }                    
+        }
+
+    /* variable ist proteced, daher jhier eine nette Anzeige bauen
+     */
+    public function showItemlist()
+        {
+        print_r($this->itemslist);
+        }
+
+    /*********************************
+     *
+     * gibt für eine Philips Hue Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     *
+     * Routine ermittelt alle Children eines Objektes und übergibt sie als array zur Prüfung
+     * ruft HueDeviceType auf, es gibt verschieden Ausgabeformate
+     *   0   Beispiel  "Bewegungsmelder";
+     *   1   Beispiel  "Funk-Bewegungsmelder";
+     *   2   Beispiel  TYPE_MOTION
+     *   3   { "Type"=>TYPE_MOTION,"Register"=> $resultReg[0],"RegisterAll"=>  }
+     *   4
+     *
+     *  0/false ist Default
+     *
+     *
+     *
+     */
+    function getHueDeviceType($instanz, $outputVersion=false, $config=array(), $debug=false)
+	    {
+        if ($debug) echo "          getHueDeviceType : $instanz  \"".IPS_GetName($instanz)."\" Modus : $outputVersion\n";
+	    $homematic=array();
+    	$cids = IPS_GetChildrenIDs($instanz);
+        $register=array();
+        foreach($cids as $cid) $register[strtoupper(IPS_GetName($cid))]=$cid;
+    	//foreach($cids as $cid) $homematic[$cid]=IPS_GetName($cid);
+    	//return ($this->HueDeviceType($homematic,$outputVersion, $config, $debug));
+        return ($this->HueDeviceType($register,$outputVersion, $config, $debug));
+    	}
+
+    /*********************************
+     * DeviceManagement::HueDeviceType
+     * Hue Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+     * die Register werden wie bei Homematic übergeben, allerdings mit dem Namen in Grossbuchstaben als Key
+     * zusättlich wird die Config der Instanz mit übergeben, bei Hue gibt es mehr Informationen die ausgewertet werden können
+     * 
+     * nach der Auswertung wird $resultType[0] mit dem DeviceType beschrieben.
+     * 
+     * erkannte Device Typen (unabhängig ob Homematic, Evaluierung von oben nach unten
+     *  TYPE_ACTUATOR               => VALVE_STATE
+     *  TYPE_THERMOSTAT             => ACTIVE_PROFILE || WINDOW_OPEN_REPORTING
+     *  TYPE_METER_TEMPERATURE      => TEMPERATURE && HUMIDITY
+     *  TYPE_METER_HUMIDITY         => HUMIDITY
+     *  TYPE_BUTTON                 => PRESS_SHORT
+     *  TYPE_SWITCH                 => STATE && (PROCESS || WORKING)
+     *  TYPE_AMBIENT
+     *  TYPE_RGBW
+     *  TYPE_CONTACT                => STATE
+     *  TYPE_DIMMER                 => LEVEL && DIRECTION && ERROR_OVERLOAD
+     *  TYPE_SHUTTER                => LEVEL && DIRECTION
+     *  TYPE_MOTION                 => MOTION
+     *  TYPE_RSSI                   => RSSI
+     *  TYPE_METER_POWER
+     *  TYPE_POWERLOCK
+     *
+     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
+     *   false   die aktuelle Kategorisierung
+     *
+     * abhängig vom Gerätetyp bzw. den Instanzeigenschaften werden für die Instanz die Register jeweils mit Typ und Parameter ermittelt
+     *      $resultType[i] = "TYPE_METER_TEMPERATURE";            
+     *      $resultReg[i]["TEMPERATURE"]="TEMPERATURE";
+     *      $resultReg[i]["HUMIDITY"]="HUMIDITY";
+     *
+     *
+     *
+     *
+     */
+    private function HueDeviceType($register, $outputVersion=false, $entry, $debug=false)
+        {
+        $i=0; $devicetype=false; $found=false; $resultType=array();
+        if (is_array($entry["OID"])) return (false);                                // es gibt keine mehreren Instanzen
+        if ( (isset($entry["OID"])) && (isset($this->itemslist[$entry["OID"]])) )
+            {
+            $config=$this->itemslist[$entry["OID"]];
+            if ($debug>1) echo "getDeviceParameters:HUE, HueDeviceType, called for instance ".$entry["OID"];
+            if (isset($config["TypeDev"])) 
+                {
+                $resultType[$i]= $config["TypeDev"];
+                $found=true;
+                }
+            elseif ($debug>1)
+                {
+                echo "   nicht gefunden.";
+                //print_r($config);
+                } 
+            if ($debug>1) echo "\n";
+            if ($found) echo "               getDeviceParameters:HUE, HueDeviceType, Hue device ".$entry["NAME"]." available. ".$config["TypeDev"]."\n";
+            }
+        if ($found==false)
+            {
+            $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+            if (isset($result["DeviceType"])) $devicetype=$result["DeviceType"];
+            if ($debug>1) echo "getDeviceParameters:HUE, HueDeviceType, called for instance ".$entry["OID"]."  ".$entry["CONFIG"]." with devicetype $devicetype\n";
+            }
+        if ($devicetype) 
+            {
+            //echo "getDeviceParameters:HUE, HueDeviceType, analyse devicetype $devicetype.\n";
+            switch (strtoupper($devicetype))
+                {
+                case "LIGHTS":
+                    $found=true;
+                    print_r($register);
+                    $resultType[$i]="TYPE_SWITCH";         // kann groups, lights, sensor  mehr Unterschied gibts nicht, wir wollen es genauer wissen
+                    if (isset($register["STATUS"])) $typedevRegs["STATE"]=IPS_GetName($register["STATUS"]);
+
+                    if (isset($register["FARBMODUS"]))                                          // es gibt das Register Farbmodus und das kann man auslesen
+                        {
+                        $modus = GetValueIfFormatted($register["FARBMODUS"]);
+                        //echo "getDeviceParameters:HUE ".str_pad($name,22)." : ".$modus."    ".json_encode($result)."\n";
+                        if (strtoupper($modus)=="FARBTEMPERATUR") 
+                            {
+                            $resultType[$i]="TYPE_AMBIENT";
+                            } 
+                        else            // schwierige Unterscheidung zwischen Dimmer und RGB
+                            {
+                            if ( (isset($register["FARBE"])) && (GetValue($register["FARBE"])==0) ) $resultType[$i]="TYPE_DIMMER";
+                            }
+                        }
+                    echo "               getDeviceParameters:HUE, HueDeviceType, Hue Device ".$entry["NAME"]." available. ".$resultType[$i]."\n";
+                    break;
+                case "GROUPS":
+                    $resultType[$i]="TYPE_GROUP";
+                    if ($debug) echo "  getDeviceParameters:HUE, HueDeviceType, Hue Group  available. Childrens are : ".json_encode($register)."\n";
+                    $found=true;
+                    if (isset($register["FARBMODUS"]))                                          // es gibt das Register Farbmodus und das kann man auslesen
+                        {
+                        $modus = GetValueIfFormatted($register["FARBMODUS"]);
+                        //echo "getDeviceParameters:HUE ".str_pad($name,22)." : ".$modus."    ".json_encode($result)."\n";
+                        if (strtoupper($modus)=="FARBTEMPERATUR") $resultType[$i]="TYPE_AMBIENT"; 
+                        else            // schwierige Unterscheidung zwischen Dimmer und RGB
+                            {
+                            if ( (isset($register["FARBE"])) && (GetValue($register["FARBE"])==0) ) $resultType[$i]="TYPE_DIMMER";
+                            }
+                        }
+                    echo "               getDeviceParameters:HUE, HueDeviceType, Hue Group ".$entry["NAME"]." available. ".$resultType[$i]." \n";                        
+                    break;
+                case "SENSORS":                         // Hue Sensoren, das sind zum Beispiel Taster und Bewegungsmelder
+                    $found=true;
+                    $resultType[$i]="TYPE_SENSOR";
+                    echo "               getDeviceParameters:HUE, HueDeviceType, Hue Sensor ".$entry["NAME"]." available. ".$resultType[$i]." .\n";
+                    print_r($register);
+                    break;                                           
+                }
+            }
+
+
+        if (isset($resultType[$i]))
+            {
+            $typedev = $resultType[$i];
+            $typedevRegs=array();
+            $cids = IPS_GetChildrenIDs($entry["OID"]);           // für jede Instanz die Children einsammeln
+            $register=array();
+            if ($debug>1) echo "                  $typedev : ";
+            foreach($cids as $cid)
+                {
+                $regName=IPS_GetName($cid);
+                if ($debug>1) echo $regName.",";
+                $register[]=$regName;
+                switch ($typedev)
+                    {
+                    case "TYPE_SWITCH":
+                    case "TYPE_GROUP":
+                        if ($regName=="Status") $typedevRegs["STATE"]=$regName;
+                        break;
+                    case "TYPE_DIMMER":
+                        if ($regName=="Status")     $typedevRegs["STATE"]=$regName;
+                        if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
+                        break;
+                    case "TYPE_AMBIENT":
+                        if ($regName=="Status")         $typedevRegs["STATE"]=$regName;
+                        if ($regName=="Helligkeit")     $typedevRegs["LEVEL"]=$regName;
+                        if ($regName=="Farbtemperatur") $typedevRegs["AMBIENCE"]=$regName;
+                        break;
+                    case "TYPE_RGB":                                                        // keine Ahnung wie es zu diesem Type kommt
+                        if ($regName=="Status") $typedevRegs["STATE"]=$regName;
+                        if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
+                        if ($regName=="Farbe") $typedevRegs["COLOR"]=$regName;                      // muss aber nicht stimmen
+                        break;
+                    case "TYPE_SENSOR":
+                        break;
+                    }
+                sort($register);
+                $registerNew=array();
+                $oldvalue="";        
+                /* gleiche Einträge eliminieren */
+                foreach ($register as $index => $value)
+                    {
+                    if ($value!=$oldvalue) {$registerNew[]=$value;}
+                    $oldvalue=$value;
+                    }                     
+                }
+            //print_R($typedevRegs);
+            }
+
+        if (false)           // loeschen, nur als Referenz
+            {
+            /* register in registernew umkopieren, dabei alle Einträge sortieren und gleiche, doppelte Einträge entfernen */
+            sort($register);
+            $registerNew=array();
+            $oldvalue="";        
+            /* gleiche Einträge eliminieren */
+            foreach ($register as $index => $value)
+                {
+                if ($value!=$oldvalue) {$registerNew[]=$value;}
+                $oldvalue=$value;
+                }         
+            $found=true; 
+            if ($debug) echo "             HomematicDeviceType: Info mit Debug aufgerufen. Parameter ".json_encode($registerNew)."\n";
+
+            /*--Stellmotor-----------------------------------*/
+            if ( array_search("VALVE_STATE",$registerNew) !== false)            /* Stellmotor */
+                {
+                //print_r($registerNew);
+                //echo "Stellmotor gefunden.\n";
+                if (array_search("ACTIVE_PROFILE",$registerNew) !== false) 
+                    {
+                    $result[1]="IP Funk Stellmotor";
+                    }
+                else 
+                    {
+                    $result[1]="Funk Stellmotor";
+                    }                         
+                $result[0]="Stellmotor";   
+                $i=0;                            
+                $resultType[$i]="TYPE_ACTUATOR";
+                if (array_search("LEVEL",$registerNew) !== false)           // di emodernere Variante
+                    {
+                    $resultReg[$i]["VALVE_STATE"]="LEVEL"; 
+                    if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false)$resultReg[$i]["SET_TEMPERATURE"]="SET_POINT_TEMPERATURE";
+                    }
+                else 
+                    {
+                    $resultReg[$i]["VALVE_STATE"]="VALVE_STATE";
+                    if (array_search("SET_TEMPERATURE",$registerNew) !== false)$resultReg[$i]["SET_TEMPERATURE"]="SET_TEMPERATURE";                
+                    }
+                if (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) 
+                    {
+                    $i++;
+                    $resultType[$i] = "TYPE_METER_TEMPERATURE";
+                    $resultReg[$i]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                    }
+                }
+            /*-----Wandthermostat--------------------------------*/
+            elseif ( (array_search("ACTIVE_PROFILE",$registerNew) !== false) || (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false) )   /* Wandthermostat */
+                {
+                if (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false)
+                    {
+                    $result[1]="Funk Wandthermostat";
+                    }
+                else 
+                    {
+                    $result[1]="IP Funk Wandthermostat";
+                    }
+                $result[0] = "Wandthermostat";
+                $i=0;
+                $resultType[$i]="TYPE_THERMOSTAT";
+                if (array_search("SET_TEMPERATURE",$registerNew) !== false) $resultReg[$i]["SET_TEMPERATURE"]="SET_TEMPERATURE";
+                if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false) $resultReg[$i]["SET_TEMPERATURE"]="SET_POINT_TEMPERATURE";
+                if (array_search("TargetTempVar",$registerNew) !== false) $resultReg[$i]["SET_TEMPERATURE"]="TargetTempVar";
+                //echo "Wandthermostat erkannt \n"; print_r($registerNew); echo "\n";
+                if ( (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) && (array_search("QUICK_VETO_TIME",$registerNew) !== false) )
+                    {
+                    $i++;
+                    $resultType[$i]= "TYPE_METER_TEMPERATURE";
+                    $resultReg[$i]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                    }
+                if (array_search("ACTUAL_HUMIDITY",$registerNew) !== false) 
+                    {
+                    $i++;
+                    $resultType[$i] = "TYPE_METER_HUMIDITY";
+                    $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY"; 
+                    }
+                if (array_search("HUMIDITY",$registerNew) !== false) 
+                    {
+                    $i++;
+                    $resultType[$i] = "TYPE_METER_HUMIDITY";
+                    $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
+                    }
+                }                    
+            /*-----Temperatur Sensor--------------------------------*/
+            elseif ( (array_search("TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
+                {
+                $result[1] = "Funk Temperatursensor";
+                $result[0] = "Temperatursensor";
+                $i=0;
+                $resultType[$i] = "TYPE_METER_TEMPERATURE";            
+                $resultReg[$i]["TEMPERATURE"]="TEMPERATURE";
+                $resultReg[$i]["HUMIDITY"]="HUMIDITY";
+                if (array_search("HUMIDITY",$registerNew) !== false) 
+                    {
+                    $i++;
+                    $resultType[$i] = "TYPE_METER_HUMIDITY";
+                    $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
+                    }
+                }                    
+            /*------Taster-------------------------------*/
+            elseif (array_search("PRESS_SHORT",$registerNew) !== false) /* Taster */
+                {
+                $anzahl=sizeof(array_keys($register,"PRESS_SHORT")); 
+                if (array_search("INSTALL_TEST",$registerNew) !== false) 
+                    {
+                    $result[1]="Funk-Taster ".$anzahl."-fach";
+                    }
+                else 
+                    {
+                    $result[1]="IP Funk-Taster ".$anzahl."-fach";
+                    }
+                $result[0]="Taster ".$anzahl."-fach";
+                $resultType[0] = "TYPE_BUTTON";            
+                if (array_search("PRESS_SHORT",$registerNew) !== false) $resultReg[0]["PRESS_SHORT"]="PRESS_SHORT";
+                if (array_search("PRESS_LONG",$registerNew) !== false) $resultReg[0]["PRESS_LONG"]="PRESS_LONG";
+                if ($debug) echo "-----> Taster : ".$resultType[0]." ".json_encode($registerNew).json_encode($resultReg[0])."\n";
+                }
+            /*-------Schaltaktor oder Kontakt------------------------------*/
+            elseif ( array_search("STATE",$registerNew) !== false) /* Schaltaktor oder Kontakt */
+                {
+                //print_r($registerNew);
+                $anzahl=sizeof(array_keys($register,"STATE"));                     
+                if ( (array_search("PROCESS",$registerNew) !== false) || (array_search("WORKING",$registerNew) !== false) )     // entweder PROCESS oder WORKING gefunden
+                    {
+                    $result[0]="Schaltaktor ".$anzahl."-fach";
+                    if ( (array_search("BOOT",$registerNew) !== false) || (array_search("LOWBAT",$registerNew) !== false) )     //entweder Boot oder LOWBAT gefunden
+                        {
+                        $result[1]="Funk-Schaltaktor ".$anzahl."-fach";
+                        }
+                    /* "SECTION_STATUS" ist bei den neuen Schaltern auch dabei. Die neuen HomematicIP Schalter geben den Status insgesamt dreimal zurück, Selektion mus ich wohl wo anders machen */
+                    else    
+                        {
+                        $result[1]="IP Funk-Schaltaktor ".$anzahl."-fach";
+                        }
+                    if (array_search("ENERGY_COUNTER",$registerNew) !== false) 
+                        {
+                        $result[0] .= " mit Energiemesung";
+                        $result[1] .= " mit Energiemesung";
+                        }
+                    $resultType[0] = "TYPE_SWITCH";            
+                    $resultReg[0]["STATE"]="STATE";
+                    }
+                else 
+                    {
+                    $result[0] = "Tuerkontakt";
+                    $result[1] = "Funk-Tuerkontakt";
+                    $resultType[0] = "TYPE_CONTACT";            
+                    $resultReg[0]["CONTACT"]="STATE";                
+                    }
+                }
+            /*-----RGBW Ansteuerung --------------------------------*/
+            elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("LEVEL_STATUS",$registerNew) !== false) && ( array_search("HUE",$registerNew) !== false) )/* RGBW Ansteuerung */
+                {
+                $result[0] = "RGBW";
+                $result[1] = "Funk-RGBW";
+                $resultType[0] = "TYPE_RGBW"; 
+                $resultReg[0]["LEVEL"]="LEVEL";                       
+                $resultReg[0]["HUE"]="HUE";                       
+                $resultReg[0]["SATURATION"]="SATURATION";
+                $resultReg[0]["COLOR_TEMPERATURE"]="COLOR_TEMPERATURE";
+                }
+            /*-----Dimmer--------------------------------*/
+            elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) && ( array_search("ERROR_OVERLOAD",$registerNew) !== false) )/* Dimmer */
+                {
+                //print_r($registerNew);                
+                $result[0] = "Dimmer";
+                $result[1] = "Funk-Dimmer";
+                $resultType[0] = "TYPE_DIMMER"; 
+                $resultReg[0]["LEVEL"]="LEVEL";                       
+                }                    
+            /*-------------------------------------*/
+            elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("LEVEL_STATUS",$registerNew) !== false) )/* HomematicIP Dimmer */
+                {
+                //print_r($registerNew);                
+                $result[0] = "Dimmer";
+                $result[1] = "Funk-Dimmer";
+                $resultType[0] = "TYPE_DIMMER"; 
+                $resultReg[0]["LEVEL"]="LEVEL";                       
+                }         
+            /*------Rolladensteuerung-------------------------------*/
+            elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )                   /* Rollladensteuerung/SHUTTER */
+                {
+                //print_r($registerNew);                
+                $result[0] = "Rollladensteuerung";
+                $result[1] = "Funk-Rollladensteuerung";
+                $resultType[0] = "TYPE_SHUTTER";    
+                $resultReg[0]["HEIGHT"]="LEVEL";              // DIRECTION INHIBIT LEVEL WORKING
+                }                    
+            /*-------Bewegung------------------------------*/
+            elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder, Durchgangssensor ist weiter unten */
+                {
+                //print_r($registerNew);    
+                $result[0] = "Bewegungsmelder";
+                $result[1] = "Funk-Bewegungsmelder";
+                $resultType[0] = "TYPE_MOTION";            
+                $resultReg[0]["MOTION"]="MOTION";
+                if ( array_search("BRIGHTNESS",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="BRIGHTNESS";
+                if ( array_search("ILLUMINATION",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="ILLUMINATION";
+                }
+            elseif ( array_search("PRESENCE_DETECTION_STATE",$registerNew) !== false) /* Presaenzmelder  */
+                {
+                //print_r($registerNew);    
+                $result[0] = "Bewegungsmelder";
+                $result[1] = "Funk-Bewegungsmelder";
+                $resultType[0] = "TYPE_MOTION";            
+                $resultReg[0]["MOTION"]="PRESENCE_DETECTION_STATE";
+                if ( array_search("BRIGHTNESS",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="BRIGHTNESS";
+                if ( array_search("ILLUMINATION",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="ILLUMINATION";
+                }            
+            /*-------RSSI------------------------------*/
+            elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* nur der Empfangswert */
+                {
+                $result[0] = "RSSI Wert";
+                if ( array_search("DUTY_CYCLE",$registerNew) !== false) $result[1] = "IP Funk RSSI Wert";
+                else $result[1] = "Funk RSSI Wert";
+                $resultType[0] = "TYPE_RSSI";             
+                $resultReg[0]["RSSI"] = "";
+                }            
+            /*-------Energiemessgerät------------------------------*/
+            elseif ( array_search("CURRENT",$registerNew) !== false) /* Messgerät */
+                {
+                $result[0] = "Energiemessgeraet";
+                if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
+                else $result[1] = "IP Funk Energiemessgeraet";
+                $resultType[0] = "TYPE_METER_POWER";             
+                if (array_search("ENERGY_COUNTER",$registerNew)) $resultReg[0]["ENERGY"]="ENERGY_COUNTER";                   // diese Register werden zur Verfügung gestellt und regelmaessig ausgewertet
+                if (array_search("POWER",$registerNew)) $resultReg[0]["POWER"]="POWER";  
+                }          
+            /*-------Helligkeitssensor------------------------------*/
+            elseif ( array_search("CURRENT_ILLUMINATION",$registerNew) !== false)     /* Helligkeitssensor */
+                {
+                $result[0] = "Helligkeitssensor";
+                $result[1] = "IP Funk Helligkeitssensor";
+                $resultType[0] = "TYPE_METER_CLIMATE";             
+                $resultReg[0]["BRIGHTNESS"]="CURRENT_ILLUMINATION";          
+                }
+            /*-----Wetterstation--------------------------------*/
+            elseif  (array_search("RAIN_COUNTER",$registerNew) !== false)    /* neue HomematicIP Wetterstation  */
+                {
+                $result[0] = "Wetterstation";
+                $result[1]="Funk Wetterstation";
+
+                $i=0;
+                $resultType[$i]="TYPE_METER_CLIMATE";
+                $resultReg[$i]["RAIN_COUNTER"]="RAIN_COUNTER";
+                $resultReg[$i]["RAINING"]="RAINING";
+                $resultReg[$i]["WIND_SPEED"]="WIND_SPEED";
+                if (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) 
+                    {
+                    $i++;
+                    $resultType[$i]= "TYPE_METER_TEMPERATURE";
+                    $resultReg[$i]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                    if (array_search("ACTUAL_HUMIDITY",$registerNew) !== false) $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY";           //Homematic
+                    elseif (array_search("HUMIDITY",$registerNew) !== false) $resultReg[$i]["HUMIDITY"]="HUMIDITY";                     //HomematicIP 
+                    }
+                if (array_search("ACTUAL_HUMIDITY",$registerNew) !== false) 
+                    {
+                    $i++;
+                    $resultType[$i] = "TYPE_METER_HUMIDITY";
+                    $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY"; 
+                    }
+                elseif (array_search("HUMIDITY",$registerNew) !== false) 
+                    {
+                    $i++;
+                    $resultType[$i] = "TYPE_METER_HUMIDITY";
+                    $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
+                    }
+                }
+            /*-------------Durchgangssensor ["CURRENT_PASSAGE_DIRECTION","LAST_PASSAGE_DIRECTION","PASSAGE_COUNTER_OVERFLOW","PASSAGE_COUNTER_VALUE"]-------*/
+            elseif  (array_search("CURRENT_PASSAGE_DIRECTION",$registerNew) !== false)    /* neue HomematicIP Durchgangserkennung  */
+                {
+                $result[0] = "Durchgangsmelder";
+                $result[1]="IP Funk Durchgangsmelder";              // HomematicIP 
+
+                $i=0;                                               // kann auch weitere Funktionen beinhalten
+                $resultType[$i]="TYPE_MOTION";
+                $resultReg[$i]["COUNTER"]="PASSAGE_COUNTER_VALUE";
+                $resultReg[$i]["DIRECTION"]="CURRENT_PASSAGE_DIRECTION";
+                $resultReg[$i]["LAST_DIRECTION"]="LAST_PASSAGE_DIRECTION";
+                }                      
+            /*-------Tuerschloss  ["ACTIVITY_STATE","LOCK_STATE","PROCESS","SECTION","SECTION_STATUS","WP_OPTIONS"]--------------------------------*/
+            elseif  (array_search("ACTIVITY_STATE",$registerNew) !== false)    /* HomematicIP Tuerschloss, Aktuator WP_OPTIONS 0,1,2 Status LOCK_STATE  */
+                {
+                $result[0] = "Tuerschloss";
+                $result[1]="IP Funk Tuerschloss";              // HomematicIP 
+
+                $i=0;                                               // kann auch weitere Funktionen beinhalten
+                $resultType[$i]="TYPE_POWERLOCK";
+                $resultReg[$i]["LOCKSTATE"]="LOCK_STATE";
+                $resultReg[$i]["KEYSTATE"]="WP_OPTIONS";                // Aktuator
+                }                      
+            /*-------CCU3  ["DUTY_CYCLE_LEVEL"]--------------------------------*/
+            elseif  (array_search("DUTY_CYCLE_LEVEL",$registerNew) !== false)    /* HomematicIP CCU3 Performance  */
+                {
+                $result[0] = "CCU";
+                $result[1]="IP Funk CCU";              // HomematicIP 
+
+                $i=0;                                               // kann auch weitere Funktionen beinhalten
+                $resultType[$i]="TYPE_CCU";
+                $resultReg[$i]["DUTY_CYCLE_LEVEL"]="DUTY_CYCLE_LEVEL";
+                }                      
+            /*-------CCU  ["DUTY_CYCLE","CONNECTED"] von HomematicExtended--------------------------------*/
+            elseif  ( (array_search("DUTY_CYCLE",$registerNew) !== false)   && ( array_search("CONNECTED",$registerNew) !== false) )  /* HomematicExtended CCU Parameter, getrennt für RF und HmIP   */
+                {
+                $result[0] = "CCU";
+                $result[1]="IP Funk CCU";              // HomematicIP 
+
+                $i=0;                                               // kann auch weitere Funktionen beinhalten
+                $resultType[$i]="TYPE_CCU";
+                $resultReg[$i]["DUTY_CYCLE_LEVEL"]="DUTY_CYCLE";
+                }                      
+            else 
+                {
+                $found=false;
+                if ($debug)
+                    { 
+                    echo "             HomematicDeviceType: kein bekanntes Muster für ein Gerät entdeckt. Wirklich so schwierig ?\n";
+                    print_r($registerNew);
+                    }
+                }
+            /* result[0] und result[1] wurden bereits geschrieben, hier result[2], result[3] und result[4] ergänzen 
+            * result[2] ist der resultType also TYPE_METER_POWER
+            * result[3] ist für die deviceList, "Type" ist resultType, "Register" ist resultReg
+            * 
+            */
+            }
+
+        if ($found) 
+            {
+            $result=array();
+            $result[2]                = $resultType[0];
+            $result[3]["Type"]        = $resultType[0];
+            $result[4]                = $typedevRegs;
+            //$result[3]["Register"]    = $resultReg[0];
+            $result[3]["RegisterAll"] = $registerNew;
+            $result[3][$typedev]        = $typedevRegs;
+            /*$result[4]["TYPECHAN"]    = "";
+            $first=true;
+            foreach ($resultType as $index => $type)            // normalerweise wird nur [0] befüllt, wenn mehrere Register Sets verfügbar auch mehrere
+                {
+                if ($first) $first=false;
+                else $result[4]["TYPECHAN"] .= ",";
+                $result[4]["TYPECHAN"] .= $type;
+                $result[4][$type]   = $resultReg[$index];
+                }
+            $result[4]["RegisterAll"] = $registerNew;*/
+
+            if ($outputVersion==false) return($result[2]);
+            elseif ($outputVersion==2) return ($result[1]);
+            elseif ($outputVersion==3) return ($result[3]);
+            elseif ($outputVersion==4) 
+                {       
+                /* bei Output Version 4 mehrere TYPECHANs zulassen 
+                if ($resultType[0]=="TYPE_ACTUATOR")
+                    {
+                    if (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) 
+                        {
+                        $result[4]["TYPECHAN"]    .= ",TYPE_METER_TEMPERATURE";
+                        $result[4]["TYPE_METER_TEMPERATURE"]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                        }
+                    }
+                elseif ($resultType[0]=="TYPE_THERMOSTAT")
+                    {
+                    //echo "Wandthermostat erkannt \n"; print_r($registerNew); echo "\n";
+                    if ( (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) && (array_search("QUICK_VETO_TIME",$registerNew) !== false) )
+                        {
+                        $result[4]["TYPECHAN"]    .= ",TYPE_METER_TEMPERATURE";
+                        $result[4]["TYPE_METER_TEMPERATURE"]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                        }
+                    }*/
+                return ($result[4]);
+                } 
+            else return ($result[0]);
+            }
+        else 
+            {
+            if ($outputVersion>100) 
+                {
+                $result = "";
+                foreach ($registerNew as $entry) $result .= $entry." ";
+                return ($result);
+                }
+            else return (false);
+            }
+
+        }
+
+    }
+
 /*********************************************************************************************
  *
- *
+ * status_Display    schreibt den Status der AWS in die Tabelle vom OperationCenter
  * 
- *
+ *  __construct
+ *  getCategory
+ *  initSlider
+ *  setStatus
  *
  ***********************************************************************************************/
 
@@ -10012,6 +10734,11 @@ class statusDisplay
  * ================
  *
  * Unterstützung beim filetieren von geladenen Web/Homepages
+ *      __construct
+ *      parsetxtfile
+ *      parsetxtfile_Statistic
+ *      parseWebpage
+ *      removecomma
  *
  ***************************************************************************************************/
 
@@ -10032,7 +10759,7 @@ class parsefile
 		$ergebnis_array=array();
 
 		echo "Data ID des aktuellen Moduls: ".$this->dataID." für den folgenden Router: ".$name."\n";
-      if (($CatID=@IPS_GetCategoryIDByName($name,$this->dataID))==false)
+        if (($CatID=@IPS_GetCategoryIDByName($name,$this->dataID))==false)
          {
 			echo "Datenkategorie für den Router ".$name."  : ".$CatID." existiert nicht, jetzt neu angelegt.\n";
 			$CatID = IPS_CreateCategory();       // Kategorie anlegen
@@ -10278,520 +11005,520 @@ class TimerHandling
  *
  *****************************************************************************************************************/
 
-function move_camPicture($verzeichnis,$WebCam_LetzteBewegungID)
-	{
-	$count=100;
-	//echo "<ol>";
+    function move_camPicture($verzeichnis,$WebCam_LetzteBewegungID)
+        {
+        $count=100;
+        //echo "<ol>";
 
-	// Test, ob ein Verzeichnis angegeben wurde
-	if ( is_dir ( $verzeichnis ))
-		{
-		// öffnen des Verzeichnisses
-		if ( $handle = opendir($verzeichnis) )
- 			{
-			/* einlesen der Verzeichnisses
-			nur count mal Eintraege
-			*/
-		 	while ((($file = readdir($handle)) !== false) and ($count > 0))
-				{
-				//echo "move_camPicture, Verzeichnis : ".$verzeichnis."  Filename : ".$file."\n";
-				if ( ($file != ".") && ($file != "..") )
-					{
-					$dateityp=filetype( $verzeichnis.$file );
-					if ($dateityp == "file")
-						{
-						$count-=1;
-						$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-						$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
-						if (is_dir($verzeichnis.$unterverzeichnis))
-							{	
-							}
-						else
-							{
-							mkdir($verzeichnis.$unterverzeichnis);
-							}
-						rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-						//echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
-						SetValue($WebCam_LetzteBewegungID,$letztesfotodatumzeit);
-						}
-					}
-				} /* Ende while */
-			closedir($handle);
-			} /* end if dir */
-		}/* ende if isdir */
-	else
-		{
-		echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
-		}
-	return(100-$count);
-	}
-
-
-
-/*********************************************************************************************/
-
-function get_data($url) {
-	$ch = curl_init($url);
-	$timeout = 5;
-	curl_setopt($ch, CURLOPT_URL, $url);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
-	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-	curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
-   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 (FM Scene 4.6.1)"); // who am i
-
-	/*   CURLOPT_FOLLOWLOCATION => true,     // follow redirects
-        CURLOPT_ENCODING       => "",       // handle all encodings
-        CURLOPT_AUTOREFERER    => true,     // set referer on redirect
-        CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
-        CURLOPT_TIMEOUT        => 120,      // timeout on response
-        CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
-        CURLOPT_POST => 1,
-        CURLOPT_POSTFIELDS => "LOOKUPADDRESS=".$argument1,  */
-
-	$data = curl_exec($ch);
-
-	/* Curl Debug Funktionen */
-	/*
-	echo "Channel :".$ch."\n";
-  	$err     = curl_errno( $ch );
-   $errmsg  = curl_error( $ch );
-   $header  = curl_getinfo( $ch );
-
-	echo "Fehler ".$err." von ";
-	print_r($errmsg);
-	echo "\n";
-	echo "Header ";
-	print_r($header);
-	echo "\n";
-	*/
-
-	curl_close($ch);
-
-	return $data;
-}
-
-/*********************************************************************************************/
-
-function extractIPaddress($ip)
-	{
-		$parts = str_split($ip);   /* String in lauter einzelne Zeichen zerlegen */
-		$first_num = -1;
-		$num_loc = 0;
-		foreach ($parts AS $a_char)
-			{
-			if (is_numeric($a_char))
-				{
-				$first_num = $num_loc;
-				break;
-				}
-			$num_loc++;
-			}
-		if ($first_num == -1) {return "unknown";}
-
-		/* IP adresse Stelle fuer Stelle dekodieren, Anhaltspunkt ist der Punkt */
-		$result=substr($ip,$first_num,20);
-		//echo "Result :".$result."\n";
-		$pos=strpos($result,".");
-		$result_1=substr($result,0,$pos);
-		$result=substr($result,$pos+1,20);
-		//echo "Result :".$result."\n";
-		$pos=strpos($result,".");
-		$result_2=substr($result,0,$pos);
-		$result=substr($result,$pos+1,20);
-		//echo "Result :".$result."\n";
-		$pos=strpos($result,".");
-		$result_3=substr($result,0,$pos);
-		$result=substr($result,$pos+1,20);
-		//echo "Result :".$result."\n";
-		$parts = str_split($result);   /* String in lauter einzelne Zeichen zerlegen */
-		$last_num = -1;
-		$num_loc = 0;
-		foreach ($parts AS $a_char)
-			{
-			if (is_numeric($a_char))
-				{
-				$last_num = $num_loc;
-				}
-			$num_loc++;
-			}
-		$result=substr($result,0,$last_num+1);
-		//echo "-------------------------> externe IP Adresse in Einzelteilen:  ".$result_1.".".$result_2.".".$result_3.".".$result."\n";
-		return($result_1.".".$result_2.".".$result_3.".".$result);
-	}
-
-/**************************************************************/
-
-
-function dirToArray($dir)
-	{
-   	$result = array();
-
-	$cdir = scandir($dir);
-	foreach ($cdir as $key => $value)
-		{
-		if (!in_array($value,array(".","..")))
-			{
-			if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
-         		{
-				$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
-         		}
-         	else
-         		{
-            	$result[] = $value;
-         		}
-      		}
-   		}
-	return $result;
-	}
-
-/*********************************************************************************************/
-
-function dirToArray2($dir)
-	{
-	$result = array();
-
-	$cdir = scandir($dir);
-   	foreach ($cdir as $key => $value)
-		{
-		if (!in_array($value,array(".","..")))
-			{
-			if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
-				{
-            	//$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
-				}
-			else
-    			{
-            	$result[] = $value;
-         		}
-      		}
-   		}
-	return $result;
-	}
-
-
-/********************************************************************************************
- *
- * Ausgabe von Ton für Sprachansagen, kommt noch einmal in der Sprachsteuerungslibrary vor 
- * beide functions sind gleich gestellt.
- *
- *  sk    soundkarte   es gibt immer nur 1, andere bis 9 kann man implementieren
- *        größer 9 ist eine ID einer EchoControl Instanz (Amazon Echo Geräte)
- *
- * 	modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
- * 	modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
- * 	modus == 3 ==> Sprache = on / Ton = on / Musik = play  / Slider = on  / Script Wait = on
- *
- * zum Beispiel  tts_play(1,$speak,'',2);  // Soundkarte 1, mit diesem Ansagetext, kein Ton, Modus 2 
- *
- *************************************************************/
-
-	function tts_play($sk,$ansagetext,$ton,$modus,$debug=false)
- 		{
-		$tts_status=true;		
-		$sprachsteuerung=false; $remote=false;
-        $dosOps = new dosOps();     // create classes used in this class
-        $systemDir     = $dosOps->getWorkDirectory();
-
-		if ($debug) echo "Aufgerufen als Teil der Library des OperationCenter.\n";
-		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-		if (!isset($moduleManager))
-			{
-			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-			$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
-			}
-		$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-		if ( (isset($installedModules["Sprachsteuerung"]) )  && ($installedModules["Sprachsteuerung"] <>  "") ) 
-			{
-			$sprachsteuerung=true;
-			IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");					
-			$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-			$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-			$config=Sprachsteuerung_Configuration();
-			if ( (isset($config["RemoteAddress"])) && (isset($config["ScriptID"])) && ($sk<10) ) 
-                { 
-                $remote=true; 
-                $url=$config["RemoteAddress"]; 
-                $oid=$config["ScriptID"]; 
-                }					
-
-            $ipsOps = new ipsOps();
-			$NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
-			$NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdApp);
-            //echo "Found $NachrichtenID und $NachrichtenScriptID in $CategoryIdData when searching vor \"Nachricht\" : ".IPS_GetName($NachrichtenID)." und ".IPS_GetName($NachrichtenScriptID)."\n";
-
-			if ($debug) echo "Nachrichten gibt es auch : ".$NachrichtenID ."  (".IPS_GetName($NachrichtenID).")   ".$NachrichtenScriptID." \n";
-
-			if (isset($NachrichtenScriptID))
-				{
-                $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);    
-				$log_Sprachsteuerung=new Logging($systemDir."Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
-				if ($sk<10) $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk mit \"".$ansagetext."\"");
-				else $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk (".IPS_GetName($sk).") mit \"".$ansagetext."\"");
-				}
-			}
-		$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');           // App Kategorie der Sprachsteuerung
-		$scriptIdSprachsteuerung   = @IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
-		if ($scriptIdSprachsteuerung==false) $sprachsteuerung=false;
-		if ( ($sprachsteuerung==true) && ($remote==false) )
-			{
-            if ($sk<10)             // die müssen nur angelegt werden wenn sie abgefragt werden, nicht für Ausgabe auf Echo
+        // Test, ob ein Verzeichnis angegeben wurde
+        if ( is_dir ( $verzeichnis ))
+            {
+            // öffnen des Verzeichnisses
+            if ( $handle = opendir($verzeichnis) )
                 {
-    			if ($debug) echo "Sprache lokal ausgeben.\n";	
-                $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
-                $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
-                $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+                /* einlesen der Verzeichnisses
+                nur count mal Eintraege
+                */
+                while ((($file = readdir($handle)) !== false) and ($count > 0))
+                    {
+                    //echo "move_camPicture, Verzeichnis : ".$verzeichnis."  Filename : ".$file."\n";
+                    if ( ($file != ".") && ($file != "..") )
+                        {
+                        $dateityp=filetype( $verzeichnis.$file );
+                        if ($dateityp == "file")
+                            {
+                            $count-=1;
+                            $unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+                            $letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
+                            if (is_dir($verzeichnis.$unterverzeichnis))
+                                {	
+                                }
+                            else
+                                {
+                                mkdir($verzeichnis.$unterverzeichnis);
+                                }
+                            rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+                            //echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+                            SetValue($WebCam_LetzteBewegungID,$letztesfotodatumzeit);
+                            }
+                        }
+                    } /* Ende while */
+                closedir($handle);
+                } /* end if dir */
+            }/* ende if isdir */
+        else
+            {
+            echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+            }
+        return(100-$count);
+        }
 
-                $id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
-                $id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
-                $id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
-                $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-                if ($debug) echo "\nAlle IDs -> Musik:".$id_sk1_musik." Status:".$id_sk1_musik_status." Vol:".$id_sk1_musik_vol." Ton:".$id_sk1_ton." TonStatus:".$id_sk1_ton_status." tts:".$id_sk1_tts."\n";
+
+
+    /*********************************************************************************************/
+
+    function get_data($url) {
+        $ch = curl_init($url);
+        $timeout = 5;
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
+        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 (FM Scene 4.6.1)"); // who am i
+
+        /*   CURLOPT_FOLLOWLOCATION => true,     // follow redirects
+            CURLOPT_ENCODING       => "",       // handle all encodings
+            CURLOPT_AUTOREFERER    => true,     // set referer on redirect
+            CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
+            CURLOPT_TIMEOUT        => 120,      // timeout on response
+            CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
+            CURLOPT_POST => 1,
+            CURLOPT_POSTFIELDS => "LOOKUPADDRESS=".$argument1,  */
+
+        $data = curl_exec($ch);
+
+        /* Curl Debug Funktionen */
+        /*
+        echo "Channel :".$ch."\n";
+        $err     = curl_errno( $ch );
+        $errmsg  = curl_error( $ch );
+        $header  = curl_getinfo( $ch );
+
+        echo "Fehler ".$err." von ";
+        print_r($errmsg);
+        echo "\n";
+        echo "Header ";
+        print_r($header);
+        echo "\n";
+        */
+
+        curl_close($ch);
+
+        return $data;
+        }
+
+    /*********************************************************************************************/
+
+    function extractIPaddress($ip)
+        {
+            $parts = str_split($ip);   /* String in lauter einzelne Zeichen zerlegen */
+            $first_num = -1;
+            $num_loc = 0;
+            foreach ($parts AS $a_char)
+                {
+                if (is_numeric($a_char))
+                    {
+                    $first_num = $num_loc;
+                    break;
+                    }
+                $num_loc++;
                 }
-			$wav = array
-				(
-				"hinweis"  => IPS_GetKernelDir()."media/wav/hinweis.wav",
-				"meldung"  => IPS_GetKernelDir()."media/wav/meldung.wav",
-				"abmelden" => IPS_GetKernelDir()."media/wav/abmelden.wav",
-				"aus"      => IPS_GetKernelDir()."media/wav/aus.wav",
-				"coin"     => IPS_GetKernelDir()."media/wav/coin-fall.wav",
-				"thunder"  => IPS_GetKernelDir()."media/wav/thunder.wav",
-				"clock"    => IPS_GetKernelDir()."media/wav/clock.wav",
-				"bell"     => IPS_GetKernelDir()."media/wav/bell.wav",
-				"horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
-				"sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
-				);
-			switch ($sk)		/* Switch unterschiedliche Routinen anhand der Soundkarten ID, meistens eh nur eine */
-				{
-				//---------------------------------------------------------------------
-				case '1':
-					$status = GetValueInteger($id_sk1_ton_status);
-					while ($status == 1)	$status = GetValueInteger($id_sk1_ton_status);
-					$sk1_counter = GetValueInteger($id_sk1_counter);
-					$sk1_counter++;
-					SetValueInteger($id_sk1_counter, $sk1_counter);
-					if($sk1_counter >= 9) SetValueInteger($id_sk1_counter, $sk1_counter = 0);
-				 	if($ton == "zeit")
- 						{
-						$time = time();
-						// die Integer-Wandlung dient dazu eine führende Null zu beseitigen
-						$hrs = (integer)date("H", $time);
-						$min = (integer)date("i", $time);
-						$sec = (integer)date("s", $time);
-						// "kosmetische Behandlung" für Ein- und Mehrzahl der Minutenangabe
-						if($hrs==1) $hrs = "ein";
-						$minuten = "Minuten";
-						if($min==1)
-							{
-							$min = "eine";
-							$minuten = "Minute";
-							}
-						// Zeitansage über Text-To-Speech
-		 				$ansagetext = "Die aktuelle Uhrzeit ist ". $hrs. " Uhr und ". $min. " ". $minuten;
-						$ton        = "";
-						}
-					//Lautstärke von Musik am Anfang speichern
-					$merken = $musik_vol = GetValue($id_sk1_musik_vol);
-					$musik_status 			 = GetValueInteger($id_sk1_musik_status);
-					$ton_status           = GetValueInteger($id_sk1_ton_status);					
+            if ($first_num == -1) {return "unknown";}
 
-					if($modus == 2)
-						{
-						if($musik_status == 1)
-							{
-							/* wenn der Musikplayer läuft, diesen auf Pause setzen */
-							WAC_Pause($id_sk1_musik);
-							}
-						}
+            /* IP adresse Stelle fuer Stelle dekodieren, Anhaltspunkt ist der Punkt */
+            $result=substr($ip,$first_num,20);
+            //echo "Result :".$result."\n";
+            $pos=strpos($result,".");
+            $result_1=substr($result,0,$pos);
+            $result=substr($result,$pos+1,20);
+            //echo "Result :".$result."\n";
+            $pos=strpos($result,".");
+            $result_2=substr($result,0,$pos);
+            $result=substr($result,$pos+1,20);
+            //echo "Result :".$result."\n";
+            $pos=strpos($result,".");
+            $result_3=substr($result,0,$pos);
+            $result=substr($result,$pos+1,20);
+            //echo "Result :".$result."\n";
+            $parts = str_split($result);   /* String in lauter einzelne Zeichen zerlegen */
+            $last_num = -1;
+            $num_loc = 0;
+            foreach ($parts AS $a_char)
+                {
+                if (is_numeric($a_char))
+                    {
+                    $last_num = $num_loc;
+                    }
+                $num_loc++;
+                }
+            $result=substr($result,0,$last_num+1);
+            //echo "-------------------------> externe IP Adresse in Einzelteilen:  ".$result_1.".".$result_2.".".$result_3.".".$result."\n";
+            return($result_1.".".$result_2.".".$result_3.".".$result);
+        }
+
+    /**************************************************************/
 
 
-					if($modus == 3)
-						{
-						//Slider
-						for ($musik_vol; $musik_vol>=1; $musik_vol--)
-							{
-							WAC_SetVolume ($id_sk1_musik, $musik_vol);
-							$slider = 3000; //Zeit des Sliders in ms
-							if($merken>0) $warten = $slider/$merken; else $warten = 0;
-							IPS_Sleep($warten);
-							}
-						}
+    function dirToArray($dir)
+        {
+        $result = array();
 
-					if($ton != "" and $modus != 1)
-						{
-						if($ton_status == 1)
-							{
-							/* Wenn Ton Wiedergabe auf Play steht dann auf Stopp druecken */
-							WAC_Stop($id_sk1_ton);
-							WAC_SetRepeat($id_sk1_ton, false);
-							WAC_ClearPlaylist($id_sk1_ton);
-							}
-						if (isset($wav[$ton])==true)
-							{
-							WAC_AddFile($id_sk1_ton,$wav[$ton]);
-							echo "Check SoundID: ".$id_sk1_ton." Ton: ".$wav[$ton]." Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
-							while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
-							WAC_Play($id_sk1_ton);
-							//solange in Schleife bleiben wie 1 = play
-							sleep(1);
-							$status = getvalue($id_sk1_ton_status);
-							while ($status == 1)	$status = getvalue($id_sk1_ton_status);
-							}						
-			 			}
+        $cdir = scandir($dir);
+        foreach ($cdir as $key => $value)
+            {
+            if (!in_array($value,array(".","..")))
+                {
+                if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+                    {
+                    $result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+                    }
+                else
+                    {
+                    $result[] = $value;
+                    }
+                }
+            }
+        return $result;
+        }
 
-					if($ansagetext !="")
-						{
-						if($ton_status == 1)
-							{
-							/* Wenn Ton Wiedergabe auf Play steht dann auf Stopp druecken */
-							WAC_Stop($id_sk1_ton);
-							WAC_SetRepeat($id_sk1_ton, false);
-							WAC_ClearPlaylist($id_sk1_ton);
-							if ($debug) echo "Tonwiedergabe auf Stopp stellen \n";
-							}
-                        if ($debug) echo "Für Ansagetext erzeuge Datei : ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";     
-                        $dosOps->mkdirtree(IPS_GetKernelDir()."media/wav/");                                               
-						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
-						if (!$status) { echo "Error Erzeugung Sprachfile gescheitert.\n"; $tts_status=false; }
-						WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
-						if ($debug) echo "Check SoundID: ".$id_sk1_ton." Ton: ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav  Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
-						while (@WAC_Next($id_sk1_ton)==true) 
-							{ 
-							if ($debug) echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; 
-							}
-						$status=@WAC_Play($id_sk1_ton);
-						if (!$status) 
-							{ 
-							if ($debug) echo "Fehler WAC_play nicht ausführbar.\n"; 
-							$tts_status=false; 
-							}
-						
-  						WAC_Stop($id_sk1_ton);
-						WAC_SetRepeat($id_sk1_ton, false);
-						WAC_ClearPlaylist($id_sk1_ton);
-						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
-						if (!$status) echo "Error";
-		     			WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
-		     			if ($debug) echo "---------------------------".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";
-						WAC_Play($id_sk1_ton);
-						}
+    /*********************************************************************************************/
 
-					//Script solange anhalten wie Sprachausgabe läuft
-					if($modus != 1)
-						{
-						if (GetValueInteger($id_sk1_ton_status) == 1) echo "Noch warten bis Status des Ton Moduls ungleich 1 :";
-						while (GetValueInteger($id_sk1_ton_status) == 1)
-							{												
-							sleep(1);
-							if ($debug) echo ".";
-							}
-						if ($debug) echo "\nLänge der Playliste : ".WAC_GetPlaylistLength($id_sk1_ton)." Position : ".WAC_GetPlaylistPosition($id_sk1_ton)."\n";														
-						}
+    function dirToArray2($dir)
+        {
+        $result = array();
 
-			 		if($modus == 3)
-						{
-						$musik_vol = GetValueInteger($id_sk1_musik_vol);
-						for ($musik_vol=1; $musik_vol<=$merken; $musik_vol++)
-		   				{
-							WAC_SetVolume ($id_sk1_musik, $musik_vol);
-							$slider = 3000; //Zeit des Sliders in ms
-							if($merken>0) $warten = $slider/$merken; else $warten = 0;
-							IPS_Sleep($warten);
-							}
-    					}
-					if($modus == 2)
-						{
-						if($musik_status == 1)
-							{
-							/* wenn der Musikplayer läuft, diesen auf Pause setzen */
-							WAC_Pause($id_sk1_musik);
-							if ($debug) echo "Musikwiedergabe auf Pause stellen \n";							
-							}
-						}
-					break;
+        $cdir = scandir($dir);
+        foreach ($cdir as $key => $value)
+            {
+            if (!in_array($value,array(".","..")))
+                {
+                if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+                    {
+                    //$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+                    }
+                else
+                    {
+                    $result[] = $value;
+                    }
+                }
+            }
+        return $result;
+        }
 
-				//---------------------------------------------------------------------
 
-				//Hier können weitere Soundkarten eingefügt werden
-				case '2':
-					echo "Fehler: Soundkarte 2 nicht definiert.\n";
-					break;
-				default:
-                    $modulhandling = new ModuleHandling($debug);
-                    $echos=$modulhandling->getInstances('EchoRemote');
-                    if (in_array($sk,$echos)) EchoRemote_TextToSpeech($sk, $ansagetext);
-				    break;				
+    /********************************************************************************************
+    *
+    * Ausgabe von Ton für Sprachansagen, kommt noch einmal in der Sprachsteuerungslibrary vor 
+    * beide functions sind gleich gestellt.
+    *
+    *  sk    soundkarte   es gibt immer nur 1, andere bis 9 kann man implementieren
+    *        größer 9 ist eine ID einer EchoControl Instanz (Amazon Echo Geräte)
+    *
+    * 	modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
+    * 	modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
+    * 	modus == 3 ==> Sprache = on / Ton = on / Musik = play  / Slider = on  / Script Wait = on
+    *
+    * zum Beispiel  tts_play(1,$speak,'',2);  // Soundkarte 1, mit diesem Ansagetext, kein Ton, Modus 2 
+    *
+    *************************************************************/
 
-				}  //end switch
-			} //endif	sprachsteuerungs Modul richtig konfiguriert
-			
-		if ( ($sprachsteuerung==true) && ($remote==true) )
-			{
-			if ($debug)echo "Sprache remote auf ".$url." ausgeben. verwende Script mit OID : ".$oid."\n";
-			$rpc = new JSONRPC($url);
-			$monitor=array("Text" => $ansagetext);
-			$rpc->IPS_RunScriptEx($oid,$monitor);
-			}
+        function tts_play($sk,$ansagetext,$ton,$modus,$debug=false)
+            {
+            $tts_status=true;		
+            $sprachsteuerung=false; $remote=false;
+            $dosOps = new dosOps();     // create classes used in this class
+            $systemDir     = $dosOps->getWorkDirectory();
 
-		return ($tts_status);
- 	}   //end function
+            if ($debug) echo "Aufgerufen als Teil der Library des OperationCenter.\n";
+            $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+            if (!isset($moduleManager))
+                {
+                IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+                $moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
+                }
+            $installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+            if ( (isset($installedModules["Sprachsteuerung"]) )  && ($installedModules["Sprachsteuerung"] <>  "") ) 
+                {
+                $sprachsteuerung=true;
+                IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");					
+                $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+                $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+                $config=Sprachsteuerung_Configuration();
+                if ( (isset($config["RemoteAddress"])) && (isset($config["ScriptID"])) && ($sk<10) ) 
+                    { 
+                    $remote=true; 
+                    $url=$config["RemoteAddress"]; 
+                    $oid=$config["ScriptID"]; 
+                    }					
 
-/***************************************************
- *
- * updatet und installiert neue Versionen der Module
- *
- *******************************************/
+                $ipsOps = new ipsOps();
+                $NachrichtenID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdData);
+                $NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$CategoryIdApp);
+                //echo "Found $NachrichtenID und $NachrichtenScriptID in $CategoryIdData when searching vor \"Nachricht\" : ".IPS_GetName($NachrichtenID)." und ".IPS_GetName($NachrichtenScriptID)."\n";
 
-function CyclicUpdate()
-	{
-	// Repository
-	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-	$repositoryJW="https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/";
+                if ($debug) echo "Nachrichten gibt es auch : ".$NachrichtenID ."  (".IPS_GetName($NachrichtenID).")   ".$NachrichtenScriptID." \n";
 
-	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+                if (isset($NachrichtenScriptID))
+                    {
+                    $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);    
+                    $log_Sprachsteuerung=new Logging($systemDir."Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
+                    if ($sk<10) $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk mit \"".$ansagetext."\"");
+                    else $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk (".IPS_GetName($sk).") mit \"".$ansagetext."\"");
+                    }
+                }
+            $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');           // App Kategorie der Sprachsteuerung
+            $scriptIdSprachsteuerung   = @IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
+            if ($scriptIdSprachsteuerung==false) $sprachsteuerung=false;
+            if ( ($sprachsteuerung==true) && ($remote==false) )
+                {
+                if ($sk<10)             // die müssen nur angelegt werden wenn sie abgefragt werden, nicht für Ausgabe auf Echo
+                    {
+                    if ($debug) echo "Sprache lokal ausgeben.\n";	
+                    $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+                    $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+                    $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
 
-	$versionHandler = $moduleManager->VersionHandler();
-	$versionHandler->BuildKnownModules();
-	$knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
-	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-	$inst_modules = "Verfügbare Module und die installierte Version :\n\n";
-	$inst_modules.= "Modulname                  Version    Status/inst.Version         Beschreibung\n";
-	$loadfromrepository=array();
+                    $id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
+                    $id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
+                    $id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+                    $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+                    if ($debug) echo "\nAlle IDs -> Musik:".$id_sk1_musik." Status:".$id_sk1_musik_status." Vol:".$id_sk1_musik_vol." Ton:".$id_sk1_ton." TonStatus:".$id_sk1_ton_status." tts:".$id_sk1_tts."\n";
+                    }
+                $wav = array
+                    (
+                    "hinweis"  => IPS_GetKernelDir()."media/wav/hinweis.wav",
+                    "meldung"  => IPS_GetKernelDir()."media/wav/meldung.wav",
+                    "abmelden" => IPS_GetKernelDir()."media/wav/abmelden.wav",
+                    "aus"      => IPS_GetKernelDir()."media/wav/aus.wav",
+                    "coin"     => IPS_GetKernelDir()."media/wav/coin-fall.wav",
+                    "thunder"  => IPS_GetKernelDir()."media/wav/thunder.wav",
+                    "clock"    => IPS_GetKernelDir()."media/wav/clock.wav",
+                    "bell"     => IPS_GetKernelDir()."media/wav/bell.wav",
+                    "horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
+                    "sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
+                    );
+                switch ($sk)		/* Switch unterschiedliche Routinen anhand der Soundkarten ID, meistens eh nur eine */
+                    {
+                    //---------------------------------------------------------------------
+                    case '1':
+                        $status = GetValueInteger($id_sk1_ton_status);
+                        while ($status == 1)	$status = GetValueInteger($id_sk1_ton_status);
+                        $sk1_counter = GetValueInteger($id_sk1_counter);
+                        $sk1_counter++;
+                        SetValueInteger($id_sk1_counter, $sk1_counter);
+                        if($sk1_counter >= 9) SetValueInteger($id_sk1_counter, $sk1_counter = 0);
+                        if($ton == "zeit")
+                            {
+                            $time = time();
+                            // die Integer-Wandlung dient dazu eine führende Null zu beseitigen
+                            $hrs = (integer)date("H", $time);
+                            $min = (integer)date("i", $time);
+                            $sec = (integer)date("s", $time);
+                            // "kosmetische Behandlung" für Ein- und Mehrzahl der Minutenangabe
+                            if($hrs==1) $hrs = "ein";
+                            $minuten = "Minuten";
+                            if($min==1)
+                                {
+                                $min = "eine";
+                                $minuten = "Minute";
+                                }
+                            // Zeitansage über Text-To-Speech
+                            $ansagetext = "Die aktuelle Uhrzeit ist ". $hrs. " Uhr und ". $min. " ". $minuten;
+                            $ton        = "";
+                            }
+                        //Lautstärke von Musik am Anfang speichern
+                        $merken = $musik_vol = GetValue($id_sk1_musik_vol);
+                        $musik_status 			 = GetValueInteger($id_sk1_musik_status);
+                        $ton_status           = GetValueInteger($id_sk1_ton_status);					
 
-	foreach ($knownModules as $module=>$data)
-		{
-		$infos   = $moduleManager->GetModuleInfos($module);
-		$inst_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10);
-		if (array_key_exists($module, $installedModules))
-			{
-			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
-			$inst_modules .= "installiert als ".str_pad($infos['CurrentVersion'],10)."   ";
-			if ($infos['Version']!=$infos['CurrentVersion'])
-				{
-				$inst_modules .= "***";
-				$loadfromrepository[]=$module;
-				}
-			}
-		else
-			{
-			$inst_modules .= "nicht installiert            ";
-		   }
-		$inst_modules .=  $infos['Description']."\n";
-		}
+                        if($modus == 2)
+                            {
+                            if($musik_status == 1)
+                                {
+                                /* wenn der Musikplayer läuft, diesen auf Pause setzen */
+                                WAC_Pause($id_sk1_musik);
+                                }
+                            }
 
-	echo $inst_modules;
 
-	foreach ($loadfromrepository as $upd_module)
-	   {
-		$useRepository=$knownModules[$upd_module]['Repository'];
-		echo "-----------------------------------------------------------------------------------------------------------------------------\n";
-		echo "Update Module ".$upd_module." from Repository : ".$useRepository."\n";
-	  	$LBG_module = new IPSModuleManager($upd_module,$useRepository);
-		$LBG_module->LoadModule();
-	   $LBG_module->InstallModule(true);
-		}
-	}
-	
+                        if($modus == 3)
+                            {
+                            //Slider
+                            for ($musik_vol; $musik_vol>=1; $musik_vol--)
+                                {
+                                WAC_SetVolume ($id_sk1_musik, $musik_vol);
+                                $slider = 3000; //Zeit des Sliders in ms
+                                if($merken>0) $warten = $slider/$merken; else $warten = 0;
+                                IPS_Sleep($warten);
+                                }
+                            }
+
+                        if($ton != "" and $modus != 1)
+                            {
+                            if($ton_status == 1)
+                                {
+                                /* Wenn Ton Wiedergabe auf Play steht dann auf Stopp druecken */
+                                WAC_Stop($id_sk1_ton);
+                                WAC_SetRepeat($id_sk1_ton, false);
+                                WAC_ClearPlaylist($id_sk1_ton);
+                                }
+                            if (isset($wav[$ton])==true)
+                                {
+                                WAC_AddFile($id_sk1_ton,$wav[$ton]);
+                                echo "Check SoundID: ".$id_sk1_ton." Ton: ".$wav[$ton]." Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
+                                while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
+                                WAC_Play($id_sk1_ton);
+                                //solange in Schleife bleiben wie 1 = play
+                                sleep(1);
+                                $status = getvalue($id_sk1_ton_status);
+                                while ($status == 1)	$status = getvalue($id_sk1_ton_status);
+                                }						
+                            }
+
+                        if($ansagetext !="")
+                            {
+                            if($ton_status == 1)
+                                {
+                                /* Wenn Ton Wiedergabe auf Play steht dann auf Stopp druecken */
+                                WAC_Stop($id_sk1_ton);
+                                WAC_SetRepeat($id_sk1_ton, false);
+                                WAC_ClearPlaylist($id_sk1_ton);
+                                if ($debug) echo "Tonwiedergabe auf Stopp stellen \n";
+                                }
+                            if ($debug) echo "Für Ansagetext erzeuge Datei : ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";     
+                            $dosOps->mkdirtree(IPS_GetKernelDir()."media/wav/");                                               
+                            $status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
+                            if (!$status) { echo "Error Erzeugung Sprachfile gescheitert.\n"; $tts_status=false; }
+                            WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
+                            if ($debug) echo "Check SoundID: ".$id_sk1_ton." Ton: ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav  Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
+                            while (@WAC_Next($id_sk1_ton)==true) 
+                                { 
+                                if ($debug) echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; 
+                                }
+                            $status=@WAC_Play($id_sk1_ton);
+                            if (!$status) 
+                                { 
+                                if ($debug) echo "Fehler WAC_play nicht ausführbar.\n"; 
+                                $tts_status=false; 
+                                }
+                            
+                            WAC_Stop($id_sk1_ton);
+                            WAC_SetRepeat($id_sk1_ton, false);
+                            WAC_ClearPlaylist($id_sk1_ton);
+                            $status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
+                            if (!$status) echo "Error";
+                            WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
+                            if ($debug) echo "---------------------------".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";
+                            WAC_Play($id_sk1_ton);
+                            }
+
+                        //Script solange anhalten wie Sprachausgabe läuft
+                        if($modus != 1)
+                            {
+                            if (GetValueInteger($id_sk1_ton_status) == 1) echo "Noch warten bis Status des Ton Moduls ungleich 1 :";
+                            while (GetValueInteger($id_sk1_ton_status) == 1)
+                                {												
+                                sleep(1);
+                                if ($debug) echo ".";
+                                }
+                            if ($debug) echo "\nLänge der Playliste : ".WAC_GetPlaylistLength($id_sk1_ton)." Position : ".WAC_GetPlaylistPosition($id_sk1_ton)."\n";														
+                            }
+
+                        if($modus == 3)
+                            {
+                            $musik_vol = GetValueInteger($id_sk1_musik_vol);
+                            for ($musik_vol=1; $musik_vol<=$merken; $musik_vol++)
+                            {
+                                WAC_SetVolume ($id_sk1_musik, $musik_vol);
+                                $slider = 3000; //Zeit des Sliders in ms
+                                if($merken>0) $warten = $slider/$merken; else $warten = 0;
+                                IPS_Sleep($warten);
+                                }
+                            }
+                        if($modus == 2)
+                            {
+                            if($musik_status == 1)
+                                {
+                                /* wenn der Musikplayer läuft, diesen auf Pause setzen */
+                                WAC_Pause($id_sk1_musik);
+                                if ($debug) echo "Musikwiedergabe auf Pause stellen \n";							
+                                }
+                            }
+                        break;
+
+                    //---------------------------------------------------------------------
+
+                    //Hier können weitere Soundkarten eingefügt werden
+                    case '2':
+                        echo "Fehler: Soundkarte 2 nicht definiert.\n";
+                        break;
+                    default:
+                        $modulhandling = new ModuleHandling($debug);
+                        $echos=$modulhandling->getInstances('EchoRemote');
+                        if (in_array($sk,$echos)) EchoRemote_TextToSpeech($sk, $ansagetext);
+                        break;				
+
+                    }  //end switch
+                } //endif	sprachsteuerungs Modul richtig konfiguriert
+                
+            if ( ($sprachsteuerung==true) && ($remote==true) )
+                {
+                if ($debug)echo "Sprache remote auf ".$url." ausgeben. verwende Script mit OID : ".$oid."\n";
+                $rpc = new JSONRPC($url);
+                $monitor=array("Text" => $ansagetext);
+                $rpc->IPS_RunScriptEx($oid,$monitor);
+                }
+
+            return ($tts_status);
+        }   //end function
+
+    /***************************************************
+    *
+    * updatet und installiert neue Versionen der Module
+    *
+    *******************************************/
+
+    function CyclicUpdate()
+        {
+        // Repository
+        $repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+        $repositoryJW="https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/";
+
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+
+        $versionHandler = $moduleManager->VersionHandler();
+        $versionHandler->BuildKnownModules();
+        $knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
+        $installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+        $inst_modules = "Verfügbare Module und die installierte Version :\n\n";
+        $inst_modules.= "Modulname                  Version    Status/inst.Version         Beschreibung\n";
+        $loadfromrepository=array();
+
+        foreach ($knownModules as $module=>$data)
+            {
+            $infos   = $moduleManager->GetModuleInfos($module);
+            $inst_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10);
+            if (array_key_exists($module, $installedModules))
+                {
+                //$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
+                $inst_modules .= "installiert als ".str_pad($infos['CurrentVersion'],10)."   ";
+                if ($infos['Version']!=$infos['CurrentVersion'])
+                    {
+                    $inst_modules .= "***";
+                    $loadfromrepository[]=$module;
+                    }
+                }
+            else
+                {
+                $inst_modules .= "nicht installiert            ";
+            }
+            $inst_modules .=  $infos['Description']."\n";
+            }
+
+        echo $inst_modules;
+
+        foreach ($loadfromrepository as $upd_module)
+        {
+            $useRepository=$knownModules[$upd_module]['Repository'];
+            echo "-----------------------------------------------------------------------------------------------------------------------------\n";
+            echo "Update Module ".$upd_module." from Repository : ".$useRepository."\n";
+            $LBG_module = new IPSModuleManager($upd_module,$useRepository);
+            $LBG_module->LoadModule();
+        $LBG_module->InstallModule(true);
+            }
+        }
+        
 
 /****************************************************/
 

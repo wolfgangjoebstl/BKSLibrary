@@ -21,10 +21,12 @@
  *
  * Übersicht verwendete Klassen
  *   AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
- *   AutosteuerungConfiguration, abstract class als konfigurierbarer Eventhandler:
+ *   AutosteuerungConfiguration, abstract class als konfigurierbarer Eventhandler für:
  *       AutosteuerungConfigurationAlexa 
  *       AutosteuerungConfigurationHandler
  *       AutosteuerungConfigurationFloorplan   
+ *    Notiz, Funktionsumfang nicht erweitert im vergleich zur DetectMovement Library
+ * 
  *   AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung) 
  *   Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind. 
  *   AutosteuerungFunktionen, abstract class für:
@@ -48,6 +50,7 @@
  *    AutosteuerungConfiguration, abstract class für:
  *       AutosteuerungConfigurationAlexa 
  *       AutosteuerungConfigurationHandler 
+ *       AutosteuerungConfigurationFloorplan
  *
  *          mit folgenden abstract functions:
  *              Get_EventConfigurationAuto()
@@ -909,6 +912,10 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
  * die detectMovement Library ist umfangreicher und für die Behandlung von Events ausgelegt. bei Topology wurde dieses konzept aber ebenfalls ausgehebelt
  * es gibt aber parallelen, die abstract class ist der DetectHandler
  * Wenn die function GetEventConfiguration noch nicht existiert wird InitEventConfiguration aufgerufen
+ *
+ * enthält zusätzliche Funktionen für die Darstellung und Nutzung des Floorplans
+ *
+ *
  */ 
 class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
 	{
@@ -918,6 +925,93 @@ class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
 	protected $functionName="Floorplan_GetEventConfiguration";
 	protected $identifier="floorplanConfiguration";
 	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+
+    public function writePhpFile()
+        {
+        // php file schreiben, rueckmeldung json
+        $autodirectory=IPS_GetKernelDir()."user\\Autosteuerung\\";
+        $fileOps = new fileOps($autodirectory."bewegungsstatus.php");
+        //das php in User so schreiben wie die Konfiguration es erfordert
+        $php  = '<?php'."\n";
+        $php .= 'IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");'."\n";
+        //$php .= 'IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autosteuerung");'."\n";
+        $php .= '$result=array();'."\n";
+        $php .= '$events = Floorplan_GetEventConfiguration();'."\n";
+        $php .= 'foreach ($events as $oid => $event) {'."\n";
+        $php .= '    $lastchange=round(((time()-IPS_GetVariable($oid)["VariableChanged"])/60),0);'."\n";
+        $php .= '    $value=(GetValue($oid)?"true":"false");'."\n";
+        $php .= '    if (($value=="false") && ($lastchange<60)) $percent=round((60-$lastchange)/60*100,0);'."\n";
+        $php .= '    elseif (($value=="false") && ($lastchange>=60)) $percent=0;'."\n";
+        $php .= '    else $percent=100;'."\n";
+        $php .= '    $cmd=explode("->",$event[2]);'."\n";
+        $php .= '    if ( (count($cmd)==2) && ($cmd[0]=="floorplan") ) $result[$cmd[1]]=$value;   }'."\n";
+        $php .= 'echo json_encode($result);'."\n";
+        $php .= '?>';
+        $fileOps->writeFilePhp($php);              
+        }
+
+    public function writeScript()
+        {
+        $js = new jsSnippets();    
+        $script = '<script>';
+        $ready  = 'function updateRoomColors() {
+                fetch("../user/Autosteuerung/bewegungsstatus.php")  // Pfad zur PHP-Datei
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("statusinfofloorplan").innerHTML = JSON.stringify(data);
+                    // Räume entsprechend der Bewegungsdaten einfärben
+                    Object.keys(data).forEach((key) => {   
+                        if (data[key]=="true") color="red"; else color="lightgrey";
+                        if (elem=document.getElementById(key)) elem.style.fill = color; 
+                    });
+                });
+            }
+
+            // Aktualisiere die Raumfarben alle 5 Sekunden
+            setInterval(updateRoomColors, 5000);';
+        $script .= $js->ready($ready);;    
+        $script .= '</script>';
+        return ($script);
+        }
+
+     public function loadFloorplan()
+        {
+        $dosOps = new dosOps();
+        $configdirectory=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\Autosteuerung";
+        $dir = $dosOps->readSourceDir($configdirectory,true);         // true echo Verzeichnis
+        $found = $dosOps->readdirToArray($configdirectory,["filter"=>"*.svg"]);
+        //print_r($found);
+        if (sizeof($found)==1) 
+            {
+            echo "Grundriss gefunden \"".$found[0]."\"\n"; 
+            $filesvg = $dosOps->readFileToString($configdirectory."\\".$found[0]);          // check ob eingelesenes svg den Grundanforderungen entspricht
+            return ($filesvg);
+            }
+        return (false);
+        }
+
+     public function modifyFloorplan($filesvg)
+        {
+        $floorplan=""; 
+        $doc = new DOMDocument();           // die vorhandenen und von javascript bekannten Routinen verwenden
+        $doc->loadXML($filesvg);
+
+        // Beispiel: Ändere die Füllfarbe eines bestimmten <tagname>-Elements
+        $elems = $doc->getElementsByTagName('svg');            // alle elemente heraussuchen
+        //echo "Insgesamt ".count($elems)." gefunden.\n";
+        if (count($elems)==1)
+            {
+            // Iteriere durch alle Elemente und ändere ein Attribut
+            foreach ($elems as $elem) {
+                $elem->setAttribute('width', '100%'); // Ändere die Füllfarbe auf Rot
+                $elem->setAttribute('height', '100%'); // Ändere die Füllfarbe auf Rot
+                }
+  
+            // Ausgabe: Geänderte SVG als String
+            $floorplan = $doc->saveXML();            
+            }
+        return ($floorplan);
+        }
 
 	} 
 

@@ -449,9 +449,25 @@
                 $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
                 if (isset($webFrontConfiguration[$AutoSetSwitch["TABNAME"]])===false) echo "Achtung, ohne einen Eintrag in Autosteuerung_GetWebFrontConfiguration geht gar nichts.\n";
 
-                if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
+  				/* einfache Visualisierung der Bewegungswerte, testweise */
+				$StatusFloorplanHtml   = CreateVariable("FloorplanView",   3 /*String*/,  $AutosteuerungID, 1010, '~HTMLBox');          // unter der anderen Variable, wegen der Ordnung
+
+                $registerFloorplan->writePhpFile();
+                
+                $script=$registerFloorplan->writeScript();
+                if ($file=$registerFloorplan->loadFloorplan()) $floorplan = $registerFloorplan->modifyFloorplan($file); 
+                $html  ='';
+                $html .= '<div style="height: 1250px;">';
+                $html .= $floorplan;            // read-file better, try
+                $html .= '  <div id="statusinfofloorplan">status floorplan</div>';
+                $html .= '</div>';
+                $html .= $script;                       // entweder am Schluss oder mit onload parameter
+
+                SetValue($StatusFloorplanHtml, $html);
+
+                if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste, mit wichtigsten Bewegungsmeldungen */
                     {  				
-			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputHtml;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste, welche mussman hier entscheiden */				
+			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputHtml;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste, welche muss man hier entscheiden */				
                     }            
                 break;    
 			case "ANWESENHEITSERKENNUNG":
