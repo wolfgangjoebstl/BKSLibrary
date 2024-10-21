@@ -26,6 +26,7 @@
  *      HardwareNetatmoWeather extends Hardware
  *      HardwareHomematic
  *      HardwareHUE
+ *      HardwareHUEV2
  *      HardwareHarmony
  *      HardwareFHTFamily
  *      HardwareFS20Family
@@ -58,6 +59,7 @@
  *   HardwareDenonAVR
  *   HardwareHomematic extends Hardware
  *   HardwareHUE extends Hardware
+ *   HardwareHUEV2 extends Hardware
  *   HardwareHarmony extends Hardware
  *   HardwareEchoControl extends Hardware
  *      getDeviceParameter
@@ -104,13 +106,36 @@ class Hardware
     protected $socketID, $bridgeID, $deviceID;           // eingeschränkte Sichtbarkeit. Private nicht möglich, da auf selbe Klasse beschränkt
     protected $installedModules;
     protected $modulhandling;         // andere classes die genutzt werden, einmal instanzieren
-    protected $createUniqueName;
+    protected $createUniqueName, $combineDevices;
+    protected $configuration;                               // Configuration für alle gespeichert
+    protected $ListofDevices=array();                              // obwohl pro Gerät/entry der devicelist aufgerufen, sollte man das Ganze im Überblick behalten
 
+    /* construct, es gibt einen gemeinsamen config Parameter
+     * die class wird in get_DeviceList aufgerufen, für jede Hardware Gruppe/Hersteller/Modul gibt es eine eigene class die diese class als parent haben
+     *      uniqueNames     für deviceList Erstellung
+     *      combineDevices  true wenn die Geräte zusammengefasst werden sollen
+     *      deviceList      die eigentliche Liste zum vergleichen und suchen 
+     */
     public function __construct($config=false,$debug=false)
         {
         //echo "parent class Hardware construct.\n";
-        if ($config) $this->createUniqueName=true;
-        else $this->createUniqueName=false;
+        $configuration=array();
+        $this->combineDevices=false;
+        $this->createUniqueName=false;
+        if (is_array($config))
+            {
+            // function configfileParser(&$inputArray, &$outputArray, $synonymArray,$tag,$defaultValue,$debug=false)
+            configfileParser($config, $configuration, ["uniqueNames","UNIQUENAMES","Uniquenames","UniqueNames","uniquenames"],"uniqueNames",false,false);
+            configfileParser($config, $configuration, ["combineDevices","COMBINEDEVICES","Combinedevices","CombineDevices","combinedevices"],"combineDevices",false,false);
+            if ($configuration["combineDevices"]) 
+                {
+                $this->combineDevices=true; 
+                //$this->ListofDevices=$configuration["combineDevices"];                   // nicht setzen, wird Gerätespezifisch bearbeitet, nur den Speicherplatz hier reservieren            
+                } 
+            $this->createUniqueName=$configuration["uniqueNames"];    
+            }
+        elseif ($config) $this->createUniqueName=true;
+        $this->configuration = $configuration;                  // gemeinsame Configuration, kann auch leer sein
         $this->setInstalledModules();
         $this->modulhandling = new ModuleHandling(); 
         }
@@ -163,6 +188,9 @@ class Hardware
             case "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}":          // HUE Configurator
                 $hardwareType="HUE";                
                 break;
+            case "{A1B07C97-AA56-4C8A-81E4-2A4C41A8725C}":          // HUE Discovery V2, neues store Modul
+                $hardwareType="HUEV2";                
+                break;                
             case "{22F51957-348D-9A73-E019-3811573E7CA2}":          // Harmony Discovery
             case "{E1FB3491-F78D-457A-89EC-18C832F4E6D9}":          // Harmony Configurator
                 $hardwareType="Harmony";  
@@ -201,7 +229,7 @@ class Hardware
 
 
     /* Hardware::getDeviceConfiguration für class Hardware
-     *
+     * kein check im default ob der Name bereits verwendet wird, es wird in der Hardwarelist überschrieben
      */
 
     public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
@@ -219,7 +247,7 @@ class Hardware
      * wenn alles in Ordnung wird $deviceList[$name]["Name"]=$name; angelegt.
      *
      * es wird geprüft ob der name als Index bereits vergeben ist, Index muss ein uniqueName sein.
-     * wenn config für createUniqueName ein true ist dann bei doppelten manem einen neuen Namen definieren
+     * wenn config für createUniqueName ein true ist dann bei doppelten Namen einen neuen Namen definieren
      *
      * 
      * wird überschrieben von HardwareHomematic und HardwareHomematicExtended
@@ -743,12 +771,12 @@ class Hardware
     public function getRegisterStatistics($deviceList,$warning=true)
         {
         $statistic=array();
-        foreach ($deviceList as $name => $entry)
+        foreach ($deviceList as $name => $entry)                        // Nach Name durchgehen
             {
             if (isset($entry["Channels"]))
                 {
                 /* Ein Channel hat mehrere Subchannels */
-                foreach ($entry["Channels"] as $channel)
+                foreach ($entry["Channels"] as $channel)                // alle Channels anschauen
                     {
                     if (isset($channel["TYPECHAN"]))
                         {
@@ -1319,14 +1347,14 @@ class HardwareNetatmoWeather extends Hardware
  *
  * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
  * Homematic hat ein eigenes Naming scheme mit : da ein Gerät mehrere Instanzen haben kann. name Gerät:Instanz
- *
+ * ohne : geht es nicht, da der erste Teil der gemeinsame Name ist
  *
  *      __construct
  *
  * die Device Liste deviceList aus der Geräteliste erstellen, Antwort ist ein Geräteeintrag
  *
  *      getDeviceCheck
- *      getDeviceParameter
+ *      getDeviceParameter              Instanzen anlegen, pro Gerät mehrere Instanzen
  *      getDeviceChannels
  *      getDeviceInformation
  *      checkConfig
@@ -1354,8 +1382,8 @@ class HardwareHomematic extends Hardware
         if (isset($this->installedModules["OperationCenter"])) 
             {
             IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
-            if ($debug) echo "class DeviceManagement aufgerufen:\n";   
-            $this->DeviceManager = new DeviceManagement_Homematic($debug); 
+            if ($debug>2) echo "class DeviceManagement aufgerufen:\n";   
+            $this->DeviceManager = new DeviceManagement_Homematic($debug>2); 
             }
         parent::__construct($config,$debug);
         }
@@ -1503,7 +1531,7 @@ class HardwareHomematic extends Hardware
      * Information  DeviceManager->getHomematicHMDevice($instanz,1)     zB 'Schaltaktor 1-fach Energiemessung'
      * Serialnummer $entry["CONFIG"]["Address"][0]
      * Type
-     * Instances
+     * Instances    holt sich die Instanznummer aus der Portnummer, die in der Config gespeichet ist
      *
      *
      *
@@ -1874,8 +1902,8 @@ class HardwareHUE extends Hardware
         if (isset($this->installedModules["OperationCenter"])) 
             {
             IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
-            if ($debug) echo "class DeviceManagement aufgerufen:\n";   
-            $this->DeviceManager = new DeviceManagement_Hue($debug); 
+            if ($debug>2) echo "class DeviceManagement aufgerufen:\n";   
+            $this->DeviceManager = new DeviceManagement_Hue($debug>2); 
             }
         parent::__construct($config,$debug);        
         }
@@ -1947,7 +1975,7 @@ class HardwareHUE extends Hardware
             {
             if (isset($this->installedModules["OperationCenter"])) 
                 {
-                $typedevRegs    = $this->DeviceManager->getHueDeviceType($oid,3,$entry,true);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                $typedevRegs    = $this->DeviceManager->getHueDeviceType($oid,3,$entry,$debug>1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
                 $deviceList[$name]["Channels"][$port]=$typedevRegs;
                 }
             else
@@ -2008,7 +2036,292 @@ class HardwareHUE extends Hardware
         return (true);
         }
 
+    }
 
+
+/* Philips HUE V2  new Modul 
+ * Verwenden selbe Library in OperationCenter
+ * simple Implementation, means individual functions only for construct, getDeviceParameter
+ * change to reading of ConfigurationForm to get more information of typedev in DeviceManagement_Hue
+ *
+ *      construct                       Übergabe der Namen oder IDs
+ *      getDeviceConfiguration
+ *      getDeviceParameter
+ *      getDeviceChannels
+ */
+
+class HardwareHUEV2 extends Hardware
+	{
+	
+    protected $socketID, $bridgeID, $deviceID;
+	
+    /* wir können devices zusammenlegen wenn gewünscht 
+     */
+
+	public function __construct($config=false,$debug=false)
+		{
+        $this->socketID = "";             // I/O oder Splitter ist der Socket für das Device, hier SEE Client, nicht Teil des Modules
+        $this->bridgeID = "{52399872-F02A-4BEB-ACA0-1F6AE04D9663}";             // Configurator, Device Bridge 6786AF05-B089-4BD0-BABA-B2B864CF92E3
+        $this->deviceID = ['HUE Button','HUE Light','HUE Device Power','HUE Grouped Light','HUE Light Level','HUE Motion','HUE Relative Rotary','HUE Scene','HUE Temperature'];             // das Gerät selbst
+        $this->setInstalledModules();
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            if ($debug>2) echo "class DeviceManagement aufgerufen:\n";   
+            $this->DeviceManager = new DeviceManagement_HueV2($debug>2);              // die Darstellung der ConfigurationForm ist wieder anders als bei Hue
+            }
+        parent::__construct($config,$debug);                        // wertet das config File gemeinsam für alle aus
+        if ($this->combineDevices) 
+            {
+            if ($debug) echo "    HardwareHUEV2, combineDevices angefordert.\n"; 
+            foreach ($this->configuration["combineDevices"] as $idx => $entry)                // Hardwarelist, nocheinmal für alle Geräte
+                {
+                if (isset($entry["NAME"])) $name=$entry["NAME"];
+                else $name=$idx;
+                if ($entry["DeviceID"] != "") 
+                    {
+                    $this->ListofDevices[$entry["DeviceID"]][$entry["OID"]]=$entry["CONFIG"];
+                    if (isset($this->ListofDevices[$entry["DeviceID"]]["NAME"])==false) $this->ListofDevices[$entry["DeviceID"]]["NAME"]=$name;
+                    }
+                }
+            //print_r($this->ListofDevices);
+            }     
+        }
+
+    /* HardwareHUEV2::getDeviceConfiguration 
+     * Neudefinition um Check auf gleiche Namen gleich hier einbauen
+     * in Homematic wurde ein Device mit mehreren Instanzen über den Doppelpunkt im Namen gelöst, könnte man hier schon richtig machen über DeviceID
+     * unique nameing eingeführt, DeviceID um zu erkennen welche Instanzen zusammengehören
+     */
+
+    public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
+        {
+        $config = @IPS_GetConfiguration($device);
+        if ($config !== false) 
+            {                    
+            $devicename = IPS_GetName($device);
+            $oldname = $devicename;
+            if (isset($hardware[$hardwareType][$devicename]))
+                {
+                for ($num=1;($num<5);$num++) 
+                    {
+                    if (isset($hardware[$hardwareType][$devicename.$num])==false) break;
+                    }
+                $devicename = $devicename.$num;
+                echo "HardwareHUEV2::getDeviceConfiguration, warning instance name $oldname exists already, look for new name : $devicename.\n";
+                $hardware[$hardwareType][$devicename]["NAME"]=$oldname;
+                }
+            else $hardware[$hardwareType][$devicename]["NAME"]=$devicename;
+            $hardware[$hardwareType][$devicename]["OID"]=$device;
+            $hardware[$hardwareType][$devicename]["CONFIG"]=$config;
+            $configuration=json_decode($config,true);
+            if (isset($configuration["DeviceID"])) $hardware[$hardwareType][$devicename]["DeviceID"]=$configuration["DeviceID"];
+            }
+        }
+
+
+    /* HardwareHUEV2::getDeviceCheck
+     * Neudefinition, Check um die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * wenn alles in Ordnung wird $deviceList[$name]["Name"]=$name; angelegt.
+     *
+     * es wird geprüft ob der name als Index bereits vergeben ist, Index muss ein uniqueName sein.
+     * wenn config für createUniqueName ein true ist dann bei doppelten Namen einen neuen Namen definieren
+     *
+     * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
+     *
+     *  if getDeviceCheck(....)                             // verschiedene checks, zumindest ob schon angelegt ?
+     *       {
+     *       $object->getDeviceParameter(....);             // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
+     *       $object->getDeviceChannels(....);              // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
+     *       $object->getDeviceActuators(....);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+     *       $object->getDeviceInformation(....);             // zusaetzlich Geräteinformation, auch das Gateway
+     *       $object->getDeviceTopology(....);              // zusaettlich Topolgie Informationen ablegen
+     *       }
+     *
+     *
+     */
+
+    public function getDeviceCheck(&$deviceList, &$name, $type, $entry, $debug=false)
+        {
+        if ($this->createUniqueName)            // mit uniqueNames arbeiten
+            {
+            // die DeviceID suchen, wir wollen einen gemeinsamen Namen
+            if (isset($entry["CONFIG"]))
+                {
+                $config=json_decode($entry["CONFIG"],true);
+                if (isset($config["DeviceID"])) $deviceID=$config["DeviceID"];
+                if (isset($this->ListofDevices[$deviceID]["NAME"])) 
+                    {
+                    if ($name != $this->ListofDevices[$deviceID]["NAME"]) 
+                        {
+                        echo "HardwareHUEV2::getDeviceCheck, OID ".$entry["OID"].", DeviceID: $deviceID, Name wird $name -> ".$this->ListofDevices[$deviceID]["NAME"]." geändert !\n";
+                        //print_r($this->ListofDevices);
+                        $name = $this->ListofDevices[$deviceID]["NAME"];
+                        $deviceList[$name]["Name"]=$name;                           //realname ist Teil von instances
+                        $deviceList[$name]["Type"]=$type;
+                        return (true);
+                        }
+                    }
+                }
+            /* Fehlerprüfung, für alle die keinen gemeinsamen deviceID Eintrag haben */
+            if (isset($deviceList[$name])) 
+                {                    
+                if ($debug) echo "          ------------------------------------------------------------------------------------------------------\n";
+                echo "          getDeviceCheck:Allgemein, create unique Names aktiviert, Name wird von $name auf $name$type geändert:\n";
+                $realname=$name;
+                $name = $name.$type;            // wird zurückgegeben, nur ein Pointer
+                $deviceList[$name]["Name"]=$realname;
+                $deviceList[$name]["Type"]=$type;
+                return (true);
+                }
+            else 
+                {
+                $deviceList[$name]["Name"]=$name;
+                $deviceList[$name]["Type"]=$type;
+                return (true);
+                }
+            }
+        else                                // bei gleichen Namen abbrechen
+            {
+            /* Fehlerprüfung */
+            if (isset($deviceList[$name])) 
+                {                 
+                echo "          >>getDeviceCheck:Allgemein   Fehler, Name \"$name\" bereits definiert. Anforderung nach Type $type wird ignoriert.\n";                    
+                print_r($deviceList[$name]);
+                return(false);
+                }
+            else return (true);
+            }            
+        }
+
+    /* HardwareHUEV2::getDeviceParameter
+     * die Device Liste aus der Geräteliste erstellen 
+     * Antwort ist ein Geräteeintrag für Type und Instances
+     *
+     * Standard wäre:         $deviceList[$name]["Type"]=$type; $entry["NAME"]=$name; $deviceList[$name]["Instances"][]=$entry;
+     *                              entry[TYPEDEV], entry[OID], entry[NAME],entry[CONFIG] bereits übernommen 
+     *                                  TYPE_SWITCH | TYPE_AMBIENT | TYPE_DIMMER
+     */
+    public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        //$debug=true;    
+        /* Fehlerpüfung, erfolgt bereits checkDevice, bei doppelten Namen wird entweder ein uniqueName erstellt oder abgebrochen
+        if (isset($deviceList[$name])) 
+            {
+            echo "          >>HardwareHUE::getDeviceParameter, Fehler, Name \"".$name."\" bereits definiert.\n";
+            return(false);
+            }            
+        /* Durchführung */
+        if ($debug) echo "          getDeviceParameters:HUE V2    aufgerufen. Eintrag \"$name\" hinterlegt.\n";
+        //print_R($entry);      
+        //if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];               // Name wird übergeben für Debug
+        //else $entry["NAME"]=$name;
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            if (isset($entry["OID"]))
+                {
+                $instanz=$entry["OID"];
+                $typedev    = $this->DeviceManager->getHueDeviceType($instanz,0,$entry,$debug>1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                //if ($debug) echo "    TYPEDEV: $typedev";
+                $entry["TYPEDEV"]=$typedev;
+                }
+            }      
+
+        $deviceList[$name]["Type"]=$type;
+        $deviceList[$name]["Instances"][]=$entry;
+        return (true);
+        }
+
+
+    /* HardwareHUEV2::getDeviceChannels
+     * die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät hat die Kategorien Instances,Channels,Actuators, es kann mehrer Einträge in Instances und Channels haben, 
+     * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
+     * alle instances durchgehen, OIDs einsammeln mit Zuordnung Port abspeichern
+     * zumindest RegisterAll schreiben
+     */
+
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)                 // class Hardware
+        {
+        if ($debug) echo "          HardwareHUE::getDeviceChannels, aufgerufen für ".$entry["OID"]." mit $name $type.\n";
+        if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];               // Name wird übergeben für Debug
+        else $entry["NAME"]=$name;
+
+        //print_r($deviceList[$name]["Instances"]);
+        //print_r($entry);
+        $oids=array();
+        foreach ($deviceList[$name]["Instances"] as $port => $register)             // wir sind bei den Channels, also kann man instances bereits analysieren
+            {
+            $oids[$register["OID"]]=$port;              // also für den Fall das ein Device mehrere Instances hat, eigentlich nur bei Homematic der Fall
+            }
+        if (isset($oids[$entry["OID"]])===false) 
+            {
+            echo "  >> irgendetwas ist falsch.\n";
+            return (false);                                     // nix zum tun, Abbruch
+            }
+        foreach ($oids as $oid => $port)
+            {
+            if (isset($this->installedModules["OperationCenter"])) 
+                {
+                $typedevRegs    = $this->DeviceManager->getHueDeviceType($oid,4,$entry,$debug>1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                $deviceList[$name]["Channels"][$port]=$typedevRegs;
+                }
+            else                // wird eigentlich nicht verwendet
+                {
+                $typedev=false;
+                if ($debug>1) echo "             analyse result from getDeviceParameter : ".json_encode($deviceList[$name]["Instances"][$port])."\n";
+                if (isset($deviceList[$name]["Instances"][$port]["TYPEDEV"])) $typedev = $deviceList[$name]["Instances"][$port]["TYPEDEV"];
+                else echo "         TYPEDEV not found in : ".json_encode($deviceList[$name]["Instances"][$port])."  \n";
+                $typedevRegs=array();
+                $cids = IPS_GetChildrenIDs($oid);           // für jede Instanz die Children einsammeln
+                $register=array();
+                if ($debug>1) echo "                  $typedev : ";
+                foreach($cids as $cid)
+                    {
+                    $regName=IPS_GetName($cid);
+                    if ($debug>1) echo $regName.",";
+                    $register[]=$regName;
+                    switch ($typedev)
+                        {
+                        case "TYPE_SWITCH":
+                        case "TYPE_GROUP":
+                            if ($regName=="Status") $typedevRegs["STATE"]=$regName;
+                            break;
+                        case "TYPE_DIMMER":
+                            if ($regName=="Status")     $typedevRegs["STATE"]=$regName;
+                            if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
+                            break;
+                        case "TYPE_AMBIENT":
+                            if ($regName=="Status")         $typedevRegs["STATE"]=$regName;
+                            if ($regName=="Helligkeit")     $typedevRegs["LEVEL"]=$regName;
+                            if ($regName=="Farbtemperatur") $typedevRegs["AMBIENCE"]=$regName;
+                            break;
+                        case "TYPE_RGB":                                                        // keine Ahnung wie es zu diesem Type kommt
+                            if ($regName=="Status") $typedevRegs["STATE"]=$regName;
+                            if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
+                            if ($regName=="Farbe") $typedevRegs["COLOR"]=$regName;                      // muss aber nicht stimmen
+                            break;
+                        case "TYPE_SENSOR":
+                            break;
+                        }
+                    }
+                if ($debug>1) echo "\n";
+                sort($register);
+                $registerNew=array();
+                $oldvalue="";        
+                /* gleiche Einträge eliminieren */
+                foreach ($register as $index => $value)
+                    {
+                    if ($value!=$oldvalue) {$registerNew[]=$value;}
+                    $oldvalue=$value;
+                    } 
+                $deviceList[$name]["Channels"][$port]["RegisterAll"]=$registerNew;
+                $deviceList[$name]["Channels"][$port][$typedev]=$typedevRegs;
+                }
+            if (isset($deviceList[$name]["Name"])) $deviceList[$name]["Channels"][$port]["Name"]=$deviceList[$name]["Name"];
+            else $deviceList[$name]["Channels"][$port]["Name"]=$name;
+            }
+        return (true);
+        }
 
     }
 

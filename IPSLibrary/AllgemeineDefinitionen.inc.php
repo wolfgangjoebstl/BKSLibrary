@@ -17182,6 +17182,17 @@ class ModuleHandling
      */
 	public function getInstances($input, $format="OID")
 		{
+        if (is_array($input))
+            {
+            $instances=array();
+            foreach ($input as $item)
+                {
+                $result = $this->getInstances($item);           // ruft sich selbst auf
+                //print_R($result);   
+                $instances = array_merge($instances, $result);
+                }
+            return($instances);
+            }
         //echo "getInstances aufgerufen mit Parameter $input \n"; 
 		$input=trim($input);
 		$key=$this->get_string_between($input,'{','}');

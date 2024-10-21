@@ -42,8 +42,8 @@
  *      getDeviceGroupInstances
  *      get_SocketList
  *      get_GatewayList
- *      get_HardwareList
- *      get_DeviceList
+ *      get_HardwareList                        erstellt eine Liste der Hardware basierend auf Instanzen die zu einem Konfigurator oder einer Instanz gehören
+ *      get_DeviceList                          erstellt ein Inventory nach einem für alle Geräte gemeinsamen Datenmodell 
  *
  *      createTopologyInstances                 TOPD Instanzen erzeugen und im zweiten Schritt einsortieren
  *      createTopologyInstance
@@ -229,7 +229,7 @@ class TopologyLibraryManagement
                 $objectClassName = "Hardware".$hardwareType;
                 $object = new $objectClassName(); 
                 $deviceID = $object->getDeviceID();                     // wird im construct gesetzt {xxxx-xxx...}
-                if ($debug) echo "      DeviceID :    $deviceID \n";
+                if ($debug) echo "      DeviceID :    ".json_encode($deviceID)." \n";               // kann neuerdings auch ein array sein
                 //$devices=$this->modulhandling->getInstances($deviceID);
                 $devices=$object->getDeviceIDInstances();
                 foreach ($devices as $device)
@@ -275,14 +275,17 @@ class TopologyLibraryManagement
      *      HardwareNetatmoWeather extends Hardware
      *      HardwareHomematic
      *      HardwareHUE
+     *      HardwareHUEV2
      *      HardwareHarmony
      *      HardwareFHTFamily
      *      HardwareFS20Family
      *      HardwareFS20ExFamily
      *      HardwareEchoControl
      *
-     * getDeviceCheck kann jetzt Namen abändern wenn er nicht mehr Unique ist, testweise durchziehen
-     *
+     * Wesentliche Änderungen in der Bibliothek:
+     *  getDeviceCheck kann jetzt Namen abändern wenn er nicht mehr Unique ist, testweise durchziehen
+     *  wir haben eine Liste der Devices mit einem eindeutigen Identifier, damit können Instanzen einfacher einem gemeinsamen Gerät zugeordnet werden
+     *      siehe HueV2 und als alterntive Implementierung, weil vorher, in der Homematic Welt
      *
      */
 
@@ -305,11 +308,11 @@ class TopologyLibraryManagement
         $hardwareTypeDetect = new Hardware();        
         foreach ($hardware as $hardwareType => $deviceEntries)          // die device types durchgehen HUE, Homematic etc.
             {
+            $objectClassName = "Hardware".$hardwareType;
+            $object = new $objectClassName(["uniqueNames"=>$this->createUniqueNames,"combineDevices"=>$deviceEntries],$debug); 
             foreach ($deviceEntries as $name => $entry)         // die devices durchgehen, Homematic Devices müssen gruppiert werden 
                 {
                 if ($debug) echo "      Bearbeite Gerät mit Index \"$name\" vom Typ \"$hardwareType\", new class is \"Hardware$hardwareType\":\n";
-                $objectClassName = "Hardware".$hardwareType;
-                $object = new $objectClassName($this->createUniqueNames); 
                 if ($object->getDeviceCheck($deviceList, $name, $hardwareType, $entry, $debug))                 // name kann sich ebenfalls ändern wen unqueNames erzeugt werden              
                     {
                     if ($debug>1) echo "          $objectClassName=>getDeviceParameter aufgerufen:\n";
