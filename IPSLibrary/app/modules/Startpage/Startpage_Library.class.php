@@ -546,7 +546,7 @@
 			$wert="";
             $wert.= $this->writeStartpageLink("");             // gemeinsamer Linkbereich
 		    $wert.= $this->writeStartpageStyle("");             // gemeinsames Style
-            $wert.= $this->writeStartpageScript("");            // gemeinsames Script
+            $wert.= $this->writeStartpageScript("",$debug);            // gemeinsames Script
             switch ($PageType)
                 {
                 case 4:        // Hierarchie
@@ -3659,23 +3659,25 @@
          *
          **************************************/
 
-	    function writeStartpageScript($input=false)
+	    function writeStartpageScript($input=false, $debug=false)
 	        {
+            if ($debug) echo "   writeStartpageScript, einen gemeinsamen Scriptbereich hier erstellen.\n";
             $wert="";
             if ($this->isAdditionalTableLinesOfRainchart()) 
                 {    
                 //print_r($this->installedModules);                                   // nur dann das Script einfügen
                 if (isset($this->installedModules["Gartensteuerung"]))
                     {
+                    if ($debug) echo "     its Raining Chart erstellen.\n";
                     IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
                     IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');
-                    $debug=false;
+                    //$debug=false;
                     ini_set('memory_limit', '128M');                        // können grosse Dateien werden
                     $archiveOps = new archiveOps();                         // braucht richtig Arbeitsspeicher, 15 MB ca. auf LBG70
                     $ipsTables = new ipsTables();
                     $ipsOps = new ipsOps();
 
-                    $gartensteuerung           = new Gartensteuerung(0,0,$debug);   // default, default, debug=false
+                    $gartensteuerung           = new Gartensteuerung(0,0,$debug>1);   // default, default, debug=false
                     $rainRegs=$gartensteuerung->getRainRegisters();
                     $endtime=time();
                     $starttime=$endtime-60*60*24*7;  /* die letzten 7 Tage, für Auswertung nebeneinander */
@@ -3684,7 +3686,8 @@
                     $config["StartTime"]=$starttime;
                     $config["OIdtoStore"]="Rain";             // oid wird auch ausserhalb geändert
                     $config["maxDistance"]=false;               // kein Distance Check von 4 Stunden, üblicherweise nur bei temperatur
-                    $ergebnis = $archiveOps->getValues($rainRegs["IncrementID"],$config,$debug);         // true,2 debug
+                    $config["Warning"]=false;
+                    $ergebnis = $archiveOps->getValues($rainRegs["IncrementID"],$config,$debug>1);         // true,2 debug
                     $config["ShowTable"]["output"]="realTable";
                     $config["ShowTable"]["align"]="hourly";                   // beinhaltet auch aggregate , daily
                     $result = $archiveOps->showValues(false,$config);

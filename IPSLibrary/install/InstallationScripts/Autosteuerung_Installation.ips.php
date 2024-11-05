@@ -72,8 +72,8 @@
 		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
 		}
 
-    if ($_IPS['SENDER']=="Execute") $debug=false;            // Mehr Ausgaben produzieren wenn im Attended Mode
-	else $debug=false;
+    $debug=false;
+    //if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren wenn im Attended Mode
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
@@ -101,7 +101,7 @@
 
 	if (isset ($installedModules["OperationCenter"])) 
         { 	
-        echo "Modul OperationCenter ist installiert.\n"; 
+        if ($debug) echo "  Modul OperationCenter ist installiert.\n"; 
 		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 		IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	
 		$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);                
@@ -110,27 +110,35 @@
         } 
     else 
         { 
-        echo "Modul OperationCenter ist NICHT installiert.\n"; 
+        echo "Modul OperationCenter ist NICHT installiert, incomplete Installation.\n"; 
         $categoryId_AutosteuerungAlexa    =        false;
         $incomplete=true;
         }
 
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
-        echo "  Modul EvaluateHardware ist installiert.\n"; 
+        if ($debug) echo "  Modul EvaluateHardware ist installiert.\n"; 
         IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
         IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');           // sonst werden die Event Listen überschrieben
         IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
         }
-    else $incomplete=true;
+    else 
+        {
+        echo "  Modul EvaluateHardware ist NICHT installiert, incomplete Installation.\n"; 
+        $incomplete=true;
+        }
 
     if (isset($installedModules["DetectMovement"]))
         {
-        echo "  Modul DetectMovement ist installiert.\n"; 
+        if ($debug) echo "  Modul DetectMovement ist installiert.\n"; 
         IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
         IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
         }
-    else $incomplete=true;
+    else 
+        {
+        echo "  Modul DetectMovement ist NICHT installiert, incomplete Installation.\n"; 
+        $incomplete=true;
+        }
 
     $ipsOps = new ipsOps();
     $wfcHandling =  new WfcHandling();
@@ -243,7 +251,7 @@
     $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
 
     // Aktuator
-    $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",true);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+    $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",$debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
     $countPowerLock=(sizeof($resultKey));				
     $resulttext="Alle Tuerschloesser Aktuatoren ausgeben ($countPowerLock):\n";            
     $resulttext.=$DeviceManager->writeCheckStatus($resultKey);          
@@ -255,7 +263,7 @@
         }
 
     // Status
-    $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",true);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+    $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",$debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
     $countPowerLock+=(sizeof($resultState));				
     $resulttext="Alle Tuerschloesser Stati ausgeben ($countPowerLock):\n";            
     $resulttext.=$DeviceManager->writeCheckStatus($resultState);          
@@ -290,13 +298,24 @@
      */
 
     $topology=get_UnifiedTopology();
-    $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$channelEventList,1);        // true,2 for Debug, 1 für Warnings  Verwendet ~ in den Ortsangaben, dadurch werden die Orte wieder eindeutig ohne den Pfad zu wissen
+    $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$channelEventList,$debug);        // true,2 for Debug, 1 für Warnings  Verwendet ~ in den Ortsangaben, dadurch werden die Orte wieder eindeutig ohne den Pfad zu wissen
 
     /* beeinflussung des Ergebnisses in EvaluateHardware_Configuration
      */
 
-    // Erstellung Floorplan für diese lokale Topologie
-    $result = $DetectDeviceHandler->evalTopology("LBG70",false);          // verwendet topology ohne Erweiterungen, true für Anzeige der topologie
+    $auto=new Autosteuerung();
+	$AutoSetSwitches = $auto->get_Autosteuerung_SetSwitches();      // sicherstellen dass PROFIL, NAME und TABNAME gesetzt sind
+    //print_r($AutoSetSwitches);
+
+    $register=new AutosteuerungHandler($scriptIdAutosteuerung);
+	$setup = $register->get_Configuration();
+	//print_r($setup);
+
+    if (isset($setup["FloorPlan"]["PlaceToStart"])) $home = $setup["FloorPlan"]["PlaceToStart"];
+    else $home="LBG70";
+    echo "Erstellung Floorplan für diese lokale Topologie: $home\n";
+
+    $result = $DetectDeviceHandler->evalTopology($home,false);          // verwendet topology ohne Erweiterungen, true für Anzeige der topologie
     $object=false;
     $topo="Bewegung";                       // bei TOPO gibt es einheitliche Namen
     $floorplan=array();
@@ -307,21 +326,24 @@
             if (isset($topologyPlusLinks[$entry["Index"]]))
                 {
                 $data=$topologyPlusLinks[$entry["Index"]];
-	    		for ($i=0;$i<$entry["Hierarchy"];$i++) echo "   ";
-		    	echo str_pad($entry["Name"],80-($entry["Hierarchy"]*3))."| ";
-                if ((isset($data["OBJECT"]["Movement"])) && $object)
+                if ($debug)
                     {
-                    echo json_encode($data["OBJECT"]["Movement"]);
+                    for ($i=0;$i<$entry["Hierarchy"];$i++) echo "   ";
+                    echo str_pad($entry["Name"],80-($entry["Hierarchy"]*3))."| ";
+                    if ((isset($data["OBJECT"]["Movement"])) && $object)
+                        {
+                        echo json_encode($data["OBJECT"]["Movement"]);
+                        }
                     }
                 if ((isset($data["TOPO"]["ROOM"])) && $topo)
                     {
-                    echo json_encode($data["TOPO"]["ROOM"]);
+                    if ($debug) echo json_encode($data["TOPO"]["ROOM"]);
                     foreach ($data["TOPO"]["ROOM"] as $index => $type)
                         {
                         if ($type==$topo) $floorplan[$entry["Name"]]=$index;
                         }
                     }
-                echo "\n";
+                if ($debug) echo "\n";
                 }
             else echo "Warning, no Data \n";                // OBJECT wurde für den Raum nicht angelegt
             }
@@ -330,7 +352,7 @@
 
     //print_R($floorplan);
 
-    foreach ($floorplan as $room=>$index)
+    foreach ($floorplan as $room=>$index)           // erstellen von Floorplan_GetEventConfiguration
         {
         //registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
         $registerFloorplan->registerAutoEvent($index,"ROOM","","");
@@ -354,16 +376,6 @@
  * Für jede dieser Gruppen kann festgelegt werden ob es ein Eigenes Tab gibt oder die Informationen auf einer Seite zusammengefasst werden.
  *
  ********************************/
-    
-    echo "\n";
-    echo "====================================================================\n";
-    echo "\n";
-
-	$AutoSetSwitches = Autosteuerung_SetSwitches();
-    //print_r($AutoSetSwitches);
-    $register=new AutosteuerungHandler($scriptIdAutosteuerung);
-	$setup = $register->get_Configuration();
-	print_r($setup);
 
     /* verschiedene Loggingspeicher initialisieren, damit kein Fehler wenn nicht installiert wegen Konfiguration aber referenziert da im Code 
      *      Nachrichtenverlauf-Autosteuerung
@@ -403,19 +415,16 @@
 	$webfront_links=array();
 	foreach ($AutoSetSwitches as $nameAuto => $AutoSetSwitch)
 		{
-        if ( (isset($AutoSetSwitch["PROFIL"])) && (isset($AutoSetSwitch["NAME"])) ) 
-            {
-            // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-            if (strtoupper($AutoSetSwitch["PROFIL"])=="NULL")        // leere Optionen als String anlegen, damit sie nicht eine falsche 0 anzeigen
-                { 
-                $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung,$AutoSetSwitch["NAME"], 3, "", false,  0, $scriptIdWebfrontControl);   /* 0 Boolean 1 Integer 2 Float 3 String */
-                SetValue($AutosteuerungID,"");
-                }
-            else $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung, $AutoSetSwitch["NAME"], 1, $AutoSetSwitch["PROFIL"], false, 0, $scriptIdWebfrontControl );  /* 0 Boolean 1 Integer 2 Float 3 String */        
-            echo "-------------------------------------------------------\n";
-            echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
+        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        if (strtoupper($AutoSetSwitch["PROFIL"])=="NULL")        // leere Optionen als String anlegen, damit sie nicht eine falsche 0 anzeigen
+            { 
+            $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung,$AutoSetSwitch["NAME"], 3, "", false,  0, $scriptIdWebfrontControl);   /* 0 Boolean 1 Integer 2 Float 3 String */
+            SetValue($AutosteuerungID,"");
             }
-        else $AutoSetSwitch["NAME"]=$nameAuto;
+        else $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung, $AutoSetSwitch["NAME"], 1, $AutoSetSwitch["PROFIL"], false, 0, $scriptIdWebfrontControl );  /* 0 Boolean 1 Integer 2 Float 3 String */        
+        echo "-------------------------------------------------------\n";
+        echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
+
 		$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
         $webfront_links[$AutosteuerungID]["OID_R"]=$inputAuto;              // Default Nachrichtenspeicher
@@ -438,7 +447,7 @@
          *      Denon
          *
          */
-    	switch (strtoupper($AutoSetSwitch["NAME"]))
+    	switch (strtoupper($AutoSetSwitch["TABNAME"]))          // das ist der Key, standardisiserte Namen
 			{
             case "FLOORPLAN":
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Floorplan'));  
@@ -455,16 +464,18 @@
                 $registerFloorplan->writePhpFile();
                 
                 $script=$registerFloorplan->writeScript();
-                if ($file=$registerFloorplan->loadFloorplan()) $floorplan = $registerFloorplan->modifyFloorplan($file); 
-                $html  ='';
-                $html .= '<div style="height: 1250px;">';
-                $html .= $floorplan;            // read-file better, try
-                $html .= '  <div id="statusinfofloorplan">status floorplan</div>';
-                $html .= '</div>';
-                $html .= $script;                       // entweder am Schluss oder mit onload parameter
+                if ($file=$registerFloorplan->loadFloorplan())          // wenn es keinen floorplan gibt auch nicht weiter probieren
+                    {
+                    $floorplan = $registerFloorplan->modifyFloorplan($file);             // file wird in der Abfrage gesetzt
+                    $html  ='';
+                    $html .= '<div style="height: 1250px;">';
+                    $html .= $floorplan;            // read-file better, try
+                    $html .= '  <div id="statusinfofloorplan">status floorplan</div>';
+                    $html .= '</div>';
+                    $html .= $script;                       // entweder am Schluss oder mit onload parameter
 
-                SetValue($StatusFloorplanHtml, $html);
-
+                    SetValue($StatusFloorplanHtml, $html);
+                    }
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste, mit wichtigsten Bewegungsmeldungen */
                     {  				
 			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputHtml;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste, welche muss man hier entscheiden */				
@@ -474,7 +485,7 @@
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Erkennung'));            
 				
                 /* Setup Standard Variables */
-                echo "   Variablen für Anwesenheitserkennung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";			
+                if ($debug) echo "   Variablen für Anwesenheitserkennung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";			
                 
                 /* Status Anwesend */
 				$StatusAnwesendID=CreateVariable("StatusAnwesend",0, $AutosteuerungID,0,"~Presence",null,null,"");
@@ -536,7 +547,7 @@
 				IPS_ApplyChanges($archiveHandlerID);
 
 				$alarm=new AutosteuerungAlarmanlage();
-                echo " --> AutosteuerungAlarmanlage erfolgreich aufgerufen.\n";
+                if ($debug) echo " --> AutosteuerungAlarmanlage erfolgreich aufgerufen.\n";
 
                 /* PowerLock Variables */
                 if ($countPowerLock>0)
@@ -706,7 +717,7 @@
                     }
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Schaltbefehle'));
 				$simulation=new AutosteuerungAnwesenheitssimulation();
-                echo " --> AutosteuerungAnwesenheitssimulation erfolgreich aufgerufen.\n";
+                if ($debug) echo " --> AutosteuerungAnwesenheitssimulation erfolgreich aufgerufen.\n";
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {                
 				    $webfront_links[$AutosteuerungID]["OID_R"]=$inputSchalt;									

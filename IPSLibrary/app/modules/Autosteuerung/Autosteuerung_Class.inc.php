@@ -168,7 +168,10 @@ class AutosteuerungHandler
 			self::$scriptID=$scriptID;
 		    }
 
-        /* Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler 
+        /* AutosteuerungHandler::set_Configuration
+         * bearbeitet Autosteuerung_Setup, wird von construct in configuration gespeichert
+         *
+         * Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler 
          * behandelt das LogDirectory und HeatControl aus Autosteuerung_Setup
          *
          */
@@ -186,7 +189,8 @@ class AutosteuerungHandler
             $systemDir     = $dosOps->getWorkDirectory(); 
             if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
             $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
-            configfileParser($configInput, $configHeatControl, ["HeatControl" ],"HeatControl" ,null);  
+
+            configfileParser($configInput, $configHeatControl, ["HeatControl" ],"HeatControl" ,array());  
             //print_R($configHeatControl);
             configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["EVENT_IPSHEAT","SwitchName" ],"SwitchName" ,null);  
             configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["Module" ],"Module" ,"IPSHeat");  
@@ -194,16 +198,22 @@ class AutosteuerungHandler
             configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["AutoFill","Autofill","autofill","AUTOFILL" ],"AutoFill" ,"Aus");          //Default bedeutet Heizung Aus nach einem Update, ReInstall
             configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["setTemp","settemp","Settemp","SETTEMP","SetTemp" ],"setTemp" ,22);          //Default bedeutet Heizung Aus nach einem Update, ReInstall
             //print_r($config);
+
+            configfileParser($configInput, $configFloorplan, ["FloorPlan","floorplan","FLOORPLAN" ],"FloorPlan" ,array());       // wenn keine Angaben fangen wir mit der Welt an 
+            configfileParser($configFloorplan["FloorPlan"], $config["FloorPlan"], ["PlaceToStart","placetostart","PLACETOSTART" ],"PlaceToStart" ,"World");       // wenn keine Angaben fangen wir mit der Welt an 
+
             return ($config);
             }
 
+        /* AutosteuerungHandler::get_Configuration
+         *
+         */
         public function get_Configuration()
             {
             return ($this->configuration);
             }
 
-		/**
-		 * @private
+		/* AutosteuerungHandler::Get_EventConfigurationAuto
 		 *
 		 * Liefert die aktuelle Auto Event Konfiguration
 		 *
@@ -216,8 +226,7 @@ class AutosteuerungHandler
 			return self::$eventConfigurationAuto;
 		}
 		
-		/**
-		 * @private
+		/* AutosteuerungHandler::Set_EventConfigurationAuto
 		 *
 		 * Setzen der aktuellen Event Konfiguration
 		 *
@@ -410,6 +419,7 @@ class AutosteuerungHandler
  *    AutosteuerungConfiguration, abstract class für:
  *       AutosteuerungConfigurationAlexa 
  *       AutosteuerungConfigurationHandler
+ *       AutosteuerungConfigurationFloorplan
  *
  *              Get_EventConfigurationAuto()
  *              Set_EventConfigurationAuto
@@ -926,6 +936,9 @@ class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
 	protected $identifier="floorplanConfiguration";
 	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
 
+    /* writePhpFile
+     * erstellt ein File bewegungsstatus.php das anhand Floorplan_GetEventConfiguration() die Werte als json zurückgibt
+     */
     public function writePhpFile()
         {
         // php file schreiben, rueckmeldung json
@@ -950,6 +963,30 @@ class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
         $fileOps->writeFilePhp($php);              
         }
 
+    /*
+     * die selbe Routine wie writePhpFile aber zum Ausprobieren ob eh alles passt
+     * der config Eintrag hat 3 Werte 0,1,2
+     *          0   ROOM
+     *          1   
+     *          2   floorplan->raum
+     */
+    public function simuPhpFile()
+        {
+        $result=array();
+        $events = Floorplan_GetEventConfiguration();
+        foreach ($events as $oid => $event) {
+            $lastchange=round(((time()-IPS_GetVariable($oid)["VariableChanged"])/60),0);
+            $value=(GetValue($oid)?"true":"false");
+            if (($value=="false") && ($lastchange<60)) $percent=round((60-$lastchange)/60*100,0);
+            elseif (($value=="false") && ($lastchange>=60)) $percent=0;
+            else $percent=100;
+            $cmd=explode("->",$event[2]);
+            if ( (count($cmd)==2) && ($cmd[0]=="floorplan") ) $result[$cmd[1]]=$value;   }
+        return (json_encode($result));            
+        }
+    /*
+     * ein script erstellen dass die ids entsprechend anpasst
+     */
     public function writeScript()
         {
         $js = new jsSnippets();    
@@ -981,7 +1018,7 @@ class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
         $dir = $dosOps->readSourceDir($configdirectory,true);         // true echo Verzeichnis
         $found = $dosOps->readdirToArray($configdirectory,["filter"=>"*.svg"]);
         //print_r($found);
-        if (sizeof($found)==1) 
+        if ($found && (sizeof($found)==1) ) 
             {
             echo "Grundriss gefunden \"".$found[0]."\"\n"; 
             $filesvg = $dosOps->readFileToString($configdirectory."\\".$found[0]);          // check ob eingelesenes svg den Grundanforderungen entspricht
@@ -990,6 +1027,10 @@ class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
         return (false);
         }
 
+    /*
+     * das von InkScape erstellte svg File etwas anpassen
+     * svg Attribute width und height auf 100% setzen 
+     */
      public function modifyFloorplan($filesvg)
         {
         $floorplan=""; 
@@ -1811,7 +1852,7 @@ class AutosteuerungOperator
             {
             foreach ($devices as $device => $address)
                 {
-                echo "Archive Handler setzen für Variable ".$address["OID"].":\n";
+                if ($debug) echo "setGeofencyAddressesToArchive, Archive Handler setzen für Variable ".$address["OID"].":\n";
                 AC_SetLoggingStatus($archiveHandlerID,$address["OID"],true);
                 AC_SetAggregationType($archiveHandlerID,$address["OID"],0);      /* normaler Wwert */
                 }
@@ -1848,6 +1889,22 @@ class AutosteuerungOperator
 /*****************************************************************************************************
  *
  * Autosteuerung
+ * 
+ * verschiedene Routinen verwenden unterschiedliche Configurationen
+ *      Autosteuerung_Setup                     Standardkonfiguration, LogDirectory,HeatControl,FloorPlan
+ *      Autosteuerung_GetEventConfiguration     die Events und die Actionen dazu
+ *      Autosteuerung_GetScenes                 Szenen für die Anwesenheitssimulation
+ *      Autosteuerung_SetSwitches               die tabs oder Funktionsblöcke im Webfront
+ *      Autosteuerung_GetWebFrontConfiguration  die Struktur für die Tabs im Detail
+ *      Autosteuerung_Anwesend                  welche Register für die Anwesenheit verwenden
+ *      Autosteuerung_Zutritt
+ *      Autosteuerung_MonitorMode
+ *      Autosteuerung_Speak
+ *      Autosteuerung_Silent
+ *      Alexa_GetEventConfiguration
+ *      Floorplan_GetEventConfiguration
+ *
+ *      construct   verwendet AutosteuerungHandler für die Configuration
  *
  * Routinen zur Evaluierung der Befehlsketten
  *
@@ -2077,8 +2134,8 @@ class Autosteuerung
 
 
     /* of Autosteuerung
-     * Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler */
-
+     * Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler 
+     */
     private function set_Configuration($debug=false)
         {
         $autosteuerungHandler = new AutosteuerungHandler();         // nur zum Configuration einlesen anlegen
@@ -2092,11 +2149,21 @@ class Autosteuerung
         return ($this->configuration);
         }
 
-    /* einbetten der Konfiguration für das Webfront, welche Funktionen bekommen ein eigenes Tab */
-
+    /* Autosteuerung::get_Autosteuerung_SetSwitches
+     * einbetten der Konfiguration für das Webfront, welche Funktionen bekommen ein eigenes Tab 
+     *
+     */
     public function get_Autosteuerung_SetSwitches()
         {
-        return(Autosteuerung_SetSwitches());
+        $AutoSetSwitches=Autosteuerung_SetSwitches();
+        // check Switches Konfiguration, bearbeiten
+        foreach ($AutoSetSwitches as $nameAuto => $AutoSetSwitch)
+            {
+            if ( (isset($AutoSetSwitch["PROFIL"])) == false )  $AutoSetSwitches[$nameAuto]["PROFIL"]  ="Null";         // kein Profil, String ohne Formatierung
+            if ( (isset($AutoSetSwitch["NAME"])) == false )    $AutoSetSwitches[$nameAuto]["NAME"]    =$nameAuto;
+            if ( (isset($AutoSetSwitch["TABNAME"])) == false ) $AutoSetSwitches[$nameAuto]["TABNAME"] =$nameAuto;                        // brauch ich zum Check
+            }
+        return($AutoSetSwitches);
         }
 
 	/* of Autosteuerung

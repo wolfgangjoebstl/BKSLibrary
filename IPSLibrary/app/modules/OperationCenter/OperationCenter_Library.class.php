@@ -9955,7 +9955,8 @@ class DeviceManagement_Hue extends DeviceManagement
         }
 
 
-    /* einen besonderen key finden, liese sich auch recursive anstellen
+    /* DeviceManagement_Hue::lookforkeyinarray
+     * einen besonderen key finden, liese sich auch recursive anstellen
      */
     private function lookforkeyinarray($config,$key,$debug)
         {
@@ -9999,7 +10000,8 @@ class DeviceManagement_Hue extends DeviceManagement
         return $actions;
         }
 
-    /* die itemlist erzeugen, Basis sind die values aus dem configurationForm
+    /* DeviceManagement_Hue::createItemlist
+     * die itemlist erzeugen, Basis sind die values aus dem configurationForm
      * sucht nach einer instanceID, sonst ist die Instanz nicht angelegt, diese mal so komplett in der itemList abspeichern
      * zusätzliche Auswertung über ganzes Array:
      *             Type     aus dem Wert den Wert für TypeDev ableiten
@@ -10048,14 +10050,15 @@ class DeviceManagement_Hue extends DeviceManagement
             }                    
         }
 
-    /* variable ist proteced, daher jhier eine nette Anzeige bauen
+    /* DeviceManagement_Hue
+     * variable ist proteced, daher jhier eine nette Anzeige bauen
      */
     public function showItemlist()
         {
         print_r($this->itemslist);
         }
 
-    /*********************************
+    /* DeviceManagement_Hue::getHueDeviceType
      *
      * gibt für eine Philips Hue Instanz/Kanal eines Gerätes den Typ aus
      * zB TYPE_METER_TEMPERATURE
@@ -10085,9 +10088,8 @@ class DeviceManagement_Hue extends DeviceManagement
         return ($this->HueDeviceType($register,$outputVersion, $config, $debug));
     	}
 
-    /*********************************
-     * DeviceManagement::HueDeviceType
-     * Hue Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+    /* DeviceManagement_Hue::HueDeviceType
+     * Hue Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen, gemeinsam für Hue und HueV2 
      * die Register werden wie bei Homematic übergeben, allerdings mit dem Namen in Grossbuchstaben als Key
      * zusättlich wird die Config der Instanz mit übergeben, bei Hue gibt es mehr Informationen die ausgewertet werden können
      * 
@@ -10111,7 +10113,7 @@ class DeviceManagement_Hue extends DeviceManagement
      *  TYPE_POWERLOCK
      *
      * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
-     *   false   die aktuelle Kategorisierung
+     *   false,0   die aktuelle Kategorisierung, also $resultType[$i]
      *
      * abhängig vom Gerätetyp bzw. den Instanzeigenschaften werden für die Instanz die Register jeweils mit Typ und Parameter ermittelt
      *      $resultType[i] = "TYPE_METER_TEMPERATURE";            
@@ -10132,7 +10134,7 @@ class DeviceManagement_Hue extends DeviceManagement
             {
             $config=$this->itemslist[$entry["OID"]];
             //echo "                     ".json_encode($config)."\n";
-            if ($debug>1) echo "getDeviceParameters::HUE,function HueDeviceType, called for instance ".$entry["OID"]." : ".json_encode($config);
+            if ($debug>1) echo "getDeviceParameters::HUE,function HueDeviceType, called for instance ".$entry["OID"]." : Config ".json_encode($config);
             if (isset($config["TypeDev"])) 
                 {
                 $resultType[$i]= $config["TypeDev"];
@@ -10140,7 +10142,7 @@ class DeviceManagement_Hue extends DeviceManagement
                 }
             elseif ($debug>1)
                 {
-                echo "   nicht gefunden.";
+                echo "  , TypeDev in Config nicht gefunden.";
                 //print_r($config);
                 } 
             if ($debug>1) echo "\n";
@@ -10152,7 +10154,7 @@ class DeviceManagement_Hue extends DeviceManagement
             if (isset($result["DeviceType"])) $devicetype=$result["DeviceType"];
             if ($debug>1) echo "getDeviceParameters:HUE, HueDeviceType, called for instance ".$entry["OID"]."  ".$entry["CONFIG"]." with devicetype $devicetype\n";
             }
-        if ($devicetype) 
+        if ($devicetype)            // nur ufgerufen wenn found false und DeviceType set in Config
             {
             //echo "getDeviceParameters:HUE, HueDeviceType, analyse devicetype $devicetype.\n";
             switch (strtoupper($devicetype))
@@ -10210,11 +10212,17 @@ class DeviceManagement_Hue extends DeviceManagement
             $typedevRegs=array();
             $cids = IPS_GetChildrenIDs($entry["OID"]);           // für jede Instanz die Children einsammeln
             $register=array();
-            if ($debug>1) echo "                  $typedev : ";
+            if ($debug>1) echo "                  $typedev : ";         // Typedev Ausgabe
+            $first=true;
             foreach($cids as $cid)
                 {
                 $regName=IPS_GetName($cid);
-                if ($debug>1) echo $regName.",";
+                if ($debug>1) 
+                    {
+                    if ($first) $first=false;
+                    else echo ",";
+                    echo $regName;
+                    }
                 $register[]=$regName;
                 switch ($typedev)
                     {
@@ -10238,7 +10246,16 @@ class DeviceManagement_Hue extends DeviceManagement
                         break;
                     case "TYPE_BUTTON":
                         if ($regName=="Letztes Ereignis") $typedevRegs["EVENTCODE"]=$regName;           // als String wenn formattiert
-                        break;                        
+                        break;  
+                    case "TYPE_BRIGHTNESS":
+                        if ($regName=="Lichtpegel") $typedevRegs["BRIGHTNESS"]=$regName;           // als String wenn formattiert
+                        break;   
+                    case "TYPE_MOTION":
+                        if ($regName=="Bewegung") $typedevRegs["MOTION"]=$regName;           // als String wenn formattiert
+                        break;         
+                    case "TYPE_TEMPERATURE":
+                        if ($regName=="Temperatur") $typedevRegs["TEMPERATURE"]=$regName;           // als String wenn formattiert
+                        break;                                                                      
                     case "TYPE_SENSOR":
                         break;
                     }
@@ -10253,6 +10270,7 @@ class DeviceManagement_Hue extends DeviceManagement
                     $oldvalue=$value;
                     }                     
                 }
+            if ($debug>1) echo "\n";
             //print_R($typedevRegs);
             }
 
@@ -10680,15 +10698,19 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
         DeviceManagement::__construct($debug>1);                       // wenn ein eigenes construct dann auch das übergeordnete aifrufen
         }
 
+    /* DeviceManagement_HueV2::analyseConfigStructure
+     * Values in der ConfigurationForms gefunden, jetzt analysieren, die ConfigurationForms ist mit parent als hierarchische Struktur aufgebaut
+     */
     private function analyseConfigStructure($values,$debug=false)
         {
+        $result=array();
         if ($debug) echo "analyseConfigStructure \n";
         foreach ($values as $id => $value)
             {
             $itemId=$value["id"];
             if (isset($value["parent"])==false)     // nur root 
                 {
-                if ($debug) echo "$id   ID : $itemId  ";
+                if ($debug) echo "$id   ID : $itemId  ";                                        // Ausgabe zB 0  ID : 1  Stehlampe     Hue white lamp
                 if ( (isset($value["name"])) && ($value["name"] != "")  ) 
                     {
                     $name=$value["name"];
@@ -10696,7 +10718,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                     //print_r($value);
                     }
                 else $name=$id;
-                if ( (isset($value["Productname"])) && ($value["Productname"] != "")  ) 
+                if ( (isset($value["Productname"])) && ($value["Productname"] != "")  )             // Type wird entweder Productname Hue Motion Sensor oder Type device
                     {
                     $type=$value["Productname"];
                     if ($debug) echo $type."     ";
@@ -10723,6 +10745,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                             $result[$deviceOID]["instanceID"]=$deviceOID;              // geht sonst bei merge verloren
                             $result[$deviceOID]["name"]=$name;
                             $result[$deviceOID]["Type"]=$type;
+                            $result[$deviceOID]["TypeChild"]=$child["Type"];
                             $found=$id;
                             //print_r($value);
                             }
@@ -10734,7 +10757,8 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
         return($result);
         }
 
-    /* die itemlist erzeugen, Basis sind die values aus dem configurationForm
+    /* DeviceManagement_HueV2::createItemlist
+     * die itemlist erzeugen, Basis sind die values aus dem configurationForm
      * sucht nach einer instanceID, sonst ist die Instanz nicht angelegt, diese mal so komplett in der itemList abspeichern
      * zusätzliche Auswertung über ganzes Array:
      *             Type     aus dem Wert den Wert für TypeDev ableiten
@@ -10763,8 +10787,13 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                 case "Hue ambiance spot":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_AMBIENT";
                     break;
+                case "Hue white lamp":              // wenn typeChild definiert und nicht light aufpassen   
                 case "Hue dimmer lamp":
-                    $this->itemslist[$oid]["TypeDev"]="TYPE_DIMMER";
+                    if (isset($item["TypeChild"]))
+                        {
+                        if ($item["TypeChild"]=="light")  $this->itemslist[$oid]["TypeDev"]="TYPE_DIMMER";
+                        }
+                    else $this->itemslist[$oid]["TypeDev"]="TYPE_DIMMER";
                     break;
                 case "Hue dimmer switch":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_BUTTON";
@@ -10774,6 +10803,26 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                     // damit kann die Topologie abgeglichen werden
                     //print_r($entry);
                     break;
+                case "Hue motion sensor":
+                    echo "Hue motion sensor, $oid ".json_encode($item)."\n";
+                    switch ($item["TypeChild"])
+                        {
+                        case "motion":
+                            $this->itemslist[$oid]["TypeDev"]="TYPE_MOTION";
+                            break;
+                        case "light_level":
+                            $this->itemslist[$oid]["TypeDev"]="TYPE_BRIGHTNESS";
+                            break;
+                        case "temperature":
+                            $this->itemslist[$oid]["TypeDev"]="TYPE_TEMPERATURE";
+                            break;       
+                        default:                     
+                            echo "createItemlist, warning, do not know key \"".$item["Type"]."\" with child type \"".$item["TypeChild"]."\"\n";
+                            break;
+                        }                    
+                    break;
+                case "Hue Bridge":              // hat einen bewegungssensor ??? ist aber die Bridge
+                    break;                    
                 case "Daylight":
                 case "LightGroup":              // ein alter Begriff
                     break;

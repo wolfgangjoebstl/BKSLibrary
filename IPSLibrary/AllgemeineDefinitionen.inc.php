@@ -4039,6 +4039,7 @@ class archiveOps
             }
 
         //Darstellung des Result Speicher aus dem archive, das sind dann mehrere oids, synchronisiseren des Zeitstempels und eventuell anpassen erforderlich
+        $tabelle=array();
         if ($werte===false)
             {
             if ($debug) echo "showValues mit den intern gespeicherten Daten als Input aufgerufen:\n";                
@@ -4106,7 +4107,8 @@ class archiveOps
                     if ($debug) echo "\n";
                     }
                 }
-            ksort($tabelle);
+            //echo "Tabelle hat ".count($tabelle)." Einträge.\n";   
+            if (count($tabelle)) ksort($tabelle);                       // eine leere Tabelle muss man nicht sortieren
             ksort($oids);                
 
             //tabelle Ausgeben, zuerst die Spalten sortieren

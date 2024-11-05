@@ -34,16 +34,19 @@
     * Bei der Darstellung Frame kann die Formatierung der Seite pro Browser konfiguriert werden
     * es werden dazu browser cookies in der Datenbank gespeichert.
     *
-    * die Darstellung selbst erfolgt über die Library mit $startpage->StartPageWrite
-    *
-    * Diese routine wird alle 8 Minuten vom Timer aufgerufen
+    * die Darstellung selbst erfolgt über die Library mit $startpage->StartPageWrite :
+    * alte Implementierung Startpage:
+    * ---------------------
+    * Das StartPage_Schreiben Script wird alle 8 Minuten vom Timer aufgerufen
     * Routine bearbeitet auch die Tastendrücke am Webfront
     *
     * Bilder im Verzeichnis werden verkleinert um die Darstellung im Webfront zu beschleunigen
     *
     * die Wetterfunktion wird bearbeitet und mit aggregateOpenWeather in eine schöne Form gebracht
     *
-    * die Startpage wird umgestellt werden auf in frame Navigation. Eigenes Item Frame eingeführt
+    * neue Implementierung:
+    * ----------------------
+    * die Startpage wird umgestellt werden auf in frame Navigation ohne regelmaessige Updates. Eigenes Item Frame dazu eingeführt
     * verweist auf den iFrame mit src StartpageTopology
     * iframe ist ein unabhängiger Frame in der Webfront Umgebung mit Höhe und Weite 100%
     * die Höhe ist responsive, iframe ist in div eingebunden, verwendet inline Formatierungen
@@ -104,12 +107,13 @@
 	*
     **************************************/
 
+    $debug=false;
     if ($_IPS['SENDER']=="Execute") 
         {
         echo "Script Execute, Darstellung automatisch mit Debug aktiviert.\n";
         $debug=true;
         }
-    else $debug=false;
+
 
     /********************************************* CONFIG *******************************************************/
 
@@ -421,7 +425,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
  if ($_IPS['SENDER']=="Execute")
 	{
     echo "\n================================================================\n"; 
-	echo "Execute aufgerufen:\n";
+	echo "Execute aufgerufen durch manuellen Start des Scripts:\n";
     echo "Startpage wird mit folgenden Parametern aufgerufen : Modus:".GetValue($StartPageTypeID)." ShowFile:".($showfile?"true":"false").".\n";
 	//echo "\nKonfigurationseinstellungen:\n"; print_r($configuration);
 

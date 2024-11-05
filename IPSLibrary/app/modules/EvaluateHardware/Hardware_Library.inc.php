@@ -2234,6 +2234,7 @@ class HardwareHUEV2 extends Hardware
 
 
     /* HardwareHUEV2::getDeviceChannels
+     * HueV2 hat pro Gerät mehrere Instanzen, die Instanzen werden erst nach jedem Aufruf von getDeviceParameter hinzugefügt, bis es alle sind
      * die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät hat die Kategorien Instances,Channels,Actuators, es kann mehrer Einträge in Instances und Channels haben, 
      * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
      * alle instances durchgehen, OIDs einsammeln mit Zuordnung Port abspeichern
@@ -2242,7 +2243,7 @@ class HardwareHUEV2 extends Hardware
 
     public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)                 // class Hardware
         {
-        if ($debug) echo "          HardwareHUE::getDeviceChannels, aufgerufen für ".$entry["OID"]." mit $name $type.\n";
+        if ($debug) echo "          HardwareHUEV2::getDeviceChannels, aufgerufen für ".$entry["OID"]." mit $name $type.\n";
         if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];               // Name wird übergeben für Debug
         else $entry["NAME"]=$name;
 
@@ -2251,13 +2252,14 @@ class HardwareHUEV2 extends Hardware
         $oids=array();
         foreach ($deviceList[$name]["Instances"] as $port => $register)             // wir sind bei den Channels, also kann man instances bereits analysieren
             {
-            $oids[$register["OID"]]=$port;              // also für den Fall das ein Device mehrere Instances hat, eigentlich nur bei Homematic der Fall
+            if ($register["OID"]==$entry["OID"]) $oids[$register["OID"]]=$port;              // für den Fall das ein Device mehrere Instances hat, den Channel der Instanz zuordnen
             }
         if (isset($oids[$entry["OID"]])===false) 
             {
             echo "  >> irgendetwas ist falsch.\n";
             return (false);                                     // nix zum tun, Abbruch
             }
+        // die Instanzen der Reihe nach durchgehen und für jede Instanz, Nummer nach der Reihenfolge wie angelegt bearbeiten, entry stimmt nicht weil es ist von der Instanz die als letztes aufgerufen wurde
         foreach ($oids as $oid => $port)
             {
             if (isset($this->installedModules["OperationCenter"])) 
