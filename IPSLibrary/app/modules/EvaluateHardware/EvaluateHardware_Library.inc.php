@@ -394,7 +394,7 @@ class TopologyLibraryManagement
             {
             if (isset($entry["Type"]))
                 {
-                echo "   $uniqueName with Name ".$entry["Name"].", Type ".$entry["Type"]."   \n";         // UniqueName und Name und Type
+                if ($debug) echo "   $uniqueName with Name ".$entry["Name"].", Type ".$entry["Type"]."   \n";         // UniqueName und Name und Type
                 //print_R($entry);
                 $entry["UniqueName"] = $uniqueName;           // Index auch als Parameter mitnehmen, wird an createTopologyInstance übergeben
                 if ($onlyOne)
@@ -511,20 +511,20 @@ class TopologyLibraryManagement
                     IPS_SetName($InstanzID, $entry["UniqueName"]);          // Instanz benennen, Name muss nicht eindeutig sein
                     if ($entry["Name"] == $entry["Parent"])             // Root identifier, üblicherweise World
                         {
-                        echo "      -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." unter $parent erstellen.\n"; 
+                        if ($debug) echo "      -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." unter $parent erstellen.\n"; 
                         IPS_SetParent($InstanzID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
                         }
                     else
                         {
                         if (isset($ParentList[$entry["Parent"]]))    // auch hier ist ein UniqueName
                             {
-                            echo "   -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." unter ".$entry["Parent"]." erstellen.\n"; 
+                            if ($debug) echo "   -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." unter ".$entry["Parent"]." erstellen.\n"; 
                             if (isset($ParentList[$entry["Parent"]]["OID"])) IPS_SetParent($InstanzID, $ParentList[$entry["Parent"]]["OID"]);
                             else IPS_SetParent($InstanzID, $ParentList[$entry["Parent"]]);
                             }
                         else 
                             {
-                            echo "    -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." vorerst unter $parent erstellen. Wird später einsortiert.\n"; 
+                            if ($debug) echo "    -> Eine neue Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." vorerst unter $parent erstellen. Wird später einsortiert.\n"; 
                             IPS_SetParent($InstanzID, $parent);        // Parent noch nicht bekannt, Sauhaufen machen, und später unten korrigieren und neu einordnen
                             }
                         }
@@ -544,7 +544,7 @@ class TopologyLibraryManagement
                     {
                     if ((IPS_GetParent($InstanzID)) != $parent)
                         {
-                        echo "    -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter $parent einsortieren (Root).\n"; 
+                        if ($debug) echo "    -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter $parent einsortieren (Root).\n"; 
                         IPS_SetParent($InstanzID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
                         }
                     }
@@ -557,7 +557,7 @@ class TopologyLibraryManagement
                         if ($debug>1) echo "      suche $expectedParent und vergleiche $expectedParentID != ".(IPS_GetParent($InstanzID))."\n";
                         if ( $expectedParentID != (IPS_GetParent($InstanzID)) ) 
                             {
-                            echo "    -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter ".$expectedParent." ($expectedParentID) einsortieren.\n"; 
+                            if ($debug) echo "    -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter ".$expectedParent." ($expectedParentID) einsortieren.\n"; 
                             IPS_SetParent($InstanzID, $expectedParentID);
                             }
                         }
@@ -566,11 +566,11 @@ class TopologyLibraryManagement
                         $expectedParent=$entry["Parent"];               // nur bei sortCateg interessant, andernfalls den Pfad nach hinten fahren
                         if ($expectedParentID=$this->getParentId($expectedParent,$ParentList,$sortCateg,$debug=false))           
                             {
-                            echo "      -> Nächsten Parent suchen, probiere ".$entry["Parent"].".\n";
+                            if ($debug) echo "      -> Nächsten Parent suchen, probiere ".$entry["Parent"].".\n";
                             if ($debug>1) echo "      suche $expectedParent und vergleiche $expectedParentID != ".(IPS_GetParent($InstanzID))."\n";
                             if ( $expectedParentID != (IPS_GetParent($InstanzID)) ) 
                                 {
-                                echo "        -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter ".$expectedParent." ($expectedParentID) einsortieren.\n"; 
+                                if ($debug) echo "        -> Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["Name"]." unter ".$expectedParent." ($expectedParentID) einsortieren.\n"; 
                                 IPS_SetParent($InstanzID, $expectedParentID);
                                 }
                             }

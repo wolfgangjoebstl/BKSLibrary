@@ -26,7 +26,8 @@
     *  23  Station, Wetterstation
     *
     * ein iFrame wird von einigen script Befehlen vorangestellt. Diese übernehmen die Ermittlung der Windows Size, der Browser Version und die Umschaltung des Browsers in den Full Mode 
-    *
+    * jetzt kann man auch durch Tastendruck den iframe größer und kleiner machen
+    * der iframe selbst liegt in dem in das user/startpage ausgelagerte script und wird mit functions aus der Startpage_Library beschrieben.
     *----------------------------
     * schreiben des Startpage html Strings in der htmlbox der Startpage
     *
@@ -35,6 +36,7 @@
     * es werden dazu browser cookies in der Datenbank gespeichert.
     *
     * die Darstellung selbst erfolgt über die Library mit $startpage->StartPageWrite :
+    *
     * alte Implementierung Startpage:
     * ---------------------
     * Das StartPage_Schreiben Script wird alle 8 Minuten vom Timer aufgerufen
@@ -382,7 +384,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
                         if (Sys.safari) return ("Safari: " + Sys.safari); 
                         }  '."\n";                
         $ready .= 'document.querySelector("#frame-browser").addEventListener("click", (e) => {                         
-                        document.getElementById("frame-browser").innerHTML = reportBrowserVersion ();
+                        document.getElementById("frame-browser").innerHTML = reportBrowserVersion()+" | ";
                         });  '."\n";
         $ready .= 'var fullScreen=0;
                     function toggleFullScreen(elem) {
@@ -392,7 +394,22 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         $ready .= 'document.querySelector("#frame-fullscreen").addEventListener("click", (e) => {
                         document.getElementById("frame-fullscreen").innerHTML =  toggleFullScreen(document.documentElement);
                         });  '."\n";                        
-
+        $ready .= 'var frameheight=85;
+                   document.querySelector("#frame-zoom-plus").addEventListener("click", (e) => {
+                        document.getElementById("frame-zoom-plus").innerHTML =  "Zoom +";
+                        frameheight = frameheight+5;
+                        if (elem=document.getElementById("frame-start")) elem.style.height = frameheight+"vh";
+                        });  '."\n"; 
+        $ready .= 'document.querySelector("#frame-zoom-minus").addEventListener("click", (e) => {
+                        document.getElementById("frame-zoom-minus").innerHTML =  "- | ";
+                        frameheight = frameheight-5;
+                        if (elem=document.getElementById("frame-start")) elem.style.height = frameheight+"vh";
+                        });  '."\n"; 
+        $ready .= 'document.querySelector("#frame-zoom").addEventListener("click", (e) => {
+                        document.getElementById("frame-zoom").innerHTML =  " / ";
+                        frameheight = 85;
+                        if (elem=document.getElementById("frame-start")) elem.style.height = frameheight+"vh";
+                        });  '."\n"; 
         $htmlScript .= $js->ready($ready);
         $htmlScript .= '</script>';
         
@@ -414,8 +431,11 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
             }
         $html .= '      </iframe>';
         $html .= '  </div>';
-        $html .= '<div id="frame-status" style="font-size: 1hm; display:inline; float:left;">Statusangaben hier clicken</div>';        
-        $html .= '<div id="frame-browser" style="font-size: 1hm; display:inline; padding: 5px;">Browser hier clicken</div>';        
+        $html .= '<div id="frame-status" style="font-size: 1hm; display:inline; float:left;">Statusangaben hier clicken | </div>';        
+        $html .= '<div id="frame-browser" style="font-size: 1hm; display:inline; padding: 5px;">Browser hier clicken | </div>';        
+        $html .= '<div id="frame-zoom-plus" style="font-size: 1hm; display:inline; padding: 5px;">Zoom plus </div>';        
+        $html .= '<div id="frame-zoom" style="font-size: 1hm; display:inline; padding: 5px;"> / </div>';        
+        $html .= '<div id="frame-zoom-minus" style="font-size: 1hm; display:inline; padding: 5px;">minus | </div>';        
         $html .= '<div id="frame-fullscreen" style="font-size: 1hm; display:inline; float:right;">Fullscreen hier clicken</div>';  
         SetValue($variableIdHTML,$html);
         }

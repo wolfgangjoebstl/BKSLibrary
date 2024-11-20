@@ -208,7 +208,9 @@
 									grid-template-areas:  "area1 area1 area2"
 														  "area1 area1 area2";}'."\n";
 		$wert = "";
+        $wert.= $startpage->writeStartpageLink("");             // gemeinsamer Linkbereich
 		$wert.= $startpage->writeStartpageStyle($style);			
+        $wert.= $startpage->writeStartpageScript("");            // gemeinsames Script		
 		
 		$wert.= '<div id="sp" class="container-startpage">';            // display type Table
 		$wert.=     '<div id="sp-pic" style="grid-area:picture">';                 // display type Cell

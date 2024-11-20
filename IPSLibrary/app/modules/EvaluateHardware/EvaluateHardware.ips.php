@@ -294,9 +294,12 @@ IPS_SetEventActive($tim1ID,true);
                 $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
                 */
 
-                // Alternative Kategorienstruktur in Topology, die Topology Instanzen dort einsortieren
+                /* Alternative Kategorienstruktur in Topology, die Topology Instanzen dort einsortieren
+                 * macht updateLinks aus dem DetectDeviceHandler in DetectMovementLib
+                 * Testroutine in EvaluateTopology
+                 */
                 $topConfig=array();
-                $topId = @IPS_GetCategoryIDByName("Topology", 0);
+                //$topId = @IPS_GetCategoryIDByName("Topology", 0);// siehe oben, bereits einmal ermittelt
                 if ($topId)
                     {
                     echo "----------------------------------------DeviceList mit Informationen zur Topologie anreichern\n";

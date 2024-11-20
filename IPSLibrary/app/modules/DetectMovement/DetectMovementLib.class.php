@@ -3552,6 +3552,50 @@
             return ($result);
             }
 
+        /* gettopoevents
+         * verwendet in Autosteuerung_Installation
+         * Ergebnis von evalTopology für ein Objekt, oder irgendeinen Ort. index ist nur eine laufende Nummer. Aber im Entry gibt es Index.
+         * Daher im Entry muss dann "Index" definiert sein. Diesen nehmen um einen index für topologypluslinks haben.
+         * jetzt schauen ob es dort TOPO ROOM gibt. Und es eine referenz auf Bewegung gubt.
+         */
+        public function gettopoevents($topologyPlusLinks,$home,$debug=false)
+            {
+            $result = $this->evalTopology($home,false);          // verwendet topology ohne Erweiterungen, true für Anzeige der topologie
+            $object=false;
+            $topo="Bewegung";                       // bei TOPO gibt es einheitliche Namen                
+            $floorplan=array();
+            foreach ($result as $index => $entry)
+                {
+                if (isset($entry["Index"]))
+                    {
+                    if (isset($topologyPlusLinks[$entry["Index"]]))
+                        {
+                        $data=$topologyPlusLinks[$entry["Index"]];
+                        if ($debug)
+                            {
+                            for ($i=0;$i<$entry["Hierarchy"];$i++) echo "   ";
+                            echo str_pad($entry["Name"],80-($entry["Hierarchy"]*3))."| ";
+                            if ((isset($data["OBJECT"]["Movement"])) && $object)
+                                {
+                                echo json_encode($data["OBJECT"]["Movement"]);
+                                }
+                            }
+                        if ((isset($data["TOPO"]["ROOM"])) && $topo)
+                            {
+                            if ($debug) echo json_encode($data["TOPO"]["ROOM"]);
+                            foreach ($data["TOPO"]["ROOM"] as $index => $type)
+                                {
+                                if ($type==$topo) $floorplan[$entry["Name"]]=$index;
+                                }
+                            }
+                        if ($debug) echo "\n";
+                        }
+                    else echo "Warning, no Data \n";                // OBJECT wurde für den Raum nicht angelegt
+                    }
+                else "Warning, no Index\n";
+                }
+            return ($floorplan);
+            }
 
 	    private function evalTopologyRecursive($lookfor,$hierarchy,&$result,$output)
 		    {
@@ -3913,15 +3957,16 @@
                                         IPS_SetHidden($linkId,false);	                
                                         }                    
                                     }
-                                if ($doLinkFromParent)
+                                if ($doLinkFromParent)      // Config Parameter $config["Show"]["LinkFromParent"]
                                     {
+                                    //wenn es einen Parent mit einer OID gibt dann einen Link dorthin machen mit der aktuellen Instance
                                     $parent = $entry["Parent"];
                                     if (isset($topologyPlusLinks[$parent]["OID"]))
                                         {
                                         $parentId = $topologyPlusLinks[$parent]["OID"];
                                         echo "            Link at Parent, Look for $parent in Kategorie $parentId, Name ".$entry["Name"]." \n";
                                         $linkId=CreateLinkByDestination($entry["Name"], $topologyinstance, $parentId, 10);
-                                        IPS_SetHidden($linkId,false);
+                                        IPS_SetHidden($linkId,false);           // anzeigen
                                         }
                                     }
                                 break;

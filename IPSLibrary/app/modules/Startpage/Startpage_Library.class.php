@@ -4598,6 +4598,8 @@
          * gibt auch den Zeilenvorschub aus mit tr, notwendig wenn mehrere Zeilen
          *
          * verwendet font awesome icon library : https://fontawesome.com/search?q=rain&o=r&m=free&s=solid&f=classic
+         *
+         * hat eine Schwester Funktion in der Framedarstellung
          */
 	    function additionalTableLines($format="",$debug=false)
 	        {
@@ -5850,11 +5852,49 @@
 	        }
 
         /* additionalTableLinesResponsive
-         * additional Table Lines werden zwischen temperatur und Wetteranzeige eingebaut
+         * additional Table Lines werden zwischen Temperatur und Wetteranzeige eingebaut
          * es gibt einen Zeilenzähler, wenn dieser gesetzt ist werden anstelle des Wertes nur die Anzahl der Zeilen zurückgeliefert
          * verwendet aus der class configuration
+         * hat ein pendant mit gleicher Funktion: additionalTableLines
          * 
          * html5: id=weather-addline-item1,2 class=addText-resp
+         *
+         * Aufruf erfolgt ueber startpage_schreiben, bei der ein iframe ein php script im user Verzeichnis aufruft.
+         *
+        $html .= '  <iframe id="frame-start" name="StartPage" src="../user/Startpage/StartpageTopology.php" style="width:100%; height:85vh; ">';
+         *
+		$wert = "";
+        $wert.= $startpage->writeStartpageLink("");             // gemeinsamer Linkbereich
+		$wert.= $startpage->writeStartpageStyle($style);			
+        $wert.= $startpage->writeStartpageScript("");            // gemeinsames Script
+		
+		$wert.= '<div id="sp" class="container-startpage">';            // display type Table
+		$wert.=     '<div id="sp-pic" style="grid-area:picture">';                 // display type Cell
+		$wert.='	    <div id="sp-pic-grid" class="container-picture" style="width:100%;">';
+		$wert.=             '<div id="sp-pic-grid-left" style="grid-area:area1">';                 // display type Cell picture
+		$wert .=        		$startpage->showPictureWidgetResponsive(9);					// amount of pictures, you can switch
+		$wert.=                 '</div>';
+		$wert.=             '<div id="sp-pic-grid-right" style="grid-area:area2; display:none">';                 // display type Cell picture
+		$wert .=                $startpage->inclOrfWeather();
+		$wert.=                 '</div>';			
+		$wert.=         	'</div>';
+		$wert.=         '</div>';
+		$wert.=     '<div id="sp-cmd" class="container-cmd" style="grid-area:cmd; ">';                 // display type Cell cmd
+		$wert .=             $startpage->commandLineResponsive();									// ten buttons for testing commands, id=sp-cmd-item#
+		$wert.=         '</div>';			
+		$wert .=    $startpage->showTemperatureTableIcons();
+		$wert .=    $startpage->showTemperatureTableValues();
+		$wert .=    $startpage->additionalTableLinesResponsive();
+		$wert .=    $startpage->showWeatherTableResponsive();
+		$wert.='	<div id="sp-bot" style="grid-area:bottom; background-color:#7f8f9f">';
+		$wert .=             $startpage->bottomTableLinesResponsive();
+		$wert.=         '</div>'; 
+		$wert.='	<div id="sp-inf" style="grid-area:info; background-color:#7f6f5f">';    
+		$wert .=             $startpage->infoTableLinesResponsive(["ID"=>$identifier,"AJAX"=>"Note"]);  			
+		$wert.=         '</div>';  			
+		$wert.='    </div>';          
+		echo $wert;	
+         *		         
          */
 			
 	    function additionalTableLinesResponsive($count=false)               
@@ -5864,24 +5904,26 @@
             $configAddLine=array(); 
             foreach ($this->configuration["Display"]["AddLine"] as $name => $widget)              // alle Widgets Speks durchgehen, können auf mehrere Screens verteilt sein !
                 {
-                configfileParser($widget, $configAddLine[$name], ["TYPE","Type"],"Type" ,$name);  
+                configfileParser($widget, $configAddLine[$name], ["TYPE","Type"],"Type" ,$name);        // geordnetes überprüfen der Variablenkonfiguration
                 configfileParser($widget, $configAddLine[$name], ["NAME","Name"],"Name" ,$name);  
+                configfileParser($widget, $configAddLine[$name], ["OID","Oid","oid"],"OID" ,null);  
+                configfileParser($widget, $configAddLine[$name], ["ICON","Icon","icon"],"Icon" ,null);  
                 //configfileParser($widget, $configWidget[$name], ["FORMAT","Format"],"Format" ,'{"BGColor":"#1f242e","width":"500px"}'); 
                 //configfileParser($widget, $configWidget[$name], ["SCREEN","Screen"],"Screen" ,1);                  
                 //configfileParser($widget, $configWidget[$name], ["CONFIG","Config"],"Config" ,"[]");                   // output array ist configWidget, input array ist widget
                 //configfileParser($widget, $configWidget[$name], ["POS","Pos"],"Pos" ,null);                            // default keien ANgabe, d.h. der Reihe nach
                 }
-
+            if ($this->debug) { echo "additionalTableLinesResponsive($count   \n"; print_r($configAddLine); } 
 	        //if ( (isset($this->configuration["Display"]["AddLine"])) && (sizeof($this->configuration["Display"]["AddLine"])>0) )
             if (sizeof($configAddLine)>0)
 	            {
-	            foreach($configAddLine as $tablerow)
+	            foreach($configAddLine as $index => $tablerow)
 	                {
 	                if ($this->debug) 
                         {
-                        echo "   Eintrag : ".$tablerow["Name"];
-                        if (isset($tablerow["OID"])) echo "  ".$tablerow["OID"];
-                        if (isset($tablerow["Icon"])) echo "  ".$tablerow["Icon"];
+                        echo "   Eintrag $index : ".$tablerow["Name"];
+                        if (isset($tablerow["OID"])) echo " OID ".$tablerow["OID"];
+                        if (isset($tablerow["Icon"])) echo " Icon ".$tablerow["Icon"];
                         echo "\n";
                         }
                     switch (strtoupper($tablerow["Type"]))
@@ -5889,6 +5931,34 @@
                         case "INFOFIELD":
                             $wert.='<div id="weather-addline-item1" class="addText-resp" style="grid-area:add0; background-color:#c1c1c1;">'.$tablerow["Name"].'</div>';
                             $wert.='<div id="weather-addline-item2" class="addText-resp" bgcolor="#c1c1c1"> </div>';                            
+                            break;
+                        case "RAINCHART":           // Startpage Picture kann ein Diagramm anzeigen
+                            if ($this->debug) echo "      Rainchart mit summierter Regenmenge ".$this->sumrain." mm \n";
+                            //if ($this->sumrain>0)
+                                {
+                                if ($this->debug) echo "         Anzeige Rainchart, da Regenmenge in der letzten Woche ".$this->sumrain."mm:\n";
+                                $wert.='<div id="weather-addline-item1" class="addText-resp" style="grid-area:add1; background-color:#c1c1c1;">';
+                                $wert.='   <i class="fa-solid fa-cloud-rain" style="font-size: 50px; color: #1665a2;"></i>';  // <i class="fa-solid fa-cloud-rain" style="color: #1665a2;"></i>
+                                $wert.='   <br><addText>'.$this->sumrain.'mm</addText>';
+                                $wert.='   </div>';
+                                $wert.='<div id="weather-addline-item2" class="addText-resp" bgcolor="#c1c1c1">';                            
+                                $wert.='   <div style="max-width: 400px; margin: auto;">
+                                               <canvas id="myChart" width="400" height="100"></canvas></div>';
+                                $wert.='   </div>';
+                                }
+                            break;        
+                        case "RAINCHART1":                
+                            if ($this->debug) echo "         Anzeige RAINCHART:\n";
+                            if ($this->sumrain>0)
+                                {
+                                $wert.='<div id="weather-addline-item1" class="addText-resp" style="grid-area:add1; background-color:#c1c1c1;">'.$tablerow["Name"].'</div>';
+                                $wert.='<div id="weather-addline-item2" class="addText-resp" style="background-gcolor=#c1c1c1:">'.number_format(GetValue($tablerow["OID"]), 1, ",", "" ).'°C</div>';
+                                }
+                            break;
+                        case "CO2":
+                            if ($this->debug) echo "         Anzeige CO2:\n";
+                            $wert.='<div id="weather-addline-item3" class="addText-resp" style="grid-area:add0; background-color:#c1c1c1;">'.$tablerow["Name"].'</div>';
+                            $wert.='<div id="weather-addline-item4" class="addText-resp" style="background-gcolor=#c1c1c1:">'.number_format(GetValue($tablerow["OID"]), 1, ",", "" ).'°C</div>';
                             break;
                         default: 
                             $wert.='<div id="weather-addline-item1" class="addText-resp" style="grid-area:add0; background-color:#c1c1c1;">'.$tablerow["Name"].'</div>';
