@@ -550,7 +550,7 @@
                             echo $fullScriptName."\n";
 						} else {
 							$fullScriptName   = $baseDirectory.'/IPSLibrary/webfront/'.$this->moduleName.'/'.$script;
-                            echo "$baseDirectory results into $fullScriptName \n";
+                            //echo "$baseDirectory results into $fullScriptName \n";
 						}
 						break;
 					case 'Install':
@@ -613,7 +613,7 @@
                             $ipsOps=new ipsOps();
                             if ($ipsOps->ipsVersion7check()) $fullScriptName   = IPS_GetKernelDir().'user/'.$this->moduleName.'/'.$script;				// jw, change 
 							else $fullScriptName   = IPS_GetKernelDir().'webfront/user/'.$this->moduleName.'/'.$script;
-                            echo $fullScriptName."\n";
+                            //echo $fullScriptName."\n";
 						} else {
 							$fullScriptName   = $baseDirectory.'/IPSLibrary/webfront/'.$this->moduleName.'/'.$script;
 						}
@@ -1038,7 +1038,7 @@
 			}
 			$sourceRepository = IPSFileHandler::AddTrailingPathDelimiter($sourceRepository);
 
-			$this->logHandler->Log('Start Deploy of Module "'.$this->moduleName.'"');
+			$this->logHandler->Log('Start IPS7 Deploy of Module "'.$this->moduleName.'"');
 			if ($changeText<>'') {
 				$this->versionHandler->IncreaseModuleVersion($changeText, $installationRequired);
 			}
