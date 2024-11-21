@@ -329,6 +329,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 
     /* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
 
+    //SetValue($StartPageTypeID,22);                // disable comment to manual switch to responsive style
     $startPageType=GetValue($StartPageTypeID);
     if ($debug) echo "Aufruf StartpageWrite in Startpage Class Library.Start Page Type ist $startPageType.\n";
     if ($startPageType<21)
