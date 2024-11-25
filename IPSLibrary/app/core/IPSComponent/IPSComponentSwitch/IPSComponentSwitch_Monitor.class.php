@@ -99,7 +99,8 @@
 		 */
 		public function SetState($value, $onTime=false) 
 			{
-			if ($value==true)
+            if (function_exists("monitorOnOff")) monitorOnOff($value);  
+			elseif ($value==true)
 				{
 				/* Monitor einschalten, zwei Varianten zur Auswahl, Befehl monitor on funktioniert nicht immer */
 				IPS_ExecuteEX("c:/Scripts/nircmd.exe", "sendkeypress ctrl+alt+F1", false, false, 1);

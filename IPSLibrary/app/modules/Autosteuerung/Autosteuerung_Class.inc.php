@@ -1124,6 +1124,41 @@ class AutosteuerungOperator
 		return($delayed);
 		}
 
+    /* AutosteuerungOperator::getMonitorModeConfig
+     * rausfinden ob es die function gibt und einlesen
+     *		$mode = array(
+            'Rule'      => "active",
+            'Mode'      => "update",                                // update,poll,event  lets define
+			//'SwitchName' => "ArbeitszimmerMonitor",
+            'Condition' => array(
+                'OR' => array(
+                    26326 => ["EQ" => true],
+                    23462 => array("EQ" => "Gruen")  
+                                        ),
+                'AND' => array(
+                                        ),
+                            ),
+                );
+		return $mode;
+     *
+     */
+	public function getMonitorModeConfig($debug=false)
+        {
+        $config=false;
+        if (function_exists("Autosteuerung_MonitorMode"))
+            {
+            $config=array();
+            $configInput=Autosteuerung_MonitorMode();
+            if ($debug) echo "function Autosteuerung_MonitorMode existiert. Config : ".json_encode($configInput)."\n";
+            configfileParser($configInput, $config, ["Rule","RULE","rule" ],"Rule" ,"active"); 
+            configfileParser($configInput, $config, ["Mode","MODE","mode" ],"Mode" ,"poll"); 
+            configfileParser($configInput, $config, ["Condition","CONDITION","condition" ],"Condition" ,[]); 
+            configfileParser($configInput, $config, ["SwitchName","SWITCHNAME","switchName","Switchname","switchname" ],"SwitchName" ,null);            // wenns keinen gibt auch gut
+
+            }
+        return ($config);
+        }
+
     /* AutosteuerungOperator::MonitorStatus
      * Im Configfile gibt es eine Möglichkeit den gewünschten  Status des Monitors (Ein/Aus) aus einer OR und AND Verknüpfung von  Statuswerten zu ermitteln.
      * Überprüfung der Config mit getLogicMonitorConf
@@ -1496,7 +1531,7 @@ class AutosteuerungOperator
 					}
 				}
 			}
-		IPSLogger_Dbg(__file__, 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Aus":"Ein"));
+		IPSLogger_Dbg(__file__, 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Ein":"Aus"));
 		return ($result);				
 		}
 
@@ -2034,15 +2069,16 @@ class Autosteuerung
         $this->configuration = $this->set_Configuration($debug);
 	
         $ipsOps = new ipsOps();
-        $NachrichtenID    = $ipsOps->searchIDbyName("Nachrichtenverlauf-Autosteuerung",$this->CategoryIdData);                // needle ist Nachricht
+        $NachrichtenID  = IPS_GetCategoryIDByName("Nachrichtenverlauf-Autosteuerung",$this->CategoryIdData);
+        $NachrichtenInputID = IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenID);
+        $this->log = new Logging($this->configuration["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");
+        
         $NachrichtenAltID = $ipsOps->searchIDbyName("Nachrichtenverlauf-Wichtig",$this->CategoryIdData);
         $NachrichtenScriptID = $ipsOps->searchIDbyName("Nachricht",$this->CategoryIdApp);
 
         if ($NachrichtenScriptID)           // nicht 0 oder false
             {
-            $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);
 			/* logging in einem File und in einem String am Webfront : $logfile,$nachrichteninput_Id,$prefix="", $html=false, $count=false   */
-			$this->log=new Logging($this->configuration["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");	
             $nachrichtenInputID = $ipsOps->searchIDbyName("Nachricht",$NachrichtenAltID);    
             $this->logHtml = new Logging("No-Output",$nachrichtenInputID,"", true);            // true für html            		
 			}
@@ -2133,7 +2169,7 @@ class Autosteuerung
 		}
 
 
-    /* of Autosteuerung
+    /* Autosteuerung::set_Configuration
      * Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler 
      */
     private function set_Configuration($debug=false)
@@ -2153,7 +2189,7 @@ class Autosteuerung
      * einbetten der Konfiguration für das Webfront, welche Funktionen bekommen ein eigenes Tab 
      *
      */
-    public function get_Autosteuerung_SetSwitches()
+    public function get_Autosteuerung_SetSwitches($module=false)
         {
         $AutoSetSwitches=Autosteuerung_SetSwitches();
         // check Switches Konfiguration, bearbeiten
@@ -2163,10 +2199,11 @@ class Autosteuerung
             if ( (isset($AutoSetSwitch["NAME"])) == false )    $AutoSetSwitches[$nameAuto]["NAME"]    =$nameAuto;
             if ( (isset($AutoSetSwitch["TABNAME"])) == false ) $AutoSetSwitches[$nameAuto]["TABNAME"] =$nameAuto;                        // brauch ich zum Check
             }
+        if ( ($module) && (isset($AutoSetSwitches[$module])) ) return ($AutoSetSwitches[$module]);
         return($AutoSetSwitches);
         }
 
-	/* of Autosteuerung
+	/* Autosteuerung::getFunctions
      * welche AutosteuerungsFunktionen sind aktiviert:
      * unter data.modules.Autosteuerung.Ansteuerung alle bekannten Variablen auswerten und den  Status zurückmelden
      * Bekannt sind derzeit
@@ -2234,8 +2271,7 @@ class Autosteuerung
 			}
 		}	
 
-	/**************************************************
-	 * of Autosteuerung
+	/* Autosteuerung::isitdark,isitlight,isitsleep,isitwakeup,isitawake
 	 * Befehle für die Zeitperiodenerkennung
 	 *
 	 * dark/light abhängig vom Daylight
@@ -2245,8 +2281,8 @@ class Autosteuerung
 	 *
 	 *****************************************************************/
 
-	/* es ist dunkel draussen */
-
+	/* es ist dunkel draussen 
+     */
 	public function isitdark()
 		{
 		$acttime=time();
@@ -2260,8 +2296,8 @@ class Autosteuerung
 			}
 		}
 
-	/* es ist hell draussen */
-	
+	/* es ist hell draussen 
+     */
 	public function isitlight()
 		{
 		$acttime=time();
@@ -2275,8 +2311,8 @@ class Autosteuerung
 			}
 		}
 
-	/* GutenMorgenWecker steht auf Schlafen */
-
+	/* GutenMorgenWecker steht auf Schlafen 
+     */
 	public function isitsleep()
 		{
 		$functions=self::getFunctions();
@@ -2291,8 +2327,8 @@ class Autosteuerung
 			}	
 		}
 
-	/* GutenMorgenWecker steht auf Aufwachen */
-
+	/* GutenMorgenWecker steht auf Aufwachen 
+     */
 	public function isitwakeup()
 		{
 		$functions=self::getFunctions();
@@ -2307,8 +2343,8 @@ class Autosteuerung
 			}	
 		}
 
-	/* GutenMorgenWecker steht auf Munter */
-
+	/* GutenMorgenWecker steht auf Munter 
+     */
 	public function isitawake()
 		{
 		$functions=self::getFunctions();
@@ -2377,7 +2413,6 @@ class Autosteuerung
      * selbst erfassen
      *
      */	
-		
 	public function isitheatday($debug=false)
 		{
 		$status=false;
@@ -2407,8 +2442,8 @@ class Autosteuerung
 		return ($status);		
 		}		
 
-	/* gibt die Sonnenauf- und -untergangszeiten aus */
-
+	/* gibt die Sonnenauf- und -untergangszeiten aus 
+     */
 	public function getDaylight()
 		{
 		$result["Sunrise"]=$this->sunrise;
@@ -2499,17 +2534,12 @@ class Autosteuerung
 		return ($timeright);	
 		}	
 
-    /****************************************************
-     * of Autosteuerung
+    /* Autosteuerung::getPowerLockSwitchId
      *
      * Bearbeitung der Action Buttons
      *
-     ********************************************************************/
-
-    /* Action Buttons suchen und speichern
      *
      */
-     
     private function getPowerLockSwitchId()
         {
         if ($this->CategoryId_Alarm)
@@ -2535,7 +2565,6 @@ class Autosteuerung
 
 	 *
 	 */
-	 
 	function get_ActionButton()
 		{
         $actionButton=array();
@@ -2545,12 +2574,68 @@ class Autosteuerung
 		return($ActionButton);
 		}
 
-    /****************************************************
-     * of Autosteuerung
+    /* Autosteuerung::statusMonitorSteuerung
      * Konfiguration der Anwesenheitsliste als text ausgeben
      *
-     ********************************************************************/
+     */
+    public function statusMonitorSteuerung($debug=false)
+        {
+        $changesDetected=false;
+        $operate=new AutosteuerungOperator();            
+        $AutoSetSwitches = $this->get_Autosteuerung_SetSwitches("MonitorMode");
+        if ($debug) echo "statusMonitorSteuerung mit Config ".json_encode($AutoSetSwitches)." \n";
+        if (isset($AutoSetSwitches["NAME"])) 
+            {
+            $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["NAME"],$this->CategoryId_Ansteuerung);
+            if ($monitorId) 
+                {
+                $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
+                if ($debug) echo "modul MonitorMode Handling abarbeiten, Werte in Kategorie ".$this->CategoryId_Ansteuerung." Name : ".$AutoSetSwitches["NAME"].":  $monitorId hat Konfiguration ".GetValueIfFormatted($monitorId)."  \n";
+                $monConfigFormat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
+                if ($monConfigFormat=="Auto")
+                    {
+                    //echo "Monitor Handling auf Auto eingestellt. Wenn eine Config Angelegt wurde weiterarbeiten.\n";
+                    $MonitorModeConfig=$operate->getMonitorModeConfig();
+                    if ($MonitorModeConfig) 
+                        {
+                        //echo "function Autosteuerung_MonitorMode existiert. Config : ".json_encode($MonitorModeConfig)."\n";
+                        if  (strtoupper($MonitorModeConfig["Rule"])=="ACTIVE")
+                            {
+                            //echo "Rule active, continue\n";
+                            $state = $stateSwitch=$operate->MonitorStatus(true);
+                            //echo "Ergebnis Monitoransteuerung : \"".($state?"Ein":"Aus")."\"   als Wert $state\n";
+                            if ( (strtoupper($MonitorModeConfig["Mode"])=="UPDATE") && (function_exists("monitorUpdate")) )
+                                {
+                                //echo "do Update command.\n";
+                                if ($state) monitorUpdate();
+                                }                                
+                            if  (isset($MonitorModeConfig["SwitchName"])) 
+                                {
+                                $nameSwitch=$MonitorModeConfig["SwitchName"];
+                                $ergebnisTyp=$this->getIdByName($nameSwitch);                                
+                                //echo "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]."   ".json_encode($ergebnisTyp)."\n";    
+                                SetValue($SchalterMonitorID,$state);            // Schalter mit dem Wert mitziehen, sonst macht es keinen Sinn
+                                if ($state<>GetValue($StatusMonitorID))
+                                    {
+                                    $this->log->LogMessage('Änderung Status Monitor auf '.($state?"Ein":"Aus"));
+                                    $this->log->LogNachrichten('Änderung Status Monitor auf '.($state?"Ein":"Aus"));                    
+                                    SetValue($StatusMonitorID,$state);              // sollte auch den Änderungsdienst zum Zuletzt Wert machen
+                                    /* den Monitor ein oder ausschalten */
+                                    $this->switchByTypeModule($ergebnisTyp,$state, false);         // true für Debug, den IPS_HeatSwitch ansteuern, egal ob Gruppe oder etwas anderes
+                                    $changesDetected=true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
+    /* Autosteuerung::statusAnwesenheitSimulation
+     * Konfiguration der Anwesenheitsliste als text ausgeben
+     *
+     */
     public function statusAnwesenheitSimulation($html=false)
         {
         $text=""; 
@@ -2609,14 +2694,10 @@ class Autosteuerung
         return ($text);        
         }
 
-    /**********************************************
-     *
-     * getScenes of Autosteuerung
+    /*Autosteuerung::getScenes
      *
      * Liest die AWS/TIMER Konfiguration aus, filtert auf die AWS Events, oder Eingabe
-     *
-     ********************************************************/
-
+     */
     public function getScenes($filter="AWS")
         {
         $result=array();
@@ -2700,8 +2781,7 @@ class Autosteuerung
         return($result);
         }
 
-	/***************************************
-	 * of Autosteuerung
+	/* Autosteuerung::setNewValue
 	 * Vorwert (Float) erfassen und in der Category Stromheizung speichern, 
      * eingesetzt bei Heizung um zB zu erkennen Temperatur gestiegen, gesunken, etc.
 	 * wird bei jeder Änderung zB von Ventilator2 aufgerufen und der Wert wird in OLDSTATUS gespeichert
@@ -2713,8 +2793,7 @@ class Autosteuerung
 	 * wenn die variableID gültig ist erfolgt in der entsprechenden Kategorie data.modules.Autosteuerung.Ansteuerung.Stromheizung (default) ein Eintrag mit
 	 * dem selben Variablennamen machen (plus Parentname) und daraus den Vorwert ableiten
 	 *
-	 ******************************************************************/
-
+	 */
 	public function setNewValue($variableID,$value, $category=0)
 		{
         if ($category === 0) $category=$this->CategoryId_Stromheizung;
@@ -3026,8 +3105,7 @@ class Autosteuerung
 
 
 
-	/***************************************
-	 * of Autosteuerung
+	/* Autosteuerung::ParseCommand
 	 * hier wird der Befehl in die Einzelbefehle zerlegt, und Kurzbefehle in die Langform gebracht
 	 * unterschiedliche Bearbeitung für Ventilator, Anwesenheit und alle anderen
 	 *
@@ -3740,7 +3818,9 @@ class Autosteuerung
 
 
 	/*********************************************************************************************************
-	 * of Autosteuerung
+	 * 
+     * Autosteuerung::EvaluateCommand
+     *
 	 * Auch das Evaluieren kann gemeinsam erfolgen, es gibt nur kleine Unterschiede zwischen den Befehlen 
      * Vorher wurde ParseCommand aufgerufen, der versucht einen String mit Abkürzerne etc. in eine allgemein verständliche Form zu bringen
 	 *
@@ -5000,7 +5080,10 @@ class Autosteuerung
                  * wenn ich name:Arbeitszimmer,status:on schreibe ist es eine normele IPSHeat Funktion
                  *
                  */
-                 
+                
+                $this->statusMonitorSteuerung();
+
+                /* 
    				//IPSLogger_Not(__file__, 'Autosteuerung::ExecuteCommand, Internal Module vorhanden. Hier evaluieren.');
             	$AutoSetSwitches = $this->get_Autosteuerung_SetSwitches();
                 if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
@@ -5065,7 +5148,7 @@ class Autosteuerung
                 //IPS_getCategoryIdByName('Wochenplan-Stromheizung',   $CategoryIdData);
 
                 //$configurationAutosteuerung = Autosteuerung_Setup(); print_r($configurationAutosteuerung);
-                //print_r($AutoSetSwitches["MonitorMode"]);
+                //print_r($AutoSetSwitches["MonitorMode"]); */
 
                 if (isset($result["NAME"]))
                     {

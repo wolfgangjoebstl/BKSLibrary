@@ -172,21 +172,25 @@
 		public function SetState($value, $onTime=false)
 			{
 			//echo "Server ".$this->remoteAdr." ansprechen und Skript ".$this->remoteOID." aufrufen.\n";
-			$rpc = new JSONRPC($this->remoteAdr);
-			if ($value==true)
-				{
-			   	/* Monitor einschalten */
-				//echo "Monitor ausschalten.\n";
-				$monitor=array("Monitor" => "on");
-				$rpc->IPS_RunScriptEx($this->remoteOID,$monitor);
-			   }
-			else
-				{
-			   	/* Monitor ausschalten */
-			   	//echo "Monitor ausschalten.\n";
-				$monitor=array("Monitor" => "off");
-				$rpc->IPS_RunScriptEx($this->remoteOID,$monitor);
-			   	}
+            if (function_exists("rmonitorOnOff")) monitorOnOff($value);  
+            else
+                {
+                $rpc = new JSONRPC($this->remoteAdr);
+                if ($value==true)
+                    {
+                    /* Monitor einschalten */
+                    //echo "Monitor ausschalten.\n";
+                    $monitor=array("Monitor" => "on");
+                    $rpc->IPS_RunScriptEx($this->remoteOID,$monitor);
+                }
+                else
+                    {
+                    /* Monitor ausschalten */
+                    //echo "Monitor ausschalten.\n";
+                    $monitor=array("Monitor" => "off");
+                    $rpc->IPS_RunScriptEx($this->remoteOID,$monitor);
+                    }
+                }
 			}
 
 		/**

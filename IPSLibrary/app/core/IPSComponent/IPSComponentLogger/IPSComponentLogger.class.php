@@ -1081,9 +1081,10 @@ class Logging
             //Detect Movement kann auch Sensorwerte agreggieren 
             IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
             IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            echo "do_init_climate::DetectClimateHandler\n";
             $this->DetectHandler = new DetectClimateHandler();                            // zum Beispiel für die Evaluierung der Mirror Register       */
             }
-
+        //echo "getVariableName\n";
         $this->variablename = $this->getVariableName($variable, $variablename,true);           // true für Debug, function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
 
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden 		
@@ -1376,21 +1377,25 @@ class Logging
         {
         if ($debug) 
             {
-            echo "Logging:getVariableName aufgerufen.\n"; 
+            echo "Logging:getVariableName($variable,$variablename,...) aufgerufen.\n"; 
             //print_r($this->installedmodules); 
             //print_r($this->DetectHandler);
             }
         /****************** Variablennamen für Spiegelregister von DetectMovement übernehmen oder selbst berechnen */
         if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->DetectHandler !== Null) )
             {
-            if ($debug) echo "Aufruf DetectHandler->getMirrorRegister($variable).\n";
+            if ($debug) echo "   Aufruf DetectHandler->getMirrorRegister($variable).\n";
             $moid=$this->DetectHandler->getMirrorRegister($variable,$debug);
             if ( ($variablename==Null) && ($moid !== false) ) 
                 {
                 $variablename=IPS_GetName($moid);
                 if ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename/".IPS_GetName(IPS_GetParent($moid))."\" $moid   (from config)\n";
                 }
-            elseif ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (default)\n";
+            else
+                {
+                if ($variablename==Null) $variablename = $this->DetectHandler->getVariableName($variable,$debug);
+                if ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (default)\n";
+                }
             }
         elseif (isset ($this->installedmodules["DetectMovement"]) ) 
             {
@@ -1416,6 +1421,7 @@ class Logging
                 {
                 $variablename=IPS_GetName($variable);			// Variablenname ist der Variablen Name wenn der Parent KEINE Instanz ist.
                 }
+            if ($debug) echo "variablename nicht übergeben, neuer Name ist jetzt $variablename.\n";
             } 
         return ($variablename);
         }

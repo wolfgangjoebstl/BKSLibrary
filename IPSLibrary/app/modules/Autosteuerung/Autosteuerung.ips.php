@@ -61,7 +61,7 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
 	if ( isset($installedModules["Stromheizung"]) === true )
 		{
         if ($debug) echo "Module Stromheizung ist installiert.\n"; 
-        if ($debug) IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung");
+        IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung");
 		}
     if (isset($installedModules["EvaluateHardware"]))
         {
@@ -94,7 +94,7 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
  *
  ********************************************************************************************/
 
- 	$setup = $register->get_Configuration();
+ 	$setup = $register->get_Configuration();                // AutosteuerungHandler
 
 	$NachrichtenIDAuto  = IPS_GetCategoryIDByName("Nachrichtenverlauf-Autosteuerung",$CategoryIdData);
     $NachrichtenInputID = IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAuto);
@@ -379,45 +379,57 @@ if ($_IPS['SENDER']=="TimerEvent")
 		{
         case $tim3ID:
 			/* alle 60 Sekunden aufrufen */
+            $changesDetected=$auto->statusMonitorSteuerung($debug);            //true für Debug
 
-            // Monitor automatische ein/aus schalten
+            /* Monitor automatische ein/aus schalten
             $changesDetected=false;
-            $AutoSetSwitches = Autosteuerung_SetSwitches();
-            if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
+            $AutoSetSwitches = $auto->get_Autosteuerung_SetSwitches("MonitorMode");
+            if (isset($AutoSetSwitches["NAME"])) 
                 {
-                $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["MonitorMode"]["NAME"],$categoryId_Autosteuerung);
+                $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["NAME"],$categoryId_Autosteuerung);
                 if ($monitorId) 
                     {
                     $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
-                    //echo "modul MonitorMode Handling abarbeiten, Werte in ".$categoryId_Autosteuerung." Name : ".$AutoSetSwitches["MonitorMode"]["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
+                    //echo "modul MonitorMode Handling abarbeiten, Werte in Kategorie ".$categoryId_Autosteuerung." Name : ".$AutoSetSwitches["NAME"].":  $monitorId hat Konfiguration ".GetValueIfFormatted($monitorId)."  \n";
                     $monConfigFomat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
-                    if ($monConfigFomat="Auto")
+                    if ($monConfigFomat=="Auto")
                         {
                         //echo "Monitor Handling auf Auto eingestellt. Wenn eine Config Angelegt wurde weiterarbeiten.\n";
-                        if (function_exists("Autosteuerung_MonitorMode")) 
+                        $MonitorModeConfig=$operate->getMonitorModeConfig();
+                        if ($MonitorModeConfig) 
                             {
-                            $MonitorModeConfig=Autosteuerung_MonitorMode();
-                            if ( (isset($MonitorModeConfig["SwitchName"])) && (isset($MonitorModeConfig["Condition"])) )
+                            //echo "function Autosteuerung_MonitorMode existiert. Config : ".json_encode($MonitorModeConfig)."\n";
+                            if  (strtoupper($MonitorModeConfig["Rule"])=="ACTIVE")
                                 {
-                                //echo "function Autosteuerung_MonitorMode existiert, Parameter Switchname und Condition angelegt, es geht weiter: ".json_encode($MonitorModeConfig["Condition"])."\n";
-                                $nameSwitch=$MonitorModeConfig["SwitchName"];
-                                $ergebnisTyp=$auto->getIdByName($nameSwitch);                                
-                                //echo "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]."   ".json_encode($ergebnisTyp)."\n";    
+                                //echo "Rule active, continue\n";
                                 $state = $stateSwitch=$operate->MonitorStatus(true);
-                                $auto->switchByTypeModule($ergebnisTyp,$state, false);         // true für Debug
-                                SetValue($SchalterMonitorID,$state);            // Schalter mit dem Wert mitziehen, sonst macht es keinen SInn
-                                if ($state<>GetValue($StatusMonitorID))
+                                //echo "Ergebnis Monitoransteuerung : \"".($state?"Ein":"Aus")."\"   als Wert $state\n";
+                                if ( (strtoupper($MonitorModeConfig["Mode"])=="UPDATE") && (function_exists("monitorUpdate")) )
                                     {
-                                    $log_Anwesenheitserkennung->LogMessage('Änderung Status Monitor auf '.($state?"Ein":"Aus"));
-                                    $log_Anwesenheitserkennung->LogNachrichten('Änderung Status Monitor auf '.($state?"Ein":"Aus"));                    
-                                    SetValue($StatusMonitorID,$state);              // sollte auch den Änderungsdienst zum Zuletzt Wert machen
-                                    $changesDetected=true;
+                                    //echo "do Update command.\n";
+                                    if ($state) monitorUpdate();
+                                    }                                
+                                if  (isset($MonitorModeConfig["SwitchName"])) 
+                                    {
+                                    $nameSwitch=$MonitorModeConfig["SwitchName"];
+                                    $ergebnisTyp=$auto->getIdByName($nameSwitch);                                
+                                    //echo "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]."   ".json_encode($ergebnisTyp)."\n";    
+                                    SetValue($SchalterMonitorID,$state);            // Schalter mit dem Wert mitziehen, sonst macht es keinen Sinn
+                                    if ($state<>GetValue($StatusMonitorID))
+                                        {
+                                        $log_Anwesenheitserkennung->LogMessage('Änderung Status Monitor auf '.($state?"Ein":"Aus"));
+                                        $log_Anwesenheitserkennung->LogNachrichten('Änderung Status Monitor auf '.($state?"Ein":"Aus"));                    
+                                        SetValue($StatusMonitorID,$state);              // sollte auch den Änderungsdienst zum Zuletzt Wert machen
+                                        // den Monitor ein oder ausschalten 
+                                        $auto->switchByTypeModule($ergebnisTyp,$state, false);         // true für Debug, den IPS_HeatSwitch ansteuern, egal ob Gruppe oder etwas anderes
+                                        $changesDetected=true;
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
+                } */
 
             // Status Anwesend automatisch ein/aus schalten
 			$StatusAnwesend=$operate->Anwesend();
@@ -593,10 +605,10 @@ if ($_IPS['SENDER']=="Execute")
     $timerOps->getEventData($timerAufrufID);
     //$timerOps->getEventData($tim2ID);                         // Kalendertimer gibt es nicht
     $timerOps->getEventData($tim3ID);
-
+    $changesDetected=$auto->statusMonitorSteuerung(true);            //true für Debug
 	
 
-            	$AutoSetSwitches = Autosteuerung_SetSwitches();
+    /*        	$AutoSetSwitches = Autosteuerung_SetSwitches();
                 if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
                     {
                     $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["MonitorMode"]["NAME"],$categoryId_Autosteuerung);
@@ -626,7 +638,7 @@ if ($_IPS['SENDER']=="Execute")
                                 }
                             }
                         }
-                    }
+                    }  */
 
 	// gibt die IDs von Anwesenheitsimulation, Nachrichten Script und Nachrichten Input aus
 	echo "Anwesenheitsimulation  ID : ".$AnwesenheitssimulationID." \n";

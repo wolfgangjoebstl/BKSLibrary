@@ -1,7 +1,7 @@
 <?php
 
 /* Webfront_Control für Autosterung
- * deckt den Rest der nicht von Autosterung script direkt gemacht wird.
+ * deckt den Rest der nicht von Autosteuerung script direkt gemacht wird.
  *
  *
  *
@@ -23,6 +23,9 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
     $installedModules 	= $moduleManager->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+
+    if ($_IPS['SENDER']=="Execute") $debug=true;
+    else $debug=false; 
 
 	if ( isset($installedModules["DetectMovement"]) === true )
 		{
@@ -54,54 +57,103 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     else $PushSoundID="unknown";
 
     //echo "gefunden: $MonitorModeID $SchalterMonitorID\n";
-    if ($_IPS['SENDER']=="Execute") $debug=true;
-    else $debug=false;
 
     $operate=new AutosteuerungOperator($debug);    
     $auto=new Autosteuerung();
     $ipsOps = new ipsOps();
 
-    $ergebnisTyp=false;
-
-    $AutoSetSwitches = Autosteuerung_SetSwitches();
-    if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
-        {
-        $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["MonitorMode"]["NAME"],$categoryId_Ansteuerung);
-        if ($monitorId) 
-            {
-            $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
-            //echo "modul Internal abarbeiten, Werte in ".$categoryId_Ansteuerung." Name : ".$AutoSetSwitches["MonitorMode"]["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
-            $monConfigFomat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
-            if (function_exists("Autosteuerung_MonitorMode")) 
-                {
-                $MonitorModeConfig=Autosteuerung_MonitorMode();
-                if (isset($MonitorModeConfig["SwitchName"]))
-                    {
-                    //echo "function Autosteuerung_MonitorMode existiert, es geht weiter: ".json_encode($MonitorModeConfig)."\n";
-                    $result["NAME"]=$MonitorModeConfig["SwitchName"];
-                    $ergebnisTyp=$auto->getIdByName($result["NAME"]);                                
-                    //echo "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]."   ".json_encode($ergebnisTyp)."\n";    
-                    
-                    }
-                }
-            }
-        }
-
+    $CategoryIdDataOC=false;
     if (isset($installedModules["OperationCenter"]))
         {
         IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
         
         $moduleManagerOC 	= new IPSModuleManager('OperationCenter',$repository);
         $CategoryIdDataOC   = $moduleManagerOC->GetModuleCategoryID('data');
+        }
 
+    $powerLock_ID="unknown";
+    $SchalterSortAlexa_ID="unknown";
+    $AutoSetSwitches = $auto->get_Autosteuerung_SetSwitches();              // allgemein für alle Module verwendet
+    foreach ($AutoSetSwitches as $nameAuto => $AutoSetSwitch)
+        {
+        switch (strtoupper($AutoSetSwitch["TABNAME"]))          // das ist der Key, standardisiserte Namen
+            {
+            case "MONITORMODE":
+                if (isset($AutoSetSwitch["NAME"])) 
+                    {
+                    $monitorId = @IPS_GetObjectIDByName($AutoSetSwitch["NAME"],$categoryId_Ansteuerung);
+                    if ($monitorId) 
+                        {
+                        $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
+                        //echo "modul Internal abarbeiten, Werte in ".$categoryId_Ansteuerung." Name : ".$AutoSetSwitch["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
+                        $monConfigFomat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
+                        if (function_exists("Autosteuerung_MonitorMode")) 
+                            {
+                            $MonitorModeConfig=Autosteuerung_MonitorMode();
+                            if (isset($MonitorModeConfig["SwitchName"]))
+                                {
+                                //echo "function Autosteuerung_MonitorMode existiert, es geht weiter: ".json_encode($MonitorModeConfig)."\n";
+                                $result["NAME"]=$MonitorModeConfig["SwitchName"];
+                                $ergebnisTyp=$auto->getIdByName($result["NAME"]);                                
+                                //echo "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]."   ".json_encode($ergebnisTyp)."\n";    
+                                
+                                }
+                            }
+                        }
+                    }
+                break;
+			case "ALEXA":
+                if ($CategoryIdDataOC)
+                    {
+                    $categoryId_AutosteuerungAlexa 	= IPS_GetObjectIDByIdent('Alexa',   $CategoryIdDataOC);
+                    $TableEventsAlexa_ID			= IPS_GetObjectIDByName("TableEvents",$categoryId_AutosteuerungAlexa);
+                    $SchalterSortAlexa_ID			= IPS_GetObjectIDByName("Tabelle sortieren",$categoryId_AutosteuerungAlexa);	
+                    }
+                break;    
+            case "ALARMANLAGE":
+                $AlarmanlageModeID                = @IPS_GetObjectIDByName("Alarmanlage", $categoryId_Ansteuerung);
+                if ($AlarmanlageModeID)
+                    {
+                    // Aktuator
+                    $componentHandling = new ComponentHandling();
+                    if ($debug) echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+                    IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+                    $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php                    
+                    $resultKey=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "KEYSTATE"],"Install",$debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+                    $countPowerLock=(sizeof($resultKey));				
+                    // Status
+                    $resultState=$componentHandling->getComponent($deviceList,["TYPECHAN" => "TYPE_POWERLOCK","REGISTER" => "LOCKSTATE"],"Install",$debug);                        // true für Debug, bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben   
+                    $countPowerLock+=(sizeof($resultState));				
+                    if ($countPowerLock>0)
+                        {
+                        if ($debug) echo "Es wird ein PowerLock von Homematic verwendet. Die Darstellung erfolgt unter Alarmanlage/Tab Sicherheit:\n";
+                        $powerLock_ID=IPS_GetObjectIdByName("LockBuilding",$AlarmanlageModeID);
+                        $alarm=new AutosteuerungAlarmanlage();
+                        $config=$alarm->getPowerLockEnvironmentConfig();
+                        //print_R($config);
+                        if (isset($config["Count"]))
+                            {
+                            foreach ($config["Key"] as $index => $entry)
+                                {
+                                if ($debug) echo "Index $index :  ".$entry["OID"]."\n";
+                                //print_r($entry);
+                                $powerLockActuatorOID=$entry["OID"];    
+                                }
+                            }
+                        }
+                    }
+                break;
+            }
+        }
+
+    $ergebnisTyp=false;
+
+
+    if ($CategoryIdDataOC)
+        {
         $categoryId_Autosteuerung 		= IPS_GetObjectIDByIdent('Autosteuerung',   $CategoryIdDataOC);
-        $TableEventsAS_ID				= IPS_GetObjectIDByIdent("TableEvents", $categoryId_Autosteuerung);
         $SchalterSortAS_ID				= IPS_GetObjectIDByName("Tabelle sortieren", $categoryId_Autosteuerung);
-
-        $categoryId_AutosteuerungAlexa 	= IPS_GetObjectIDByIdent('Alexa',   $CategoryIdDataOC);
-        $TableEventsAlexa_ID			= IPS_GetObjectIDByName("TableEvents",$categoryId_AutosteuerungAlexa);
-        $SchalterSortAlexa_ID			= IPS_GetObjectIDByName("Tabelle sortieren",$categoryId_AutosteuerungAlexa);	
-
+        
         $categoryId_DeviceManagement    = IPS_GetObjectIDByIdent('DeviceManagement',   $CategoryIdDataOC);
         $TableEventsDevMan_ID			= IPS_GetObjectIDByName("TableEvents", $categoryId_DeviceManagement);
         $SchalterSortDevMan_ID			= IPS_GetObjectIDByName("Tabelle sortieren", $categoryId_DeviceManagement);
@@ -109,7 +161,6 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     else 
         {
         $SchalterSortAS_ID="unknown";
-        $SchalterSortAlexa_ID="unknown";
         $SchalterSortDevMan_ID="unknown";
         }
 
@@ -130,24 +181,6 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
         }
 
 
-    $AlarmanlageModeID                = @IPS_GetObjectIDByName("Alarmanlage", $categoryId_Ansteuerung);
-    if ($AlarmanlageModeID)
-        {
-        $powerLock_ID=IPS_GetObjectIdByName("LockBuilding",$AlarmanlageModeID);
-        $alarm=new AutosteuerungAlarmanlage();
-        $config=$alarm->getPowerLockEnvironmentConfig();
-        //print_R($config);
-        if (isset($config["Count"]))
-            {
-            foreach ($config["Key"] as $index => $entry)
-                {
-                if ($debug) echo "Index $index :  ".$entry["OID"]."\n";
-                //print_r($entry);
-                $powerLockActuatorOID=$entry["OID"];    
-                }
-            }
-        }
-    else $powerLock_ID="unknown";
 
 /************************************************************************************
  *
@@ -188,6 +221,7 @@ if ($_IPS['SENDER']=="WebFront")
             break;
 		case $SchalterSortAS_ID:            			// Autosteuerungs Events, Tabelle updaten wenn die Taste gedrueckt wird 
         	//SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+            $TableEventsAS_ID				= IPS_GetObjectIDByIdent("TableEvents", $categoryId_Autosteuerung);
             if ( isset($installedModules["DetectMovement"]) === true )
                 {            
                 $detectMovement = new TestMovement($debug);
