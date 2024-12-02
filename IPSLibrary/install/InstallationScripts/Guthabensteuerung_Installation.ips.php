@@ -42,12 +42,18 @@
      *      INIT, generell, check ob AMIS Modul
      *      INIT, Variablen anlegen
      *      Setup YahooApi und vielleicht auch andere, die Variablen initialisisern
-     *      Setup Selenium or iMacro Environment
+     *      Setup Selenium or iMacro Environment installieren
+     *          iMacro   ein paar variablen auifsetzen
+     *          Selenium:
+     *
+     *
      *      initialize Timer
      *      initialize Profile
      *      Selenium Webdriver 
-     *
-     *      Selenium Webfront initialisieren
+     *      if doinstall, iMacro Telefonnummern abfragen
+     *      WebFront Installation, display of Guthabensteuerung Information
+     *      INIT, Nachrichtenspeicher, Ausgeben wenn Execute
+     *      Selenium Webfront initialisieren, display of Guthabensteuerung Information
 	 *
 	 * @file          Guthabensteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -218,6 +224,11 @@
  * Setup Selenium or iMacro Environment
  *
  * Selenium braucht Zusatzmodule: OperationCenter, Watchdog
+ * und includes: "Selenium_Library.class.php"
+ * $GuthabenAllgConfig["Selenium"]["WebDrivers"] mehrere Webdriver zum Auswählen
+ * $GuthabenAllgConfig["Selenium"]["WebDriver"] oder ein default Webdriver oder beides zusammen
+ * nur die Programme ausgeben die gestartet werden müssen, je nachdem wird status selenium eingestellt: SeleniumRunning=[Idle, Active]
+ * die Profile bestimmen  UpdateChromeDriver=[None], StartStoppChromeDriver=["Start","Stopp","Reset"]
  *
  *
  *******************************************************************/
@@ -325,6 +336,10 @@
                 echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
                 $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
                 $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
+
+
+
+
                 $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
                 //print_R($version);          // Version Nummer, Filename, Size in Bytes
 
@@ -403,6 +418,8 @@
                 echo "Bestehende chromedriver Versionen ausgeben. Verzeichnis Synology/Shared Drive : ".$execDir."\n";
                 $dosOps->writeDirStat($execDir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
 
+                if ($watchDog->isSeleniumServer($execDir)) echo "Selenium Server bereits vorhanden.\n";
+
                 //verfügbare chromedriver versionen herunterladen
                 $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
 
@@ -449,13 +466,17 @@
                                 $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
                                 echo "moveFile ".$dirname."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
                                 //$dosOps->moveFile($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
-                                copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
+                                if (!copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe")) echo "failed to copy ".$dirname."chromedriver.exe...\n";
                                 //echo "rename  ".$dir."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
                                 //rename($dir."chromedriver.exe",$dir."chromedriver_".$version.".exe");
                                 $dosOps->rrmdir($dirname);
                                 echo "    -> finished, result and $dirname deleted.\n";
                                 }
-                            else echo "Dir $dirname not found.\n"; 
+                            else 
+                                {
+                                echo "Dir $dirname not found. Try to create.\n"; 
+                                $dosOps->mkdirtree($dirname);
+                                }
                         
                             $dosOps->deleteFile($dir.$filename);
                             $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
@@ -486,11 +507,11 @@
         }
 	SetValue($SeleniumHtmlStatusID,$html);
 
-	/*****************************************************
-	 *
-	 * initialize Timer 
-	 *
-	 ******************************************************************/
+/*****************************************************
+ *
+ * initialize Timer 
+ *
+ ******************************************************************/
 
 
     // Timer installieren
@@ -508,11 +529,11 @@
 	$archiveHandlerID = $archiveHandlerID[0];
 
 
-	/****************************************************************
-	 *
-	 * Initialisiere Profile
-	 *
-	 ************************************************************************/
+/****************************************************************
+ *
+ * Initialisiere Profile
+ *
+ ************************************************************************/
 
 	$profileOps->createKnownProfilesByName("Euro");
 	$profileOps->createKnownProfilesByName("MByte");
@@ -553,11 +574,11 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	/*****************************************************
-	 *
-	 * Selenium Webdriver 
-	 *
-	 ******************************************************************/
+/*****************************************************
+ *
+ * Selenium Webdriver 
+ *
+ ******************************************************************/
 
     if ($seleniumWeb)
         {
@@ -606,6 +627,12 @@
                 }
             }                
         }
+
+/*****************************************************
+ *
+ * if doinstall, iMacro Telefonnummern abfragen 
+ *
+ ******************************************************************/
 
     if ($DoInstall)         // siehe weiter oben, lokaler Switch
         {
@@ -749,11 +776,11 @@
             }
         }
 
-	/******************************************************
-	 *
-	 *		WebFront Installation, display of Guthabensteuerung Information
-	 *
-	 *************************************************************/	
+/******************************************************
+ *
+ *		WebFront Installation, display of Guthabensteuerung Information
+ *
+ *************************************************************/	
 
     if ($DoInstall && ($GuthabenAllgConfig["EvaluateGuthaben"]))          // nur wenn auch explizit eine Auswertung der Tel Nummernkonten erwünscht ist
         {
@@ -841,11 +868,11 @@
             }
         }           // nur wenn Auswertung telnummern
 
-	/******************************************************
-	 *
-	 *			INIT, Nachrichtenspeicher
-	 *
-	 *************************************************************/
+/******************************************************
+ *
+ *			INIT, Nachrichtenspeicher, Ausgeben wenn Execute
+ *
+ *************************************************************/
 
 	if ($_IPS['SENDER']=="Execute")
 		{
@@ -857,22 +884,22 @@
 
 
 
-    /**************************************************
-     *
-     * Selenium Webfront initialisieren
-     *
-     * Guthabensteuerung und Selenium wird hier überwacht, Anzeige erfolgt im SystemTP
-     * erfordert (strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
-     * zwei Webfronts:
-     *      benötigt upgedatetes Orderbook
-     *      Parameter für Webfront von hier : $configWF=$guthabenHandler->getWebfrontsConfiguration("Selenium");
-     *      am Ende Aufruf easySetupWebfront($configWF,$webfront_links
-     * zweites Webfront:
-     *      Webfront Api
-     *      Parameter für Webfront von hier :    $configWF=$guthabenHandler->getWebfrontsConfiguration("Api"
-     *      am Ende Aufruf easySetupWebfront($configWF,$webfront_links
-     *
-     **********************************************************/
+/**************************************************
+ *
+ * Selenium Webfront initialisieren
+ *
+ * Guthabensteuerung und Selenium wird hier überwacht, Anzeige erfolgt im SystemTP
+ * erfordert (strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
+ * zwei Webfronts:
+ *      benötigt upgedatetes Orderbook
+ *      Parameter für Webfront von hier : $configWF=$guthabenHandler->getWebfrontsConfiguration("Selenium");
+ *      am Ende Aufruf easySetupWebfront($configWF,$webfront_links
+ * zweites Webfront:
+ *      Webfront Api
+ *      Parameter für Webfront von hier :    $configWF=$guthabenHandler->getWebfrontsConfiguration("Api"
+ *      am Ende Aufruf easySetupWebfront($configWF,$webfront_links
+ *
+ **********************************************************/
 
     echo " Selenium Webfront initialisieren. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 

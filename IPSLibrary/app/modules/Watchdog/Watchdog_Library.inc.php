@@ -85,8 +85,9 @@ class watchDog
         $this->dosOps = new dosOps();    
         }
 
-    /* überprüfen der Konfiguration */
-
+    /* watchDog::setConfiguration
+     * überprüfen der Konfiguration 
+     */
     function setConfiguration()
         {
         $config=array();
@@ -146,16 +147,23 @@ class watchDog
         return ($config);    
         }
 
+    /* watchDog::getConfiguration
+     * Ausgabe der Konfiguration 
+     */
     function getConfiguration()
         {
         return($this->configuration);
         }
 
-    /* getActiveProcesses
+    function getSeleniumConfiguration()
+        {
+        return($this->configuration["Software"]["Selenium"]);
+        }
+
+    /* watchDog::getActiveProcesses
      * die ganze Routine um rauszufinden welche Prozesse gerade laufen
      *
      */
-
     function getActiveProcesses($debug=false)
         {
         $verzeichnis=$this->configuration["WatchDogDirectory"];
@@ -204,6 +212,40 @@ class watchDog
             }
 
         return($processes);
+        }
+
+    /* watchDog::isSeleniumServer
+     * die ganze Routine um rauszufinden welche Prozesse gerade laufen
+     *
+     */
+    public function isSeleniumServer($execDir,$debug=false)
+        {
+        $result=false;
+        $configSeleniumWeb=$this->configuration["Software"]["Selenium"];
+        if (strtoupper($configSeleniumWeb["Autostart"])=="YES" )
+            {
+            if ( ($this->isSeleniumServerAtDir($configSeleniumWeb["Directory"])) == true )
+                {                
+                return (true);
+                }
+            else
+                {
+                echo "No jar file. Do copy ".$configSeleniumWeb["Directory"].$configSeleniumWeb["Execute"]." from Synology Executes.\n";
+                if ($this->isSeleniumServerAtDir($execDir))         // an der Quelle ein jar File, dann kopieren
+                    {
+                    if ($debug) echo "do copy to ".$configSeleniumWeb["Directory"].$configSeleniumWeb["Execute"]."\n";
+                    if (!copy($execDir.$configSeleniumWeb["Execute"],$configSeleniumWeb["Directory"].$configSeleniumWeb["Execute"])) echo "failed to copy ".$execDir.$configSeleniumWeb["Execute"]." ...\n";
+                    else return (true);
+                    }
+                }
+            }
+        return ($result);
+        }
+
+    public function isSeleniumServerAtDir($execdir=false)
+        {
+        if ($execdir===false) $execdir=$this->configuration["Software"]["Selenium"]["Directory"];
+        return ($this->dosOps->fileAvailable($this->configuration["Software"]["Selenium"]["Execute"],$execdir));
         }
 
     /* check ob die Prozesse laufen und ob sie entsprechend Konfiguration neu gestartet werden müssen 
@@ -442,10 +484,10 @@ class seleniumChromedriverUpdate extends watchDog
     /* check Chromedriver Version
      * anhand des array version wird der Index ausgewählt
      */
-    function identifyFileByVersion($file,$version)
+    function identifyFileByVersion($file,$version, $debugInput=false)
         {
         $result=false;
-        $debug=$this->debug;
+        $debug=$this->debug || $debugInput;
         if ($debug) echo "identifyFileByVersion($file,..). Input array to identify version has ".count($version)." entries.\n";
         if ($this->selDirContent)
             {
@@ -462,7 +504,7 @@ class seleniumChromedriverUpdate extends watchDog
                         return ($index); 
                         }
                     }
-                echo "File with $size not found in inventory.\n";
+                if ($debug) echo "File with $size not found in inventory.\n";
                 }
             else echo "File $file not found.\n";
             }

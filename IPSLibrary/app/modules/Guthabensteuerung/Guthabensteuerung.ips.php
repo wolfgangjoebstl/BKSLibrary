@@ -539,7 +539,7 @@ if ($configTabs)
  *				Webfront
  *
  * es gibt verschiedene Taster die hier zusammengeführt werden. 
- *      $startstoppChromedriverID               
+ *      $startstoppChromedriverID   Start Stopp Reset Chromedriver            
  *      $startImacroID              "StartSelenium",    $CategoryId_Mode
  *      $startActionID              "StartAction",      $CategoryId_Mode
  *      $startActionGroupID         "StartGroupCall",   $CategoryId_Mode

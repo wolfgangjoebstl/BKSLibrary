@@ -5473,6 +5473,15 @@ class LogFileHandler extends OperationCenter
  * extends OperationCenter because it is using same config file
  * provides information of chromedriver versions provided by cloud services
  *
+ *      __construct                             execDir und $execDirContent schreiben
+ *      get_ExecDir                             $OperationCenterSetup["Cloud"]["CloudDirectory"].$OperationCenterSetup["Cloud"]["Executes"]
+ *      update_ExecDirContent                   obiges Verzeichnis noch einmal laden
+ *      getListAvailableChromeDriverVersion     execDir einlesen und nach chromedriver filtern
+ *      getFilenameOfVersion
+ *      getListDownloadableChromeDriverVersion
+ *
+ *
+ *
  *
  **************************************************************************************************************************/
 

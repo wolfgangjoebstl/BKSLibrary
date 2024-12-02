@@ -5850,7 +5850,8 @@ class SeleniumEasychartModul extends SeleniumHandler
         }
     }
 
-/* Selenium Webdriver automatisiert bedienen
+/* SeleniumOperations
+ * Selenium Webdriver automatisiert bedienen
  * Aufruf mit automatedQuery
  *
  * andere Routinen für SeleniumOperations
@@ -6382,12 +6383,32 @@ class SeleniumOperations
     }
 
 /* SeleniumUpdate, nutzt Funktion von Watchdog und OperationCenter Library
+ * Vorbereitung für rgelemaessiges Update und Installation
+ *
+ *  __construct             GuthabenAllgConfig einlesen
+ *  findTabsfromVersion
+ *  installEnvironment
+ *
  */
 
 class SeleniumUpdate
     {
 
-    /* version sind die verfügbaren versionen als array, actualVersion ist die aktuell installierte version
+    protected $GuthabenAllgConfig;
+
+    /* zumindest ein paar Funktionen gemeinsam aufsetzen
+     * Configuration
+     */
+    public function __construct()
+        {
+        $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
+        //$GuthabenConfig         = $guthabenHandler->getContractsConfiguration();            // get_GuthabenConfiguration();
+        $this->GuthabenAllgConfig = $guthabenHandler->getGuthabenConfiguration();                              //get_GuthabenAllgemeinConfig();                  
+
+        }
+
+    /* SeleniumUpdate::findTabsfromVersion
+     * Version sind die verfügbaren versionen als array, actualVersion ist die aktuell installierte version
      * es werden alle version beginnend von actualVersion übernommen, wenn weniger zwei werden zumindest zwei versionen übernommen
      */
     function findTabsfromVersion($version,$actualVersion,$debug=false)
@@ -6414,86 +6435,123 @@ class SeleniumUpdate
         return ($tab);
         }
 
-    /* von den Servern das Environment für das Herunterladen von aktuellen Chromeversionen installieren
+    /* SeleniumUpdate::installEnvironment
+     * von den Servern das Environment für das Herunterladen von aktuellen Chromeversionen installieren
+     * benötigt das GuthabenAllgConfig["Selenium"]["DownloadDir"]
+     * Parameter ist das targetDir, hier die Downloads speichern
      * Ergebnis ist ein html string
-     * Erzeugt das Targetdir wenn erforderlich und gibt es im html aus, es werden gleich die Inhalte des targetdirs geladen udn verglichen, um rauszufinden was bereits erledigt ist
+     * 
+     * verfügbare Installationsschritte:
+     *
+     * Erzeugt das Targetdir wenn erforderlich und gibt es im html aus, es werden gleich die Inhalte des targetdirs geladen und verglichen, um rauszufinden was bereits erledigt ist
      * Benötigt 7zr.exe und 7z2301-extra.7z, wenn nicht vorhanden download 7z2301-extra.7z
      * Benötigt unzip_7za.bat, wenn nicht schreibe das batch file selbst, zerlegt das 7z file
      * Benötigt 7za.exe, wenn nicht wird unzip_7za.bat gestartet um diese Datei durch Aufruf von 7zr.exe zu erhalten
      * als positives Feedback wird berichtet das 7za.exe vorhanden ist.
+     *
+     * weiters wird unzip_chromedriver.bat benötigt
      */
     function installEnvironment($targetDir,$debug=false)
         {
         $html = "";
         $dosOps = new dosOps();
-            $sysOps = new sysOps();
-            $curlOps = new curlOps();             
+        $sysOps = new sysOps();
+        $curlOps = new curlOps();   
+        $dir = $this->GuthabenAllgConfig["Selenium"]["DownloadDir"];
 
-            $dosOps->mkdirtree($targetDir);
-            if (is_dir($targetDir)) 
-                {
-                if ($debug) echo "Verzeichnis für Selenium downloads verfügbar: $targetDir\n";
-                }
-            else return (false);
-            //echo "Zieldatei downloaden und abspeichern: $targetDir\n";
-            $html .= "Selenium ChromeDriver Download verzeichnis : $targetDir <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
-            //echo "Was ist schon alles im Targetverzeichnis gespeichert $targetDir:\n";
-            $files = $dosOps->writeDirToArray($targetDir);        // bessere Funktion
-            if ($debug) $dosOps->writeDirStat($targetDir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-            //print_R($files);
+        $dosOps->mkdirtree($targetDir);
+        if (is_dir($targetDir)) 
+            {
+            if ($debug) echo "Verzeichnis für Selenium downloads verfügbar: $targetDir\n";
+            }
+        else return (false);
+        //echo "Zieldatei downloaden und abspeichern: $targetDir\n";
+        $html .= "Selenium ChromeDriver Download verzeichnis : $targetDir <br>";                  // das ist das Arbeitsverzeichnis, nicht das Sync drive 
+        
+        //echo "Was ist schon alles im Targetverzeichnis gespeichert $targetDir:\n";
+        $files = $dosOps->writeDirToArray($targetDir);        // bessere Funktion
+        if ($debug) $dosOps->writeDirStat($targetDir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
+        //print_R($files);
 
-            $filename="7zr.exe";
-            $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
-            if ($file) 
-                {
-                if ($debug) echo "   --> Datei $filename gefunden.\n";
-                }
-            else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$targetDir);    
+        $filename="7zr.exe";
+        $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
+        if ($file) 
+            {
+            if ($debug) echo "   --> Datei $filename gefunden.\n";
+            }
+        else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$targetDir);    
 
-            $filename="7z2301-extra.7z";
-            $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
-            if ($file) 
-                {
-                if ($debug) echo "   --> Datei $filename gefunden.\n";
-                }
-            else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$targetDir);    
+        $filename="7z2301-extra.7z";
+        $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
+        if ($file) 
+            {
+            if ($debug) echo "   --> Datei $filename gefunden.\n";
+            }
+        else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$targetDir);    
 
-            $filename="unzip_7za.bat";
-            $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
-            if ($file) 
+        $filename="unzip_7za.bat";
+        $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
+        if ($file) 
+            {
+            if ($debug) echo "   --> Datei $filename gefunden.\n";
+            //$lines = file($dir."unzip_7za.bat");
+            //foreach ($lines as $line) echo $line;        
+            }
+        else
+            {
+            $filenameProcess = "7z2301-extra.7z";
+            echo "Schreibe Batchfile zum automatischen Unzip der 7za Version.\n";
+            $handle2=fopen($dir."unzip_7za.bat","w");        
+            fwrite($handle2,'echo written '.date("H:m:i d.m.Y")."\r\n");
+            $command='7zr.exe x '.$filenameProcess."\r\n";
+            fwrite($handle2,$command);
+            //$command="pause\r\n";
+            //fwrite($handle2,$command);
+            fclose($handle2);
+            }
+
+        $filename="7za.exe";
+        $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
+        if ($file) 
+            {
+            if ($debug) echo "   --> Datei $filename gefunden.\n";
+            $html .= "Unzip Programm available : $filename <br>";                  // unzip programm steht zur Verfügung 
+            }
+        else
+            {
+            $ergebnis = "not started";
+            $commandName="unzip_7za.bat";
+            $ergebnis = $sysOps->ExecuteUserCommand($targetDir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
+            echo "Execute Batch $dir$commandName um File $dir$filename zu erhalten : \"$ergebnis\"\n";
+            $html .= "Unzip Programm not available, maybe next time when script is started by pressing GET. <br>";
+            }
+
+        /* unzip_chromedriver.bat zum unzip der zip files die sich in files befinden erzeugen
+         *
+         */
+        $filename="unzip_chromedriver.bat";
+        $file = $dosOps->findfiles($files,$filename,true);       //Debug
+        if ($file) echo "   --> Datei $filename gefunden.\n";
+        else
+            {
+            $filesFiltered = $dosOps->findfiles($files,"*.zip",true);       //Debug
+            echo "Schreibe Batchfile $filename zum automatischen Unzip der Chromedriver Versionen.\n";
+            $handle2=fopen($dir.$filename,"w");        
+            fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
+            foreach ($filesFiltered as $index => $filename)
                 {
-                if ($debug) echo "   --> Datei $filename gefunden.\n";
-                //$lines = file($dir."unzip_7za.bat");
-                //foreach ($lines as $line) echo $line;        
-                }
-            else
-                {
-                $filenameProcess = "7z2301-extra.7z";
-                echo "Schreibe Batchfile zum automatischen Unzip der 7za Version.\n";
-                $handle2=fopen($dir."unzip_7za.bat","w");        
-                fwrite($handle2,'echo written '.date("H:m:i d.m.Y")."\r\n");
-                $command='7zr.exe x '.$filenameProcess."\r\n";
+                $command='7za.exe x '.$filename."\r\n";
                 fwrite($handle2,$command);
-                //$command="pause\r\n";
-                //fwrite($handle2,$command);
-                fclose($handle2);
+                echo "   Befehl ist jetzt : $command";
                 }
-
-            $filename="7za.exe";
-            $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
-            if ($file) 
-                {
-                if ($debug) echo "   --> Datei $filename gefunden.\n";
-                $html .= "Unzip Programm available : $filename <br>";                  // unzip programm steht zur Verfügung 
-                }
-            else
-                {
-                $ergebnis = "not started";
-                $commandName="unzip_7za.bat";
-                $ergebnis = $sysOps->ExecuteUserCommand($targetDir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
-                echo "Execute Batch $dir$commandName um File $dir$filename zu erhalten : \"$ergebnis\"\n";
-                $html .= "Unzip Programm not available, maybe next time when script is started by pressing GET. <br>";
-                }
+            /*
+            $command="pause\r\n";
+            fwrite($handle2,$command);
+            echo "   Befehl ist jetzt : $command";
+            */
+            fclose($handle2);
+            }        
+     
         return ($html);
         }
 
