@@ -6462,7 +6462,7 @@ class SeleniumUpdate
         $dosOps->mkdirtree($targetDir);
         if (is_dir($targetDir)) 
             {
-            if ($debug) echo "Verzeichnis für Selenium downloads verfügbar: $targetDir\n";
+            if ($debug) echo "installEnvironment, Verzeichnis für Selenium downloads verfügbar: $targetDir\n";
             }
         else return (false);
         //echo "Zieldatei downloaden und abspeichern: $targetDir\n";
@@ -6479,7 +6479,7 @@ class SeleniumUpdate
             {
             if ($debug) echo "   --> Datei $filename gefunden.\n";
             }
-        else $curlOps->downloadFile("https://www.7-zip.org/a/7z2301-extra.7z",$targetDir);    
+        else $curlOps->downloadFile("https://www.7-zip.org/a/7zr.exe",$targetDir);              //https://7-zip.org/a/7zr.exe  ohne exe geht gar nichts
 
         $filename="7z2301-extra.7z";
         $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
@@ -6519,6 +6519,8 @@ class SeleniumUpdate
             }
         else
             {
+            echo "lookfor filename $filename:\n";
+            print_R($files);
             $ergebnis = "not started";
             $commandName="unzip_7za.bat";
             $ergebnis = $sysOps->ExecuteUserCommand($targetDir.$commandName,"",true,true,-1,true);             // parameter show wait -1 debug
@@ -6527,14 +6529,16 @@ class SeleniumUpdate
             }
 
         /* unzip_chromedriver.bat zum unzip der zip files die sich in files befinden erzeugen
-         *
-         */
+        *
+        */
         $filename="unzip_chromedriver.bat";
-        $file = $dosOps->findfiles($files,$filename,true);       //Debug
-        if ($file) echo "   --> Datei $filename gefunden.\n";
+        $file = $dosOps->findfiles($files,$filename,$debug);       //Debug
+        if ($file) {if ($debug) echo "   --> Datei $filename gefunden.\n"; }
         else
             {
-            $filesFiltered = $dosOps->findfiles($files,"*.zip",true);       //Debug
+            $filesFiltered = $dosOps->findfiles($files,"*.zip",$debug);       //Debug
+            if ($filesFiltered && (count($filesFiltered)==0) ) $filesFiltered[0]="chromedriver-win64.zip";               //default namen nehmen
+            else echo "installEnvironment, warum so viele zip files hier ? unzip_chromedriver.bat wird falsch erstellt.\n";
             echo "Schreibe Batchfile $filename zum automatischen Unzip der Chromedriver Versionen.\n";
             $handle2=fopen($dir.$filename,"w");        
             fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
@@ -6551,7 +6555,7 @@ class SeleniumUpdate
             */
             fclose($handle2);
             }        
-     
+
         return ($html);
         }
 

@@ -60,6 +60,7 @@
 
 		private $configuration = array();				// die angepasste, standardisierte Konfiguration
 		private $CategoryIdData, $CategoryIdApp, $CategoryIdSelenium;			// die passenden Kategorien
+        protected $configChromedriverID;
         private $CategoryIdData_Guthaben, $CategoryIdData_GuthabenArchive;			// noch ein paar passenden Kategorien, für die Speicherung der Daten
 		private $wfcHandling,$dosOps;                           // external classes made by inside
 
@@ -91,6 +92,10 @@
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
             $this->CategoryIdSelenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            if ($this->CategoryIdSelenium)
+                {
+                $this->configChromedriverID       = IPS_GetObjectIdByName("ConfigChromeDriver",$this->CategoryIdSelenium);    
+                }
             $this->CategoryIdData_Guthaben        = @IPS_GetObjectIDByName("Guthaben", $this->CategoryIdData);
             $this->CategoryIdData_GuthabenArchive = @IPS_GetObjectIDByName("GuthabenArchive", $this->CategoryIdData);
     		}
@@ -390,10 +395,16 @@
                 }
 	        }
 
+        /* Chromedriver Variable auslesen, Ueberblick über bekannte Chromedriver Versionen
+         */
+        public function getConfigChromedriver()
+            {
+            return(json_decode(GetValue($this->configChromedriverID),true));
+            }
+
         /* die SessionID zeigt auf die Variable die die Session des Selenium Webdrivers anzeigt 
          * wenn es die Session noch gibt wird kein neues Fenster aufgemacht
           */
-
         public function getSeleniumSessionID($webDriverName=false)
             {
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
@@ -411,7 +422,6 @@
         /* jedes Fenster hat eine eigene WindowId
          * diese Window ID gemeinsam mit einem passenden Index serialisieren und wegspeichern
          */
-
         public function setSeleniumHandler($handler,$webDriverName=false)
             {
             if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
@@ -2199,7 +2209,7 @@
                         if ($debug) echo "   analyse index : features.$subindex.geometry.type/coordinates : ".$subentry["geometry"]["type"]." N".nf($subentry["geometry"]["coordinates"][1],4)."  E".nf($subentry["geometry"]["coordinates"][0],4)."\n";
                         $points[$subindex]['lat']=$subentry["geometry"]["coordinates"][1];
                         $points[$subindex]['lng']=$subentry["geometry"]["coordinates"][0];
-/*                      foreach ($pos1 as $posIndex => $pos)
+                /*      foreach ($pos1 as $posIndex => $pos)
                             {
                             if ($debug) echo "         $posIndex ";
                             $x=($subentry["geometry"]["coordinates"][1]-$pos["north"]);

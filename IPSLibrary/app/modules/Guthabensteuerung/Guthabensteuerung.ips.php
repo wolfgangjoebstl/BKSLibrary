@@ -27,6 +27,8 @@
      *      Selenium
      *
      * Dieses Script macht alle drei Anwendungsmöglichkeiten
+     *      Init
+     *      Init Timer
      *      Timer
      *      Webfront, Tastendruck
      *      Execute
@@ -74,11 +76,11 @@
     $startexec=microtime(true);    
     //echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 100 Sek \n";         //keine Ausgabe da auch vom Webfront aufgerufen 
 
-    /******************************************************
-
-                    INIT
-
-    *************************************************************/
+/******************************************************
+ *
+ *               INIT
+ *
+ *************************************************************/
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     If (!isset($moduleManager)) {
@@ -163,8 +165,21 @@
                 $selDir        = $seleniumChromedriverUpdate->getSeleniumDirectory();
                 $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
                 if ($debug) echo "get filesize of all chromedriver versions.\n";
-                $version       = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
-                $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
+                $versionOnShare       = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
+                $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$versionOnShare);
+                if ($actualVersion===false) 
+                    {
+                    $updateChromedriver=GetValueFormatted($updateChromedriverID);
+                    $sourceFile = $seleniumChromedriver->getFilenameOfVersion($updateChromedriver);         // file Adresse erforderlich Quelldatei ermitteln
+                    $status=$seleniumChromedriverUpdate->copyChromeDriver($sourceFile,$selDir); 
+                    echo "Probleme mit Erkennung, Update Chromedriver mit selber Versionsnummer aufrufen. $updateChromedriver $sourceFile $status\n";
+                    $seleniumChromedriverUpdate->deleteChromedriverBackup();
+                    $seleniumChromedriverUpdate->stoppSelenium();   
+                    $seleniumChromedriverUpdate->renameChromedriver();              // Filename zum umbenennen kommt als copyChromedriver
+                    $seleniumChromedriverUpdate->startSelenium();   
+                    $log_Guthabensteuerung->LogNachrichten("Update Chromedriver auf selbe Version $updateChromedriver abgeschlossen. Selenium läuft wieder.");
+                    $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$versionOnShare,$debug);           // aus der Watchdog Library, issues with detection
+                    }
                 if ($debug) echo "Chromedriver activated.\n";
                 }
             break;
@@ -218,11 +233,11 @@
 
 	$archiveHandlerID     = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
-	/*****************************************************
-	 *
-	 * initialize Timer 
-	 *
-	 ******************************************************************/
+/*****************************************************
+ *
+ * initialize Timer 
+ *
+ ******************************************************************/
 
     if ($debug) echo "initialize Timer.\n";
     $tim1ID = IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
@@ -281,257 +296,257 @@
  *
  *************************************************************/
 
-$configTabs = false;            // Vereinheitlichen mit einer gemeinsamen Variable
+    $configTabs = false;            // Vereinheitlichen mit einer gemeinsamen Variable
 
-if ($_IPS['SENDER']=="TimerEvent")
-	{
-	//IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
+    if ($_IPS['SENDER']=="TimerEvent")
+        {
+        //IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
 
-	switch ($_IPS['EVENT'])
-		{
-		case $tim1ID:               // Aufruftimer immer um 2:27
-			IPS_SetEventActive($tim2ID,true);
-			SetValue($statusReadID,"");			// Beim Erstaufruf Html Log loeschen.
-			SetValue($checkScriptCounterID,0);  // mit 0 wieder beginnen, neuer Tag neues Glück
-			SetValue($ScriptCounterID,0);       // mit 0 wieder beginnen, wenn die Abfrage fehlerhaft ist wird dieser Wert nicht inkrementiert    
-			break;
-		case $tim2ID:               // Exectimer alle 150 Sekunden wenn aktivivert, für DREI reserviert
-			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
-			$ScriptCounter=GetValue($ScriptCounterID);
-			$checkScriptCounter=GetValue($checkScriptCounterID);
-            //$log_Guthabensteuerung->LogNachrichten("Script Counter $ScriptCounter, Check Script Counter $checkScriptCounter > ".($maxcount*2));
+        switch ($_IPS['EVENT'])
+            {
+            case $tim1ID:               // Aufruftimer immer um 2:27
+                IPS_SetEventActive($tim2ID,true);
+                SetValue($statusReadID,"");			// Beim Erstaufruf Html Log loeschen.
+                SetValue($checkScriptCounterID,0);  // mit 0 wieder beginnen, neuer Tag neues Glück
+                SetValue($ScriptCounterID,0);       // mit 0 wieder beginnen, wenn die Abfrage fehlerhaft ist wird dieser Wert nicht inkrementiert    
+                break;
+            case $tim2ID:               // Exectimer alle 150 Sekunden wenn aktivivert, für DREI reserviert
+                //IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
+                $ScriptCounter=GetValue($ScriptCounterID);
+                $checkScriptCounter=GetValue($checkScriptCounterID);
+                //$log_Guthabensteuerung->LogNachrichten("Script Counter $ScriptCounter, Check Script Counter $checkScriptCounter > ".($maxcount*2));
 
-            if ($checkScriptCounter>($maxcount*2)) 
-                {
-                $log_Guthabensteuerung->LogNachrichten("Guthabensteuerung tim2, CheckScriptCounter $checkScriptCounter exceeded Maxcount of ".($maxcount*2));  
-				IPS_SetEventActive($tim2ID,false);
-                break;                  // 100% Fehler durch Abbrüche zulassen, dann Funktion einstellen
-                }
-			SetValue($checkScriptCounterID,$checkScriptCounter+1);
-
-			//IPS_SetScriptTimer($_IPS['SELF'], 150);
-            $note="";            
-			if ($ScriptCounter < $maxcount)                                     // normale Abfrage, Nummer für Nummer bis fertig
-				{
-                switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                if ($checkScriptCounter>($maxcount*2)) 
                     {
-                    case "IMACRO":                    
-                        // keine Anführungszeichen verwenden
-                        IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$ScriptCounter]["Nummer"].".iim", false, false, -1);
-                        if ($ScriptCounter>0) 
-                            {
-                            $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
-                            if (is_file($fileName))
+                    $log_Guthabensteuerung->LogNachrichten("Guthabensteuerung tim2, CheckScriptCounter $checkScriptCounter exceeded Maxcount of ".($maxcount*2));  
+                    IPS_SetEventActive($tim2ID,false);
+                    break;                  // 100% Fehler durch Abbrüche zulassen, dann Funktion einstellen
+                    }
+                SetValue($checkScriptCounterID,$checkScriptCounter+1);
+
+                //IPS_SetScriptTimer($_IPS['SELF'], 150);
+                $note="";            
+                if ($ScriptCounter < $maxcount)                                     // normale Abfrage, Nummer für Nummer bis fertig
+                    {
+                    switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                        {
+                        case "IMACRO":                    
+                            // keine Anführungszeichen verwenden
+                            IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$ScriptCounter]["Nummer"].".iim", false, false, -1);
+                            if ($ScriptCounter>0) 
                                 {
-                                $filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
-                                $note="iMacro letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                                $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
+                                if (is_file($fileName))
+                                    {
+                                    $filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
+                                    $note="iMacro letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                                    }
                                 }
-                            }
-                        else 	$note="iMacro letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
-                        $log_Guthabensteuerung->LogNachrichten($note);
-                        SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	
-                        break;
-                     case "SELENIUM":
-                        $config["DREI"]["CONFIG"]["Username"]=$phoneID[$ScriptCounter]["Nummer"];          // von 0 bis maxcount-1 durchgehen
-                        $config["DREI"]["CONFIG"]["Password"]=$phoneID[$ScriptCounter]["Password"];
-                        $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug    für DREI only  
-                        $note="Selenium Abfrage war um ".date("d.m.Y H:i:s")." für ".$phoneID[($ScriptCounter)]["Nummer"]."($ScriptCounter/$maxcount,".exectime($startexec)." Sek)";
-                        $log_Guthabensteuerung->LogNachrichten($note);
-                        SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	                           
+                            else 	$note="iMacro letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
+                            $log_Guthabensteuerung->LogNachrichten($note);
+                            SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	
+                            break;
+                        case "SELENIUM":
+                            $config["DREI"]["CONFIG"]["Username"]=$phoneID[$ScriptCounter]["Nummer"];          // von 0 bis maxcount-1 durchgehen
+                            $config["DREI"]["CONFIG"]["Password"]=$phoneID[$ScriptCounter]["Password"];
+                            $seleniumOperations->automatedQuery($webDriverName,$config);          // true debug    für DREI only  
+                            $note="Selenium Abfrage war um ".date("d.m.Y H:i:s")." für ".$phoneID[($ScriptCounter)]["Nummer"]."($ScriptCounter/$maxcount,".exectime($startexec)." Sek)";
+                            $log_Guthabensteuerung->LogNachrichten($note);
+                            SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	                           
 
 
-                        break;
-                    default:
-                        break;
+                            break;
+                        default:
+                            break;
+                        }
+                    SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);                	
                     }
-			    SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);                	
-				}
-			else            // alles abgefragt, was ist mit der Auswertung, immer noch eigenes Script ParseGuthaben
-				{
-                $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
-				IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
+                else            // alles abgefragt, was ist mit der Auswertung, immer noch eigenes Script ParseGuthaben
+                    {
+                    $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
+                    IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
+                    switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                        {
+                        case "IMACRO":
+                            $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
+                            if (file_exists($fileName)==true)
+                                {
+                                $fileMTimeDatei=filemtime($fileName);   // Liefert Datum und Uhrzeit der letzten Dateiänderung
+                                $filedate=date ("d.m.Y H:i:s.", $fileMTimeDatei);
+                                $note="Parse Files war um ".date("d.m.Y H:i:s").". Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                                }
+                            else $note="File ".$fileName." does not exists.";
+                            break;
+                        case "SELENIUM":
+                            //$seleniumOperations->automatedQuery($webDriverName,$config);          // true debug       
+                            break;
+                        default:
+                            break;                        
+                        }
+                    SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);		
+                    SetValue($ScriptCounterID,0);
+                    //IPS_SetScriptTimer($_IPS['SELF'], 0);
+                    IPS_SetEventActive($tim2ID,false);
+                    }
+                break;
+            case $tim12ID:               // immer zu Mittag um 13:xx, heisst LunchTime
                 switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                     {
-                    case "IMACRO":
-                        $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
-                        if (file_exists($fileName)==true)
-                            {
-                            $fileMTimeDatei=filemtime($fileName);   // Liefert Datum und Uhrzeit der letzten Dateiänderung
-                            $filedate=date ("d.m.Y H:i:s.", $fileMTimeDatei);
-                            $note="Parse Files war um ".date("d.m.Y H:i:s").". Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
-                            }
-                        else $note="File ".$fileName." does not exists.";
-                        break;
                     case "SELENIUM":
-                        //$seleniumOperations->automatedQuery($webDriverName,$config);          // true debug       
+                        $configTabs = $guthabenHandler->getSeleniumHostsConfig("lunchtime");              // Filter lunchtime, immer klein geschrieben
+                        break;
+                    }
+                break;
+            case $tim3ID:               // immer am späten Abend um 22:16, auch wenn er Evening heisst
+                switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                    {
+                    case "SELENIUM":
+                        $configTabs = $guthabenHandler->getSeleniumHostsConfig("evening");              // Filter evening
+                        break;
+                    }
+                break;
+            case $tim4ID:               // immer am frühen morgen um 4:55, macht das Selbe wie am Späten Abend
+                switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+                    {
+                    case "SELENIUM":
+                        $configTabs = $guthabenHandler->getSeleniumHostsConfig("morning");                              // Filter morning
+                        break;
+                    }
+                break;
+            case $tim5ID:               // Tasktimer alle 310 Sekunden wenn aktiviert
+                // Abfrage nach angeforderter Aktion, Befehl wird so übergeben
+                $startexec=microtime(true);
+                $configTabs = $guthabenHandler->getSeleniumHostsConfig();
+                $reguestedAction=GetValue($ScriptTimerID);
+                $log_Guthabensteuerung->LogNachrichten("Timer5 called from Webfront. Requested Action $reguestedAction.");  
+                switch ($reguestedAction)
+                    {
+                    case "EASY":
+                        $seleniumEasycharts = new SeleniumEasycharts();
+                        $configTemp["EASY"] = $configTabs["Hosts"]["EASY"];
+                        $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                        $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                        $configTabs = $guthabenHandler->getSeleniumTabsConfig($reguestedAction);
+                        $depotRegister=["RESULT"];
+                        if (isset($configTabs["Depot"]))
+                            {
+                            if (is_array($configTabs["Depot"]))
+                                {
+                                $depotRegister=$configTabs["Depot"];    
+                                }
+                            else $depotRegister=[$configTabs["Depot"]];
+                            }
+                        foreach ($depotRegister as $depot)
+                            {
+                            $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
+                            $lines = explode("\n",$result["Value"]);    
+                            $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
+                            $shares=$seleniumEasycharts->evaluateResult($data);
+                            $depotName=str_replace(" ","",$depot);                      // Blanks weg
+                            if ($depotName != $depot)               
+                                {
+                                $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
+                                $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
+                                }
+                            else
+                                {
+                                $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
+                                }
+                            $seleniumEasycharts->updateResultConfigurationSplit($shares);                // Die wunderschöne split Konfiguration wird hier wieder zunichte gemacht da sie aus der Konfiguration für das Depot , daher aus dem Konfig auslesen       
+                            $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
+                            }
+                        break;
+                    case "YAHOOFIN":
+                        $configTemp["YAHOOFIN"] = $configTabs["Hosts"]["YAHOOFIN"];
+                        $configTemp["Logging"]=$log_Guthabensteuerung;
+                        $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                        $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                        // Auswertung
+                        $result=$seleniumOperations->readResult("YAHOOFIN");                  // true Debug   , lest RESULT als Egebnis Variable, wenn zweite Variable ausgefüllt ist es das entsprechende register
+                        $log_Guthabensteuerung->LogNachrichten("Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"]));       
+                        $yahoofin = new SeleniumYahooFin();
+                        $ergebnis = $yahoofin->parseResult($result);                        // eigentlich nur json_decode auf ein array
+                        //echo "Ergebnis: ".json_encode($ergebnis)."  \n";
+                        foreach ($ergebnis as $index => $entry)
+                            {
+                            if (isset($entry["Target"])) $log_Guthabensteuerung->LogNachrichten("$index ".$entry["Short"]."    ".$entry["Target"]);
+                            }
+                        $yahoofin->writeResult($ergebnis,"TargetValue",true);           // echte YahooFin writeresult, sonst nur bei Webfront nur Standard
+                        break;
+                    case "EVN":
+                        $configTemp["EVN"] = $configTabs["Hosts"]["EVN"];
+                        $configTemp["Logging"]=$log_Guthabensteuerung;
+                        $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                        $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                        // Auswertung
+                        $result=$seleniumOperations->readResult("EVN","Result",true);                  // true Debug
+                        //print_R($result);
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        $log_Guthabensteuerung->LogNachrichten("Parse EVN Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                        echo "--------\n";
+                        // no parsing, always done in IPS_RunScript($ParseGuthabenID);     
+                        break;                
+                    case "LOGWIEN":
+                        $configTemp["LOGWIEN"] = $configTabs["Hosts"]["LogWien"];
+                        $configTemp["Logging"]=$log_Guthabensteuerung;
+                        $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
+                        $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
+                        // Auswertung
+                        $result=$seleniumOperations->readResult("LogWien","Result",true);                  // true Debug
+                        //print_R($result);
+                        echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
+                        $log_Guthabensteuerung->LogNachrichten("Parse Log.Wien Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
+                        echo "--------\n";
+                        // no parsing, always done in IPS_RunScript($ParseGuthabenID);     
+                        //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
+                        //$seleniumLogWien = new SeleniumLogWien();
+                        //$seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");                    
+                        break;                    
+                    case "morning":
+                    case "lunchtime":
+                    case "evening":
+                    case "MORNING":
+                    case "LUNCHTIME":
+                    case "EVENING":
+                        $configTabs = $guthabenHandler->getSeleniumHostsConfig($reguestedAction);                              // Filter morning
                         break;
                     default:
-                        break;                        
+                        break;
                     }
-                SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);		
-				SetValue($ScriptCounterID,0);
-				//IPS_SetScriptTimer($_IPS['SELF'], 0);
-				IPS_SetEventActive($tim2ID,false);
-				}
-			break;
-		case $tim12ID:               // immer zu Mittag um 13:xx, heisst LunchTime
-            switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
-                {
-                case "SELENIUM":
-                    $configTabs = $guthabenHandler->getSeleniumHostsConfig("lunchtime");              // Filter lunchtime, immer klein geschrieben
-                    break;
-                }
-            break;
-		case $tim3ID:               // immer am späten Abend um 22:16, auch wenn er Evening heisst
-            switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
-                {
-                case "SELENIUM":
-                    $configTabs = $guthabenHandler->getSeleniumHostsConfig("evening");              // Filter evening
-                    break;
-                }
-            break;
-		case $tim4ID:               // immer am frühen morgen um 4:55, macht das Selbe wie am Späten Abend
-            switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
-                {
-                case "SELENIUM":
-                    $configTabs = $guthabenHandler->getSeleniumHostsConfig("morning");                              // Filter morning
-                    break;
-                }
-            break;
-		case $tim5ID:               // Tasktimer alle 310 Sekunden wenn aktiviert
-            // Abfrage nach angeforderter Aktion, Befehl wird so übergeben
-            $startexec=microtime(true);
-            $configTabs = $guthabenHandler->getSeleniumHostsConfig();
-            $reguestedAction=GetValue($ScriptTimerID);
-            $log_Guthabensteuerung->LogNachrichten("Timer5 called from Webfront. Requested Action $reguestedAction.");  
-            switch ($reguestedAction)
-                {
-                case "EASY":
-                    $seleniumEasycharts = new SeleniumEasycharts();
-                    $configTemp["EASY"] = $configTabs["Hosts"]["EASY"];
-                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
-                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
-                    $configTabs = $guthabenHandler->getSeleniumTabsConfig($reguestedAction);
-                    $depotRegister=["RESULT"];
-                    if (isset($configTabs["Depot"]))
-                        {
-                        if (is_array($configTabs["Depot"]))
-                            {
-                            $depotRegister=$configTabs["Depot"];    
-                            }
-                        else $depotRegister=[$configTabs["Depot"]];
-                        }
-                    foreach ($depotRegister as $depot)
-                        {
-                        $result=$seleniumOperations->readResult("EASY",$depot,true);                  // true Debug   
-                        $lines = explode("\n",$result["Value"]);    
-                        $data=$seleniumEasycharts->parseResult($lines,false);             // einlesen, true debug
-                        $shares=$seleniumEasycharts->evaluateResult($data);
-                        $depotName=str_replace(" ","",$depot);                      // Blanks weg
-                        if ($depotName != $depot)               
-                            {
-                            $value=$seleniumEasycharts->evaluateValue($shares);         // Summe ausrechnen
-                            $seleniumEasycharts->writeResult($shares,"Depot".$depotName,$value);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern                                
-                            }
-                        else
-                            {
-                            $seleniumEasycharts->writeResult($shares,"Depot".$depotName);                         // die ermittelten Werte abspeichern, shares Array etwas erweitern
-                            }
-                        $seleniumEasycharts->updateResultConfigurationSplit($shares);                // Die wunderschöne split Konfiguration wird hier wieder zunichte gemacht da sie aus der Konfiguration für das Depot , daher aus dem Konfig auslesen       
-                        $seleniumEasycharts->writeResultConfiguration($shares, $depotName);                                    
-                        }
-                    break;
-                case "YAHOOFIN":
-                    $configTemp["YAHOOFIN"] = $configTabs["Hosts"]["YAHOOFIN"];
-                    $configTemp["Logging"]=$log_Guthabensteuerung;
-                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
-                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
-                    // Auswertung
-                    $result=$seleniumOperations->readResult("YAHOOFIN");                  // true Debug   , lest RESULT als Egebnis Variable, wenn zweite Variable ausgefüllt ist es das entsprechende register
-                    $log_Guthabensteuerung->LogNachrichten("Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"]));       
-                    $yahoofin = new SeleniumYahooFin();
-                    $ergebnis = $yahoofin->parseResult($result);                        // eigentlich nur json_decode auf ein array
-                    //echo "Ergebnis: ".json_encode($ergebnis)."  \n";
-                    foreach ($ergebnis as $index => $entry)
-                        {
-                        if (isset($entry["Target"])) $log_Guthabensteuerung->LogNachrichten("$index ".$entry["Short"]."    ".$entry["Target"]);
-                        }
-                    $yahoofin->writeResult($ergebnis,"TargetValue",true);           // echte YahooFin writeresult, sonst nur bei Webfront nur Standard
-                    break;
-                case "EVN":
-                    $configTemp["EVN"] = $configTabs["Hosts"]["EVN"];
-                    $configTemp["Logging"]=$log_Guthabensteuerung;
-                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
-                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
-                    // Auswertung
-                    $result=$seleniumOperations->readResult("EVN","Result",true);                  // true Debug
-                    //print_R($result);
-                    echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
-                    $log_Guthabensteuerung->LogNachrichten("Parse EVN Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
-                    echo "--------\n";
-                    // no parsing, always done in IPS_RunScript($ParseGuthabenID);     
-                    break;                
-                case "LOGWIEN":
-                    $configTemp["LOGWIEN"] = $configTabs["Hosts"]["LogWien"];
-                    $configTemp["Logging"]=$log_Guthabensteuerung;
-                    $seleniumOperations->automatedQuery($webDriverName,$configTemp,false);          // true debug
-                    $log_Guthabensteuerung->LogNachrichten("Manually requested Selenium Hosts Query for \"$reguestedAction\", Exectime : ".exectime($startexec)." Sekunden");
-                    // Auswertung
-                    $result=$seleniumOperations->readResult("LogWien","Result",true);                  // true Debug
-                    //print_R($result);
-                    echo "Letztes Update ".date("d.m.Y H:i:s",$result["LastChanged"])."\n";
-                    $log_Guthabensteuerung->LogNachrichten("Parse Log.Wien Ergebnis from ".date("d.m.Y H:i:s",$result["LastChanged"]).".");  
-                    echo "--------\n";
-                    // no parsing, always done in IPS_RunScript($ParseGuthabenID);     
-                    //$checkArchive=$archiveOps->getComponentValues($oid,20,false);                 // true mit Debug
-                    //$seleniumLogWien = new SeleniumLogWien();
-                    //$seleniumLogWien->writeEnergyValue($result["Value"],"EnergyCounter");                    
-                    break;                    
-                case "morning":
-                case "lunchtime":
-                case "evening":
-                case "MORNING":
-                case "LUNCHTIME":
-                case "EVENING":
-                    $configTabs = $guthabenHandler->getSeleniumHostsConfig($reguestedAction);                              // Filter morning
-                    break;
-                default:
-                    break;
-                }
-            //$configTabs=false;                // sonst override von den morning etc tabs        
-            IPS_SetEventActive($tim5ID,false);
-            break;      // Ende Timer5
-        case $tim22ID:                              // check availability of Selenium driver, dauert so lange darum in einen Timer ausgelagert
-            if (isset($installedModules["Watchdog"]))
-                {
-                if ($debug) echo "Watchdog Modul available, get Active Processes:\n";
-                $processes    = $seleniumChromedriverUpdate->getActiveProcesses();
-                $processStart = $seleniumChromedriverUpdate->checkAutostartProgram($processes);
-                $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
-                if (isset($processStart["selenium"])) 
+                //$configTabs=false;                // sonst override von den morning etc tabs        
+                IPS_SetEventActive($tim5ID,false);
+                break;      // Ende Timer5
+            case $tim22ID:                              // check availability of Selenium driver, dauert so lange darum in einen Timer ausgelagert
+                if (isset($installedModules["Watchdog"]))
                     {
-                    $date=date("d.m.Y H:i:s");
-                    if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active since $date");
-                    else SetValue($SeleniumOnID,"Idle since $date");
+                    if ($debug) echo "Watchdog Modul available, get Active Processes:\n";
+                    $processes    = $seleniumChromedriverUpdate->getActiveProcesses();
+                    $processStart = $seleniumChromedriverUpdate->checkAutostartProgram($processes);
+                    $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
+                    if (isset($processStart["selenium"])) 
+                        {
+                        $date=date("d.m.Y H:i:s");
+                        if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active since $date");
+                        else SetValue($SeleniumOnID,"Idle since $date");
+                        }
                     }
-                }
-            break;
-		default:                    // kein bekannter Timer
-			break;
-		}
-	}
+                break;
+            default:                    // kein bekannter Timer
+                break;
+            }
+        }
 
-if ($configTabs)
-    {
-    $startexec=microtime(true);
-    unset($configTabs["Hosts"]["DREI"]);                                                // DREI ist nur default, daher löschen
-    $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
-    echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
-    echo "--------\n";
-    $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
-    IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
-    $log_Guthabensteuerung->LogNachrichten("Automated Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden"); 
-    }
+    if ($configTabs)
+        {
+        $startexec=microtime(true);
+        unset($configTabs["Hosts"]["DREI"]);                                                // DREI ist nur default, daher löschen
+        $seleniumOperations->automatedQuery($webDriverName,$configTabs["Hosts"],true);          // true debug
+        echo "Aktuell vergangene Zeit für AutomatedQuery: ".exectime($startexec)." Sekunden\n";
+        echo "--------\n";
+        $log_Guthabensteuerung->LogNachrichten("ParseDreiGuthaben $ParseGuthabenID called from Guthabensteuerung.");  
+        IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
+        $log_Guthabensteuerung->LogNachrichten("Automated Selenium Hosts Query, Exectime : ".exectime($startexec)." Sekunden"); 
+        }
 
 
 /******************************************************
@@ -565,7 +580,7 @@ if ($configTabs)
             {
             switch ($variable)
                 {
-                case ($startstoppChromedriverID):            //Start , Stopp , Update Chromedriver
+                case ($startstoppChromedriverID):            //Start , Stopp , Reset Chromedriver
                     $action=GetValueFormatted($startstoppChromedriverID); 
                     echo "Requested Action $action";               
                     switch ($action)
@@ -1068,14 +1083,14 @@ if ($configTabs)
             //echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
             $subnet="10.255.255.255";                               // dont know no longer why
             $seleniumChromedriver=new SeleniumChromedriver($subnet);         // SeleniumChromedriver.OperationCenter Child
-            $latestVersion=array_key_last($version);
+            $latestVersion=array_key_last($versionOnShare);
             $sourceFile = $seleniumChromedriver->getFilenameOfVersion($updateChromedriver);         // file Adresse erforderlich Quelldatei ermitteln
 
             $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();
             $log_Guthabensteuerung->LogNachrichten("Update Chromedriver aktuelle Version \"$actualVersion\" identifiziert.");       // kann auch false sein wenn nicht identifiziert
             if ($actualVersion==$updateChromedriver) 
                 {
-                echo "already done on $updateChromedriver";
+                if ($debug) echo "already done on $updateChromedriver";
                 }
             else 
                 {
@@ -1093,13 +1108,19 @@ if ($configTabs)
                 $log_Guthabensteuerung->LogNachrichten("Update Chromedriver auf Version $updateChromedriver abgeschlossen. Selenium läuft wieder.");
                 }
             $SeleniumUpdate = new SeleniumUpdate();
-            $tabs=$SeleniumUpdate->findTabsfromVersion($version, $actualVersion);
+            $tabs=$SeleniumUpdate->findTabsfromVersion($versionOnShare, $actualVersion);
 
             SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
             $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
             $webOps->createActionProfileByName($pname,$tabs,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
             }
 
+        }
+
+    if ( ($_IPS['SENDER']=="Execute") )         // && false
+        {
+        echo "====================Execute Section in Script Guthabensteuerung called, getChromedriver from Webpage:\n";
+        $getChromedriver=true; $debug=true;
         }
 
     /* letzte verfügbare Chromedriver Version von ftp Server laden
@@ -1116,23 +1137,35 @@ if ($configTabs)
         if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
             {
             $SeleniumUpdate = new SeleniumUpdate();
-            $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);      // gibt tergetdir und den status von 7za.exe aus.
+            $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);      // gibt targetdir und den status von 7za.exe aus.
             $html .= $result;
 
             $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
             $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
-            $versionOverview    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
-            //print_R($version);          // Version Nummer, Filename, Size in Bytes
-            $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);           // aus der Watchdog Library
+            $versionOnShare    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
+
+            //print_R($versionOnShare);          // Version Nummer, Filename, Size in Bytes
+            $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$versionOnShare,$debug);           // aus der Watchdog Library, issues with detection
 
             // neue Chromedriver Versionen finden, wenn neue version gefunden wird diese zum Download anmerken, wird in config gespeichert                                
             $log_Guthabensteuerung->LogNachrichten("Get Chromedriver Versionen von Webpage gestartet");
             $configChromedriverID       = IPS_GetObjectIdByName("ConfigChromeDriver",$CategoryId_Mode); 
             $sysOps = new sysOps();
-            $curlOps = new curlOps();             
-            //verfügbare chromedriver versionen herunterladen
+            $curlOps = new curlOps();    
+
+            $html="";
+            $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();          // reads internal class variable
+            $config=$guthabenHandler->getConfigChromedriver();
+            $configAdd = $seleniumChromedriver->getUpdateNewVersions($config,$html,$actualVersion,$debug);          // first two parameters are updated, getupdatedVersions from Web            
+
+            /*verfügbare chromedriver versionen herunterladen
             $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
             //print_r($result);
+
+            $html="";
+            $config=$guthabenHandler->getConfigChromedriver();
+            $configAdd = $seleniumChromedriver->getUpdateNewVersions($config,$html,$actualVersion,$debug);          // first two parameters are updated, getupdatedVersions from Web
+
             $html .= '<table>';
             //foreach ($result as $id => $entry) $html .= '<tr><td>'.$entry["version"].'</td></tr>';
 
@@ -1143,11 +1176,13 @@ if ($configTabs)
             $configNew=array();             // die neu Konfiguration auf Basis von Old
             $log_Guthabensteuerung->LogNachrichten("Vorhandene Chromedriver Versionen ".GetValue($configChromedriverID).". Actual Version $actualVersion.");
             //print_R($configOld);
+            
+            // erzeigt html, configOld als originäre Info vom $configChromedriverID, configNew zum Update von $configChromedriverID, config zum Update aus dem Web:
             foreach ($result as $version => $entry)         // alle Chromedriver versionen als Tabelle ausgeben, Spalte Versionsnummer, alte Versionsbezeichnung, neue Versionsbezeichnung
                 {
-                $html .= '<tr><td>'.$version.'</td>';
-                if ($version >= $actualVersion)
+                if ($version >= ($actualVersion-2))
                     {
+                    $html .= '<tr><td>'.$version.'</td>';
                     //print_R($entry);
                     $configNew[$version]["version"]=$entry["version"];
                     if (isset($configOld[$version]["version"])) 
@@ -1170,9 +1205,11 @@ if ($configTabs)
                         $html .= '<td>n.a.</td><td>'.$entry["version"].'</td>';
                         }
                     }
-                else $html .= '<td>'.$entry["version"].'</td><td>n.a.</td>';
+                //else $html .= '<td>'.$entry["version"].'</td><td>n.a.</td>';
                 }
             $html .= '</table>';
+            */
+            if ($debug) echo "---------------\n".$html."\n--------------\n";
     
             $dir=$GuthabenAllgConfig["Selenium"]["DownloadDir"];  
             $execDir=$seleniumChromedriver->get_ExecDir();
@@ -1180,12 +1217,12 @@ if ($configTabs)
 
             $filename="chromedriver-win64.zip";  
             $success=true;
-            if (sizeof($config)==0) 
+            if (sizeof($configAdd)==0) 
                 {
                 $html .= "No copy to sharedrive : $execDir ".'<br>';    
                 $success=false;
                 }
-            foreach ($config as $version => $entry)
+            foreach ($configAdd as $version => $entry)
                 {
                 //echo "Version $version bearbeiten : \n";
                 if ($success==false) echo "no success !\n";
@@ -1240,11 +1277,12 @@ if ($configTabs)
                     $i++;                 
                     }
                 $seleniumChromedriver->update_ExecDirContent();
-                $versionOverview    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis execdir erfassen 
+                $versionOnShare    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis execdir erfassen 
                 }  
             }
-        $latestVersion=array_key_last($versionOverview);
-        $tabs=$SeleniumUpdate->findTabsfromVersion($versionOverview, $actualVersion);
+        // Update Tabs
+        $latestVersion=array_key_last($versionOnShare);
+        $tabs=$SeleniumUpdate->findTabsfromVersion($versionOnShare, $actualVersion);
         SetValue($SeleniumStatusID,"Active Selenium version is $actualVersion . Latest version available $latestVersion ");
         $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
         $webOps->createActionProfileByName($pname,$tabs,0);

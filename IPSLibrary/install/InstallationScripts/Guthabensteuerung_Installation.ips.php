@@ -77,9 +77,7 @@
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(400); 
 	$startexec=microtime(true);
-
-    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren
-	else $debug=false;
+    ini_set('memory_limit', '128M');          // memory
 
     $errorWarning=false;            // Zusammenfassung ob es etwas zum anschauen gibt oder nicht
 
@@ -87,6 +85,13 @@
     $DoWatchdogProcessActiveCheck = false;      // check ob Selenium läuft, dauert zu lange
     $copyToSharedDrive=false;                   // nicht zurückspeichern auf den Shared drive
     $DoDelete=false;                            // Alle Webfronts beginnend mit Money löschen
+
+    if ($_IPS['SENDER']=="Execute") 
+        {
+        $debug=true;            // Mehr Ausgaben produzieren
+        $DoWatchdogProcessActiveCheck = true;      // check ob Selenium läuft, wenn script direkt aufgerufen wurde
+        }
+	else $debug=false;
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -112,14 +117,16 @@
 		{
 		$inst_modules.="   ".str_pad($name,37)." ".$modules."\n";
 		}
-	
-	echo str_pad("Kernelversion : ",40).IPS_GetKernelVersion()."\n";
-	echo str_pad("IPS Version : ",40).$ergebnis1." ".$ergebnis2."\n";
-	echo str_pad("IPSModulManager Version : ",40).$ergebnis3."\n";
-    echo str_pad("Guthabensteuerung Version : ",40).$ergebnis4."\n";  
-    echo "\n";      
-	echo $inst_modules."\n";
-    echo "systemdir : ".$systemDir."\n";
+	if ($debug)
+        {
+        echo str_pad("Kernelversion : ",40).IPS_GetKernelVersion()."\n";
+        echo str_pad("IPS Version : ",40).$ergebnis1." ".$ergebnis2."\n";
+        echo str_pad("IPSModulManager Version : ",40).$ergebnis3."\n";
+        echo str_pad("Guthabensteuerung Version : ",40).$ergebnis4."\n";  
+        echo "\n";      
+        echo $inst_modules."\n";
+        echo "systemdir : ".$systemDir."\n";
+        }
 
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -270,6 +277,7 @@
                 }
             if (isset($GuthabenAllgConfig["Selenium"]["WebDriver"])) 
                 {
+                echo "Ein Default Webdriver Server konfiguriert.\n";
                 $seleniumWeb=true;
                 //$sessionID          = CreateVariable("SessionId", 3, $categoryId_Selenium,1000,"",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
                 $sessionID          = CreateVariableByName($CategoryId_Mode,"SessionId", 3);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
@@ -336,10 +344,6 @@
                 echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
                 $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
                 $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
-
-
-
-
                 $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
                 //print_R($version);          // Version Nummer, Filename, Size in Bytes
 
@@ -409,19 +413,24 @@
                 $curlOps = new curlOps();             
 
                 $SeleniumUpdate = new SeleniumUpdate();
-                $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);
+                echo "\n";
+                echo "Install Environment: unzip programme 7zr, 7za und unzip_chromedriver.bat \n";
+                $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"],$debug);              // Selenium Library function
                 $html .= $result;
                 
                 $dir=$GuthabenAllgConfig["Selenium"]["DownloadDir"];
 
                 $execDir=$seleniumChromedriver->get_ExecDir();
-                echo "Bestehende chromedriver Versionen ausgeben. Verzeichnis Synology/Shared Drive : ".$execDir."\n";
+                if ($watchDog->isSeleniumServer($execDir)) echo "Selenium Server jar bereits vorhanden.\n";
+                
+                echo "Bestehende chromedriver Versionen aus dem shared drive ausgeben. Verzeichnis Synology/Shared Drive : ".$execDir."\n";
                 $dosOps->writeDirStat($execDir);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
-
-                if ($watchDog->isSeleniumServer($execDir)) echo "Selenium Server bereits vorhanden.\n";
 
                 //verfügbare chromedriver versionen herunterladen
                 $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
+
+                echo "Aktuelles lokales Downloaddir: $dir\n";
+                $dosOps->writeDirStat($dir);
 
                 echo "Ergebnisse mit detaillierten Informationen über den Inhalt der Downloadpage abspeichern:\n";
                 //foreach ($result as $nr => $entry) echo str_pad($nr,5).str_pad($entry["version"],25)."\n";          // url zweiter Parameter
@@ -539,7 +548,7 @@
 	$profileOps->createKnownProfilesByName("MByte");
 
 	/* Create Web Pages */
-
+    echo "Installed Webpages: ";
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 	if ($WFC10_Enabled==true)
 		{
@@ -566,9 +575,9 @@
 	if ($Retro_Enabled==true)
 		{
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
+		echo "Retro ";
 		}
-
+    echo "\n";
 	//echo "Test";
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
@@ -576,12 +585,13 @@
 
 /*****************************************************
  *
- * Selenium Webdriver 
+ * Selenium Webdriver initilisieren
  *
  ******************************************************************/
 
     if ($seleniumWeb)
         {
+        echo "\n";
         echo " Selenium Webdriver initialisieren. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
         // Es gibt Selenium Webdriver, die kann man wieder starten, so wie bei Guthaben StartSelenium,  CreateVariable("StartSelenium", 1, $CategoryId_Mode,1000,$pname,$GuthabensteuerungID,null,""
         $pname="SeleniumAktionen";                                         // keine Standardfunktion, da Inhalte Variable
@@ -600,7 +610,7 @@
         $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
         $actionGroupWebID          = CreateVariableByName($CategoryId_Mode,"StartGroupCall", 1,$pname,"",1010,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
-        echo " Config der einzelenen Hosts durvhgehen und eventuell Verzeichnissse erzeugen:\n";
+        echo " Config der einzelenen Hosts durchgehen und eventuell Verzeichnissse erzeugen:\n";
 
         $runSelenium=array();
         foreach ($configSeleniumHosts["Hosts"] as $host=>$config)
