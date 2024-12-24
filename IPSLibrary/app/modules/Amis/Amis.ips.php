@@ -1,4 +1,4 @@
-<?
+<?php
  	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -119,26 +119,41 @@ if ($_IPS['SENDER']=="WebFront")
 	}
 else
 	{	
-
-    echo "\n";
+    ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
+    $debug=true;
+    echo "Script called due to an other event than a Webfront Interaction.\n";
 	$MeterConfig = $amis->getMeterConfig();
-	//print_r($MeterConfig);
+	$AmisConfig = $amis->getAmisConfig();
+    if ($debug>1) 
+        {
+        echo "AMIS Configuration:\n";
+	    print_r($AmisConfig);
+        echo "Meter Configuration:\n";
+	    print_r($MeterConfig);
+        }
 
     if (isset($installedModules["OperationCenter"]))
         {
-        echo "Modul OperationCenter installiert. Qualität des Inventory evaluieren.\n";
         IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');            
         $DeviceManager = new DeviceManagement();
         echo "--------------------------------\n";
         $result=$DeviceManager->updateHomematicAddressList();
-        if ($result) echo "    --> Alles in Ordnung.\n";
-        else "Fehler HMI_CreateReport muss schon wieder aufgerufen werden.\n";
-        echo "\n";
+        if ($debug) 
+            {
+            echo "Modul OperationCenter installiert. Qualität des Inventory evaluieren.\n";
+            if ($result) echo "    --> Alles in Ordnung.\n";
+            else "Fehler HMI_CreateReport muss schon wieder aufgerufen werden.\n";
+            echo "\n";
+            }
         }
 
     if (isset($installedModules["EvaluateHardware"]))
         {
-        echo "Modul EvaluateHardware installiert. Ausführliches Inventory vorhanden.\n";
+        if ($debug) 
+            {
+            echo "Modul EvaluateHardware installiert. Ausführliches Inventory vorhanden.\n";
+            echo "========================================================================\n"; 
+            }   
         IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 
@@ -146,10 +161,9 @@ else
         IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');           // sonst werden die Event Listen überschrieben
         IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
-        echo "========================================================================\n";    
         $hardwareTypeDetect = new Hardware();
         $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
-        if (false)
+        if ($debug>1)
             {
             echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
             $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList,false);                // false keine Warnings ausgeben
@@ -160,7 +174,8 @@ else
             $hardwareTypeDetect->writeRegisterStatistics($statistic);        
             }
         $deviceListFiltered = $hardwareTypeDetect->getDeviceListFiltered(deviceList(),["TYPECHAN" => "TYPE_METER_POWER"],"Install");     // true with Debug, Install hat keinen Einfluss mehr, gibt nur mehr das
-        //print_r($deviceListFiltered);
+        $amis->doublecheckEnergyRegisters($deviceListFiltered,$debug);
+        /*print_r($deviceListFiltered);
         $powerMeter=array();
         $energyMeter=array();
         foreach ($deviceListFiltered as $name => $entry)
@@ -188,14 +203,17 @@ else
         $energyMeterAll=$energyMeter;
         $powerMeterAll=$powerMeter;
         $energyMeterName=array();
-        echo"-------------------------------------------------------------\n";
-        echo "Analysing the AMIS Meter Configuration:\n";                                   // Die Konfiguration durchgehen, bekannte Register löschen und schauen was am Ende noch da ist
+        if ($debug)
+            {
+            echo "-------------------------------------------------------------\n";
+            echo "Analysing the AMIS Meter Configuration:\n";                                   // Die Konfiguration durchgehen, bekannte Register löschen und schauen was am Ende noch da ist
+            }
         foreach ($MeterConfig as $identifier => $meter)
             {
             if (strtoupper($meter["TYPE"])=="HOMEMATIC")
                 {
                 $variableID = $amis->getWirkenergieID($meter);      // kurze Ausgabe suche nach found as
-                echo " ".str_pad($meter["NAME"],35).IPS_GetName($meter["OID"])." Konfig : ".json_encode($meter)."     $variableID ".IPS_GetName($variableID)."\n";
+                if ($debug) echo " ".str_pad($meter["NAME"],35).IPS_GetName($meter["OID"])." Konfig : ".json_encode($meter)."     $variableID ".IPS_GetName($variableID)."\n";
                 $oid=$meter["OID"];
                 if (isset($powerMeter[$meter["OID"]])) 
                     {
@@ -225,8 +243,9 @@ else
             if (isset($energyMeterName[$oid])) echo $energyMeterName[$oid]."\n";
             else echo "\n";            
             }
-        echo"-------------------------------------------------------------\n";
-        } 
+        echo"-------------------------------------------------------------\n";   */
+
+        }       // ende EvaluateHardware
 
 
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
@@ -236,7 +255,7 @@ else
     echo"-------------------------------------------------------------\n";
 	foreach ($MeterConfig as $identifier => $meter)
 		{
-		echo "Create Variableset for : ".str_pad($meter["NAME"],35)." Konfig : ".json_encode($meter)."\n";
+		if ($debug) echo "Create Variableset for : ".str_pad($meter["NAME"],35)." Konfig : ".json_encode($meter)."\n";
 		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Amis")
 		    {
@@ -261,7 +280,7 @@ else
 			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 			foreach ($serialPortID as $num => $serialPort)
 			   {
-			   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+			   if ($debug) echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
 
 				/********* COM Port ******************/				
 			   if (IPS_GetName($serialPort) == $identifier." Serial Port") 
@@ -368,8 +387,10 @@ if ($_IPS['SENDER'] == "Execute")
     echo "----------------------------------------------------\n"; 
     echo "\n";   
     //echo "Data OID der AMIS Zusammenfassung : ".$amis->getAMISDataOids()."\n\n";
-    $meterValues=$amis->writeEnergyRegistertoArray($MeterConfig, true);
+    echo "amis->writeEnergyRegistertoArray(MeterConfig aufgerufen.\n";
+    $meterValues=$amis->writeEnergyRegistertoArray($MeterConfig, $debug);
     //print_R($meterValues);
+    echo "amis->writeEnergyRegisterTabletoString(meterValues aufgerufen.\n";
     echo $amis->writeEnergyRegisterTabletoString($meterValues);
     echo "\n----------------------------------------------------\n";
     echo $amis->getEnergyRegister($meterValues,true);
@@ -412,98 +433,15 @@ if ($_IPS['SENDER'] == "Execute")
     
     echo "======================aboutMeterTopology============\n";
 
-    function processMeterTopology(&$meterTopology,&$meter,$ident="")
-        {
-        $result=false;
-        foreach ($meterTopology as $name => $entry)
-            {
-            if ($name===$meter["PARENT"]) 
-                {
-                $result=true;
-                if (isset($meterTopology[$name]["CHILDREN"][$meter["NAME"]])===false)  $meterTopology[$name]["CHILDREN"][$meter["NAME"]]["CONFIG"]=$meter;
-                }
-            else
-                {
-                if (isset($meterTopology[$name]["CHILDREN"]))
-                    {
-                    $result=processMeterTopology($meterTopology[$name]["CHILDREN"],$meter,$ident."   ");    
-                    /*foreach ($meterTopology[$name]["CHILDREN"] as $nameSub => $entrySub)
-                        {
-                        if ( ($nameSub===$meter["PARENT"]) && (isset($meterTopology[$name]["CHILDREN"][$nameSub]["CHILDREN"][$meter["NAME"]])===false) ) $meterTopology[$name]["CHILDREN"][$nameSub]["CHILDREN"][$meter["NAME"]]["CONFIG"]=$meter;
-                        }*/
-                    }
-                }
-            }
-        return($result);
-        }
-
-    function createMeterTopology(&$meterTopology,$MeterConfig,$debug=false)
-        {
-        $meterTopology=array();         // Topologie ergründen  Name => [ Children, Config ] , Children [ Name => [ Children, Config ]]
-        $resultOverall=true;
-        foreach ($MeterConfig as $identifier => $meter)
-            {
-            if ($debug) echo str_pad($meter["NAME"],30);
-            if (strtoupper($meter["ORDER"])=="MAIN") 
-                {
-                if (isset($meterTopology[$meter["NAME"]])===false) $meterTopology[$meter["NAME"]]["CONFIG"]=$meter;   
-                if ($debug) echo "Main    ".json_encode($meter);
-                }
-            else 
-                {
-                $result = processMeterTopology($meterTopology,$meter,"");
-                if ($debug) echo $meter["ORDER"]."   ".$meter["PARENT"] ;
-                if ($result == false) 
-                    {
-                    echo "Parent \"".$meter["PARENT"]." \" nicht gefunden, noch einmal probieren.\n";
-                    $resultOverall=false;
-                    }           
-                }
-            if ($debug) echo "\n";
-            }
-        return ($resultOverall);
-        }
-
-    function printMeterTopology($meterTopology, $meterValues, $ident="",$debug=false)
-        {
-	    $amis=new Amis();               
-        $ipsOps=new ipsOps();
-        foreach ($meterTopology as $name => $meter)
-            {
-            if ($debug) echo $ident.$name;
-            foreach ($meterValues as $line => $entry)
-                {
-                if ( (isset($entry["Information"]["NAME"])) && ($entry["Information"]["NAME"]==$name) ) 
-                    {
-                    if ($debug) echo "  found";
-                    $oid=$amis->getWirkleistungID($name,false);              //true für Debug
-                    //print_R($regs);
-                    if ($oid !== false) 
-                        {
-                        if ($debug) echo "    ($oid) ".nf(getValue($oid),"kW");
-                        $regs=$amis->getRegistersfromOID($name);     // geht auch mit Name
-                        if (isset($regs["LeistungID"])) echo "  Homematic (".$regs["LeistungID"]."): ".GetValueIfFormatted($regs["LeistungID"]);
-                        //echo " (".$ipsOps->path($oid).") ";
-                        }
-                    }
-                }
-            echo "\n";
-            if (isset($meter["CHILDREN"]))
-                {
-                printMeterTopology($meter["CHILDREN"],$meterValues,$ident."   ");
-                }
-            }
-
-        }
-
-
+    $amisTopo = new AmisTopology();
 
     $meterTopology=array(); 
-    if (createMeterTopology($meterTopology,$MeterConfig,true)===false) createMeterTopology($meterTopology,$MeterConfig);     //zweimal aufrufen       
-    //print_R($meterTopology);
+    if ($amisTopo->createMeterTopology($meterTopology,$MeterConfig,true)===false) $amisTopo->createMeterTopology($meterTopology,$MeterConfig);     //zweimal aufrufen       
+    print_R($meterTopology);
     //print_R($meterValues);
+    //$meterValues=array();         // werden weiter oben erzeugt und zusätzlich ausgegeben
     echo "printMeterTopology:\n";
-    printMeterTopology($meterTopology,$meterValues);
+    $amisTopo->printMeterTopology($meterTopology,$meterValues,"",true);         // true für debug
 
     echo "\n";
     echo "=====================================================\n";

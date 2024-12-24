@@ -16737,7 +16737,7 @@ class WfcHandling
             if ($debug) echo json_encode($this->paneConfig);
             print_r($this->paneConfig);
             if (isset($this->paneConfig["width"])) { $width=$this->paneConfig["width"]; echo "Width is $width.\n"; }
-            if (isset($this->paneConfig[0][6])) { $width=$this->paneConfig[0][6]; echo "Width is $width , Parameter 7.\n"; }
+            if ((is_array($this->paneConfig[0])) && (isset($this->paneConfig[0][6])) ) { $width=$this->paneConfig[0][6]; echo "Width is $width , Parameter 7.\n"; }                        // liest von WFCSplitPanel das i aus
             }
         if ($debug) echo "\n";
         //CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);

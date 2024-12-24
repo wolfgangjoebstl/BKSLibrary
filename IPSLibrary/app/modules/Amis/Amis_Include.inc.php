@@ -1,4 +1,4 @@
-<?
+<?php
 
 /*
 	 * @defgroup Amis Include

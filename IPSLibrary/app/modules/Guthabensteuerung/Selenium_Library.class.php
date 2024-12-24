@@ -51,6 +51,7 @@ use Facebook\WebDriver\Chrome\ChromeDriver;
 use Facebook\WebDriver\Remote\DesiredCapabilities;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
 use Facebook\WebDriver\WebDriverBy;
+use Facebook\WebDriver\WebDriverExpectedCondition;
 
 //require_once 'vendor/autoload.php';
 require_once(IPS_GetKernelDir().'scripts\vendor\autoload.php');
@@ -1856,7 +1857,7 @@ class SeleniumLogWien extends SeleniumHandler
         }
 
 
-    /*  Statemachine, der reihe nach Logwien abfragen
+    /*  Statemachine, der Reihe nach Logwien abfragen
      *      (1) check if not logged in
      *      (2) log in
      *

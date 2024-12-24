@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -22,6 +22,7 @@
      * Klassen zur Energieberechnung
      *  Amis    
      *  AmisSmartmeter extends Amis
+     *  AmisTopology extends Amis
      *
      */
 
@@ -50,6 +51,7 @@
      *
      *  sendReadCommandAmis         Lese Befehle an den AMIS Zähler schicken, regelmaessig in der Statemachine aufgerufen (11,8,6,1)
      *                              Antwort kommt über Serial und Cutter Module wieder rein
+     *
      *  writeEnergyHomematics       aus einer MeterConfig als Parameter alle Homematic Register ausgeben, verwendet writeEnergyHomematic
      *  writeEnergyHomematic        abhängig vom Typ schreiben,regelmaessig in der Statemachine aufgerufen
      *  writeEnergyRegister         regelmaessig in der Statemachine aufgerufen
@@ -80,8 +82,9 @@
 
         public $CategoryIdData, $CategoryIdApp;
 		private $archiveHandlerID=0;
+        protected $installedModules;
 		
-		private $MeterConfig;           // die bereinigtre AMIS Meter Config
+		private $MeterConfig,$AmisConfig;           // die bereinigre Meter Config und neu die Amis Config
         private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
 
         public $result;                 // Array mit aktuellen zusätzlichen Ergebnissen
@@ -102,6 +105,7 @@
 	        $moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
 	        $this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	        $this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+            $this->installedModules   = $moduleManager->GetInstalledModules();
 
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
@@ -110,13 +114,13 @@
             $this->systemDir     = $this->dosOps->getWorkDirectory();
 
 			$this->MeterConfig = $this->setMeterConfig();
+			$this->AmisConfig  = $this->setAmisConfig();
             $this->result=array();                                        // init Ergebnis Variable result
 			}
 
         /* aus der offiziellen Config die deaktivierten Zähler herausfiltern, kommen gar nicht soweit
          * Umstellung auf set/get Meter Configuration
          */
-
         public function setMeterConfig()
             {
             if (function_exists("get_Cost")) $cost=get_Cost();
@@ -196,12 +200,42 @@
             return ($result);
             }
 
-        /* und die Meter Configuration ausgeben */
-
+        /* und die Meter Configuration ausgeben 
+         */
         public function getMeterConfig()
             {
             return ($this->MeterConfig);
             }
+
+        /* aus der allgemeinen Amis Config grundsaetzliche Einstellunegn über die Funktionsweise übernehmen
+         * verwendet set/get AmisConfiguration
+         */
+        public function setAmisConfig()
+            {
+            if (function_exists("get_Cost")) $cost=get_Cost();
+            else $cost=0.40;
+            if ($this->debug) 
+                {
+                echo "setAmisConfig aufgerufen. SystemDir ist ".$this->getSystemDir().".\n";
+                echo "Energy Cost is ".($cost*100)." €cent.\n";
+                }
+            $result=array();
+            if ((function_exists("get_AmisConfiguration"))===false) IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis'); 
+            if (function_exists("get_AmisConfiguration")) $amisConfiguration = get_AmisConfiguration();
+            if (( (is_array($amisConfiguration)) && (sizeof($amisConfiguration)) ) === false) $amisConfiguration=array();
+
+            configfileParser($amisConfiguration,$result,["WebPage","WEBPAGE","webpage"],"WebPage",array());
+
+            return ($result);
+            }
+
+        /* und die allgemeine Amis Configuration ausgeben 
+         */
+        public function getAmisConfig()
+            {
+            return ($this->AmisConfig);
+            }
+
 
         /* getWirkenergieID aus der Config entnehmen
          *
@@ -214,7 +248,6 @@
          * es wird nur nach dem NAME gesucht, verwende neue getRegisterID function
          *
          */
-
         public function getWirkenergieID($meter, $debug=false)
             {
             if (is_array($meter))
@@ -260,16 +293,16 @@
             else return ($this->getRegisterID($meter,'Wirkenergie',$debug));
             }
 
-        /* beliebiges Register aus den Zaehlervariablen heraussuchen */
-
+        /* beliebiges Register aus den Zaehlervariablen heraussuchen 
+         */
         public function getZaehlervariablenID($meter, $identifier,$debug=false)
             {
             //echo "getZaehlervariablenID(".json_encode($meter).", $identifier\n";                
 			return ($this->getRegisterIDbyConfig($meter,$identifier,$debug));
             }
 
-        /* selbe function wie oben nur anderer Name */
-
+        /* selbe function wie oben nur anderer Name 
+         */
         public function getRegisterIDbyConfig($meter,$identifier,$debug=false)
             {
             if ((is_array($meter))===false)           // Name und nicht aus der MeterConfig
@@ -824,6 +857,95 @@
 				}       // ende foreach
 			return ($homematicAvailable);
 			}
+
+        /* Abgleich Energieregister mit Devicelist von EvaluateHarwdare
+         * devicelist aus EvaluateHarwdare auslesen und mit meterConfig abgleichen:
+                IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+                IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+                $hardwareTypeDetect = new Hardware();
+                $deviceList = deviceList();
+                $deviceListFiltered = $hardwareTypeDetect->getDeviceListFiltered(deviceList(),["TYPECHAN" => "TYPE_METER_POWER"],"Install");    true with Debug, Install hat keinen Einfluss mehr, gibt nur mehr das
+         *
+         *
+         */
+		function doublecheckEnergyRegisters($deviceListFiltered,$debug=false)			/* alle Werte aus der Config ausgeben */
+			{
+            if ($debug>1)
+                {
+                echo "doublecheckEnergyRegisters mit deviceList aufgerufen.\n";    
+                print_r($deviceListFiltered);
+                }
+            $MeterConfig=$this->MeterConfig;    
+            $powerMeter=array();
+            $energyMeter=array();
+            foreach ($deviceListFiltered as $name => $entry)
+                {
+                foreach ($entry["Instances"] as $index => $instance)
+                    {
+                    if ($instance["TYPEDEV"]=="TYPE_METER_POWER") 
+                        {
+                        $powerMeter[$instance["OID"]]["NAME"]=$instance["NAME"];
+                        $powerMeter[$instance["OID"]]["REGISTER_NAME"]=$entry["Channels"][$index]["TYPE_METER_POWER"]["ENERGY"];
+                        $childrens=IPS_GetChildrenIDs($instance["OID"]);
+                        foreach ($childrens as $children)
+                            {
+                            if (IPS_GetName($children)==$powerMeter[$instance["OID"]]["REGISTER_NAME"]) 
+                                {
+                                $powerMeter[$instance["OID"]]["REGISTER_OID"] = $children;
+                                $energyMeter[$children]=$instance["NAME"];
+                                }
+                            }
+                        //print_R($childrens); foreach ($childrens as $children) echo IPS_getName($children)."  "; echo "\n";
+                        }
+                    }
+                }
+            //print_r($energyMeter);
+            $energyMeterAll=$energyMeter;
+            $powerMeterAll=$powerMeter;
+            $energyMeterName=array();
+            if ($debug>1)
+                {
+                echo "-------------------------------------------------------------\n";
+                echo "Analysing the AMIS Meter Configuration:\n";                                   // Die Konfiguration durchgehen, bekannte Register löschen und schauen was am Ende noch da ist
+                }
+            foreach ($MeterConfig as $identifier => $meter)
+                {
+                if (strtoupper($meter["TYPE"])=="HOMEMATIC")
+                    {
+                    $variableID = $this->getWirkenergieID($meter);      // kurze Ausgabe suche nach found as
+                    if ($debug>1) echo " ".str_pad($meter["NAME"],35).IPS_GetName($meter["OID"])." Konfig : ".json_encode($meter)."     $variableID ".IPS_GetName($variableID)."\n";
+                    $oid=$meter["OID"];
+                    if (isset($powerMeter[$meter["OID"]])) 
+                        {
+                        //print_r($meter);
+                        $oid=$powerMeter[$meter["OID"]]["REGISTER_OID"];
+                        unset($powerMeter[$meter["OID"]]);
+                        }
+                    if (isset($energyMeter[$oid])) 
+                        {
+                        $energyMeterName[$oid]=$meter["NAME"];
+                        unset($energyMeter[$oid]);
+                        }
+                    elseif ($debug>1) echo "   --> unknown ".$meter["OID"]." ".IPS_GetName($meter["OID"])."\n"; 
+
+                    }
+                }
+            //echo"-------------------------------------------------------------\n";
+            //print_r($energyMeter);
+            //echo"-------------------------------------------------------------\n";
+            echo "Register marked with *** is not in the AMIS configuration.\n";
+            foreach ($energyMeterAll as $oid => $register)
+                {
+                $props=IPS_GetVariable($oid);
+                if (isset($energyMeter[$oid])) echo " *** $oid : ";
+                else                           echo "     $oid : ";
+                echo str_pad(IPS_GetName(IPS_GetParent($oid)),50).str_pad(GetValueIfFormatted($oid),20," ",STR_PAD_LEFT)."   ".date("d.m.Y H:i:s",$props["VariableChanged"])."      ";
+                if (isset($energyMeterName[$oid])) echo $energyMeterName[$oid]."\n";
+                else echo "\n";            
+                }
+            echo"-------------------------------------------------------------\n";
+            } 
+
 
 		/************************************************************************************************************************
  		 *
@@ -1806,18 +1928,21 @@
 			$alleStromWerte.="\n\nAlle Stromwerte aus RemoteAccess EvaluateVariables_ROID.inc.php function AMISStromverbrauchList():\n";
 										  	
 		  	/* EvaluateVariables_ROID.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthält Routine AmisStromverbrauchlist */
-			IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");			
-			$stromverbrauch=AmisStromverbrauchList();
-            //print_r($stromverbrauch);             // das sind die von AMIS bereits evaluierten Register, Update alle 15 Minuten
-			foreach ($stromverbrauch as $Key)
-				{
-      			$oid=(integer)$Key["OID"];
-     			$variabletyp=IPS_GetVariable($oid);
-				//print_r($variabletyp);
-                //echo $ipsOps->path($oid)."\n";
-				if ($Key["Profile"]=="~Power") $alleStromWerte.= str_pad($Key["Name"],30)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).") \n";
-                //else echo $Key["Profile"]."..";
-				}
+			IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");	
+            if (function_exists("AmisStromverbrauchList"))	
+                {	
+                $stromverbrauch=AmisStromverbrauchList();
+                //print_r($stromverbrauch);             // das sind die von AMIS bereits evaluierten Register, Update alle 15 Minuten
+                foreach ($stromverbrauch as $Key)
+                    {
+                    $oid=(integer)$Key["OID"];
+                    $variabletyp=IPS_GetVariable($oid);
+                    //print_r($variabletyp);
+                    //echo $ipsOps->path($oid)."\n";
+                    if ($Key["Profile"]=="~Power") $alleStromWerte.= str_pad($Key["Name"],30)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).") \n";
+                    //else echo $Key["Profile"]."..";
+                    }
+                }
 			return($alleStromWerte);	
 			}
 		
@@ -2910,13 +3035,19 @@
 
         function __construct($debug=false)
             {
-            $this->guthabenHandler = new GuthabenHandler();                  //default keine Ausgabe, speichern
-
             parent::__construct($debug);
+            if ( ($this->installedModules["Guthabensteuerung"]) && (class_exists("GuthabenHandler")) )
+                {
+                $this->guthabenHandler = new GuthabenHandler();                  //default keine Ausgabe, speichern
+                }
+            else echo "class GuthabenHandler not available. Use Modul and include Library.\n";
             }
 
-        /* die Register mit Werten von Smart metern gemeinsam als html Tabelle darstellen
+        /* AmisSmartMeter::writeSmartMeterDataToHtml
+         * die Register mit Werten von Smart metern gemeinsam als html Tabelle darstellen
          * für eine ajax Abfrage die Tabelle anders darstellen
+         *
+         * nur die Types DAILYREAD,DAILYLPREAD verarbeiten
          */
         function writeSmartMeterDataToHtml($html=true)
             {
@@ -3294,6 +3425,135 @@
             }   // ende function
 
 		}  // ende class
+
+
+    /*************************************************************************************************
+     * 
+     * Erweiterung für Topology based Funktionen
+     *
+     * verwendet getMeterConfig um alle AMIS Register herauszufinden und abzuarbeiten
+     * typischer Programmaufbau:
+     *     $meterTopology=array(); 
+            if (createMeterTopology($meterTopology,$MeterConfig,true)===false) createMeterTopology($meterTopology,$MeterConfig);     //zweimal aufrufen       
+            printMeterTopology($meterTopology,$meterValues);
+     * eine flach strukturierte Tabelle mit Parent wie bei topology wird in eine hierarchische Tabelle unter Verwendung des Eintrages Children umgestellt
+     *
+     * verwendete functions:
+     *      __construct
+     *      
+     *
+     */
+	class AmisTopology extends Amis
+        {
+
+        /* AmisTopology::processMeterTopology
+         * recursive function, die eine meter topology aufbaut
+         * wird von createMeterTopology aufgerufenm, die die Topologie initialisisert
+         */
+        function processMeterTopology(&$meterTopology,&$meter,$ident="")
+            {
+            $result=false;
+            foreach ($meterTopology as $name => $entry)
+                {
+                if ($name===$meter["PARENT"]) 
+                    {
+                    $result=true;
+                    if (isset($meterTopology[$name]["CHILDREN"][$meter["NAME"]])===false)  $meterTopology[$name]["CHILDREN"][$meter["NAME"]]["CONFIG"]=$meter;
+                    }
+                else
+                    {
+                    if (isset($meterTopology[$name]["CHILDREN"]))
+                        {
+                        $result=$this->processMeterTopology($meterTopology[$name]["CHILDREN"],$meter,$ident."   ");    
+                        /*foreach ($meterTopology[$name]["CHILDREN"] as $nameSub => $entrySub)
+                            {
+                            if ( ($nameSub===$meter["PARENT"]) && (isset($meterTopology[$name]["CHILDREN"][$nameSub]["CHILDREN"][$meter["NAME"]])===false) ) $meterTopology[$name]["CHILDREN"][$nameSub]["CHILDREN"][$meter["NAME"]]["CONFIG"]=$meter;
+                            }*/
+                        }
+                    }
+                }
+            return($result);
+            }
+
+        /* AmisTopology::createMeterTopology
+         * return wert ist $meterTopology
+         */
+        function createMeterTopology(&$meterTopology,$MeterConfig,$debug=false)
+            {
+            $meterTopology=array();         // Topologie ergründen  Name => [ Children, Config ] , Children [ Name => [ Children, Config ]]
+            $resultOverall=true;
+            foreach ($MeterConfig as $identifier => $meter)
+                {
+                if ($debug) echo str_pad($meter["NAME"],30);
+                if (strtoupper($meter["ORDER"])=="MAIN") 
+                    {
+                    if (isset($meterTopology[$meter["NAME"]])===false) $meterTopology[$meter["NAME"]]["CONFIG"]=$meter;   
+                    if ($debug) echo "Main    ".json_encode($meter);
+                    }
+                else 
+                    {
+                    $result = $this->processMeterTopology($meterTopology,$meter,"");
+                    if ($debug) echo $meter["ORDER"]."   ".$meter["PARENT"] ;
+                    if ($result == false) 
+                        {
+                        echo "Parent \"".$meter["PARENT"]." \" nicht gefunden, noch einmal probieren.\n";
+                        $resultOverall=false;
+                        }           
+                    }
+                if ($debug) echo "\n";
+                }
+            return ($resultOverall);
+            }
+
+        /* AmisTopology::printMeterTopology
+         * rekursive Darstellung, immer wenn Children erneuter Aufruf mit der function
+         *
+         */
+        function printMeterTopology($meterTopology, $meterValues, $ident="",$debug=false)
+            {
+            $ipsOps=new ipsOps();
+            foreach ($meterTopology as $name => $meter)
+                {
+                if ($debug) echo str_pad($ident.$name,50);
+                foreach ($meterValues as $line => $entry)
+                    {
+                    if ( (isset($entry["Information"]["NAME"])) && ($entry["Information"]["NAME"]==$name) ) 
+                        {
+                        if ($debug>1) echo "  found";
+                        $oid=$this->getWirkleistungID($name,false);              //true für Debug
+                        //print_R($regs);
+                        if ($oid !== false) 
+                            {
+                            if ($debug) echo "    ($oid) ".nf(getValue($oid),"kW");
+                            $regs=$this->getRegistersfromOID($name);     // geht auch mit Name
+                            if (isset($regs["LeistungID"])) echo "  Homematic (".$regs["LeistungID"]."): ".GetValueIfFormatted($regs["LeistungID"]);
+                            //echo " (".$ipsOps->path($oid).") ";
+                            }
+                        }
+                    }
+                /*
+                if (isset($meter["CHILDREN"])) echo "children ";
+                else echo "         ";
+                if (isset($meter["CONFIG"])) echo json_encode($meter["CONFIG"]);  
+                */
+                echo "\n"; 
+                if (isset($meter["CHILDREN"]))
+                    {
+                    $this->printMeterTopology($meter["CHILDREN"],$meterValues,$ident."   ",$debug);
+                    }
+                }
+
+            }
+
+
+
+
+
+        }
+
+
+
+
 
 	/** @}*/
 ?>

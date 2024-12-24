@@ -1,4 +1,4 @@
-<?
+<?php
 	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -16,25 +16,22 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */    
 
-	/**@defgroup 
-	 * @ingroup 
-	 * @{
-	 *
-	 * Script zur 
-	 *
-	 *
-	 * @file          
-	 * @author        Wolfgang Joebstl
-	 * @version
-	 *  Version 2.50.44, 07.08.2014<br/>
-	 **/
-
 /******************************************************
  *
  * AMIS, abgeleitet vom Siemens AMIS Zähler. Routine liest AMIS Zähler,
  * Homematic Register aber auch normale Register zB aus RemoteAccess aus
  * und verarbeitet sie.
  * Als neue Funktion gibt es auch eine Mathematische Summenfunktion
+ *
+ * Funktionen
+ *      Init, Defaultteil Routinen
+ *      Webfront GUID herausfinden und Konfiguratoren anlegen
+ *      Webfront Konfigurationen herausfinden
+ *      Profile Definition
+ *      Variable Definition aus dem Config File auslesen
+ *      Timer Definition
+ *      WebFront Installation
+ *
  *
  **************************************************************/
 
@@ -55,10 +52,12 @@
  *************************************************************/
 
 $cutter=true;
+$do=4;
+$debug=false;               // wir wollen mehr Übersichtlichkeit
 
+/******************** Defaultprogrammteil ********************/
+	ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
 
-	/******************** Defaultprogrammteil ********************/
-	 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
 	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');	
@@ -160,7 +159,8 @@ $cutter=true;
  * Webfront Konfigurationen herausfinden
  * 
  **************************/
-
+if ($do>0)
+    {
     $configWFront=$ipsOps->configWebfront($moduleManager);
     //print_r($configWFront);
 
@@ -179,131 +179,54 @@ $cutter=true;
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
 	$scriptIdAmis   = IPS_GetScriptIDByName('Amis', $CategoryIdApp);
-
-/***********************
- *
- *					Profile Definition
- * 
- **************************/	
+    
+    /***********************
+    *
+    *					Profile Definition
+    * 
+    **************************/	
 
     echo "Darstellung der benötigten Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("AusEin-Boolean"=>"update","Zaehlt"=>"update","kWh"=>"update","Wh"=>"update","kW"=>"update","Euro"=>"update");
     $profileOps->synchronizeProfiles($profilname);
-
-    /*echo "Profile Definition für AMIS Modul:\n";
-	$pname="AusEin-Boolean";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 0); 
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-		IPS_SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt.\n";
-		}
-    else echo "   Profil ".$pname." vorhanden.\n";
-		
-	$pname="Zaehlt";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 0); 
-  		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-
-		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, false, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  		IPS_SetVariableProfileAssociation($pname, true, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt.\n";
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";           
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-	   
-	$pname="kWh";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); 
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','kWh');
-		echo "Profil ".$pname." erstellt.\n";          
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";             
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="Wh";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); 
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','Wh');
-		echo "Profil ".$pname." erstellt.\n";          
-        //print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";             
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="kW";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); 
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','kW');
-		echo "Profil ".$pname." erstellt.\n";          
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";             
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="Euro";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		//echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); 
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','Euro');
-		echo "Profil ".$pname." erstellt.\n";          
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-       echo "   Profil ".$pname." vorhanden.\n";             
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-		
-		
+    }	
 /******************* 
  * 
  *				Variable Definition aus dem Config File auslesen
  *
  *	zwei Config Functions:  
- * 	get_MeterConfiguration()
+ *      get_Cost()
+ * 	    get_MeterConfiguration()
+ *
  *		get_AmisConfiguration (alt, ergänzend, mit STATUS kann die Ablesung defaultmäßig ein und ausgeschaltet werden) 
  *
  * es gibt mehrer TYPEs of Meters: HOMEMATIC, REGISTER, AMIS und SUMME
  *   Homematic ist das Energieregister der Homeatic Serie, Register ein Wert von RemoteAccess, AMIS die Auslesunmg des AMIS Zählers 
  *   und SUMME eine kalkulatorische Berechnung immer dann wenn sich ein Wert aendert. 
  *
+ *  possible TYPES
+ *
+ *  DailyRead
+ *  DailyLoad
+ *  Register
+ *  AMIS
+ *  Summe
+ *  Homematic
+ *
+ * possible ORDER
+ *
+ *  Main                kann eigentlich nur eine oder mehrere Roots sein, hat keinen PARENT Parameter
+ *  Sub                 es gibt PARENT, dieser definiert unter welchem Knoten zusammengezählt wird
+ *
+ * possible SOURCE
+ *
+ *  log.wien
+ *  AMISRemote
+ *
+ *
  ************************************************/
-	
-
-
+if ($do>1)
+    {
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	$Amis = new Amis();
@@ -610,12 +533,10 @@ $cutter=true;
                 break;
 			}
 		
-        print_r($meter);
+        //print_r($meter);
 
         //$webfront_links["Control"]["Read Meter"][$MeterReadID]["NAME"]="ReadMeter";           // wurde schon beschrieben
 		//CreateLinkByDestination("Read Meter", $MeterReadID,    $categoryIdLeft,  0);
-
-
 
 		/********************************
 		 *
@@ -653,6 +574,10 @@ $cutter=true;
 		//IPS_SetPosition($letzte360TageEurID, 230);
 	  	
    	}  // ende foreach
+
+    }
+if ($do>2)
+    {
 	
 	/* Tab Zusammenfassung
      * html basierte Tabellen ebenfalls anzeigen, Name Zaehlervariablen als Identifier für rechtes Tab
@@ -708,11 +633,13 @@ $cutter=true;
 		IPS_SetEventCyclicTimeFrom($tim1ID,1,rand(1,59),0);  /* immer um 01:xx , nicht selbe Zeit damit keine Zugriffsverletzungen auf der Drei Homepage entstehen */
 		}
 	IPS_SetEventActive($tim1ID,true);
-    
+         
 /* ----------------------------------------------------------------------------------------------------------------------------
  * WebFront Installation
  *  ----------------------------------------------------------------------------------------------------------------------------
  */
+
+
 	foreach ($webfront_links as $Name => $webfront_group)
 	   	{
         //$webfront_links[$Name]["STYLE"]=true;                   // für easySetupWebfront
@@ -720,7 +647,9 @@ $cutter=true;
            }
     echo "****************Ausgabe Webfront Links               ";    
 	print_r($webfront_links);
-
+    }
+if ($do>3)          // der Debug bevor die Implementierung startet
+    {
 	if ($WFC10_Enabled)
 		{
         $categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
@@ -748,22 +677,22 @@ $cutter=true;
                 } 
             $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
             }
-        else               // alte Webfront erstellung
+        /* else               // alte Webfront erstellung
             {
-            /* Kategorien für Administrator werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
+            // Kategorien für Administrator werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen 
 
             $configWf=$configWFront["Administrator"];
             echo "====================================================================================\n";
-            /* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-            CreateWFCItemCategory  ($configWf["ConfigId"], 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+            // Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible 
+            CreateWFCItemCategory  ($configWf["ConfigId"], 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   , 'true' );
 
-            /* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
+            // Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen 
 
             echo "\nWebportal LocalAccess TabPane installieren in: ".$configWf["Path"]." \n";
-            /* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+            // Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible 
             echo "Webfront TabPane mit Parameter : ".$configWf["ConfigId"]." ".$configWf["TabPaneItem"]." ".$configWf["TabPaneParent"]." ".$configWf["TabPaneOrder"]." ".$configWf["TabPaneName"]." ".$configWf["TabPaneIcon"]."\n";
-            CreateWFCItemTabPane   ($configWf["ConfigId"], "HouseTPA", $configWf["TabPaneParent"],  $configWf["TabPaneOrder"], "", "HouseRemote");  /* macht das Haeuschen in die oberste Leiste */
-            CreateWFCItemTabPane   ($configWf["ConfigId"],$configWf["TabPaneItem"], "HouseTPA", 30, $configWf["TabPaneName"], $configWf["TabPaneIcon"]);    /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+            CreateWFCItemTabPane   ($configWf["ConfigId"], "HouseTPA", $configWf["TabPaneParent"],  $configWf["TabPaneOrder"], "", "HouseRemote");  // macht das Haeuschen in die oberste Leiste 
+            CreateWFCItemTabPane   ($configWf["ConfigId"],$configWf["TabPaneItem"], "HouseTPA", 30, $configWf["TabPaneName"], $configWf["TabPaneIcon"]);    // macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen 
 
             $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWf["Path"]);
             IPS_SetHidden($categoryId_WebFrontAdministrator,true);
@@ -771,11 +700,9 @@ $cutter=true;
 
             foreach ($webfront_links as $Name => $webfront_group)
                 {
-                /* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: AMIS, Homematic etc.
-                * Der Name für die Felder wird selbst erfunden.
-                */			
-                $categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, 10);    /* Unterverzeichnis unter AMIS, zB pro Typ */
-                $categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontTab, 10);			/* Zwei Seiten */
+                // Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: AMIS, Homematic etc. Der Name für die Felder wird selbst erfunden.
+                $categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, 10);    // Unterverzeichnis unter AMIS, zB pro Typ 
+                $categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontTab, 10);			/´/ Zwei Seiten
                 $categoryIdRight = CreateCategory('Right', $categoryId_WebFrontTab, 20);
                 //EmptyCategory($categoryIdLeft);
                 //EmptyCategory($categoryIdRight);
@@ -795,16 +722,16 @@ $cutter=true;
                 IPS_ApplyChanges($configWf["ConfigId"]);
                 echo "Webfront ".$configWf["ConfigId"]." erzeugt TabItem :".$tabItem." in ".$configWf["TabPaneItem"]."\n";
                 //CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
-                CreateWFCItemSplitPane ($configWf["ConfigId"], $tabItem, $configWf["TabPaneItem"],    0,     $Name,     "", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-                CreateWFCItemCategory  ($configWf["ConfigId"], $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
-                CreateWFCItemCategory  ($configWf["ConfigId"], $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+                CreateWFCItemSplitPane ($configWf["ConfigId"], $tabItem, $configWf["TabPaneItem"],    0,     $Name,     "", 1 , 40 , 0 , 0, 'true');
+                CreateWFCItemCategory  ($configWf["ConfigId"], $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   , 'false' );
+                CreateWFCItemCategory  ($configWf["ConfigId"], $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  , 'false' );
 
                 //CreateLinkByDestination("Read Meter", $MeterReadID,    $categoryIdLeft,  0);
                 foreach ($webfront_group as $Group => $webfront_link)
                     {
                     //if left
                     //$categoryIdGroup  = CreateCategory($Group,  $categoryIdLeft, 10);
-                    $categoryIdGroup  = CreateVariableByName($categoryIdLeft, $Group, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                    $categoryIdGroup  = CreateVariableByName($categoryIdLeft, $Group, 3);   // 0 Boolean 1 Integer 2 Float 3 String 
                     EmptyCategory($categoryIdGroup);	
                     if (is_array($webfront_link))			
                         {
@@ -827,13 +754,17 @@ $cutter=true;
                         }
                     }
                 }
-            }
+            }*/
         }
-    else
+    else                            // ifnot ($WFC10_Enabled)
         {
         /* Admin not enabled, alles loeschen */
             DeleteWFCItems($WFC10_ConfigId, "HouseTPA");
         }
+
+    }
+if ($do>4)          // mit der Pflicht aufhören, es kommt der User und der einzelne Smart Meter Tab
+    {
 
 	if ($WFC10User_Enabled)
 		{
@@ -944,9 +875,12 @@ $cutter=true;
 	   /* Retro not enabled, alles loeschen */
 	   }
     
-
+    }
     echo "=================================================================\n";
 
+if ($do>5)
+    {
+    echo "Weiteres Tab Smart Meter, wird aktuell immer installiert.\n";
     $webOps = new webOps();
     $categoryId_SmartMeter        = CreateCategory('SmartMeter',        $CategoryIdData, 80);
     $pnames = ["Update","Calculate","Sort"];
@@ -1017,8 +951,9 @@ $cutter=true;
 
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       // nur hier wird geschrieben
         }
+    }
 
-    echo "=================================================================\n";
+    echo "=================================================================  Do Level $do  \n";
     echo "AMIS Installation erfolgreich abgeschlossen.\n";
 
 

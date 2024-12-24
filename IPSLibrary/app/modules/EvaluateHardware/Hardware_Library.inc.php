@@ -562,7 +562,7 @@ class Hardware
                 {
                 $deviceListInput = $result;     // und dann langsam je Runde kleiner machen
                 $result=array();                 // result wieder loeschen und neu ermitteln
-                echo "    Filter $key anwenden auf ".count($deviceListInput)." Eintraege und dabei $needle suchen.\n";
+                if ($debug) echo "    Filter $key anwenden auf ".count($deviceListInput)." Eintraege und dabei $needle suchen.\n";
                 foreach ($deviceListInput as $device => $entry)
                     {
                     switch (strtoupper($key))
@@ -578,7 +578,7 @@ class Hardware
                                         if ($instance[$key] == $needle)  
                                             {
                                             //$found = true;
-                                            echo "           TYPEDEV: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
+                                            if ($debug) echo "           TYPEDEV: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
                                             $result[$device] = $entry;
                                             }
                                         //else echo $instance[$key]." ";
@@ -602,7 +602,7 @@ class Hardware
                                         if ( array_search($needle,$keysearch) !== false)
                                             {
                                             //$found = true;
-                                            echo "           TYPECHAN: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
+                                            if ($debug) echo "           TYPECHAN: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
                                             $result[$device] = $entry;
                                             }
                                         //else echo $instance[$key]." ";
@@ -624,7 +624,7 @@ class Hardware
                                             if ($key == $needle)
                                                 {
                                                 //$found = true;
-                                                echo "           REGISTER: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
+                                                if ($debug) echo "           REGISTER: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
                                                 $result[$device] = $entry;
                                                 }
                                             }
@@ -638,7 +638,7 @@ class Hardware
                         default:
                             if ( (isset($entry[$key])) && ($entry[$key] == $needle) )
                                 {
-                                echo "           TYPE: Eintrag $device mit $key gleich $needle gefunden.\n";
+                                if ($debug) echo "           TYPE: Eintrag $device mit $key gleich $needle gefunden.\n";
                                 $result[$device] = $entry;
                                 }
                             break;
