@@ -9179,8 +9179,9 @@ class DeviceManagement
                         break;
 
                     case "HMIP-WTH":
-                    case "HmIP-WTH-2":
-                    case "HmIP-WTH-B":
+                    case "HmIP-WTH-1":                  // Homematic IP Smart Home Wandthermostat HmIP-WTH-1 mit Luftfeuchtigkeitssensor (nur ein rad)
+                    case "HmIP-WTH-2":                  // Homematic IP Smart Home Wandthermostat HmIP-WTH-2 mit Luftfeuchtigkeitssensor (nur ein rad)
+                    case "HmIP-WTH-B":                  // Homematic IP Smart Home Wandthermostat – basic HmIP-WTH-B  (3 Tasten + boost -)
                         $result="Wandthermostat";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -9269,6 +9270,7 @@ class DeviceManagement
                         break;                        
 
                     case "HMIP-DLD":
+                    case "HmIP-DLD":                        // unterschiedliche Schreibweise
                         $result="Tuerschloss";                  
                         $matrix=[0,2,1,1,1,1,1,1];      // Standard Matrix, Infos in Kanal 1
                         break;

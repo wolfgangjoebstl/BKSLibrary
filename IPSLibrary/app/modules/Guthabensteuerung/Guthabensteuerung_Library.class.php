@@ -94,7 +94,8 @@
             $this->CategoryIdSelenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
             if ($this->CategoryIdSelenium)
                 {
-                $this->configChromedriverID       = IPS_GetObjectIdByName("ConfigChromeDriver",$this->CategoryIdSelenium);    
+                // vorhandene Versionen, Details über heruntergeladene Version hier speichern
+                $this->configChromedriverID       = @IPS_GetObjectIdByName("ConfigChromeDriver",$this->CategoryIdSelenium);    
                 }
             $this->CategoryIdData_Guthaben        = @IPS_GetObjectIDByName("Guthaben", $this->CategoryIdData);
             $this->CategoryIdData_GuthabenArchive = @IPS_GetObjectIDByName("GuthabenArchive", $this->CategoryIdData);
@@ -399,7 +400,8 @@
          */
         public function getConfigChromedriver()
             {
-            return(json_decode(GetValue($this->configChromedriverID),true));
+            if ($this->configChromedriverID) return(json_decode(GetValue($this->configChromedriverID),true));
+            else return (false);
             }
 
         /* die SessionID zeigt auf die Variable die die Session des Selenium Webdrivers anzeigt 

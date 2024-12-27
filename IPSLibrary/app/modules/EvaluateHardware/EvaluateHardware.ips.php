@@ -283,28 +283,16 @@ IPS_SetEventActive($tim1ID,true);
                 $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
                 $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
 
-                /* wird nicht benötigt, nur zur Orientierung
-                //$modulhandling->printInstances('TopologyDevice');
-                $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
-                //$modulhandling->printInstances('TopologyRoom');        
-                $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-                //$modulhandling->printInstances('TopologyPlace');        
-                $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-                //$modulhandling->printInstances('TopologyDeviceGroup');        
-                $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-                */
-
                 /* Alternative Kategorienstruktur in Topology, die Topology Instanzen dort einsortieren
                  * macht updateLinks aus dem DetectDeviceHandler in DetectMovementLib
                  * Testroutine in EvaluateTopology
                  */
                 $topConfig=array();
-                //$topId = @IPS_GetCategoryIDByName("Topology", 0);// siehe oben, bereits einmal ermittelt
-                if ($topId)
+                if ($topID)
                     {
                     echo "----------------------------------------DeviceList mit Informationen zur Topologie anreichern\n";
                     $debug=false;
-                    $topConfig["ID"]=$topId;
+                    $topConfig["ID"]=$topID;
                     $topConfig["Use"]=["Place","Room","Device"];        // keine Kategorie für DeviceGroup erstellen
                     echo "TopologyID gefunden : $topId, eine Topologie mit Kategorien erstellen.\n";
                     $DetectDeviceHandler->create_Topology($topConfig, $debug);            // true für init, true für Debug, bei init löscht sich die ganze Kategorie und baut sie neu auf, macht auch schon _construct

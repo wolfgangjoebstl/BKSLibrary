@@ -23,20 +23,20 @@
      * Folgende Klassen stehen zur Verfügung:
      *
      * abstract class DetectHandler
-     * DetectSensorHandler extends DetectHandler            allgemeine Bearbeitung Sensor
-     * DetectCounterHandler extends DetectHandler            allgemeine Bearbeitung Counter
-     * DetectClimateHandler extends DetectHandler            
-     * DetectHumidityHandler extends DetectHandler
-     * DetectMovementHandler extends DetectHandler
-     * DetectBrightnessHandler extends DetectHandler
-     * DetectContactHandler extends DetectHandler
-     * DetectTemperatureHandler extends DetectHandler
-     * DetectHeatControlHandler extends DetectHandler
-     * DetectHeatSetHandler extends DetectHandler
+     *      DetectSensorHandler extends DetectHandler            allgemeine Bearbeitung Sensor
+     *      DetectCounterHandler extends DetectHandler            allgemeine Bearbeitung Counter
+     *      DetectClimateHandler extends DetectHandler            
+     *      DetectHumidityHandler extends DetectHandler
+     *      DetectMovementHandler extends DetectHandler
+     *      DetectBrightnessHandler extends DetectHandler
+     *      DetectContactHandler extends DetectHandler
+     *      DetectTemperatureHandler extends DetectHandler
+     *      DetectHeatControlHandler extends DetectHandler
+     *      DetectHeatSetHandler extends DetectHandler
      *
-     * DetectHandlerTopology extends DetectHandler 
-     * DetectDeviceHandler extends DetectHandlerTopology, writes function IPSDetectDeviceHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php	 
-     * DetectDeviceListHandler extends DetectHandlerTopology, writes function IPSDetectDeviceListHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php
+     *      DetectHandlerTopology extends DetectHandler 
+     *          DetectDeviceHandler extends DetectHandlerTopology, writes function IPSDetectDeviceHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php	 
+     *          DetectDeviceListHandler extends DetectHandlerTopology, writes function IPSDetectDeviceListHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php
      *
      * TestMovement, ausarbeiten einer aussagekraeftigen Tabelle basierend auf den Event des MessageHandlers
      *
@@ -2981,7 +2981,7 @@
         private function create_TopologyChildrens(&$topology,$input, $debug=false)
             {
             if ($debug) echo "   create_TopologyChildrens aufgerufen.\n";
-            $translation=array();
+            $translation=array();                   // zur Umrechnung von gleichen Indexes
             foreach ($input as $category => $entry)
                 {
                 $oid=false; $gocreate=false;
