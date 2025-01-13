@@ -532,6 +532,8 @@ class Logging
         $this->createFullDir($config["LogDirectories"]["SensorLog"],$config["BasicConfigs"]["SystemDir"]);
         configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ClimateLog"],"ClimateLog","/Climate/");    
         $this->createFullDir($config["LogDirectories"]["ClimateLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SwitchLog"],"SwitchLog","/Switch/");    
+        $this->createFullDir($config["LogDirectories"]["SwitchLog"],$config["BasicConfigs"]["SystemDir"]);
 
         if ($debug) print_r($config);
         return ($config);
@@ -709,7 +711,7 @@ class Logging
         $directory=$this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();
         $dosOps->mkdirtree($directory);
-        $this->filename=$directory.$this->variablename."_Bewegung.csv";                
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Bewegung.csv";                
         //return("Ohne");
         return($this->NachrichtenID);        
         }
@@ -759,7 +761,7 @@ class Logging
         $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();
         $dosOps->mkdirtree($directory);
-        $this->filename=$directory.$this->variablename."_Helligkeit.csv";    
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Helligkeit.csv";    
         return($this->NachrichtenID);  
         }
 
@@ -812,7 +814,7 @@ class Logging
         $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();
         $dosOps->mkdirtree($directory);
-        $this->filename=$directory.$this->variablename."_Kontakt.csv";    
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Kontakt.csv";    
         return($this->NachrichtenID);  
         }
 
@@ -873,15 +875,21 @@ class Logging
         $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();              
         $dosOps->mkdirtree($directory);
-        $this->filename=$directory.$this->variablename."_Temperature.csv";
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Temperature.csv";
         return($this->NachrichtenID);               // nur als Private deklariert
         }    
 
 
-    /* Initialisierung für Feuchtigkeit */
+    /* Initialisierung für Feuchtigkeit 
+     * Ablöse der Funktion direkt im Component, übernimmt noch einige redundante Funktionen wie
+     *      installedmodules
+     *      aktiviert DetectHandler wenn Modul DetectMovement
+     *      variablename, mirrorNameID verwendet dafür aus ConstructFirst mirrorCatID, mirrorType, mirrorProfile
+     */
 
     public function do_init_humidity($variable, $variablename)
         {
+        $debug=false;
         /**************** installierte Module und verfügbare Konfigurationen herausfinden */
         $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
         $this->installedmodules=$moduleManager->GetInstalledModules();
@@ -894,7 +902,7 @@ class Logging
             $this->DetectHandler = new DetectHumidityHandler();
             }
 
-        $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+        $this->variablename = $this->getVariableName($variable, $variablename, $debug);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
 
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden 		
         $moduleManager_CC = new IPSModuleManager('CustomComponent');     //   <--- change here 
@@ -932,7 +940,7 @@ class Logging
         $directory = $this->configuration["LogDirectories"]["HumidityLog"];
         $dosOps= new dosOps();              
         $dosOps->mkdirtree($directory);
-        $this->filename=$directory.$this->variablename."_Feuchtigkeit.csv";
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Feuchtigkeit.csv";
         return($this->NachrichtenID);               // nur als Private deklariert
         }
 
@@ -974,7 +982,8 @@ class Logging
             {
             case "POWER":           /* Power Wirkleistung und Wirkenergie von AMIS, oder aus einem Homematic Register direkt */
             case "ENERGY":
-                echo "   do_init_sensor, Create Mirror Register $name as Integer und ".$this->variableProfile."\n";
+                if ($variablename=="") $name="SensorMirror_".IPS_Getname(IPS_GetParent($variable))."_".$this->variablename;
+                echo "   do_init_sensor, from \"$variable,$variablename\" create Power and Energy Mirror Register $name as Integer und ".$this->variableProfile."\n";
                 if ($this->variableProfile == "~Watt.3680")
                     {
                     /* Watt in kWatt umrechnen */
@@ -1008,9 +1017,51 @@ class Logging
         $directory = $this->configuration["LogDirectories"]["SensorLog"];
         $dosOps= new dosOps(); 
         $dosOps->mkdirtree($directory);
-        $this->filename=$directory.$this->variablename."_Sensor.csv";
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Sensor.csv";
         return($this->NachrichtenID);               // nur als Private deklariert
         }
+
+
+    /* Initialisierung für Sensor 
+     * das ist die allgemeine Funktion für viele Sensoren aller Art
+     *
+     * vorher wird constructfirst, do_init aufgerufen. Hier wird weiters noch angelegt:
+     *  DetectHandler       wenn installiert
+     *  variablename        abgeleitet aus dem Variablennamen oder aus der Config
+     *
+     *
+     */
+
+    public function do_init_switch($variable, $variablename)
+        {
+        $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+
+        /**************** Speicherort für Nachrichten und Spiegelregister herausfinden 		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     //   <--- change here 
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);  */
+        $name="SwitchMirror_".$this->variablename;
+        //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float */
+        //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,$this->variableProfile);       /* 2 float */
+        if ($this->debug) echo "Switch_Logging:do_init_switch construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
+        echo "   Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";
+        //IPSLogger_Wrn(__file__, "do_init_sensor, Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".");
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);             /* Selbe Werte wie geloggte Variable als Default übernehmen*/
+
+        /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Switch",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Switch",$this->CategoryIdData);
+        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+
+        /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+        //echo "Uebergeordnete Variable : ".$this->variablename."\n";
+        $directory = $this->configuration["LogDirectories"]["SwitchLog"];
+        $dosOps= new dosOps(); 
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Switch.csv";
+        return($this->NachrichtenID);               // nur als Private deklariert
+        }
+
 
     /* Initialisierung für Counter 
      * das ist die allgemeine Funktion für viele Counter aller Art, muss Umrechnen in Profile
@@ -1057,7 +1108,7 @@ class Logging
         $directory = $this->configuration["LogDirectories"]["CounterLog"];
         $dosOps= new dosOps(); 
         $dosOps->mkdirtree($directory);
-        $this->filename=$directory.$this->variablename."_Counter.csv";
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Counter.csv";
         return($this->NachrichtenID);               // nur als Private deklariert
         }
 
@@ -1138,7 +1189,7 @@ class Logging
         $directory = $this->configuration["LogDirectories"]["ClimateLog"];        
         $dosOps= new dosOps(); 
         $dosOps->mkdirtree($directory);
-        $this->filename=$directory.$this->variablename."_Sensor.csv";
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Sensor.csv";
         return($this->NachrichtenID);               // nur als Private deklariert
         }
 
@@ -1199,6 +1250,8 @@ class Logging
      *      typedev Wert, der wurde als Parameter des IPSComponent übergeben -> bevorzugte Variante
      *      irgendwie aus dem variableProfil,variableType erraten, noch nicht fertig programmiert
      *
+     * typedev muss übergeben werden, da wenn default Null und kein Datenbankeintrag auf default MOTION, BRIGHTNESS und STATE geschlossen wird 
+     *
      * Initialisisert wird hier - nach constructFirst noch
      * CategoryIdData,mirrorCatID
      * variable,variableProfil,variableType  iD der variable und ausgelesenes profil (entweder standard oder custom), Werte sind Sensor und Gerätespezifisch
@@ -1206,6 +1259,11 @@ class Logging
      *
      * Ermittelt wird
      * variableTypeReg
+     *
+     * Vergleich do_init Funktionen mit constructFirst und dem Bestand
+     * constructFirst sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
+     * do_init sets CategoryIdData, mirrorCatID
+     *      variable, mirrorType, variableProfile, variableType     
      *
      *
      */
@@ -1267,6 +1325,7 @@ class Logging
                             case "TEMPERATURE":
                             case "ENERGY":
                             case "RAIN_COUNTER":
+                            case "SWITCH":
                                 $this->variableTypeReg = strtoupper($typedev);
                                 break;                                 
                             default: 
@@ -1322,6 +1381,9 @@ class Logging
                     case "RAIN_COUNTER":    
                         $NachrichtenID = $this->do_init_counter($variable, $variablename);
                         break;
+                    case "SWITCH":    
+                        $NachrichtenID = $this->do_init_switch($variable, $variablename);
+                        break;                        
                     default:
                         $NachrichtenID = $this->do_init_sensor($variable, $variablename);                    
                         if ($this->variableTypeReg != "") 

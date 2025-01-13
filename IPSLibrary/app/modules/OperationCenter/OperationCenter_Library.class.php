@@ -9199,6 +9199,11 @@ class DeviceManagement
                         $matrix=[0,2,2,2,2,1,1,1];                        
                         $result="Schaltaktor 4-fach";
                         break;
+
+                    case "HmIP-DRSI4":                                  // Hat 4 Taster :1 bis :4, 4 Schalter :5,:9,:13,:17
+                        $matrix=[0,2,2,2,2,2,1,1,1,2,1,1,1,2,1,1,1,2,1,1,1,1,1];
+                        $result="Schaltaktor mit Input 4-fach";
+                        break;
                     
                     case "HM-ES-PMSw1-Pl":
                     case "HM-ES-PMSw1-DR":                                  // die Hutschienen Variante dazu 
@@ -9896,6 +9901,8 @@ class DeviceManagement_Homematic extends DeviceManagement
             $i++;
             }  
         //print_R($storedError_Log);   
+        krsort($storedError_Log);
+        $shortError_Log = array_slice($storedError_Log, 0, 1000, true);             // auf 1.000 Eintraege begrenzen
 
         $statusDevices     = '<?php'."\n";             // für die php Devices and Gateways, neu
         $statusDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
@@ -9918,7 +9925,7 @@ class DeviceManagement_Homematic extends DeviceManagement
                 } 
             }
 
-        return($storedError_Log);
+        return($shortError_Log);
 
         }
 

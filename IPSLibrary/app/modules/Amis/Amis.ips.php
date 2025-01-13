@@ -81,7 +81,7 @@
     $calculateApiTableID        = IPS_GetObjectIDByName("Calculate", $categoryId_SmartMeter);           // button profile is Integer
     $sortApiTableID             = IPS_GetObjectIDByName("Sort", $categoryId_SmartMeter);           // button profile is Integer
 
-    $amisSM = new AmisSmartMeter();
+    $amisSM = new AmisSmartMeter();             // verwendet class GuthabenHandler wenn vorhanden
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -141,7 +141,7 @@ else
         if ($debug) 
             {
             echo "Modul OperationCenter installiert. Qualität des Inventory evaluieren.\n";
-            if ($result) echo "    --> Alles in Ordnung.\n";
+            if ($result) echo "    --> Alles in Ordnung, HMI_CreateReport wird regelmaessig aufgerufen.\n";
             else "Fehler HMI_CreateReport muss schon wieder aufgerufen werden.\n";
             echo "\n";
             }
@@ -252,7 +252,7 @@ else
 	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$configPort=array();
 
-    echo"-------------------------------------------------------------\n";
+    echo"-------------------------------AMIS Zähler Configuration überprüfen, vergleiche mit class getPortConfiguration------------------------------\n";
 	foreach ($MeterConfig as $identifier => $meter)
 		{
 		if ($debug) echo "Create Variableset for : ".str_pad($meter["NAME"],35)." Konfig : ".json_encode($meter)."\n";
@@ -388,7 +388,7 @@ if ($_IPS['SENDER'] == "Execute")
     echo "\n";   
     //echo "Data OID der AMIS Zusammenfassung : ".$amis->getAMISDataOids()."\n\n";
     echo "amis->writeEnergyRegistertoArray(MeterConfig aufgerufen.\n";
-    $meterValues=$amis->writeEnergyRegistertoArray($MeterConfig, $debug);
+    $meterValues=$amis->writeEnergyRegistertoArray($MeterConfig, ($debug>1));
     //print_R($meterValues);
     echo "amis->writeEnergyRegisterTabletoString(meterValues aufgerufen.\n";
     echo $amis->writeEnergyRegisterTabletoString($meterValues);

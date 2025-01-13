@@ -435,7 +435,7 @@
                 }
             else
                 {
-                echo get_class($this)."::ListGroups, Aufruf mit $type,$varId \n";
+                echo "      ".get_class($this)."::ListGroups, Aufruf mit $type,$varId \n";
                 switch ($type)
                     {
                     case "Sensor":
@@ -556,7 +556,7 @@
             if ($debug) echo "      DetectHandler::getMirrorRegister($variableId  \n";
             $variablename=$this->getMirrorRegisterName($variableId,$debug);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, getMirrorRegister for ".get_class()." \"$variablename\" nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "      DetectHandler Fehler, getMirrorRegister for ".get_class()." \"$variablename\" nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             return ($mirrorID);
             }
 
@@ -639,6 +639,15 @@
             return($mirrorsFound);
             }
 
+
+        public function getVariableName($variableId, $debug = false)
+            {
+            $variablename=$this->getMirrorRegisterName($variableId);
+            // variableName witrd nicht erweitert
+            return ($variablename);               
+            }
+
+
 		/* checkMirrorRegisters
          * in CustomComponent Data (data.core.IPSComponent.xxx_Auswertung) gibt es die bereinigten Spiegelregister
          * in der Kategorie werden einige Register gefunden (Istzustand) und über mirrorsFound wird der Sollzustand übergeben
@@ -695,10 +704,15 @@
 		public function CreateEvent($variableId, $eventType)
 			{
 			
-			/* Funktion in diesem Kontext nicht mehr klar, wird von Create Events aufgerufen. Hier erfolgt nur ein check ob die Parameter richtig benannt worden sind */
+			/* Funktion in diesem Kontext nicht mehr klar, wird von Create Events aufgerufen. Hier erfolgt nur ein check ob die Parameter richtig benannt worden sind 
+             *  triggerType wird nicht benötigt
+             */
 			
 			switch ($eventType)
 				{
+				case 'Sensor':
+					$triggerType = 9;
+					break;                    
 				case 'Brightness':
 					$triggerType = 8;
 					break;
@@ -1101,7 +1115,7 @@
             if ($debug) echo "      DetectSensorHandler::getMirrorRegister($variableId  \n";
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "DetectSensorHandler Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             return ($mirrorID);
             }
 
@@ -1258,7 +1272,7 @@
             if ($debug) echo "      DetectCounterHandler::getMirrorRegister($variableId  \n";
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "DetectCounterHandler Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             return ($mirrorID);
             }
 
@@ -1418,7 +1432,7 @@
             if ($debug) echo "      DetectClimateHandler::getMirrorRegister($variableId  \n";
             $variablename=$this->getVariableName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "      Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "      DetectClimateHandler Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             return ($mirrorID);
             }
 
@@ -1552,6 +1566,21 @@
 
 /******************************************************************************************************************/
 
+    /* DetectHumidityHandler
+     * neue Funktionen
+     *      __construct
+     *      Get_Configtype
+     *      Get_ConfigFileName
+     *      Get_EventConfigurationAuto
+     *      Set_EventConfigurationAuto
+     *      getMirrorRegister
+     *      CreateMirrorRegister
+     *      InitGroup
+     *
+     *
+     *
+     */
+
 	class DetectHumidityHandler extends DetectHandler
 		{
 
@@ -1633,11 +1662,13 @@
 		public function getMirrorRegister($variableId, $debug = false)
 			{
             if ($debug) echo "      DetectHumidityHandler::getMirrorRegister($variableId  \n";
-            $variablename=$this->getMirrorRegisterName($variableId);
+            $variablename=$this->getMirrorRegisterName($variableId, $debug);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "       DetectHumidityHandler Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             return ($mirrorID);
             }
+
+
 
 		/**
 		 * Das DetectHumidityHandler Spiegelregister anlegen
@@ -1693,7 +1724,21 @@
 
 /*****************************************************************************************************************
  *
- *
+ *  DetectMovementHandler
+ *  mit neuen Funktionen
+ *      __construct
+ *      Get_Configtype
+ *      Get_ConfigFileName
+ *      Get_CategoryData
+ *      Get_MoveAuswertungID
+ *      Set_MoveAuswertungID
+ *      getCustomComponentsDataGroup
+ *      getDetectMovementDataGroup
+ *      Get_EventConfigurationAuto
+ *      Set_EventConfigurationAuto
+ *      getMirrorRegister
+ *      CreateMirrorRegister
+ *      InitGroup
  *
  */
 
@@ -1848,7 +1893,7 @@
 				$variablename=IPS_GetName((integer)$result["ParentID"]);
 				}            
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->MoveAuswertungID);
-            if ($mirrorID === false) echo "Fehler, $variablename nicht in ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).") gefunden.\n";
+            if ($mirrorID === false) echo "       DetectMovementHandler Fehler, $variablename nicht in ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).") gefunden.\n";
             return ($mirrorID);
             }
 
@@ -2033,7 +2078,7 @@
             if ($debug) echo "      DetectBrightnessHandler::getMirrorRegister($variableId) aufgerufen.\n";
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, getMirrorRegister for Brightness $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "      DetectBrightnessHandler Fehler, getMirrorRegister for Brightness $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             //else echo "getMirrorRegister for Temperature $variablename\n";
             return ($mirrorID);
             }
@@ -2209,7 +2254,7 @@
             $variablename=$this->getMirrorRegisterName($variableId);
             if ($debug) echo "         getMirrorRegister($variableId  Name Variable ist $variablename.\n";
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, getMirrorRegister for Contact $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "      DetectContactHandler Fehler, getMirrorRegister for Contact $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             //else echo "getMirrorRegister for Temperature $variablename\n";
             return ($mirrorID);
             }
@@ -2381,7 +2426,7 @@
             if ($debug) echo "      DetectTemperatureHandler::getMirrorRegister($variableId  \n";
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, getMirrorRegister for Temperature $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "      DetectTemperatureHandler Fehler, getMirrorRegister for Temperature $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             //else echo "getMirrorRegister for Temperature $variablename\n";
             return ($mirrorID);
             }
@@ -2745,7 +2790,7 @@
             if ($debug) echo "   DetectHeatSetHandler::getMirrorRegister($variableId) aufgerufen.\n";
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, getMirrorRegister for HeatSet $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            if ($mirrorID === false) echo "      DetectHeatSetHandler Fehler, getMirrorRegister for HeatSet $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
             //else echo "getMirrorRegister for Temperature $variablename\n";
             return ($mirrorID);
             }

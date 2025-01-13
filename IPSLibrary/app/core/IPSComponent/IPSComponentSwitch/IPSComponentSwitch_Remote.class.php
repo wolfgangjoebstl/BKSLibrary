@@ -35,7 +35,10 @@
 	 *   __construct
      *      zusaetzliche Variablen für instanceID und SupportsonTime
      *      Verbiegen des DutyCycle Error Handlers um nicht Erreichbarkeits Events etc abzufangen
-	 *
+     *
+	 *  class Switch_Logging extends Logging wird hier für beide definiert
+     *
+     *
 	 ****************************************/
 
 	//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -156,6 +159,12 @@
 	 *
 	 * in Auswertung wird eine lokale Kopie aller Register angelegt und archiviert. 
 	 * in Nachrichten wird jede Änderung als Nachricht mitgeschrieben 
+     *
+     * im construct die beiden zusätzlichen Werte wegen Kompatibilität zu zB Temperature_Logging
+     *
+     * teilweise umgestellt auf vergleichbare Routinen mit
+     *      constructFirst
+     *      do_init noch offen, $variableTypeReg="Switch" bereits vorbereitet
 	 *
 	 **************************/
 
@@ -172,43 +181,65 @@
         protected $DetectHandler;		        /* Unterklasse */        
         protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */          
 				
-		function __construct($variable)
+		function __construct($variable,$variablename=Null,$variableTypeReg="Switch",$debug=false)
 			{
-            /************** INIT */
+            if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
+            else $this->debug=$debug;
+            if ($this->debug) echo "   Switch_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
+
+            $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
+
+
+            /************** abgelöst durch constructFirst
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
+			$this->installedmodules=$moduleManager->GetInstalledModules();   
+			$moduleManager_CC = new IPSModuleManager('CustomComponent');     //   <--- change here 
+			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+            */
 
+            //$NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
+
+            /* abgelöst durch do_init und do_init_switch */
             $dosOps= new dosOps();
 
 			//echo "Construct IPSComponentSswitch_Remote Logging for Variable ID : ".$variable."\n";
 			$result=IPS_GetObject($variable);
 			$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist immer der Parent Name 
 		
-			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+			// Create Category to store the Move-LogNachrichten und Spiegelregister	
 			$this->SwitchNachrichtenID=$this->CreateCategoryNachrichten("Switch",$this->CategoryIdData);
 			$this->SwitchAuswertungID=$this->CreateCategoryAuswertung("Switch",$this->CategoryIdData);;
 			echo "  Switch_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)." anlegen : [".$this->SwitchNachrichtenID.",".$this->SwitchAuswertungID."]\n";
 
-			/* lokale Spiegelregister aufsetzen */
+			// lokale Spiegelregister aufsetzen 
 			if ($variable<>null)
 				{
 		        $this->variable=$variable;   
-				echo "Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$this->SwitchAuswertungID." ".IPS_GetName($this->SwitchAuswertungID)." anlegen.\n";
+				echo "      Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$this->SwitchAuswertungID." ".IPS_GetName($this->SwitchAuswertungID)." anlegen.\n";
                 $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->SwitchAuswertungID,0,'~Switch');                   // $this->variableLogID schreiben
 				}
 
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
-			$directories=get_IPSComponentLoggerConfig();
+            $directory=$this->configuration["LogDirectories"]["SwitchLog"];
+            $dosOps= new dosOps();
+            $dosOps->mkdirtree($directory);
+            // str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // alles wegloeschen das einem korrekten Filenamen widerspricht, Logging:construct macht keine weitere Bearbeitung mehr, da hier schon die Verzeichnisse dabei sind
+            $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Switch.csv";   
+
+			/* im do_init oder gerade hier oben besser
+            $directories=get_IPSComponentLoggerConfig();                                // Log verzeichnis richtig einordnen
 			if (isset($directories["LogDirectories"]["SwitchLog"]))
 		   		 { $directory=$directories["LogDirectories"]["SwitchLog"]; }
-			else {$directory="Switch/"; }	
-            $systemDir     = $dosOps->getWorkDirectory();
-            $dosOps->mkdirtree($systemDir.$directory);
-			$filename=$directory.$this->variablename."_Switch.csv";
-			parent::__construct($filename,$this->SwitchNachrichtenID);
+			else {
+                $directory="Switch/"; 	
+                $systemDir     = $dosOps->getWorkDirectory();
+                $directory=$systemDir.$directory;
+                }
+            echo "      Erzeuge Verzeichnis: ".$directory."\n";
+            $dosOps->mkdirtree($directory);
+			$filename=$directory.$this->variablename."_Switch.csv";  */
+			parent::__construct($this->filename,$this->SwitchNachrichtenID);
 			}
 
 		function Switch_LogValue()

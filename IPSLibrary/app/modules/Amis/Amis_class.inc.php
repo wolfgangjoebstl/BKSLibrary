@@ -221,8 +221,12 @@
                 }
             $result=array();
             if ((function_exists("get_AmisConfiguration"))===false) IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis'); 
-            if (function_exists("get_AmisConfiguration")) $amisConfiguration = get_AmisConfiguration();
-            if (( (is_array($amisConfiguration)) && (sizeof($amisConfiguration)) ) === false) $amisConfiguration=array();
+            if (function_exists("get_AmisConfiguration")) 
+                {
+                $amisConfiguration = get_AmisConfiguration();
+                if (( (is_array($amisConfiguration)) && (sizeof($amisConfiguration)) ) === false) $amisConfiguration=array();
+                }
+            else $amisConfiguration=array();
 
             configfileParser($amisConfiguration,$result,["WebPage","WEBPAGE","webpage"],"WebPage",array());
 
@@ -508,7 +512,7 @@
 
 
         /* configurePort, die AMIS Konfiguration anders anordnen und gleich die Variablen anlegen 
-        * Parameter sind die Konfiguration und der Parameter ob die IPS Cutter Funktion verwendet weird (true) oder nicht
+        * Parameter sind die Konfiguration und der Parameter ob die IPS Cutter Funktion verwendet wird (true) oder nicht
         *
         * es wird eine String Variable mit dem NAME aus der Konfig im Modul Data angelegt. Dient als Über-Kategorie.
         */
@@ -3448,7 +3452,7 @@
 
         /* AmisTopology::processMeterTopology
          * recursive function, die eine meter topology aufbaut
-         * wird von createMeterTopology aufgerufenm, die die Topologie initialisisert
+         * wird von createMeterTopology aufgerufen, die die Topologie initialisisert
          */
         function processMeterTopology(&$meterTopology,&$meter,$ident="")
             {

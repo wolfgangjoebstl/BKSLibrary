@@ -138,8 +138,13 @@
         $storedError_Log=$DeviceManager->updateHomematicErrorLog($filename,$arrHM_Errors,false);        //true für Debug
         //print_R($storedError_Log);
         krsort($storedError_Log);
-        echo "Ausgabe showHomematicFehlermeldungenLog : \n";
-        $html = $DeviceManager->showHomematicFehlermeldungenLog($storedError_Log,true);             //true für Debug
+        $shortError_Log = array_slice($storedError_Log, 0, 40, true);
+        //print_R($shortError_Log);
+
+        echo "Ausgabe showHomematicFehlermeldungenLog ".count($shortError_Log)."/".count($storedError_Log)." :\n";
+        $html = $DeviceManager->showHomematicFehlermeldungenLog($shortError_Log,true);             //true für Debug
+        SetValue($logEvaluateHardwareID,$html);
+
         $hwStatus = $DeviceManager->HardwareStatus("array",true);           // Ausgabe als Array, true für Debug
         $output = $DeviceManager->showHardwareStatus($hwStatus,["Reach"=>false,]);           // Ausgabe als html
         SetValue($statusDeviceID,$output);
@@ -405,7 +410,7 @@ IPS_SetEventActive($tim1ID,true);
         $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
         echo "\n";
-        echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
+        echo "Aktuelle Laufzeit ".round(microtime(true)-$startexec,2)." Sekunden.\n";
         echo "=======================================================================\n";
         echo "DetectMovement installiert, Summen und Mirrorregister für Kontakt, Bewegung etc. suchen und registrieren :\n";
         echo "\n";
@@ -625,8 +630,21 @@ IPS_SetEventActive($tim1ID,true);
         $configurationNew=$DetectDeviceHandler->sortEventList($configuration);
         echo "    Und wieder in der Config abspeichern.\n";
         $DetectDeviceHandler->StoreEventConfiguration($configurationNew);
-        }   /* ende if isset DetectMovement */    echo "\n";
+        }   /* ende if isset DetectMovement */   
     echo "\n";
+    echo "\n";
+
+    /* update der RemoteAccess Strukturen */
+
+	if (isset ($installedModules["RemoteAccess"]))      // wenn zB in EvaluateHardware aufgerufen wird
+        {
+        IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+        IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+        echo "RemoteAccess Update der remote Strukturen unter Verwendung von XConfiguration.\n";
+	    $remote=new RemoteAccess();
+        $remote->createXconfig();
+        }
+
 
     /******************************************************
     *
@@ -718,7 +736,7 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	echo "\n==================================================================\n";
 
     echo "\n";
-    echo "Gesamtlaufzeit ".(time()-$startexec)." Sekunden.\n";
+    echo "Gesamtlaufzeit ".round(microtime(true)-$startexec,2)." Sekunden.\n";
 
 	} /* ende if execute */
 

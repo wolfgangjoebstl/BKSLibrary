@@ -32,116 +32,141 @@
  *
  */
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 
-/******************************************************
+    IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
-				INIT
+    IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+    IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
-*************************************************************/
+    /* wird von Remote Access erzeugt : */
+    IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
+
+    /******************************************************
+
+                    INIT
+
+    *************************************************************/
 
     // max. Scriptlaufzeit definieren
     $dosOps = new dosOps();
     $dosOps->setMaxScriptTime(400); 
     $startexec=microtime(true);
 
-    IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	$moduleManager = new ModuleManagerIPS7('RemoteAccess',$repository);
 
-    /* wird von Remote Access erzeugt : */
-    IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
+    $installedModules = $moduleManager->GetInstalledModules();
+    $inst_modules="\nInstallierte Module:\n";
+    foreach ($installedModules as $name=>$modules)
+        {
+        $inst_modules.=str_pad($name,30)." ".$modules."\n";
+        }
+    echo $inst_modules."\n\n";
 
-/*	ROID_List() bestimmt die Server an die Daten gesendet werden sollen,  
- *  Function Ist in EvaluateVariables.inc in Modul RemoteAccess und wird von add_remoteServer aus RemoteAccess_GetConfiguration angelegt !
- *  Aufruf erfolgt in RemoteAccess. es wird auf den remote Servern die komplette Struktur aufgebaut und in EvaluateVariables.inc gespeichert.
- */
-$remServer=ROID_List();
 
-$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-$modules=$moduleManager->GetInstalledModules();
-
-$status=RemoteAccessServerTable();
-	
-if (isset ($modules["Amis"]))
-	{
-	/* nur wenn AMIS installiert ist ausführen */
-	echo "Amis Stromverbrauch Struktur auf Remote Servern aufbauen:\n";
-	$stromID=Array();
-	//print_r($status);
-	//print_r($remServer);
-	foreach ($remServer as $Name => $Server)
+	if (isset ($installedModules["DetectMovement"]))
 		{
-		echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-		if ( $status[$Name]["Status"] == true )
-			{		
-			$rpc = new JSONRPC($Server["Adresse"]);
-			$stromID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Stromverbrauch");
-			}
+		IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        echo "  Modul DetectMovement ist installiert.\n";
 		}
-	echo "---------------------------------------------------------\n\n";
-	echo "Struktur Server :\n";	
-	print_r($stromID);
-  	
-  	/* EvaluateVariables.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthält Routine AmisStromverbrauchlist */
-	$stromverbrauch=AmisStromverbrauchList();
-    echo "Darstellung Konfiguration/Zusammenfassung Stromverbrauch:\n";
-	//print_r($stromverbrauch);
-
-	foreach ($stromverbrauch as $Key)
-		{
-        print_r($Key);
-        $oid=(integer)$Key["OID"];        
-     	$variabletyp=@IPS_GetVariable($oid);
-        if ($variabletyp)
+    else { echo "Modul DetectMovement ist NICHT installiert.\n";}
+    
+    /*	ROID_List() bestimmt die Server an die Daten gesendet werden sollen,  
+    *  Function Ist in EvaluateVariables.inc in Modul RemoteAccess und wird von add_remoteServer aus RemoteAccess_GetConfiguration angelegt !
+    *  Aufruf erfolgt in RemoteAccess. es wird auf den remote Servern die komplette Struktur aufgebaut und in EvaluateVariables.inc gespeichert.
+    */
+    $remServer=ROID_List();
+    $status=RemoteAccessServerTable();
+	
+    if (isset ($installedModules["Amis"]))
+        {
+        /* nur wenn AMIS installiert ist ausführen */
+        echo "Amis Stromverbrauch Struktur auf Remote Servern aufbauen:\n";
+        $stromID=Array();
+        //print_r($status);
+        //print_r($remServer);
+        foreach ($remServer as $Name => $Server)
             {
-            //print_r($variabletyp);
-            if ($variabletyp["VariableProfile"]!="")
-                {
-                echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
-                }
-            else
-                {
-                echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
-                }
-            $parameter="";
-            foreach ($remServer as $Name => $Server)
-                {
-                if ( $status[$Name]["Status"] == true )
-                    {				
-                    $rpc = new JSONRPC($Server["Adresse"]);
-                    $result=RPC_CreateVariableByName($rpc, $stromID[$Name], $Key["Name"], $Key["Typ"]);
-                    $rpc->IPS_SetVariableCustomProfile($result,$Key["Profile"]);
-                    $rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-                    if ($Key["Profile"]=="~Electricity")
-                        {
-                        $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
-                        }
-                    else
-                        {
-                        $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-                        }
-                    $rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);
-                    $parameter.=$Name.":".$result.";";
-                    }
-                }				
-            $messageHandler = new IPSMessageHandler();
-            //$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-            $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-            if ($Key["Profile"]=="~Electricity") 
-                {
-                $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',ENERGY','IPSModuleSensor_Remote');
-                echo "Register Stromverbrauch mit Parameter :\"".'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',ENERGY'."\" erzeugt.\n\n";
-                }
-            else 
-                {
-                $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',POWER','IPSModuleSensor_Remote');
-                echo "Register Stromverbrauch mit Parameter :\"".'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',POWER'."\" erzeugt.\n\n";
+            echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+            if ( $status[$Name]["Status"] == true )
+                {		
+                $rpc = new JSONRPC($Server["Adresse"]);
+                $stromID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Stromverbrauch");
                 }
             }
-        else echo "Fehler, ".$Key["Name"]." nicht vorhanden.\n"; 
-		}
-	}
+        echo "---------------------------------------------------------\n\n";
+        echo "Struktur Server :\n";	
+        print_r($stromID);
+        
+        /* EvaluateVariables.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthält Routine AmisStromverbrauchlist 
+         */
+        $stromverbrauch=AmisStromverbrauchList();
+        echo "Darstellung Konfiguration/Zusammenfassung Stromverbrauch:\n";
+        //print_r($stromverbrauch);
+
+        foreach ($stromverbrauch as $Key)
+            {
+            print_r($Key);
+            $oid=(integer)$Key["OID"];        
+            $variabletyp=@IPS_GetVariable($oid);
+            if ($variabletyp)
+                {
+                //print_r($variabletyp);
+                if ($variabletyp["VariableProfile"]!="")
+                    {
+                    echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+                    }
+                else
+                    {
+                    echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+                    }
+                $parameter="";
+                foreach ($remServer as $Name => $Server)
+                    {
+                    if ( $status[$Name]["Status"] == true )
+                        {				
+                        $rpc = new JSONRPC($Server["Adresse"]);
+                        $result=RPC_CreateVariableByName($rpc, $stromID[$Name], $Key["Name"], $Key["Typ"]);
+                        $rpc->IPS_SetVariableCustomProfile($result,$Key["Profile"]);
+                        $rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+                        if ($Key["Profile"]=="~Electricity")
+                            {
+                            $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
+                            }
+                        else
+                            {
+                            $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+                            }
+                        $rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);
+                        $parameter.=$Name.":".$result.";";
+                        }
+                    }				
+                $messageHandler = new IPSMessageHandler();
+                //$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+                $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                if ($Key["Profile"]=="~Electricity") 
+                    {
+                    $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',ENERGY','IPSModuleSensor_Remote');
+                    echo "Register Stromverbrauch mit Parameter :\"".'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',ENERGY'."\" erzeugt.\n\n";
+                    }
+                else 
+                    {
+                    $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',POWER','IPSModuleSensor_Remote');
+                    echo "Register Stromverbrauch mit Parameter :\"".'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',POWER'."\" erzeugt.\n\n";
+                    }
+                if (isset ($installedModules["DetectMovement"]))
+                    {
+                    //echo "Detect Movement anlegen.\n";
+                    $DetectSensorHandler = new DetectSensorHandler();
+                    $DetectSensorHandler->RegisterEvent($oid,"Sensor",'','');
+                    }                    
+                }
+            else echo "Fehler, ".$Key["Name"]." nicht vorhanden.\n"; 
+            }
+        }
 
 
 ?>

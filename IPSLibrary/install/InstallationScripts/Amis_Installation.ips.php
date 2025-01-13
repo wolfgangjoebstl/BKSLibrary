@@ -32,6 +32,7 @@
  *      Timer Definition
  *      WebFront Installation
  *
+ * Manchmal bricht die Routine während der Ausgabe ab, um das herauszufinden gibt es die do Schritte und die Debug Einstellungen am Anfang
  *
  **************************************************************/
 
@@ -52,10 +53,11 @@
  *************************************************************/
 
 $cutter=true;
-$do=4;
+$do=6;                  // schrittweises abarbeiten des Installs für mehr Übersichtlichkeit beim Debug, bei 6 sind alle Teile dran
 $debug=false;               // wir wollen mehr Übersichtlichkeit
 
-/******************** Defaultprogrammteil ********************/
+/******************** Defaultprogrammteil *******************
+ */
 	ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
@@ -189,7 +191,8 @@ if ($do>0)
     echo "Darstellung der benötigten Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("AusEin-Boolean"=>"update","Zaehlt"=>"update","kWh"=>"update","Wh"=>"update","kW"=>"update","Euro"=>"update");
     $profileOps->synchronizeProfiles($profilname);
-    }	
+    }
+
 /******************* 
  * 
  *				Variable Definition aus dem Config File auslesen
@@ -604,7 +607,7 @@ if ($do>2)
 
     echo "-----------------------------------------*\n";
 
-	$Meter=$Amis->writeEnergyRegistertoArray($MeterConfig,true);
+	$Meter=$Amis->writeEnergyRegistertoArray($MeterConfig,$debug);
 	SetValue($tableID,$Amis->writeEnergyRegisterTabletoString($Meter));
 
     echo "-----------------------------------------*\n";
@@ -648,6 +651,7 @@ if ($do>2)
     echo "****************Ausgabe Webfront Links               ";    
 	print_r($webfront_links);
     }
+
 if ($do>3)          // der Debug bevor die Implementierung startet
     {
 	if ($WFC10_Enabled)

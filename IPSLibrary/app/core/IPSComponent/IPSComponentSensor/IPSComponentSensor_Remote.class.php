@@ -15,7 +15,13 @@
 	 * You should have received a copy of the GNU General Public License
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */
-	 
+	
+    /** class overview
+     *      IPSComponentSensor_remote  extends IPSComponentSensor
+     *      Sensor_Logging extends Logging
+     *
+     **/
+
     /**
      * @class IPSComponentSensor_remote
      *
@@ -93,7 +99,7 @@
 
 		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-            $this->debug=false;
+            $this->debug=true;
 			if ($this->debug) echo "IPSComponentSensor_Remote: Construct Sensor with ($instanceId,$remoteOID,$tempValue).\n";	
             if (strpos($instanceId,":") !== false)                // par1 manchmal auch par2, rausfinden
                 {
@@ -148,7 +154,8 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-            $debug=false;
+            $debug=$this->debug;
+            //$debug=false;
 			if ($debug) echo "HandleEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
             //$startexec=microtime(true);    
             $log=new Sensor_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
@@ -186,10 +193,11 @@
 		 */
 		public function UpdateEvent($variable, $value, IPSModuleSensor $module,$debug)
 			{
-			if ($debug) echo "UpdateEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
+			if ($debug) echo "IPSComponentSensor_Remote::UpdateEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
             $log=new Sensor_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
             $mirrorValue=$log->updateMirorVariableValue($value);
             $result=$log->Sensor_LogValue($value,$debug);                  // SetValue($this->variableLogID,GetValue($this->variable));
+            if ($debug) echo "log::RemoteLogValue($value, $this->remServer, $this->RemoteOID \n";
             $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
 			}
 

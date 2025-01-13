@@ -20,6 +20,7 @@
 	 * Version 2.50.1, 31.01.2012<br/>
 	 */
 
+	IPSUtils_Include ('IPSModule.class.php', 'IPSLibrary::app::core::IPSComponent');
 	IPSUtils_Include ('IPSModuleSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
 
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -36,6 +37,7 @@
 		 */
 		public function SyncState($state, IPSComponentSwitch $componentToSync) 
 			{
+            echo "SyncState aufgerufen.\n";
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
 			if (isset($installedModules["Stromheizung"]) )
@@ -44,16 +46,18 @@
 				$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
 				echo "   IPSModuleSwitch_IPSHeat SyncState ".IPS_GetName($componentParamsToSync[1])." (".$componentParamsToSync[1].")\n";
                 echo "      check IPSHeat_GetHeatConfiguration for Homematic Instance : ".$componentParamsToSync[1]." to synchronize.\n";
-				$deviceHeatConfig          = IPSHeat_GetHeatConfiguration();			
+				$deviceHeatConfig          = IPSHeat_GetHeatConfiguration();
+                //print_R($deviceHeatConfig);			
 				foreach ($deviceHeatConfig as $deviceIdent=>$deviceData) 
 					{
+                    //echo "         Compare $deviceIdent ".$deviceData[IPSHEAT_COMPONENT];
 					$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
 					$componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
-                    //echo "         Compare $deviceIdent ".$deviceData[IPSHEAT_COMPONENT]." :  ".$componentParamsConfig[1]." == ".$componentParamsToSync[1]." \n";
+                    //echo " :  ".$componentParamsConfig[1]." == ".$componentParamsToSync[1]." \n";
 					//if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
 					if ( (isset($componentParamsConfig[1])) && ($componentParamsConfig[1]==$componentParamsToSync[1]) )
 						{
-						echo "     IPSModuleSwitch_IPSHeat SyncState synchronize from Type Heatswitch ".$deviceIdent." mit ".$state."\n";
+						echo "        IPSModuleSwitch_IPSHeat SyncState synchronize from Type Heatswitch ".$deviceIdent." mit ".$state."\n";
 						$heatManager = new IPSHeat_Manager();
 						$heatManager->SynchronizeSwitch($deviceIdent, $state);
 						}
@@ -63,7 +67,7 @@
 				{			
 				IPSUtils_Include ("IPSLight.inc.php",          "IPSLibrary::app::modules::IPSLight");
 				$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
-				echo "   IPSModuleSwitch_IPSHeat SyncState ".IPS_GetName($componentParamsToSync[1])." (".$componentParamsToSync[1].")\n";
+				echo "   IPSModuleSwitch_IPSLight SyncState ".IPS_GetName($componentParamsToSync[1])." (".$componentParamsToSync[1].")\n";
                 echo "      check IPSLight_GetLightConfiguration\n";
                 $deviceConfig          = IPSLight_GetLightConfiguration();
 				foreach ($deviceConfig as $deviceIdent=>$deviceData) 
@@ -74,7 +78,7 @@
 					//if ($componentParamsConfig[1]==$componentParamsToSync[1])
 					if ( (isset($componentParamsConfig[1])) && ($componentParamsConfig[1]==$componentParamsToSync[1]) )
 						{
-						echo "      IPSModuleSwitch_IPSHeat SyncState synchronize from Type Lightswitch ".$deviceIdent." mit ".$state."\n";
+						echo "      IPSModuleSwitch_IPSLight SyncState synchronize from Type Lightswitch ".$deviceIdent." mit ".$state."\n";
 						$lightManager = new IPSLight_Manager();
 						$lightManager->SynchronizeSwitch($deviceIdent, $state);
 						$heatManager = new IPSHeat_Manager();
@@ -82,6 +86,7 @@
 						}
 					}
 				}  // ende if
+            echo "----\n";
 			}	
 
 

@@ -37,6 +37,7 @@
 	 *
 	 * Logging der Variablen:
 	 * Alle Wertänderungen werden in einem File und einem Nachrichtenspeicher gelogged.
+     * es wird class Temperature_Logging extends Logging aufgerufen
 	 *
 	 * wenn DetectMovement installiert ist:
 	 * auch den Mittelwert aus mehreren Variablen herausrechnen
@@ -242,6 +243,7 @@
         /* construct wird bereit mit der zu loggenden Variable ID aufgerufen, 
          * optional kann ein Variablennamen mitgegeben werden, sonst wird er nach einem einfachen Algorithmus berechnet (Instanz oder Variablenname der ID)
          * oder aus der Config von DetectMovement übernommen
+         * variableTypeReg kann ebenfalls mitgegeben werden
          *
          */
 

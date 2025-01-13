@@ -55,7 +55,7 @@
             $tunerID = @IPS_GetObjectIDByName($TunerName,$CategoryIdData);
             $zoneID = @IPS_GetObjectIDByName($ZoneName,$tunerID);
 
-            echo "IPSComponentTuner_Denon:construct  mit ".$TunerName."  ".$ZoneName."   ".$ChannelName." in Category  $zoneID \n";
+            //echo "         IPSComponentTuner_Denon:construct  mit ".$TunerName."  ".$ZoneName."   ".$ChannelName." in Category  $zoneID \n";
             if ($zoneID !== false)
                 {
     			//$this->DataCatID = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung.'.$TunerName.".".$ZoneName);

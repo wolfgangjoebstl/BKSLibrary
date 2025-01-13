@@ -25,6 +25,17 @@
      * IPSMessageHandlerExtended extends IPSMessageHandler
      *
      * function installAccess
+     *
+     * HandleEvent in den Component Classes, am Beispiel IPSComponentSensor_remote für Betriebssystemname
+     * IpsMessageHandler_Configuration: array('OnChange','IPSComponentSensor_Remote,LBG70-2Virt:32824;BKS01:23742;','IPSModuleSensor_Remote',),
+     * im constuct($instanceId, $remoteOID, $tempValue)
+     * 			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+	 *			$this->remServer	  = RemoteAccessServerTable();              // Liste der remoteAccess server in einer besseren Tabelle mit dem aktuellen Status zur Erreichbarkeit 
+     *    RemoteAccessServerTable ist in AllgemeineDefinitionen, hat den Vorteil funktioniert auch wenn class RemoteAccess nicht verwendet wird.
+     * bei Änderung
+     *    HandleEvent($variable, $value, IPSModuleSensor $module)
+     *          $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
+     *
      */
 
 	/*********************
@@ -89,7 +100,7 @@ class RemoteAccess
     public $profileConfig;                  // eine Art Mapping zwischen neuen Allgemeinen Profilen und vorhandenen
 	
 	/**
-	 * @public
+	 * RemoteAccess::__construct
 	 *
 	 * Initialisierung des RemoteAccess Manager Objektes
 	 *
@@ -108,19 +119,70 @@ class RemoteAccess
 
 		}
 
+    /* RemoteAccess::getRemoteServer
+     * es werden nur die Server in die Liste aufgenommen die "STATUS"=="Active" und "LOGGING"=="Enabled" haben
+     * RemoteAccess_GetConfigurationNew() 
+     */
 	public function getRemoteServer()
 		{
 		return($this->remServer);
 		}
 		
+    /* Beschleunigung des Ablaufs
+     * Analysiert Structure in Visualization und speichere sie serialisiert in einer Variable
+     * beschleunigt täglichen Aufruf von RemoteAccess
+     * damit Upodate bereits erfolgt ist Aufruf in EvaluateHardware
+     */		 
+    public function createXconfig()
+        {
+        $ipsOps = new ipsOps();
+        $configId = @IPS_GetObjectIDByIdent("XConfigurator", 0);
+        if ($configId === false)
+            {
+            // function createVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+            $configId = $ipsOps->createVariableByName(0,"XConfigurator",3,false,"XConfigurator",9999);
+            echo "createXconfig create $configId \n";
+            }
+        // Abfrage vereinfacht
+        echo "createXconfig found $configId \n";
+
+        $visId=IPS_GetObjectIDByName("Visualization", 0);
+        $webfrontId=IPS_GetObjectIDByName("WebFront", $visId);
+        $adminId=IPS_GetObjectIDByName("Administrator", $webfrontId);
+        $raId=IPS_GetObjectIDByName("RemoteAccess", $adminId);
+        echo "Visualization.WebFront.Administrator.RemoteAccess : $visId.$webfrontId.$adminId.$raId   \n";
+        $entries=$ipsOps->getChildrenIDsOfType($raId,0);
+        //print_R ($entries);
+        $result=array();
+        foreach ($entries as $index=>$entry) 
+            {
+            $name=IPS_GetName($entry);
+            echo "$index $entry $name\n";
+            $result[$name]["OID"]=$entry;
+            $sub=array();
+            $subEntries=$ipsOps->getChildrenIDsOfType($entry,0);
+            foreach ($subEntries as $idx=>$subEntry) 
+                {
+                $subName=IPS_GetName($subEntry);
+                echo "          $idx $subEntry $subName\n";
+                $sub[$subName]=$subEntry;    
+                }
+            ksort($sub);
+            $result[$name]["Childs"]=$sub;
+            }
+        //print_r($result);
+        SetValue($configId, json_encode($result));
+        }
+
 	/**
-	 * @public
+	 * RemoteAccess::add_Guthabensteuerung
 	 *
 	 * zum Include File werden die Variablen der Guthabensteuerung hinzugefügt
 	 *
 	 */
 	public function add_Guthabensteuerung($debug=false)
 		{
+		$this->includefile.="/*erstellt von RemoteAccess::add_Guthabensteuerung() am ".date("d.m.Y H:i")."\n */\n";
 		$this->includefile.='function GuthabensteuerungList() { return array('."\n";
 		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 		if ($debug) echo "\nadd_Guthabensteuerung aufgerufen, Data in Kategorie :".$parentid.". Alle Variablen dort kopieren.\n";
@@ -165,9 +227,11 @@ class RemoteAccess
 		}
 		
 	/**
-	 * @public
+	 * RemoteAccess::add_Amis
 	 *
 	 * zum Include File werden die Variablen der Stromablesung hinzugefügt
+     * nur diese werden von EvaluateStromverbrauch auch initialisisert, das bedeutet sie haben ein ENERGY oder POWER im MessageHandler Config am Schluss
+     * diese Routine braucht richtig lange für die Erstellung
 	 *
 	 */
 	public function add_Amis()
@@ -176,8 +240,8 @@ class RemoteAccess
         IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');        
         $Amis = new Amis();           
 		$MeterConfig = $Amis->getMeterConfig();
-
-		$this->includefile.="\n".'function AmisStromverbrauchList() { return array('."\n";
+		$this->includefile.="\n/*erstellt von RemoteAccess::add_Amis() am ".date("d.m.Y H:i")."\n */\n";
+		$this->includefile.='function AmisStromverbrauchList() { return array('."\n";
 		$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 		echo "\nAmis Stromverbrauch Data auf :".$amisdataID."\n";
 
@@ -230,7 +294,7 @@ class RemoteAccess
 
 		
 	/**
-	 * @public
+	 * RemoteAccess::add_SysInfo
 	 *
 	 * zum Include File werden die Variablen der SysInfo hinzugefügt
 	 *
@@ -238,7 +302,8 @@ class RemoteAccess
 	public function add_SysInfo()
 		{
 		$count=200;
-		$this->includefile.="\n".'function SysInfoList() { return array('."\n";
+		$this->includefile.="\n/*erstellt von RemoteAccess::add_SysInfo() am ".date("d.m.Y H:i")."\n */\n";
+		$this->includefile.='function SysInfoList() { return array('."\n";
 		$OCdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.OperationCenter.SystemInfo');
 		echo "\nOperationCenter Data auf :".$OCdataID."\n";		
 		
@@ -399,108 +464,182 @@ class RemoteAccess
 	 * wenn eine status Information mitgeliefert wird (aus sys_ping) werden die nicht erreichbaren Server nicht behandelt, vermeidet Fehler bei Installation
 	 *
 	 */
-	public function add_RemoteServer($available=Array())
+	public function add_RemoteServer($available=array(),$debug=false)
 		{
-		$this->includefile.="\n".'function ROID_List() { return array('."\n";
+		$this->includefile.="\n/*erstellt von RemoteAccess::add_RemoteServer() am ".date("d.m.Y H:i")."\n */\n";
+        $this->includefile.='function ROID_List() { return array('."\n";
 		//print_r($available);
+        $client = IPS_GetName(0);                                   // unverändert das ist der lokale PC
+        if ($debug) 
+            {
+            echo "add_RemoteServer für Client $client \n"; 
+            print_R($this->remServer);
+            }
 		foreach ($this->remServer as $Name => $Server)
 			{
-			$read=true;
+			$read=true;             // default Server bearbeiten, wird false wenn Status=false
+            $create=false;          // default keine neue Struktur aufbauen, sondern xconfig verwenden
+            $configId=false;
 			if ( isset($available[$Name]["Status"]) ) 
 				{
 				if ($available[$Name]["Status"] == false ) { $read=false; }
 				}
 			if ($read == true )
 				{	
-				echo "Server : ".$Name." mit Adresse : ".$Server."bearbeiten.  \n ";
+				echo "Server : ".$Name." mit Adresse : ".$Server."bearbeiten. ";
 				$rpc = new JSONRPC($Server);
-				$this->includefile.='"'.$Name.'" => array('."\n         ".'"Adresse" => "'.$Server.'", ';
+                try {
+                    $configId = $rpc->IPS_GetObjectIDByIdent("XConfigurator", 0);
+                    } catch (Exception $e) {
+                        echo 'Caught exception: ',  $e->getMessage(), "\n";
+                    }
+                if ($configId)
+                    {
+                    $xconfig=json_decode($rpc->GetValue($configId),true);
+                    //echo "Xconfigurator found $configId \n";
+                    //print_r($xconfig);
+                    }
+                else $xconfig=array();
+                if (isset($xconfig[$client])) 
+                    {
+                    echo "rOID Daten verfügbar.";
+                    print_r($xconfig[$client]);
+                    }
+                else $create=true;
+                echo "\n";
+				$this->includefile.='    "'.$Name.'" => array('."\n         ".'"Adresse" => "'.$Server.'", ';
+                if ($create)
+                    {
+                    $visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
+                    $visname=IPS_GetName(0);
+                    echo "Server : ".$Name."  ".$Server." OID = ".$visrootID." fuer Server ".$visname." \n";
+                    $this->includefile.="\n         ".'"VisRootID" => "'.$visrootID.'", ';
 
-				$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
-				$visname=IPS_GetName(0);
-				echo "Server : ".$Name."  ".$Server." OID = ".$visrootID." fuer Server ".$visname." \n";
-				$this->includefile.="\n         ".'"VisRootID" => "'.$visrootID.'", ';
+                    $wfID=RPC_CreateCategoryByName($rpc, $visrootID, "WebFront");
+                    $this->includefile.="\n         ".'"WebFront" => "'.$wfID.'", ';
 
-				$wfID=RPC_CreateCategoryByName($rpc, $visrootID, "WebFront");
-				$this->includefile.="\n         ".'"WebFront" => "'.$wfID.'", ';
+                    $webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
+                    $this->includefile.="\n         ".'"Administrator" => "'.$webID.'", ';
 
-				$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
-				$this->includefile.="\n         ".'"Administrator" => "'.$webID.'", ';
+                    $raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
+                    $this->includefile.="\n         ".'"RemoteAccess" => "'.$raID.'", ';
 
-				$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
-				$this->includefile.="\n         ".'"RemoteAccess" => "'.$raID.'", ';
+                    $servID=RPC_CreateCategoryByName($rpc, $raID,$visname);
+                    $this->includefile.="\n         ".'"ServerName" => "'.$servID.'", ';
 
-				$servID=RPC_CreateCategoryByName($rpc, $raID,$visname);
-				$this->includefile.="\n         ".'"ServerName" => "'.$servID.'", ';
+                    $this->listofOIDs["Temp"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Temperatur");
+                    $this->includefile.="\n         ".'"Temperatur" => "'.$this->listofOIDs["Temp"][$Name].'", ';
 
-            	// $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion","Pressure","CO2","Rainfall","Helligkeit");      // diese Profile werden installiert
+                    $this->listofOIDs["Switch"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Schalter");
+                    $this->includefile.="\n         ".'"Schalter" => "'.$this->listofOIDs["Switch"][$Name].'", ';
 
-                $profiles=array(
-                    "Temperature"   => ["Tag"       => "Temp",      "Profil"    =>"Temperatur"],          // name => [tag => profil]
-                    "Switch"        => ["Tag"       => "Switch",    "Profil"    =>"Schalter"],
-                    "Kontakt"       => ["Tag"       => "Contact",   "Profil"    =>"Kontakte"],
-                    "Taster"        => ["Tag"       => "Button",    "Profil"    =>"Taster"],
-                    "Bewegung"      => ["Tag"       => "Motion"],
-                    "Feuchtigkeit"=>"Humidity",
-                    "SysInfo"=>"SysInfo",
-                    "Klima"=>"Klima",
-                    "Stromverbrauch"=>"Stromverbrauch",                                                 // neu für direkte Stronverbrauchs register                    
-                    "Andere"=>"Other",
-                    );
-                foreach ($profiles as $profile) 
-                    {}
-    			$this->listofOIDs["Temp"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Temperatur");
-				$this->includefile.="\n         ".'"Temperatur" => "'.$this->listofOIDs["Temp"][$Name].'", ';
+                    $this->listofOIDs["Contact"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Kontakte");
+                    $this->includefile.="\n         ".'"Kontakte" => "'.$this->listofOIDs["Contact"][$Name].'", ';
 
-				$this->listofOIDs["Switch"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Schalter");
-				$this->includefile.="\n         ".'"Schalter" => "'.$this->listofOIDs["Switch"][$Name].'", ';
+                    $this->listofOIDs["Button"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Taster");
+                    $this->includefile.="\n         ".'"Taster" => "'.$this->listofOIDs["Button"][$Name].'", ';
 
-				$this->listofOIDs["Contact"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Kontakte");
-				$this->includefile.="\n         ".'"Kontakte" => "'.$this->listofOIDs["Contact"][$Name].'", ';
+                    $this->listofOIDs["Motion"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Bewegungsmelder");
+                    $this->includefile.="\n         ".'"Bewegung" => "'.$this->listofOIDs["Motion"][$Name].'", ';
 
-				$this->listofOIDs["Button"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Taster");
-				$this->includefile.="\n         ".'"Taster" => "'.$this->listofOIDs["Button"][$Name].'", ';
+                    $this->listofOIDs["HeatControl"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "HeatControl");
+                    $this->includefile.="\n         ".'"HeatControl" => "'.$this->listofOIDs["HeatControl"][$Name].'", ';
 
-				$this->listofOIDs["Motion"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Bewegungsmelder");
-				$this->includefile.="\n         ".'"Bewegung" => "'.$this->listofOIDs["Motion"][$Name].'", ';
+                    $this->listofOIDs["HeatSet"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "HeatSet");
+                    $this->includefile.="\n         ".'"HeatSet" => "'.$this->listofOIDs["HeatSet"][$Name].'", ';	
+                    
+                    $this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
+                    $this->includefile.="\n         ".'"Humidity" => "'.$this->listofOIDs["Humidity"][$Name].'", ';
 
-				$this->listofOIDs["HeatControl"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "HeatControl");
-				$this->includefile.="\n         ".'"HeatControl" => "'.$this->listofOIDs["HeatControl"][$Name].'", ';
+                    $this->listofOIDs["SysInfo"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "SysInfo");
+                    $this->includefile.="\n         ".'"SysInfo" => "'.$this->listofOIDs["SysInfo"][$Name].'", ';
+                    
+                    $this->listofOIDs["Klima"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Klima");
+                    $this->includefile.="\n         ".'"Klima" => "'.$this->listofOIDs["Klima"][$Name].'", ';
+                    
+                    $this->listofOIDs["Helligkeit"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Helligkeit");
+                    $this->includefile.="\n         ".'"Helligkeit" => "'.$this->listofOIDs["Helligkeit"][$Name].'", ';
 
-				$this->listofOIDs["HeatSet"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "HeatSet");
-				$this->includefile.="\n         ".'"HeatSet" => "'.$this->listofOIDs["HeatSet"][$Name].'", ';	
-				
-				$this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
-				$this->includefile.="\n         ".'"Humidity" => "'.$this->listofOIDs["Humidity"][$Name].'", ';
+                    $this->listofOIDs["Stromverbrauch"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Stromverbrauch");                               // auch neu
+                    $this->includefile.="\n         ".'"Stromverbrauch" => "'.$this->listofOIDs["Stromverbrauch"][$Name].'", ';                
 
-				$this->listofOIDs["SysInfo"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "SysInfo");
-				$this->includefile.="\n         ".'"SysInfo" => "'.$this->listofOIDs["SysInfo"][$Name].'", ';
-				
-				$this->listofOIDs["Klima"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Klima");
-				$this->includefile.="\n         ".'"Klima" => "'.$this->listofOIDs["Klima"][$Name].'", ';
-				
-				$this->listofOIDs["Helligkeit"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Helligkeit");
-				$this->includefile.="\n         ".'"Helligkeit" => "'.$this->listofOIDs["Helligkeit"][$Name].'", ';
+                    $this->listofOIDs["Other"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
+                    $this->includefile.="\n         ".'"Andere" => "'.$this->listofOIDs["Other"][$Name].'", ';
 
-				$this->listofOIDs["Stromverbrauch"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Stromverbrauch");                               // auch neu
-				$this->includefile.="\n         ".'"Stromverbrauch" => "'.$this->listofOIDs["Stromverbrauch"][$Name].'", ';                
+                    echo "  Remote VIS-ID                    ".$visrootID,"\n";
+                    echo "  Remote WebFront-ID               ".$wfID,"\n";
+                    echo "  Remote Administrator-ID          ".$webID,"\n";
+                    echo "  RemoteAccess-ID                  ".$raID,"\n";
+                    echo "  RemoteServer-ID                  ".$servID,"\n";
 
-				$this->listofOIDs["Other"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
-				$this->includefile.="\n         ".'"Andere" => "'.$this->listofOIDs["Other"][$Name].'", ';
+                    $RPCHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+                    $RPCarchiveHandlerID[$Name] = $RPCHandlerID[0];
+                    $this->includefile.="\n         ".'"ArchiveHandler" => "'.$RPCarchiveHandlerID[$Name].'", ';
+                    }
+                else
+                    {
+                    $servID = $xconfig[$client]["OID"];
+                    $this->includefile.="\n         ".'"ServerName" => "'.$servID.'", ';
+                    // $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion","Pressure","CO2","Rainfall","Helligkeit");      // diese Profile werden installiert
 
-				echo "  Remote VIS-ID                    ".$visrootID,"\n";
-				echo "  Remote WebFront-ID               ".$wfID,"\n";
-				echo "  Remote Administrator-ID          ".$webID,"\n";
-				echo "  RemoteAccess-ID                  ".$raID,"\n";
-				echo "  RemoteServer-ID                  ".$servID,"\n";
-
-				$RPCHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-				$RPCarchiveHandlerID[$Name] = $RPCHandlerID[0];
-				$this->includefile.="\n         ".'"ArchiveHandler" => "'.$RPCarchiveHandlerID[$Name].'", ';
-				$this->includefile.="\n             ".'	),'."\n";
-				}
+                    $profiles=array(
+                        "Temperatur"       => ["Tag"       => "Temp",      "Profil"    =>"Temperatur"],          // name => [tag => profil]
+                        "Switch"            => ["Tag"       => "Switch",    "Profil"    =>"Schalter"],
+                        "Kontakt"           => ["Tag"       => "Contact",   "Profil"    =>"Kontakte"],
+                        "Taster"            => ["Tag"       => "Button",    "Profil"    =>"Taster"],
+                        "Bewegung"          => ["Tag"       => "Motion",   "Profil"    =>"Bewegungsmelder"],
+                        "HeatControl"       => "HeatControl",
+                        "Feuchtigkeit"      => "Humidity",
+                        "SysInfo"           => "SysInfo",
+                        "Klima"             => "Klima",
+                        "Helligkeit"        => "Helligkeit",
+                        "Stromverbrauch"    => "Stromverbrauch",                                                 // neu für direkte Stronverbrauchs register                    
+                        "Andere"            => "Other",
+                        );
+                    foreach ($profiles as $key => $profile) 
+                        {
+                        $tag=$key;
+                        if (is_array($profile) === false) 
+                            {
+                            $profil=$key;
+                            $tag=$profil;
+                            //echo "Line $profil $tag \n";
+                            }
+                        else
+                            {    
+                            //     function configfileParser(&$inputArray, &$outputArray, $synonymArray,$tag,$defaultValue,$debug=false)
+                            $confprof=array();
+                            configfileParser($profile,$confprof,["Tag","tag","TAG"],"Tag",$key);
+                            configfileParser($profile,$confprof,["Profil","profil","PROFIL"],"Profil",$key);
+                            $tag    = $confprof["Tag"];
+                            $profil = $confprof["Profil"];
+                            //echo "Array $profil $tag \n";
+                            }
+                        
+                        
+                        if (isset($xconfig[$client]["Childs"][$profil]))
+                            {
+                            $this->listofOIDs[$tag][$Name] = $xconfig[$client]["Childs"][$profil];   
+                            //echo "Found $profil => ".$this->listofOIDs[$tag][$Name]." with Tag $tag from xconfig\n"; 
+                            $this->includefile.="\n         ".'"'.$key.'" => "'.$this->listofOIDs[$tag][$Name].'",        // from xconfig';
+                            } 
+                        else    
+                            {
+                            $this->listofOIDs[$tag][$Name] = RPC_CreateCategoryByName($rpc, $servID, $profil);
+                            //echo "Found $profil => ".$this->listofOIDs[$tag][$Name]." with Tag $tag from rpc\n"; 
+                            //echo "Found $profil => ??? with Tag $tag from rpc\n"; 
+                            $this->includefile.="\n         ".'"'.$key.'" => "'.$this->listofOIDs[$tag][$Name].'",        // per rpc call';
+                            } 
+                        }                       // ende foreach profiles                    
+                    $RPCHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+                    $RPCarchiveHandlerID[$Name] = $RPCHandlerID[0];
+                    $this->includefile.="\n         ".'"ArchiveHandler" => "'.$RPCarchiveHandlerID[$Name].'", ';
+                    }               // ende else create
+                $this->includefile.="\n             ".'	),'."\n";
+				}           // ende read
 			}
-		$this->includefile.="      ".');}'."\n";
+        $this->includefile.="      ".');}'."\n";
+        return ($this->includefile);
 		}
 
 	/**
@@ -522,6 +661,15 @@ class RemoteAccess
         	throw new Exception('Create File '.$filename.' failed!');
     		}
 		}
+
+    /* für debugging mal das Ergebnis anschauen
+     */
+	public function show_includeFile()
+		{
+		$this->includefile.="\n".'?>';
+        return($this->includefile);
+		}
+
 
 	/**
 	 * @public
@@ -1246,7 +1394,7 @@ class RemoteAccess
 
 	private function add_variable($variableID,&$includefile,&$count)
 		{
-		$includefile.='"'.IPS_GetName($variableID).'" => array('."\n         ".'"OID" => '.$variableID.', ';
+		$includefile.='    "'.IPS_GetName($variableID).'" => array('."\n         ".'"OID" => '.$variableID.', ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($variableID).'", ';
 		$variabletyp=IPS_GetVariable($variableID);
 		//print_r($variabletyp);
@@ -1260,7 +1408,7 @@ class RemoteAccess
 
 	private function add_variablewithname($variableID,$name,&$includefile,&$count)
 		{
-		$includefile.='"'.$name.'" => array('."\n         ".'"OID" => '.$variableID.', ';
+		$includefile.='    "'.$name.'" => array('."\n         ".'"OID" => '.$variableID.', ';
 		$includefile.="\n         ".'"Name" => "'.$name.'", ';
 		$variabletyp=IPS_GetVariable($variableID);
 		//print_r($variabletyp);
@@ -1548,7 +1696,7 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 				$params = '';
 				IPSLogger_Wrn(__file__, 'Variable '.$variable.' NOT found in IPSMessageHandler Configuration!');
 			}
-            if ($debug) echo "UpdateEvent aufgerufen für Variable ".$variable." : ".json_encode($params)."\n";
+            if ($debug) echo "IPSMessageHandlerExtended::UpdateEvent aufgerufen für Variable ".$variable." : ".json_encode($params)."\n";
             //print_r($params);
             //IPSLogger_Inf(__file__, 'IPSMessageHandler HandleEvent für Component/Module '.json_encode($params));			
 
@@ -1579,7 +1727,7 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 						}
 					}
 				} else {
-					$component->UpdateEvent($variable, $value, $module);
+					$component->UpdateEvent($variable, $value, $module,$debug);
 					if (function_exists('IPSMessageHandler_AfterHandleEvent')) {
 						IPSMessageHandler_AfterHandleEvent($variable, $value, $component, $module);
 					}

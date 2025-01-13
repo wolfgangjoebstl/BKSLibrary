@@ -14,8 +14,6 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
-IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-
 /******************************************************
 
 				INIT

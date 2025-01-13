@@ -1,259 +1,511 @@
 <?php
+/*erstellt von RemoteAccess::add_Guthabensteuerung() am 13.01.2025 18:17
+ */
 function GuthabensteuerungList() { return array(
-"Phone_Cost" => array(
-         "OID" => 17479, 
-         "Name" => "Phone_Cost", 
-         "Typ" => 2, 
+    "StatusWebread" => array(
+         "OID" => 42556, 
+         "Name" => "StatusWebread", 
+         "Typ" => 3, 
          "Order" => "500", 
              	),
-"StartImacro" => array(
-         "OID" => 14828, 
-         "Name" => "StartImacro", 
-         "Typ" => 1, 
+    "Phone_06603192670" => array(
+         "OID" => 55857, 
+         "Name" => "Phone_06603192670", 
+         "Typ" => 3, 
+         "Order" => "100", 
+             	),
+    "Phone_06603192670_Volume" => array(
+         "OID" => 15661, 
+         "Name" => "Phone_06603192670_Volume", 
+         "Typ" => 2, 
+         "Order" => "101", 
+             	),
+    "Phone_Cost" => array(
+         "OID" => 30080, 
+         "Name" => "Phone_Cost", 
+         "Typ" => 2, 
          "Order" => "501", 
              	),
-"checkScriptCounter" => array(
-         "OID" => 31530, 
-         "Name" => "checkScriptCounter", 
-         "Typ" => 1, 
+    "Phone_CL_Change" => array(
+         "OID" => 31465, 
+         "Name" => "Phone_CL_Change", 
+         "Typ" => 2, 
          "Order" => "502", 
              	),
-"Phone_Load" => array(
-         "OID" => 15501, 
-         "Name" => "Phone_Load", 
-         "Typ" => 2, 
+    "StartImacro" => array(
+         "OID" => 33004, 
+         "Name" => "StartImacro", 
+         "Typ" => 1, 
          "Order" => "503", 
              	),
-"ScriptTimer" => array(
-         "OID" => 28552, 
-         "Name" => "ScriptTimer", 
+    "Phone_06763242665" => array(
+         "OID" => 36535, 
+         "Name" => "Phone_06763242665", 
+         "Typ" => 3, 
+         "Order" => "102", 
+             	),
+    "Phone_06763242665_Volume" => array(
+         "OID" => 11985, 
+         "Name" => "Phone_06763242665_Volume", 
+         "Typ" => 2, 
+         "Order" => "103", 
+             	),
+    "Phone_06603404350" => array(
+         "OID" => 12676, 
+         "Name" => "Phone_06603404350", 
+         "Typ" => 3, 
+         "Order" => "104", 
+             	),
+    "Phone_06603404350_Volume" => array(
+         "OID" => 15626, 
+         "Name" => "Phone_06603404350_Volume", 
+         "Typ" => 2, 
+         "Order" => "105", 
+             	),
+    "Phone_06607625474" => array(
+         "OID" => 38943, 
+         "Name" => "Phone_06607625474", 
+         "Typ" => 3, 
+         "Order" => "106", 
+             	),
+    "Phone_06607625474_Volume" => array(
+         "OID" => 20320, 
+         "Name" => "Phone_06607625474_Volume", 
+         "Typ" => 2, 
+         "Order" => "107", 
+             	),
+    "Phone_06603404332" => array(
+         "OID" => 34178, 
+         "Name" => "Phone_06603404332", 
+         "Typ" => 3, 
+         "Order" => "108", 
+             	),
+    "Phone_06603404332_Volume" => array(
+         "OID" => 21670, 
+         "Name" => "Phone_06603404332_Volume", 
+         "Typ" => 2, 
+         "Order" => "109", 
+             	),
+    "Phone_06601735751" => array(
+         "OID" => 55240, 
+         "Name" => "Phone_06601735751", 
+         "Typ" => 3, 
+         "Order" => "110", 
+             	),
+    "Phone_06601735751_Volume" => array(
+         "OID" => 19308, 
+         "Name" => "Phone_06601735751_Volume", 
+         "Typ" => 2, 
+         "Order" => "111", 
+             	),
+    "TestInput" => array(
+         "OID" => 45618, 
+         "Name" => "TestInput", 
          "Typ" => 3, 
          "Order" => "504", 
              	),
-"Phone_CL_Change" => array(
-         "OID" => 22337, 
-         "Name" => "Phone_CL_Change", 
-         "Typ" => 2, 
-         "Order" => "505", 
-             	),
-"ScriptCounter" => array(
-         "OID" => 40928, 
+    "ScriptCounter" => array(
+         "OID" => 22469, 
          "Name" => "ScriptCounter", 
          "Typ" => 1, 
+         "Order" => "505", 
+             	),
+    "Phone_06602980747" => array(
+         "OID" => 35594, 
+         "Name" => "Phone_06602980747", 
+         "Typ" => 3, 
+         "Order" => "112", 
+             	),
+    "Phone_06602980747_Volume" => array(
+         "OID" => 37502, 
+         "Name" => "Phone_06602980747_Volume", 
+         "Typ" => 2, 
+         "Order" => "113", 
+             	),
+    "Phone_06607845067" => array(
+         "OID" => 31273, 
+         "Name" => "Phone_06607845067", 
+         "Typ" => 3, 
+         "Order" => "114", 
+             	),
+    "Phone_06607845067_Volume" => array(
+         "OID" => 41526, 
+         "Name" => "Phone_06607845067_Volume", 
+         "Typ" => 2, 
+         "Order" => "115", 
+             	),
+    "ScriptTimer" => array(
+         "OID" => 36939, 
+         "Name" => "ScriptTimer", 
+         "Typ" => 3, 
          "Order" => "506", 
              	),
-"StatusWebread" => array(
-         "OID" => 43116, 
-         "Name" => "StatusWebread", 
+    "Phone_06605325076" => array(
+         "OID" => 32717, 
+         "Name" => "Phone_06605325076", 
          "Typ" => 3, 
+         "Order" => "116", 
+             	),
+    "Phone_06605325076_Volume" => array(
+         "OID" => 26951, 
+         "Name" => "Phone_06605325076_Volume", 
+         "Typ" => 2, 
+         "Order" => "117", 
+             	),
+    "Phone_Load" => array(
+         "OID" => 31355, 
+         "Name" => "Phone_Load", 
+         "Typ" => 2, 
          "Order" => "507", 
+             	),
+    "Phone_06607674839" => array(
+         "OID" => 37304, 
+         "Name" => "Phone_06607674839", 
+         "Typ" => 3, 
+         "Order" => "118", 
+             	),
+    "Phone_06607674839_Volume" => array(
+         "OID" => 33596, 
+         "Name" => "Phone_06607674839_Volume", 
+         "Typ" => 2, 
+         "Order" => "119", 
+             	),
+    "Phone_06605960456" => array(
+         "OID" => 48743, 
+         "Name" => "Phone_06605960456", 
+         "Typ" => 3, 
+         "Order" => "120", 
+             	),
+    "Phone_06605960456_Volume" => array(
+         "OID" => 44611, 
+         "Name" => "Phone_06605960456_Volume", 
+         "Typ" => 2, 
+         "Order" => "121", 
+             	),
+    "Phone_06781252122" => array(
+         "OID" => 48914, 
+         "Name" => "Phone_06781252122", 
+         "Typ" => 3, 
+         "Order" => "122", 
+             	),
+    "Phone_06781252122_Volume" => array(
+         "OID" => 37189, 
+         "Name" => "Phone_06781252122_Volume", 
+         "Typ" => 2, 
+         "Order" => "123", 
+             	),
+    "checkScriptCounter" => array(
+         "OID" => 49324, 
+         "Name" => "checkScriptCounter", 
+         "Typ" => 1, 
+         "Order" => "508", 
+             	),
+    "Phone_06602765645" => array(
+         "OID" => 52832, 
+         "Name" => "Phone_06602765645", 
+         "Typ" => 3, 
+         "Order" => "124", 
+             	),
+    "Phone_06602765645_Volume" => array(
+         "OID" => 37026, 
+         "Name" => "Phone_06602765645_Volume", 
+         "Typ" => 2, 
+         "Order" => "125", 
              	),
 
       );}
 
+/*erstellt von RemoteAccess::add_Amis() am 13.01.2025 18:17
+ */
 function AmisStromverbrauchList() { return array(
-"Arbeitszimmer_Wirkenergie" => array(
-         "OID" => 27977, 
-         "Name" => "Arbeitszimmer_Wirkenergie", 
+    "MaulwurfOst_Wirkenergie" => array(
+         "OID" => 49718, 
+         "Name" => "MaulwurfOst_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "100", 
              	),
-"Arbeitszimmer_Wirkleistung" => array(
-         "OID" => 29750, 
-         "Name" => "Arbeitszimmer_Wirkleistung", 
+    "MaulwurfOst_Wirkleistung" => array(
+         "OID" => 19107, 
+         "Name" => "MaulwurfOst_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "101", 
              	),
-"ArbeitszimmerLedLicht_Wirkenergie" => array(
-         "OID" => 35979, 
-         "Name" => "ArbeitszimmerLedLicht_Wirkenergie", 
+    "ServerStromversorgung_Wirkenergie" => array(
+         "OID" => 37761, 
+         "Name" => "ServerStromversorgung_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "102", 
              	),
-"ArbeitszimmerLedLicht_Wirkleistung" => array(
-         "OID" => 50645, 
-         "Name" => "ArbeitszimmerLedLicht_Wirkleistung", 
+    "ServerStromversorgung_Wirkleistung" => array(
+         "OID" => 45915, 
+         "Name" => "ServerStromversorgung_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "103", 
              	),
-"ArbeitszimmerMedia_Wirkenergie" => array(
-         "OID" => 32005, 
-         "Name" => "ArbeitszimmerMedia_Wirkenergie", 
+    "Ladestation_Wirkenergie" => array(
+         "OID" => 57303, 
+         "Name" => "Ladestation_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "104", 
              	),
-"ArbeitszimmerMedia_Wirkleistung" => array(
-         "OID" => 53651, 
-         "Name" => "ArbeitszimmerMedia_Wirkleistung", 
+    "Ladestation_Wirkleistung" => array(
+         "OID" => 56462, 
+         "Name" => "Ladestation_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "105", 
              	),
-"ArbeitszimmerUSVSynologies_Wirkenergie" => array(
-         "OID" => 12905, 
-         "Name" => "ArbeitszimmerUSVSynologies_Wirkenergie", 
+    "Boiler_Wirkenergie" => array(
+         "OID" => 31306, 
+         "Name" => "Boiler_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "106", 
              	),
-"ArbeitszimmerUSVSynologies_Wirkleistung" => array(
-         "OID" => 53988, 
-         "Name" => "ArbeitszimmerUSVSynologies_Wirkleistung", 
+    "Boiler_Wirkleistung" => array(
+         "OID" => 35527, 
+         "Name" => "Boiler_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "107", 
              	),
-"ArbeitszimmerLadestation_Wirkenergie" => array(
-         "OID" => 10931, 
-         "Name" => "ArbeitszimmerLadestation_Wirkenergie", 
+    "Feuchtigkeit_Wirkenergie" => array(
+         "OID" => 28507, 
+         "Name" => "Feuchtigkeit_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "108", 
              	),
-"ArbeitszimmerLadestation_Wirkleistung" => array(
-         "OID" => 30720, 
-         "Name" => "ArbeitszimmerLadestation_Wirkleistung", 
+    "Feuchtigkeit_Wirkleistung" => array(
+         "OID" => 17384, 
+         "Name" => "Feuchtigkeit_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "109", 
              	),
-"Gaestezimmer_Wirkenergie" => array(
-         "OID" => 39648, 
-         "Name" => "Gaestezimmer_Wirkenergie", 
+    "Gartenbeleuchtung_Wirkenergie" => array(
+         "OID" => 34760, 
+         "Name" => "Gartenbeleuchtung_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "110", 
              	),
-"Gaestezimmer_Wirkleistung" => array(
-         "OID" => 55215, 
-         "Name" => "Gaestezimmer_Wirkleistung", 
+    "Gartenbeleuchtung_Wirkleistung" => array(
+         "OID" => 40366, 
+         "Name" => "Gartenbeleuchtung_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "111", 
              	),
-"GaestezimmerLampe_Wirkenergie" => array(
-         "OID" => 29554, 
-         "Name" => "GaestezimmerLampe_Wirkenergie", 
+    "GartenbeleuchtungOst_Wirkenergie" => array(
+         "OID" => 39401, 
+         "Name" => "GartenbeleuchtungOst_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "112", 
              	),
-"GaestezimmerLampe_Wirkleistung" => array(
-         "OID" => 43618, 
-         "Name" => "GaestezimmerLampe_Wirkleistung", 
+    "GartenbeleuchtungOst_Wirkleistung" => array(
+         "OID" => 20835, 
+         "Name" => "GartenbeleuchtungOst_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "113", 
              	),
-"Kueche_Wirkenergie" => array(
-         "OID" => 14873, 
-         "Name" => "Kueche_Wirkenergie", 
+    "GartenbeleuchtungSued_Wirkenergie" => array(
+         "OID" => 59842, 
+         "Name" => "GartenbeleuchtungSued_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "114", 
              	),
-"Kueche_Wirkleistung" => array(
-         "OID" => 31087, 
-         "Name" => "Kueche_Wirkleistung", 
+    "GartenbeleuchtungSued_Wirkleistung" => array(
+         "OID" => 29897, 
+         "Name" => "GartenbeleuchtungSued_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "115", 
              	),
-"Weinkuehler_Wirkenergie" => array(
-         "OID" => 40334, 
-         "Name" => "Weinkuehler_Wirkenergie", 
+    "GartenlichtOriginal_Wirkenergie" => array(
+         "OID" => 15123, 
+         "Name" => "GartenlichtOriginal_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "116", 
              	),
-"Weinkuehler_Wirkleistung" => array(
-         "OID" => 21004, 
-         "Name" => "Weinkuehler_Wirkleistung", 
+    "GartenlichtOriginal_Wirkleistung" => array(
+         "OID" => 39513, 
+         "Name" => "GartenlichtOriginal_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "117", 
              	),
-"Wohnzimmer_Wirkenergie" => array(
-         "OID" => 20807, 
-         "Name" => "Wohnzimmer_Wirkenergie", 
+    "GartenstromSteckdosen_Wirkenergie" => array(
+         "OID" => 53041, 
+         "Name" => "GartenstromSteckdosen_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "118", 
              	),
-"Wohnzimmer_Wirkleistung" => array(
-         "OID" => 56504, 
-         "Name" => "Wohnzimmer_Wirkleistung", 
+    "GartenstromSteckdosen_Wirkleistung" => array(
+         "OID" => 48519, 
+         "Name" => "GartenstromSteckdosen_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "119", 
              	),
-"Statusanzeige_Wirkenergie" => array(
-         "OID" => 22647, 
-         "Name" => "Statusanzeige_Wirkenergie", 
+    "GartenstromTorsteuerung_Wirkenergie" => array(
+         "OID" => 35360, 
+         "Name" => "GartenstromTorsteuerung_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "120", 
              	),
-"Statusanzeige_Wirkleistung" => array(
-         "OID" => 47717, 
-         "Name" => "Statusanzeige_Wirkleistung", 
+    "GartenstromTorsteuerung_Wirkleistung" => array(
+         "OID" => 48111, 
+         "Name" => "GartenstromTorsteuerung_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "121", 
              	),
+    "Gartenpumpe_Wirkenergie" => array(
+         "OID" => 40305, 
+         "Name" => "Gartenpumpe_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "122", 
+             	),
+    "Gartenpumpe_Wirkleistung" => array(
+         "OID" => 51341, 
+         "Name" => "Gartenpumpe_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "123", 
+             	),
+    "Messgeraet_Wirkenergie" => array(
+         "OID" => 45367, 
+         "Name" => "Messgeraet_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "124", 
+             	),
+    "Messgeraet_Wirkleistung" => array(
+         "OID" => 43897, 
+         "Name" => "Messgeraet_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "125", 
+             	),
+    "WohnzimmerHeizung_Wirkenergie" => array(
+         "OID" => 26201, 
+         "Name" => "WohnzimmerHeizung_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "126", 
+             	),
+    "WohnzimmerHeizung_Wirkleistung" => array(
+         "OID" => 36093, 
+         "Name" => "WohnzimmerHeizung_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "127", 
+             	),
+    "ArbeitszimmerHeizung_Wirkenergie" => array(
+         "OID" => 31855, 
+         "Name" => "ArbeitszimmerHeizung_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "128", 
+             	),
+    "ArbeitszimmerHeizung_Wirkleistung" => array(
+         "OID" => 57400, 
+         "Name" => "ArbeitszimmerHeizung_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "129", 
+             	),
+    "ArbeitszimmerRouter_Wirkenergie" => array(
+         "OID" => 20988, 
+         "Name" => "ArbeitszimmerRouter_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "130", 
+             	),
+    "ArbeitszimmerRouter_Wirkleistung" => array(
+         "OID" => 15979, 
+         "Name" => "ArbeitszimmerRouter_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "131", 
+             	),
+    "AZ_Effektlicht_Wirkenergie" => array(
+         "OID" => 35777, 
+         "Name" => "AZ_Effektlicht_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "132", 
+             	),
+    "AZ_Effektlicht_Wirkleistung" => array(
+         "OID" => 19475, 
+         "Name" => "AZ_Effektlicht_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "133", 
+             	),
 
       );}
 
+/*erstellt von RemoteAccess::add_SysInfo() am 13.01.2025 18:17
+ */
 function SysInfoList() { return array(
-"Hostname" => array(
-         "OID" => 54221, 
+    "Hostname" => array(
+         "OID" => 35146, 
          "Name" => "Hostname", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "200", 
              	),
-"Betriebssystemname" => array(
-         "OID" => 52163, 
+    "Betriebssystemname" => array(
+         "OID" => 39862, 
          "Name" => "Betriebssystemname", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "201", 
              	),
-"Betriebssystemversion" => array(
-         "OID" => 33438, 
+    "Betriebssystemversion" => array(
+         "OID" => 23386, 
          "Name" => "Betriebssystemversion", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "202", 
              	),
-"Hotfix" => array(
-         "OID" => 29291, 
+    "Hotfix" => array(
+         "OID" => 49154, 
          "Name" => "Hotfix", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "203", 
              	),
-"ExternalIP" => array(
-         "OID" => 38967, 
+    "ExternalIP" => array(
+         "OID" => 49943, 
          "Name" => "ExternalIP", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "204", 
              	),
-"IPS_UpTime" => array(
-         "OID" => 50802, 
+    "IPS_UpTime" => array(
+         "OID" => 49898, 
          "Name" => "IPS_UpTime", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "205", 
              	),
-"IPS_Version" => array(
-         "OID" => 47824, 
+    "IPS_Version" => array(
+         "OID" => 55022, 
          "Name" => "IPS_Version", 
          "Typ"      => 3, 
          "Profile"  => "", 
@@ -262,7 +514,48 @@ function SysInfoList() { return array(
 
       );}
 
+/*erstellt von RemoteAccess::add_RemoteServer() am 13.01.2025 18:17
+ */
 function ROID_List() { return array(
+    "LBG70-2Virt" => array(
+         "Adresse" => "http://wolfgangjoebstl@yahoo.com:Cloudg0606@100.66.204.72:3777/api/", 
+         "ServerName" => "37127", 
+         "Temperatur" => "38549",        // from xconfig
+         "Switch" => "18017",        // from xconfig
+         "Kontakt" => "58579",        // from xconfig
+         "Taster" => "26682",        // from xconfig
+         "Bewegung" => "18252",        // from xconfig
+         "HeatControl" => "30412",        // from xconfig
+         "Feuchtigkeit" => "57734",        // from xconfig
+         "SysInfo" => "34786",        // from xconfig
+         "Klima" => "12130",        // from xconfig
+         "Helligkeit" => "25416",        // from xconfig
+         "Stromverbrauch" => "43071",        // from xconfig
+         "Andere" => "25322",        // from xconfig
+         "ArchiveHandler" => "27926", 
+             	),
+    "BKS01" => array(
+         "Adresse" => "http://wolfgangjoebstl@gmail.com:Cloudg0606@10.0.1.7:3777/api/", 
+         "VisRootID" => "36523", 
+         "WebFront" => "30093", 
+         "Administrator" => "28974", 
+         "RemoteAccess" => "36206", 
+         "ServerName" => "26490", 
+         "Temperatur" => "22418", 
+         "Schalter" => "37035", 
+         "Kontakte" => "38928", 
+         "Taster" => "51179", 
+         "Bewegung" => "48774", 
+         "HeatControl" => "13522", 
+         "HeatSet" => "19192", 
+         "Humidity" => "29160", 
+         "SysInfo" => "42507", 
+         "Klima" => "15016", 
+         "Helligkeit" => "45876", 
+         "Stromverbrauch" => "48747", 
+         "Andere" => "39148", 
+         "ArchiveHandler" => "24614", 
+             	),
       );}
 
 ?>
