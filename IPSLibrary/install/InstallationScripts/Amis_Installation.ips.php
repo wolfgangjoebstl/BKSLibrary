@@ -551,30 +551,14 @@ if ($do>1)
 		$KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
 
 		$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2,'kWh',false,100);
-		//IPS_SetVariableCustomProfile($letzterTagID,'kWh');
-		//IPS_SetPosition($letzterTagID, 100);
 		$letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2,'kWh',false,110);
-		//IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
-		//IPS_SetPosition($letzte7TageID, 110);
 		$letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2,'kWh',false,120);
-		//IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
-		//IPS_SetPosition($letzte30TageID, 120);
 		$letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2,'kWh',false,130);
-		//IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
-		//IPS_SetPosition($letzte360TageID, 130);
 
 		$letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2,'Euro',false,200);
-		//IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
-		//IPS_SetPosition($letzterTagEurID, 200);
 		$letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2,'Euro',false,210);
-		//IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
-		//IPS_SetPosition($letzte7TageEurID, 210);
 		$letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2,'Euro',false,220);
-		//IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');	
-		//IPS_SetPosition($letzte30TageEurID, 220);
 		$letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2,'Euro',false,230);
-		//IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
-		//IPS_SetPosition($letzte360TageEurID, 230);
 	  	
    	}  // ende foreach
 
@@ -647,10 +631,14 @@ if ($do>2)
 	   	{
         //$webfront_links[$Name]["STYLE"]=true;                   // für easySetupWebfront
         $webfront_links[$Name]["CONFIG"]=array(IPSHEAT_WFCSPLITPANEL);
-           }
-    echo "****************Ausgabe Webfront Links               ";    
-	print_r($webfront_links);
-    }
+        }
+    
+    if ($debug)
+        {
+        echo "****************Ausgabe Webfront Links               ";    
+        print_r($webfront_links);
+        }
+    }               // Ende do 3
 
 if ($do>3)          // der Debug bevor die Implementierung startet
     {
@@ -674,11 +662,14 @@ if ($do>3)          // der Debug bevor die Implementierung startet
 
             //$wfc=$wfcHandling->read_wfc(1);
             $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
-            foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+            if ($debug)
                 {
-                echo "\n------$index:\n";
-                $wfcHandling->print_wfc($wfc[$index]);
-                } 
+                foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+                    {
+                    echo "\n------$index:\n";
+                    $wfcHandling->print_wfc($wfc[$index]);
+                    } 
+                }
             $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
             }
         /* else               // alte Webfront erstellung

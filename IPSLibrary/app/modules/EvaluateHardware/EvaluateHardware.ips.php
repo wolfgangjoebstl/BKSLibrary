@@ -414,9 +414,38 @@ IPS_SetEventActive($tim1ID,true);
         echo "=======================================================================\n";
         echo "DetectMovement installiert, Summen und Mirrorregister für Kontakt, Bewegung etc. suchen und registrieren :\n";
         echo "\n";
-        echo "DetectContact Kontakt Register hereinholen:\n";								
+        echo "DetectContact Kontakt Register hereinholen:\n";	
         $DetectContactHandler = new DetectContactHandler();
-        $groups=$DetectContactHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+        $DetectContactHandler->register($DetectDeviceHandler,$debug);
+        echo "\n";
+        echo "DetectMovement Register hereinholen:\n";								
+        $DetectMovementHandler = new DetectMovementHandler();
+        $DetectMovementHandler->register($DetectDeviceHandler,$debug);
+        echo "\n";
+        echo "DetectTemperatureHandler Register hereinholen:\n";								
+        $DetectTemperatureHandler = new DetectTemperatureHandler();
+        $DetectTemperatureHandler->register($DetectDeviceHandler,$debug);
+
+        //$DetectTemperatureHandler->registerMirror($DetectDeviceHandler,$debug);   
+        /* noch erweitern, siehe auskommentierte Funktion unten 
+         * dass alle Spiegelregister in der Config dargestellt sind, zusätzliche Fehlerprüfungen die alle anschlagen
+         * tut nichts zur Sache, aber das Spiegelregister hat den tatsächlichen Wert, das Auswertung Register den vereinheitlichten Wert
+         * das Spiegelregister führt die Historie, man kann den Namen des Register gleich lassen auch wenn sich der Name der Variable, des Gerätes ändert
+         */
+
+        echo "\n";
+        echo "DetectHumidityHandler Register hereinholen:\n";								
+        $DetectHumidityHandler = new DetectHumidityHandler();
+        $DetectHumidityHandler->register($DetectDeviceHandler,$debug);
+        echo "\n";
+        echo "DetectSensorHandler Register hereinholen:\n";								
+        $DetectSensorHandler = new DetectSensorHandler();
+        $DetectSensorHandler->register($DetectDeviceHandler,$debug);
+
+
+        /*							
+        $DetectContactHandler = new DetectContactHandler();
+        $groups=$DetectContactHandler->ListGroups("Motion");       // Type angeben damit mehrere Gruppen aufgelöst werden können 
         $events=$DetectContactHandler->ListEvents();
         echo "----------------Liste der DetectContact Events durchgehen:\n";
         foreach ($events as $oid => $typ)
@@ -441,7 +470,7 @@ IPS_SetEventActive($tim1ID,true);
 
         echo "DetectMovement Bewegungsregister hereinholen:\n";								
         $DetectMovementHandler = new DetectMovementHandler();
-        $groups=$DetectMovementHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+        $groups=$DetectMovementHandler->ListGroups("Motion");       // Type angeben damit mehrere Gruppen aufgelöst werden können 
         $events=$DetectMovementHandler->ListEvents();
         echo "----------------Liste der DetectMovement Events durchgehen:\n";
         foreach ($events as $oid => $typ)
@@ -469,7 +498,7 @@ IPS_SetEventActive($tim1ID,true);
         $DetectTemperatureHandler = new DetectTemperatureHandler();
         $eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();
         $eventTempConfig=$DetectTemperatureHandler->Get_EventConfigurationAuto();    	
-        $groups=$DetectTemperatureHandler->ListGroups("Temperatur");        /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+        $groups=$DetectTemperatureHandler->ListGroups("Temperatur");        // Type angeben damit mehrere Gruppen aufgelöst werden können 
         $events=$DetectTemperatureHandler->ListEvents();
         echo "----------------Liste der DetectTemperature Events durchgehen:\n";    
         foreach ($events as $oid => $typ)
@@ -487,13 +516,12 @@ IPS_SetEventActive($tim1ID,true);
                         {    
                         echo str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75).
                                 json_encode($eventDeviceConfig[$oid])."  ".json_encode($eventTempConfig[$oid])." Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).") Archive Groesse : ".count($werte)."\n";
-                        /* check and get mirror register,. It is taken from config file. If config file is empty it is calculated from parent or other inputs and stored afterwards 
-                            * Config function DetectDevice follows detecttemperaturehandler
-                            */            
-                        $DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','Mirror->'.$mirror);     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig*/
+                        // check and get mirror register,. It is taken from config file. If config file is empty it is calculated from parent or other inputs and stored afterwards 
+                        //     Config function DetectDevice follows detecttemperaturehandler
+                        $DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','Mirror->'.$mirror);     // par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig
                         $result=$DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature',false, true);	        // par 3 config overwrite
                         if ($result) echo "   *** register Event $moid\n";
-                        $result=$DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	/* par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant */
+                        $result=$DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	// par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant 
                         if ($result) echo "   *** register Event $oid\n";
                         }
                     else echo "   -> ****Fehler, $oid nicht mehr vorhanden aber in config eingetragen.\n";
@@ -544,7 +572,7 @@ IPS_SetEventActive($tim1ID,true);
             $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Humidity');		
             if ($result) echo "   *** register Event $soid\n";
             }	
-
+*/
         echo "\n";
         echo "DetectMovement Stellwertsregister hereinholen:\n";								
         $DetectHeatControlHandler = new DetectHeatControlHandler();

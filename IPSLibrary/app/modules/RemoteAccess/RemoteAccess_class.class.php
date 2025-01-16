@@ -96,6 +96,7 @@ class RemoteAccess
 	private $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion","Pressure","CO2","Rainfall","Helligkeit");      // diese Profile werden installiert
 	private $listofOIDs=array();
 	private $listofROIDs=array();
+    private $ipsOps;
 
     public $profileConfig;                  // eine Art Mapping zwischen neuen Allgemeinen Profilen und vorhandenen
 	
@@ -107,6 +108,7 @@ class RemoteAccess
 	 */
 	public function __construct()
 		{
+        $this->ipsOps = new ipsOps();
 		$this->includefile='<?php'."\n";
 
 		/* Beispiel für RemoteAccess_GetConfiguration()
@@ -135,12 +137,12 @@ class RemoteAccess
      */		 
     public function createXconfig()
         {
-        $ipsOps = new ipsOps();
+        
         $configId = @IPS_GetObjectIDByIdent("XConfigurator", 0);
         if ($configId === false)
             {
             // function createVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-            $configId = $ipsOps->createVariableByName(0,"XConfigurator",3,false,"XConfigurator",9999);
+            $configId = $this->ipsOps->createVariableByName(0,"XConfigurator",3,false,"XConfigurator",9999);
             echo "createXconfig create $configId \n";
             }
         // Abfrage vereinfacht
@@ -151,7 +153,7 @@ class RemoteAccess
         $adminId=IPS_GetObjectIDByName("Administrator", $webfrontId);
         $raId=IPS_GetObjectIDByName("RemoteAccess", $adminId);
         echo "Visualization.WebFront.Administrator.RemoteAccess : $visId.$webfrontId.$adminId.$raId   \n";
-        $entries=$ipsOps->getChildrenIDsOfType($raId,0);
+        $entries=$this->ipsOps->getChildrenIDsOfType($raId,0);
         //print_R ($entries);
         $result=array();
         foreach ($entries as $index=>$entry) 
@@ -160,7 +162,32 @@ class RemoteAccess
             echo "$index $entry $name\n";
             $result[$name]["OID"]=$entry;
             $sub=array();
-            $subEntries=$ipsOps->getChildrenIDsOfType($entry,0);
+            $subEntries=$this->ipsOps->getChildrenIDsOfType($entry,0);
+            foreach ($subEntries as $idx=>$subEntry) 
+                {
+                $subName=IPS_GetName($subEntry);
+                echo "          $idx $subEntry $subName\n";
+                $sub[$subName]=$subEntry;    
+                $result[$name]["."][$subName]=array();
+                $this->createXConfigSub($result[$name]["."][$subName],$subEntry);                
+                }
+            ksort($sub);
+            $result[$name]["Childs"]=$sub;
+            }
+        //print_r($result);
+        SetValue($configId, json_encode($result));
+        }
+
+    private function createXConfigSub(&$result,$raId)
+        {
+        $entries=$this->ipsOps->getChildrenIDsOfType($raId,2);                        // das sind alle Kategorien
+        foreach ($entries as $index=>$entry) 
+            {
+            $name=IPS_GetName($entry);
+            echo "$index $entry $name\n";
+            $result[$name]["OID"]=$entry;
+            $sub=array();
+            $subEntries=$this->ipsOps->getChildrenIDsOfType($entry,0);                // das sind alle Sub Kategorien
             foreach ($subEntries as $idx=>$subEntry) 
                 {
                 $subName=IPS_GetName($subEntry);
@@ -170,8 +197,25 @@ class RemoteAccess
             ksort($sub);
             $result[$name]["Childs"]=$sub;
             }
-        //print_r($result);
-        SetValue($configId, json_encode($result));
+        }
+
+    public function getXConfig($Server)
+        {
+        $rpc = new JSONRPC($Server);
+        try {
+            $configId = $rpc->IPS_GetObjectIDByIdent("XConfigurator", 0);
+            } catch (Exception $e) {
+                echo 'Caught exception: ',  $e->getMessage(), "\n";
+            }
+        if ($configId)
+            {
+            $xconfig=json_decode($rpc->GetValue($configId),true);
+            //echo "Xconfigurator found $configId \n";
+            //print_r($xconfig);
+            }
+        else $xconfig=array();
+
+        return ($xconfig);
         }
 
 	/**
@@ -231,7 +275,7 @@ class RemoteAccess
 	 *
 	 * zum Include File werden die Variablen der Stromablesung hinzugefügt
      * nur diese werden von EvaluateStromverbrauch auch initialisisert, das bedeutet sie haben ein ENERGY oder POWER im MessageHandler Config am Schluss
-     * diese Routine braucht richtig lange für die Erstellung
+     * diese Routine braucht richtig lange für die Erstellung wenn damit Remote register erstellt werden.
 	 *
 	 */
 	public function add_Amis()
@@ -252,7 +296,7 @@ class RemoteAccess
 			echo "  Meter :".$meter["NAME"]."\n";
 			$meterdataID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			/* ID von Wirkenergie bestimmen */
-			if ($meter["TYPE"]=="Amis")
+			if (strtoupper($meter["TYPE"])=="AMIS")
 			   {
 				$AmisID = CreateVariableByName($meterdataID, "AMIS", 3);
 				$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
@@ -281,13 +325,20 @@ class RemoteAccess
                     $this->add_variablewithname($StromL3ID,$meter["NAME"]."_StromL3",$this->includefile,$count_phone);
                     }
 				}
-			if ($meter["TYPE"]=="Homematic")
+			if (strtoupper($meter["TYPE"])=="HOMEMATIC")
 				{
 				$energieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $meterdataID);
 				$leistungID = IPS_GetObjectIDByName ( 'Wirkleistung' , $meterdataID);
 				$this->add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$this->includefile,$count_phone);
 				$this->add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$this->includefile,$count_phone);
 				}
+			if (strtoupper($meter["TYPE"])=="SUMME")
+				{
+				$energieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $meterdataID);
+				$leistungID = IPS_GetObjectIDByName ( 'Wirkleistung' , $meterdataID);
+				$this->add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$this->includefile,$count_phone);
+				$this->add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$this->includefile,$count_phone);
+				}                
 			}
 		$this->includefile.="\n      ".');}'."\n";
 		}
@@ -487,27 +538,17 @@ class RemoteAccess
 			if ($read == true )
 				{	
 				echo "Server : ".$Name." mit Adresse : ".$Server."bearbeiten. ";
-				$rpc = new JSONRPC($Server);
-                try {
-                    $configId = $rpc->IPS_GetObjectIDByIdent("XConfigurator", 0);
-                    } catch (Exception $e) {
-                        echo 'Caught exception: ',  $e->getMessage(), "\n";
-                    }
-                if ($configId)
-                    {
-                    $xconfig=json_decode($rpc->GetValue($configId),true);
-                    //echo "Xconfigurator found $configId \n";
-                    //print_r($xconfig);
-                    }
-                else $xconfig=array();
+                $xconfig=$this->getXConfig($Server);
                 if (isset($xconfig[$client])) 
                     {
                     echo "rOID Daten verfügbar.";
-                    print_r($xconfig[$client]);
+                    //echo "ServerName : ".$xconfig[$client]["OID"]." ";
+                    //print_r($xconfig[$client]["Childs"]);
                     }
                 else $create=true;
                 echo "\n";
 				$this->includefile.='    "'.$Name.'" => array('."\n         ".'"Adresse" => "'.$Server.'", ';
+                $rpc = new JSONRPC($Server);
                 if ($create)
                     {
                     $visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
@@ -963,29 +1004,48 @@ class RemoteAccess
      * Defaultwert ist Schalter, sonst die Kategprie anfordern
      * alle Werte in listofROIDs
      */
-	public function get_StructureofROID($key="")
+	public function get_StructureofROID($keyword="",$debug=false)
 		{
-		if ($key=="") $key="Schalter";
+		if ($keyword=="") $keyword="Schalter";
 		$status=$this->RemoteAccessServerTable();
-
+        if ($debug) echo "get_StructureofROID($keyword ...) \n";
 		/* Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben) */
 		$remServer=$this->get_listofROIDs();
+        //print_R($remServer);
 		$struktur=array();
+        $client = IPS_GetName(0);
 		foreach ($remServer as $Name => $Server)
 			{
-			echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+    		if ($debug) echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
 			if ( $status[$Name]["Status"] == true )
 				{
-				$id=(integer)$Server[$key];
-				$rpc = new JSONRPC($Server["Adresse"]);	
-				$children=$rpc->IPS_GetChildrenIDs($id);
-				$struktur[$Name]=array();			
-				foreach ($children as $oid)
-					{
-					$struktur[$Name][$oid]["Name"]=$rpc->IPS_GetName($oid);
-					$struktur[$Name][$oid]["OID"]=$oid;	
-					$struktur[$Name][$oid]["Hide"]=true;							
-					}
+	            $xconfig=$this->getXConfig($Server["Adresse"]);
+                if (isset($xconfig[$client]["."][$keyword]))
+                    {
+                    $struktur[$Name]=array();
+                    foreach($xconfig[$client]["."][$keyword] as $key=>$entry)
+                        {
+                        if ($debug) echo "      ".str_pad($key,30)."   ".json_encode($entry)."\n";
+                        $oid=$entry["OID"];
+                        $struktur[$Name][$oid]["Name"]=$key;
+                        $struktur[$Name][$oid]["OID"]=$oid;
+                        }
+                    //print_R($struktur);        
+                    }
+                else
+                    {
+                    $id=(integer)$Server[$keyword];
+                    $rpc = new JSONRPC($Server["Adresse"]);	
+                    $children=$rpc->IPS_GetChildrenIDs($id);
+                    $struktur[$Name]=array();			
+                    foreach ($children as $oid)
+                        {
+                        $struktur[$Name][$oid]["Name"]=$rpc->IPS_GetName($oid);
+                        $struktur[$Name][$oid]["OID"]=$oid;	
+                        $struktur[$Name][$oid]["Hide"]=true;							
+                        }
+                    echo "Warning, no XConfigurator Data availablem, live fetching needs more time.\n";
+                    }
 				}		
 			}		
 		return($struktur);

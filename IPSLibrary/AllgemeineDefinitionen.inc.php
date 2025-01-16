@@ -2110,6 +2110,10 @@ function send_status($aktuell, $startexec=0, $debug=false)
      *  name        Name
      *  struktur    array der Server Struktur, childrens der id
      *  type        steht für 0 Boolean 1 Integer 2 Float 3 String
+     *
+     * möglichst effiziente Routine gesucht, da rpc Zugriffe immer Zeit brauchen für Auf und Abbau des TCP
+     * die Erzeugung der Struktur braucht lange, daher soll immer die Struktur mitübergeben werden
+     *
      */
     function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
         {
@@ -4277,7 +4281,7 @@ class archiveOps
         }
 
     /* archiveOps::getArchivedValues
-     * aufgerufen von getValues wenn Parameter Aggregated auf false steht
+     * aufgerufen von  getValues wenn Parameter Aggregated auf false steht
      * es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
      * Zwischen Start und Endtime werden Werte aus dem Archiv getLogged geholt, es gibt keine 10.000er Begrenzung, allerdings wird der Speicher schnell knapp
      * es gibt eine manuelle Aggregation die sowohl die Summe als auch den Average und Max/Min berechnen kann. Die Funktion kann auch die Übergabe von einer 10.000 Tranche zurnächsten
@@ -4955,7 +4959,7 @@ class archiveOps
          *      ProcessOnData
          *
          */
-        $resultIntervals = $this->countperIntervalValues($werte,$debug);        // true Debug
+        $resultIntervals = $this->countperIntervalValues($werte,$debug);        // true Debug, Aufruf von getValues
         if ($resultIntervals===false) return (false);                            // spätestens hier abbrechen, eigentlich schon vorher wenn wir draufkommen dass es kein Array mit historischen Werten gibt
         //print_r($result);
         if ($resultIntervals["order"] == "newfirst") 
@@ -5322,7 +5326,7 @@ class archiveOps
         $this->cleanupStoreValues($werte,$oid,$maxLogsperInterval,$debug);          // Werte bereinigen und in result[$oid][Values] abpeichern
         unset($werte);          //free memory
         $this->calculateSplitOnData($oid,$config,$debug);                             // true debug
-        $check = $this->countperIntervalValues($this->result[$oid]["Values"],$debug);        // true Debug
+        $check = $this->countperIntervalValues($this->result[$oid]["Values"],$debug);        // true Debug, Aufruf von analyseValues
         if ($check !== false)
             {
             /* Analyse Ergebnis aus den ausgewählten archivierten Werten */
@@ -6114,7 +6118,8 @@ class archiveOps
                 if ($termin1>$termin2) $result["order"]="oldfirst";
                 else                   $result["order"]="newfirst";
                 }
-            $result["anfang"] = $anfang; $result["ende"]=$ende;
+            $result["anfang"] = $anfang; 
+            $result["ende"]=$ende;
             if ($debug) 
                 {
                 //echo "   countperIntervalValues, Ergebnis ist $count Werte logged per $scale. ";
@@ -14732,9 +14737,14 @@ class ComponentHandling
 							{
 							$rpc = new JSONRPC($Server["Adresse"]);
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
-                            if ($debug) echo "     Erzeuge Variable in ".$Server[$index]." mit $IndexName.$IndexNameExt und Variabletyp $variabletyp und ".$struktur[$Name].".\n";	
+                            if ($debug) 
+                                {
+                                echo "     Erzeuge Variable in ".$Server[$index]." mit $IndexName.$IndexNameExt und Variabletyp $variabletyp "; 
+                                echo "und ".json_encode($struktur[$Name]);
+                                echo ".\n";	
+                                }
 							$result=$this->remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName.$IndexNameExt, $variabletyp,$struktur[$Name]);
-							if ($debug) echo "     Setze Profil für $IndexName$IndexNameExt auf ".$Server["Adresse"]." direkt noch einmal auf $profile da es hier immer Probleme gibt ...\n";							
+							if ($debug) echo "     Setze Profil für $IndexName$IndexNameExt auf ".$Server["Adresse"]." direkt noch einmal auf \"$profile\" da es hier immer Probleme gibt ...\n";							
 							$rpc->IPS_SetVariableCustomProfile($result,$profile);
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);

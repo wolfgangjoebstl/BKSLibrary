@@ -23,9 +23,11 @@
 	 * @ingroup
 	 * @{
 	 *
-	 * Script zur Berechnung der Energiewerte aus Homematic und AMIS Zählern
+	 * Script zur Berechnung der Energiewerte aus Homematic und AMIS Zählern. Hat auchen einen Execute Teil zur Unterstützung des Debuggings.
+     * Mehr übergeordnetes Debugging ist in AMIS.
 	 *
 	 * wird alle 60 Sekunden aufgerufen, es gibt 15 Timeslots, Je timeslot werden alle registrierten Zählertypen je nach Anforderung bearbeitet
+     * kommt vom AMIS Zähler der etwas langsam bei der Augabe der Daten ist.
 	 *
 	 * Timelslot 
      *     1        sendReadCommandAmis "F009"
@@ -44,14 +46,22 @@
 	 *    14
      *    15        writeEnergySumme
 	 *
+     * Wichtig ist das klar ist das alle Ansaetze der Berechnung eine sinnvolle Berechtigung haben
+     * Behandlung als Event : sekundengenaue Aktualisiserung und Berechnung von Summen
+     * Behandlung als Patch : 15 Minutenweise Berechnung hier 
+     *
+     * Master für die komplette Steuerung der Funktionsweise ist das Configfile. Nicht alle Register die
+     * eine Energiemessung unterstützen sollen übernommen werden. Der Wert kann zu klein oder Teil einer übergeordneten Messung sein.
+     *          $amis=new Amis(); $MeterConfig = $amis->getMeterConfig();
+     *
      * writeEnergyHomematic ist Teil der AMIS class
      *   Aufruf mit dem Einzeleintrag der Konfiguration ohne identifier
      *
      *
      *
      * writeEnergySumme
-     *
-     *
+     * jeweils für jeden Zähler einmal alle 15 Minuten aufgerufen. meter[Type] muss Summe sein.
+     * im Parameter meter[Calcualte]stehen die Register die zusammengezählt werden sollen drinnen.
      *
      *
      *
@@ -177,6 +187,7 @@ if ($_IPS['SENDER']=="TimerEvent")          // alle 60 Sekunden
 	
 if ($_IPS['SENDER']=="Execute")
 	{
+    $debug=false;
     echo "===========================================================\n";
     echo "Execute aufgerufen:\n";        
     echo "Amis::MomentwerteAbfragen Ausgabe der Konfiguration:\n";    
@@ -192,7 +203,7 @@ if ($_IPS['SENDER']=="Execute")
 		{
 		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "Category/Variable for : ".str_pad($meter["NAME"],30)." ".$meter["TYPE"]."\n";
-		if ($meter["TYPE"]=="Amis")
+		if (strtoupper($meter["TYPE"])=="AMIS")
 			{
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);			
 			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */	
@@ -208,6 +219,10 @@ if ($_IPS['SENDER']=="Execute")
 			if (isset($com_Port) === false) { echo "  Kein AMIS Zähler Serial Port definiert\n"; break; }
 			else { echo "  AMIS Zähler Port auf OID ".$com_Port." definiert.\n"; }
 			}
+        elseif (strtoupper($meter["TYPE"])=="SUMME")
+			{
+            $amis->writeEnergySumme($meter,$debug);               // true für Debug
+            }
 		//print_r($meter);
 		}
 

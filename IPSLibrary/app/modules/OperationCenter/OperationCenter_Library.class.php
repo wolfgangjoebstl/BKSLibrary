@@ -10799,6 +10799,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
             switch ($item["Type"])
                 {
                 case "Extended color light":
+                case "Hue color lamp":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_RGB";
                     break;
                 case "Hue ambiance lamp":
@@ -10816,13 +10817,16 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                 case "Hue dimmer switch":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_BUTTON";
                     break;
+                case "Dimmable light":                  // Ikea Actuator Driver
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_DIMMER";
+                    break;
                 case "room":
                 case "zone":            // eine Gruppierung, aber wahrscheinlich örtlich abgegrenzt
                     // damit kann die Topologie abgeglichen werden
                     //print_r($entry);
                     break;
                 case "Hue motion sensor":
-                    echo "Hue motion sensor, $oid ".json_encode($item)."\n";
+                    //echo "Hue motion sensor, $oid ".json_encode($item)."\n";
                     switch ($item["TypeChild"])
                         {
                         case "motion":

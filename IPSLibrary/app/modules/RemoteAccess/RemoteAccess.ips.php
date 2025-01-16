@@ -70,9 +70,9 @@
   *************************************************************/
   
   	echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
-	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; }  else { echo "   Modul Guthabensteuerung ist NICHT installiert.\n"; }
-	//if (isset ($installedModules["Gartensteuerung"])) { 	        echo "  Modul Gartensteuerung ist installiert.\n"; }    else { echo "Modul Gartensteuerung ist NICHT installiert.\n";}
-	if (isset ($installedModules["Amis"])) { 				        echo "  Modul Amis ist installiert.\n"; }               else { echo "   Modul Amis ist NICHT installiert.\n"; }
+	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; }  else { echo "  Modul Guthabensteuerung ist NICHT installiert.\n"; }
+	//if (isset ($installedModules["Gartensteuerung"])) { 	        echo "  Modul Gartensteuerung ist installiert.\n"; }    else { echo "  Modul Gartensteuerung ist NICHT installiert.\n";}
+	if (isset ($installedModules["Amis"])) { 				        echo "  Modul Amis ist installiert.\n"; }               else { echo "  Modul Amis ist NICHT installiert.\n"; }
 	if (isset ($installedModules["OperationCenter"])) { 			echo "  Modul OperationCenter ist installiert.\n"; }   else { echo "   Modul OperationCenter ist NICHT installiert.\n"; }
 
 	if (isset ($installedModules["DetectMovement"]))
@@ -111,7 +111,7 @@
 		}		
 	$status=$remote->server_ping();		/* speichert die aktuelle Erreichbarkeit jedes einzelnen Servers in der Liste */
 	echo "Ende Remote Server ping : ".(microtime(true)-$startexec)." Sekunden \n";
-	$remote->add_RemoteServer($status,true);	    /* mit new wurde ein include File angelegt, in dieses wird die Liste der erreichbaren Remote Logging Server eingetragen, ROID_List() */
+	$remote->add_RemoteServer($status);	    /* mit new wurde ein include File angelegt, in dieses wird die Liste der erreichbaren Remote Logging Server eingetragen, ROID_List() */
 	echo "Ende Remote Server installieren : ".(microtime(true)-$startexec)." Sekunden \n";
 	
 	$remote->write_includeFile();			/* und am Ende das include File geschrieben */

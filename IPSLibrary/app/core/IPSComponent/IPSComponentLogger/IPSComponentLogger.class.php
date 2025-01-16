@@ -956,6 +956,9 @@ class Logging
 
     public function do_init_sensor($variable, $variablename)
         {
+        //$debug=$this->debug;      // detaillierteres Debugging
+        $debug=false;
+
         /**************** installierte Module und verfügbare Konfigurationen herausfinden 
         $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
         $this->installedmodules=$moduleManager->GetInstalledModules();  */
@@ -968,7 +971,7 @@ class Logging
             $this->DetectHandler = new DetectSensorHandler();                            // zum Beispiel für die Evaluierung der Mirror Register
             }
 
-        $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+        $this->variablename = $this->getVariableName($variable,$variablename,$debug);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
 
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden 		
         $moduleManager_CC = new IPSModuleManager('CustomComponent');     //   <--- change here 
@@ -982,7 +985,7 @@ class Logging
             {
             case "POWER":           /* Power Wirkleistung und Wirkenergie von AMIS, oder aus einem Homematic Register direkt */
             case "ENERGY":
-                if ($variablename=="") $name="SensorMirror_".IPS_Getname(IPS_GetParent($variable))."_".$this->variablename;
+                //if ($variablename=="") $name="SensorMirror_".IPS_Getname(IPS_GetParent($variable))."_".$this->variablename;           // Workaround
                 echo "   do_init_sensor, from \"$variable,$variablename\" create Power and Energy Mirror Register $name as Integer und ".$this->variableProfile."\n";
                 if ($this->variableProfile == "~Watt.3680")
                     {

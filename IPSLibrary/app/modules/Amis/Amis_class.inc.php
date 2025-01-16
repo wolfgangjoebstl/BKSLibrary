@@ -454,11 +454,11 @@
                     if ( ($entry["NAME"]==$oid) && (isset($entry["OID"])) )
                         {
                         $realOID=$entry["OID"];
-                        //echo "   ".$entry["NAME"]." gefunden. OID aus Config übernehmen $realOID ".IPS_GetName($realOID)."\n";
-                        $result=$this->getRegistersfromOID($realOID);
+                        if ($debug) echo "   ".$entry["NAME"]." gefunden. OID aus Config übernehmen $realOID ".IPS_GetName($realOID)."\n";
+                        $result=$this->getRegistersfromOID($realOID,$MConfig,$debug);
                         }
-                    if ($debug) echo "\n";                        
                     }
+                if ($debug) echo "\n";                        
                 }
             else
                 {
@@ -937,7 +937,7 @@
             //echo"-------------------------------------------------------------\n";
             //print_r($energyMeter);
             //echo"-------------------------------------------------------------\n";
-            echo "Register marked with *** is not in the AMIS configuration.\n";
+            echo "doublecheckEnergyRegisters, all Register marked with *** are not in the AMIS configuration.\n";
             foreach ($energyMeterAll as $oid => $register)
                 {
                 $props=IPS_GetVariable($oid);
@@ -947,7 +947,7 @@
                 if (isset($energyMeterName[$oid])) echo $energyMeterName[$oid]."\n";
                 else echo "\n";            
                 }
-            echo"-------------------------------------------------------------\n";
+            //echo"-------------------------------------------------------------\n";
             } 
 
 
@@ -1183,7 +1183,7 @@
 			if (strtoupper($meter["TYPE"])=="SUMME")
 				{
 				$registerAvailable=true;
-				if ($debug) echo "writeEnergySumme, Werte von : ".$meter["NAME"]."\n";
+				if ($debug) echo "   writeEnergySumme, Werte von : ".$meter["NAME"]."\n";
 			      
 				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
@@ -1193,32 +1193,37 @@
 				if ( isset($meter["Calculate"]) == true )
 					{
 					$calculate = explode(",",$meter["Calculate"]);                  
-					if ($debug) echo "  die folgenden Register werden zusammengezählt: ".$meter["Calculate"]."\n";
+					if ($debug) echo "     dazu werden die folgenden Register zusammengezählt: ".$meter["Calculate"]."\n";
 					//print_r($calculate);
                     $e=0;
 					foreach ($calculate as $oid)
 						{
                         $e++;       // Zeilenindex
-                        if ($debug) echo "      $e bearbeite $oid:\n";                          
-						$result=$this->getRegistersfromOID($oid);           // das sind die Quellregister (von Homematic, Register, AMSI Zähler etc.), vor der Verarbeitung
+                        if ($debug) echo "        $e bearbeite $oid:\n";                          
+						$result=$this->getRegistersfromOID($oid,[],$debug);           // das sind die Quellregister (von Homematic, Register, AMSI Zähler etc.), vor der Verarbeitung
+
+                        //print_r($result);
                         /* nicht die Source sondern die Target Register zusammenzählen 
-                        print_r($result);
 						$energie+=GetValue($result["EnergieID"]);
 						$leistung+=GetValue($result["LeistungID"]);
                         */
-                        $category=IPS_GetObjectIdByName($result["Name"],$this->CategoryIdData);
-                        if ($category !== false)
+                        if ($result !== false)
                             {
-                            $wirkEnergieId=IPS_GetObjectIdByName("Wirkenergie",$category);
-                            $wirkLeistungId=IPS_GetObjectIdByName("Wirkleistung",$category);
-                            if ( ($wirkEnergieId !== false) && ($wirkLeistungId !== false) )
+                            $category=IPS_GetObjectIdByName($result["Name"],$this->CategoryIdData);
+                            if ($category !== false)
                                 {
-                                echo "   $e $wirkEnergieId : ".nf(GetValue($wirkEnergieId),"kWh")." $wirkLeistungId : ".nf(GetValue($wirkLeistungId),"kW");
-        						$energie+=GetValue($wirkEnergieId);
-		        				$leistung+=GetValue($wirkLeistungId);
-        						echo " ergibt Summe Energie ($EnergieID): ".nf($energie,"kWh")." Summe Leistung ($LeistungID): ".nf($leistung,"kW")."\n"; 
+                                $wirkEnergieId=IPS_GetObjectIdByName("Wirkenergie",$category);
+                                $wirkLeistungId=IPS_GetObjectIdByName("Wirkleistung",$category);
+                                if ( ($wirkEnergieId !== false) && ($wirkLeistungId !== false) )
+                                    {
+                                    echo "   $e $wirkEnergieId : ".nf(GetValue($wirkEnergieId),"kWh")." $wirkLeistungId : ".nf(GetValue($wirkLeistungId),"kW");
+                                    $energie+=GetValue($wirkEnergieId);
+                                    $leistung+=GetValue($wirkLeistungId);
+                                    echo " ergibt Summe Energie ($EnergieID): ".nf($energie,"kWh")." Summe Leistung ($LeistungID): ".nf($leistung,"kW")."\n"; 
+                                    }
                                 }
                             }
+                        else echo "Warning, Variable $oid to Calculate Sum not found. Looked for [Name] not Key.\n";
 						}
 						
 					}
@@ -1338,7 +1343,7 @@
 				$outputEnergiewerte="<div class=\"gruenetabelle\"> \n";   /* Umschalten auf Courier Font */
 				$outputTabelle="<div class=\"blauetabelle\"> \n";   /* Umschalten auf Courier Font */
 				$newline="<BR>\n";
-				echo "<p class=\"zeile\"> \n";   /* Umschalten auf Arial Font */				
+				if ($debug) echo "<p class=\"zeile\"> \n";   /* Umschalten auf Arial Font */				
 				}
 			else
 				{
@@ -1423,7 +1428,7 @@
                     $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
                     if ($logAvailable)
                         {
-                        echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":".$newline;
+                        if ($debug) echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":".$newline;
 
                         $werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
                         $zeile[$metercount] = array("Wochentag" => array("Wochentag",0,1,2), "Datum" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2) );
@@ -1436,7 +1441,7 @@
                                 {
                                 $zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
                                 $zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
-                                echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh".$newline;
+                                if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh".$newline;
                                 $zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
                                 if ($laufend>1) 
                                     {
@@ -1458,7 +1463,7 @@
                             if ($laufend==0) 
                                 {
                                 $tabwidth=strlen($zeile[$metercount]["Wochentag"][0])+8;
-                                echo "Es sind ".($anzahl2+1)." Eintraege vorhanden. Breite erster Spalte ist : ".$tabwidth.$newline;
+                                if ($debug) echo "Es sind ".($anzahl2+1)." Eintraege vorhanden. Breite erster Spalte ist : ".$tabwidth.$newline;
                                 $ergebnis_wochentag.=$startcell.substr(("Energie in kWh                            "),0,$tabwidth).$endcell;
                                 $ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
                                 $ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                          "),0,$tabwidth).$endcell;
@@ -1480,7 +1485,7 @@
                         $outputEnergiewerte.=$startparagraph.$startcell.substr($meter["NAME"]."                           ",0,$tabwidth0).$endcell.$startcell.$zeile[$metercount]["Energie"][1].$endcell.$endparagraph;
                         $metercount+=1;
                         }
-                    else echo "****Fehler, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." nicht verfügbar\n";
+                    elseif ($debug)  echo "****Fehler, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." nicht verfügbar\n";
 					}
 				} /* ende foreach Meter Entry */
 
@@ -1504,7 +1509,7 @@
 
 			$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch der letzten Tage als Änderung der Energiewerte pro Tag:".$endcellheader.$endparagraph;
 			$outputTabelle.=$startparagraph.$zeile0.$endparagraph.$startparagraph.$zeile1.$endparagraph;
-			echo "Gesamt Tabelle aufbauen. Anzahl Zähler ist $metercount. \n";
+			if ($debug) echo "Gesamt Tabelle aufbauen. Anzahl Zähler ist $metercount. \n";
 			for ($line=0;$line<($metercount);$line++)
 				{
 				$outputTabelle.=$startparagraph.$startcell.substr($zeile[$line]["Wochentag"][0]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
@@ -1517,7 +1522,7 @@
 						}
 					else	/* wenn es keinen Wert gibt leere Zelle drucken*/
 						{
-						echo "   Zählerwert für ".$zeile[$line]["Wochentag"][0]." vom Datum ".date("d.m", $zeit)." fehlt.\n  ";
+						if ($debug) echo "   Zählerwert für ".$zeile[$line]["Wochentag"][0]." vom Datum ".date("d.m", $zeit)." fehlt.\n  ";
 						$outputTabelle.=$startcell.substr("              ",0,$tabwidth).$endcell;
 						}
 					$zeit-=24*60*60;	/* naechster Tag */			
@@ -1528,7 +1533,7 @@
 			//if ($metercount) print_r($zeile);	        // es gibt auch den Fall dass keine Homematic Messgeräte angeschlossen sind
 			if ($html==true) 
 				{
-				echo "</p>";
+				if ($debug) echo "</p>";
 				$output.="</div> \n";   /* Umschalten auf Courier Font */
 				$outputEnergiewerte.=$endtable."</div> \n";
 				$outputTabelle.=$endtable."</div> \n";				
@@ -1625,7 +1630,7 @@
          *
 		 */
 
-		function writeEnergyRegisterTabletoString($Werte,$html=true)			/* alle Werte als String ausgeben */
+		function writeEnergyRegisterTabletoString($Werte,$html=true,$debug=false)			/* alle Werte als String ausgeben */
 			{
 			if ($html==true) 
 				{
@@ -1642,7 +1647,7 @@
 				$startparagraph="<tr>"; $endparagraph="</tr>";  /* Paragraph oder Table Line */
 				$outputTabelle="<div> \n";
 				$newline="<BR>\n";
-				echo "<p class=\"zeile\"> \n";   /* Umschalten auf Arial Font */				
+				echo "<p class=\"zeile\"> \n";                        // Umschalten auf Arial Font, Debug Ausgabe als html ?  
 				}
 			else
 				{
@@ -1683,7 +1688,7 @@
 			echo "writeEnergyRegisterTabletoString, gesamte Tabelle im Format ".($html?"Html":"Text")." für ".count($Werte)." Zeilen aufbauen.\n";
 			for ($line=0;$line<($metercount);$line++)
 				{
-                echo "Zeile $line für Zähler : ".$Werte[$line]["Wochentag"][0]."\n";
+                echo "   Zeile $line für Zähler : ".$Werte[$line]["Wochentag"][0]."\n";
 				$outputTabelle.=$startparagraph.$startcell.substr($Werte[$line]["Wochentag"][0]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
 				$zeit=$endtime-24*60*60;
 				for ($i=1;$i<10;$i++)
@@ -1694,7 +1699,7 @@
 						}
 					else	/* wenn es keinen Wert gibt leere Zelle drucken*/
 						{
-						echo "   Zählerwert für ".$Werte[$line]["Wochentag"][0]." mit Index".date("d.m", $zeit)." fehlt. Kein Zeitstempel für $zeit vorhanden.\n  ";
+						echo "       Zählerwert für ".$Werte[$line]["Wochentag"][0]." mit Index".date("d.m", $zeit)." fehlt. Kein Zeitstempel für ".date("d.m", $zeit)." vorhanden.\n  ";
                         //foreach ($Werte[$line]["EnergieVS"] as $index => $value) echo "Index $index Wert $value, Found : ".(isset($Werte[$line]["EnergieVS"][date("d.m", $zeit)]))."\n";
 						$outputTabelle.=$startcell.substr("              ",0,$tabwidth).$endcell;
 						}
@@ -1706,7 +1711,7 @@
 			//print_r($Werte);	
 			if ($html==true) 
 				{
-				echo "</p>";
+				echo "</p>";                  // auch Ausgabe als html
 				$outputTabelle.=$endtable."</div> \n";				
 				}
 			return ($style.$outputTabelle);
@@ -1904,7 +1909,7 @@
             foreach ($powerValues as $name => $entry) 
                 {
                 $oid=$entry["OID"];
-                echo str_pad($name,45)." (".$oid.") = ".str_pad(GetValueIfFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")   \n";
+                if ($debug) echo str_pad($name,45)." (".$oid.") = ".str_pad(GetValueIfFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")   \n";
                 }
 
 			$alleStromWerte="";
@@ -2056,11 +2061,12 @@
                     $config["EndTime"]   = $endtime;
                     $valuesAnalysed = $archiveOps->getValues($EnergieID,$config,$debug);     // Analyse der Archivdaten, debug von default
                     //if ($metercount==0) print_R($valuesAnalysed["Description"]["MaxMin"]);
+                    $debug1=false;
                     if (isset($valuesAnalysed["Values"]))
                         {
-                        if (isset($valuesAnalysed["Description"]["MaxMin"]["Span"])) echo "Span ".nf($valuesAnalysed["Description"]["MaxMin"]["Span"],"s")."\n";
+                        if (isset($valuesAnalysed["Description"]["MaxMin"]["Span"])) { if ($debug1) echo "Span ".nf($valuesAnalysed["Description"]["MaxMin"]["Span"],"s")."\n"; }
                         $werte=$valuesAnalysed["Values"];
-                        $result=$archiveOps->countperIntervalValues($werte,2);
+                        $result=$archiveOps->countperIntervalValues($werte,$debug1);                // zusätzliche Debugmöglichkeit
                         //print_R($result);
                         //print_r($valuesAnalysed["Description"]);
                         }
@@ -3040,11 +3046,11 @@
         function __construct($debug=false)
             {
             parent::__construct($debug);
-            if ( ($this->installedModules["Guthabensteuerung"]) && (class_exists("GuthabenHandler")) )
+            if ( (isset($this->installedModules["Guthabensteuerung"])) && (class_exists("GuthabenHandler")) )
                 {
                 $this->guthabenHandler = new GuthabenHandler();                  //default keine Ausgabe, speichern
                 }
-            else echo "class GuthabenHandler not available. Use Modul and include Library.\n";
+            else echo "Warning: AmisSmartMeter::new, class GuthabenHandler not available. Use Modul and include Library to get full functionality.\n";
             }
 
         /* AmisSmartMeter::writeSmartMeterDataToHtml

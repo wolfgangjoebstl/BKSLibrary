@@ -76,7 +76,7 @@
     $dosOps->setMaxScriptTime(400); 
 	$startexec=microtime(true);
     $installModules=false;
-    $debug = true;    
+    $debug = false;    
 
 	/****************************************************************************************************************/
 	/*                                                                                                              */
@@ -294,7 +294,7 @@
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	
     echo "=====================================================================================\n";
-    echo "Install\n";    
+    echo "Install, evaluate what is there to install and rollout on remote logging servers:\n";    
     $componentHandling=new ComponentHandling();
     $commentField="zuletzt Konfiguriert von DetectMovement EvaluateMotion um ".date("h:i am d.m.Y ").".";
     $DetectMovementHandler = new DetectMovementHandler();
@@ -330,7 +330,31 @@
     $groups=$DetectHeatControlHandler->ListGroups('HeatControl');
     print_r($groups);
 
-	$messageHandler = new IPSMessageHandlerExtended();
+    $groupAmis=array();                             // empty if no module is installed
+    if (isset($installedModules["Amis"]))
+        {
+        echo "Amis Modul installed. Evaluate on AMIS Groups:\n";
+	    IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+        IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+	    $moduleManagerAmis = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+	    $CategoryIdDataAmis     = $moduleManagerAmis->GetModuleCategoryID('data');
+        $amis=new Amis();
+        $MeterConfig = $amis->getMeterConfig();
+        foreach ($MeterConfig as $identifier => $meter)
+            {
+            if (strtoupper($meter["TYPE"])=="SUMME")
+                {
+	        	$ID = CreateVariableByName($CategoryIdDataAmis, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+                //echo "    Variable ".str_pad($meter["NAME"],30)." \n";
+                $groupAmis[$meter["NAME"]]["Status"]="available";
+                $groupAmis[$meter["NAME"]]["OID"]=$ID;
+                }
+            }
+        print_r($groupAmis);
+        }
+    
+    $messageHandler = new IPSMessageHandlerExtended();
 
     if ($installModules)
         {
@@ -517,9 +541,10 @@
             print_r($ZusammenfassungID);	
             }
 
-		echo "\n jetzt die einzelnen Zusammenfassungsvariablen für die Gruppen anlegen.\n";
+		echo "\n";
+        echo "Jetzt die einzelnen Zusammenfassungsvariablen für die Motion Gruppen anlegen.\n";
 		$groups=$DetectMovementHandler->ListGroups('Motion');
-		foreach($groups as $group=>$name)
+		foreach($groups as $group=>$entry)
 			{
 			$statusID=$DetectMovementHandler->InitGroup($group);
 			/* nur die Gesamtauswertungen ohne Delay auf den remoteAccess Servern anlegen */		
@@ -558,17 +583,18 @@
 				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 				$parameter.=$Name.":".$result.";";
 				}
-			echo "Summenvariable Gesamtauswertung_".$group." mit ".$statusID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
+			echo "   Summenvariable Gesamtauswertung_".$group." mit ".$statusID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
    			//$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			$messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion',$debug);
 			/* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
-			echo "Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
+			echo "      Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
 			}
 
-		echo "\n jetzt die einzelnen Zusammenfassungsvariablen für die Gruppen anlegen.\n";
+		echo "\n";
+        echo "Jetzt die einzelnen Zusammenfassungsvariablen für die Temperatur Gruppen anlegen.\n";
 		$groups=$DetectTemperatureHandler->ListGroups('Temperatur');
-		foreach($groups as $group=>$name)
+		foreach($groups as $group=>$entry)
 			{
 			$statusID=$DetectTemperatureHandler->InitGroup($group);
 			$parameter="";
@@ -582,15 +608,66 @@
 				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 				$parameter.=$Name.":".$result.";";
 				}
-			echo "Summenvariable Gesamtauswertung_".$group." mit ".$statusID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
+			echo "   Summenvariable Gesamtauswertung_".$group." mit ".$statusID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
    			//$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			$messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Temperatur,,'.$parameter.',TEMPERATUR','IPSModuleSensor_Temperatur',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
 			/* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
-			echo "Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
+			echo "      Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
 			}
 
-		}
+		echo "\n";
+        echo "Jetzt die einzelnen Zusammenfassungsvariablen für die Stromverbrauch Gruppen anlegen.\n";
+		foreach($groupAmis as $group=>$entry)
+			{
+            if (isset($entry["OID"])) 
+                {
+                $ID=$entry["OID"];  // Das ist die Kategorie, wir haben es mit zwei Variablen zu tun
+                //$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
+ 
+                $parameter="";
+                $EnergieID = IPS_GetObjectIdByName('Wirkenergie',$ID);
+                foreach ($remServer as $Name => $Server)
+                    {
+                    $rpc = new JSONRPC($Server["Adresse"]);
+                    $result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group."_Wirkenergie", 2);
+                    $rpc->IPS_SetVariableCustomProfile($result,"~Electricity");
+                    $rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+                    $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1); 	/* 0 Standard 1 ist Zähler */
+                    $rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+                    $parameter.=$Name.":".$result.";";
+                    }
+                echo "   Summenvariable Gesamtauswertung_".$group."_Wirkenergie mit ".$EnergieID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
+                //$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+                $messageHandler->CreateEvent($EnergieID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                $messageHandler->RegisterEvent($EnergieID,"OnChange",'IPSComponentSensor_Remote,,'.$parameter.',ENERGY','IPSModuleSensor_Remote',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
+                /* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
+                echo "      Event ".$EnergieID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group."_Wirkenergie registriert.\n";
+
+                $parameter="";
+                $LeistungID = IPS_GetObjectIdByName('Wirkleistung',$ID);
+                foreach ($remServer as $Name => $Server)
+                    {
+                    $rpc = new JSONRPC($Server["Adresse"]);
+                    $result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group."_Wirkleistung", 2);
+                    $rpc->IPS_SetVariableCustomProfile($result,"~Power");
+                    $rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+                    $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0); 	/* 0 Standard 1 ist Zähler */
+                    $rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+                    $parameter.=$Name.":".$result.";";
+                    }
+                echo "   Summenvariable Gesamtauswertung_".$group."_Wirkleistung mit ".$LeistungID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
+                //$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+                $messageHandler->CreateEvent($LeistungID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                $messageHandler->RegisterEvent($LeistungID,"OnChange",'IPSComponentSensor_Remote,,'.$parameter.',POWER','IPSModuleSensor_Remote',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
+                /* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
+                echo "      Event ".$LeistungID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group."_Wirkleistung registriert.\n";
+
+
+                }
+            }    
+
+		}           // ende installed RemoteAccess
 
     if ($installModules)
         {
@@ -671,7 +748,8 @@
 
         }
 
-
+    if ($installModules===false) echo "\nFor Installation of Registers see daily RemoteAccess Scripts call.\n";
+    echo "\nDetectMovement_Installation abgeschlossen. ".(microtime(true)-$startexec)." Sekunden\n";
 
 
 

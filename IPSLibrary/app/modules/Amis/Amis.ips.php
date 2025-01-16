@@ -18,9 +18,14 @@
 	 
 
     /*
-     * @defgroup 
-     * @ingroup
-     * @{
+     * AMIS, Auslesung von Energie und Leistungsregistern, Auswertung im 15 Minutenraster
+     * 
+     * In Amis_Configuration eine Config erstellen : Rückgabewert von  get_MeterConfiguration
+     * Berechnung der Energiewerte schwierig. DetectMovementLib zählt Gruppen zusammen. 
+     * Die Config listet alle Energieregister aus denen 15 Min Werte gebildet werden sollen auf. Muss nicht automatisch alle Energieregister sein.
+     * In der Config wird angeführt welche register Sub sidn, diese werden unter ihrem Parent dargestellt.
+     * Damit anzeigen wenn Werte nicht zum gesamtverbrauch beitragen sondern eine zusätzliche detaillierung übernehmen.
+     * Parent muss ein Messgerät sein. 
      *
      * Script zur Auslesung von Energiewerten. Diese Script übernimmt die Webfrontvariablen Bearbeitung und wird zusaetzlich zu Testzwecken weiterhin verwendet
      * Regelmaessiger Aufruf wird jetzt von MomentanwerteAbfragen uebernommen. Die Antwort eines AMIS Zähler wird automatisch von AMIS Cutter bearbeitet sobald der Wert verfügbar ist
@@ -65,10 +70,12 @@
 
     if (isset($installedModules["Guthabensteuerung"]))
         {
+        echo "Guthabensteuerung ist installiert.\n";
         IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
         IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");					// Library verwendet Configuration, danach includen
         }
-        
+    else echo "Guthabensteuerung ist NICHT installiert.\n";
+
 	$amis=new Amis();           // Ausgabe SystemDir, erstellt MeterConfig
     $webOps = new webOps();
 
@@ -81,7 +88,9 @@
     $calculateApiTableID        = IPS_GetObjectIDByName("Calculate", $categoryId_SmartMeter);           // button profile is Integer
     $sortApiTableID             = IPS_GetObjectIDByName("Sort", $categoryId_SmartMeter);           // button profile is Integer
 
+    //echo "new AmisSmartMeter : ";
     $amisSM = new AmisSmartMeter();             // verwendet class GuthabenHandler wenn vorhanden
+    //echo " Done\n";
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -120,10 +129,21 @@ if ($_IPS['SENDER']=="WebFront")
 else
 	{	
     ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
-    $debug=true;
+    $debug=false;
     echo "Script called due to an other event than a Webfront Interaction.\n";
 	$MeterConfig = $amis->getMeterConfig();
 	$AmisConfig = $amis->getAmisConfig();
+
+    if (isset($installedModules["RemoteAccess"]))
+        {
+        echo "RemoteAccess ist installiert.\n";
+        IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+        IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+	    $remote=new RemoteAccess();
+        $remote->add_Amis();
+        echo $remote->show_includeFile();
+        }
+
     if ($debug>1) 
         {
         echo "AMIS Configuration:\n";
@@ -252,14 +272,17 @@ else
 	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$configPort=array();
 
-    echo"-------------------------------AMIS Zähler Configuration überprüfen, vergleiche mit class getPortConfiguration------------------------------\n";
+    echo"-------------------------------\n";
+    $amisFound=false;
 	foreach ($MeterConfig as $identifier => $meter)
 		{
 		if ($debug) echo "Create Variableset for : ".str_pad($meter["NAME"],35)." Konfig : ".json_encode($meter)."\n";
 		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Amis")
 		    {
+            $amisFound=true;
 		    $amismetername=$meter["NAME"];			
+            echo "AMIS Zähler Configuration überprüfen, vergleiche mit class getPortConfiguration:\n";
 			echo "Amis Zähler, verfügbare Ports:\n";			
 		
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
@@ -367,6 +390,7 @@ else
 		{	
 		echo "AMIS Meter Read ausgeschaltet.\n";
 		}
+    if ($amisFound===false) echo "Info, kein AMIS Zähler konfiguriert.\n";
 
 	} // ende else Webfront Aufruf
 	
@@ -387,19 +411,21 @@ if ($_IPS['SENDER'] == "Execute")
     echo "----------------------------------------------------\n"; 
     echo "\n";   
     //echo "Data OID der AMIS Zusammenfassung : ".$amis->getAMISDataOids()."\n\n";
-    echo "amis->writeEnergyRegistertoArray(MeterConfig aufgerufen.\n";
+    //$debug=2;
+    echo "amis->writeEnergyRegistertoArray(MeterConfig aufgerufen. Debug ".($debug?"ja":"nein")."\n";           // beim ? ist zuerst true und dann false
     $meterValues=$amis->writeEnergyRegistertoArray($MeterConfig, ($debug>1));
     //print_R($meterValues);
     echo "amis->writeEnergyRegisterTabletoString(meterValues aufgerufen.\n";
     echo $amis->writeEnergyRegisterTabletoString($meterValues);
     echo "\n----------------------------------------------------\n";
-    echo $amis->getEnergyRegister($meterValues,true);
+    echo $amis->getEnergyRegister($meterValues,$debug);
     echo "\n----------------------------------------------------\n";
-    echo $amis->writeEnergyRegistertoString($MeterConfig,true,true);            // output asl html (true) und mit debug (true), sehr lange Ausgabe
-	echo "\nUebersicht Homematic Registers:\n";
+    echo $amis->writeEnergyRegistertoString($MeterConfig,true,$debug);            // output asl html (true) und mit debug (true), sehr lange Ausgabe
+	echo "\n----------------------------------------------------\n";
+    echo "\nUebersicht Homematic Registers:\n";
 	foreach ($MeterConfig as $identifier => $meter)
 		{	
-        $amis->writeEnergyHomematic($meter,true);           // true für Debug, macht nette Ausgabe
+        $amis->writeEnergyHomematic($meter,$debug);           // true für Debug, macht nette Ausgabe
         }
 
 	echo "\nUebersicht serielle Ports:\n";

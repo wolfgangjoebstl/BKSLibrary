@@ -83,6 +83,8 @@
 	
     if (isset ($installedModules["Amis"]))
         {
+        echo "  Modul Amis ist installiert.\n";
+        echo "\n";
         /* nur wenn AMIS installiert ist ausführen */
         echo "Amis Stromverbrauch Struktur auf Remote Servern aufbauen:\n";
         $stromID=Array();
@@ -106,7 +108,8 @@
         $stromverbrauch=AmisStromverbrauchList();
         echo "Darstellung Konfiguration/Zusammenfassung Stromverbrauch:\n";
         //print_r($stromverbrauch);
-
+        foreach ($stromverbrauch as $Key) echo "    ".$Key["Name"]."\n";
+            
         foreach ($stromverbrauch as $Key)
             {
             print_r($Key);
