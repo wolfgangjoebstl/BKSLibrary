@@ -3698,6 +3698,8 @@ class webOps
 /***************************************************************************************************************************
  *
  * versammelt Archive Operationen in einer Klasse
+ * sehr mächtige Funktionen
+ *
  * die Klasse kann bei der Erzeugung auf die Bearbeitung einer Variable eingeschränkt werden
  * abhängig davon wird eine Liste aller archivierten Variablen oder die Konfiguration eines Wertes ausgegeben
  * verwendet class statistics
@@ -3732,8 +3734,9 @@ class webOps
  *  calculateSplitOnData
  *  prepareSplit
  *  countperIntervalValues
- *  setConfigForAddValues
  *  filterNewData
+ *
+ *  setConfigForAddValues   Konfiguration vereinheitlichen
  *  addValuesfromCsv
  *
  *
@@ -3979,7 +3982,6 @@ class archiveOps
      *      bei align gibt es noch nicht die Möglichkeit einen Abstand abzugeben, zB 30 Sekunden
      *
      */
-
     function showValues($werte=false,$configInput=array(),$debug=false)
         {
         $resultShow=array();           // Ausgabe von bereinigten Werten zur weiteren Bearbeitung
@@ -4234,7 +4236,6 @@ class archiveOps
      * die Werte am besten von showValues übernehmen, dann sind sie bereits bereinigt
      *
      */
-
     function lookforValues($werte=false,$lookTimeStamp,$debug=false)
         {
         $tabelle=array();           // Ausgabe der Ergebnisse aus dem Speicher
@@ -4284,7 +4285,10 @@ class archiveOps
      * aufgerufen von  getValues wenn Parameter Aggregated auf false steht
      * es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
      * Zwischen Start und Endtime werden Werte aus dem Archiv getLogged geholt, es gibt keine 10.000er Begrenzung, allerdings wird der Speicher schnell knapp
-     * es gibt eine manuelle Aggregation die sowohl die Summe als auch den Average und Max/Min berechnen kann. Die Funktion kann auch die Übergabe von einer 10.000 Tranche zurnächsten
+     * Es gibt eine manuelle Aggregation die sowohl die Summe als auch den Average und Max/Min berechnen kann. 
+     * Die Funktion kann auch die Übergabe von einer 10.000 Tranche zur nächsten
+     *    if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config 
+     *    else {$this->manualDailyEvaluate($werteTotal,$werte,$config,$debug1); $werteTotal = array_merge($werteTotal,$werte); }
      *
      * es wird meansCalc verwendet um die Datenmengen vorab zu analysieren, Ergebnis Auswertung wird am Ende präsentiert
      *
@@ -4391,6 +4395,147 @@ class archiveOps
                     {
                     $this->manualDailyEvaluate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config
                     $werteTotal = array_merge($werteTotal,$werte);
+                    }
+                }
+            else 
+                {
+                if ($config["Warning"]) echo "Warning, retrieving Logging Data for $oid from ".$config["StartTime"]." to ".$config["EndTime"]." results to empty or fail.\n";
+                $werte=array();
+                }
+            } while (count($werte)==10000);
+
+        $maxminFull->calculate();                   // Max Min Werte im Ergebnis Array maxmin abspeichern
+        $maxminDay->calculate();                   // Max Min Werte im Ergebnis Array maxmin abspeichern
+        if ($debug) 
+            {
+            echo "Ergebnis getArchivedValues Count ".count($werteTotal)."\n";
+            if (count($werteTotal)<20) 
+                {
+                foreach ($werteTotal as $index => $wert) echo "$index ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";
+                }
+            //print_r($means);
+            $maxminFull->print();
+            $maxminDay->print();
+            if ($gaps) print_r($gaps);                  // werden sonst nicht weiter verwendet
+            }
+        if ($gaps) $this->warnings=$gaps;
+        return($werteTotal);
+        }
+
+    /* archiveOps::getArchivedCounters
+     * aufgerufen von  getValues wenn Parameter "DataType auf Counter steht
+     * noch nicht implmentiert, fork von getArchivedValues
+     * geht auch mit manAggregate=daily
+     *
+     * es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
+     * Zwischen Start und Endtime werden Werte aus dem Archiv getLogged geholt, es gibt keine 10.000er Begrenzung, allerdings wird der Speicher schnell knapp
+     * es gibt eine manuelle Aggregation die sowohl die Summe als auch den Average und Max/Min berechnen kann. Die Funktion kann auch die Übergabe von einer 10.000 Tranche zurnächsten
+     *
+     * es wird meansCalc verwendet um die Datenmengen vorab zu analysieren, Ergebnis Auswertung wird am Ende präsentiert
+     *
+     * config auch qualifizieren, aus der Config werden benötigt
+     *      StartTime
+     *      EndTime
+     *      manAggregate    verwendet manualDailyAggregate
+     *
+     *
+     *
+     */
+    public function getArchivedCounters($oid,$configInput=array(),$debug=false)
+        {
+        //if ($debug) $debug=false;
+        // Konfiguration vorbereiten
+        $gaps=false;                        // wen nicht verwendet wird, zumindest definiert
+        $remOID=false;  	                // anstelle lokaler Archive, die Archive von einem Remote Server abfragen
+        $statistics = new statistics();        
+        $config = $statistics->setConfiguration($configInput);          // Konfiguration qualifizieren
+        // OID vom Archiv ermitteln
+        if (is_numeric($oid)) $aggType = AC_GetAggregationType($this->archiveID, $oid);
+        else
+            {
+            if ($debug) echo "getArchivedValues($oid, benötigt Analyse wo der Wert gespeichert ist und welche OID er hat.\n"; // String Variable, wahrscheinlich im Format Server::VariableName
+            $result = explode("::",$oid);
+            $size = sizeof($result);
+            if ($size==2)
+                {
+                $Configuration=array();
+                $remServer	  = RemoteAccessServerTable(2,$debug);
+                if (isset($remServer[$result[0]])) $url=$remServer[$result[0]]["Url"];
+                else return (false);
+                $rpc = new JSONRPC($url);
+                if ($debug) echo "Server $url : ".$rpc->IPS_GetName(0)." Search for Name at Program.IPSLibrary.data.core.IPSComponent.Counter-Auswertung\n";
+                $prgID=$rpc->IPS_GetObjectIDByName("Program",0);
+                $ipsID=$rpc->IPS_GetObjectIDByName("IPSLibrary",$prgID);
+                $dataID=$rpc->IPS_GetObjectIDByName("data",$ipsID);
+                $coreID=$rpc->IPS_GetObjectIDByName("core",$dataID);
+                $compID=$rpc->IPS_GetObjectIDByName("IPSComponent",$coreID);
+                $CounterAuswertungID=$rpc->IPS_GetObjectIDByName("Counter-Auswertung",$compID);
+                $remOID=@$rpc->IPS_GetObjectIDByName($result[1],$CounterAuswertungID);
+                if ($remOID===false) return(false);
+                $archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                $aggType = $rpc->AC_GetAggregationType($archiveHandlerID,$remOID);
+                }
+            else 
+                {
+                $prgID=IPS_GetObjectIDByName("Program",0);
+                $ipsID=IPS_GetObjectIDByName("IPSLibrary",$prgID);
+                $dataID=IPS_GetObjectIDByName("data",$ipsID);
+                $coreID=IPS_GetObjectIDByName("core",$dataID);
+                $compID=IPS_GetObjectIDByName("IPSComponent",$coreID);
+                $CounterAuswertungID=IPS_GetObjectIDByName("Counter-Auswertung",$compID);
+                $oid=@IPS_GetObjectIDByName($result[0],$CounterAuswertungID);
+                if ($oid===false) return(false);
+                $aggType = AC_GetAggregationType($this->archiveID, $oid);
+                }
+            }
+        if ($debug) 
+            {
+            echo "getArchivedValues($oid,".json_encode($configInput)."...)\n";
+            echo "manuelle Aggregation wird durchgeführt: ".json_encode($config["manAggregate"])."\n";
+            echo "Aggregation Type des Archives ist ".($aggType?"Zähler":"Standard")."\n";
+            }
+
+        $werteTotal=array(); 
+        //print_R($config);   
+        $this->configStartEndTime($config);         // transforms config Start/Endtime to Unixtime
+
+        /* Mittelwertberechnung von analyseValues verwenden und vorbereiten */
+        $means=array();                                          // Speicherplatz im Ergebnis zur Verfügung stellen
+        $config["Means"]["Full"]   = new meansCalc($means, "Full");       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
+        $config["Means"]["Day"]    = new meansCalc($means, "Day",2000);                           // Ergebnis in means[Day]
+        $maxminFull = $config["Means"]["Full"];
+        $maxminDay = $config["Means"]["Day"];
+
+        $config["carryOver"]=array();
+        $config["counter"]=$aggType;                        // aufpassen Aggregation ist anders
+        if ($config["maxDistance"]>0)                       // Eventuell Gapanalyse machen
+            {
+            if ($debug) echo "Do distance check for more than ".$config["maxDistance"]." hours before cleanup Data and store.\n";
+            $gaps=array();    
+            $config["Gaps"] = new gapsEval($gaps, "Hours",$config,$debug);       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
+            }
+        $starttime = $config["StartTime"]; $endtime = $config["EndTime"];
+        $debug1=false;
+        // als werte vom Archive einlesen und als werteTotal abspeichern, Umweg notwendig wegen manueller Aggregation
+        do  {   // es könnten mehr als 10.000 Werte sein,   Abfrage generisch lassen, endtime wird upgedated
+            if ($remOID) 
+                {
+                $werte = @$rpc->AC_GetLoggedValues($archiveHandlerID, $remOID, $starttime, $endtime, 0);
+                }
+            else $werte = @AC_GetLoggedValues($this->archiveID, $oid, $starttime, $endtime, 0);
+            if ( ($werte !== false) && (count($werte)>0) )
+                {
+                //print_r($werte);
+                //if ($debug) echo "AC_GetLoggedValues von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+                $firstTime = $werte[array_key_last($werte)]["TimeStamp"];
+                $lastTime  = $werte[array_key_first($werte)]["TimeStamp"];
+                if ($debug) echo "   Read batch from ".date("d.m.Y H:i:s",$firstTime)."  to  ".date("d.m.Y H:i:s",$lastTime)." with ".count($werte)." Values.\n";
+                $endtime=$firstTime-1;                  // keine doppelten Werte, eine Sekunde abziehen 
+                if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config 
+                else 
+                    {
+                    $this->manualDailyCounterEvaluate($werteTotal,$werte,$config,$debug);      // werteTotal ist ergebnis, werte ist Input, config
+                    //$werteTotal = array_merge($werteTotal,$werte);
                     }
                 }
             else 
@@ -4768,7 +4913,68 @@ class archiveOps
         return($carryover);       
         }
 
+
+    /* Alternative zu manualDailyAggregate, wenns nix zum Aggregieren gibt dann zumindest die Grundsätzlichen Evaluierungen machen 
+     * funktioniert für Counter um Intervalldaten zu generieren und zu evaluieren
+     */
+    public function manualDailyCounterEvaluate(&$result,$werte,$config,$debug=false)
+        {
+        //if (isset(($config["carryOver"]))===false) $ergebnis=0;           // wird nicht verwendet
+        //else $ergebnis=$config["carryOver"]["Value"];
+        if ($debug) echo "manualDailyCounterEvaluate \n";
+        $maxmin=array();                                    // Speicherplatz zur Verfügung stellen
+        if (isset($config["Means"]["Full"])) $maxminFull = $config["Means"]["Full"];
+        else $maxminFull = new maxminCalc($maxmin,"Full");       	                        // Full, ohne Parameter wird der ganze Datensatz (zwischen Start und Ende) genommen
+        if (isset($config["Means"]["Day"])) $maxminDay = $config["Means"]["Day"];
+        else $maxminDay = new maxminCalc($maxmin,"Day");
+        $maxminFull->updateConfig($config,false);             // Fehlermeldung wenn maxminCalc verwendet wird, über array kommt meansCalc, true extended Debug
+        $maxminDay->updateConfig($config);
+
+        if (isset($config["Gaps"])) $gaps = $config["Gaps"];            // die class gapsEval
+        else $gaps=false;
+
+        $initial=true;
+        // mit welchem Index hängen wir die Daten an die bestehenden dran
+        if (count($result)==0) $index=0;              // Wir brauchen einen Index zum abspeichern der Werte, wenn leer beginnen wir mit 0
+        else
+            {
+            // ersten und letzten Key rausfinden und den Zeitstempel dazu
+            $lastkey     = array_key_last($result);
+            $firstkey    = array_key_first($result);
+            $pastTime    = $result[$lastkey]["TimeStamp"];
+            $futureTime  = $result[$firstkey]["TimeStamp"];
+            if ($debug) echo "   Input batch data from ".date("d.m.Y H:i:s",$pastTime)." ($lastkey)  to  ".date("d.m.Y H:i:s",$futureTime)." ($firstkey) with ".count($werte)." Values.\n";
+            $index=$lastkey+1;
+            }
+
+        foreach($werte as $wert)            // die Werte analysieren und bearbeiten, Standardfunktionen verwenden
+            {
+            // Intervall bestimmen
+            if ($initial)
+                {
+                $alterWert=$wert["Value"];    
+                $initial=false;
+                }
+            else 
+                {
+                $result[$index]["Value"]= $alterWert-$wert["Value"];
+                if (($wert["Value"]/$alterWert)>2) echo "  Sprung zu gross.\n";
+                $result[$index]["TimeStamp"] = $wert["TimeStamp"];
+                $alterWert=$wert["Value"]; 
+                $maxminFull->addValue($result[$index]);
+                $maxminDay->addValue($result[$index]);
+                if ($gaps) $gaps->addValue($result[$index]);              // Gaps ermitteln
+                //echo "$index ".date("d.m.Y H:i:s",$result[$index]["TimeStamp"])."   ".$result[$index]["Value"]."\n";
+                $index++;
+                }
+            }
+        $carryover=array();
+        //$carryover["Value"] = $ergebnis;
+        return($carryover);       
+        }
+
     /* archiveOps::getValues
+     *
      * Parallelfunktion für analyseValues, diese function ist schon etwas weiter entwickelt
      * Get/AnalyseValues,ArchiveOps, Abgrenzung klar, eine kann auch ohne Zeitangabe Werte verarbeiten
      *
@@ -4883,6 +5089,14 @@ class archiveOps
             $werte=$oid;
             $oid="Array";           // Ist in Result ein Key, praktischerweise umbenennen
             if (is_array($werte)===false) $werte=false;
+            }
+        elseif  ($config["DataType"]==="Counter")     //logged Werte auslesen, Zählerstände in Vorschübe ändern
+            {
+            if ($debug>1) $debug1=true; else $debug1=false;
+            //$werte = @AC_GetLoggedValues($this->archiveID, $oid, $config["StartTime"], $config["EndTime"], 0);          // kann nur 10000 Werte einlesen
+            $werte = $this->getArchivedCounters($oid,$config,$debug1);                //hat keine Begrenzung, bedeutet aber doppelte Speicherung der Daten im memory, kann auch online Aggregierung
+            if ($werte===false) $werte=array();
+            if (isset($werte["Description"])) print_R($werte["Description"]);
             }
         elseif  ($config["Aggregated"]===false)     //logged Werte auslesen, eventuell manuell aggregieren
             {
@@ -5044,7 +5258,7 @@ class archiveOps
                             $mittelWertMonatZuletzt = $mittelWertMonat;
                             }
                         }
-                    elseif ($debug) echo "mittelWertMonat Berechnung mit Fehler bei Index $index :  ".$mittelWertMonat["error"]."\n";
+                    elseif ($debug>1) echo "mittelWertMonat Berechnung mit Fehler bei Index $index :  ".$mittelWertMonat["error"]."\n";
                     // Wochenmittelwerte auswerten
                     $mittelWertWoche = $meansRoll->meansValues($index,"week");                    // aus den nächsten oder vorigen Wochenwerten einen Mittelwert berechnen
                     if ( (isset($mittelWertWoche["error"])) === false)                          // keinen Fehler in diesem Berechnungszyklus  erkannt
@@ -5063,7 +5277,7 @@ class archiveOps
                                 }
                             }
                         }
-                    elseif ($debug) echo "mittelWert Woche Berechnung mit Fehler bei Index $index :  ".$mittelWertWoche["error"]."\n";
+                    elseif ($debug>1) echo "mittelWert Woche Berechnung mit Fehler bei Index $index :  ".$mittelWertWoche["error"]."\n";
                     //$mittelWertTag = $meansRoll->meansValues($index,  1);                    // aus den nächsten 1 Werten einen Mittelwert berechnen, 1 liefert den aktuellen Wert
                     if ( ($logCount>($count-$debugCount)) && ($debug>$debugcheck) ) echo str_pad($logCount,6).date("d.m.Y H:i:s",$entry["TimeStamp"])."  $wertAktuell";
                     // Trend für aktuellen und letzten Tageswerte berechnen
@@ -6150,39 +6364,64 @@ class archiveOps
         $inputAdd=array();
         $inputChg=array();
         $countAdd=0; $countChg=0;
+        if (is_array($timeStamp))
+            {
+            $value=$timeStamp["Value"];
+            $timeStamp=$timeStamp["TimeStamp"];
+            }
+        else $value="Value";
         if ($debug)
             {
             echo "filterNewData, vergleiche ".count($werte)." neue Daten mit ".count($timeStampknown)." vorhandenen Daten.\n";
             echo "Anzahl Einträge : ".count($werte)." First Key ".array_key_first($werte)." => ".date("d.m.Y H:i",array_key_first($werte))." Last Key ".array_key_last($werte)." => ".date("d.m.Y H:i",array_key_last($werte))."\n"; 
+            $max=10; $count=0;
             }
         $count=0;
+        /* $input=array(); $input["Add"]=array(); $input["Chg"]=array();
+        return($input); */
+
         foreach ($werte as $wert) 
             {
-            if (($debug) && ($count++==0)) print_R($wert);
-            if (isset($wert[$timeStamp]))          // da kommt noch mehr
+            //if (($debug) && ($count++==0)) print_R($wert);
+            if ((isset($wert[$value])) && (isset($wert[$timeStamp])))          // da kommt noch mehr
                 {
                 //echo ".";
+                //$valueFloat=(float)$wert[$value];                 // umrechnen ?      
+                $valueFloat=$wert[$value];
                 if (isset($timeStampknown[$wert[$timeStamp]])) 
                     {
-                    if ($wert["Value"] != $timeStampknown[$wert[$timeStamp]]) 
+                    if ($valueFloat != $timeStampknown[$wert[$timeStamp]]) 
                         {
                         if ( ($debug) && ($countChg<10) )
                             {
                             echo "Wert mit Timestamp ".$wert[$timeStamp]." (".date("d.m.Y H:i",$wert[$timeStamp]).") hat einen Eintrag unterschiedlich zum Archive : ";
-                            echo $wert["Value"]." != ".$timeStampknown[$wert[$timeStamp]]."\n";
+                            echo $wert[$value]." != ".$timeStampknown[$wert[$timeStamp]]."\n";
                             }
                         $inputChg[$countChg]["TimeStamp"] = $wert[$timeStamp];
-                        $inputChg[$countChg]["Value"] = $wert["Value"];
+                        $inputChg[$countChg]["Value"] = $valueFloat;
                         $countChg++;
                         }
                     }
                 else
                     {
-                    $inputAdd[$countAdd]["TimeStamp"] = $wert[$timeStamp];
-                    $inputAdd[$countAdd]["Value"] = $wert["Value"];
-                    $countAdd++;
-                    }
+                    if ($valueFloat>0)
+                        {
+                        if ( ($debug) && ($countAdd<10) )
+                            {
+                            echo "Wert mit Timestamp ".$wert[$timeStamp]." (".date("d.m.Y H:i",$wert[$timeStamp]).") hat einen neuen Eintrag : ";
+                            echo $wert[$value]."   ".(float)$wert[$value]."\n";
+                            }
+                        $inputAdd[$countAdd]["TimeStamp"] = $wert[$timeStamp];
+                        $inputAdd[$countAdd]["Value"] = $valueFloat;
+                        $countAdd++;
+                        }
+                    } 
                 }
+            else 
+                {
+                //echo "Warning, wrong Format [$value,$timeStamp] :".json_encode($wert); break;                 // das ist eigentlich normal wenn er die nicht findet
+                }
+            //if ($count++>$max) break;
             }
         $input=array();
         echo "Es wurde $countAdd neue Werte und $countChg geänderte Werte gefunden.\n";
@@ -6191,32 +6430,46 @@ class archiveOps
         return($input);
         }
 
+    /* ohne config funktionieren so komplexe Funktionen wie addValuesfromCsv nicht
+     * in einen erwartbaren Ausgangszustand bringen
+     *      Index
+     *      Key
+     *      Format
+     *      result
+     */
     function setConfigForAddValues($configInput)
         {
-        //parse config file, done twice, also in readFileCsv
+        //parse config file, done twice, also in  readFileCsv
         $config=array();
         configfileParser($configInput, $config, ["INDEX","Index","index" ],"Index" ,[]); 
         configfileParser($configInput, $config, ["KEY","Key","key" ],"Key" ,null); 
         configfileParser($configInput, $config, ["FORMAT","Format","format" ],"Format" ,null); 
         configfileParser($configInput, $config, ["RESULT","Result","result" ],"Result" ,"All");
+        configfileParser($configInput, $config, ["TARGET","Target","target" ],"Target" ,null);          // Target durchlassen
         return ($config);
         }
 
-    /* add Values to archive oid from csv file
+    /* addValuesfromCsv
+     *
+     * add Values to archive oid from csv file
      * used for 15min and daily power values imported manually from Smart Meter Portals
      * Input is config, following format is expected here and at readFileCsv called in here
      *
+     * ähnliche Funktion in AMIS class writeSmartMeterCsvInfoToHtml
      *
-     *
+     * nur wenn debug false ist werden Werte in das Array geschrieben
+     * verwendet 
+     *      getArchivedValues
+     *      readFileCsv  
      */
 
     function addValuesfromCsv($file,$oid,$configInput,$debug=true)
         {
         $input=false;
-        $config=$this->setConfigForAddValues($configInput);           //parse config file, done twice, also in readFileCsv
+        $config=$this->setConfigForAddValues($configInput);           //parse config file, done twice, also in  readFileCsv
 
-        //$debug1=false;          // debug readFileCsv
-        $debug1=$debug;
+        $debug1=false;          // debug readFileCsv, false spart output
+        //$debug1=$debug;
         if ($debug) 
             {
             echo "addValuesfromCsv, target für csv Werte ist OID : $oid. Werte aus dem Archiv auslesen. Config is ".json_encode($config)."\n";
@@ -6249,7 +6502,16 @@ class archiveOps
             else echo "Config Parameter \"Merge\" id mising. Check Config \"Key\".\n";
             }
         else $key=$config["Key"]; 
-        $input = $this->filterNewData($result,$target,$key,$debug);
+        if (isset($config["Target"]["Column"])) 
+            {
+            echo "Target found : ".$config["Target"]["Column"]."\n";
+            $value=$config["Target"]["Column"];
+            }
+        else $value="Value";
+        $keyconfig=array();;
+        $keyconfig["TimeStamp"]=$key;
+        $keyconfig["Value"]=$value;
+        $input = $this->filterNewData($result,$target,$keyconfig,true);
         
         //$this->showValues($write,$config);
 
@@ -6402,6 +6664,7 @@ class statistics
         configfileParser($logInput, $config, ["DataType","DATATYPE","datatype" ],"DataType" ,"Archive");
 
         if ($config["DataType"] == "Logged") $config["Aggregated"]=false;
+        elseif ($config["DataType"] == "Counter") $config["Aggregated"]=false;
         else 
             {
             configfileParser($logInput, $config, ["Aggregated","AGGREGATED","aggregated" ],"Aggregated" ,false); 
@@ -7090,7 +7353,7 @@ class eventLogEvaluate extends statistics
             }
         elseif (isset($this->inputValues[$index]["Value"])) $messwert = $this->inputValues[$index]["Value"];   // für previousOne 
         else return (false);
-        if ($this->showmax) {$this->showmax--; if ($this->debug) echo "addValueAsIndex($index : $messwert ".date("d.m. H:i:s",$this->inputValues[$index]['TimeStamp'])."\n"; }
+        if ($this->showmax) {$this->showmax--; if ($this->debug>1) echo "addValueAsIndex($index : $messwert ".date("d.m. H:i:s",$this->inputValues[$index]['TimeStamp'])."\n"; }
 
         // beim ersten Mal alles vorbereiten, Ergebnis ist delay, beim ersten Mal 0 sonst die zeitliche Differenz zum vorigen Wert und damit Info ob die Auswertung zeitlich nach vorne oder nach hinten geht 
         if ($this->previousOne===false)         // Wert von der ersten, später letzten Berechnung speichern , benötigt für Einzelwerte Analyse ohne zeitlicher Komponente
@@ -12732,7 +12995,9 @@ class fileOps
         return($index);
         }
 
-    /* ein csv File einlesen und als array in result übergeben. Das Array ist der erste Parameter, bearbeitet als Pointer
+    /* readFileCsv
+     *
+     * ein csv File einlesen und als array in result übergeben. Das Array ist der erste Parameter, bearbeitet als Pointer
      * die erste Zeile ist immer ein Index, entweder wird der Index übernommen oder durch einen eigenen ersetzt
      * verwendet php funktion fgetcsv mit seperator ;
      *
@@ -12746,7 +13011,7 @@ class fileOps
      *      Key     Key mit optional untergeordneten Parametern
      *                  Merge
      *                  From
-     *      Result
+     *      Result  Add oder ein array mit [Mode->Add,Columns->[Value1,Value2,Value3]]
      *      Format  umformatieren mit untergeordneten Parametern   
      *
      * für die Bearbeitung der Daten werden data und index Spalte für Spalte durchgegangen
@@ -12778,11 +13043,11 @@ class fileOps
             }
         if ($debug)   echo "readFileCsv::fileOps, adjusted input config is ".json_encode($config)."\n";
         if ($debug>2) echo "Memorysize : ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";  
-
         // continue
         $error=0; $errorMax=20;     /* nicht mehr als 20 Fehler/Info Meldungen ausgeben */
         $error1=0; $errorMax1=50;
         $error2=0;
+        $once=true;
 
         $rowMax=10;                 /* debug, nicht mehr als rowMax Zeilen ausgeben, sonst ist der output buffer voll */
         $ergebnis=true;             // wird false wenn Filename nicht korrekt oder result kein array
@@ -12822,6 +13087,7 @@ class fileOps
             {
             if ( (($handle = @fopen($this->fileName, "r")) !== false) )
                 {
+                // csv Zeile für Zeile einlesen
                 $row=1; $rowShow=1; $countIndex=false;
                 while (($data = fgetcsv($handle, 0, ";")) !== false) 
                     {
@@ -12874,15 +13140,14 @@ class fileOps
                     else    /* alle anderen Zeilen hier einlesen */
                         {
                         if ($num==0) echo "Fehler, no csv Data identified in Line $row.\n";
-                        if ($countIndex==false)
+                        if ($countIndex==false)         // alle relevanten Spalten einmal zaehlen
                             {
-                            $countIndex=0;
-                            foreach ($index as $ct => $nameIndex) 
+                            $countIndex=count($index);  // trailing Dummies aus der mindest geforderten Liste rausnehmen
+                            do { $countIndex--; } while (strtoupper($index[$countIndex]) == "DUMMY");  // trailing Dummies aus der mindest geforderten Liste rausnehmen 
+                            if ($debug>1) 
                                 {
-                                if (strtoupper($nameIndex) != "DUMMY") $countIndex++;
-                                else break;                                                     // trailing Dummies aus der mindest geforderten Liste rausnehmen 
-                                }   
-                            if ($debug>1) echo "From index minimum first $countIndex Columns have to be provided.\n";
+                                echo "From index minimum first $countIndex Columns have to be provided.\n";
+                                }
                             }
                         if ($num != (count($index)) )               // num ist count($data)
                             {
@@ -12900,9 +13165,10 @@ class fileOps
                             $key1=$row-2;    // starts with 0, if there is no key defined
                             $i=0;
                             $dataEntries=array();       // Zeile bearbeiten und Ergebnis zwischenspeichern
-                            foreach ($index as $key2)   // index durchgehen, Eintraege mit false überspringen
+                            foreach ($index as $key2)   // index durchgehen, Eintraege mit false oder DUMMY überspringen
                                 {
-                                if (($key2 !== false) && (strtoupper($key2) !== "DUMMY")) $dataEntries[$key2]=$data[$i];
+                                //if (isset($data[$i])===false) echo "irgendwas ist falsch hier: ".json_encode($data)."\n";
+                                if (($key2 !== false) && (strtoupper($key2) !== "DUMMY") && (isset($data[$i])) ) $dataEntries[$key2]=$data[$i];
                                 $i++;
                                 }
                             //dataEntries zusammenfassen
@@ -12940,12 +13206,12 @@ class fileOps
                                     $keyIndex=99999; // sonst greift key nicht
                                     }
                                 }
-                            // eventuell umformatieren
+                            // eventuell umformatieren, Format=[]
                             if (isset($config["Format"]))
                                 {
                                 if (is_array($config["Format"]))
                                     {
-                                    foreach ($config["Format"] as $format => $keyComp)
+                                    foreach ($config["Format"] as $keyComp => $format )
                                         {
                                         if (isset($dataEntries[$keyComp])) 
                                             {
@@ -12968,7 +13234,8 @@ class fileOps
                                                         }
                                                     break;
                                                 }
-                                            }    
+                                            }
+                                        elseif ($once) { echo "$keyComp not in Data   \n"; $once=false;  }     
                                         }
                                     }
                                 }
@@ -12997,7 +13264,7 @@ class fileOps
 
                                 if ($keyIndex<99999) 
                                     {
-                                    //$key1=$data[$keyIndex];             //key1 richtig berechnen ist kein 0..n Index, keyindex wird 9999 wen ein Merge erfolgt ist
+                                    //$key1=$data[$keyIndex];             //key1 richtig berechnen ist kein 0..n Index, keyindex wird 9999 wenn ein Merge erfolgt ist
                                     $key1=$dataEntries[$index[$keyIndex]];
                                     }
                                 else $key1=$timeStamp;
@@ -13010,6 +13277,7 @@ class fileOps
                                         }
                                     $entryExist=json_encode($result[$key1]);
                                     $entryNew=json_encode($dataEntries);
+                                    if (($rowShow < $rowMax) && ($debug>1) )  { echo "dataEntries found: $entryNew \n"; $rowShow++; }
                                     if ($entryExist != $entryNew)
                                         {
                                         if ( ($debug) && ($error++ < $errorMax) )           // nicht alle Meldungen ausgeben, führen zu einem Overflow
@@ -13017,7 +13285,7 @@ class fileOps
                                             echo "-> $key1 bereits bekannt. Eintrag $entryExist wird mit $entryNew nicht überschrieben.\n"; 
                                             }
                                         }
-                                    if (strtoupper($config["Result"])!="ALL") unset($result[$key1]);                //ALL ist default, sonst löschen
+                                    if (strtoupper($config["Result"]["Mode"])!="ALL") unset($result[$key1]);                //ALL ist default, sonst löschen
                                     }
                                 else 
                                     {
@@ -13031,7 +13299,13 @@ class fileOps
                                         $this->analyze[$analyzeIndex]["Diff"]=$overwriteEnd-$overwriteStart;
                                         $analyzeIndex++;
                                         }
-                                    if ($dataEntries["Value"]!="") 
+                                    if (($rowShow < $rowMax) && ($debug>1) )  
+                                        { 
+                                        $entryCheck=json_encode($dataEntries);
+                                        echo "      dataEntries found for Key $key1: $entryCheck \n"; $rowShow++; 
+                                        }
+                                    // fixe Übernahme von Werten mit Value ungleich Blank, oder einfach alle Zeilen übernehmen                                        
+                                    //if ($dataEntries["Value"]!="") 
                                         {                                        
                                         if ($rowShow < $rowMax) if ($debug>1) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
                                         $result[$key1]=$dataEntries;   
@@ -13065,19 +13339,25 @@ class fileOps
                             //if ($row < $rowMax) echo "<p> $key1 : $num Felder in Zeile $row: <br /></p>\n";
                             }                             
                         }
-                    $row++;                    
+                    $row++;  
+                    //if ($row>200) break;                  
                     }
                 fclose($handle);
                 if ($debug) echo "Input File hat $row Zeilen und $num Spalten. ".sizeof($index)." Spalten davon uebernommen.\n";
                 }           // ende File korrekt geöffnet
             else $ergebnis=false;                
             }           // ende if param error check
-        else $ergebnis=false;
+        else 
+            {
+            echo "warning, input parameter wrong.\n";
+            $ergebnis=false;
+            }
         if ($ergebnis) return ($this->findColumnsLines($result));           // columns und lines übergeben, nicht das result, führt zu Speicherverschwendung
         else return($ergebnis);
         }  // ende function
 
-    /* check und parse die Komfiguration für readFileCsv
+    /* readFileCsvParseConfig
+     * check und parse die Komfiguration für readFileCsv
      *      Key     Key mit optional untergeordneten Parametern
      *                  Merge
      *                  From
@@ -13095,7 +13375,20 @@ class fileOps
             configfileParser($config["Key"],$configKey,["From","from","FROM"],"From",Null);
             $config["Key"]=$configKey;
             }
-        configfileParser($key,$config,["Result","result","RESULT"],"Result","All");
+        configfileParser($key,$config,["Result","result","RESULT"],"Result",[]);            // default ist leeres Array
+        if (is_array($config["Result"])===false)
+            {
+            $mode =$config["Result"];
+            //echo "readFileCsvParseConfig Mode $mode erkannt. Result for Value not defined.";
+            $config["Result"]=array();
+            $config["Result"]["Mode"]=$mode;   
+            }
+        if (is_array($config["Result"]))        // Columns->[Value1,Value2,Value3]
+            {
+            configfileParser($config["Result"],$configResult,["Mode","mode","MODE"],"Mode","All");
+            configfileParser($config["Result"],$configResult,["Columns","columns","COLUMNS"],"Columns",["Value"]);
+            $config["Result"]=$configResult;
+            }
         configfileParser($key,$config,["Format","format","FORMAT"],"Format",Null);
 
         if ($debug) print_r($config);

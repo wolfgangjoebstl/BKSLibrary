@@ -53,7 +53,9 @@
  *************************************************************/
 
 $cutter=true;
-$do=6;                  // schrittweises abarbeiten des Installs für mehr Übersichtlichkeit beim Debug, bei 6 sind alle Teile dran
+$do=6;                  // schrittweises abarbeiten des Installs für mehr Übersichtlichkeit beim Debug, 
+                        // bei 6 sind alle Teile dran
+                        // bei 3 werden nur die webfront_links ausgegeben
 $debug=false;               // wir wollen mehr Übersichtlichkeit
 
 /******************** Defaultprogrammteil *******************
@@ -64,6 +66,7 @@ $debug=false;               // wir wollen mehr Übersichtlichkeit
 
 	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');	
 	IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+	IPSUtils_Include ('Amis_Include.inc.php', 'IPSLibrary::app::modules::Amis');
 	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -173,9 +176,9 @@ if ($do>0)
     $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 
 	if ($WFC10_Enabled==true)   	    $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];	
-	if ($WFC10User_Enabled==true)		$WFC10User_ConfigId       = $WebfrontConfigID["User"];        
-	if ($Mobile_Enabled==true)  		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');	
-	if ($Retro_Enabled==true)   		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+	if ($WFC10User_Enabled==true)		$WFC10User_ConfigId   = $WebfrontConfigID["User"];        
+	if ($Mobile_Enabled==true)  		$Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');	
+	if ($Retro_Enabled==true)   		$Retro_Path        	  = $moduleManager->GetConfigValue('Path', 'Retro');
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -234,18 +237,11 @@ if ($do>1)
 
 	$Amis = new Amis();
 	$MeterConfig = $Amis->getMeterConfig();
+    $MeterStatusConfig=$Amis->getAmisConfig();
 
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 	$MeterReadDefault=true;
-	if ( function_exists("get_AmisConfiguration") )
-		{
-		$MeterStatusConfig=get_AmisConfiguration();
-		if ( isset($MeterStatusConfig["Status"]) )
-			{
-			if ( Strtoupper($MeterStatusConfig["Status"]) != "ACTIVE" ) 	$MeterReadDefault=false;
-			}
-		}
-	//print_r($MeterConfig);
+    if ( strtoupper($MeterStatusConfig["Status"]) != "ACTIVE" ) 	$MeterReadDefault=false;
 	
 	//$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	/* 	 CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
@@ -265,7 +261,7 @@ if ($do>1)
 	foreach ($MeterConfig as $identifier => $meter)
 		{
 		echo"\n-------------------------------------------------------------\n";
-		echo "Create Variableset for : ".$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier." \n";
+		echo "Create Variableset for : ".str_pad($meter["TYPE"],14)." ".str_pad($meter["NAME"],30)." mit ID : ".$identifier." \n";
 		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetPosition($ID,$pos);
 		$pos +=100;
@@ -299,7 +295,12 @@ if ($do>1)
                 AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
                 AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
                 IPS_ApplyChanges($archiveHandlerID);
-                
+
+                $LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                AC_SetLoggingStatus($archiveHandlerID,$LeistungTagID,true);
+                AC_SetAggregationType($archiveHandlerID,$LeistungTagID,0);
+                IPS_ApplyChanges($archiveHandlerID);
+
                 $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2,'kWh');   /* 0 Boolean 1 Integer 2 Float 3 String */
                 //IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
             
@@ -310,6 +311,8 @@ if ($do>1)
                 // Homematic
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungTagID]["NAME"]="Wirkleistung (Tag)";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungTagID]["PANE"]=true;		
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
@@ -332,6 +335,11 @@ if ($do>1)
                 AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
                 IPS_ApplyChanges($archiveHandlerID);
                 
+                $LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                AC_SetLoggingStatus($archiveHandlerID,$LeistungTagID,true);
+                AC_SetAggregationType($archiveHandlerID,$LeistungTagID,0);
+                IPS_ApplyChanges($archiveHandlerID);
+
                 $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
 
                 //$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -363,6 +371,11 @@ if ($do>1)
                 AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
                 AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
                 IPS_ApplyChanges($archiveHandlerID);
+
+                $LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                AC_SetLoggingStatus($archiveHandlerID,$LeistungTagID,true);
+                AC_SetAggregationType($archiveHandlerID,$LeistungTagID,0);
+                IPS_ApplyChanges($archiveHandlerID);                
 
                 $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
                 
@@ -445,7 +458,7 @@ if ($do>1)
                             @IPS_DisconnectInstance($CutterID);
                             IPS_ConnectInstance($CutterID, $SerialComPortID);
                             }					
-                        $config=IPS_GetConfiguration($CutterID);
+                        $config = IPS_GetConfiguration($CutterID);
                         echo "    ".$config."\n";					
                         }
                     $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$CutterID);
@@ -505,6 +518,11 @@ if ($do>1)
                 //IPS_SetVariableCustomProfile($aktuelleLeistungID,'~Power');
                 AC_SetLoggingStatus($archiveHandlerID,$aktuelleLeistungID,true);
                 AC_SetAggregationType($archiveHandlerID,$aktuelleLeistungID,0);
+                IPS_ApplyChanges($archiveHandlerID);
+
+                $LeistungTagID = CreateVariableByName($AmisID, 'Wirkleistung (Tag)', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+                AC_SetLoggingStatus($archiveHandlerID,$LeistungTagID,true);
+                AC_SetAggregationType($archiveHandlerID,$LeistungTagID,0);
                 IPS_ApplyChanges($archiveHandlerID);
 
                 $chartID = CreateVariableByName($AmisID, "Chart", 3,'~HTMLBox');
@@ -589,14 +607,15 @@ if ($do>2)
 	$KurvenID = CreateVariableByName($CategoryIdData, "Kurven", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	IPS_SetPosition($ID,9991);
 
+    echo "\n";
     echo "-----------------------------------------*\n";
 
 	$Meter=$Amis->writeEnergyRegistertoArray($MeterConfig,$debug);
 	SetValue($tableID,$Amis->writeEnergyRegisterTabletoString($Meter));
-
-    echo "-----------------------------------------*\n";
 	SetValue($regID,$Amis->writeEnergyRegisterValuestoString($Meter));
-
+    echo "\n";
+    echo "Set Value writeEnergyRegisterTabletoString to OID $tableID, writeEnergyRegisterValuestoString to OID $regID with both have parent $ID \n";
+    echo "-----------------------------------------*\n";
 
 /******************* Timer Definition ******************************
  *
@@ -633,7 +652,7 @@ if ($do>2)
         $webfront_links[$Name]["CONFIG"]=array(IPSHEAT_WFCSPLITPANEL);
         }
     
-    if ($debug)
+    //if ($debug)
         {
         echo "****************Ausgabe Webfront Links               ";    
         print_r($webfront_links);
@@ -651,6 +670,7 @@ if ($do>3)          // der Debug bevor die Implementierung startet
 
         if (true)          // neue Webfront Erstellung
             {
+            echo "Use new Webfront Creation Toolset for Administrator:\n";
             $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
 
             $wfcHandling->CreateWFCItemTabPane("HouseTPA", $configWf["TabPaneParent"],  $configWf["TabPaneOrder"], "", "HouseRemote");  /* macht das Haeuschen in die oberste Leiste */
@@ -768,7 +788,7 @@ if ($do>4)          // mit der Pflicht aufhören, es kommt der User und der einz
 		$categoryId_UserWebFront=CreateCategoryPath("Visualization.WebFront.User");
         $configWf=$configWFront["User"];
 		echo "====================================================================================\n";
-		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$configWf["ConfigId"]." installieren in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
+		echo "Webportal User Kategorie im Webfront Konfigurator ID ".$configWf["ConfigId"]." installieren in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
 		CreateWFCItemCategory  ($configWf["ConfigId"], 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_UserWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
 		@WFC_UpdateVisibility ($configWf["ConfigId"],"root",false	);				
@@ -878,8 +898,17 @@ if ($do>5)
     echo "Weiteres Tab Smart Meter, wird aktuell immer installiert.\n";
     $webOps = new webOps();
     $categoryId_SmartMeter        = CreateCategory('SmartMeter',        $CategoryIdData, 80);
-    $pnames = ["Update","Calculate","Sort"];
+
+    
+    /* Schalter in Smart Meter Tab */
+
+    define ('SMART_SELECT', ["Directory","Update","Calculate","Sort"]);
+
+
+    $pnames = ["Directory","Update","Calculate","Sort"];
     $buttonsId = $webOps->createSelectButtons($pnames,$categoryId_SmartMeter, $scriptIdAmis);
+
+    $statusDirectoryID = CreateVariableByName($categoryId_SmartMeter, "DirectoryStatus", 3,'~HTMLBox');
     $statusSmartMeterID = CreateVariableByName($categoryId_SmartMeter, "SmartMeterStatus", 3,'~HTMLBox');
 
     // function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
@@ -900,6 +929,12 @@ if ($do>5)
                 );
 
         $webfront_links["SmartMeter"]["Left"]        = array(
+                $statusDirectoryID => array(
+                    "NAME"              => "Directory",
+                    "ORDER"             => 10,
+                    "ADMINISTRATOR"     => true,
+                    "PANE"              => true,
+                            ),
                 $statusSmartMeterID => array(
                     "NAME"              => "Status",
                     "ORDER"             => 10,
@@ -942,7 +977,12 @@ if ($do>5)
         $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
 
         $configWf["TabPaneParent"] = "HouseTPA"; $configWf["TabPaneOrder"] = 30;        // das Haeuschen ist dazwischen geschoben
-        $wfcHandling->easySetupWebfront($configWf,$webfront_links, "Administrator", true);
+        // does emptying the Categories on default
+        // easySetupWebfront($configWF,$webfront_links, $config, $debug=false)
+        $config = array();
+        $config["Scope"]="Administrator";
+        $config["EmptyCategory"]=false;
+        $wfcHandling->easySetupWebfront($configWf, $webfront_links, $config, $debug);
 
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       // nur hier wird geschrieben
         }

@@ -386,13 +386,13 @@ class RemoteAccess
 	 * Verwendet selbes Config File wie für die Remote Log Server, es wurden zusätzliche Parameter zur Unterscheidung eingeführt
 	 *
 	 */
-	function server_ping()
+	function server_ping($debug=false)
 		{
 		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 		$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
 		$RemoteServer=array();
 		//print_r($remServer);
-		$method="IPS_GetName"; $params=array();
+		$method="IPS_GetName"; $params=array(0);            // von OID 0 IPS_GetName abfragen, das ganz zu fuss und dann nochmal mit einem rpc call
 
 		foreach ($remServer as $Name => $Server)
 			{
@@ -400,9 +400,8 @@ class RemoteAccess
 			$UrlAddress=$Server["ADRESSE"];
 			if ($Server["STATUS"]=="Active")
 				{
+                if ($debug) echo "Ping active Server $UrlAddress :\n"; 
 				$RemoteServer[$Name]["Name"]=$UrlAddress;
-				$rpc = new JSONRPC($UrlAddress);
-				//echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
 				$data = @parse_url($UrlAddress);
 				if(($data === false) || !isset($data['scheme']) || !isset($data['host']))
 					{
@@ -411,6 +410,7 @@ class RemoteAccess
 					}
 				else
 					{	
+                    if ($debug) print_R($data);
 					$url = $data['scheme']."://".$data['host'];
 					if(isset($data['port'])) $url .= ":".$data['port'];
 					if(isset($data['path'])) $url .= $data['path'];
@@ -444,7 +444,16 @@ class RemoteAccess
 							}
 						else
 							{	
-							$id = round(fmod(microtime(true)*1000, 10000));
+                            /* echo file_get_contents('http://ip:82/api/', false, stream_context_create(
+                                array('http' =>
+                                    array(
+                                    'method'  => 'POST',
+                                    'header'  => 'Content-type: application/json; charset=utf-8',
+                                    'content' => '{"jsonrpc":"2.0","method":"GetValueformatted","params":[38809],"id":"null"}'
+                                    )
+                                )
+                            )); */                                
+							$id = round(fmod(microtime(true)*1000, 10000));         // eine id mitgeben, kan auch null sein
 							$params = array_values($params);
 							$strencode = function(&$item, $key) 
 								{
@@ -470,12 +479,20 @@ class RemoteAccess
 								"http" => array (
 								"method"  => 'POST',
 								"header"  => $header,
-								"content" => $request
+								"content" => $request,
+                                'timeout' => 4,                     // 4 seconds
 										)
 								);
 							$context  = stream_context_create($options);
-							$urlen = urlencode($url);							
-							$response = @file_get_contents($url, false, $context);							
+							$urlen = urlencode($url);	
+                            try {
+    							$response = file_get_contents($url, false, $context);							
+                                } 
+                            catch (Exception $e) {
+                                echo 'Caught exception: ',  $e->getMessage(), "\n";
+                                $response=false;
+                                }
+                            echo " done $response \n";                            						
 							}
 						}
 					}		
@@ -486,11 +503,26 @@ class RemoteAccess
 					}
 				else
 					{
-					$ServerName=$rpc->IPS_GetName(0);
-					$ServerUptime=$rpc->IPS_GetKernelStartTime();
-					$ServerVersion=$rpc->IPS_GetKernelVersion();
+                    try {
+				        $rpc = new JSONRPC($UrlAddress);                        
+                        $ServerName=$rpc->IPS_GetName(0);
+                        $ServerUptime=$rpc->IPS_GetKernelStartTime();
+                        $ServerVersion=$rpc->IPS_GetKernelVersion();
+                        } 
+                    catch (Exception $e) {
+                        echo 'Caught exception: ',  $e->getMessage(), "\n";
+                        $response=false;
+                        }
+                if ($response===false)
+					{
+					echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
+					$RemoteServer[$Name]["Status"]=false;
+					}
+                else
+                    {
 					echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
 					$RemoteServer[$Name]["Status"]=true;
+					}
 					}
 				}
 			else

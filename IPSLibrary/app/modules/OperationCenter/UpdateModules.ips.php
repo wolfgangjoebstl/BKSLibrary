@@ -92,10 +92,10 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
     */
         $ende=true; 
         $log=array();
-        $count=0; $countmax=1;
+        $count=0; $countmax=3;              // max Updates pro Aufruf
         
         foreach ($loadfromrepository as $upd_module)
-        {
+            {
             $useRepository=$knownModules[$upd_module]['Repository'];
             echo "\n\n";
             echo "-----------------------------------------------------------------------------------------------------------------------------\n";
@@ -119,7 +119,7 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
             if (exectime($startexec) > 30 )
                 {
                 print_r($log);                    
-                echo "\nUpdate noch nicht abgeschlossen, noch einmal aufrufen.\n";
+                echo "\nUpdate noch nicht abgeschlossen, noch einmal aufrufen. Exectime > 30 Sekunden.\n";
                 if (isset ($installedModules["OperationCenter"])) $log_Install->LogMessage("Update noch nicht abgeschlossen, noch einmal aufrufen.");
                 $ende=false;
                 break;
@@ -128,12 +128,12 @@ bringt alle Module egal von welchem Repository auf den letzten Stand
                 {
                 }
                             
-            }
+            }               	// ende foreach update module
 
         if ($ende==true) 
             {
             print_r($log);                
-            echo "\nUpdate abgeschlossen.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";  
+            echo "\nAktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";  
             if (isset ($installedModules["OperationCenter"])) $log_Install->LogMessage("Update abgeschlossen.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden");		
             }
         }

@@ -68,19 +68,22 @@
     $installedModules = $moduleManager->GetInstalledModules();
     $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
+    if ($_IPS['SENDER'] == "Execute") $debug=true;
+    else $debug=false;
+
     if (isset($installedModules["Guthabensteuerung"]))
         {
-        echo "Guthabensteuerung ist installiert.\n";
+        if ($debug) echo "Guthabensteuerung ist installiert.\n";
         IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
         IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");					// Library verwendet Configuration, danach includen
         }
-    else echo "Guthabensteuerung ist NICHT installiert.\n";
+    elseif ($debug) echo "Guthabensteuerung ist NICHT installiert.\n";
 
 	$amis=new Amis();           // Ausgabe SystemDir, erstellt MeterConfig
     $webOps = new webOps();
 
     $categoryId_SmartMeter      = IPS_GetObjectIDByName('SmartMeter', $CategoryIdData);
-    $pnames = ["Update","Calculate","Sort"];
+    $pnames = ["Directory","Update","Calculate","Sort"];                                    // muss gleich sein
     $webOps->setSelectButtons($pnames,$categoryId_SmartMeter);
     $buttonsId = $webOps->getSelectButtons();
     //print_r($buttonsId);
@@ -107,18 +110,26 @@ if ($_IPS['SENDER']=="WebFront")
 
     switch ($_IPS['VARIABLE'])
         {
-        case $buttonsId[0]["ID"]:         // Update
+        case $buttonsId[0]["ID"]:         // Directory
             $webOps->selectButton(0);
+            $statusDirectoryID = IPS_GetObjectIDByName("DirectoryStatus",$categoryId_SmartMeter);
+            $MeterStatusConfig=$amis->getAmisConfig();
+            $config=array();
+            $config["File"]=$MeterStatusConfig["File"];
+            SetValue($statusDirectoryID,$amisSM->writeSmartMeterCsvInfoToHtml(false,$config,false));
+            break;
+        case $buttonsId[1]["ID"]:         // Update
+            $webOps->selectButton(1);
             $statusSmartMeterID = IPS_GetObjectIDByName("SmartMeterStatus",$categoryId_SmartMeter);
             SetValue($statusSmartMeterID,$amisSM->writeSmartMeterDataToHtml());
             break;
-        case $buttonsId[1]["ID"]:         // Calculate
-            $webOps->selectButton(1);
+        case $buttonsId[2]["ID"]:         // Calculate
+            $webOps->selectButton(2);
             $variableIdLookAndFeelHTML = IPS_GetObjectIdByName("NewLookAndFeel",$categoryId_SmartMeter);
             SetValue($variableIdLookAndFeelHTML,GetValue($variableIdLookAndFeelHTML));
             break;
-        case $buttonsId[2]["ID"]:         // Sort
-            $webOps->selectButton(2);
+        case $buttonsId[3]["ID"]:         // Sort
+            $webOps->selectButton(3);
             $variableIdInterActiveHTML = IPS_GetObjectIdByName("InterActive",$categoryId_SmartMeter);
             SetValue($variableIdInterActiveHTML,GetValue($variableIdInterActiveHTML));
             break;
@@ -134,6 +145,9 @@ else
 	$MeterConfig = $amis->getMeterConfig();
 	$AmisConfig = $amis->getAmisConfig();
 
+    $statusSmartMeterID = IPS_GetObjectIDByName("SmartMeterStatus",$categoryId_SmartMeter);
+    echo "SmartMeterStatus     $statusSmartMeterID \n";
+    echo GetValue($statusSmartMeterID);
     if (isset($installedModules["RemoteAccess"]))
         {
         echo "RemoteAccess ist installiert.\n";
@@ -141,7 +155,7 @@ else
         IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 	    $remote=new RemoteAccess();
         $remote->add_Amis();
-        echo $remote->show_includeFile();
+        echo "\n".($remote->show_includeFile())."\n";
         }
 
     if ($debug>1) 

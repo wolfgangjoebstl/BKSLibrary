@@ -128,6 +128,13 @@ if ($_IPS['SENDER']=="TimerEvent")          // alle 60 Sekunden
 					$amis->writeEnergySumme($meter);            // meter["TYPE"]=="SUMME"  einen Summenwert berechnen
 					break;
 				case "14":  /* Auto */
+    				$dataOID=$amis->getAMISDataOids();
+                    $regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);
+                    $Meter=$amis->writeEnergyRegistertoArray($MeterConfig);
+                    SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));
+                    //SetValue($tableID,$amis->writeEnergyRegisterTabletoString($Meter));
+                    //$tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
+                    break;
 				case "13":  /* Auto */
 				case "12":  /* Auto */
 					break;

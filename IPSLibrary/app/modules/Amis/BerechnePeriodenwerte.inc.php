@@ -246,8 +246,8 @@
             $dataOID=$amis->getAMISDataOids();
             $tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
             $regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);
-            $MeterValues=$amis->writeEnergyRegistertoArray($MeterConfig,true);                             // erstellen der Werte für die Anzeige in der Tabelle, true für Debug,oder 2,3,
-            print_R($MeterValues);
+            $MeterValues=$amis->writeEnergyRegistertoArray($MeterConfig);                             // erstellen der Werte für die Anzeige in der Tabelle, true für Debug,oder 2,3,
+            //print_R($MeterValues);
             echo "writeEnergyRegisterTabletoString:\n";
             SetValue($tableID,$amis->writeEnergyRegisterTabletoString($MeterValues));
             echo "writeEnergyRegisterValuestoString:\n";

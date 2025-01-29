@@ -44,6 +44,7 @@
 	define ('GUTHABEN_VAR_INFO',				'Info');
 	define ('GUTHABEN_VAR_HTML',				'InterActive');
 	define ('AMIS_VAR_HTML',				    'NewLookAndFeel');
+
 	
 		
 ?>

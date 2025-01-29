@@ -207,7 +207,7 @@
             return ($this->MeterConfig);
             }
 
-        /* aus der allgemeinen Amis Config grundsaetzliche Einstellunegn über die Funktionsweise übernehmen
+        /* aus der allgemeinen Amis Config grundsaetzliche Einstellungen über die Funktionsweise übernehmen
          * verwendet set/get AmisConfiguration
          */
         public function setAmisConfig()
@@ -228,7 +228,9 @@
                 }
             else $amisConfiguration=array();
 
+            configfileParser($amisConfiguration,$result,["Status","STATUS","status"],"Status","active");
             configfileParser($amisConfiguration,$result,["WebPage","WEBPAGE","webpage"],"WebPage",array());
+            configfileParser($amisConfiguration,$result,["FILE","File","file"],"File",null);
 
             return ($result);
             }
@@ -956,9 +958,17 @@
 		 * Minuetlich wird ein Scipt aufgerufen um die Momentanwerte abfragen. Dieses Script kommt alle 15 Minuten dran.
          * es wird der Einzeleintrag der Konfiguration übergeben, also ohne Identifier. Die Einträge in der Konfiguration durchgehen und auf Brauchbarkeit untersuchen.
  		 * Homematic Energiesensoren auslesen, ignoriert andere Typen als Einzelbefehl.
-        * Übergeben wird entweder die Homematic Instanz OID oder die Einzelwerte HM_EnergieID und HM_LeistungID
- 		 *
- 		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+         * Übergeben wird entweder die Homematic Instanz OID oder die Einzelwerte HM_EnergieID und HM_LeistungID
+         *  wenn die OID übergeben wird, werden die HM Register mit getHomematicRegistersfromOID erzeugt
+         * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+         *      Wirkenergie
+         *      Wirkleistung
+         *      Offset_Wirkenergie
+         *      Homematic_Wirkenergie
+ 		 *      ConfigReading               erfasst eine Änderung der OID != $HMenergieID
+         * die Speicherung erfolgt nur wenn debug false ist !
+ 		 * 
+         * AC_GetLoggedValues mit 15 Min Werte für Homematic nur für Debugzwecke
 		 *
 		 *****************************************************************************************************************************/
 
@@ -972,9 +982,10 @@
 				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
-				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$LeistungID = IPS_GetObjectIDByName('Wirkleistung', $ID);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$LeistungTagID = IPS_GetObjectIDByName('Wirkleistung (Tag)', $ID);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
 				$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
-				$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$Homematic_WirkenergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
             
                 /* Config und History Logging vorbereiten */
                 $ConfigID = CreateVariableByName($ID, 'ConfigReading', 3);
@@ -1007,7 +1018,13 @@
                     /* Config und History Logging machen */
                     $changeDone=false;
                     $configValue=json_encode($configuration);                    
-                    if (isset($configuration["OID"])===false) $configuration["OID"] = $HMenergieID;
+                    if (isset($configuration["OID"])===false) 
+                        {
+                        $configuration["OID"] = $HMenergieID;           // new, erster Wert für Energieregister
+                        echo "NewDone: ".$configuration["OID"]." = $HMenergieID. \n";
+                        $configValue=json_encode($configuration);
+                        SetValue($ConfigID, $configValue);                             
+                        }
                     else 
                         {
                         if ($configuration["OID"] != $HMenergieID)
@@ -1027,24 +1044,70 @@
                         }
 
                     /* Werte schreiben */
-                    $energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
+                    $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
+                    if ($logAvailable) 
+                        {
+                        $powerDay=$this->getArchivePower($EnergieID,$debug);
+                        SetValue($LeistungTagID,$powerDay);
+                            /*
+                            $jetzt=time();
+                            $endtime=$jetzt; $starttime=$endtime-60*60*24-7*60;
+                            if ($debug) echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":\n";
+
+                            $werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
+                            $first = $werte[array_key_first($werte)];    
+                            $last = $werte[array_key_last($werte)];
+                            $wert=$first["Value"]-$last["Value"];
+                            $zeit=$first["TimeStamp"]-$last["TimeStamp"];          
+                            $leist=$wert/$zeit*60*60;
+                            echo "   $wert / $zeit = $leist W,   First   ".$first["Value"]."  ".date("D d.m H:i",$first["TimeStamp"])."   Last   ".$last["Value"]."  ".date("D d.m H:i",$last["TimeStamp"])."  \n";
+                            //print_R($werte);
+                            $vorigertag=date("d.m.Y",$jetzt);	// einen Tag ausblenden 
+                            $laufend=1; $alterWert=0; $alteZeit=$jetzt;
+                            foreach($werte as $wert)
+                                {
+                                $zeit=$wert['TimeStamp']-60;
+                                $leistung=($alterWert-$wert['Value'])/($alteZeit-$wert['TimeStamp'])*60*60*1000;            // Umrechnung auf Stunde und W
+                                if ($alterWert) echo "    ".date("D d.m H:i", $alteZeit)."   ".nf($alterWert,"kWh")."    ".str_pad(($alteZeit-$wert['TimeStamp']),8)."   ".nf($alterWert-$wert['Value'],"kWh")."  ".nf($leistung,"W")."\n";
+                                //echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
+                                if (date("d.m.Y", $zeit)!=$vorigertag)
+                                    {
+                                    //$zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
+                                    //$zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
+                                    echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh\n";
+                                    //$zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
+                                    if ($laufend>1) 
+                                        {
+                                        //$zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
+                                        }
+                                    
+                                    $laufend+=1;
+                                    $altesDatum=date("d.m", $zeit);
+                                    //echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
+                                    }
+                                $alterWert=$wert['Value']; $alteZeit=$wert['TimeStamp'];
+                                $vorigertag=date("d.m.Y",$zeit);
+                                }
+                            } */
+                        } 
+                    $energie=GetValue($HMenergieID)/1000; // Homematic Wert ist in Wh, in kWh umrechnen 
                     $leistung=GetValue($HMleistungID);
-                    $energievorschub=$energie-GetValue($Homematic_WirkergieID);
-                    if ($changeDone)                /* das Homemeatic Register hat sich geändert. Erster Wert ist Offset. Nächsten Wert erst für den Vorschub verwenden */ 
+                    $energievorschub=$energie-GetValue($Homematic_WirkenergieID);
+                    if ($changeDone)                // das Homemeatic Register hat sich geändert. Erster Wert ist Offset. Nächsten Wert erst für den Vorschub verwenden 
                         {
                         echo "   >>Info, das beobachtete Energieregister hat sich geändert. Ersten Wert als Basis nehmen. Vorschub bleibt 0.\n";
                         $energievorschub=0;   
                         }                      
-                    elseif ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
+                    elseif ($energievorschub<0)       // Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt 
                         {
                         echo "   >>Fehler, Energievorschub kleiner 0, ist $energievorschub. Den aktuellen Wert des Spiegelregisters in Data ($Homematic_WirkergieID) auf den Offset aufaddieren : ".GetValue($Homematic_WirkergieID)."kWh.\n";
                         $offset = GetValue($OffsetID);                        
-                        $offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
+                        $offset+=GetValue($Homematic_WirkenergieID); // als Offset alten bekannten Wert dazu addieren 
                         $energievorschub=$energie;
                         SetValue($OffsetID,$offset);
                         }
-                    elseif ($energievorschub>10)       /* verbrauchte Energie in einem 15 Minutenintervall ist realistisch maximal 2 kWh, 10kWh abfragen   */
-                        {   /* Unplausibilitaet ebenfalls behandeln */
+                    elseif ($energievorschub>10)       // verbrauchte Energie in einem 15 Minutenintervall ist realistisch maximal 2 kWh, 10kWh abfragen   
+                        {   // Unplausibilitaet ebenfalls behandeln 
                         echo "   >>Fehler, Energievorschub groesser 10, ist $energievorschub. Diese Änderung ignorieren.\n";
                         $energievorschub=0;
                         }		
@@ -1052,7 +1115,7 @@
                     $energie_neu=GetValue($EnergieID)+$energievorschub;
                     if ($debug==false)
                         {
-                        SetValue($Homematic_WirkergieID,$energie);          /* Spiegelregister für Homematic Energie Register */
+                        SetValue($Homematic_WirkenergieID,$energie);          // Spiegelregister für Homematic Energie Register 
                         SetValue($EnergieID,$energie_neu);
                         SetValue($LeistungID,$energievorschub*4);
                         }
@@ -1068,7 +1131,7 @@
                         }
                     }
                 else echo "    Fehler, IDs der Energieregister konnte nicht bestimmt werden.\n";                    
-				}
+                }   
 			return ($homematicAvailable);
 			}
 			
@@ -1319,7 +1382,7 @@
          * Formatierung so gewählt das beide Tabellen txt und html gemeinsam erstellt werden
          *
          * nur verwendet für die Ausgeben die hinter Execute stehen
-		 *
+		 * verwendet AC_GetLoggedValues
 		 *****************************************************************************************************************************/
 
 		function writeEnergyRegistertoString($MConfig,$html=true,$debug=false)			/* alle Werte aus der Config ausgeben */
@@ -1586,11 +1649,15 @@
 				{
 				if (isset($Werte[$line]["Energie"][1])==true)
 					{
-					$outputEnergiewerte.=$startparagraph.$startcell.substr($Werte[$line]["Wochentag"][0]."                           ",0,$tabwidth0).$endcell.$startcell.str_pad($Werte[$line]["Energie"][1],10).$endcell;
+					$outputEnergiewerte.=$startparagraph.$startcell.substr($Werte[$line]["Wochentag"][0]."                           ",0,$tabwidth0).$endcell.$startcell.str_pad($Werte[$line]["Energie"][1]." kWh",14).$endcell;
 					}
 				else
 					{
 					$outputEnergiewerte.=$startparagraph.$startcell.substr($Werte[$line]["Wochentag"][0]."                           ",0,$tabwidth0).$endcell.$startcell.str_pad(" ",10).$endcell;
+					}
+				if (isset($Werte[$line]["Power"])==true)
+					{
+					$outputEnergiewerte.=$startcell.(round(($Werte[$line]["Power"]*1000),1))." W".$endcell;
 					}
 				$outputEnergiewerte.=$startcell.str_pad($Werte[$line]["Information"]["Type"],11).$endcell;
 				if ( isset($Werte[$line]["Information"]["Parentname"]) == true )
@@ -1608,12 +1675,15 @@
 			if ($html==true) 
 				{
 				echo "</p>";
+                $outputEnergiewerte.='<tr><td align="right" colspan="5"><font size="-1">last update on '.date("d.m.Y H:i:s").'</font></td></tr>'; 
 				$outputEnergiewerte.=$endtable."</div> \n";
 				}
 			return ($style.$outputEnergiewerte);
 			}
 
-		/* fasst alle Energieregister als Vorschubwerte der letzten 9 Tage in einer uebersichtlichen Tabelle zusammen, 
+		/* writeEnergyRegisterTabletoString
+         *
+         * fasst alle Energieregister als Vorschubwerte der letzten 9 Tage in einer uebersichtlichen Tabelle zusammen, 
 		 * Tabelle kann sowohl als html als auch als Text ausgegeben werden
 		 *
 		 *	Stromverbrauch der letzten Tage als Änderung der Energiewerte pro Tag:
@@ -1627,9 +1697,17 @@
 		 *	Statusanzeige            0,01  0,02  0,02  0,00  0,04        0,02  0,01  0,01
 		 * 
          * Die Werte für die Tabelle werden als Array übergeben: $Werte[$line]["EnergieVS"]
+         * Die Daten kommen am Besten von writeEnergyRegistertoArray
+         *
+         * Routine aufgerufen von:
+         *      AllgemeindeDefinitionen     send_status email Ausgabe der Daten
+         *      AMIS Installation           Ausgabe in Tab.Register Zusammenfassung.Historie-Energie
+         *      OperationCenter             einmal am Tag um 3:50 Update der register Historie-Energie
+         *      AMIS                        bei Execute Aufruf Ausgabe als Html Tabelle
+         *      BerechnePeriodenwerte       bei Execute Aufruf Ausgabe als Html Tabelle
+         *
          *
 		 */
-
 		function writeEnergyRegisterTabletoString($Werte,$html=true,$debug=false)			/* alle Werte als String ausgeben */
 			{
 			if ($html==true) 
@@ -1647,7 +1725,7 @@
 				$startparagraph="<tr>"; $endparagraph="</tr>";  /* Paragraph oder Table Line */
 				$outputTabelle="<div> \n";
 				$newline="<BR>\n";
-				echo "<p class=\"zeile\"> \n";                        // Umschalten auf Arial Font, Debug Ausgabe als html ?  
+				if ($debug) echo "<p class=\"zeile\"> \n";                        // Umschalten auf Arial Font, Debug Ausgabe als html ?  
 				}
 			else
 				{
@@ -1685,10 +1763,10 @@
 
 			$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch der letzten Tage als Änderung der Energiewerte pro Tag:".$endcellheader.$endparagraph;
 			$outputTabelle.=$startparagraph.$zeile0.$endparagraph.$startparagraph.$zeile1.$endparagraph;
-			echo "writeEnergyRegisterTabletoString, gesamte Tabelle im Format ".($html?"Html":"Text")." für ".count($Werte)." Zeilen aufbauen.\n";
+			if ($debug) echo "writeEnergyRegisterTabletoString, gesamte Tabelle im Format ".($html?"Html":"Text")." für ".count($Werte)." Zeilen aufbauen.\n";
 			for ($line=0;$line<($metercount);$line++)
 				{
-                echo "   Zeile $line für Zähler : ".$Werte[$line]["Wochentag"][0]."\n";
+                if ($debug) echo "   Zeile $line für Zähler : ".$Werte[$line]["Wochentag"][0]."\n";
 				$outputTabelle.=$startparagraph.$startcell.substr($Werte[$line]["Wochentag"][0]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
 				$zeit=$endtime-24*60*60;
 				for ($i=1;$i<10;$i++)
@@ -1699,7 +1777,7 @@
 						}
 					else	/* wenn es keinen Wert gibt leere Zelle drucken*/
 						{
-						echo "       Zählerwert für ".$Werte[$line]["Wochentag"][0]." mit Index".date("d.m", $zeit)." fehlt. Kein Zeitstempel für ".date("d.m", $zeit)." vorhanden.\n  ";
+						if ($debug) echo "       Zählerwert für ".$Werte[$line]["Wochentag"][0]." mit Index".date("d.m", $zeit)." fehlt. Kein Zeitstempel für ".date("d.m", $zeit)." vorhanden.\n  ";
                         //foreach ($Werte[$line]["EnergieVS"] as $index => $value) echo "Index $index Wert $value, Found : ".(isset($Werte[$line]["EnergieVS"][date("d.m", $zeit)]))."\n";
 						$outputTabelle.=$startcell.substr("              ",0,$tabwidth).$endcell;
 						}
@@ -1711,14 +1789,22 @@
 			//print_r($Werte);	
 			if ($html==true) 
 				{
-				echo "</p>";                  // auch Ausgabe als html
+				if ($debug) echo "</p>";                  // auch Ausgabe als html
 				$outputTabelle.=$endtable."</div> \n";				
 				}
 			return ($style.$outputTabelle);
 			}
 
-        /* die einzige Funktion zum Darstellen der 1/7/30/360 Werte
+        /* writeEnergyPeriodesTabletoString
+         * 
+         * die einzige Funktion zum Darstellen der 1/7/30/360 Werte
          * noch um brauchbare Funktionen erweitern, wie sortieren und zusätzliche Spalten, array als Config Item
+         * mögliche config Parameter:
+         *      Format
+         *      Unit
+         *      Sort
+         *      Extend
+         *
          * Erster Parameter Werte bestimmt den Inhalt, Wird mit writeEnergyRegistertoArray erzeugt:
 			$amis=new Amis();
 			$MeterConfig = get_MeterConfiguration();
@@ -1961,7 +2047,8 @@
 			return(CreateVariableByName($this->CategoryIdData, "Zusammenfassung", 3)); 
 			}
 			
-		/* 
+		/* writeEnergyRegistertoArray
+         *
 		 * zweiteilige Funktionalitaet, erst die Energieregister samt Einzelwerten der letzten Tage einsammeln und
 		 * dann in einer zweiten Funktion die Ausgabe als html oder text machen.
 		 * Übergabe	der Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr erfolgt als Array.
@@ -1972,7 +2059,9 @@
          *
          * return Wert Wochentag, Datum, Energiewert, Information { Name, 
          *    
-         * Aufruf erfolgt in AMIS_Installation     
+         * Aufruf erfolgt in MomentanwerteAbfragen, AMIS_Installation, OperationCenter, Berechneperiodenwerte etc.
+         * verwendet archiveOps:getValues    
+         * schreibt keine Register mit SetValue
          *
 		 */
 		
@@ -2024,7 +2113,8 @@
                                 {
                                 $RegID  = $meter["HM_EnergieID"];
                                 }
-                            $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+                            //$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+                            $endtime=$jetzt;                            // die aktuelle Uhrzeit sollte ausreichen
                             $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
                             $vorschub=false;                                   
                             break;
@@ -2042,7 +2132,8 @@
                             break;
                         default:
                             $RegID=$EnergieID;
-                            $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+                            //$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+                            $endtime=$jetzt;                            // die aktuelle Uhrzeit sollte ausreichen
                             $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
                             $vorschub=false;                            
                             break;
@@ -2054,6 +2145,16 @@
                         echo "      Starttime für Auswertung ist ".date("d.m.Y H:i:s",$starttime)." Endtime ist ".date("d.m.Y H:i:s",$endtime)."\n";
                         }
                     //$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
+
+                    /* Alternative Auswertung mit Vorschüben als Ergebnis
+                     * entweder Counter für Auswertung 15min Vorschuebe oder manAggregate
+                     */
+                    $config=array();
+                    $config["StartTime"] = $starttime;   // 0 endtime ist now
+                    $config["EndTime"]   = $endtime;
+                    $config["DataType"]  = "Counter";           // eine Auswertung von Zählerständen ist sinnlos, vorher umrechnen
+                    //$config["manAggregate"]  = "daily";
+                    $valuesInterval = $archiveOps->getValues($EnergieID,$config,$debug);     // Analyse der Archivdaten, debug von default
 
                     // Alternative Auswertung
                     $config=array();
@@ -2076,7 +2177,17 @@
                         {
                         echo "~~~~~~~~~~~~~~~~\n";
                         if ($werte===false) echo "Warnung, keine Zeitreihe möglich.\n";
-                        elseif (is_array($werte)) echo "writeEnergyRegistertoArray, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." mit ".count($werte)." Eintraegen ermittelt, jetzt bearbeiten und speichern :\n";
+                        elseif (is_array($werte)) 
+                            {
+                            echo "writeEnergyRegistertoArray, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." mit ".count($werte)." Eintraegen ermittelt, jetzt bearbeiten und speichern :\n";
+                            $first = $werte[array_key_first($werte)];    
+                            $last = $werte[array_key_last($werte)];
+                            $wert=-($first["Value"]-$last["Value"]);
+                            $zeit=-($first["TimeStamp"]-$last["TimeStamp"]);          
+                            $leist=$wert/$zeit*60*60;
+                            echo "   $wert / $zeit = $leist W,   First   ".$first["Value"]."  ".date("D d.m H:i",$first["TimeStamp"])."   Last   ".$last["Value"]."  ".date("D d.m H:i",$last["TimeStamp"])."  \n";
+                            //print_R($werte);                            
+                            }
                         }
                     if ( ($werte===false) || (is_array($werte)===false) ) $werte=array();
 
@@ -2134,6 +2245,8 @@
                         $vorigertag=date("d.m.Y",$zeit);
                         $count++;
                         }
+                    // Space for additional Evaluations that result into zeile[metercount]
+                    $zeile[$metercount]["Power"] = $this->getArchivePower($EnergieID,($debug>1));
                     }
 				$metercount+=1;                                     //  nächste Zeile
 				} /* ende foreach Meter Entry */
@@ -2141,7 +2254,9 @@
 			return($zeile);
 			}
 
-        /* Messwerte aus dem Archive auslesen und gleichzeitig eine Plausicheck machen
+        /* getArchiveData
+         *
+         * Messwerte aus dem Archive auslesen und gleichzeitig eine Plausicheck machen
          * weitestgehend als generische Routine geschrieben
          *
          * starttime ist eine Zeit vor x Tagen und 
@@ -2150,6 +2265,7 @@
          * display aktiviert zusätzliche Anzeigen und 
          * deleteCheck macht eine Bereinigung von falschen Werten
          *
+         * verwendet AC_GetLoggedValues
          */
 
         function getArchiveData($variableID, $starttime, $endtime, $type="",$display=false,$deleteCheck="",$debug=false)
@@ -2400,8 +2516,11 @@
             }
 
 		
-        /* aus den Archivedaten den grössten Wert finden 
+        /* getArchiveDataMax
+         * aus den Archivedaten den grössten Wert finden 
          * Wert zurückmelden
+         *
+         * verwendet AC_GetLoggedValues
          */
 
         function getArchiveDataMax($variableID, $starttime, $endtime, $display=false)
@@ -2479,6 +2598,53 @@
             return ($maxwert);
             }
 
+        /* getArchivePower
+         *
+         */
+        private function getArchivePower($EnergieID,$debug=false)
+            {
+            $jetzt=time();
+            $endtime=$jetzt; $starttime=$endtime-60*60*24-7*60;
+            if ($debug) echo "getArchivePower, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":\n";
+
+            $werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
+            if (count($werte)<10) return (0);               // wenn nichkeine Werte gespeichert sind 0 als Leistung zurückgeben
+            $first = $werte[array_key_first($werte)];    
+            $last = $werte[array_key_last($werte)];
+            $wert=$first["Value"]-$last["Value"];
+            $zeit=$first["TimeStamp"]-$last["TimeStamp"];          
+            $leist=$wert/$zeit*60*60;
+            if ($debug) echo "   $wert / $zeit = $leist W,   First   ".$first["Value"]."  ".date("D d.m H:i",$first["TimeStamp"])."   Last   ".$last["Value"]."  ".date("D d.m H:i",$last["TimeStamp"])."  \n";
+            //print_R($werte);
+            $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
+            $laufend=1; $alterWert=0; $alteZeit=$jetzt;
+            foreach($werte as $wert)
+                {
+                $zeit=$wert['TimeStamp']-60;
+                $leistung=($alterWert-$wert['Value'])/($alteZeit-$wert['TimeStamp'])*60*60*1000;            // Umrechnung auf Stunde und W
+                if ( ($alterWert) && ($debug) )echo "    ".date("D d.m H:i", $alteZeit)."   ".nf($alterWert,"kWh")."    ".str_pad(($alteZeit-$wert['TimeStamp']),8)."   ".nf($alterWert-$wert['Value'],"kWh")."  ".nf($leistung,"W")."\n";
+                //echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
+                if (date("d.m.Y", $zeit)!=$vorigertag)
+                    {
+                    //$zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
+                    //$zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
+                    if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh\n";
+                    //$zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
+                    if ($laufend>1) 
+                        {
+                        //$zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
+                        }
+                    
+                    $laufend+=1;
+                    $altesDatum=date("d.m", $zeit);
+                    //echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
+                    }
+                $alterWert=$wert['Value']; $alteZeit=$wert['TimeStamp'];
+                $vorigertag=date("d.m.Y",$zeit);
+                }
+            return ($leist);
+            }
+
         /* check Config für aggregate15minPower2Energy
          *
          */
@@ -2506,7 +2672,9 @@
             return ($config);              
             }
 
-        /* aggregate 15min Power Werte to EnergyDaily Wert
+        /* aggregate15minPower2Energy
+         * 
+         * aggregate 15min Power Werte to EnergyDaily Wert
          * funktioniert nur wenn meter.TYPE auf DAILYLPREAD steht
          * read $meter["LeistungID"] ist der Input, wird manuell auf Tageswerte umgerechnet
          * und mit getWirkenergieID($meter) verglichen
@@ -2519,8 +2687,11 @@
          *      InputID                 Eingabe OID, wenn nicht angegeben, dann aus der Config nehmen
          *      OutputID                Ausgabe OID, wenn nicht angegeben, dann aus der Config nehmen
          *      OutputCounterID         Ausgabe OID für einen Zählwert
+         *
+         * verwendet getValues
+         * aufgerufen von BerechnePeriodenwerte wenn meter[TYPE] DAILYLPREAD oder DAILYREAD ist
+         *
          */
-
         function aggregate15minPower2Energy($meter,$update=false,$debug=false)
             {
             $debug1=$debug;
@@ -3050,8 +3221,29 @@
                 {
                 $this->guthabenHandler = new GuthabenHandler();                  //default keine Ausgabe, speichern
                 }
-            else echo "Warning: AmisSmartMeter::new, class GuthabenHandler not available. Use Modul and include Library to get full functionality.\n";
+            else 
+                {
+                if ($debug) echo "Warning: AmisSmartMeter::new, class GuthabenHandler not available. Use Modul and include Library to get full functionality.\n";
+                $this->guthabenHandler = false;
+                }
             }
+
+        function readDirectory($config,$debug=false)
+            {
+            $dosOps = new dosOps();
+                if (isset($config["InputDir"]))  $dir=$config["InputDir"];                      //Input Verzeichnis suchen 
+                else $dir="Energy";
+                $verzeichnis=$dosOps->getWorkDirectory();
+                $inputDir = $dosOps->correctDirName($verzeichnis.$dir);  
+                $files=$dosOps->readdirToArray($inputDir);
+                if (isset($config["InputFile"])) $filename=$config["InputFile"];
+                else $filename="*.csv";
+                if ($debug) echo "   Input Filename is \"$filename\" in $inputDir.\n";
+                $filesFound = $dosOps->findfiles($files,$filename,false);           // true für Debug
+                foreach ($filesFound as $key=>$data) $filesFound[$key] = $inputDir.$data;
+            return ($filesFound);
+            }
+
 
         /* AmisSmartMeter::writeSmartMeterDataToHtml
          * die Register mit Werten von Smart metern gemeinsam als html Tabelle darstellen
@@ -3059,7 +3251,7 @@
          *
          * nur die Types DAILYREAD,DAILYLPREAD verarbeiten
          */
-        function writeSmartMeterDataToHtml($html=true)
+        function writeSmartMeterDataToHtml($html=true, $debug=false)
             {
             //echo "Button 0";                              // das sind die drei Button links
             $webOps = new webOps();
@@ -3081,7 +3273,7 @@
             $html .= '.cuwContainer { width: auto; height: auto; max-height:95%; max-width: 100%; background-color: #1f1f1f; }';
             $html .= '</style>';
             */
-            if ($this->debug) echo "Show Smart Meter Types from Configuration :\n";
+            if ($debug) echo "Show Smart Meter Types from Configuration :\n";
             $html .= '<div class="cuw-quick">';
             $html .= '<table>';
 
@@ -3097,6 +3289,7 @@
                         $html .= "<td>".$result["Info"]."</td>";
                         if (isset($meter["Source"])) $result["Source"]='Quelle der Daten kommt von '.$meter["Source"];
                         else $result["Source"]="";
+                        if ($debug) echo $meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier.",  ".$result["Source"]."\n";
                         $html .= '<td colspan="4">'.$result["Source"]."</td>";
                         $html .= "</tr>";
                         $html .= "<tr>";
@@ -3110,7 +3303,7 @@
                         $periode = $smEnergyCounterConfig["LastTime"] - $smEnergyCounterConfig["FirstTime"];
                         if ($count>1) $interval = $periode/($count-1);            // Abstände nicht Anzahl
                         else $interval = false;
-                        if ($this->debug) 
+                        if ($debug) 
                             {
                             echo "   ".$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier." \n";
                             echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyCounterConfig["AggregationType"]?"Zaehler":"Werte")." :",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyCounterConfig["LastTime"])." ID : $variableID . Wert wurde berechnet.";
@@ -3150,7 +3343,7 @@
                         $periode = $smEnergyWebConfig["LastTime"] - $smEnergyWebConfig["FirstTime"];
                         if ($count>1) $interval = $periode/($count-1);            // Abstände nicht Anzahl
                         else $interval = false;
-                        if ($this->debug) 
+                        if ($debug) 
                             {
                             echo "    ".str_pad("Smart Meter Wirkenergie ".($smEnergyWebConfig["AggregationType"]?"Zaehler":"Werte")." von ".$meter["Source"].":",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smEnergyWebConfig["LastTime"])." ID : $variableLogWienID . Wert wurde berechnet.";
                             echo " Pfad: ".$this->ipsOps->path($variableLogWienID)."  \n";
@@ -3190,7 +3383,7 @@
                         $periode = $smPowerInputConfig["LastTime"] - $smPowerInputConfig["FirstTime"];
                         if ($count>1) $interval = $periode/($count-1);            // Abstände nicht Anzahl
                         else $interval = false;
-                        if ($this->debug) 
+                        if ($debug) 
                             {
                             echo "    ".str_pad("Smart Meter Wirkleistung ".($smPowerInputConfig["AggregationType"]?"Zaehler":"Werte")." von InputCsv:",55)." $count Einträge, Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." letzter Wert vom ".date("d.m.Y H:i",$smPowerInputConfig["LastTime"])." ID : $inputID . Wert wurde von File eingelesen.";
                             echo " Pfad: ".$this->ipsOps->path($inputID)."  \n";
@@ -3227,12 +3420,14 @@
                                 case "logwien":
                                 case "LogWien":
                                 case "log.wien":
+                                    /* brauch ich diesen Teil wirklich ?
                                     IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
                                     $configLogWien = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"]["LogWien"]["CONFIG"];
                                     //print_R($configLogWien);
                                     $seleniumLogWien = new SeleniumLogWien();
                                     $seleniumOperations = new SeleniumOperations();
-                                    $variableLogWienID = $seleniumOperations->defineTargetID("LogWien",$configLogWien);        
+                                    $variableLogWienID = $seleniumOperations->defineTargetID("LogWien",$configLogWien); 
+                                    */       
                                     if ($this->debug) echo "    ".$meter["Source"]." Werte werden hier gespeichert: $variableLogWienID \n";
                                     //$variableLogWienID=$seleniumOperations->getResultID("LogWien","Result",true);                  // true Debug
                                     //print_R($result);
@@ -3290,7 +3485,10 @@
             else return (json_encode($result));
             }
 
-        /* es gibt ein csv Verzeichnis, die Dateien darin anzeigen mit den relevanten verfügbaren Informationen
+        /* writeSmartMeterCsvInfoToHtml
+         * ähnliche Funktion auch in archiveOps addValuesfromCsv
+         *
+         * es gibt ein csv Verzeichnis, die Dateien darin anzeigen mit den relevanten verfügbaren Informationen
          * es gibt eine Steuerung mit cmd als array oder string, könnte man auch als class variable machen
          * folgende Commands werden unterstützt:
          * Format cmd oder "cmd"=>cmd, "Sort"=sort
@@ -3317,10 +3515,18 @@
          */
         function writeSmartMeterCsvInfoToHtml($cmd=false,$config=false,$debug=false)
             {
-            if ($debug===false) $debug=$this->debug;
+            //if ($debug===false) $debug=$this->debug;
             $sort=false; $modeHtml=true; $headerIndex=array(); $headerSort=array();
-            if ($debug) echo "writeSmartMeterCsvInfoToHtml \n";
-            if ($config===false) $config = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+            echo "writeSmartMeterCsvInfoToHtml Command $cmd\n";
+            if ($config===false) 
+                {
+                if ($this->guthabenHandler===false)
+                    {
+                    echo "   writeSmartMeterCsvInfoToHtml, warning config Array as Parameter 2 needed.\n";
+                    return(false);    
+                    }
+                $config = $this->guthabenHandler->getSeleniumHostsConfig()["Hosts"];
+                }
             if (is_array($cmd))
                 {
                 if ($debug) echo "   Aufruf mit Parameter ".json_encode($cmd)."\n"; 
@@ -3347,87 +3553,223 @@
                 $header[$index]=$name;                                           // simple list of Column Names in right order
                 }
             //echo json_encode($headerSort);
+            ini_set('memory_limit', '128M');                        // können grosse Dateien werden            
             if (strtoupper($cmd)=="HEADER") return ($headerIndex);            // Header ausgeben, damit Befehle erkannt werden können
+            $dosOps = new dosOps();
+            $archiveOps = new archiveOps();            
             foreach ($config as $host => $entry)
                 {
                 switch (strtoupper($host))
                     {
+                    case "FILE":
+                        if ($debug) echo "   Bearbeite FILE Input, Command: \"$cmd\" InputCsv : ".json_encode($entry["INPUTCSV"])."\n";
+
+                        break;
                     case "EVN":
-                    case "LOGWIEN":       
-                        if (strtoupper($cmd)=="CONFIG") return($entry["INPUTCSV"]);
-                        ini_set('memory_limit', '128M');                        // können grosse Dateien werden
+                    case "LOGWIEN":   
+                        if ($debug) echo "   Bearbeite EVN und log.Wien, Command: \"$cmd\" InputCsv : ".json_encode($entry["INPUTCSV"])."\n";   
+                     /* if (strtoupper($cmd)=="CONFIG") return($entry["INPUTCSV"]);
                         $selenium = new SeleniumHandler();                       // gemeinsam für log.Wien und EVN, übergeordnet
-                        $result = $selenium->getInputCsvFiles($entry["INPUTCSV"],$this->debug);              // true Debug
+                        $filesToRead = $selenium->getInputCsvFiles($entry["INPUTCSV"],$this->debug);              // true Debug
                         if (strtoupper($cmd)=="FILES") 
                             {
                             $files = array();
-                            foreach ($result as $entry) $files[]=str_replace(" ", "",$entry["Filename"]);
+                            foreach ($filesToRead as $entry) $files[]=str_replace(" ", "",$entry["Filename"]);
                             return ($files);            // Header ausgeben, damit Befehle erkannt werden können
                             }
                         if (strtoupper($cmd)=="INPUTDIR") return ($selenium->getDirInputCsv($entry["INPUTCSV"]));            // Header ausgeben, damit Befehle erkannt werden können
-                        if (strtoupper($cmd)=="TARGETID") return ($selenium->getTargetIdInputCsv($entry["INPUTCSV"]));
-                        //print_R($result);
-                        $html .= '<div class="cuw-quick">';
-                        $html .= '<table>';
-                        if (in_array("Verzeichnis",$header)===false) foreach ($result as $entryHeader) if (isset($entryHeader["Verzeichnis"])) 
-                            { 
-                            $html .= "<tr>";
-                            $html .= "<th>".$entryHeader["Verzeichnis"]."</th>";
-                            $html .= "<th>".$selenium->getTargetIdInputCsv($entry["INPUTCSV"],$this->debug)."</th>";
-                            if (isset($headerSort[$sort])) $html .= "<th>Sort:".$headerSort[$sort]."</th>";
-                            $html .= "</tr>"; 
-                            break; 
-                            }
-                        $html .= '</table><br>';
-                        $html .= '<table class="sortierbar">';                            
-                        $html .= "<thead><tr>";
-                        //$html .= "<th>Verzeichnis</th><th>Filename</th><th>Size</th><th>FileDate</th><th>Erster Eintrag</th><th>Letzter Eintrag</th><th>Anzahl</th><th>Interval</th><th>Periode</th><th>Analyze</th>";
-                        //foreach ($header as $value) $html .= "<th>".$value."</th>";
-                        foreach ($header as $value) 
-                            {
-							$value1 = str_replace(" ", "",$value);
-                            //$html .= '<th><a href="#" onClick=trigger_button(\''.$value1.'\',\'Guthabensteuerung\',\'\')>'.$value."</a></th>"; 
-                            $html .= '<th>'.$value."</th>"; 
-                            }
-                        $html .= "</tr></thead><tbody>";
-                        // Ausgabe in der Reihenfolge Verzeichnis - Filename - Size - DateTime - FirstDate - LastDate - Count - Intervall - Periode - Analyze
-                        foreach ($result as $entry) 
-                            {
-                            $json["Table"][$sub]=$entry;
-                            $sub++;
-                            $html .= "<tr>";
-                            if (in_array("Verzeichnis",$header)) $html .= "<td>".$entry["Verzeichnis"]."</td>";
-                            //$html .= "<td>".$entry["Filename"]."</td>";
-                            //$html .= '<td><a href="#" onClick=trigger_button(\''.$entry["Filename"].'\',\'Guthabensteuerung\',\'\')>'.$entry["Filename"]."</a></td>";
-                            $html .= '<td>'.$entry["Filename"]."</td>";
-                            $html .= "<td>".$entry["Size"]."</td>";
-                            $html .= "<td>".date("d.m.Y H:i",$entry["DateTime"])."</td>";
-                            $html .= "<td>".date("d.m.Y H:i",$entry["FirstDate"])."</td>";
-                            $html .= "<td>".date("d.m.Y H:i",$entry["LastDate"])."</td>";
-                            $html .= "<td>".$entry["Count"]."</td>";
-                            $html .= "<td>".nf($entry["Interval"],"s")."</td>";
-                            $html .= "<td>".nf($entry["Periode"],"s")."</td>";
-                            if (sizeof($entry["Analyze"])>0) 
-                                {
-                                $html .= "<td><table>";
-                                foreach ($entry["Analyze"] as $index => $subentry) 
-                                    {
-                                    $html .= "<tr>";
-                                    $html .= "<td>".$subentry["Type"]."</td>";    
-                                    $html .= "<td>".date("d.m.Y H:i",$subentry["StartDate"])."</td>";
-                                    $html .= "<td>".date("d.m.Y H:i",$subentry["EndDate"])."</td>";
-                                    $html .= "<td>".nf($subentry["Diff"],"s")."</td>";
-                                    $html .= "</tr>";                            
-                                    }
-                                $html .= "</table></td>";
-                                }
-                            else 
-                            $html .= "</tr>";
-                            }
-                        $html .= "</tbody></table>";
-                        $html .= "</div>";
+                        $targetId=$selenium->getTargetIdInputCsv($entry["INPUTCSV"];
+                        if (strtoupper($cmd)=="TARGETID") return ($targetId);
+                          */
+                        break;
+                    default:
                         break;
                     }
+                $config = $entry["INPUTCSV"];
+                if (strtoupper($cmd)=="CONFIG") return(json_encode($config));
+                if (isset($config["InputDir"]))  $dir=$config["InputDir"];                      //Input Verzeichnis suchen 
+                else $dir="Energy";
+                $verzeichnis=$dosOps->getWorkDirectory();
+                $inputDir = $dosOps->correctDirName($verzeichnis.$dir);  
+                if (strtoupper($cmd)=="INPUTDIR") return ($inputDir);                               
+                $files=$dosOps->readdirToArray($inputDir);
+                $filename=$config["InputFile"];
+                if (isset($config["InputFile"])) $filename=$config["InputFile"];
+                else $filename="*.csv";
+                if ($debug) echo "   Input Filename is \"$filename\" in $inputDir.\n";
+                $filesFound = $dosOps->findfiles($files,$filename,false);           // true für Debug
+                //look for "Index","Key","Format","Result" in config
+                $configCsv=$archiveOps->setConfigForAddValues($config);           //parse config file, done twice, also in readFileCsv
+                $indexCols=$configCsv["Index"];
+                $debug1=$debug;
+                //$debug1=false;
+                $fileinfo = $dosOps->writeDirToArray($inputDir, $filesFound); 
+                //print_R($fileinfo);   
+                //print_r($filesFound);                                                  // das sind nur die Filenamen und Directories
+                //$files = $fileinfo;                     // files wird von readFileCsv ergänzt um Einzelwerte
+                foreach ($filesFound as $file)
+                    {
+                    $result=array();                                // keine Summe aus allen Dateien machen, sondern Datei für Datei auswerten, daher vorher immer init
+                    $dateityp=@filetype( $inputDir.$file );     
+                    if ($debug) echo "      Check $dateityp $inputDir$file mit Dateityp ".json_encode($dateityp)."\n";
+                    if ($dateityp == "file")
+                        {
+                        $index=false;
+                        foreach ($fileinfo as $index => $entry) 
+                            {
+                            if (isset($entry["Filename"]))
+                                {
+                                if ($entry["Filename"] == $file) break;     
+                                }
+                            else { echo "     Warning, no Filename as index where we can add information : ".json_encode($entry)."\n"; return (false); }
+                            }
+                        if ($debug) echo "      Filename $file als $index gefunden.\n";               
+                        $fileOps = new fileOps($inputDir.$file);             // Filenamen gleich mit übergeben, Datei bleibt in der Instanz hinterlegt
+                        //$index=[];                            // erste Zeile als Index übernehmen
+                        //$index=["Date","Time","Value"];         // Date und Time werden gemerged
+                        //if (isset($config$index=["DateTime","Value","Estimate","Dummy"];                                             // Spalten die nicht übernommen werden sollen sind mit Indexwert false
+                        //$index=["DateTime","Value","Estimate","Dummy"];
+                                                    // Ergebnis
+                        if (strtoupper($cmd)=="FIRSTLINE") return($fileOps->readFileCsvFirstline(false,false));
+                        if ($debug1) echo "readFileCsv mit Config ".json_encode($configCsv)." und Index ".json_encode($indexCols)." aufgerufen.\n";       // readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
+                        $status = $fileOps->readFileCsv($result,$configCsv,$indexCols,[],$debug1);                  // Archive als Input, status liefert zu wenig Informationen
+                        //print_r($fileOps->analyze);
+                        //print_R($status);
+                        // analyse Status
+                        if ($status===false) return(false);
+                        //echo "-----------\n";  print_r($status["columns"]);
+                        $firstDate = array_key_first($status["lines"]);
+                        $lastDate  = array_key_last ($status["lines"]);
+                        $periode = $lastDate-$firstDate;
+                        $count=sizeof($status["lines"]);
+                        $interval=$periode/($count-1);
+                        if ($debug) echo "beinhaltet $count Werte von ".date("d.m.Y H:i",$firstDate)." bis ".date("d.m.Y H:i",$lastDate)." , Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." \n";
+                        $fileinfo[$index]["Count"] = $count;
+                        $fileinfo[$index]["FirstDate"] = $firstDate;
+                        $fileinfo[$index]["LastDate"]  = $lastDate;
+                        $fileinfo[$index]["Periode"]  = $periode;
+                        $fileinfo[$index]["Interval"]  = $interval;
+                        $fileinfo[$index]["Analyze"]  = $fileOps->analyze;
+                        // analyse Result
+                        //if ($debug) { $i=0; foreach ($result as $line => $data) { echo $line; print_R($data); if ($i++>10) break; } }
+                        echo "ConfigCsv ".json_encode($configCsv)."\n";
+                        $analyze=array();
+                        foreach ($result as $line => $data)
+                            {
+                            foreach ($configCsv["Result"]["Column"] as $idx => $column) 
+                                {
+                                if ( (isset($data[$column])) && ($data[$column]!="") )
+                                    {
+                                    $analyze[$column]["End"]=$line;
+                                    if (isset($analyze[$column]["Start"])===false) $analyze[$column]["Start"]=$line;
+                                    }
+                                }
+                            }
+                        //print_R($analyze);
+                        foreach ($analyze as $idx => $coldata)
+                            {
+                            echo "     ".str_pad($idx,12).date("d.m.y H:i",$coldata["Start"])."   ".date("d.m.y H:i",$coldata["End"])."\n";
+                            }
+                        if (isset($config["Target"])) 
+                            {
+                            echo "Target defined, store data accordingly : ".json_encode($config["Target"])."\n";
+                            if (isset($config["Target"]["OID"])) $oid=$config["Target"]["OID"];
+                            if (isset($config["Target"]["Column"])) $source=$config["Target"]["Column"];
+                            $j=0;
+                            foreach ($result as $line => $data)
+                                {
+                                if ($line >= $analyze[$source]["Start"])
+                                    {
+                                    echo date("d.m.y H:i",$line)."    ".$data[$source]."\n";
+                                    if ($j++>10) break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                $filesToRead=$fileinfo;
+                if ($debug) print_r($filesToRead);
+                if (strtoupper($cmd)=="FILES") 
+                    {
+                    $files = array();
+                    foreach ($filesToRead as $entry) $files[]=str_replace(" ", "",$entry["Filename"]);
+                    return ($files);            // Header ausgeben, damit Befehle erkannt werden können
+                    }
+                $oid=false;
+                if (isset($config["Target"]["Name"]))
+                    {
+                    $targetName = $config["Target"]["Name"];
+                    if ($debug) echo "   Get the new register, Modul $modul mit Category $categoryIdResult und Register Name $targetName.\n";
+                    $oid = IPS_GetObjectIDByName($targetName,$targetCategory);         // kein Identifier, darf in einer Ebene nicht gleich sein   -- Fehler
+                    if ($debug) echo "   Use the Register mit OID $oid und Name ".IPS_GetName($oid).".\n";
+                    }
+                elseif (isset($config["Target"]["OID"]))
+                    {
+                    $oid=$config["Target"]["OID"];
+                    if ($debug>1) echo "   Get and use the Register mit OID $oid und Name ".IPS_GetName($oid).".\n";
+                    } 
+                $targetId=$oid;
+                if (strtoupper($cmd)=="TARGETID") return ($targetId);
+                $html .= '<div class="cuw-quick">';
+                $html .= '<table>';
+                if (in_array("Verzeichnis",$header)===false) foreach ($filesToRead as $entryHeader) if (isset($entryHeader["Verzeichnis"])) 
+                    { 
+                    $html .= "<tr>";
+                    $html .= "<th>".$entryHeader["Verzeichnis"]."</th>";
+                    $html .= "<th>".$targetId."</th>";
+                    if (isset($headerSort[$sort])) $html .= "<th>Sort:".$headerSort[$sort]."</th>";
+                    $html .= "</tr>"; 
+                    break; 
+                    }
+                $html .= '</table><br>';
+                $html .= '<table class="sortierbar">';                            
+                $html .= "<thead><tr>";
+                //$html .= "<th>Verzeichnis</th><th>Filename</th><th>Size</th><th>FileDate</th><th>Erster Eintrag</th><th>Letzter Eintrag</th><th>Anzahl</th><th>Interval</th><th>Periode</th><th>Analyze</th>";
+                //foreach ($header as $value) $html .= "<th>".$value."</th>";
+                foreach ($header as $value) 
+                    {
+                    $value1 = str_replace(" ", "",$value);
+                    //$html .= '<th><a href="#" onClick=trigger_button(\''.$value1.'\',\'Guthabensteuerung\',\'\')>'.$value."</a></th>"; 
+                    $html .= '<th>'.$value."</th>"; 
+                    }
+                $html .= "</tr></thead><tbody>";
+                // Ausgabe in der Reihenfolge Verzeichnis - Filename - Size - DateTime - FirstDate - LastDate - Count - Intervall - Periode - Analyze
+                foreach ($filesToRead as $entry) 
+                    {
+                    $json["Table"][$sub]=$entry;
+                    $sub++;
+                    $html .= "<tr>";
+                    if (in_array("Verzeichnis",$header)) $html .= "<td>".$entry["Verzeichnis"]."</td>";
+                    //$html .= "<td>".$entry["Filename"]."</td>";
+                    //$html .= '<td><a href="#" onClick=trigger_button(\''.$entry["Filename"].'\',\'Guthabensteuerung\',\'\')>'.$entry["Filename"]."</a></td>";
+                    $html .= '<td>'.$entry["Filename"]."</td>";
+                    $html .= "<td>".$entry["Size"]."</td>";
+                    $html .= "<td>".date("d.m.Y H:i",$entry["DateTime"])."</td>";
+                    $html .= "<td>".date("d.m.Y H:i",$entry["FirstDate"])."</td>";
+                    $html .= "<td>".date("d.m.Y H:i",$entry["LastDate"])."</td>";
+                    $html .= "<td>".$entry["Count"]."</td>";
+                    $html .= "<td>".nf($entry["Interval"],"s")."</td>";
+                    $html .= "<td>".nf($entry["Periode"],"s")."</td>";
+                    if (sizeof($entry["Analyze"])>0) 
+                        {
+                        $html .= "<td><table>";
+                        foreach ($entry["Analyze"] as $index => $subentry) 
+                            {
+                            $html .= "<tr>";
+                            $html .= "<td>".$subentry["Type"]."</td>";    
+                            $html .= "<td>".date("d.m.Y H:i",$subentry["StartDate"])."</td>";
+                            $html .= "<td>".date("d.m.Y H:i",$subentry["EndDate"])."</td>";
+                            $html .= "<td>".nf($subentry["Diff"],"s")."</td>";
+                            $html .= "</tr>";                            
+                            }
+                        $html .= "</table></td>";
+                        }
+                    else 
+                    $html .= "</tr>";
+                    }
+                $html .= "</tbody></table>";
+                $html .= "</div>";
+
                 }
             if ($modeHtml===true) return ($html);
             elseif (strtoupper($modeHtml)=="ARRAY")  return ($json);   // ist aber das array
