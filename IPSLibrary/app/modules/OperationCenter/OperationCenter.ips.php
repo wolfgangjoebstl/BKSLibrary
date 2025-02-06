@@ -187,8 +187,14 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
+
+    $verzeichnis=$OperationCenterSetup["SystemDirectory"];
+    $filename = $verzeichnis."read_Systeminfo.bat";
+    $fileRead=array();
+    $fileRead["SystemInfo"] = $verzeichnis."system.txt";
+	$sysOps = new sysOps(); 
     
-	$DeviceManager = new DeviceManagement();                            // stürzt aktuell mit HMI_CreateReport ab
+    $DeviceManager = new DeviceManagement();                            // stürzt aktuell mit HMI_CreateReport ab
     $DeviceManagerHomematic = new DeviceManagement_Homematic();         // deshalb diese calss verwenden
     
 
@@ -919,8 +925,8 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	echo "============================================================================================================\n";
 	echo "Operation center, SystemInfo.\n";
 
-	$OperationCenter->SystemInfo();
-
+	//$OperationCenter->SystemInfo();
+    $sysOps->getProcessListFull($fileRead);
 
 	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
@@ -1194,7 +1200,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 				$Meter=$amis->writeEnergyRegistertoArray($MeterConfig);
 				SetValue($tableID,$amis->writeEnergyRegisterTabletoString($Meter));
 				SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));		
-				}			
+				}
+            $sysOps->getProcessListFull($fileRead);                 // um 00:50 aufrufen und um um 3:50 auswerten
 			break;
 		case $tim8ID:       // FileStatusTimer
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." FileStatusTimer");
@@ -1204,7 +1211,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   		 * Timer einmal am Tag um 00:50
 	   		 *
 			 *************************************************************************************/
-			$OperationCenter->SystemInfo();
+            if (isset ($installedModules["Watchdog"])===false)          // nicht installiert
+                {
+                $sysOps->ExecuteUserCommand($filename,"", false, false,-1,false);                          // false nix anzeigen  false nix warten, da Batch writing wäre das ausreichend
+                }
+			else $OperationCenter->SystemInfo();                            // bei den LBG und BKS einmal so lassen
 			break;		
 		case $tim9ID:       // Homematic RSSI auslesen
 			/************************************************************************************

@@ -71,6 +71,12 @@
     $installedModules = $moduleManager->GetInstalledModules();
 
 	$CategoryIdData                 = $moduleManager->GetModuleCategoryID('data');
+
+    $statusDeviceID                 = getVariableIDByName($CategoryIdData,"StatusDevice");
+    $statusEvaluateHardwareID       = getVariableIDByName($CategoryIdData,"StatusEvaluateHardware");
+    $logEvaluateHardwareID          = getVariableIDByName($CategoryIdData,"LogEvaluateHardware");
+    $actionUpdateID                 = getVariableIDByName($CategoryIdData,"Update");
+
     $categoryId_DetectDevice        = getCategoryIdByName($CategoryIdData,'DetectDevice');
     $actionSortMessageTableID       = getVariableIDByName($categoryId_DetectDevice,"SortTableBy");
     $messageTableID                 = getVariableIDByName($categoryId_DetectDevice,"MessageTable");
@@ -112,6 +118,9 @@
 	
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+
+    $dosOps = new dosOps();
+
 
     /* gleiche Funktion wie Evaluate_Overview */
 
@@ -272,6 +281,30 @@
                     default:
                         break;
                     }                    
+                break;
+            case $actionUpdateID:
+                echo "Update Tables";
+                $debug2=false;
+                // $logEvaluateHardwareID, $statusDeviceID, $statusEvaluateHardwareID
+                $verzeichnis=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
+                $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
+                $filename=$verzeichnis.'EvaluateHardware_DeviceErrorLog.inc.php';  
+                $arrHM_Errors = $DeviceManager->HomematicFehlermeldungen(true); 
+                $storedError_Log=$DeviceManager->updateHomematicErrorLog($filename,$arrHM_Errors,$debug2);        //true für Debug
+                //print_R($storedError_Log);
+                krsort($storedError_Log);
+                $shortError_Log = array_slice($storedError_Log, 0, 40, true);
+
+                $html = $DeviceManager->showHomematicFehlermeldungenLog($shortError_Log,$debug2);             //true für Debug
+                SetValue($logEvaluateHardwareID,$html);
+
+                $arrHM_ErrorsDetailed = $DeviceManager->HomematicFehlermeldungen("Array"); 
+                $html=$DeviceManager->showHomematicFehlermeldungen($arrHM_ErrorsDetailed);
+                SetValue($statusEvaluateHardwareID,$html);
+
+                $hwStatus = $DeviceManager->HardwareStatus("array",$debug2);           // Ausgabe als Array, true für Debug
+                $output = $DeviceManager->showHardwareStatus($hwStatus,["Reach"=>false,]);           // Ausgabe als html
+                SetValue($statusDeviceID,$output);                
                 break;
             default:
                 echo "Do not know ".$_IPS['VARIABLE']."\n";

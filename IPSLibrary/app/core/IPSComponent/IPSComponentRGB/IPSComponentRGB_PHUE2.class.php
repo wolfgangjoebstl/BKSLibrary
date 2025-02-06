@@ -19,11 +19,15 @@
      * Gruppen, Zonen, Räume werden direkt aus den Mitteln von Hue unterstützt
      *
      * was macht dann IPSComponent noch, siehe weiter unten den Überblick der implementierten Funktionen
+     * Die Befehle werden nur mehr mit RequestAction und der passenden VariablenID umgesetzt
      *
-     *
-     *
-     *
-     *
+     * die Schwierigkeit ist herauszufinden um welchen Lampentyp es sich handelt
+     * es wurden dazu die in der Instanz vorhanden Register mit ihren IDs und Namen ausgelesen 
+     * Anhand der Registernamen und ihrer Werte laesst es sich grundsätzlich erkennen
+     *      Wenn Power false ist einfach ausschalten, das funktioniert immer gleich 
+     *      Mit SetState wird übergeben ob es sich um eine Ambience oder RGB Lampe handelt
+     *      Bei AMbience automatisch umrechnen, 
+     * IPS_Heat (Stromheizung) setzt die Befehle zum Setzen in der richtigen Art und Weise 
      *
      * Versionsgeschichte:
      * Dann sind Anpassungen für das SymconHUE Modul erfolgt, einfachere Ansteuerung der Hue Funktionen über die Bridge und nicht mehr direkt
@@ -82,6 +86,7 @@
 		public function __construct($lampOID) 
 			{
 			$this->lampOID = $lampOID;
+            //echo "construct get ".$this->lampOID;
             $cids = IPS_GetChildrenIDs($this->lampOID);           // für jede Instanz die Children einsammeln
             foreach($cids as $cid)
                 {
@@ -137,7 +142,7 @@
          */
 		public function SetState($power, $color, $level=512, $ambience=false) 
 			{
-            $debug=false;
+            $debug=true;
 			if (!$power) 
 				{
 			    if ($debug) echo "IPSComponentRGB_HUE2 SetState mit Power ".($power?"Ein":"Aus")."\n";
@@ -148,8 +153,14 @@
 			elseif ($ambience)                      // als Ambience ELD Lampe aufgerufen
 				{
 				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
-    			if ($debug) echo "IPSComponentRGB_HUE2 SetState ".$this->lampOID." mit Power ".($power?"Ein":"Aus")."  Mired $color  Level $level  Typ ".($ambience?"Ambience":"RGB")."    \n";
-                if ($color>1000) $color = 1000000/$color;           // probably Kelvin, convert to mired
+                if ($color>1000) 
+                    {
+                    $unit="mired";
+                    $color = 1000000/$color;           // probably Kelvin, convert to mired
+                    }
+                else $unit="Kelvin";
+    			if ($debug) echo "IPSComponentRGB_HUE2 SetState ".$this->lampOID." mit Power ".($power?"Ein":"Aus")."  $unit $color  Level $level  Typ ".($ambience?"Ambience":"RGB")."    \n";
+
                 RequestAction($this->statusId, $power);
                 RequestAction($this->helligkeitId, $level);
                 RequestAction($this->farbtemperaturId, $color);

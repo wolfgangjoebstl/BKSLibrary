@@ -278,7 +278,13 @@ class OperationCenter
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGELOGS"],"PURGELOGS",true);    
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGESIZE"],"PURGESIZE",10);    
 
-		
+        /* system Directory for inquiries with cmd window */
+        configfileParser($configInput, $config, ["SystemDirectory","Systemdirectory","systemdirectory"],"SystemDirectory","OperationCenter");
+        $systemDir     = $this->dosOps->correctDirName($this->dosOps->getWorkDirectory()); 
+        if ( (strpos($config["SystemDirectory"],"C:/Scripts")===0) || (strpos($config["SystemDirectory"],'C:\Scripts')===0) ) $config["SystemDirectory"]=substr($config["SystemDirectory"],10);      // Workaround für C:/Scripts
+        $config["SystemDirectory"] = $this->dosOps->correctDirName($systemDir.$config["SystemDirectory"]);
+        $this->dosOps->mkdirtree($config["SystemDirectory"]); 
+
 		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt 
 		if (isset($this->oc_Setup['CONFIG'])===false) 
 			{
@@ -1073,7 +1079,7 @@ class OperationCenter
      *
 	 *
 	 */
-	 function SystemInfo($debug=false)
+	 function SystemInfo($text=false,$debug=false)
 	 	{
 
 		$HostnameID   		= IPS_GetObjectIdByName("Hostname", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
@@ -1109,10 +1115,11 @@ class OperationCenter
             {
             // exec('systeminfo',$catch);   // ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden 
             //$resultSystemInfo=IPS_EXECUTE("systeminfo","", true, true);
-            $resultSystemInfo=$this->sysOps->ExecuteUserCommand("systeminfo","", true, true);           // gleicher Aufruf für alle
+            if ($text===false) $resultSystemInfo=$this->sysOps->ExecuteUserCommand("systeminfo","", true, true);           // gleicher Aufruf für alle
+            else $resultSystemInfo=$text;
             //echo $resultSystemInfo;
             $catch=explode("\x0A",$resultSystemInfo);             //zeilenweise als array speichern
-            print_R($catch);
+            //print_R($catch);
 
             foreach($catch as $line)
                 {
@@ -1234,12 +1241,12 @@ class OperationCenter
 		}
 
 	
-	/*******************
+	/* readSystemInfo
 	 *
 	 * Die von SystemInfo aus dem PC (via systeminfo) ausgelesenen und gespeicherten Daten werden für die Textausgabe formatiert und angereichert
-	 *
-	 ***************************************************/
-									
+	 * es werden keine Daten ausgelesen oder verarbeitet, hier erfolgt nur die Darstellung
+     *
+     */								
 	 function readSystemInfo($html=false)
 	 	{
 		$PrintLn="";
@@ -1253,6 +1260,7 @@ class OperationCenter
 		$HostnameID   		= CreateVariableByName($this->categoryId_SysInfo, "Hostname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		$SystemNameID		= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
 		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+		$MemAvailableID	    = CreateVariableByName($this->categoryId_SysInfo, "Memory", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
         $VersionJavaID		= IPS_GetObjectIdByName("Java_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		$Version=explode(".",getValue($SystemVersionID));
 		//print_r($Version);
@@ -1279,10 +1287,13 @@ class OperationCenter
 
                 case "22000": $Codename="Win11 (21H2)"; break;
                 case "22621": $Codename="Win11 2022 Update (22H2)"; break;
+                case "22631": $Codename="Win11 2023 Update (22H2)"; break;
+                case "26100": $Codename="Win11 2024 Update (24H2)"; break;
                 default: $Codename=$Version[2];break;
                 }			
             }
         else $Codename="";			
+        $latestChange=date("d.m H:i",IPS_GetVariable($MemAvailableID)["VariableChanged"]);          // verändert sich dauernd
 
 		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		$ExternalIP			= CreateVariableByName($this->categoryId_SysInfo, "ExternalIP", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
@@ -1294,19 +1305,22 @@ class OperationCenter
 		$PrintLn.="   ".str_pad("Betriebssystem Codename",30)." = ".str_pad($Codename,30)."   \n";
 		$PrintLn.="   ".str_pad("Anzahl Hotfix",30)." = ".str_pad(GetValue($HotfixID),30)."   (".date("d.m H:i",IPS_GetVariable($HotfixID)["VariableChanged"]).") \n";
 		$PrintLn.="   ".str_pad("External IP Adresse",30)." = ".str_pad(GetValue($ExternalIP),30)."   (".date("d.m H:i",IPS_GetVariable($ExternalIP)["VariableChanged"]).") \n";
+		$PrintLn.="   ".str_pad("Memory Available",30)." = ".str_pad(GetValue($ExternalIP),30)."   (".date("d.m H:i",IPS_GetVariable($MemAvailableID)["VariableChanged"]).") \n";
 		$PrintLn.="   ".str_pad("IPS Uptime",30)." = ".str_pad(GetValue($UptimeID),30)."   (".date("d.m H:i",IPS_GetVariable($UptimeID)["VariableChanged"]).") \n";
 		$PrintLn.="   ".str_pad("IPS Version",30)." = ".str_pad(GetValue($VersionID),30)."   (".date("d.m H:i",IPS_GetVariable($VersionID)["VariableChanged"]).") \n";
 
-        $PrintHtml .= '<tr><td>Hostname</td><td>'.GetValue($HostnameID).'</td><td></tr>';
-        $PrintHtml .= '<tr><td>Betriebssystem Name</td><td>'.GetValue($SystemNameID).'</td><td></tr>';
-        $PrintHtml .= '<tr><td>Betriebssystem Version</td><td>'.GetValue($SystemVersionID).'</td><td></tr>';
-        $PrintHtml .= '<tr><td>Betriebssystem Codename</td><td>'.$Codename.'</td><td></tr>';
-        $PrintHtml .= '<tr><td>Anzahl Hotfix</td><td>'.GetValue($HotfixID).'</td><td></tr>';
-        $PrintHtml .= '<tr><td>External IP Adresse</td><td>'.GetValue($ExternalIP).'</td><td></tr>';
-        $PrintHtml .= '<tr><td>IPS Uptime</td><td>'.GetValue($UptimeID).'</td><td></tr>';
-        $PrintHtml .= '<tr><td>IPS Version</td><td>'.GetValue($VersionID).'</td><td></tr>';
-        $PrintHtml .= '<tr><td>Java Version</td><td>'.GetValue($VersionJavaID).'</td><td></tr>';
-        $PrintHtml.='</table>';            
+        $PrintHtml .= '<tr><td>Hostname</td><td>'.GetValue($HostnameID).'</td></tr>';
+        $PrintHtml .= '<tr><td>Betriebssystem Name</td><td>'.GetValue($SystemNameID).'</td></tr>';
+        $PrintHtml .= '<tr><td>Betriebssystem Version</td><td>'.GetValue($SystemVersionID).'</td></tr>';
+        $PrintHtml .= '<tr><td>Betriebssystem Codename</td><td>'.$Codename.'</td></tr>';
+        $PrintHtml .= '<tr><td>Anzahl Hotfix</td><td>'.GetValue($HotfixID).'</td></tr>';
+        $PrintHtml .= '<tr><td>External IP Adresse</td><td>'.GetValue($ExternalIP).'</td></tr>';
+        $PrintHtml .= '<tr><td>Memory Available</td><td>'.GetValue($MemAvailableID).'</td></tr>';
+        $PrintHtml .= '<tr><td>IPS Uptime</td><td>'.GetValue($UptimeID).'</td></tr>';
+        $PrintHtml .= '<tr><td>IPS Version</td><td>'.GetValue($VersionID).'</td</tr>';
+        $PrintHtml .= '<tr><td>Java Version</td><td>'.GetValue($VersionJavaID).'</td></tr>';
+        $PrintHtml .= '<tr><td align="right" colspan="2"><font size="-1">last update on '.$latestChange.'</font></td></tr>';    
+        $PrintHtml .='</table>';
         
 		if ($html) return ($PrintHtml);
         else return ($PrintLn);
@@ -9572,14 +9586,19 @@ class DeviceManagement_Homematic extends DeviceManagement
 
         }
 
-    /*****************************************************************
-    *
-    * den Status der HomematicCCU auslesen, alle Fehlermeldungen
-    *
-    * funktioniert für CCU2 und CCU3
-    * alle echo Meldungen werden im String alleHM_errors gesammelt
-    *
-    **************/
+    /* DeviceManagement_Homematic::HomematicFehlermeldungen
+     *
+     * den Status der HomematicCCU auslesen, alle Fehlermeldungen
+     *
+     * funktioniert für CCU2 und CCU3
+     * alle echo Meldungen werden im String alleHM_errors gesammelt
+     *
+     * Parameter mode
+     *      Array       $arrHM2_Errors
+     *      true        $arrHM_Errors
+     *      false
+     *
+     **************/
 
     function HomematicFehlermeldungen($mode=false, $debug=false)
 	    {
@@ -9629,8 +9648,14 @@ class DeviceManagement_Homematic extends DeviceManagement
 				else
 				    {
             		$ccu_name=IPS_GetName($id);
+                    if ($debug) echo "   work on $ccu_name ($id).\n";
             		if (isset($this->HomematicSerialNumberList[$ccu_name])) $alleHM_Errors.="\nHomatic Socket ID ".$id." / ".$ccu_name."   ".sizeof($this->HomematicSerialNumberList[$ccu_name])." Endgeräte angeschlossen.\n";  
-					$msgs = @HM_ReadServiceMessages($id);
+                    else 
+                        {
+                        echo "        CCU not found in HomematicSerialNumberList:\n";
+                        print_r($this->HomematicSerialNumberList);
+                        }
+                    $msgs = @HM_ReadServiceMessages($id);
 					if($msgs === false)
 					    {
 						//die("Verbindung zur CCU fehlgeschlagen");
@@ -9645,6 +9670,7 @@ class DeviceManagement_Homematic extends DeviceManagement
 					    }
 					if ($msgs != Null)
 						{
+                        if ($debug) { echo "    Messages : "; print_R($msgs); }
 						if(sizeof($msgs) == 0)
 						    {
 							//echo "Keine Servicemeldungen!\n";
@@ -9682,9 +9708,15 @@ class DeviceManagement_Homematic extends DeviceManagement
                             $arrHM2_Errors[$HMID]["CCU"]=$ccu_name;							
                             }
 						}
+                    elseif ($debug) 
+                        {
+                        echo "    Messages Null, warum ? \n";
+                        $msgs = HM_ReadServiceMessages($id);
+                        }
 					}
 				}
 			}
+        if ($debug) echo $alleHM_Errors;
 		if ($mode=="Array") return($arrHM2_Errors);
 		elseif ($mode) return($arrHM_Errors);
         else return($alleHM_Errors);

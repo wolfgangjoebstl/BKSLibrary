@@ -29,6 +29,7 @@
      * im Schraubenschlüssel- SystemTP: EvaluateHardware und MessageList
      *      Subtab mit EvaluateHardware
      *          darin drei Tabs, Auswertung/StatusOverview und Nachrichten        siehe oben
+     *          und einen UpdateButton
      *
      *      Subtab MessageList
      *          darin html Box Tabelle und einfache Sortieranforderungen per Variable
@@ -101,6 +102,11 @@
     $statusDeviceID                 = CreateVariable("StatusDevice", 3, $CategoryIdData,1020,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $statusEvaluateHardwareID       = CreateVariable("StatusEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     $logEvaluateHardwareID          = CreateVariable("LogEvaluateHardware", 3, $CategoryIdData,1010,"~HTMLBox",null,null,"");
+
+    $pname="UpdateTables";                                         // keine Standardfunktion, da Inhalte Variable
+    $nameID=["Update"];
+    $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable, 0 ohne Selektor
+    $actionUpdateID          = CreateVariableByName($CategoryIdData,"Update", 1,$pname,"",1000,$scriptIdImproveDeviceDetection);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
 	echo "\n";
 	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";	
@@ -234,10 +240,18 @@
                 "MOBILE"			=> false,
                     ),
     );
+    // Nachrichten sind immer rechts
     $webfront_links["EvaluateHardware"]["Nachrichten"] = array(
+        $actionUpdateID=> array(
+                "NAME"				=> "Update",
+                "ORDER"				=> 10,
+                "ADMINISTRATOR" 	=> true,
+                "USER"				=> false,
+                "MOBILE"			=> false,
+                    ),
         $logEvaluateHardwareID => array(
                 "NAME"				=> "Nachrichten",
-                "ORDER"				=> 10,
+                "ORDER"				=> 20,
                 "ADMINISTRATOR" 	=> true,
                 "USER"				=> false,
                 "MOBILE"			=> false,

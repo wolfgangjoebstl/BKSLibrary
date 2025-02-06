@@ -106,7 +106,7 @@
                 case "DAILYLPREAD":
                     echo "-----aggregate 15min Power Intervall data to Energy\n";
                     $config = ["StartTime" => strtotime("-120days"),"Update" => true];            // die letzten 120 Tage nachbearbeiten    
-                    $Amis->aggregate15minPower2Energy($meter,$config,true);           // true update values false no debug
+                    //$Amis->aggregate15minPower2Energy($meter,$config,true);           // true update values false no debug
                     echo "||----\n";
                 case "DAILYREAD":
                     $endtime=$endtime-60*60*24*1;               // Werte erst mit einem Tag Verzögerung erhalten, werden während eines Tages aus dem Smart Meter ausgelesen
@@ -195,6 +195,8 @@
             switch (strtoupper($meter["TYPE"]))
                 {
                 case "DAILYLPREAD":
+
+                    break;
                 case "DAILYREAD":
                     $meter["TYPE"]="DAILYLPREAD";                           // fake dailyread, es gibt zwar nur Tageswerte, change meter Type to Update from 15min Values
                     if (isset($meter["LeistungID"])===false) 
@@ -212,7 +214,7 @@
                                 "OutputID"          => $Amis->getWirkenergieID($meter),
                                 "OutputCounterID"   => IPS_GetVariableIDByName("Wirkenergie", $ID),
                                 ];            // die letzten 120 Tage nachbearbeiten    
-                    $Amis->aggregate15minPower2Energy($meter,$config,true);           // true or config to update values false no debug
+                    //$Amis->aggregate15minPower2Energy($meter,$config,true);           // true or config to update values false no debug
                     echo "||----\n";
                     break;
                 default:

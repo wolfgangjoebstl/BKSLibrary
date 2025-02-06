@@ -51,6 +51,7 @@
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
     IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+    IPSUtils_Include ('Amis_Constants.inc.php', 'IPSLibrary::app::modules::Amis');
 
 
 	/******************************************************
@@ -80,19 +81,27 @@
     elseif ($debug) echo "Guthabensteuerung ist NICHT installiert.\n";
 
 	$amis=new Amis();           // Ausgabe SystemDir, erstellt MeterConfig
+
     $webOps = new webOps();
 
     $categoryId_SmartMeter      = IPS_GetObjectIDByName('SmartMeter', $CategoryIdData);
-    $pnames = ["Directory","Update","Calculate","Sort"];                                    // muss gleich sein
-    $webOps->setSelectButtons($pnames,$categoryId_SmartMeter);
+    //$pnames = ["Directory","Update","Calculate","Sort"];                                    // muss gleich sein
+    $webOps->setSelectButtons(SMART_SELECT,$categoryId_SmartMeter);
     $buttonsId = $webOps->getSelectButtons();
-    //print_r($buttonsId);
+    
+    /*print_r($buttonsId);
     $updateApiTableID           = IPS_GetObjectIDByName("Update", $categoryId_SmartMeter);           // button profile is Integer
     $calculateApiTableID        = IPS_GetObjectIDByName("Calculate", $categoryId_SmartMeter);           // button profile is Integer
-    $sortApiTableID             = IPS_GetObjectIDByName("Sort", $categoryId_SmartMeter);           // button profile is Integer
+    $sortApiTableID             = IPS_GetObjectIDByName("Sort", $categoryId_SmartMeter);           // button profile is Integer    */
 
     //echo "new AmisSmartMeter : ";
     $amisSM = new AmisSmartMeter();             // verwendet class GuthabenHandler wenn vorhanden
+
+    $MeterStatusConfig=$amisSM->getAmisConfig();
+    $configCsv=$MeterStatusConfig["File"]["INPUTCSV"];
+
+    $statusDirectoryID = IPS_GetObjectIDByName("DirectoryStatus",$categoryId_SmartMeter);
+    $statusSmartMeterID = IPS_GetObjectIDByName("SmartMeterStatus",$categoryId_SmartMeter);
     //echo " Done\n";
 
 if ($_IPS['SENDER']=="WebFront")
@@ -112,24 +121,38 @@ if ($_IPS['SENDER']=="WebFront")
         {
         case $buttonsId[0]["ID"]:         // Directory
             $webOps->selectButton(0);
-            $statusDirectoryID = IPS_GetObjectIDByName("DirectoryStatus",$categoryId_SmartMeter);
-            $MeterStatusConfig=$amis->getAmisConfig();
+            $MeterStatusConfig=$amisSM->getAmisConfig();
             $config=array();
             $config["File"]=$MeterStatusConfig["File"];
             SetValue($statusDirectoryID,$amisSM->writeSmartMeterCsvInfoToHtml(false,$config,false));
             break;
         case $buttonsId[1]["ID"]:         // Update
             $webOps->selectButton(1);
-            $statusSmartMeterID = IPS_GetObjectIDByName("SmartMeterStatus",$categoryId_SmartMeter);
             SetValue($statusSmartMeterID,$amisSM->writeSmartMeterDataToHtml());
             break;
         case $buttonsId[2]["ID"]:         // Calculate
             $webOps->selectButton(2);
+
+            ini_set('memory_limit', '128M');                        // können grosse Dateien werden            
+            $oid=$configCsv["Target"]["OID"];
+            //$configCsv["Target"]["Column"]="Value1";              // manual overwrite
+            $files=$amisSM->readDirectory($configCsv);
+            $archiveOps = new archiveOps();                        // alle Archive einlesen, noch nicht festlegen
+            foreach ($files as $file) $archiveOps->addValuesfromCsv($file,$oid,$configCsv,false);             // debug false schreibt die werte ins Archive
+            SetValue($statusSmartMeterID,$amisSM->writeSmartMeterDataToHtml());
+            break;
+       case $buttonsId[3]["ID"]:         // Transfer
+            $webOps->selectButton(3);
+            $variableIdLookAndFeelHTML = IPS_GetObjectIdByName("NewLookAndFeel",$categoryId_SmartMeter);
+            SetValue($variableIdLookAndFeelHTML,GetValue($variableIdLookAndFeelHTML));
+            break;            
+       case $buttonsId[4]["ID"]:         // LookandFeel
+            $webOps->selectButton(4);
             $variableIdLookAndFeelHTML = IPS_GetObjectIdByName("NewLookAndFeel",$categoryId_SmartMeter);
             SetValue($variableIdLookAndFeelHTML,GetValue($variableIdLookAndFeelHTML));
             break;
-        case $buttonsId[3]["ID"]:         // Sort
-            $webOps->selectButton(3);
+        case $buttonsId[5]["ID"]:         // Interactive
+            $webOps->selectButton(5);
             $variableIdInterActiveHTML = IPS_GetObjectIdByName("InterActive",$categoryId_SmartMeter);
             SetValue($variableIdInterActiveHTML,GetValue($variableIdInterActiveHTML));
             break;

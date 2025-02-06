@@ -149,7 +149,22 @@
 	//$OperationCenterConfig = $OperationCenter->oc_Configuration;			// alter zugriff direkt auf die Config Variable
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
-	
+
+    // Batch Datei schreiben
+    $verzeichnisSystem=$OperationCenterSetup["SystemDirectory"];
+    $filenameSystem = $verzeichnisSystem."read_Systeminfo.bat";    
+    $handle2=fopen($filenameSystem,"w");
+    fwrite($handle2,'cd '.$verzeichnisSystem."\r\n");
+    fwrite($handle2,'echo %username% >>username.txt'."\r\n");
+    fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
+    fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
+    fwrite($handle2,'jps >>jps.txt'."\r\n");  
+    //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
+    fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
+    //fwrite($handle2,"pause\r\n");
+    fwrite($handle2,'systeminfo >>system.txt'."\r\n");
+    fclose($handle2);
+
 	$modulhandling = new ModuleHandling();
 	
     /*----------------------------------------------------------------------------------------------------------------------------

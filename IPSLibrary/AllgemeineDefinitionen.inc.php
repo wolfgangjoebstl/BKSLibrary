@@ -70,7 +70,7 @@
       *
       *
       *
-      * DEPRICIATED
+      * DEPRICATED
       * verschiedene Routinen die bald geloescht werden sollen
       *     getNiceFileSize
       *     getServerMemoryUsage
@@ -3963,8 +3963,9 @@ class archiveOps
 
 
     /* archiveOps::showValues
-     * Ausgabe, echo von historischen Werten, funktioniert für aggregated und geloggte Werte
      * es werden die Werte in $werte oder die internen Werte genommen
+     * sind zwar zwei Routinen aber in einer gemeinsamen Funktion
+     * Ausgabe, echo von historischen Werten, funktioniert für aggregated und geloggte Werte
      * interne Werte result haben Struktur oid->values->[Value,TimeStamp] || [Avg,TimeStamp]
      *
      * Ausgabe von historischen Werte mit Berücksichtigung von Duration
@@ -3989,7 +3990,7 @@ class archiveOps
         $statistics = new statistics();   
         $config = $statistics->setConfiguration($configInput);   
         $doecho=true;
-        if ($config["ShowTable"]["output"]=="realTable") { $returnRealTable=true; $doecho=false;  }  
+        if ((isset($config["ShowTable"]["output"])) && ($config["ShowTable"]["output"]=="realTable")) { $returnRealTable=true; $doecho=false;  }  
         else $returnRealTable=false;
         // einfache Routine
         //foreach ($werte as $wert) echo "   ".date ("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";     
@@ -4011,7 +4012,9 @@ class archiveOps
                     //print_R($wert);
                     $timeStamp=$wert["TimeStamp"];
                     $value=$wert["Avg"];
-                    echo "   ".date("d.m.Y H:i:s",$timeStamp)."   Avg ".str_pad($value,20)."  Min ".$wert["Min"]." ".date("d.m.Y H:i:s",$wert["MinTime"])."  Max".$wert["Max"]." ".date("d.m.Y H:i:s",$wert["MaxTime"])."   \n";   
+                    echo "   ".date("d.m.Y H:i:s",$timeStamp);
+                    if (isset($wert["Value"])) echo "   Val ".str_pad($wert["Value"],20);
+                    echo "   Avg ".str_pad($value,20)."  Min ".$wert["Min"]." ".date("d.m.Y H:i:s",$wert["MinTime"])."  Max ".$wert["Max"]." ".date("d.m.Y H:i:s",$wert["MaxTime"])."   \n";   
                     }
                 else                                    // geloggte Werte
                     {
@@ -4436,9 +4439,10 @@ class archiveOps
      * config auch qualifizieren, aus der Config werden benötigt
      *      StartTime
      *      EndTime
-     *      manAggregate    verwendet manualDailyAggregate
+     *      manAggregate    verwendet manualDailyAggregate zum Aggregieren
      *
      *
+     * Return Wert sind werteTotal, diese werden aus dem Input Werten erzeugt
      *
      */
     public function getArchivedCounters($oid,$configInput=array(),$debug=false)
@@ -4649,7 +4653,7 @@ class archiveOps
                     $increment=0; 
                     break;
                 }
-            if ($debug) echo "Aggregated is configured with ".$config["manAggregate"]." converted to $manAggregate und $increment.\n";                
+            if ($debug) echo "Aggregated is configured with ".$config["manAggregate"]." converted to internal modes :  manAggregate $manAggregate und increment $increment.\n";                
             }
 
         // mit welchem Index hängen wir die Daten an die bestehenden dran
@@ -4669,6 +4673,7 @@ class archiveOps
         $initial=true; 
         $display=$debug;                                //$display=$debug;
         $zaehler=0; $gepldauer=0; $showAggCount=0;
+        $prevdirection=false;                           // Richtungserkennung
 
         if (isset($config["carryOver"]["Value"])) $ergebnis=$config["carryOver"]["Value"];
         else $ergebnis=0;
@@ -4739,6 +4744,8 @@ class archiveOps
                 {
                 if ($vorigeZeit>$zeit) $direction="past";       // höherer Index ist in der Vergangheit
                 else $direction="future";
+                if ($prevdirection!=$direction) if ($debug) echo "Richtung erkannt : go to $direction \n";
+                $prevdirection=$direction;
                 }
             /* es hängt von der Richtung ab index 0 ist jetzt heute und index 1 ist jetzt-15min, wir fahren in die Vergangenheit (past), die zeit Werte werden kleiner
              * alter Tag fangt an, zB mit 31.1.1978 23:45 (index 31), hier ist der Wert von 1.2.1978 00:00 (index 30) bis 00:00 enthalten, das bedeutet:
@@ -4782,14 +4789,23 @@ class archiveOps
                     case 0:                                         // Standard Logging, Statuswert, daher kompletten Bereich zusammenzählen 
                         if ($direction=="past")
                             {
-                            $ergebnisTag=$ergebnis-$altwert;                         // 23:45 vom neuen Tag braucht den 00:00 Wert vom Vortag, wenn wir in die vergangheit zählen
-                            $ergebnis=$altwert+$aktwert;
+                            if (true)       // so wie increment 1, geändert damit mit log.Wien zusammenpasst
+                                {
+                                $ergebnisTag=$ergebnis;                         // geradlinig zählen, alle Werte vom selben Tag zusammenzählen, Zeitstempel ist der Beginn der jeweiligen Einheit
+                                $ergebnis=$aktwert;
+                                }
+                            else            // bisherig
+                                {
+                                $ergebnisTag=$ergebnis-$altwert;                         // 23:45 vom neuen Tag braucht den 00:00 Wert vom Vortag, wenn wir in die Vergangheit zählen
+                                $ergebnis=$altwert+$aktwert;
+                                }
                             $result[$index]["TimeStamp"]=$altzeit;
                             $countPeriode--;
                             $count2=$countPeriode;          // eh nur zum anzeigen
                             if ($countPeriode!=0) $result[$index]["Avg"]=$ergebnisTag/$countPeriode;            // Fehler abfangen und lieber keinen Wert
                             else $result[$index]["Avg"]=0;
                             $countPeriode=2; 
+                            if ($debug) echo "Tagesende erkannt, Tag $ergebnisTag Weiter $ergebnis \n";
                             }
                         if ($direction=="future")
                             {
@@ -4802,6 +4818,7 @@ class archiveOps
                             else $result[$index]["Avg"]=0;
                             $countPeriode=0; 
                             }
+                        // Werte übernehmen
                         $result[$index]["Value"]=$ergebnisTag;
                         $result[$index]["Min"]=$min; $result[$index]["MinTime"]=$minTime; $min=false;
                         $result[$index]["Max"]=$max; $result[$index]["MaxTime"]=$maxTime; $max=false;
@@ -4853,7 +4870,7 @@ class archiveOps
 
             if ($display==true)         // Anzeige, optional zum besseren Verständnis
                 {
-                if ($gepldauer++<100)           // nur die ersten hundert Einträge ausgeben und dann nur mehr den Wechsel
+                if ($gepldauer++<200)           // nur die ersten hundert Einträge ausgeben und dann nur mehr den Wechsel
                     {
                     if ($debug) 
                         {
@@ -4958,7 +4975,7 @@ class archiveOps
             else 
                 {
                 $result[$index]["Value"]= $alterWert-$wert["Value"];
-                if (($wert["Value"]/$alterWert)>2) echo "  Sprung zu gross.\n";
+                if ( ($alterWert>0) && (($wert["Value"]/$alterWert)>40) ) echo "  manualDailyCounterEvaluate, Warning, Change too Big at ".date("d.m.Y H:i:s",$wert["TimeStamp"])." ".$wert["Value"]."/".$alterWert." .\n";
                 $result[$index]["TimeStamp"] = $wert["TimeStamp"];
                 $alterWert=$wert["Value"]; 
                 $maxminFull->addValue($result[$index]);
@@ -6504,14 +6521,44 @@ class archiveOps
         else $key=$config["Key"]; 
         if (isset($config["Target"]["Column"])) 
             {
-            echo "Target found : ".$config["Target"]["Column"]."\n";
+            if ($debug) echo "Target found : ".$config["Target"]["Column"]."\n";
             $value=$config["Target"]["Column"];
             }
         else $value="Value";
         $keyconfig=array();;
         $keyconfig["TimeStamp"]=$key;
         $keyconfig["Value"]=$value;
-        $input = $this->filterNewData($result,$target,$keyconfig,true);
+
+        if (isset($config["Result"]["Column"]))
+            {
+            $ergebnisCol=$config["Result"]["Column"];
+            $ergebnisData=array();    
+            $line=0;
+            if ($debug) echo "Konfiguration $key ".json_encode($ergebnisCol)."\n";
+            foreach ($result as $entry) 
+                {
+                $time=$entry[$key];
+                foreach ($ergebnisCol as $Col) 
+                    {
+                    if ( (isset($entry[$Col])) && ($entry[$Col]>0) )
+                        {
+                        if (isset($ergebnisData[$Col]["TimeFirst"])===false) $ergebnisData[$Col]["TimeFirst"]=$time;
+                        $ergebnisData[$Col]["TimeLast"]=$time;
+                        }
+                    }
+                if ( ($debug) && ($line++<10) )
+                    {
+                    echo $line."    ";
+                    echo $time;
+                    foreach ($ergebnisCol as $Col) echo "    ".$entry[$Col]; 
+                    echo "\n";
+                    }
+                }
+            //print_r($ergebnisData);
+            if ($debug) foreach ($ergebnisData as $Col => $entry) echo $Col."    ".date("d.m.Y H:i",$entry["TimeFirst"])." bis ".date("d.m.Y H:i",$entry["TimeLast"])." \n";
+            }
+
+        $input = $this->filterNewData($result,$target,$keyconfig,$debug);
         
         //$this->showValues($write,$config);
 
@@ -6532,8 +6579,9 @@ class archiveOps
             $status=AC_AddLoggedValues ($this->archiveID, $oid, $writeInput);
             echo "Erfolgreich : $status . ".count($writeInput)." Werte hinzugefügt.\n";
             echo " Zeitraum von ".date("d.m.Y",$writeInput[array_key_first($writeInput)]["TimeStamp"])." bis ".date("d.m.Y",$writeInput[array_key_last($writeInput)]["TimeStamp"])." \n";
+            AC_ReAggregateVariable($this->archiveID, $oid);
             }
-        else echo "Debug Mode oder count $count, no add to archive.\n";
+        elseif ($debug) echo "Debug Mode oder count $count, no add to archive.\n";
         return ($input);            // as result, also useful in Debug Mode
         }
 
@@ -11057,7 +11105,7 @@ class sysOps
         else    
             {
             if ($debug) echo "getTaskList, die aktuell gestarteten Programme werden erfasst.\n";
-            $result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","", true, true);
+            else $result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","", true, true);                    // vorerst nur aufrufen wenn nicht im Debug Mode
             }
         //echo $result;
 
@@ -11133,7 +11181,6 @@ class sysOps
      * die aktuell gestarteten Java Programme werden erfasst
      *
      */
-
     private function getJavaList($filename=false,$debug=false)
         {
         if ($debug) echo "getJavaList($filename,... aufgerufen.\n";
@@ -11165,14 +11212,48 @@ class sysOps
         return ($javas);
         }
 
+    /* get result from systeminfo aufruf
+     */
+    private function getSystemInfo($filename=false,$debug=false)
+        {
+        if ($debug) echo "getSystemInfo($filename,... aufgerufen.\n";
+        $lines=0; $result="";
+        if ($filename)  
+            {
+            if (file_exists($filename))
+                {            
+                $handle4=fopen($filename,"r");
+                while (($iline=fgets($handle4)) !== false) 
+                    {
+                    $line = iconv('cp437', 'utf-8', $iline);
+                    $type=mb_detect_encoding($iline,"auto",true);
+                    //if ($debug) echo str_pad($i,2)." | ".strlen($line)." | $type | $line";
+                    $result .= $line;
+                    if ($lines++>10000) break;
+                    }
+                fclose($handle4);
+                }
+            }
+        if ($debug) echo "In total $lines Lines had been read.\n";
+        return ($result);
+        }
+
     /***********************************************************************************
      *
-     * sysOps, eine Liste der aktuell aktiven Prozesse auslesen
+     * sysOps::getProcessListFull
+     * eine Liste der aktuell aktiven Prozesse auslesen
      * auch Java jdk berücksichtigen, wird von Watchdog Library getActiveProcesses aufgerufen
      * es wird ein array aus filenamen übergeben, alles Ergebnisse von process Abfragen
      * Verschiedene Typen:
      *      Tasklist
      *      WmicsProcesslist
+     *
+     * ruft folgende Routinen auf:
+     *      getTaskList
+     *      getWmicsProcessList   
+     *      getProcessList
+     *      getJavaList
+     *
      */
 
 
@@ -11183,30 +11264,37 @@ class sysOps
             echo "Aufruf getProcessListFull, die folgenden Dateien auswerten:\n";
             print_R($filename);
             }
-        $tasklist=array(); $process=array(); $javas=array();
+        $tasklist=array(); $process=array(); $javas=array(); $wmics=array(); 
+        if (isset($filename["SystemInfo"])) 
+            {
+            if ($filename["SystemInfo"] !== false) $systeminfo = $this->getSystemInfo($filename["SystemInfo"], $debug);
+            $subnet="10.255.255.255";
+            $OperationCenter=new OperationCenter($subnet);              // ein Router zum Datenauslesen, sonst Ausgabe "config Router empty."
+            $OperationCenter->SystemInfo($systeminfo,$debug);           // verwende file Input
+            }
         if (isset($filename["Tasklist"])) 
             {
-            if ($filename["Tasklist"] !== false) $tasklist = $this->getTaskList($filename["Tasklist"]);
+            if ($filename["Tasklist"] !== false) $tasklist = $this->getTaskList($filename["Tasklist"], $debug);
             if ($debug) echo "Tasklist in ".$filename["Tasklist"]." mit ".sizeof($tasklist)." Zeilen gefunden. File Size : ".$this->getNiceFileSize(filesize($filename["Tasklist"]))." Last modified: ".date("d.m.Y H:i:s",filemtime($filename["Tasklist"]))."\n";
             }
         if (isset($filename["Processlist"]))        // wmic Format Abfrage
             {
-            if ($filename["Processlist"] !== false) $process = $this->getWmicsProcessList($filename["Processlist"]);            // bessere Abfrage, einheitliches Format        
+            if ($filename["Processlist"] !== false) $process = $this->getWmicsProcessList($filename["Processlist"],$debug);            // bessere Abfrage, einheitliches Format        
             if ($debug) echo "Processlist in ".$filename["Processlist"]." mit ".sizeof($process)." Zeilen gefunden. File Size : ".$this->getNiceFileSize(filesize($filename["Processlist"]))." Last modified: ".date("d.m.Y H:i:s",filemtime($filename["Processlist"]))."\n";
             }
-        else 
+        /*else 
             {
             $process = $this->getProcessList();
             if ($debug) echo "Default Abfrage. Processlist ".sizeof($process)." Zeilen gefunden.\n";
-            }
+            }*/
         if ( (isset($filename["Javalist"])) && ($filename["Javalist"] !== false) ) 
             {
-            $javas = $this->getJavaList($filename["Javalist"]);
+            $javas = $this->getJavaList($filename["Javalist"],$debug);
             if ($debug) echo "Javalist in ".$filename["Javalist"]." mit ".sizeof($javas)." Zeilen gefunden. File Size : ".$this->getNiceFileSize(filesize($filename["Javalist"]))." Last modified: ".date("d.m.Y H:i:s",filemtime($filename["Javalist"]))."\n";
             }    
         if ( (isset($filename["Wmiclist"])) && ($filename["Wmiclist"] !== false) ) 
             {
-            $wmics = $this->getWmicsProcessList($filename["Wmiclist"]);
+            $wmics = $this->getWmicsProcessList($filename["Wmiclist"],$debug);
             if ($debug) echo "Wmiclist in ".$filename["Wmiclist"]." mit ".sizeof($wmics)." Zeilen gefunden. File Size : ".$this->getNiceFileSize(filesize($filename["Wmiclist"]))." Last modified: ".date("d.m.Y H:i:s",filemtime($filename["Wmiclist"]))."\n";
             }
         //print_r($wmics);
@@ -12588,6 +12676,8 @@ class dosOps
  *
  * __construct              als Constructor wird der Filename an dem die Operationen durchgeführt werden übergeben
  *
+ * fileinfo                 Auswertung status Ergebnis readFileCsv
+ * 
  * readFileFixedFirstline
  * readFileFixed
  * readFileFixedLine
@@ -12629,6 +12719,61 @@ class fileOps
             $this->fileName = false;
             $this->newFileName = $fileName;
             }
+        }
+
+    /* 
+     * Auswertung von readFileCsv return status
+     *   status
+     *    lines
+     *
+     *  
+     */
+    function fileinfo($status,$debug=false)
+        {
+        $firstDate = array_key_first($status["lines"]);
+        $lastDate  = array_key_last ($status["lines"]);
+        $periode = $lastDate-$firstDate;
+        $count=sizeof($status["lines"]);
+        $interval=$periode/($count-1);
+        if ($debug) echo "beinhaltet $count Werte von ".date("d.m.Y H:i",$firstDate)." bis ".date("d.m.Y H:i",$lastDate)." , Periode ".nf($periode,"s")." Intervall ".nf($interval,"s")." \n";
+        $fileinfo["Count"] = $count;
+        $fileinfo["FirstDate"] = $firstDate;
+        $fileinfo["LastDate"]  = $lastDate;
+        $fileinfo["Periode"]  = $periode;
+        $fileinfo["Interval"]  = $interval;
+        $fileinfo["Analyze"]  = $this->analyze;
+        return ($fileinfo);
+        }
+
+    /* wenn es mehrere Spalten als Ergebnis gibt diese auch auswerten
+     * die zeit fängt zum Laufen an wenn Splateneintrag ungleich "" und größer 0 ist
+     */
+    function analyseResult($result,$configCsv,$debug=false)
+        {
+        // analyse Result
+        //if ($debug) { $i=0; foreach ($result as $line => $data) { echo $line; print_R($data); if ($i++>10) break; } }
+        $analyze=array();
+        foreach ($result as $line => $data)
+            {
+            foreach ($configCsv["Result"]["Column"] as $idx => $column) 
+                {
+                if ( (isset($data[$column])) && ($data[$column]!="") && ($data[$column]>0) )
+                    {
+                    $analyze[$column]["End"]=$line;
+                    if (isset($analyze[$column]["Start"])===false) $analyze[$column]["Start"]=$line;
+                    }
+                }
+            }
+        if ($debug) 
+            {
+            // die Target Column Names als Key
+            //echo "ConfigCsv ".json_encode($configCsv)."\n";
+            foreach ($analyze as $idx => $coldata)
+                {
+                echo "     ".str_pad($idx,12).date("d.m.y H:i",$coldata["Start"])."   ".date("d.m.y H:i",$coldata["End"])."\n";
+                }
+            }
+        return($analyze);
         }
 
     /* ein Fixed Delimiter File einlesen und die erste Zeile als array übergeben. 
@@ -13235,7 +13380,7 @@ class fileOps
                                                     break;
                                                 }
                                             }
-                                        elseif ($once) { echo "$keyComp not in Data   \n"; $once=false;  }     
+                                        elseif ($once) { if ($debug) echo "$keyComp not in Data ".json_encode($dataEntries)."  \n"; $once=false;  }     
                                         }
                                     }
                                 }

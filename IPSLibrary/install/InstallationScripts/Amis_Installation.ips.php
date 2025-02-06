@@ -66,7 +66,7 @@ $debug=false;               // wir wollen mehr Übersichtlichkeit
 
 	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');	
 	IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
-	IPSUtils_Include ('Amis_Include.inc.php', 'IPSLibrary::app::modules::Amis');
+	IPSUtils_Include ('Amis_Constants.inc.php', 'IPSLibrary::app::modules::Amis');
 	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -237,7 +237,12 @@ if ($do>1)
 
 	$Amis = new Amis();
 	$MeterConfig = $Amis->getMeterConfig();
-    $MeterStatusConfig=$Amis->getAmisConfig();
+
+    $amisSM = new AmisSmartMeter();                 // erzeugt Warning wenn Guthabenhandler nicht inkludiert ist
+	$MeterStatusConfig = $amisSM->getAmisConfig();
+
+    $csvConfig=$MeterStatusConfig["File"]["INPUTCSV"];
+    $amisSM->makeDirectory($csvConfig);                     // das Verzeichnis für die csv Dateien als Inpugeber anlegen
 
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 	$MeterReadDefault=true;
@@ -899,14 +904,8 @@ if ($do>5)
     $webOps = new webOps();
     $categoryId_SmartMeter        = CreateCategory('SmartMeter',        $CategoryIdData, 80);
 
-    
-    /* Schalter in Smart Meter Tab */
-
-    define ('SMART_SELECT', ["Directory","Update","Calculate","Sort"]);
-
-
-    $pnames = ["Directory","Update","Calculate","Sort"];
-    $buttonsId = $webOps->createSelectButtons($pnames,$categoryId_SmartMeter, $scriptIdAmis);
+    //$pnames = ["Directory","Update","Calculate","Sort"];
+    $buttonsId = $webOps->createSelectButtons(SMART_SELECT,$categoryId_SmartMeter, $scriptIdAmis);              // Ergebnis ist ein array aus Einzelbuttons die untereinander angeordnet werden sollen
 
     $statusDirectoryID = CreateVariableByName($categoryId_SmartMeter, "DirectoryStatus", 3,'~HTMLBox');
     $statusSmartMeterID = CreateVariableByName($categoryId_SmartMeter, "SmartMeterStatus", 3,'~HTMLBox');
@@ -948,27 +947,15 @@ if ($do>5)
                     "PANE"              => true,
                             ),
                         );
-
-        $webfront_links["SmartMeter"]["Select"]        = array(
-                $buttonsId[0]["ID"] => array(
-                    "NAME"              => " ",
-                    "ORDER"             => 200,
-                    "ADMINISTRATOR"     => true,
-                    "PANE"              => true,
-                            ),
-                $buttonsId[1]["ID"] => array(
-                    "NAME"              => " ",
-                    "ORDER"             => 210,
-                    "ADMINISTRATOR"     => true,
-                    "PANE"              => true,
-                            ),
-                $buttonsId[2]["ID"] => array(
-                    "NAME"              => " ",
-                    "ORDER"             => 220,
-                    "ADMINISTRATOR"     => true,
-                    "PANE"              => true,
-                            ),
+        foreach ($buttonsId as $index => $buttonId)
+            {
+            $webfront_links["SmartMeter"]["Select"][$buttonId["ID"]] = array(
+                        "NAME"              => " ",
+                        "ORDER"             => (200+$index*10),
+                        "ADMINISTRATOR"     => true,
+                        "PANE"              => true,
                         );
+            }
 
 	if ($WFC10_Enabled) 
 		{
