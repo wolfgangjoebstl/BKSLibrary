@@ -679,15 +679,17 @@
 	*************************************************************/
 
 	$categoryId_SystemInfo	= CreateCategory('SystemInfo',   $CategoryIdData, 230);
-	$HostnameID   			= CreateVariableByName($categoryId_SystemInfo, "Hostname", 3, "", "", 10); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
-	$SystemNameID			= CreateVariableByName($categoryId_SystemInfo, "Betriebssystemname", 3, "", "", 20); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
-	$SystemVersionID		= CreateVariableByName($categoryId_SystemInfo, "Betriebssystemversion", 3, "", "", 30); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-	$HotfixID				= CreateVariableByName($categoryId_SystemInfo, "Hotfix", 3, "", "", 40); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-	$ExternalIP				= CreateVariableByName($categoryId_SystemInfo, "ExternalIP", 3, "", "", 100); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-	$UptimeID				= CreateVariableByName($categoryId_SystemInfo, "IPS_UpTime", 3, "", "", 200); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-	$VersionID				= CreateVariableByName($categoryId_SystemInfo, "IPS_Version", 3, "", "", 210); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-	$javaVersionID   		= CreateVariableByName($categoryId_SystemInfo, "Java_Version", 3, "", "", 210); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
-    $MemoryID				= CreateVariableByName($categoryId_SystemInfo, "Memory", 3, "", "", 50); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$HostnameID   			= CreateVariableByName($categoryId_SystemInfo, "Hostname", 3, "", "", 10);                      /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+	$SystemNameID			= CreateVariableByName($categoryId_SystemInfo, "Betriebssystemname", 3, "", "", 20);            /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
+	$SystemVersionID		= CreateVariableByName($categoryId_SystemInfo, "Betriebssystemversion", 3, "", "", 30);         /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$HotfixID				= CreateVariableByName($categoryId_SystemInfo, "Hotfix", 3, "", "", 40);                        /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$ExternalIP				= CreateVariableByName($categoryId_SystemInfo, "ExternalIP", 3, "", "", 100);                   /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$UptimeID				= CreateVariableByName($categoryId_SystemInfo, "IPS_UpTime", 3, "", "", 200);                   /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$VersionID				= CreateVariableByName($categoryId_SystemInfo, "IPS_Version", 3, "", "", 210); 	
+	$javaVersionID   		= CreateVariableByName($categoryId_SystemInfo, "Java_Version", 3, "", "", 210); 
+    $MemoryID				= CreateVariableByName($categoryId_SystemInfo, "Memory", 3, "", "", 50); 	
+    $UserID 				= CreateVariableByName($categoryId_SystemInfo, "User", 3, "", "", 50); 	                        // json Tabelle für alle User
+    $AdministratorID     	= CreateVariableByName($categoryId_SystemInfo, "AdministratorID", 3, "", "", 50); 	            // eine Zahl, aber lassen wir sie als String
 	
 	/* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
     $ipTableHtml      		= CreateVariableByName($categoryId_SystemInfo, "TabelleGeraeteImNetzwerk", 3, '~HTMLBox',"", 500); // ipTable am Schluss anlegen
@@ -2135,9 +2137,11 @@
             //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
             //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);            
             $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdLeft /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+
             $wfcHandling->CreateWFCItemSplitPane ($configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
             $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Show", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
-            $wfcHandling->CreateWFCItemSplitPane ($configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 35 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+
+            $wfcHandling->CreateWFCItemSplitPane ($configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 65 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
             $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
             $wfcHandling->CreateWFCItemCategory  ($configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);            
 

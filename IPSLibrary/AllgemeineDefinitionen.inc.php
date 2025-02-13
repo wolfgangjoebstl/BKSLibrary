@@ -10893,11 +10893,10 @@ class sysOps
     { 
 
     /* sysOps, IPS_ExecuteEX funktioniert nicht wenn der IP Symcon Dienst statt mit dem SystemUser bereits als Administrator angemeldet ist 
-     * Parameter fü+r den Aufruf
+     * Parameter für den Aufruf
      *    command   Befehl gemeinsam mit absolutem Pfad
      *
      */
-
     public function ExecuteUserCommand($command,$parameter="",$show=false,$wait=false,$session=-1,$debug=false)
         {
         if ($debug) echo "ExecuteUserCommand $command \n";
@@ -12802,6 +12801,8 @@ class fileOps
                     if ($debug) echo "   ".strlen($line)." characters, ".strlen($result)." chars after encoding to ASCII and ".mb_strlen($line,$convert)." Multibyte Characters with format $convert found in Input.\n";
                     if ($i==0)                                                                              // nur die erste Zeile lesen
                         {
+                        $delimiter=$this->readFirstLineFixed($result, "ASCII",$debug);
+                        /*
                         $oldstart=false; $oldstring="";
                         $tabs=explode(" ",$result);
                         $countTabs=sizeof($tabs);               // sizeof trifft noch jede Menge Eintraeg mit einem blank                        
@@ -12866,7 +12867,8 @@ class fileOps
                             //print_r($delimiter);
                             echo "Zeile mit gefundene Spalten: ".sizeof($delimiter)."   \n";                             
                             if (sizeof($delimiter)>1) $i++;
-                            }
+                            } */
+                        if (sizeof($delimiter)>1) $i++;
                         }
                     else break;
                     }
@@ -12875,6 +12877,91 @@ class fileOps
             }
         return($delimiter);
         }
+
+
+    /* nur als firstLine aufrufen
+     * entkoppelt Funktion von der Filebehandlung
+     * kann mehrmals aufgerufen und verwendet werden : readFileFixed
+     *
+     * Umgang mit dem letzten Eintrag bis Zeilenende
+     *      es wird ein Last Eintrag geschrieben, damit die Auswertungsroutine bis zum Ende liest
+     *
+     */
+    function readFirstLineFixed($line, $convert="ASCII",$debug=false)
+        {
+        if ($convert != "ASCII") $result=mb_convert_encoding($line,"ASCII",$convert);
+        else $result=$line;
+        if ($debug) echo "   ".strlen($line)." characters, ".strlen($result)." chars after encoding to ASCII and ".mb_strlen($line,$convert)." Multibyte Characters with format $convert found in Input.\n";
+        $oldstart=false; $oldstring="";
+        $tabs=explode(" ",$result);             // Schnelltest
+        $countTabs=sizeof($tabs);               // sizeof trifft noch jede Menge Eintraeg mit einem blank                        
+        if ($countTabs>1)
+            {
+            //echo "Erste Zeile :\"$result\"\n";                       
+            $delimiter=array();
+            foreach ($tabs as $index => $string)            // alle tabs durchgehen, da gibt es auch einzelobjekte als blank
+                {
+                if (($string == " ") || ($string == "")) 
+                    {
+                    //unset($tabs[$index]);
+                    }
+                else    
+                    {
+                    $stringTrimmed = trim($string);                         // whitespace am Anfang und Ende entfernen
+                    if ($oldstart !== false)                                        // schon etwas gefunden, weitermachen
+                        {
+                        $delimiter[$oldstring]["Index"]=$oldstart;
+                        $begin=$oldend;                                                 // beim ersten Mal steht das auf Pos von oldstring, im Normalfall 0
+                        //if ($debug) echo "   ".str_pad($index,2)." | \"$string\" \n";
+                        if (strlen($stringTrimmed)>0) $end=strpos($result,$stringTrimmed);              // das Ende kann nur der Anfang des nächsten Eintrages sein, nicht das Ende des Wortes
+                        else 
+                            {
+                            echo "Trimmed String is empty, original string was \"$string\" \n";    
+                            $end=strlen($result);                                                    // wenn strlen 0 ist haben wir einen non-displayable character, Tab oder end of line
+                            }
+                        if ($end<$begin) $end=strpos($result," ".$stringTrimmed)+1;            // Needle am ANfang mit einem Blank erweitern und schauen ob wir dann die richtige Position finden
+                        $delimiter[$oldstring]["Begin"]=$begin;
+                        $delimiter[$oldstring]["End"]=$end;
+                        $delimiter[$oldstring]["Length"]=$end-$begin;
+                        if ($debug) echo str_pad($index,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end    ($stringTrimmed)\n";
+                        $oldstart=$index;
+                        $oldstring=$stringTrimmed;
+                        $oldend=$end;
+                        if ($end == strlen($result))
+                            {
+                            echo "End of line found. Stopp analyzing.\n";
+                            break;              // stopp we are at the end, ignore trailing blanks
+                            } 
+                        }
+                    else                    // Wir suchen erstmal, blanks sind schon aussortiert, wir fangen mit einem Wort an
+                        {
+                        $oldstart=$index;
+                        $oldstring=$stringTrimmed;
+                        $oldend=strpos($result,$oldstring);
+                        //if ($debug) echo "   ".str_pad($index,2)." | \"$string\" Erster Treffer Init, Eintrag endet auf Position $oldend\n";
+                        } 
+                    }       
+                } 
+            $begin=$oldend;
+            $end=strlen($result);
+            if ($end<$begin) $end=strpos($result," ".$stringTrimmed)+1;            // mit einem Blank erweitern
+            if ($begin<$end)            // zumindet 1 Zeichen
+                {
+                $delimiter[$oldstring]["Index"]=$oldstart;
+                $delimiter[$oldstring]["Begin"]=$begin;
+                $delimiter[$oldstring]["End"]=$end;
+                $delimiter[$oldstring]["Length"]=$end-$begin;
+                $delimiter[$oldstring]["Last"]=true;                        // wenn man bis zum jeweiligen eol will
+                }
+            if ($debug) echo str_pad($oldstart,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end      tatsächliches Zeilenende (".strlen($result).")\n";                                
+            //print_r($delimiter);
+            //echo "Zeile mit gefundene Spalten: ".sizeof($delimiter)."   \n";                             
+            }
+        else echo "Keine Blanks gefunden.\n";
+        return ($delimiter);
+        }
+
+
 
     /* ein file mit fixed Delimiter einlesen 
     *
@@ -12917,9 +13004,10 @@ class fileOps
                     $content = explode("\n", $content);
                     foreach ($content as $index => $line)                            
                         {
-                        if (($i==0) && ($delimiter==[]))
+                        if (($i==0) && ($delimiter==[]))             // einen delimiter finden
                             {
-                            //echo "Use first line to find delimiters.\n";
+                            $delimiter=$this->readFirstLineFixed($line, "ASCII",$debug);
+                            /*echo "Use first line to find delimiters.\n";
                             $oldstart=false; $oldstring="";
                             $tabs=explode(" ",$line);
                             $countTabs=sizeof($tabs);               // sizeof trifft noch jede Menge Eintraeg mit einem blank                        
@@ -12986,6 +13074,8 @@ class fileOps
                                 if (sizeof($delimiter)>1) $i++;
                                 }           // ende if count tabs
                             //$this->readFileFixedLine($line,$delimiter,true);          // Test, hier stimmt noch alles
+                            */
+                            if (sizeof($delimiter)>1) $i++;
                             $delimiter2=array(); $offset=0;
                             foreach ($delimiter as $index => $entry)                                    // irgend etwas läuft falsch und wir wissen nicht was 
                                 {
@@ -13014,6 +13104,8 @@ class fileOps
                     if ($debug) echo $result;
                     if ($i==0) 
                         {
+                        $delimiter=$this->readFirstLineFixed($result, "ASCII",$debug);
+                        /*
                         $oldstart=false; $oldstring="";
                         $tabs=explode(" ",$result);
                         $countTabs=sizeof($tabs);               // count geht nach dem Index
@@ -13065,14 +13157,15 @@ class fileOps
                                 if ($debug) echo str_pad($oldstart,2)." | ".str_pad("\"$oldstring\"",40)."  $begin/$end \n";                                      
                                 }
                             //print_r($delimiter);
-                            echo "Zeile mit insgesamt ".sizeof($delimiter)." gefundene Spalten. \n";                             
-                            if (sizeof($delimiter)>1) $i++;
-                            }
+                            echo "Zeile mit insgesamt ".sizeof($delimiter)." gefundene Spalten. \n";                                                         
+                            } */
+                        if (sizeof($delimiter)>1) $i++;                            
                         }
                     else 
                         {
                         /* der obere Teil ist gleich wie bei FirstLine, jetzt wird aber wirklich eingelesen */
-                        $resultArray[$i] = $this->readFileFixedLine($result,$delimiter,false);            // andernfalls debug einsetzen
+                        $ergebnis = $this->readFileFixedLine($result,$delimiter,false);            // andernfalls debug einsetzen
+                        if (sizeof($ergebnis)>0) $resultArray[$i]=$ergebnis;                        // leere Elemente nicht übernehmen
                         if ($i++>$maxline) break;
                         }
                     }
@@ -13083,15 +13176,20 @@ class fileOps
         return($resultArray);
         }
 
-    /* nur eine Zeile zerkleinern
+    /* nur eine Zeile nach Anleitung delimiter zerkleinern
+     * Wenn Last definiert ist bis zum Ende der Zeile lesen
+     * wenn sich der Beginn bereits über die Länge der Zeile zieht abbrechen
+     *
      */
     function readFileFixedLine($line,$delimiter,$debug=false)
         {
         $resultArray=array();
         foreach($delimiter as $key => $entry)
             {
+            if ($entry["Begin"]>strlen($line)) break;
             //if ($debug) echo $entry["Begin"]."/".$entry["Length"]."|";
-            $resultArray[$key]=trim(substr($line,$entry["Begin"],$entry["Length"]));
+            if ( (isset($entry["Last"])) && ($entry["Last"]) ) $resultArray[$key]=trim(substr($line,$entry["Begin"]));          // bis zum Ende der Zeile lesen
+            else $resultArray[$key]=trim(substr($line,$entry["Begin"],$entry["Length"]));
             }            
         if ($debug) 
             {

@@ -817,102 +817,116 @@ class OperationCenter
 				IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
 			
 				$ServerStatusID = CreateVariableByName($this->categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+				$ServerUpdateStatusID = CreateVariableByName($this->categoryId_SysPing, "ServerUpdate_".$Name, 1); 
+				IPS_SetVariableCustomProfile($ServerUpdateStatusID,"~UnixTimestamp");
+                if (GetValue($ServerStatusID)) $nextUpdate=0;
+                else $nextUpdate=GetValue($ServerUpdateStatusID)+(time()-IPS_GetVariable($ServerStatusID)["VariableChanged"])/10;
+                if ($debug) 
+                    {
+                    $lastUpdate=date("d.m.Y H:i",GetValue($ServerUpdateStatusID));
+                    $lastChange = (time() - IPS_GetVariable($ServerStatusID)["VariableChanged"])/60;
+                    echo "$Name : Status is ".(GetValue($ServerStatusID)?"available":"away").". Last Change of Status was ".nf($lastChange,"m")." ago. Last Update was on $lastUpdate . Next Update ".date("d.m.Y H:i",$nextUpdate).".\n";
+                    }
+                if (time()>$nextUpdate) // Server Erreichbarkeit beschleunigen, wenn erreichbar oft fragen, wenn nicht erreichbar immer seltener fragen
+                    {
+                    SetValue($ServerUpdateStatusID,time());
 
-				$RemoteServer[$Name]["Name"]=$UrlAddress;
-				$rpc = new JSONRPC($UrlAddress);
-				//echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
-				$data = @parse_url($UrlAddress);
-				if(($data === false) || !isset($data['scheme']) || !isset($data['host']))
-					throw new Exception("Invalid URL");
-				$url = $data['scheme']."://".$data['host'];
-				if(isset($data['port'])) $url .= ":".$data['port'];
-				if(isset($data['path'])) $url .= $data['path'];
-				if(isset($data['user']))
-					{
-					$username = $data['user'];
-					}
-				else
-					{
-					$username = "";
-					}
-				if(isset($data['pass']))
-					{
-					$password = $data['pass'];
-					}
-				else
-					{
-					$password = "";
-					}
-				if (!is_scalar($method)) {
-						throw new Exception('Method name has no scalar value');
-					}
-				if (!is_array($params)) {
-						throw new Exception('Params must be given as array');
-					}
-                //if ($debug) echo "    Ping ".json_encode($data).":\n";
+                    $RemoteServer[$Name]["Name"]=$UrlAddress;
+                    $rpc = new JSONRPC($UrlAddress);
+                    //echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
+                    $data = @parse_url($UrlAddress);
+                    if(($data === false) || !isset($data['scheme']) || !isset($data['host']))
+                        throw new Exception("Invalid URL");
+                    $url = $data['scheme']."://".$data['host'];
+                    if(isset($data['port'])) $url .= ":".$data['port'];
+                    if(isset($data['path'])) $url .= $data['path'];
+                    if(isset($data['user']))
+                        {
+                        $username = $data['user'];
+                        }
+                    else
+                        {
+                        $username = "";
+                        }
+                    if(isset($data['pass']))
+                        {
+                        $password = $data['pass'];
+                        }
+                    else
+                        {
+                        $password = "";
+                        }
+                    if (!is_scalar($method)) {
+                            throw new Exception('Method name has no scalar value');
+                        }
+                    if (!is_array($params)) {
+                            throw new Exception('Params must be given as array');
+                        }
+                    //if ($debug) echo "    Ping ".json_encode($data).":\n";
 
-				$id = round(fmod(microtime(true)*1000, 10000));
-				$params = array_values($params);
-				$strencode = function(&$item, $key) {
-				if ( is_string($item) )
-						$item = utf8_encode($item);
-					else if ( is_array($item) )
-						array_walk_recursive($item, $strencode);
-					};
-				array_walk_recursive($params, $strencode);
-				$request = Array(
-									"jsonrpc" => "2.0",
-									"method" => $method,
-									"params" => $params,
-									"id" => $id
-								);
-				$request = json_encode($request);
-				$header = "Content-type: application/json"."\r\n";
-				if(($username != "") || ($password != "")) {
-					$header .= "Authorization: Basic ".base64_encode($username.":".$password)."\r\n";
-					}
-				$options = Array(
-						"http" => array (
-						"method"  => 'POST',
-						"header"  => $header,
-						"content" => $request
-										)
-							);
-				$context  = stream_context_create($options);
+                    $id = round(fmod(microtime(true)*1000, 10000));
+                    $params = array_values($params);
+                    $strencode = function(&$item, $key) {
+                    if ( is_string($item) )
+                            $item = utf8_encode($item);
+                        else if ( is_array($item) )
+                            array_walk_recursive($item, $strencode);
+                        };
+                    array_walk_recursive($params, $strencode);
+                    $request = Array(
+                                        "jsonrpc" => "2.0",
+                                        "method" => $method,
+                                        "params" => $params,
+                                        "id" => $id
+                                    );
+                    $request = json_encode($request);
+                    $header = "Content-type: application/json"."\r\n";
+                    if(($username != "") || ($password != "")) {
+                        $header .= "Authorization: Basic ".base64_encode($username.":".$password)."\r\n";
+                        }
+                    $options = Array(
+                            "http" => array (
+                            "method"  => 'POST',
+                            "header"  => $header,
+                            "content" => $request
+                                            )
+                                );
+                    $context  = stream_context_create($options);
 
-				$response = @file_get_contents($url, false, $context);
-				if ($response===false)
-					{
-                    $status = sys_ping($data["host"],1000); 
-					echo "   Server : ".$UrlAddress." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht. Ping $status\n";
-					SetValue($IPS_UpTimeID,0);
-					$RemoteServer[$Name]["Status"]=false;
-					if (GetValue($ServerStatusID)==true)
-						{  /* Statusänderung */
-						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
-						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
-						SetValue($ServerStatusID,false);
-			   		    }
-					}
-				else
-					{
-                    $status = sys_ping($data["host"],1000); 
-                    if ($status===false) echo "   Seltsam, ICMP Ping für ".$data["host"]." funktioniert nicht.\n";
-					$ServerName=$rpc->IPS_GetName(0);
-					$ServerUptime=$rpc->IPS_GetKernelStartTime();
-	   				$IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
-  					$ServerVersion=$rpc->IPS_GetKernelVersion();
-					echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
-					SetValue($IPS_UpTimeID,$ServerUptime);
-					SetValue($IPS_VersionID,$ServerVersion);
-					$RemoteServer[$Name]["Status"]=true;
-					if (GetValue($ServerStatusID)==false)
-						{  /* Statusänderung */
-						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
-						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
-						SetValue($ServerStatusID,true);
-						}
-					}
+                    $response = @file_get_contents($url, false, $context);
+                    if ($response===false)
+                        {
+                        $status = sys_ping($data["host"],1000); 
+                        echo "   Server : ".$UrlAddress." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht. Ping $status\n";
+                        SetValue($IPS_UpTimeID,0);
+                        $RemoteServer[$Name]["Status"]=false;
+                        if (GetValue($ServerStatusID)==true)
+                            {  /* Statusänderung */
+                            $this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
+                            $this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
+                            SetValue($ServerStatusID,false);
+                            }
+                        }
+                    else
+                        {
+                        $status = sys_ping($data["host"],1000); 
+                        if ($status===false) echo "   Seltsam, ICMP Ping für ".$data["host"]." funktioniert nicht.\n";
+                        $ServerName=$rpc->IPS_GetName(0);
+                        $ServerUptime=$rpc->IPS_GetKernelStartTime();
+                        $IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
+                        $ServerVersion=$rpc->IPS_GetKernelVersion();
+                        echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
+                        SetValue($IPS_UpTimeID,$ServerUptime);
+                        SetValue($IPS_VersionID,$ServerVersion);
+                        $RemoteServer[$Name]["Status"]=true;
+                        if (GetValue($ServerStatusID)==false)
+                            {  /* Statusänderung */
+                            $this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
+                            $this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
+                            SetValue($ServerStatusID,true);
+                            }
+                        }
+                    }
 			   }
 			else
 				{
@@ -1115,7 +1129,7 @@ class OperationCenter
             {
             // exec('systeminfo',$catch);   // ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden 
             //$resultSystemInfo=IPS_EXECUTE("systeminfo","", true, true);
-            if ($text===false) $resultSystemInfo=$this->sysOps->ExecuteUserCommand("systeminfo","", true, true);           // gleicher Aufruf für alle
+            if ($text===false) $resultSystemInfo=$this->sysOps->ExecuteUserCommand("systeminfo","", false, true);           // gleicher Aufruf für alle
             else $resultSystemInfo=$text;
             //echo $resultSystemInfo;
             $catch=explode("\x0A",$resultSystemInfo);             //zeilenweise als array speichern
@@ -1221,6 +1235,9 @@ class OperationCenter
 		return $results;
 		}	
 
+    /* Umrechnung der Bezechnung in SystemInfo in einen Array Index
+     * trim, explode blank, wenn Verfügbar dann umschreiben in ue
+     */
 	 function renameIndex($origIndex)
 	 	{
 		$index=trim($origIndex);
@@ -1240,12 +1257,59 @@ class OperationCenter
 		return ($index);
 		}
 
+    /* die aktuell eingeloggten User herausfinden, wer ist der Administrator
+     */
+    function updateUser()
+        {
+        $result=IPS_ExecuteEx('c:\windows\system32\query.exe', "user", false, true,-1);
+        $content = str_replace(array("\r\n", "\n\r", "\r"), "\n", $result);                     // Zeilenumbruch vereinheitlichen
+        $content = explode("\n", $content);                                         // und in Array umrechnen
+        $firstline=false;
+        $fileOps = new fileOps();
+        $i=0; $result=array();
+        foreach ($content as $index => $line)
+            {
+            if ($i==0) 
+                {
+                $delimiter = $fileOps->readFirstLineFixed($line,"ASCII",false);          // true für Debug
+                }
+            else
+                {
+                $ergebnis = $fileOps->readFileFixedLine($line,$delimiter,false);            // andernfalls debug einsetzen
+                if (sizeof($ergebnis)>0) $result[$i]=$ergebnis;
+                }
+            $i++;
+            }
+        $user=array();
+        $administrator="wolfg";
+        $administratorSessionId=false;
+        $html="<td>User</td><td><table>";
+        foreach ($result as $entry)
+            {
+            $user[$entry["ID"]]=$entry;
+            $html .= "<tr><td>";
+            if ($entry["BENUTZERNAME"]==$administrator) 
+                {
+                $user[$entry["ID"]]["ADMINISTRATOR"]=true; 
+                $html .= "*";
+                $administratorSessionId=$entry["ID"];
+                }
+            $html .= "</td><td>".$entry["BENUTZERNAME"]."</td><td>".$entry["ID"]."</td><td>".$entry["STATUS"]."</td><td>".$entry["ANMELDEZEIT"]."</td></tr>";
+            }
+        $html .= "</table></td>";
+        //echo $html;
+        $UserID 				= IPS_GetObjectIDByName("User", $this->categoryId_SysInfo); 	                        // json Tabelle für alle User
+        $AdministratorID     	= IPS_GetObjectIDByName("AdministratorID", $this->categoryId_SysInfo); 	            // eine Zahl, aber lassen wir sie als String
+        SetValue($UserID,json_encode($user));
+        SetValue($AdministratorID,$administratorSessionId);
+        return ($html);
+        }
 	
 	/* readSystemInfo
 	 *
 	 * Die von SystemInfo aus dem PC (via systeminfo) ausgelesenen und gespeicherten Daten werden für die Textausgabe formatiert und angereichert
 	 * es werden keine Daten ausgelesen oder verarbeitet, hier erfolgt nur die Darstellung
-     *
+     * Ausnahme: updateUser()
      */								
 	 function readSystemInfo($html=false)
 	 	{
@@ -1318,6 +1382,7 @@ class OperationCenter
         $PrintHtml .= '<tr><td>Memory Available</td><td>'.GetValue($MemAvailableID).'</td></tr>';
         $PrintHtml .= '<tr><td>IPS Uptime</td><td>'.GetValue($UptimeID).'</td></tr>';
         $PrintHtml .= '<tr><td>IPS Version</td><td>'.GetValue($VersionID).'</td</tr>';
+        $PrintHtml .= '<tr>'.$this->updateUser().'</tr>';                            // bei der Anzeige schnell ein paar Werte schreiben
         $PrintHtml .= '<tr><td>Java Version</td><td>'.GetValue($VersionJavaID).'</td></tr>';
         $PrintHtml .= '<tr><td align="right" colspan="2"><font size="-1">last update on '.$latestChange.'</font></td></tr>';    
         $PrintHtml .='</table>';
@@ -6289,6 +6354,9 @@ class PingOperation extends OperationCenter
 
 	function writeSysPingActivity($actual=true, $html=false, $debug=false)
 		{
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+
 		$result=""; 
         //$eDebug=$debug;
         $eDebug=false;
@@ -6344,88 +6412,100 @@ class PingOperation extends OperationCenter
                 $offTime=0; $onTime=0;
                 $maxend=time()-(30*24*60*60);
                 $size=sizeof($werte);
-		   		if ($debug) echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen (bis ".date("d.m. H:i:s",$maxend).") $size Werte. Aktueller Status Available:".($status?"Yes":"No")."\n";
+                $serverName=substr(IPS_GetName($oid),strlen("Server_"));
+                //echo "$serverName     \n";
                 if ($size==0)
                     {
                     $lastWert=$status;
                     $lastTime=time();
                     }
-		   		foreach ($werte as $wert)
-		   	   		{
-                    if ($count++ < $max) print_r($wert);            // Debugausgabe von Werten zur Orientierung
-                    $dauer=$this->Dauer($timeok,$wert["TimeStamp"],$maxend);
-                    if ($status!==$wert["Value"])
-						{
-						if ($first==true)
-							{
-                            echo "             ******************* Aenderung erster Eintrag im Logging zum aktuellem Status - Passen nicht zusammen..\n";
-                            If ($wert["Value"]==true) $onTime += $dauer; 
-                            If ($wert["Value"]==false) $offTime += $dauer;
-                            if ( $debug && $eDebug)
+                //else              // nutzt nix, keine Änderungen kann auch dauernd erreichbar bedeuten
+                if (isset($remServer[$serverName]))
+                    {
+    		   		if ($debug) echo "$serverName   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen (bis ".date("d.m. H:i:s",$maxend).") $size Werte. Aktueller Status Available : ".($status? "Ein" : "Aus")."\n";
+                    foreach ($werte as $wert)
+                        {
+                        if ($count++ < $max) print_r($wert);            // Debugausgabe von Werten zur Orientierung
+                        $dauer=$this->Dauer($timeok,$wert["TimeStamp"],$maxend);
+                        if ($status!==$wert["Value"])
+                            {
+                            if ($first==true)
                                 {
-                                echo "       !! Wert im Logging noch nicht aktualisiert.\n";
-                                If ($wert["Value"]==true) echo "         Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
-                                If ($wert["Value"]==false) echo "        Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
-                                echo " Unverändert seit ".((time()-$wert["TimeStamp"])/60)." Minuten.\n";
+                                echo "             ******************* Aenderung erster Eintrag im Logging zum aktuellem Status - Passen nicht zusammen..\n";
+                                If ($wert["Value"]==true) $onTime += $dauer; 
+                                If ($wert["Value"]==false) $offTime += $dauer;
+                                if ( $debug && $eDebug)
+                                    {
+                                    echo "       !! Wert im Logging noch nicht aktualisiert.\n";
+                                    If ($wert["Value"]==true) echo "         Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                    If ($wert["Value"]==false) echo "        Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                    echo " Unverändert seit ".((time()-$wert["TimeStamp"])/60)." Minuten.\n";
+                                    }
+                                $first=false;
                                 }
-							$first=false;
-							}
-						else
-							{
-                            /* hier ist die Routine eigentlich immer */
-							If ($wert["Value"]==true) 
-								{
-                                $onTime += $dauer;
-								if ($debug && $eDebug) echo "        Wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer online ".number_format($dauer,2)." Minuten. ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
-								}
-							If ($wert["Value"]==false) 
-								{
-                                $offTime += $dauer;
-								if ($debug && $eDebug) echo "      Ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer offline ".number_format($dauer,2)." Minuten.  ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
-								if ($dauer>100)	$result .= "          Ausfall länger als 100 Minuten am ".date("D d.m H:i:s",$wert["TimeStamp"])." fuer ".number_format($dauer,2)." Minuten.\n";
-								}
-                            //echo "  Check : ".$this->MinOrHoursOrDays($onTime+$offTime)."  und  ".$this->MinOrHoursOrDays((time()-$wert["TimeStamp"])/60)."   \n";
-							}	
-						$status=$wert["Value"];
-						}
-					else
-						{
-						if ($first==true)
-							{
-    						//echo "            *********************** keine Aenderung, erster Eintrag im Logfile, so sollte es sein.\n";
-                            $dauer=$this->Dauer(time(),$wert["TimeStamp"],$maxend);
-							If ($wert["Value"]==true) 
-								{
-                                $onTime += $dauer;                                    
-								if ($debug && $eDebug) echo "       Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
-								$result .= IPS_GetName($oid).": Verbindung zuletzt wiederhergestellt am ".date("D d.m H:i:s",$wert["TimeStamp"])."\n";
-								}
-							If ($wert["Value"]==false) 
+                            else
                                 {
-                                $offTime += $dauer;
-                                if ($debug && $eDebug) echo "       Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                /* hier ist die Routine eigentlich immer */
+                                If ($wert["Value"]==true) 
+                                    {
+                                    $onTime += $dauer;
+                                    if ($debug && $eDebug) echo "        Wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer online ".number_format($dauer,2)." Minuten. ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
+                                    }
+                                If ($wert["Value"]==false) 
+                                    {
+                                    $offTime += $dauer;
+                                    if ($debug && $eDebug) echo "      Ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer offline ".number_format($dauer,2)." Minuten.  ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
+                                    if ($dauer>100)	$result .= "          Ausfall länger als 100 Minuten am ".date("D d.m H:i:s",$wert["TimeStamp"])." fuer ".number_format($dauer,2)." Minuten.\n";
+                                    }
+                                //echo "  Check : ".$this->MinOrHoursOrDays($onTime+$offTime)."  und  ".$this->MinOrHoursOrDays((time()-$wert["TimeStamp"])/60)."   \n";
+                                }	
+                            $status=$wert["Value"];
+                            }
+                        else
+                            {
+                            if ($first==true)
+                                {
+                                if ($debug) echo "            *********************** keine Aenderung, erster Eintrag im Logfile, so sollte es sein.\n";
+                                $dauer=$this->Dauer(time(),$wert["TimeStamp"],$maxend);
+                                If ($wert["Value"]==true) 
+                                    {
+                                    $onTime += $dauer;                                    
+                                    if ($debug && $eDebug) echo "       Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                    $result .= IPS_GetName($oid).": Verbindung zuletzt wiederhergestellt am ".date("D d.m H:i:s",$wert["TimeStamp"])."\n";
+                                    }
+                                If ($wert["Value"]==false) 
+                                    {
+                                    $offTime += $dauer;
+                                    if ($debug && $eDebug) echo "       Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                    }
+                                if ($debug && $eDebug) echo " Unverändert seit $dauer Minuten.\n";
+                                $first=false;
                                 }
-                            if ($debug && $eDebug) echo " Unverändert seit $dauer Minuten.\n";
-							$first=false;
-							}
-                        else echo "      *************** hier sollte niemand vorbeikommen, sonst fehlen die Zeiten.\n";
-						}	
-					$timeok=$wert["TimeStamp"];
-		   	   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
-		   	   		//echo "       Wert : ".str_pad(($wert["Value"] ? "Ein" : "Aus"),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
-                    $lastTime=$wert["TimeStamp"]; $lastWert=$wert["Value"];
+                            else        // zweimal der selbe Wert hintereinander
+                                {
+                                If ($wert["Value"]==false) $offTime += $dauer;  
+                                If ($wert["Value"]==true) $onTime += $dauer;                                  
+                                //echo "      *************** hier sollte niemand vorbeikommen, sonst fehlen die Zeiten.\n";
+                                }
+                            }	
+                        $timeok=$wert["TimeStamp"];
+                        if ($debug>1) echo "       Wert : ".str_pad(($wert["Value"] ? "Ein" : "Aus"),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
+                        //echo "       Wert : ".str_pad(($wert["Value"] ? "Ein" : "Aus"),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+                        $lastTime=$wert["TimeStamp"]; $lastWert=$wert["Value"];
+                        }
+                    $dauer=$this->Dauer($lastTime,$maxend,$maxend);
+                    if ($debug) echo "Dauer ".$this->MinOrHoursOrDays($dauer)."  Check ".(($onTime+$offTime+$dauer)/60/24)."\n";
+                    If ($lastWert==true) $onTime += $dauer; 
+                    If ($lastWert==false) $offTime += $dauer;   
+                    // Ergebnis schreiben             
+                    $result1[IPS_GetName($oid)]["OID"]=$oid;
+                    $available=round((1-($offTime/($onTime+$offTime)))*100,1);
+                    if ($debug) echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime $onTime offtime $offTime Availability $available %.  Check ".(($onTime+$offTime)/60/24)."\n";
+                    $result1[IPS_GetName($oid)]["AVAILABILITY"]=$available;
+                    $result1[IPS_GetName($oid)]["ONTIME"]=$this->MinOrHoursOrDays($onTime);
+                    $result1[IPS_GetName($oid)]["OFFTIME"]=$this->MinOrHoursOrDays($offTime);
+                    if ($debug) echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime ".$result1[IPS_GetName($oid)]["ONTIME"]." offtime ".$result1[IPS_GetName($oid)]["OFFTIME"]." Availability ".$available."%.\n";
 		   	   		}
-                $dauer=$this->Dauer($lastTime,$maxend,$maxend);
-                echo "Dauer ".$this->MinOrHoursOrDays($dauer)."  Check ".(($onTime+$offTime+$dauer)/60/24)."\n";
-                If ($lastWert==true) $onTime += $dauer; 
-                If ($lastWert==false) $offTime += $dauer;                
-				$result1[IPS_GetName($oid)]["OID"]=$oid;
-                $available=round((1-($offTime/($onTime+$offTime)))*100,1);
-                echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime $onTime offtime $offTime Availability $available %.  Check ".(($onTime+$offTime)/60/24)."\n";
-                $result1[IPS_GetName($oid)]["AVAILABILITY"]=$available;
-                $result1[IPS_GetName($oid)]["ONTIME"]=$this->MinOrHoursOrDays($onTime);
-                $result1[IPS_GetName($oid)]["OFFTIME"]=$this->MinOrHoursOrDays($offTime);
-                echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime ".$result1[IPS_GetName($oid)]["ONTIME"]." offtime ".$result1[IPS_GetName($oid)]["OFFTIME"]." Availability ".$available."%.\n";
 		   		}
 			else
 		    	{
