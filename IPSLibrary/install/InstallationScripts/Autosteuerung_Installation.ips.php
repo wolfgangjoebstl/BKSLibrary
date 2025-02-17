@@ -280,6 +280,28 @@
 
         }
 
+
+
+/* SendWebhook finden und Events entsprechend geofencies anlegen
+ * Ein registerEvent und ein Install machen, wegen Transparenz
+ * sowie Floorplan_GetEventConfiguration() und Autosteuerung_GetEventConfiguration() in Autosteuerung_Class
+ *
+ */
+    echo "Geofency Liks erzeugen:\n";
+    $operate=new AutosteuerungOperator();
+    $geofencies=$operate->getGeofencyInformation(true);         // true für Debug, geofencies wird später noch verwendet
+
+    $registerGeofency=new AutosteuerungConfigurationGeofency();            // $scriptIdAutosteuerung weglassen. damit werden keine Events erzeugt
+    //print_R($geofencies);
+    foreach ($geofencies as $phone=>$index)           // erstellen von Geofency_GetEventConfiguration
+        {
+        foreach ($index as $id=>$entry)         // beim ersten Mal anlegen eine Fehlermeldung dass es die function noch nicht gibt in Zeile 488
+            {
+            //registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
+            $registerGeofency->registerAutoEvent($entry["OID"],"OnChange","Place,".$entry["Name"],"");
+            }
+        }
+
 /*----------------------------------------------------------------------------------------------------------------------------
  * Unterstützung für Anwesenheitserkennung und Visualisiserung
  * config automatisch erweitern für Anzeige eines Floorplans
@@ -516,8 +538,6 @@
   				/* einfache Visualisierung der Bewegungswerte, testweise */
 				$StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AutosteuerungID, 1010, '~HTMLBox');
 
-                $operate=new AutosteuerungOperator();
-                $geofencies=$operate->getGeofencyInformation();
                 $operate->setGeofencyAddressesToArchive($geofencies,true);  // true für Debug
                 $operate->linkGeofencyAddresses($geofencies, $AutosteuerungID,true);
 

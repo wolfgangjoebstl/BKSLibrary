@@ -1056,6 +1056,34 @@ class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
 
 	} 
 
+/* die Konfiguration für die Anzeige von Stati der Hausautomatisierung auf einem svg Floorplan, als Ablöse für Anwesend
+ *
+ * beim ersten Aufruf gibt es jede Menge Fehlermeldungen aber es wird ein Config file am Ende des config Files angelegt
+ * es wird Get_EventConfigurationAuto() aufgerufen. Wenn die function Floorplan_GetEventConfiguration noch nicht existiert wird InitEventConfiguration aufgerufen
+ * die abstract class ist AutosteuerungConfiguration
+ *
+ * das sind Schwestermodule von detectmovement und evaluateHardware
+ * die detectMovement Library ist umfangreicher und für die Behandlung von Events ausgelegt. bei Topology wurde dieses konzept aber ebenfalls ausgehebelt
+ * es gibt aber parallelen, die abstract class ist der DetectHandler
+ * Wenn die function GetEventConfiguration noch nicht existiert wird InitEventConfiguration aufgerufen
+ *
+ * enthält zusätzliche Funktionen für die Darstellung und Nutzung des Floorplans
+ *
+ *
+ */ 
+class AutosteuerungConfigurationGeofency extends AutosteuerungConfiguration
+	{
+	
+	protected $eventConfigurationAuto = array();
+	protected $scriptID;
+	protected $functionName="Geofency_GetEventConfiguration";
+	protected $identifier="geofencyConfiguration";
+	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+
+
+
+	}
+
 /*****************************************************************************************************
  *
  * Autosteuerung Operator
@@ -1342,7 +1370,7 @@ class AutosteuerungOperator
             configfileParser($configParsed["Available"], $configAvailable, ["AND","And","and" ],"AND" ,null); 
             $configParsed["Available"]=$configAvailable;
             configfileParser($configZutritt, $configParsed, ["Geofency","GEOFENCY","geofency" ],"Geofency" ,null); 
-            print_R($configParsed);
+            //print_R($configParsed);
 
             // Vervollständigung der Konfiguration 
             if (isset($configParsed["Condition"]) )
@@ -1498,6 +1526,9 @@ class AutosteuerungOperator
         return($config);
         }
 
+    /* immer dieselbe Struktur  OR, AND
+     * gemeinam einlesen und bearbeiten
+     */
     function readEntry(&$config,$configCondition,$state,$debug=false)
         {
         foreach($configCondition as $type => $operation)

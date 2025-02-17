@@ -115,7 +115,7 @@
 			echo "IPSComponentSensor_Contact, HandleEvent für VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert : ".($value?"Bewegung":"Still")." \n";
 			IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
 
-			$log=new MContact_Logging($variable);
+			$log=new Contact_Logging($variable);
             $mirrorValue=$log->updateMirorVariableValue($value);
             
 			$result=$log->Motion_LogValue($value);      // hier könnte man gleiche Werte noch unterdrücken

@@ -158,8 +158,7 @@ class OperationCenter
 	
 	var $HomematicSerialNumberList	= array();
 	
-	/**
-	 * @public
+	/* OperationCenter::__construct
 	 *
 	 * Initialisierung des OperationCenter Objektes
 	 *
@@ -217,7 +216,7 @@ class OperationCenter
 		
     /****************************************************************************************************************/
 
-    /* OperationCenter::Setup Konfiguration schreiben
+    /* OperationCenter::setSetup Konfiguration schreiben
      * dazu OperationCenter_SetUp() aus dem Config File OperationCenter_Configuration.inc.php einlesen
      *
      *
@@ -332,7 +331,11 @@ class OperationCenter
 
             /* Router, nur die aktiven, kopieren */
             configfileParser($configInput, $configRouter, ["ROUTER" ],"ROUTER" ,"[]");
-            if (count($configRouter['ROUTER'])==0) { echo "config Router empty.\n"; $config["ROUTER"]=[]; }
+            if (count($configRouter['ROUTER'])==0) 
+                { 
+                //echo "config Router empty.\n"; 
+                $config["ROUTER"]=[]; 
+                }
             foreach ($configRouter['ROUTER'] as $name => $router)
                 {
                 if (!( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") ))           // wenn Status und nicht als active gekennzeichnet, Konfig ist raus und wird nicht übernommen
@@ -397,8 +400,7 @@ class OperationCenter
         $this->log_OperationCenter->shiftZeileDebug();    
         }
 
-	/**
-	 * @public
+	/* OperationCenter::whatismyIPaddress1,whatismyIPaddress2
 	 *
 	 * what is my IP Adresse liefert eigene IP Adresse
 	 *
@@ -575,8 +577,7 @@ class OperationCenter
 			}
 		}	
 
-	/**
-	 * @public
+	/** OperationCenter::ownIPaddress
 	 *
 	 * ownIPaddress liefert eigene IP Adresse
 	 *
@@ -658,8 +659,7 @@ class OperationCenter
 
     /****************************************************************************************************************/
 
-	/**
-	 * @public
+	/** OperationCenter::device_ping
 	 *
 	 * sys ping IP Adresse von LED Modul, DENON Receiver oder einem anderem generischem Device
      * wird für Internet alle 5 Minuten, sonst jede Stunde aufgerufen
@@ -783,9 +783,9 @@ class OperationCenter
         return ($status);
 		}
 
-	/**
-	 * @public
-	 *
+	/** OperationCenter::server_ping
+     *
+	 * wird in syspingAllDevices verwendet
 	 * rpc call (sys ping) der IP Adresse von bekannten IP Symcon Servern
 	 *
 	 * Verwendet selbes Config File wie für die Remote Log Server, es wurden zusätzliche Parameter zur Unterscheidung eingeführt
@@ -795,6 +795,8 @@ class OperationCenter
 	 */
 	function server_ping($debug=false)
 		{
+        $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$this->categoryId_SysPing);
+        if ($categoryId_SysPingControl===false) return (false);
 		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 		$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
 		$RemoteServer=array();
@@ -817,7 +819,7 @@ class OperationCenter
 				IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
 			
 				$ServerStatusID = CreateVariableByName($this->categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-				$ServerUpdateStatusID = CreateVariableByName($this->categoryId_SysPing, "ServerUpdate_".$Name, 1); 
+				$ServerUpdateStatusID = CreateVariableByName($categoryId_SysPingControl, "ServerUpdate_".$Name, 1); 
 				IPS_SetVariableCustomProfile($ServerUpdateStatusID,"~UnixTimestamp");
                 if (GetValue($ServerStatusID)) $nextUpdate=0;
                 else $nextUpdate=GetValue($ServerUpdateStatusID)+(time()-IPS_GetVariable($ServerStatusID)["VariableChanged"])/10;
@@ -912,7 +914,9 @@ class OperationCenter
                         $status = sys_ping($data["host"],1000); 
                         if ($status===false) echo "   Seltsam, ICMP Ping für ".$data["host"]." funktioniert nicht.\n";
                         $ServerName=$rpc->IPS_GetName(0);
+                        sleep(1);
                         $ServerUptime=$rpc->IPS_GetKernelStartTime();
+                        sleep(1);
                         $IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
                         $ServerVersion=$rpc->IPS_GetKernelVersion();
                         echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
@@ -966,7 +970,7 @@ class OperationCenter
 		return($result);	
 		}
 
-    /* set SysPingCount for Debug Prúrposes
+    /* set SysPingCount for Debug Purposes
      *
      */
      public function setSysPingCount($SysPingCount)
@@ -1124,7 +1128,7 @@ class OperationCenter
         /* exec Funktion von der Art wie IP Symcom gestartet wird abhängig, nur möglich wenn als System gestartet wurde 
          */
         $opSys     =  $this->dosOps->evaluateOperatingSystem();
-        echo "Operating System evaluated out of IP Symcon Kerneldir : $opSys.\n";
+        if ($debug) echo "Operating System evaluated out of IP Symcon Kerneldir : $opSys.\n";
         if ($opSys == "WINDOWS")
             {
             // exec('systeminfo',$catch);   // ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden 
@@ -1164,16 +1168,16 @@ class OperationCenter
                         }
                     }  /* ende strlen */
                 }
-            if ($debug) echo "Ausgabe direkt:\n".$PrintLines."\n";		
+            if ($debug>1) echo "Ausgabe direkt:\n".$PrintLines."\n";		
 
             /* auch Java ist in einem Windowsverzeichnis versteckt, nach Verzeichnis suchen */
             $dirs = ['C:/Program Files','C:/Program Files (x86)'];
 
-            echo "Look for Java:\n";
+            if ($debug) echo "Look for Java:\n";
             $found = $this->dosOps->dirAvailable('Java',$dirs,false);         // true mit Debug
             if ($found) 
                 {
-                echo "Java verzeichnis hier gefunden : $found.\n";
+                if ($debug) echo "Java verzeichnis hier gefunden : $found.\n";
                 //$this->dosOps->writeDirStat($found.'Java');               // Java Version herausfinden
                 $result = $this->dosOps->readdirToArray($found.'Java');
                 //print_R($result);                                     // alle Unterverzeichnisse finden
@@ -1183,7 +1187,7 @@ class OperationCenter
                     if ($javaVersion==false) $javaVersion=$entry;
                     else echo "more Java Versions are available. Here $entry\n";
                     }
-                echo "Java version : $javaVersion.\n";                
+                if ($debug) echo "Java version : $javaVersion.\n";                
                 $results["Java_Version"]=$javaVersion;
                 SetValue($VersionJavaID,$javaVersion);
                 }
@@ -1868,7 +1872,10 @@ class OperationCenter
     	$categoryId_SysPing         = @IPS_GetObjectIDByName('SysPing',   $this->CategoryIdData);
         $categoryId_SysPingControl  = @IPS_GetObjectIDByName('SysPingControl',   $categoryId_SysPing);
     	$SysPingSortTableID         = @IPS_GetObjectIDByName("SortPingTable", $categoryId_SysPingControl ); 
+        $SysPingUpdateID            = @IPS_GetObjectIDByName("Update", $categoryId_SysPingControl); 
+        
         $actionButton[$SysPingSortTableID]["Monitor"]["SysPingTable"]=true;
+        $actionButton[$SysPingUpdateID]["Update"]["SysPingUpdate"]=true;
 		return($actionButton);
 		}
 
@@ -3526,7 +3533,7 @@ class BackupIpsymcon extends OperationCenter
             }
         else
             {
-            echo "Warning, getAccessToDrive does not find any drive or is able to map one.\n";
+            if ($debug) echo "Warning, getAccessToDrive does not find any Backup Drive or is able to map one.\n";
             return (false);
             } 
         return ($backupDrive);
@@ -5919,9 +5926,7 @@ class PingOperation extends OperationCenter
         parent::__construct($subnet,$debug);                       // sonst sind die Config Variablen noch nicht eingelesen
         }
 
-	/*************************************************************************************************************
-	 *
-	 * function SysPingAllDevices
+	/* PingOperation::SysPingAllDevices
 	 *
 	 * Pingen von IP Geräten, Timer wird alle 5 Minuten aufgerufen, aber im Normalfall nur alle 60 Minuten ausgeführt
      *
@@ -5976,59 +5981,6 @@ class PingOperation extends OperationCenter
 		if ( (isset ($this->installedModules["IPSCam"])) && parent::$hourPassed )
 			{
             $this->syspingCams($OperationCenterConfig['CAM'],$log_OperationCenter, $debug);    
-   			/*
-            //IPSLogger_Inf(__file__, "SysPingAllDevices: Check the Cams.");
-			$mactable=$this->get_macipTable($this->subnet);
-			//print_r($mactable);
-			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
-				{
-                if ( (isset($cam_config['IPADRESSE']) ) || (isset($cam_config['MAC'])) )
-                    {
-                   // echo "IPADRESSE oder MAC Adresse sollte bekannt sein.\n";
-                    $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); // 0 Boolean 1 Integer 2 Float 3 String 
-                    $ipadresse=""; $macadresse="";
-                    if (isset($cam_config['IPADRESSE'])) $ipadresse=$cam_config['IPADRESSE'];
-                    if (isset($mactable[$cam_config['MAC']])) 
-                        {
-                        $macadresse=$cam_config['MAC'];
-                        if ($ipadresse == "") $ipadresse=$mactable[$macadresse];
-                        elseif ($ipadresse != $mactable[$macadresse]) echo "Kenn mich nicht aus, zwei unterschiedliche IP Adressen.\n";
-                        }
-                    if ($ipadresse != "")
-                        {    
-                        echo str_pad("Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse $ipadresse",110);
-                        if ($macadresse != "") echo " vs ".$mactable[$cam_config['MAC']]."    ";
-                        else echo "                  ";
-                        $status=Sys_Ping($ipadresse,1000);
-                        $SysPingResult[IPS_getName($CamStatusID)]=$status;
-                        if ($status)
-                            {
-                            echo "--->  Kamera wird erreicht.\n";
-                            if (GetValue($CamStatusID)==false)
-                                {  // Statusänderung 
-                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-                                SetValue($CamStatusID,true);
-                                }
-                            }
-                        else
-                            {
-                            echo "---> Kamera wird NICHT erreicht   !\n";
-                            if (GetValue($CamStatusID)==true)
-                                {  // Statusänderung 
-                                $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-                                $log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-                                SetValue($CamStatusID,false);
-                                }
-                            }
-                        }
-                    else  // mac adresse nicht bekannt 
-                        {
-                        echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
-                        }
-                    }   // nur die Einträge in der Konfiguration, bei denen es auch eine MAC Adresse gibt bearbeiten
-				} // Ende foreach 
-                */
 			}
 
 		/************************************************************************************
@@ -6226,9 +6178,9 @@ class PingOperation extends OperationCenter
         }
 
 
-	/*************************************************************************************************************
-	 *
-	 * writeSysPingStatistics() als html Tabelle die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
+	/*PingOperation:: writeSysPingStatistics() 
+     *
+     * als html Tabelle die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
 	 *
 	 * es werden die Dateneintraege analysiert und ausgegeben
 	 *   Erreichbarkeit IPCams
@@ -6239,13 +6191,18 @@ class PingOperation extends OperationCenter
 	 *
 	 **************************************************************************************************************/
 
-	function writeSysPingStatistics($categoryId_SysPing=0,$debug=false)
+	function writeSysPingStatistics($sysPingCat=0,$debug=false)
 		{
         if ($debug) echo "writeSysPingStatistics aufgerufen für Darstellung der Erreichbarkeit der IP fähigen Geräte:\n";
-        if ($categoryId_SysPing==0) $categoryId_SysPing=$this->categoryId_SysPing;        
+        if ($sysPingCat==0) $categoryId_SysPing=$this->categoryId_SysPing;        
+        else $categoryId_SysPing=$sysPingCat;
         $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$categoryId_SysPing);
         $SysPingTableID            = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
         $SysPingSortTableID        = @IPS_GetObjectIDByName("SortPingTable",$categoryId_SysPingControl);
+
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+        //print_r($remServer);
 
         if ($SysPingTableID !== false)
             {
@@ -6269,7 +6226,7 @@ class PingOperation extends OperationCenter
                 $varname=IPS_GetName($children);
                 switch ($varname)
                     {
-                    case "SysPingTable":                                // ignore known entries that are not relevant for statistics
+                    case "SysPingTable":                                // ignore known category entries that are not relevant for statistics
                     case "SysPingActivityTable":
                     case "SysPingExectime":
                     case "SysPingCount":
@@ -6277,28 +6234,33 @@ class PingOperation extends OperationCenter
                     case "SocketStatus":
                         break;    
                     default:
-                        if ($debug) 
+                        $serverName=substr($varname,strlen("Server_"));
+                        if ( (isset($remServer[$serverName])) || ($sysPingCat !=0) )             // nur konfigurierte Variablen anzeigen
                             {
-                            echo "   ".str_pad($varname,40)."    ";
-                            if (isset($result[$varname])) echo "*";
-                            else echo " ";
-                            }
-                        $timeChanged=IPS_GetVariable($children)["VariableChanged"];
-                        $time=date("d.m.Y H:i:s",$timeChanged);
-                        $timeDelay=(time()-IPS_GetVariable($children)["VariableChanged"]);
-                        if ($debug) echo "     ".str_pad((GetValue($children)?"Ja":"Nein"),10)."$time  ".str_pad(nf($timeDelay,"s"),12);
-                        if ($timeChanged==0) 
-                            {
-                            if ($debug) echo "   --> delete\n";
-                            IPS_DeleteVariable($children);
-                            } 
-                        else 
-                            {
-                            if ($debug) echo "    \n";
-                            $sysPing[$varname]["VarName"]=$varname;
-                            $sysPing[$varname]["Status"]=GetValue($children);
-                            $sysPing[$varname]["Delay"]=$timeDelay;
-                            //$PrintHtml.='<tr><td>'.$varname.'</td><td>'.(GetValue($children)?"Ja":"Nein")."</td><td>".nf($timeDelay,"s")."</td></tr>";    
+                            //echo $serverName."  ";
+                            if ($debug) 
+                                {
+                                echo "   ".str_pad($varname,40)."    ";
+                                if (isset($result[$varname])) echo "*";
+                                else echo " ";
+                                }
+                            $timeChanged=IPS_GetVariable($children)["VariableChanged"];
+                            $time=date("d.m.Y H:i:s",$timeChanged);
+                            $timeDelay=(time()-IPS_GetVariable($children)["VariableChanged"]);
+                            if ($debug) echo "     ".str_pad((GetValue($children)?"Ja":"Nein"),10)."$time  ".str_pad(nf($timeDelay,"s"),12);
+                            if ($timeChanged==0) 
+                                {
+                                if ($debug) echo "   --> delete\n";
+                                IPS_DeleteVariable($children);
+                                } 
+                            else 
+                                {
+                                if ($debug) echo "    \n";
+                                $sysPing[$varname]["VarName"]=$varname;
+                                $sysPing[$varname]["Status"]=GetValue($children);
+                                $sysPing[$varname]["Delay"]=$timeDelay;
+                                //$PrintHtml.='<tr><td>'.$varname.'</td><td>'.(GetValue($children)?"Ja":"Nein")."</td><td>".nf($timeDelay,"s")."</td></tr>";    
+                                }
                             }
                         break;
                     }
@@ -9242,6 +9204,7 @@ class DeviceManagement
                     case "HM-Sec-SC":
                     case "HM-Sec-SC-2":
                     case "HMIP-SWDO":
+                    case "HmIP-SWDO-2":                 // immer neue Varianten, das ist ein optischer Sensor
                     case "HmIP-SWDM":                   // magnetischer Sensor
                         $result="Tuerkontakt";
                         $matrix=[0,2,1,1,1,1,1,1];                        
@@ -9251,6 +9214,7 @@ class DeviceManagement
                     case "HmIP-eTRV-B":
                     case "HmIP-eTRV-2":
                     case "HmIP-eTRV-B-2 R4M":           // Stellmotor Heizung, neueste Variante, schräges Display
+                    case "HmIP-eTRV-F":                 // die mit dem Paperwhite Display
                     case "HM-CC-RT-DN":
                         $result="Stellmotor";
                         $matrix=[0,2,1,1,2,1,1,1];                        
@@ -9258,13 +9222,17 @@ class DeviceManagement
 
                     case "HmIP-SPI":                    // Presencemelder, PRESENCE_DETECTION_STATE
                     case "HmIP-SMI":
-                    case "HmIP-SMI55-2":                // Einbaurahmen Bewegungsmelder, MOTION; ILLUMINATION, MOTION_DETECTION und ein paar mehr
                     case "HM-Sec-MDIR":
                     case "HM-Sec-MDIR-2":
                     case "HM-Sen-MDIR-O-2":  
                     case "HM-Sen-MDIR-O":
                         $result="Bewegungsmelder";
                         $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HmIP-SMI55-2":                // Einbaurahmen Bewegungsmelder, MOTION; ILLUMINATION, BUTTON und ein paar mehr
+                        $result="Bewegungsmelder mit Taster";
+                        $matrix=[0,2,1,2,1,1,1,1];                        
                         break;
 
                     case "HM-TC-IT-WM-W-EU":
@@ -9306,6 +9274,7 @@ class DeviceManagement
                         break;
                     
                     case "HMIP-PSM":
+                    case "HmIP-PSM-2 QHJ":                      // neue Type
                         $result="Schaltaktor 1-fach Energiemessung";
                         $matrix=[0,2,1,2,1,1,2,1,1];
                         break;
@@ -10892,6 +10861,9 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
      * sucht nach einer instanceID, sonst ist die Instanz nicht angelegt, diese mal so komplett in der itemList abspeichern
      * zusätzliche Auswertung über ganzes Array:
      *             Type     aus dem Wert den Wert für TypeDev ableiten
+     * es werden immer neue Gerätetypen erkannt, kontinuierlich erweitern:
+     *          Hue filament bulb
+     *
      */
     private function createItemlist($values,$debug) 
         {
@@ -10916,6 +10888,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                     break;
                 case "Hue ambiance lamp":
                 case "Hue ambiance spot":
+                case "Hue filament bulb":               // die grosse Lampe, kann dimmen und ambient, TypeChild Light
                     $this->itemslist[$oid]["TypeDev"]="TYPE_AMBIENT";
                     break;
                 case "Hue white lamp":              // wenn typeChild definiert und nicht light aufpassen   

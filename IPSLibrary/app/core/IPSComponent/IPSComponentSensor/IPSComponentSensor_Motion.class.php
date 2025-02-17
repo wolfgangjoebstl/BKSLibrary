@@ -374,7 +374,7 @@
 
         public function getVariableOIDLogging()
             {
-            if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->variableType==0) )
+            if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->variableType==0) )        // boolean, nicht für Kontakte, da gibt es kein Delay
                 {
                 $result = ["variableID" => $this->variable, "profile" => $this->variableProfile, "type" => $this->variableType, "variableLogID" => $this->variableLogID, "variableDelayLogID" => $this->variableDelayLogID, "Ereignisspeicher" => $this->EreignisID, "Gesamt_Ereignisspeicher" => $this->GesamtID, "Gesamt_Ereigniszaehler" => $this->GesamtCountID];
                 }

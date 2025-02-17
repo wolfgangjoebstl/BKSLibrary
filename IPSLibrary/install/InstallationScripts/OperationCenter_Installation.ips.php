@@ -84,43 +84,55 @@
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     $moduleManager    = new ModuleManagerIPS7('OperationCenter',$repository);
 
-	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
-	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
-	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
-	echo "IP Symcon Daten:\n";
-	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "  Modulversion : ".$ergebnis."\n";
-	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	echo "  Modulstatus  : ".$ergebnis."\n";
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "  IPSModulManager Version : ".$ergebnis."\n";
-	$ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('OperationCenter');
-	echo "  OperationCenter Version : ".$ergebnisVersion."\n";
-    echo "\n";
-    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
-    echo "Kernel Datum ist                           : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
-    echo "Kernel Startzeit ist                       : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
-    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
-    echo "Kernel Install Dir ist auf                 : ".IPS_GetKernelDirEx()."\n";
-    echo "Kernel Log Dir ist auf                     : ".IPS_GetLogDir()."\n";
-    echo "\n";
+    if ($_IPS['SENDER']=="Execute") 
+        {
+        echo "Script Execute, Darstellung automatisch mit Debug aktiviert. \n";
+        $debug=false;
+        }
+    else $debug=false;
 
- 	$installedModules = $moduleManager->GetInstalledModules();
-	$inst_modules="\nInstallierte Module:\n";
-	foreach ($installedModules as $name=>$modules)
-		{
-		$inst_modules.="   ".str_pad($name,30)." ".$modules."\n";
-		}
-	//echo $inst_modules;
-	
 	$dosOps = new dosOps();
     $ipsOps = new ipsOps();
+    $webOps = new webOps();
     $wfcHandling = new WfcHandling();		// für die Interoperabilität mit den alten WFC Routinen nocheinmal mit der Instanz als Parameter aufrufen
 
+ 	$installedModules = $moduleManager->GetInstalledModules();
     $systemDir     = $dosOps->getWorkDirectory(); 
     $opSystem      = $dosOps->getOperatingSystem();
-    echo "Operating System : $opSystem\n";
-    echo "Working Directory from IPSComponentLogger_Configuration : $systemDir\n";          // ersetzt hart kodiertes C:/Scripts, hat ein / am Ende
+
+    if ($debug)
+        {
+        $moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
+        $moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
+        $moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
+        echo "IP Symcon Daten:\n";
+        $ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
+        echo "  Modulversion : ".$ergebnis."\n";
+        $ergebnis=$moduleManager->VersionHandler()->GetModuleState();
+        echo "  Modulstatus  : ".$ergebnis."\n";
+        $ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+        echo "  IPSModulManager Version : ".$ergebnis."\n";
+        $ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('OperationCenter');
+        echo "  OperationCenter Version : ".$ergebnisVersion."\n";
+        echo "\n";
+        echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+        echo "Kernel Datum ist                           : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+        echo "Kernel Startzeit ist                       : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
+        echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+        echo "Kernel Install Dir ist auf                 : ".IPS_GetKernelDirEx()."\n";
+        echo "Kernel Log Dir ist auf                     : ".IPS_GetLogDir()."\n";
+        echo "\n";
+        
+        $inst_modules="\nInstallierte Module:\n";
+        foreach ($installedModules as $name=>$modules)
+            {
+            $inst_modules.="   ".str_pad($name,30)." ".$modules."\n";
+            }
+        echo $inst_modules;
+        
+        echo "Operating System : $opSystem\n";
+        echo "Working Directory from IPSComponentLogger_Configuration : $systemDir\n";          // ersetzt hart kodiertes C:/Scripts, hat ein / am Ende
+        }
 
     // max. Scriptlaufzeit definieren, sonst stoppt vorher wegen langsamer Kamerainstallation
     $dosOps->setMaxScriptTime(400); 
@@ -366,20 +378,6 @@
     echo "Profil ".$pname." überarbeitet;\n";
 
 
-    /* für Diagnose Funktionen */
-
-	$pname="SortifTableNameStateSince";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-			//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, 0, "Name", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-		IPS_SetVariableProfileAssociation($pname, 1, "State", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 2, "Since", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt;\n";
-		}
 
 	/******************************************************
 
@@ -726,7 +724,7 @@
     $BackupCenter=new BackupIpsymcon($subnet);
 
     $params=$BackupCenter->getConfigurationStatus("array");
-    print_R($params);
+    //print_R($params);
     if (isset($params["BackupDirectoriesandFiles"]) == false) $params["BackupDirectoriesandFiles"]=array("db","media","modules","scripts","webfront","settings.json");
     if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$dosOps->correctDirName($BackupCenter->getSourceDrive());
     if (isset($params["cleanup"])===false) $params["cleanup"]="finished";
@@ -961,10 +959,22 @@
 
 	$SysPingTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingTable",   3 /*String*/, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
-	$SysPingSortTableID = CreateVariableByName($categoryId_SysPingControl, "SortPingTable",   1 /*Integer*/, 'SortifTableNameStateSince', "", 9000, $scriptIdOperationCenter );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
-    IPS_SetHidden($SysPingSortTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 	$SysPingActivityTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingActivityTable",   3 /*String*/, '~HTMLBox', "", 6010, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingActivityTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+
+
+    /* für Diagnose Funktionen */
+
+	$pname="SortifTableNameStateSince";
+    $nameID=["Name","State","Since"];
+    $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable, 0 ohne Selektor
+	$SysPingSortTableID = CreateVariableByName($categoryId_SysPingControl, "SortPingTable",   1 /*Integer*/, $pname, "", 9000, $scriptIdOperationCenter );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+
+    $pname="UpdateSysTables";                                         // keine Standardfunktion, da Inhalte Variable
+    $nameID=["Update"];
+    $webOps->createActionProfileByName($pname,$nameID,0);  // erst das Profil, dann die Variable, 0 ohne Selektor
+    $SysPingUpdateID          = CreateVariableByName($categoryId_SysPingControl,"Update", 1,$pname,"",1000,$scriptIdOperationCenter);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
 
 	if (isset ($installedModules["IPSCam"]))
 		{
@@ -1563,6 +1573,8 @@
         {
         $resultStream[2]["Stream"]["Name"]="SysInfo";
         $resultStream[2]["Stream"]["OID"]=$sumTableHtmlID;
+        $resultStream[2]["Data"]["Update"]=$SysPingUpdateID;
+
         }
     if ($MessageTableID !== false)              // stream 1 Mitte
         {

@@ -2232,6 +2232,11 @@ function send_status($aktuell, $startexec=0, $debug=false)
     *
     * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabelle ein
     * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
+    * vergleiche Funktion in RemoreAccess Library
+    * benötigt das Module RemoteAccess
+    * wenn Modul OperationCenter vorhanden gibt es auch eine Uptime
+    *
+    * nur hier wird auch Alexa berücksichtigt
     *
     *****************************************************************************/
 
@@ -2243,6 +2248,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
         if (isset ($result["RemoteAccess"]))
             {
             IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");	
+            $remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
             if (isset ($result["OperationCenter"]))
                 {
                 if ($debug)  
@@ -2253,22 +2259,34 @@ function send_status($aktuell, $startexec=0, $debug=false)
                 $moduleManager_DM = new IPSModuleManager('OperationCenter');     /*   <--- change here */
                 $CategoryIdData   = $moduleManager_DM->GetModuleCategoryID('data');
                 $Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
-                //$remServer=RemoteAccess_GetConfiguration();
-                //foreach ($remServer as $Name => $UrlAddress)
-                $remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
-                foreach ($remServer as $Name => $Server)
-                    {
-                    $UrlAddress=$Server["ADRESSE"];
-                    if ($debug) echo "   Server Name ".str_pad($Name,20)." : ".str_pad($UrlAddress,70);
-                    if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
-                        {                    
-                        if ( ( ($mode==1) && (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") ) ||
-                                ($mode==0) ||
-                                ( ($mode==2) && (strtoupper($Server["STATUS"])=="ACTIVE") ) )
-                            {				
+                }
+            else $Access_categoryId=false;
+            //$remServer=RemoteAccess_GetConfiguration();
+            //foreach ($remServer as $Name => $UrlAddress)
+            foreach ($remServer as $Name => $Server)
+                {
+                if (isset($Server["LOGGING"])===false) $Server["LOGGING"]="DISABED";                // wenns nicht definiert ist, default is disabled
+                $UrlAddress=$Server["ADRESSE"];                                                         // das ist die RPC Adresse
+                if ($debug) echo "   Server Name ".str_pad($Name,20)." : ".str_pad($UrlAddress,70);
+                if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )                         // beides muss definiert sein
+                    {                    
+                    if ( ( ($mode==1) && (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") ) ||
+                            ($mode==0) ||
+                            ( ($mode==2) && (strtoupper($Server["STATUS"])=="ACTIVE") ) )
+                        {
+                        if (isset($Server["HOOK"]))	$RemoteServer[$Name]["Webhook"]=$Server["HOOK"];			
+                        else
+                            {
+                            $parsed = parse_url($UrlAddress);           //     [scheme] => http ,    [host] => wolfgangjoebstlbks.synology.me,     [port] => 3778,     [user] => wolfgangjoebstl@yahoo.com ,     [pass] => Cloudg0606 ,     [path] => /api/
+                            $RemoteServer[$Name]["Webhook"]=$parsed["scheme"].'://'.$parsed["host"];
+                            if (isset($parsed["port"])) $RemoteServer[$Name]["Webhook"].=":".$parsed["port"];
+                            $RemoteServer[$Name]["Webhook"].="/webhook/";
+                            }
+                        $RemoteServer[$Name]["Url"]=$UrlAddress;
+                        $RemoteServer[$Name]["Name"]=$Name;
+                        if ($Access_categoryId)
+                            {
                             $IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
-                            $RemoteServer[$Name]["Url"]=$UrlAddress;
-                            $RemoteServer[$Name]["Name"]=$Name;
                             if (GetValue($IPS_UpTimeID)==0)
                                 {
                                 $RemoteServer[$Name]["Status"]=false;
@@ -2280,30 +2298,13 @@ function send_status($aktuell, $startexec=0, $debug=false)
                                 if ($debug) echo "    available";
                                 }
                             }
-                        else { if ($debug) echo "STATUS and LOGGING do not fit to requirement fo Mode $mode : ACTIVE/ENABLED";    }
+                        else $RemoteServer[$Name]["Status"]=true;
                         }
-                    else { if ($debug) echo "no STATUS or LOGGING config entry found"; }
-                    if ($debug) echo "\n"; 
-                    if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
+                    else { if ($debug) echo "STATUS and LOGGING do not fit to requirement fo Mode $mode : ACTIVE/ENABLED";    }
                     }
-                }
-            else
-                {
-                $remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
-                foreach ($remServer as $Name => $Server)
-                    {
-                    $UrlAddress=$Server["ADRESSE"];
-                    if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
-                        {                    
-                        if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
-                            {				
-                            $RemoteServer[$Name]["Url"]=$UrlAddress;
-                            $RemoteServer[$Name]["Name"]=$Name;
-                            $RemoteServer[$Name]["Status"]=true;
-                            }
-                        }
-                    if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
-                    }	
+                else { if ($debug) echo "no STATUS or LOGGING config entry found"; }
+                if ($debug) echo "\n"; 
+                if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
                 }
             }
         return($RemoteServer);
@@ -11987,7 +11988,7 @@ class dosOps
                         if ($dateityp == "dir")
                             {
                             if ($file == $filename)  $status=$verzeichnis;
-                            else echo $file."\n";
+                            elseif ($debug) echo $file."\n";
                             }
                         elseif ( ($dateityp===false) && $debug) echo "dirAvailable:Fehler bei filetype, check \"$verzeichnis$file\".\n";
                         } /* Ende while */

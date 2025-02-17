@@ -1394,9 +1394,10 @@ class RemoteAccess
 				
 	/*****************************************************************
 	 *
-	 * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein
+	 * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabelle ein
 	 * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
-	 *
+	 * vergleiche auch Funktion in AllgemeineDefinitionen
+     * hier ohne Alexa und Webhook implementiert, slightly depricated
 	 *****************************************************************************/
 
 	function RemoteAccessServerTable()
@@ -1828,7 +1829,50 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 		}
 	
 
+		/* Parameter für eine Event herausfinden
+		 *
+		 * @param integer $variable ID der auslösenden Variable
+		 */
+		public function CheckEvent($variable) 
+            {
+			$configurationAuto = self::Get_EventConfigurationAuto();
+			$configurationCust = self::Get_EventConfigurationCust();
 
+			if (array_key_exists($variable, $configurationCust)) 
+                {
+				$params = $configurationCust[$variable];
+			    } 
+            elseif (array_key_exists($variable, $configurationAuto)) 
+                {
+				$params = $configurationAuto[$variable];
+			    //} elseif ($variable==IPSMH_IRTRANS_BUTTON_VARIABLE_ID) {
+				//$params = '';
+				//$this->HandleIREvent($variable, $value);
+			    } 
+            else 
+                {
+				$params = '';
+				IPSLogger_Wrn(__file__, 'Variable '.$variable.' NOT found in IPSMessageHandler Configuration!');
+			    }
+
+			if ($params<>'') 
+                {
+				if (count($params) < 3) 
+                    {
+					throw new IPSMessageHandlerException('Invalid IPSMessageHandler Configuration, Event Defintion needs 3 parameters');
+				    }
+                /* aus CreateObject
+                 * $params = explode(',', $params);
+                 * $object = new $params[0]($params[1],$params[2],$params[3],$params[4],$params[5],$params[6]);
+                 * echo "CheckEvent :".$params[1]."\n";        
+                 */
+				$component = IPSComponent::CreateObjectByParams($params[1]);
+				$module    = IPSLibraryModule::CreateObjectByParams($params[2]);
+				return (["Component"=>$component,"Module"=>$module,"Params"=>$params]);
+                }
+            else return (false);
+			}
+	
 	}  /* Ende class */	
 	
 /****************************************************************************************************************

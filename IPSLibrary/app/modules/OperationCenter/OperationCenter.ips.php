@@ -184,7 +184,8 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 
 	$subnet="10.255.255.255";
 	$OperationCenter=new OperationCenter($subnet);
-	
+	$pingOperation       = new PingOperation();             // ping Befehle zusammengefasst
+
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
 
@@ -373,7 +374,27 @@ if ($_IPS['SENDER']=="WebFront")
                 if (isset($ActionButton[$variableId]["Monitor"]))
                     {
                     //echo "Monitor gedrückt"; 
-                    $OperationCenter->writeSysPingStatistics(); 
+                    $pingOperation->writeSysPingStatistics(); 
+                    }                     
+                if (isset($ActionButton[$variableId]["Update"]))
+                    {
+                    echo "Update gedrückt. Bitte Geduld :"; 
+                    if (isset ($installedModules["Watchdog"])===false)          // nicht installiert
+                        {
+                        $sysOps->ExecuteUserCommand($filename,"", false, false,-1,false);                          // false nix anzeigen  false nix warten, da Batch writing wäre das ausreichend
+                        }
+                    else $OperationCenter->SystemInfo();                            // bei den LBG und BKS einmal so lassen
+                    $sysOps->getProcessListFull($fileRead);                 // um 00:50 aufrufen und um um 3:50 auswerten
+
+                    $categoryId_SysPing    	= CreateCategory('SysPing',       	$CategoryIdData, 200);
+                    $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$categoryId_SysPing);
+                    $SysPingActivityTableID = @IPS_GetObjectIDByName("SysPingActivityTable",$categoryId_SysPingControl); 
+                    $actual=false;
+                    $html=$pingOperation->writeSysPingActivity($actual, true, false);
+                    SetValue($SysPingActivityTableID,$html);   
+
+                    //$pingOperation->SysPingAllDevices($log_OperationCenter);          
+                    $pingOperation->writeSysPingStatistics(); 
                     }                     
 				}	
 			break;
@@ -382,7 +403,7 @@ if ($_IPS['SENDER']=="WebFront")
 
 /*******************************************************************************************
  * 
- *      EXECUTE, nur machen wenn am Anfanmg der Scriptdatei freigegeben
+ *      EXECUTE, nur machen wenn am Anfang der Scriptdatei freigegeben
  *
  ***/
 
@@ -855,7 +876,6 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	//SysPingAllDevices($OperationCenter,$log_OperationCenter);
 	//$OperationCenter->SysPingAllDevices($log_OperationCenter);
 
-    $pingOperation       = new PingOperation();
     $homematicOperation  = new HomematicOperation();
 			
     $homematicOperation->ccuSocketStatus($log_OperationCenter,true);        // true für Debug
@@ -1153,7 +1173,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *
 			 **********************************************************/
             $OperationCenter->count5mins();
-            $pingOperation       = new PingOperation();
             $homematicOperation  = new HomematicOperation();
             $homematicOperation->ccuSocketStatus($log_OperationCenter);         // called every hour, internal controled by variable in count5mins
             $homematicOperation->ccuSocketDutyCycle($log_OperationCenter);      // called every hour, internal controled by variable in count5mins

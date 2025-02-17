@@ -1,6 +1,6 @@
 <?php
 
-/*erstellt von RemoteAccess::add_Amis() am 29.01.2025 05:05
+/*erstellt von RemoteAccess::add_Amis() am 17.02.2025 05:05
  */
 function AmisStromverbrauchList() { return array(
     "Wohnung-KHG07_Wirkenergie" => array(
@@ -48,7 +48,7 @@ function AmisStromverbrauchList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_SysInfo() am 29.01.2025 05:05
+/*erstellt von RemoteAccess::add_SysInfo() am 17.02.2025 05:05
  */
 function SysInfoList() { return array(
     "Hostname" => array(
@@ -103,9 +103,26 @@ function SysInfoList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_RemoteServer() am 29.01.2025 05:05
+/*erstellt von RemoteAccess::add_RemoteServer() am 17.02.2025 05:05
  */
 function ROID_List() { return array(
+    "LBG70-2Virt" => array(
+         "Adresse" => "http://wolfgangjoebstl@yahoo.com:Cloudg0606@100.66.204.72:3777/api/", 
+         "ServerName" => "19087", 
+         "Temperatur" => "56092",        // from xconfig
+         "Switch" => "37180",        // from xconfig
+         "Kontakt" => "26811",        // from xconfig
+         "Taster" => "16024",        // from xconfig
+         "Bewegung" => "15211",        // from xconfig
+         "HeatControl" => "50496",        // from xconfig
+         "Feuchtigkeit" => "20916",        // from xconfig
+         "SysInfo" => "11074",        // from xconfig
+         "Klima" => "33991",        // from xconfig
+         "Helligkeit" => "33246",        // from xconfig
+         "Stromverbrauch" => "15259",        // from xconfig
+         "Andere" => "59000",        // from xconfig
+         "ArchiveHandler" => "27926", 
+             	),
       );}
 
 ?>

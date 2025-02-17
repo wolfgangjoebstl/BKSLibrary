@@ -299,7 +299,7 @@ IPS_SetEventActive($tim1ID,true);
                     $debug=false;
                     $topConfig["ID"]=$topID;
                     $topConfig["Use"]=["Place","Room","Device"];        // keine Kategorie für DeviceGroup erstellen
-                    echo "TopologyID gefunden : $topId, eine Topologie mit Kategorien erstellen.\n";
+                    echo "TopologyID gefunden : $topID, eine Topologie mit Kategorien erstellen.\n";
                     $DetectDeviceHandler->create_Topology($topConfig, $debug);            // true für init, true für Debug, bei init löscht sich die ganze Kategorie und baut sie neu auf, macht auch schon _construct
                     $topology=$DetectDeviceHandler->Get_Topology();
                     $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
