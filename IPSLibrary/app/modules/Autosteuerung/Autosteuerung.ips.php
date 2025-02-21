@@ -142,6 +142,10 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
     $StatusAnwesendID=IPS_GetObjectIDByName("StatusAnwesend",$AnwesenheitserkennungID);
     $StatusAnwesendZuletztID=IPS_GetObjectIDByName("StatusAnwesendZuletzt",$AnwesenheitserkennungID);
 
+	$categoryId_Available = CreateCategory('Available',   $CategoryIdData, 200);
+    $StatusAnwesenheitID = IPS_GetObjectIDByName("StatusAnwesenheit",$categoryId_Available);
+    $StatusAlarmID       = IPS_GetObjectIDByName("StatusAlarm",$categoryId_Available);
+
     $StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AnwesenheitserkennungID, 1010, '~HTMLBox');
 
     $MonitorModeID                = @IPS_GetObjectIDByName("MonitorMode", $categoryId_Autosteuerung);           // Zum Ein und Ausschalten des Monitors, eigene Routinen sind konfigurierbar, aber nicht notwendig
@@ -380,7 +384,9 @@ if ($_IPS['SENDER']=="TimerEvent")
         case $tim3ID:
 			/* alle 60 Sekunden aufrufen */
             $changesDetected=$auto->statusMonitorSteuerung($debug);            //true für Debug
-
+            $configZutritt = $operate->Zutritt($debug);
+            SetValue( $StatusAnwesenheitID,$configZutritt["PRESENCE"]);
+            
             /* Monitor automatische ein/aus schalten
             $changesDetected=false;
             $AutoSetSwitches = $auto->get_Autosteuerung_SetSwitches("MonitorMode");

@@ -1,6 +1,6 @@
 <?php
 
-/*erstellt von RemoteAccess::add_Amis() am 17.02.2025 05:05
+/*erstellt von RemoteAccess::add_Amis() am 21.02.2025 05:05
  */
 function AmisStromverbrauchList() { return array(
     "Wohnung-KHG07_Wirkenergie" => array(
@@ -48,7 +48,7 @@ function AmisStromverbrauchList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_SysInfo() am 17.02.2025 05:05
+/*erstellt von RemoteAccess::add_SysInfo() am 21.02.2025 05:05
  */
 function SysInfoList() { return array(
     "Hostname" => array(
@@ -103,7 +103,7 @@ function SysInfoList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_RemoteServer() am 17.02.2025 05:05
+/*erstellt von RemoteAccess::add_RemoteServer() am 21.02.2025 05:05
  */
 function ROID_List() { return array(
     "LBG70-2Virt" => array(

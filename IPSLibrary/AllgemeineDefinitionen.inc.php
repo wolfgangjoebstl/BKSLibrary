@@ -14332,7 +14332,8 @@ class ComponentHandling
         } 
 
     /* ComponentHandling::getStructureofROID
-     * die Remote Struktur für das Keyword auslesen 
+     * die Remote Struktur für das Keyword auslesen, verwendet Modul RemoteAccess und kann Debug
+     * wird von installComponentFull verwendet
      */
     public function getStructureofROID($keyword,$debug=false)
         {
@@ -14855,7 +14856,8 @@ class ComponentHandling
             case "ACTUAL_HUMIDITY":
                 $detectmovement="Feuchtigkeit";
                 $variabletyp=2; 		/* Float */							
-                $index="Humidity";
+                //$index="Humidity";
+                $index="Feuchtigkeit";
                 $indexNameExt="_Humi";								/* gemeinsam mit den CO2 Werten abspeichern */                
                 $profile="Humidity";
                 break;
@@ -15132,8 +15134,14 @@ class ComponentHandling
     *			TYPE_ACTUATOR	setzt $keyword auf VALVE_STATE 
     *			TYPE_THERMOSTAT	setzt $keyword auf SET_TEMPERATURE, SET_POINT_TEMPERATURE, TargetTempVar wenn die COID Objekte auch vorhanden sind.
     *
-    *
-    *
+    * Beispielsweise Aufruf von remoteAccess::EvaluateHomematic, keywords
+    *           ["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"]
+    *           ["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"]
+    *           ["TYPECHAN" => "TYPE_METER_HUMIDITY","REGISTER" => "HUMIDITY"]
+    * EvaluateAndere
+    *           ["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"]
+    * etc.
+    * mit dem Filter alle passenden Elemente suchen
     *
     ****************************************************************************************/
 		
@@ -15162,6 +15170,7 @@ class ComponentHandling
 			$keyword=$this->getKeyword($result);            // holt sich den ersten Wert von ["Index"] und kontrolliert die anderen
 			/* Erreichbarkeit Remote Server nur einmal pro Aufruf ermitteln */
 			$remServer=$this->listOfRemoteServer();
+            echo "getStructureofROID($keyword \n";
             $struktur=$this->getStructureofROID($keyword,$debug);
             echo "-------------\n";
             if ($debug)

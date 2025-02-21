@@ -556,7 +556,7 @@ class RemoteAccess
         if ($debug) 
             {
             echo "add_RemoteServer für Client $client \n"; 
-            print_R($this->remServer);
+            //print_R($this->remServer);
             }
 		foreach ($this->remServer as $Name => $Server)
 			{
@@ -565,15 +565,19 @@ class RemoteAccess
             $configId=false;
 			if ( isset($available[$Name]["Status"]) ) 
 				{
-				if ($available[$Name]["Status"] == false ) { $read=false; }
+				if ($available[$Name]["Status"] == false ) 
+                    { 
+                    $read=false; 
+                    if ($debug) echo "  Server f$Name :\n"; 
+                    }
 				}
 			if ($read == true )
 				{	
-				echo "Server : ".$Name." mit Adresse : ".$Server."bearbeiten. ";
+				echo "   Server : ".$Name." mit Adresse : ".$Server."bearbeiten. ";
                 $xconfig=$this->getXConfig($Server);
                 if (isset($xconfig[$client])) 
                     {
-                    echo "rOID Daten verfügbar.";
+                    echo "rOID Daten als xconfig verfügbar.";
                     //echo "ServerName : ".$xconfig[$client]["OID"]." ";
                     //print_r($xconfig[$client]["Childs"]);
                     }
@@ -621,7 +625,8 @@ class RemoteAccess
                     $this->listofOIDs["HeatSet"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "HeatSet");
                     $this->includefile.="\n         ".'"HeatSet" => "'.$this->listofOIDs["HeatSet"][$Name].'", ';	
                     
-                    $this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
+                    //$this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
+                    $this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Humidity");
                     $this->includefile.="\n         ".'"Humidity" => "'.$this->listofOIDs["Humidity"][$Name].'", ';
 
                     $this->listofOIDs["SysInfo"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "SysInfo");
@@ -651,6 +656,7 @@ class RemoteAccess
                     }
                 else
                     {
+                    echo "      xconfig Daten abgleichen.\n";
                     $servID = $xconfig[$client]["OID"];
                     $this->includefile.="\n         ".'"ServerName" => "'.$servID.'", ';
                     // $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion","Pressure","CO2","Rainfall","Helligkeit");      // diese Profile werden installiert
@@ -669,13 +675,13 @@ class RemoteAccess
                         "Stromverbrauch"    => "Stromverbrauch",                                                 // neu für direkte Stronverbrauchs register                    
                         "Andere"            => "Other",
                         );
-                    foreach ($profiles as $key => $profile) 
+                    foreach ($profiles as $key => $profile)         // der Reihe nach durchgehen, der index ist die Bezeichnung der Wert das Profil mit der die Kategorie benannt wird
                         {
                         $tag=$key;
-                        if (is_array($profile) === false) 
+                        if (is_array($profile) === false)       // austauschen, der Kategoriename soll  
                             {
                             $profil=$key;
-                            $tag=$profil;
+                            $tag=$profile;
                             //echo "Line $profil $tag \n";
                             }
                         else
@@ -693,13 +699,13 @@ class RemoteAccess
                         if (isset($xconfig[$client]["Childs"][$profil]))
                             {
                             $this->listofOIDs[$tag][$Name] = $xconfig[$client]["Childs"][$profil];   
-                            //echo "Found $profil => ".$this->listofOIDs[$tag][$Name]." with Tag $tag from xconfig\n"; 
+                            if ($debug) echo "         Found $profil => ".$this->listofOIDs[$tag][$Name]." with Tag $tag from xconfig\n"; 
                             $this->includefile.="\n         ".'"'.$key.'" => "'.$this->listofOIDs[$tag][$Name].'",        // from xconfig';
                             } 
                         else    
                             {
                             $this->listofOIDs[$tag][$Name] = RPC_CreateCategoryByName($rpc, $servID, $profil);
-                            //echo "Found $profil => ".$this->listofOIDs[$tag][$Name]." with Tag $tag from rpc\n"; 
+                            if ($debug) echo "         Found $profil => ".$this->listofOIDs[$tag][$Name]." with Tag $tag from rpc\n"; 
                             //echo "Found $profil => ??? with Tag $tag from rpc\n"; 
                             $this->includefile.="\n         ".'"'.$key.'" => "'.$this->listofOIDs[$tag][$Name].'",        // per rpc call';
                             } 
@@ -959,12 +965,24 @@ class RemoteAccess
 			}
 		}
 		
-	/**
-	 * @public
+	/* RemoteAccess::write_classresult
 	 *
-	 * alle Ergebnisse ausgeben
-	 * benötigt aufruf funktion add_RemoteServer
-	 *
+	 * alle Ergebnisse ausgeben, Übergabe von Status, benötigt aufruf funktion add_RemoteServer
+     *  OID                 :LBG70-2Virt    yyy
+        Temperature         :5609x          123y
+        Switch              :3718x          456y
+        Kontakt             :2681x          
+        Taster              :1602x          
+        Bewegung            :1521x          
+        Feuchtigkeit        :
+        SysInfo             :1107x          
+        Klima               :3399x          
+        Andere              :
+     *
+     *
+	 * profiles sind vorgegeben, Feuchtigkeit => Humidity
+     * im listofOIDs wird nach dem Index Humidity gesucht
+     *
 	 */
 	public function write_classresult($available=Array())
 		{
@@ -1033,7 +1051,7 @@ class RemoteAccess
 		}
 
     /* RemoteAccess::get_StructureofROID
-     * Defaultwert ist Schalter, sonst die Kategprie anfordern
+     * Defaultwert ist Schalter, sonst die Kategorie anfordern
      * alle Werte in listofROIDs
      */
 	public function get_StructureofROID($keyword="",$debug=false)

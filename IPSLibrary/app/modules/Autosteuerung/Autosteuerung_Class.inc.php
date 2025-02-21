@@ -1111,12 +1111,17 @@ class AutosteuerungOperator
 	
 	private $logicAnwesend;			// die überarbeitete Konfiguration
 	private $motionDetect_DataID;	// hier sind die verzoegerten Spiegelvariablen gespeichert 
+    protected $categoryIdData,$categoryId_Available;
 
 	public function __construct($debug=false)
 		{
 		//IPSLogger_Dbg(__file__, 'Construct Class AutosteuerungOperator.');
-		
-		/* Verzoegerte Motion Detection Variablen im Modul DetectMovement finden */
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		$moduleManagerAS = new IPSModuleManager('Autosteuerung',$repository);
+        $this->categoryIdData       = $moduleManagerAS->GetModuleCategoryID('data');
+		$this->categoryId_Available = CreateCategory('Available',   $this->categoryIdData, 200);
+
+        /* Verzoegerte Motion Detection Variablen im Modul DetectMovement finden */
 		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 		$installedmodules=$moduleManager->GetInstalledModules();
 		if (isset ($installedmodules["DetectMovement"]))
@@ -1349,10 +1354,21 @@ class AutosteuerungOperator
 		return $logic;	}
      * Auswertung der OR Verknüpfungen Zutritt Informationen, der letzte Zutritt zählt, wann war zuletzt 1 für Türe offen    
      * AND Verknüpfung später hinzufügen
+     *
+     * Aktuelle Auswertung funktioniert so:
+     * anhand Available feststellen ob Anwesend oder Abwesend, dann plausibilisieren
+     * wenn Abwesend, letzte Ereignisse seit jetzt durchgehen, wann war das letzte Ereignis mit 1
+     *          Home, Geofency hat angeschlagen
+     *          Available, Bewegung erkannt
+     *          Contact Türe wurde aufgemacht, was war 10 Minuten danach
+     *
+     * time ist nur Testweise um einen späteren Zeitpunkt zu testen
      */
-    public function Zutritt($debug)
+    public function Zutritt($time=false,$debug=false)
         {
         $ipsOps = new ipsOps();
+        $categoryId_Anwesenheit  = IPS_GetObjectIDByName("StatusAnwesenheit", $this->categoryId_Available);
+
         $config=array();
         if (function_exists("Autosteuerung_Zutritt"))
             {
@@ -1420,11 +1436,13 @@ class AutosteuerungOperator
                 }
             // Umsetzung Konfiguration
             $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-            $endtime=time();
+            if ($time===false) $endtime=time();
+            else $endtime=$time;
             //$starttime=mktime(date("h", $jetzt),date("i", $jetzt),date("s", $jetzt),date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));  // mktime(int $hour,int $minute,int $second, int $month, int $day, int $year): int|false
             //$starttime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));       // heute 00:00
-            $starttime = $endtime-24*60*60;         // vor 24 Stunden
-            $logging=array(); $id=0;
+            $starttime = $endtime-24*60*60*10;         // vor 24 Stunden
+            $logging = $this->loggingActivity($config,$starttime,$endtime,$debug);
+            /*$logging=array(); $id=0;
             foreach ($config as $type => $operation)
                 {
                 switch ($type)
@@ -1438,12 +1456,13 @@ class AutosteuerungOperator
                         foreach ($operation as $oid => $entry)
                             {
                             $logged = AC_GetLoggingStatus($archiveHandlerID,$oid);
-                            echo "    ".$oid." ".str_pad("(".IPS_GetName($oid).")",30)."  ".(GetValue($oid)?"Offen":"Geschlossen")."   ";
-                            echo "(".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")   ".($logged?"Logged":"Static")."\n";
+                            $text  = "    ".$oid." ".str_pad("(".IPS_GetName($oid).")",30)."  ".(GetValue($oid)?"Offen":"Geschlossen")."   ";
+                            $text .=  "(".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")   ".($logged?"Logged":"Static")."   ";
                             if ($logged)
                                 {
+                                //$starttime=0; $endtime=0;   // alles
                                 $werte = AC_GetLoggedValues($archiveHandlerID, $oid, $starttime, $endtime, 0);
-                                echo "Insgesamt ".sizeof($werte)."  Eintraege.\n";
+                                $text .= "Insgesamt ".sizeof($werte)."  Eintraege.";
                                 //print_r($werte);
                                 foreach ($werte as $index => $wert) 
                                     {
@@ -1457,57 +1476,110 @@ class AutosteuerungOperator
                                     }
                                 // Geofency mitberücksichtigen
                                 }
+                            if ($debug) echo $text."\n";    
                             }
                         break;
                     }
-                }
+                } */
             // Auswertung Logging, Ergebnis sollte sein: Wolfgang ist um 7:44 weggegangen, Wolfgang ist um 18:44 zurückgekommen
             if ($debug) echo "Auswertung Logging:\n";
+            if (count($logging)==0) return (false);
+
             $status=array(); 
             //krsort($logging);           // von jetzt in die Vergangenheit
             $ipsOps->intellisort($logging,"TimeStamp",SORT_DESC);
-            print_R($logging[0]);
+            if ($debug>1) print_R($logging[0]);
             //print_R($this->logicAnwesend);
             //print_r($configAvailable);
-            $anwesend=$this->Anwesend($configAvailable);
-            echo "Auswertung Anwesend:    ".($anwesend?"Ja":"Nein")."\n";
-            foreach ($logging as $id => $entry)               // zweidimensionales array
+            $anwesend=$this->Anwesend($configAvailable);            // aktuell keine Bewegung in der Wohnung
+            if ($debug) echo "Auswertung Anwesend:    ".($anwesend?"Ja":"Nein")."\n";
+            $result = $this->analyseLoggingActivity($logging,$anwesend,$debug);
+            /*$summary=array(); $contacts=0;
+            foreach ($logging as $id => $entry)               // zweidimensionales array, id ist ein Increment
                 {
+                if ($debug) echo "   ".str_pad($id,3)." ".$entry["TimeStamp"]." ".date("d.m H:i:s",$entry["TimeStamp"])."  ".str_pad($entry["Oid"],8);
                 switch ($entry["Type"])
                     {
                     case "CONTACT":
-                        echo "   ".str_pad($id,3)." ".date("d.m H:i:s",$entry["TimeStamp"])."  ".str_pad($entry["Oid"],8).str_pad($entry["Value"],7).str_pad("",16).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        if ($debug) echo str_pad($entry["Value"],7).str_pad("",16).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        foreach ($status as $name => $statusentry)
+                            {
+                            if (isset($status[$name]["Contact"])==false)            // noch kein Eintrag
+                                {
+                                $status[$name]["Contact"]["TimeStamp"]=$entry["TimeStamp"];
+                                $status[$name]["Contact"]["Value"]=$entry["Value"];     
+                                }
+                            }
+                        if ($entry["Value"]==0)  
+                            {
+                            if (isset($summary["Contact"]["lastclosed"])===false)           // Türe zu
+                                {
+                                $summary["Contact"]["lastclosed"]=$entry["TimeStamp"];
+                                if (isset($summary["Motion"]["lastaway"]))
+                                    { 
+                                    $delay=($summary["Motion"]["lastaway"]-$summary["Contact"]["lastclosed"]);
+                                    if ($debug) echo "Erste Bewegung Aus nach letzter Tür zu : $delay seconds    $id \n";
+                                    if ($delay>500) 
+                                        {
+                                        $ids=$id; $count=0; $scount=0;
+                                        while ($logging[$ids]["TimeStamp"]<$summary["Motion"]["lastaway"])
+                                            {
+                                            $otherdelay=($logging[$ids]["TimeStamp"]-$summary["Contact"]["lastclosed"]);
+                                            if ($logging[$ids]["Value"]) 
+                                                {
+                                                //echo "Letzte Bewegung An nach letzter Tür zu :  $otherdelay seconds    $ids \n";
+                                                if (($logging[$ids]["TimeStamp"]-$summary["Contact"]["lastclosed"])>500) $count++;
+                                                else $scount++;
+                                                }
+                                            $ids--;
+                                            if ($ids==0) break;
+                                            }                                                                                    
+                                        if ($debug) echo "es gab noch $count neue Bewegungen zwischen ".($logging[$ids]["TimeStamp"])."<".$summary["Motion"]["lastaway"]."\n";
+                                        if ($count>0) 
+                                            {
+                                            if ($anwesend==0) if ($debug) echo "even if there is no movement actually we are still there.\n";
+                                            $anwesend=true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        if ($entry["Value"]>0)  
+                            {
+                            if (isset($summary["Contact"]["lastopened"])===false) $summary["Contact"]["lastopened"]=$entry["TimeStamp"];
+                            $contacts++;
+                            if ($contacts>3) break;
+                            }
                         break;
                     case "MOTION":
                     case "HOME":
-                        echo "   ".str_pad($id,3)." ".date("d.m H:i:s",$entry["TimeStamp"])."  ".str_pad($entry["Oid"],8).str_pad("",8).str_pad($entry["Value"],7).str_pad("",8).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        if ($debug) echo str_pad("",8).str_pad($entry["Value"],7).str_pad("",8).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        $name=$entry["Name"];
+                        if (isset($status[$name])==false) 
+                            {
+                            $status[$name]["Geofency"]["TimeStamp"]=$entry["TimeStamp"];            // nach Namen sortieren
+                            $status[$name]["Geofency"]["Value"]=GetValue($entry["Oid"]);
+                            }
                         break;
                     case "AVAILABLE":           // nix ausgeben
-                        echo "   ".str_pad($id,3)." ".date("d.m H:i:s",$entry["TimeStamp"])."  ".str_pad($entry["Oid"],8).str_pad("",16).str_pad($entry["Value"],7).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        if ($debug) echo str_pad("",16).str_pad($entry["Value"],7).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        if ($entry["Value"]==0)  
+                            {
+                            if ($anwesend==0)       // wenn alle Bewegungsmelder away sind kann der last away ermittelt werden
+                                {
+                                if (isset($summary["Motion"]["lastaway"])===false) $summary["Motion"]["lastaway"]=$entry["TimeStamp"];
+                                //if (isset($summary["Available"]["lastaway"])===false) $summary["Available"]["lastaway"]=$entry["TimeStamp"];
+                                }
+                            }
+                        if ($entry["Value"]>0)  
+                            {
+                            if (isset($summary["Motion"]["lastthere"])===false) $summary["Motion"]["lastthere"]=$entry["TimeStamp"];
+                            //if (isset($summary["Available"]["lastthere"])===false) $summary["Available"]["lastthere"]=$entry["TimeStamp"];
+                            }
                         break;
                     }
-                if ($entry["Type"]=="HOME") 
-                    {
-                    //print_R($entry);
-                    $name=$entry["Name"];
-                    if (isset($status[$name])==false) 
-                        {
-                        $status[$name]["Geofency"]["TimeStamp"]=$entry["TimeStamp"];            // nach Namen sortieren
-                        $status[$name]["Geofency"]["Value"]=GetValue($oid);
-                        }
-                    }
-                if ($entry["Type"]=="CONTACT") 
-                    {
-                    foreach ($status as $name => $statusentry)
-                        {
-                        if (isset($status[$name]["Contact"])==false) 
-                            {
-                            $status[$name]["Contact"]["TimeStamp"]=$entry["TimeStamp"];
-                            $status[$name]["Contact"]["Value"]=GetValue($oid);;
-                            }
-                        }
-                    }
-                }
+                }*/
+            $status=$result["Status"];    
             // Zusammenfassung Status
             if ($debug)
                 {
@@ -1523,6 +1595,9 @@ class AutosteuerungOperator
                 }
             }
         else echo "Autosteuerung Zutritt Konfiguration NICHT vorhanden.:\n";
+        $config["STATUS"]=$status;
+        $config["SUMMARY"]=$result["Summary"];
+        $config["PRESENCE"]=$result["Presence"];
         return($config);
         }
 
@@ -1573,6 +1648,151 @@ class AutosteuerungOperator
                 }
             }
         }
+
+    /* log Activities according to Config
+     */
+    public function loggingActivity($config,$starttime,$endtime,$debug=false)
+        {
+        $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+        $logging=array(); $id=0;
+        foreach ($config as $type => $operation)
+            {
+            switch ($type)
+                {
+                case "OR":              // nur OR, jeder Eintrag ist eine Zutrittsmöglichkeit  
+                case "CONTACT":
+                case "MOTION":
+                case "AVAILABLE":
+                case "HOME":
+                    //print_r($operation);  
+                    foreach ($operation as $oid => $entry)
+                        {
+                        $logged = AC_GetLoggingStatus($archiveHandlerID,$oid);
+                        $text  = "    ".$oid." ".str_pad("(".IPS_GetName($oid).")",30)."  ".(GetValue($oid)?"Offen":"Geschlossen")."   ";
+                        $text .=  "(".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")   ".($logged?"Logged":"Static")."   ";
+                        if ($logged)
+                            {
+                            //$starttime=0; $endtime=0;   // alles
+                            $werte = AC_GetLoggedValues($archiveHandlerID, $oid, $starttime, $endtime, 0);
+                            $text .= "Insgesamt ".sizeof($werte)."  Eintraege.";
+                            //print_r($werte);
+                            foreach ($werte as $index => $wert) 
+                                {
+                                //echo "   $index ".$wert["Value"]."   ".date("H:i:s",$wert["TimeStamp"])."\n";
+                                $logging[$id]=$wert;
+                                $logging[$id]["Oid"]=$oid;
+                                $logging[$id]["Type"]=$type;
+                                if ($entry["Name"]) $logging[$id]["Name"]=$entry["Name"];
+                                else $logging[$id]["Name"]="unknown";
+                                $id++;                                                                  // umgestellt auf id da gleiche Timestamps auftreten können
+                                }
+                            // Geofency mitberücksichtigen
+                            }
+                        if ($debug) echo $text."\n";    
+                        }
+                    break;
+                }
+            }
+
+        return ($logging);
+        }
+
+    /* jetzt die Logging Ereignisse auswerten und zusammenfassen nach Typ (OR Verknüpfung)
+     * erzeugt status und summary und liefert anwesend
+     */
+    public function analyseLoggingActivity($logging,$anwesend,$debug=false)
+        {
+        $summary=array(); $contacts=0;
+
+            foreach ($logging as $id => $entry)               // zweidimensionales array, id ist ein Increment
+                {
+                if ($debug) echo "   ".str_pad($id,3)." ".$entry["TimeStamp"]." ".date("d.m H:i:s",$entry["TimeStamp"])."  ".str_pad($entry["Oid"],8);
+                switch ($entry["Type"])
+                    {
+                    case "CONTACT":
+                        if ($debug) echo str_pad($entry["Value"],7).str_pad("",16).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        foreach ($status as $name => $statusentry)
+                            {
+                            if (isset($status[$name]["Contact"])==false)            // noch kein Eintrag
+                                {
+                                $status[$name]["Contact"]["TimeStamp"]=$entry["TimeStamp"];
+                                $status[$name]["Contact"]["Value"]=$entry["Value"];     
+                                }
+                            }
+                        if ($entry["Value"]==0)  
+                            {
+                            if (isset($summary["Contact"]["lastclosed"])===false)           // Türe zu
+                                {
+                                $summary["Contact"]["lastclosed"]=$entry["TimeStamp"];
+                                if (isset($summary["Motion"]["lastaway"]))
+                                    { 
+                                    $delay=($summary["Motion"]["lastaway"]-$summary["Contact"]["lastclosed"]);
+                                    if ($debug) echo "Erste Bewegung Aus nach letzter Tür zu : $delay seconds    $id \n";
+                                    if ($delay>500) 
+                                        {
+                                        $ids=$id; $count=0; $scount=0;
+                                        while ($logging[$ids]["TimeStamp"]<$summary["Motion"]["lastaway"])
+                                            {
+                                            $otherdelay=($logging[$ids]["TimeStamp"]-$summary["Contact"]["lastclosed"]);
+                                            if ($logging[$ids]["Value"]) 
+                                                {
+                                                //echo "Letzte Bewegung An nach letzter Tür zu :  $otherdelay seconds    $ids \n";
+                                                if (($logging[$ids]["TimeStamp"]-$summary["Contact"]["lastclosed"])>500) $count++;
+                                                else $scount++;
+                                                }
+                                            $ids--;
+                                            if ($ids==0) break;
+                                            }                                                                                    
+                                        if ($debug) echo "es gab noch $count neue Bewegungen zwischen ".($logging[$ids]["TimeStamp"])."<".$summary["Motion"]["lastaway"]."\n";
+                                        if ($count>0) 
+                                            {
+                                            if ($anwesend==0) if ($debug) echo "even if there is no movement actually we are still there.\n";
+                                            $anwesend=true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        if ($entry["Value"]>0)  
+                            {
+                            if (isset($summary["Contact"]["lastopened"])===false) $summary["Contact"]["lastopened"]=$entry["TimeStamp"];
+                            $contacts++;
+                            if ($contacts>3) break;
+                            }
+                        break;
+                    case "MOTION":
+                    case "HOME":
+                        if ($debug) echo str_pad("",8).str_pad($entry["Value"],7).str_pad("",8).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        $name=$entry["Name"];
+                        if (isset($status[$name])==false) 
+                            {
+                            $status[$name]["Geofency"]["TimeStamp"]=$entry["TimeStamp"];            // nach Namen sortieren
+                            $status[$name]["Geofency"]["Value"]=GetValue($entry["Oid"]);
+                            }
+                        break;
+                    case "AVAILABLE":           // nix ausgeben
+                        if ($debug) echo str_pad("",16).str_pad($entry["Value"],7).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        if ($entry["Value"]==0)  
+                            {
+                            if ($anwesend==0)       // wenn alle Bewegungsmelder away sind kann der last away ermittelt werden
+                                {
+                                if (isset($summary["Motion"]["lastaway"])===false) $summary["Motion"]["lastaway"]=$entry["TimeStamp"];
+                                //if (isset($summary["Available"]["lastaway"])===false) $summary["Available"]["lastaway"]=$entry["TimeStamp"];
+                                }
+                            }
+                        if ($entry["Value"]>0)  
+                            {
+                            if (isset($summary["Motion"]["lastthere"])===false) $summary["Motion"]["lastthere"]=$entry["TimeStamp"];
+                            //if (isset($summary["Available"]["lastthere"])===false) $summary["Available"]["lastthere"]=$entry["TimeStamp"];
+                            }
+                        break;
+                    }
+                }
+
+
+        return (["Status"=>$status,"Summary"=>$summary,"Presence"=>$anwesend]);
+        }
+
 
     /*
      * Im Configfile gibt es eine Möglichkeit die Anwesenheit aus einer OR und AND Verknüpfung von  Statuswerten zu ermitteln.
@@ -2686,6 +2906,8 @@ class Autosteuerung
             $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["NAME"],$this->CategoryId_Ansteuerung);
             if ($monitorId) 
                 {
+                $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $monitorId);
+                $StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$monitorId);        
                 $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
                 if ($debug) echo "modul MonitorMode Handling abarbeiten, Werte in Kategorie ".$this->CategoryId_Ansteuerung." Name : ".$AutoSetSwitches["NAME"].":  $monitorId hat Konfiguration ".GetValueIfFormatted($monitorId)."  \n";
                 $monConfigFormat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
@@ -2703,7 +2925,7 @@ class Autosteuerung
                             //echo "Ergebnis Monitoransteuerung : \"".($state?"Ein":"Aus")."\"   als Wert $state\n";
                             if ( (strtoupper($MonitorModeConfig["Mode"])=="UPDATE") && (function_exists("monitorUpdate")) )
                                 {
-                                //echo "do Update command.\n";
+                                if ($debug) echo "do Update command, send ctrl key to screen if Status Ein, call monitorUpdate. Status Monitor $StatusMonitorID auf ".($state?"Ein":"Aus"),"\n";
                                 if ($state) monitorUpdate();
                                 }                                
                             if  (isset($MonitorModeConfig["SwitchName"])) 
@@ -2714,6 +2936,7 @@ class Autosteuerung
                                 SetValue($SchalterMonitorID,$state);            // Schalter mit dem Wert mitziehen, sonst macht es keinen Sinn
                                 if ($state<>GetValue($StatusMonitorID))
                                     {
+                                    echo "Änderung Status Monitor $StatusMonitorID auf ".($state?"Ein":"Aus")."\n";
                                     $this->log->LogMessage('Änderung Status Monitor auf '.($state?"Ein":"Aus"));
                                     $this->log->LogNachrichten('Änderung Status Monitor auf '.($state?"Ein":"Aus"));                    
                                     SetValue($StatusMonitorID,$state);              // sollte auch den Änderungsdienst zum Zuletzt Wert machen

@@ -40,8 +40,6 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
     $dosOps->setMaxScriptTime(500); 
     $startexec=microtime(true);
 
-	echo "RemoteAccess: Update Konfiguration und register Events\n";
-
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
@@ -53,8 +51,6 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 	if (!isset($moduleManager))
 		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
 		}
 
@@ -78,19 +74,21 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
     $componentHandling=new ComponentHandling();
 	$commentField="zuletzt Konfiguriert von EvaluateHomematic um ".date("h:i am d.m.Y ").".";
 
+    $debug=false;
+
 	/****************************************************************************************************************
 	 *
 	 *                                      Temperature
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
+    echo "RemoteAccess: Update Homematic Konfiguration und register Events\n";
 	echo "***********************************************************************************************\n";
 	echo "Temperatur Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
     if (function_exists('deviceList'))
         {
         echo "Temperatur Sensoren von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
-        $debug=true;
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField, $debug);				/* true ist Debug, Temperatursensoren und Homematic Thermostat */
         //print_r($result);
         }
