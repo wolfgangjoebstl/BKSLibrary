@@ -154,7 +154,7 @@
 
 		public function GetComponentLogger() 
 			{
-            return "";
+            return "Feuchtigkeit_Logging";
             }
 
         /*
@@ -228,7 +228,7 @@
 			{
             if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
             else $this->debug=$debug;
-            if ($this->debug) echo "   Switch_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
+            if ($this->debug) echo "   Feuchtigkeit_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
 
             $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
@@ -248,7 +248,7 @@
 
             if (IPS_GetVariable($variable)["VariableType"]==2) $variableTypeReg = "TEMPERATURE";            // kann STATE auch sein, tut aber nichts zur Sache
             else $variableTypeReg = "HUMIDITY";
-            $this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
+            $NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
 
             /* abgelöst durch do_init und do_init_humidity 
             $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
@@ -323,7 +323,9 @@
 		    $directory = $this->configuration["LogDirectories"]["HumidityLog"];
 		    $dosOps->mkdirtree($directory);
 		    $filename=$directory.$this->variablename."_Feuchtigkeit.csv";   */
-		    parent::__construct($this->filename);
+
+            if ($this->debug) echo "    ermittelt wurden  Variablename \"".$this->variablename."\" MirrorNameID ".$this->mirrorNameID." (".IPS_GetName($this->mirrorNameID).") und Log Filename \"".$this->filename."\" mit NachrichtenID  ".$NachrichtenID." (".IPS_GetName($NachrichtenID)."/".IPS_GetName(IPS_GetParent($NachrichtenID)).")\n";
+    	    parent::__construct($this->filename,$NachrichtenID);
 	   	    }
 
 
@@ -350,6 +352,10 @@
 
 		public function GetComponent() {
 			return ($this);
+			}
+
+		public function GetDetectHandler() {
+			return ($this->DetectHandler);
 			}
 
         public function getVariableNameLogging()   
@@ -431,7 +437,7 @@
 					//$log=new Feuchtigkeit_Logging($oid);
 					//$class=$log->GetComponent($oid);
 					// Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann 
-					$statusID=CreateVariableByName($this->HumidityAuswertungID, "Gesamtauswertung_".$group,1,'~Humidity',null,1000,null);
+					$statusID=CreateVariableByName($this->AuswertungID, "Gesamtauswertung_".$group,1,'~Humidity',null,1000,null);
                     $oldstatus=GetValue($statusID);
 					if ($oldstatus != $statusint) 
                         {

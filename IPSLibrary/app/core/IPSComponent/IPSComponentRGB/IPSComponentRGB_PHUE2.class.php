@@ -142,7 +142,7 @@
          */
 		public function SetState($power, $color, $level=512, $ambience=false) 
 			{
-            $debug=true;
+            $debug=false;
 			if (!$power) 
 				{
 			    if ($debug) echo "IPSComponentRGB_HUE2 SetState mit Power ".($power?"Ein":"Aus")."\n";
@@ -174,7 +174,7 @@
 			elseif ($level==512)	                // als Dimmer aufgerufen, color wird als level verwendet
                 {
                 //$level = round($color * 2.54);
-    			if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Level $color ($level)   \n";
+    			if ($debug) echo "IPSComponentRGB_HUE2 SetState mit Power ".($power?"Ein":"Aus")."  Level $color ($level)   \n";
                 RequestAction($this->statusId, $power);
                 RequestAction($this->helligkeitId, $color);
                 //PHUE_SwitchMode($this->lampOID, $power);

@@ -17503,6 +17503,7 @@ class WfcHandling
  * __construct	 		speichert bereits alle Libraries und Module bereits in Klassenvariablen ab
  *   printrLibraries	gibt die gespeicherte Variable für die Library aus
  *   printrModules		gibt die gespeicherte Variable für die Module aus, alle Module für alle Libraries
+ *
  *   printLibraries     echo Ausgabe der verfügbaren Bibliotheken, das sind die externen Libraries wie Astronomy
  *   getLibrary
  *   printModules		Alle Module die einer bestimmten Library zugeordnet sind als echo ausgeben
@@ -17562,11 +17563,15 @@ class ModuleHandling
         $this->ipsOps=new ipsOps();
 		}
 
+    /* abgeleitet von IPS_GetLibraryList(), in construct erstellt
+     */
 	public function printrLibraries()
 		{
 		print_r($this->libraries);
 		}
 
+    /* abgeleitet von IPS_GetModuleList(), in construct erstellt
+     */
 	public function printrModules()
 		{
 		print_r($this->modules);

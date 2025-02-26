@@ -45,8 +45,11 @@
     $debug=true;
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    
     IPSUtils_Include ("iTunes.Configuration.inc.php","IPSLibrary::config::modules::iTunesSteuerung");
     IPSUtils_Include ("iTunes.Library.ips.php","IPSLibrary::app::modules::iTunesSteuerung");
+	
+    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     if (!isset($moduleManager))
@@ -103,9 +106,100 @@
         $log_Install->LogMessage("Install Module iTunesSteuerung. Aktuelle Version ist $ergebnisVersion.");
         }
 
+	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
+
+    if (false)
+        {
+        echo "Check Target Libraries:\n";
+        $targetLibrary=["Denon/Marantz AV Receiver","Built-In","Philips HUE V2","Sonos Module"];
+
+        echo "\n";
+        echo "Alle Discovery Instanzen (Homematic, HUE, Echo, Denon, Harmony) :\n";
+        $discovery = $modulhandling->getDiscovery();            // Nach Discovery im Namen
+        print_R($discovery);
+        echo "alle verfügbaren Module vom Typ Discovery: \n";           // Abgleich mit Target Library
+        $discoveryModules=IPS_GetModuleListByType(5);
+        //print_r($discoveryModules);
+        foreach ($discoveryModules as $discoveryModule)
+            {
+            //print_r(IPS_GetModule("{BAEA5454-4256-48AA-982B-538201A374D4}"));
+            echo "    $discoveryModule = ".IPS_GetModule($discoveryModule)["ModuleName"];
+            //if (IPS_ModuleExists($discoveryModule)) echo "   bereits installiert.";
+            echo "\n";
+            }
+        echo "\n";
+
+        $modulhandling->printrModules("Sonos Module");
+        }
+
+    $libraries=$modulhandling->getLibrary("Sonos Module");
+    if ($libraries != false) 
+        {
+        echo "Library available : $libraries \n";                                              
+
+        $modules=$modulhandling->getModules($libraries);
+        //print_R($modules);
+        $modulhandling->printModules($libraries);
+        $instances = $modulhandling->getInstances("Sonos Player");
+        print_R($instances);
+        }
+
     $iTunes = new iTunes();
     $config = $iTunes-> getiTunesConfig();
+    if (is_array($instances))
+        {
+        if (isset($config["SonosPlayer"])===false)
+            {
+            $config["SonosPlayer"]=array();
+            $config["SonosPlayer"]["OID"]=$instances[0];
+            }
+        }
     if ($debug) { echo "Konfiguration:\n";    print_R($config); }
+
+    //if (false)          // an einer bestimmten Stelle einfügen
+        {
+        $eventConfiguration = '$iTunesConfig';
+        $commentarea = "/* this is the comment line showing initial creation, not updated afterwards\n*/\n";
+        $prestore = 'function iTunes_Configuration() {'."\n   ";
+        $includefileDevices = "$eventConfiguration = ";                 // sonst wird die Zeile immer länger
+        $ipsOps->serializeArrayAsPhp($config, $includefileDevices, 0, 0, false);          // depth, ident, true mit Debug
+        $poststore = "return $eventConfiguration ;\n";
+        $poststore .= "}\n\n";        
+
+        //echo $includefileDevices;
+
+        $verzeichnis=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\iTunesSteuerung';
+        $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
+        $filename=$verzeichnis.'iTunes.Configuration.inc.php';
+        if (!file_exists($filename)) {
+            throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+            } 
+        $fileContent = file_get_contents($filename, true);
+        //echo $fileContent;
+        $pos1 = strpos($fileContent, "$eventConfiguration = array(");
+        $pos2 = strpos($fileContent, "return $eventConfiguration"); 
+        $pos3 = strpos($fileContent, '?>');
+        if ($pos1 === false and $pos2 === false) {
+            // Ende suchen
+			if ($pos3 === false) {
+				throw new IPSMessageHandlerException($filename.' is not a config file !!!', E_USER_ERROR);
+			    }
+			echo " End of config file Marker is on Position ".$pos3."\n"; 
+			$fileContentNew = substr($fileContent, 0, $pos3).$commentarea.$prestore.$includefileDevices.$poststore.substr($fileContent, $pos3);
+			echo $fileContentNew;
+			file_put_contents($filename, $fileContentNew);
+
+            }               
+        elseif ($pos1 === false or $pos2 === false) {
+            throw new IPSMessageHandlerException("$eventConfiguration could NOT be found in filename $filename !!!", E_USER_ERROR);
+        }
+        else 
+            {
+            echo "File Positionen gefunden : $pos1 $pos2 \n";
+            $fileContentNew = substr($fileContent, 0, $pos1).$includefileDevices.substr($fileContent, $pos2);
+            file_put_contents($filename, $fileContentNew);
+            }
+        }
 
 	echo "Installation iTunesSteuerung, Variablen vorbereiten.\n";
 
@@ -123,15 +217,18 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-	$moduleManagerNP = new IPSModuleManager('NetPlayer');
+	if (isset ($installedModules["NetPlayer"]))           // NetPlayer wenn vorhanden
+		{
+        $moduleManagerNP = new IPSModuleManager('NetPlayer');
 
-	IPSUtils_Include ("IPSMessageHandler.class.php",     "IPSLibrary::app::core::IPSMessageHandler");
-	IPSUtils_Include ("NetPlayer_Constants.inc.php",     "IPSLibrary::app::modules::NetPlayer");
-	IPSUtils_Include ("NetPlayer_Configuration.inc.php", "IPSLibrary::config::modules::NetPlayer");
+        IPSUtils_Include ("IPSMessageHandler.class.php",     "IPSLibrary::app::core::IPSMessageHandler");
+        IPSUtils_Include ("NetPlayer_Constants.inc.php",     "IPSLibrary::app::modules::NetPlayer");
+        IPSUtils_Include ("NetPlayer_Configuration.inc.php", "IPSLibrary::config::modules::NetPlayer");
 
-	$CategoryIdDataNP     = $moduleManagerNP->GetModuleCategoryID('data');
-	$CategoryIdAppNP      = $moduleManagerNP->GetModuleCategoryID('app');
-	$CategoryIdHw         = CreateCategoryPath('Hardware.NetPlayer');
+        $CategoryIdDataNP     = $moduleManagerNP->GetModuleCategoryID('data');
+        $CategoryIdAppNP      = $moduleManagerNP->GetModuleCategoryID('app');
+        $CategoryIdHw         = CreateCategoryPath('Hardware.NetPlayer');
+        }
 
 /*******************************
  *
@@ -373,110 +470,116 @@ Path=Visualization.Mobile.iTunes
         switch ($type)
             {
             case "Media":			// war früher in der Config iTunes
-                $order=10;            
-                foreach ($config["Media"] as $name => $entry)
-                    {
-                    $tabname="Media";
-                    $AutosteuerungID = CreateVariableByName($categoryId_iTunes,$entry["NAME"], 1, $entry["PROFILE"],"",1,$scriptIdWebfrontControl);  /* 0 Boolean 1 Integer 2 Float 3 String */
-                    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["TAB"]="iTunes";
-                    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["NAME"]=$entry["NAME"];
-                    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["ORDER"]=$order;
+                $order=10;  
+                if (sizeof($config["Media"])>0)
+                    {          
+                    foreach ($config["Media"] as $name => $entry)
+                        {
+                        $tabname="Media";
+                        $AutosteuerungID = CreateVariableByName($categoryId_iTunes,$entry["NAME"], 1, $entry["PROFILE"],"",1,$scriptIdWebfrontControl);  /* 0 Boolean 1 Integer 2 Float 3 String */
+                        $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["TAB"]="iTunes";
+                        $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["NAME"]=$entry["NAME"];
+                        $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["ORDER"]=$order;
 
-                    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["ADMINISTRATOR"]=true;
-                    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["USER"]=true;
-                    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["MOBILE"]=true;
-                    $order+=10;
+                        $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["ADMINISTRATOR"]=true;
+                        $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["USER"]=true;
+                        $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["MOBILE"]=true;
+                        $order+=10;
+                        }
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["NAME"]="Nachrichten";
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ORDER"]=10;            
+
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ADMINISTRATOR"]=true;        
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["USER"]=false;        
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["MOBILE"]=false;        
                     }
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["NAME"]="Nachrichten";
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ORDER"]=10;            
-
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ADMINISTRATOR"]=true;        
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["USER"]=false;        
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["MOBILE"]=false;        
                 break;
             case "Oe3Player":
                 $order=30;   
-                $categoryId_Oe3Player  = CreateCategory("Oe3Player", $CategoryIdData, 10);                         
-                foreach ($config["Oe3Player"] as $name => $entry)
-                    {	   
-                    $tabname="Oe3Player";
-                    echo "   $tabname $name\n";
-                    switch ($entry["TYPE"])
-                        {
-                        case "OE3":
-                            /*CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)*/
-                            $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 3, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-                            echo "      Create Oe3 Player Frame \"".$entry["NAME"]."\" ($Oe3PlayerID).\n";                                 
-                            SetValue($Oe3PlayerID,'<iframe src="https://oe3.orf.at/player" width="900" height="1200"
-                    <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
-                    Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
-                    <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
-                    </p></iframe>');
-                            break;
-                        case "Widget":
-                        case "WIDGET":
-                            /*CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)*/
-                            $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 3, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */  
-                            echo "      Create Widget \"".$entry["NAME"]."\" ($Oe3PlayerID).\n";                             
-                            break;   
-                        case "STROMHEIZUNG":
-                            if (isset($entry["LINK"])) $Oe3PlayerID =  $entry["LINK"];
-                            else echo "Errror !!!!\n";
-                            break;                                                  
-                        default:
-                            echo "Do not know Type ".$entry["TYPE"]."\n";
-                            $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 1, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-                            break;    
-                        }
-                    if ($entry["SIDE"]=="LEFT")
-                        {
-                        $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["TAB"]="Oe3Player";
-                        $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["NAME"]=$entry["NAME"];
-                        $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["ORDER"]=$order;
+                if (sizeof($config["Oe3Player"])>0)
+                    { 
+                    $categoryId_Oe3Player  = CreateCategory("Oe3Player", $CategoryIdData, 10);                         
+                    foreach ($config["Oe3Player"] as $name => $entry)
+                        {	   
+                        $tabname="Oe3Player";
+                        echo "   $tabname $name\n";
+                        switch ($entry["TYPE"])
+                            {
+                            case "OE3":
+                                /*CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)*/
+                                $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 3, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+                                echo "      Create Oe3 Player Frame \"".$entry["NAME"]."\" ($Oe3PlayerID).\n";                                 
+                                SetValue($Oe3PlayerID,'<iframe src="https://oe3.orf.at/player" width="900" height="1200"
+                        <p>Ihr Browser kann leider keine eingebetteten Frames anzeigen:
+                        Sie können die eingebettete Seite über den folgenden Verweis aufrufen: 
+                        <a href="https://wiki.selfhtml.org/wiki/Startseite">SELFHTML</a>
+                        </p></iframe>');
+                                break;
+                            case "Widget":
+                            case "WIDGET":
+                                /*CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)*/
+                                $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 3, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */  
+                                echo "      Create Widget \"".$entry["NAME"]."\" ($Oe3PlayerID).\n";                             
+                                break;   
+                            case "STROMHEIZUNG":
+                                if (isset($entry["LINK"])) $Oe3PlayerID =  $entry["LINK"];
+                                else echo "Errror !!!!\n";
+                                break;                                                  
+                            default:
+                                echo "Do not know Type ".$entry["TYPE"]."\n";
+                                $Oe3PlayerID = CreateVariableByName($categoryId_Oe3Player,$entry["NAME"], 1, $entry["PROFILE"],$name,3,$scriptIdWebfrontControl  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+                                break;    
+                            }
+                        if ($entry["SIDE"]=="LEFT")
+                            {
+                            $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["TAB"]="Oe3Player";
+                            $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["NAME"]=$entry["NAME"];
+                            $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["ORDER"]=$order;
 
-                        $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["ADMINISTRATOR"]=true;
-                        $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["USER"]=true;
-                        $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["MOBILE"]=true;
-                        }
-                    else            // doch rechte Seite
-                        {
-                        $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["TAB"]="Oe3Player";                            
-                        $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["NAME"]=$entry["NAME"];
-                        $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["ORDER"]=10;            
+                            $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["ADMINISTRATOR"]=true;
+                            $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["USER"]=true;
+                            $webfront_links[$tabname]["Auswertung"][$Oe3PlayerID]["MOBILE"]=true;
+                            }
+                        else            // doch rechte Seite
+                            {
+                            $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["TAB"]="Oe3Player";                            
+                            $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["NAME"]=$entry["NAME"];
+                            $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["ORDER"]=10;            
 
-                        $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["ADMINISTRATOR"]=true;        
-                        $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["USER"]=false;        
-                        $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["MOBILE"]=false;        
-                        }                    
-                    $order+=10;
-                    }           // ende foreach
+                            $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["ADMINISTRATOR"]=true;        
+                            $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["USER"]=false;        
+                            $webfront_links[$tabname]["Nachrichten"][$Oe3PlayerID]["MOBILE"]=false;        
+                            }                    
+                        $order+=10;
+                        }           // ende foreach
 
-                if (isset($config["Configuration"]["Oe3Player"]["SPLIT"])) 
-                    {
-                    echo "Configuration Data for Oe3Player available:\n";
-                    $webfront_links[$tabname]["Configuration"]["SPLIT"]=$config["Configuration"]["Oe3Player"]["SPLIT"];            
-                    if (isset($config["Configuration"]["Oe3Player"]["HSPLIT"])) 
+                    if (isset($config["Configuration"]["Oe3Player"]["SPLIT"])) 
                         {
-                        $webfront_links[$tabname]["Configuration"]["HSPLIT"]=$config["Configuration"]["Oe3Player"]["HSPLIT"];            
+                        echo "Configuration Data for Oe3Player available:\n";
+                        $webfront_links[$tabname]["Configuration"]["SPLIT"]=$config["Configuration"]["Oe3Player"]["SPLIT"];            
+                        if (isset($config["Configuration"]["Oe3Player"]["HSPLIT"])) 
+                            {
+                            $webfront_links[$tabname]["Configuration"]["HSPLIT"]=$config["Configuration"]["Oe3Player"]["HSPLIT"];            
+                            }
                         }
+                    else 
+                        {
+                        echo "Configuration Data for Oe3Player NOT available, use Default Value 60.\n";  
+                        print_R($config);                      
+                        $webfront_links[$tabname]["Configuration"]["SPLIT"]=60;            
+                        }
+
+                    /*
+                    * bei Alexa werden Sub Tabs angelegt, dann entfällt das Nachrichten Tab
+
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["NAME"]="Nachrichten";
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ORDER"]=10;            
+
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ADMINISTRATOR"]=true;        
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["USER"]=false;        
+                    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["MOBILE"]=false;        
+                    */
                     }
-                else 
-                    {
-                    echo "Configuration Data for Oe3Player NOT available, use Default Value 60.\n";  
-                    print_R($config);                      
-                    $webfront_links[$tabname]["Configuration"]["SPLIT"]=60;            
-                    }
-
-                /*
-                * bei Alexa werden Sub Tabs angelegt, dann entfällt das Nachrichten Tab
-
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["NAME"]="Nachrichten";
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ORDER"]=10;            
-
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ADMINISTRATOR"]=true;        
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["USER"]=false;        
-                $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["MOBILE"]=false;        
-                */
                 break;
             case "Denon":
                 $order=70;   
