@@ -32,19 +32,22 @@
  *
  * diese Klassen werden hier behandelt:
  *
- * OperationCenter
- *      BackupIpsymcon          extend OperationCenter
- *      LogFileHandler          extend OperationCenter
- *      SeleniumChromedriver    extend OperationCenter
- *      HomematicOperation      extend OperationCenter
- *      PingOperation           extend OperationCenter
- *      CamOperation            extend OperationCenter
+ * OperationCenterConfig
+ *          SeleniumChromedriver            extend OperationCenterConfig
+ *          seleniumChromedriverUpdate      extend OperationCenterConfig
  *
- * DeviceManagement
- *      DeviceManagement_FS20       extends DeviceManagement
- *      DeviceManagement_Homematic  extends DeviceManagement
- *      DeviceManagement_Hue        extends DeviceManagement
- *      DeviceManagement_HueV2      extends DeviceManagement_Hue
+ *      OperationCenter     extend OperationCenterConfig
+ *          BackupIpsymcon          extend OperationCenter
+ *          LogFileHandler          extend OperationCenter
+ *          HomematicOperation      extend OperationCenter
+ *          PingOperation           extend OperationCenter
+ *          CamOperation            extend OperationCenter
+ *
+ *      DeviceManagement  
+ *          DeviceManagement_FS20       extends DeviceManagement
+ *          DeviceManagement_Homematic  extends DeviceManagement
+ *          DeviceManagement_Hue        extends DeviceManagement
+ *          DeviceManagement_HueV2      extends DeviceManagement_Hue
  *
  * statusDisplay
  * parsefile
@@ -53,6 +56,170 @@
  * und einige Allgemeine Funktionen
  */
 
+
+/* class zum Zusammenfassen der Konfigurationen
+ * nur weil die selbe Konfiguration genutzt wird nicht gleich das ganze construct übernehmen
+ *
+ * verwaltet selbst keine Variablen !!
+ * braucht aber selbst zumindest this->dosOps
+ *
+ */
+class OperationCenterConfig
+	{
+
+    /* OperationCenterConfig::setSetup Konfiguration schreiben
+     * dazu OperationCenter_SetUp() aus dem Config File OperationCenter_Configuration.inc.php einlesen
+     *
+     *
+     */
+
+    public function setSetup()
+        {
+        $config=array();
+        if ((function_exists("OperationCenter_SetUp"))===false) IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");				
+        if (function_exists("OperationCenter_SetUp")) $configInput=OperationCenter_SetUp();
+        else echo "*************Fehler, OperationCenter_Configuration.inc.php Konfig File nicht included oder Funktion OperationCenter_SetUp() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
+
+        /* Dropbox/Synology Switcher */
+        configfileParser($configInput, $config, ["CloudMode","CLOUDMODE","cloudmode"],"CloudMode",'Synology');
+
+        /* Compatibility for Dropbox, to be removed sometimes */
+        configfileParser($configInput, $config, ["DropboxDirectory"],"DropboxDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/');    
+        configfileParser($configInput, $config, ["DropboxStatusDirectory"],"DropboxStatusDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/');   
+        configfileParser($configInput, $config, ["DropboxStatusMaxFileCount"],"DropboxStatusMaxFileCount",100);
+
+        switch (strtoupper($config["CloudMode"]))
+            {
+            case "NONE":
+            case "DEFAULT":
+            case "DROPBOX":
+                /* Dropbox Profile */
+
+                /* Dropbox Profile, new Style */
+                configfileParser($configInput, $config, ["Dropbox"],"Dropbox",'{"Directory":false,"StatusDirectory":false,"StatusMaxFileCount":100}');
+                configfileParser($configInput["Dropbox"], $config["Cloud"], ["Directory"],"Directory",$config["DropboxDirectory"]); 
+                configfileParser($configInput["Dropbox"], $config["Cloud"], ["StatusDirectory"],"StatusDirectory",$config["DropboxStatusDirectory"]); 
+                configfileParser($configInput["Dropbox"], $config["Cloud"], ["StatusMaxFileCount"],"StatusMaxFileCount",$config["DropboxStatusMaxFileCount"]); 
+                break;
+            case "SYNOLOGY":
+                /* Synology Profile*/
+                configfileParser($configInput, $config, ["Synology"],"Synology",'{"Directory":false,"StatusDirectory":false,"StatusMaxFileCount":100}');
+                configfileParser($configInput["Synology"], $config["Cloud"], ["Directory"],"Directory",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["StatusDirectory"],"StatusDirectory",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["StatusMaxFileCount"],"StatusMaxFileCount",100); 
+
+                // Alternative, sich die entsprechenden Verzeichnisse selbst zusammenbauen
+                configfileParser($configInput["Synology"], $config["Cloud"], ["SynologyCloudDirectory","CloudDirectory","clouddirectory"],"CloudDirectory",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["Scripts"],"Scripts",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["Executes"],"Executes",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["Status"],"Status",false); 
+
+                break;
+            }
+
+        /* iMacro, depreciated, not needed */
+        configfileParser($configInput, $config, ["MacroDirectory"],"MacroDirectory",false);
+        configfileParser($configInput, $config, ["DownloadDirectory"],"DownloadDirectory",false);
+        configfileParser($configInput, $config, ["FirefoxDirectory"],"FirefoxDirectory",false);
+
+        /* log Handling */
+        configfileParser($configInput, $config, ["CONFIG","Config","Configuration"],"CONFIG",'{"MOVELOGS":true,"PURGELOGS":true,"PURGESIZE":10}');    
+        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["MOVELOGS"],"MOVELOGS",true);    
+        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGELOGS"],"PURGELOGS",true);    
+        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGESIZE"],"PURGESIZE",10);    
+
+        /* Autostart, Selenium Handling */
+        configfileParser($configInput, $config, ["SOFTWARE","Software","software"],"Software",null);    
+
+        /* system Directory for inquiries with cmd window */
+        configfileParser($configInput, $config, ["SystemDirectory","Systemdirectory","systemdirectory"],"SystemDirectory","OperationCenter");
+        $systemDir     = $this->dosOps->correctDirName($this->dosOps->getWorkDirectory()); 
+        if ( (strpos($config["SystemDirectory"],"C:/Scripts")===0) || (strpos($config["SystemDirectory"],'C:\Scripts')===0) ) $config["SystemDirectory"]=substr($config["SystemDirectory"],10);      // Workaround für C:/Scripts
+        $config["SystemDirectory"] = $this->dosOps->correctDirName($systemDir.$config["SystemDirectory"]);
+        $this->dosOps->mkdirtree($config["SystemDirectory"]); 
+
+        /* Backup */
+        configfileParser($configInput, $config, ["BACKUP","Backup"],"BACKUP",'{"Directory":"/Backup/","FREQUENCE":"Day","FULL":["Mon","Wed"],"KEEPDAY":10,"KEEPMONTH":10,"KEEPYEAR":2}');  
+        // es werden alle Subkonfigurationen kopiert, wenn das nicht sein soll einmal umsetzen
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Status","STATUS","status"], "Status","disabled"); 
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Directory"], "Directory","/Backup/IpSymcon");  
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FREQUENCE", "Frequence"], "FREQUENCE","Day");  
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FULL", "Full"], "FULL",'["Mon","Wed"]');  
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPDAY", "KeepDay","Keepday"], "KEEPDAY",10);
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPMONTH", "KeepMonth","Keepmonth"], "KEEPMONTH",10);
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPYEAR", "KeepYear","Keepyear"], "KEEPYEAR",2);
+
+        return ($config);
+        }
+    
+    /* OperationCenterConfig::setConfigurationSoftware          formerly part of Watchdog, reads both config files in order Watchdog->OperationCenter
+     * überprüfen der Konfiguration und Speichern
+     */
+    function setConfigurationSoftware()
+        {
+        $config=array();
+        $systemDir     = $this->dosOps->getWorkDirectory(); 
+
+        if ((function_exists("Watchdog_Configuration"))===false) IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");				
+        if (function_exists("Watchdog_Configuration")) $configInput=Watchdog_Configuration();
+        else 
+            {
+            echo "Warning, Watchdog_Configuration.inc.php Konfig File nicht included oder Funktion Watchdog_Configuration() nicht vorhanden. Es wird mit Werten aus dem OperationCenter gearbeitet.\n";
+            $configInput=$this->setSetup();
+            }
+
+        configfileParser($configInput, $configSoftware, ["Software","SOFTWARE","software"],"Software",null);    
+
+        configfileParser($configInput, $config, ["WatchDogDirectory","WATCHDOGDIRECTORY","watchdogdirectory","ProcessDirectory","PROCESS"],"WatchDogDirectory","/process/");                // null Index wird trotzdem übernommen
+        $systemDir     = $this->dosOps->getWorkDirectory(); 
+        if (strpos($config["WatchDogDirectory"],"C:/Scripts/")===0) $config["WatchDogDirectory"]=substr($config["WatchDogDirectory"],10);      // Workaround für C:/Scripts"
+        $config["WatchDogDirectory"] = $this->dosOps->correctDirName($systemDir.$config["WatchDogDirectory"]);
+        $this->dosOps->mkdirtree($config["WatchDogDirectory"]);
+
+        /* check Selenium */
+        configfileParser($configSoftware["Software"], $configSelenium, ["Selenium","SELENIUM","selenium"],"Selenium",null);    
+        //print_r($configSelenium);
+        configfileParser($configSelenium["Selenium"], $config["Software"]["Selenium"], ["Directory","DIRECTORY","directory"],"Directory","/Selenium/");    
+        configfileParser($configSelenium["Selenium"], $config["Software"]["Selenium"], ["Autostart","AUTOSTART","autostart"],"Autostart","no");    
+        configfileParser($configSelenium["Selenium"], $config["Software"]["Selenium"], ["Execute"],"Execute","selenium-server-standalone-3.141.59.jar");    
+        if (strpos($config["Software"]["Selenium"]["Directory"],"C:/Scripts/")===0) $config["Software"]["Selenium"]["Directory"]=substr($config["Software"]["Selenium"]["Directory"],10);      // Workaround für C:/Scripts"
+        $config["Software"]["Selenium"]["Directory"] = $this->dosOps->correctDirName($systemDir.$config["Software"]["Selenium"]["Directory"]);
+        $this->dosOps->mkdirtree($config["Software"]["Selenium"]["Directory"]);
+
+        /* check Firefox */
+        configfileParser($configSoftware["Software"], $configFirefox, ["Firefox","FIREFOX","firefox"],"Firefox",null);    
+        //print_r($configFirefox);
+        configfileParser($configFirefox["Firefox"], $config["Software"]["Firefox"], ["Directory","DIRECTORY","directory"],"Directory","C:/Program Files/Mozilla Firefox/");    
+        configfileParser($configFirefox["Firefox"], $config["Software"]["Firefox"], ["Autostart","AUTOSTART","autostart"],"Autostart","no");    
+        configfileParser($configFirefox["Firefox"], $config["Software"]["Firefox"], ["Url"],"Url","http://localhost:3777/");    
+
+       /* check Chrome */
+        configfileParser($configSoftware["Software"], $configChrome, ["Chrome","CHROME","chrome"],"Chrome",null);           // C:\Program Files (x86)\Google\Chrome\Application
+        //print_r($configFirefox);
+        configfileParser($configChrome["Chrome"], $config["Software"]["Chrome"], ["Directory","DIRECTORY","directory"],"Directory","C:/Program Files (x86)/Google/Chrome/Application/");    
+        configfileParser($configChrome["Chrome"], $config["Software"]["Chrome"], ["Autostart","AUTOSTART","autostart"],"Autostart","no");    
+        configfileParser($configChrome["Chrome"], $config["Software"]["Chrome"], ["Url"],"Url","http://localhost:3777/");    
+
+        /* check iTunes */
+        configfileParser($configSoftware["Software"], $configTunes, ["iTunes","ITUNES","itunes","Itunes"],"iTunes",null);    
+        configfileParser($configTunes["iTunes"], $config["Software"]["iTunes"], ["Directory","DIRECTORY","directory"],"Directory","C:/Program Files/iTunes/");    
+        configfileParser($configTunes["iTunes"], $config["Software"]["iTunes"], ["Autostart","AUTOSTART","autostart"],"Autostart","no");    
+        configfileParser($configTunes["iTunes"], $config["Software"]["iTunes"], ["SoapIP"],"SoapIP","localhost");    
+
+        /* check VmWare */
+        configfileParser($configSoftware["Software"], $configVMware, ["VMware"],"VMware",null);    
+        configfileParser($configVMware["VMware"], $config["Software"]["VMware"], ["Directory","DIRECTORY","directory"],"Directory","C:/Program Files (x86)/VMware/VMware Player/");    
+        configfileParser($configVMware["VMware"], $config["Software"]["VMware"], ["DirFiles","DIRFILES","dirfiles"],"DirFiles","C:/VirtualMachines/Windows 10 x64 Initial/");    
+        configfileParser($configVMware["VMware"], $config["Software"]["VMware"], ["Autostart","AUTOSTART","autostart"],"Autostart","no");    
+        configfileParser($configVMware["VMware"], $config["Software"]["VMware"], ["FileName","FILENAME","filename"],"FileName","Windows 10 x64.vmx");    
+
+        /* check Watchdog nicht mehr implementiert */
+        
+        return ($config);    
+        }
+
+
+    }
 
 
 
@@ -132,7 +299,7 @@
  *
  ****************************************************************************************************************/
 
-class OperationCenter
+class OperationCenter extends OperationCenterConfig
 	{
     static $hourPassed,$fourHourPassed;
     public $newstyle;                               // wenn true, IPS 7 oder größer, kein Webfront Verzeichnis, alles im User anlegen
@@ -216,110 +383,6 @@ class OperationCenter
 		
     /****************************************************************************************************************/
 
-    /* OperationCenter::setSetup Konfiguration schreiben
-     * dazu OperationCenter_SetUp() aus dem Config File OperationCenter_Configuration.inc.php einlesen
-     *
-     *
-     */
-
-    public function setSetup()
-        {
-        $config=array();
-        if ((function_exists("OperationCenter_SetUp"))===false) IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");				
-        if (function_exists("OperationCenter_SetUp")) $configInput=OperationCenter_SetUp();
-        else echo "*************Fehler, OperationCenter_Configuration.inc.php Konfig File nicht included oder Funktion OperationCenter_SetUp() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
-
-        /* Dropbox/Synology Switcher */
-        configfileParser($configInput, $config, ["CloudMode","CLOUDMODE","cloudmode"],"CloudMode",'Synology');
-
-        /* Compatibility for Dropbox, to be removed sometimes */
-        configfileParser($configInput, $config, ["DropboxDirectory"],"DropboxDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/');    
-        configfileParser($configInput, $config, ["DropboxStatusDirectory"],"DropboxStatusDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/');   
-        configfileParser($configInput, $config, ["DropboxStatusMaxFileCount"],"DropboxStatusMaxFileCount",100);
-
-        switch (strtoupper($config["CloudMode"]))
-            {
-            case "NONE":
-            case "DEFAULT":
-            case "DROPBOX":
-                /* Dropbox Profile */
-
-                /* Dropbox Profile, new Style */
-                configfileParser($configInput, $config, ["Dropbox"],"Dropbox",'{"Directory":false,"StatusDirectory":false,"StatusMaxFileCount":100}');
-                configfileParser($configInput["Dropbox"], $config["Cloud"], ["Directory"],"Directory",$config["DropboxDirectory"]); 
-                configfileParser($configInput["Dropbox"], $config["Cloud"], ["StatusDirectory"],"StatusDirectory",$config["DropboxStatusDirectory"]); 
-                configfileParser($configInput["Dropbox"], $config["Cloud"], ["StatusMaxFileCount"],"StatusMaxFileCount",$config["DropboxStatusMaxFileCount"]); 
-                break;
-            case "SYNOLOGY":
-                /* Synology Profile*/
-                configfileParser($configInput, $config, ["Synology"],"Synology",'{"Directory":false,"StatusDirectory":false,"StatusMaxFileCount":100}');
-                configfileParser($configInput["Synology"], $config["Cloud"], ["Directory"],"Directory",false); 
-                configfileParser($configInput["Synology"], $config["Cloud"], ["StatusDirectory"],"StatusDirectory",false); 
-                configfileParser($configInput["Synology"], $config["Cloud"], ["StatusMaxFileCount"],"StatusMaxFileCount",100); 
-
-                // Alternative, sich die entsprechenden Verzeichnisse selbst zusammenbauen
-                configfileParser($configInput["Synology"], $config["Cloud"], ["SynologyCloudDirectory","CloudDirectory","clouddirectory"],"CloudDirectory",false); 
-                configfileParser($configInput["Synology"], $config["Cloud"], ["Scripts"],"Scripts",false); 
-                configfileParser($configInput["Synology"], $config["Cloud"], ["Executes"],"Executes",false); 
-                configfileParser($configInput["Synology"], $config["Cloud"], ["Status"],"Status",false); 
-
-                break;
-            }
-
-        /* iMacro, depreciated, not needed */
-        configfileParser($configInput, $config, ["MacroDirectory"],"MacroDirectory",false);
-        configfileParser($configInput, $config, ["DownloadDirectory"],"DownloadDirectory",false);
-        configfileParser($configInput, $config, ["FirefoxDirectory"],"FirefoxDirectory",false);
-
-        /* log Handling */
-        configfileParser($configInput, $config, ["CONFIG","Config","Configuration"],"CONFIG",'{"MOVELOGS":true,"PURGELOGS":true,"PURGESIZE":10}');    
-        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["MOVELOGS"],"MOVELOGS",true);    
-        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGELOGS"],"PURGELOGS",true);    
-        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGESIZE"],"PURGESIZE",10);    
-
-        /* system Directory for inquiries with cmd window */
-        configfileParser($configInput, $config, ["SystemDirectory","Systemdirectory","systemdirectory"],"SystemDirectory","OperationCenter");
-        $systemDir     = $this->dosOps->correctDirName($this->dosOps->getWorkDirectory()); 
-        if ( (strpos($config["SystemDirectory"],"C:/Scripts")===0) || (strpos($config["SystemDirectory"],'C:\Scripts')===0) ) $config["SystemDirectory"]=substr($config["SystemDirectory"],10);      // Workaround für C:/Scripts
-        $config["SystemDirectory"] = $this->dosOps->correctDirName($systemDir.$config["SystemDirectory"]);
-        $this->dosOps->mkdirtree($config["SystemDirectory"]); 
-
-		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt 
-		if (isset($this->oc_Setup['CONFIG'])===false) 
-			{
-			$this->oc_Setup['CONFIG']= array("MOVELOGS"  => true,"PURGELOGS" => true,"PURGESIZE"  => 10,);
-			}		
-		else
-			{
-			if (isset($this->oc_Setup['CONFIG']['MOVELOGS'])===false) {$this->oc_Setup['CONFIG']['MOVELOGS']=true;}
-			if (isset($this->oc_Setup['CONFIG']['PURGELOGS'])===false) {$this->oc_Setup['CONFIG']['PURGELOGS']=true;}
-			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
-			}	*/
-
-        /* Backup */
-        configfileParser($configInput, $config, ["BACKUP","Backup"],"BACKUP",'{"Directory":"/Backup/","FREQUENCE":"Day","FULL":["Mon","Wed"],"KEEPDAY":10,"KEEPMONTH":10,"KEEPYEAR":2}');  
-        // es werden alle Subkonfigurationen kopiert, wenn das nicht sein soll einmal umsetzen
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Status","STATUS","status"], "Status","disabled"); 
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Directory"], "Directory","/Backup/IpSymcon");  
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FREQUENCE", "Frequence"], "FREQUENCE","Day");  
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FULL", "Full"], "FULL",'["Mon","Wed"]');  
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPDAY", "KeepDay","Keepday"], "KEEPDAY",10);
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPMONTH", "KeepMonth","Keepmonth"], "KEEPMONTH",10);
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPYEAR", "KeepYear","Keepyear"], "KEEPYEAR",2);
-
-        //$this->oc_Setup = $config;       
-        return ($config);
-        }
-    
-    /* OperationCenter::getSetup
-     * Setup Config abfragen
-     */
-    public function getSetup()
-        {
-        return ($this->oc_Setup);
-        }
-
-
     public function setConfiguration()
         {
         $config=array();
@@ -354,6 +417,13 @@ class OperationCenter
         return ($config);
         }
 
+    /* OperationCenter::getSetup
+     * Setup Config abfragen
+     */
+    public function getSetup()
+        {
+        return ($this->oc_Setup);
+        }
 
     public function getConfiguration()
         {
@@ -1262,6 +1332,7 @@ class OperationCenter
 		}
 
     /* die aktuell eingeloggten User herausfinden, wer ist der Administrator
+     * aufgerufen von readSystemInfo, gibt eine Zeile davon aus
      */
     function updateUser()
         {
@@ -1309,6 +1380,12 @@ class OperationCenter
         return ($html);
         }
 	
+    function getUser()
+        {
+        $UserID 				= IPS_GetObjectIDByName("User", $this->categoryId_SysInfo); 	                        // json Tabelle für alle User
+        return(json_decode(GetValue($UserID),true));
+        }
+
 	/* readSystemInfo
 	 *
 	 * Die von SystemInfo aus dem PC (via systeminfo) ausgelesenen und gespeicherten Daten werden für die Textausgabe formatiert und angereichert
@@ -5571,19 +5648,23 @@ class LogFileHandler extends OperationCenter
  *
  **************************************************************************************************************************/
 
-class SeleniumChromedriver extends OperationCenter
+class SeleniumChromedriver extends OperationCenterConfig
 	{
 
     var $cdVersions=array();                // Überblick über alle chromedriver versionen am Cloud Drive und deren größe um die version zu erkennen
     var $execDirContent=array();            // Inhalt des Verzeichnis mit den Chromedrivern
     var $execDir;                           // Name des Verzeichnis mit den Chromedrivern
     var $debug;
+    protected $listDownloadableChromeDriverVersion;     // array mit allen verfügbaren chromedriver Versionen
 
 	public function __construct($subnet='10.255.255.255',$debug=false)
 		{
         if ($debug) echo "class SeleniumChromedriver, Construct Parent class OperationCenter.\n";
-        $this->debug=$debug;   
-        parent::__construct($subnet,$debug);                       // sonst sind die Config Variablen noch nicht eingelesen
+        $this->debug=$debug; 
+        $this->ipsOps = new ipsOps();   
+        $this->dosOps = new dosOps();  
+        $this->sysOps = new sysOps(); 
+        $this->oc_Setup = $this->setSetUp();          
         $OperationCenterSetup = $this->getSetup();                       // die Verzeichnisse
         $cloudDir=$this->dosOps->correctDirName($OperationCenterSetup["Cloud"]["CloudDirectory"]);
         $this->execDir=$this->dosOps->correctDirName($cloudDir.$OperationCenterSetup["Cloud"]["Executes"]);         // alle chromedriver für die interne Verteilung)
@@ -5594,6 +5675,15 @@ class SeleniumChromedriver extends OperationCenter
             $this->dosOps->writeDirStat($this->execDir);                    // Ausgabe eines Verzeichnis 
             }        
         $this->execDirContent = $this->dosOps->readdirToArray($this->execDir);                   // Inhalt Verzeichnis als Array
+        }
+
+
+    /* SeleniumChromedriver::getSetup
+     * Setup Config abfragen
+     */
+    public function getSetup()
+        {
+        return ($this->oc_Setup);
         }
 
     /* get_ExecDir
@@ -5666,12 +5756,12 @@ class SeleniumChromedriver extends OperationCenter
      * get actual chromedriver versions with actual revision from google download page
      *
      */
-    function getListDownloadableChromeDriverVersion()
+    function getListDownloadableChromeDriverVersion($debug=false)
         {
         $url = "https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json";
         $type="chromedriver";           // oder chrome
         $platform="win64";              // oder win32 oder linux64
-
+        if ($debug) echo "getListDownloadableChromeDriverVersion \n";
         $versions = file_get_contents($url);
         //echo $versions;
         $versionData=array();
@@ -5723,6 +5813,54 @@ class SeleniumChromedriver extends OperationCenter
         return($result);
         }
 
+    /* SeleniumChromedriver::getUpdateNewVersions
+     * create a table with versions, find new versions, reduce size of table of versions
+     *
+     */
+    public function getUpdateNewVersions(&$config,&$html,$actualVersion=false,$debug=false)
+        {
+        if ($debug) echo "getUpdateNewVersions \n";
+        if (is_array($this->listDownloadableChromeDriverVersion)) $result = $this->listDownloadableChromeDriverVersion;
+        else $result = $this->getListDownloadableChromeDriverVersion($debug);                  //   get from Web
+
+        $configAdd=array();
+        $configNew=array();             // die neu Konfiguration auf Basis von Old
+        $html .= '<table>';
+
+        foreach ($result as $version => $entry)         // alle Chromedriver Versionen als Tabelle ausgeben, Spalte Versionsnummer, alte Versionsbezeichnung, neue Versionsbezeichnung
+            {
+            if ($version >= ($actualVersion-2))
+                {
+                $html .= '<tr><td>'.$version.'</td>';
+                //print_R($entry);
+                $configNew[$version]["version"]=$entry["version"];      // aus $config wird configNew
+                if (isset($config[$version]["version"])) 
+                    {
+                    if ($entry["version"] !== $config[$version]["version"])
+                        {
+                        $configAdd[$version]["version"]=$entry["version"];
+                        //echo "Wir beginnen mit Version $version und neuer Revision ".$config[$version]["version"]." -> ".$entry["version"]."\n";
+                        }    
+                    else 
+                        {
+                        //echo "Die Version $version und Revision ".$entry["version"]." wurde bereits geladen\n";
+                        }
+                    $html .= '<td>'.$config[$version]["version"].'</td><td>'.$entry["version"].'</td>';
+                    }
+                else            // ganz neue Version
+                    {
+                    $configAdd[$version]["version"]=$entry["version"];
+                    //echo "Wir beginnen mit neuer Version $version und Revision ".$config[$version]["version"]."\n";
+                    $html .= '<td>n.a.</td><td>'.$entry["version"].'</td>';
+                    }
+                $html .= '</tr>';
+                }
+            //else $html .= '<td>'.$entry["version"].'</td><td>n.a.</td>';
+            }
+        $html .= '</table>';
+        $config=$configNew;
+        return ($configAdd);
+        }
     }
 
 /********************************************************************************************************
@@ -11313,7 +11451,346 @@ class TimerHandling
 		}		
 	
 	} /* Ende class timer */
-	
+
+
+/* class handles about Slenium Chromedriver Update
+ * uses config from this class
+ *
+ *      __construct
+ *      getprocessDir
+ *      createCmdFileStartSelenium
+ *      createCmdFileStoppSelenium
+ *      getSeleniumDirectoryContent
+ *      getSeleniumDirectory
+ *      identifyFileByVersion
+ *      stoppSelenium
+ *      startSelenium
+ *      copyChromeDriver
+ *      deleteChromedriverBackup
+ *      renameChromedriver
+ *      readChromedriverVersion
+ */
+
+class seleniumChromedriverUpdate extends OperationCenterConfig
+    {
+
+    protected $debug;
+    protected $ipsOps,$sysOps,$dosOps;                 // class zur sofortigen verwendung
+    protected $configuration;
+    protected $selDir;
+    protected $selDirContent = array();
+    protected $filename;                      // Filename des neuen Chromdrivers
+
+	public function __construct($debug=false)
+		{
+        if ($debug) echo "class SeleniumChromedriverUpdate, works with Watchdog or OperationCenter Modul.\n";
+        $this->debug=$debug;
+        $this->ipsOps = new ipsOps();   
+        $this->dosOps = new dosOps();  
+        $this->configuration=$this->setConfigurationSoftware();    
+        $this->sysOps = new sysOps();    
+        }
+
+
+    /* watchDog::getConfiguration
+     * Ausgabe der Konfiguration 
+     */
+    function getConfiguration()
+        {
+        return($this->configuration);
+        }
+
+    function getSeleniumConfiguration()
+        {
+        return($this->configuration["Software"]["Selenium"]);
+        }
+
+    function getprocessDir()
+        {
+        $configWatchdog = $this->getConfiguration();            
+        $processDir=$this->dosOps->correctDirName($configWatchdog["WatchDogDirectory"]);
+        //echo "Watchdog Directory : $processDir\n";            
+        return ($processDir);
+        }
+
+    function createCmdFileStartSelenium($verzeichnis)
+        {
+        //echo "Write Selenium Startup Script to ".$verzeichnis."start_Selenium.bat\n";
+        $configWD = $this->getConfiguration();
+        if ( ((isset($configWD["Software"]["Selenium"]["Directory"])) && (isset($configWD["Software"]["Selenium"]["Execute"]))) === false) return (false);
+        $handle2=fopen($verzeichnis."start_Selenium.bat","w");
+        fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
+        fwrite($handle2,'cd '.$configWD["Software"]["Selenium"]["Directory"]."\r\n");
+        fwrite($handle2,'java -jar '.$configWD["Software"]["Selenium"]["Execute"]."\r\n");
+        /*  cd C:\Scripts\Selenium\ 
+            java -jar selenium-server-standalone-3.141.59.jar
+            pause       */
+        fwrite($handle2,'pause'."\r\n");
+        fclose($handle2);
+        return (true);
+        }
+
+    function createCmdFileStoppSelenium($verzeichnis=false,$debug=false)
+        {
+        if ($verzeichnis===false) $processDir = $this->getprocessDir();
+        else $processDir=$verzeichnis;
+        if ($debug) echo "Stopp Selenium. Write cmd file in $processDir.\n";
+        $handle2=fopen($processDir."stopp_Selenium.bat","w");
+        fwrite($handle2,"wmic process where \"commandline like '%%java%%'\" delete\r\n");
+        fclose($handle2); 
+        }
+
+    function createCmdFileActiveSelenium($verzeichnis=false,$debug=false)
+        {
+        if ($verzeichnis===false) $processDir = $this->getprocessDir();
+        else $processDir=$verzeichnis;
+        if ($debug) echo "Active Selenium. Write cmd file in $processDir.\n";
+        $handle2=fopen($processDir."active_Selenium.bat","w");
+        fwrite($handle2,"query user\r\n");
+        fwrite($handle2,"wmic process where name=\"java.exe\" get name,SessionId,ExecutablePath,CommandLine\r\n");
+        fclose($handle2); 
+        }
+
+    /* setzt selDir und ermittelt selDirContent
+     */
+    function getSeleniumDirectoryContent()
+        {
+        $debug=$this->debug;
+        $configWatchdog = $this->getConfiguration();            
+        if (isset($configWatchdog["Software"]["Selenium"]["Directory"]))
+            {
+            $this->selDir=$this->dosOps->correctDirName($configWatchdog["Software"]["Selenium"]["Directory"]);
+            if ($debug) 
+                {
+                echo "Watchdog config defines where Selenium is operating: ".$this->selDir." \n";
+                $this->dosOps->writeDirStat($this->selDir);                    // Ausgabe eines Verzeichnis 
+                }
+            $this->selDirContent = $this->dosOps->readdirToArray($this->selDir);                   // Inhalt Verzeichnis als Array
+            return ($this->selDirContent);
+            }
+        return (false);
+        }
+
+    /* setzt selDir und ermittelt selDirContent
+     */
+    function getSeleniumDirectory()
+        {
+        $debug=$this->debug;
+        $configWatchdog = $this->getConfiguration();            
+        if (isset($configWatchdog["Software"]["Selenium"]["Directory"]))
+            {
+            $this->selDir=$this->dosOps->correctDirName($configWatchdog["Software"]["Selenium"]["Directory"]);
+            return ($this->selDir);
+            }
+        return (false);
+        }
+
+    /* check Chromedriver Version
+     * anhand des array version wird der Index ausgewählt
+     */
+    function identifyFileByVersion($file,$version, $debugInput=false)
+        {
+        $result=false;
+        $debug=$this->debug || $debugInput;
+        if ($debug) echo "identifyFileByVersion($file,..). Input array to identify version has ".count($version)." entries.\n";
+        if ($this->selDirContent)
+            {
+            $found = $this->dosOps->findfiles($this->selDirContent,$file);
+            if ($found)
+                {
+                $size=filesize($this->selDir.$file);
+                if ($debug) echo "   Actual chromedriver.exe found. Compare versions fo find size $size.\n";   
+                foreach ($version as $index => $info)
+                    {
+                    if ($info["Size"]==$size) 
+                        {
+                        if ($debug) echo "   Found $index, successful.\n";
+                        return ($index); 
+                        }
+                    }
+                if ($debug) echo "File with $size not found in inventory.\n";
+                }
+            else echo "File $file not found.\n";
+            }
+        else echo "Inhalt vom selDir nicht vorhanden selDirContent.\n";
+        if ($debug) echo "   Not found, version maybe older or not latest of its kind.\n";
+        return ($result); 
+        }
+
+    /* ein Script aufrufen mit dem Selenium gestoppt wird. Üblicherweise werden dabei alle java processe gekillt
+     */
+    function stoppSelenium($debug=false)
+        {
+        $status=false;
+        $processDir = $this->getprocessDir();
+        $command = $processDir."stopp_Selenium.bat";
+        if ($debug) 
+            {
+            echo "Stopp Selenium. Start cmd file stopp_Selenium.bat in $processDir.\n";
+            $this->dosOps->readFile($processDir."stopp_Selenium.bat");
+            }
+        if ($debug<2) $status = $this->sysOps->ExecuteUserCommand($command,"",true,false);                   // false do not show, true wait wir brauchen es aber andersrum, sonst bleibt das script hängen
+        return ($status);
+        }
+
+
+    /* ein Script aufrufen mit dem Selenium gestartet wird. 
+     * Wenn Debug 2 dann das Exe nicht aufrufen, erweiterte Fehlersuche
+     */
+    function startSelenium($debug=false)
+        {
+        $status=false;
+        $processDir = $this->getprocessDir();
+        $command = $processDir."start_Selenium.bat";
+        if ($debug) 
+            {
+            echo "Start Selenium. Execute cmd file start_Selenium.bat in $processDir.\n";
+            $this->dosOps->readFile($processDir."start_Selenium.bat");
+            echo "Command File: $command.\n";
+            }
+        if ($debug<2)       // true ist nicht kleiner zwei, muss 1 sein
+            {
+            echo "execute show and do not wait\n";
+            $status = $this->sysOps->ExecuteUserCommand($command,"",true,false,-1,$debug);                   // false do not show true wait, heoir andersrum da selenium offen bleibt  $command,$parameter="",$show=true,$wait=false,$session=-1,$debug=false
+            }
+        return ($status);
+        }
+
+    /* ein Script aufrufen mit dem Selenium gestartet wird. 
+     * Wenn Debug 2 dann das Exe nicht aufrufen, erweiterte Fehlersuche
+     */
+    function activeSelenium($debug=false)
+        {
+        $status=false;
+        $processDir = $this->getprocessDir();
+        $command = $processDir."active_Selenium.bat";
+        if ($debug) 
+            {
+            echo "Active Selenium. Execute cmd file active_Selenium.bat in $processDir.\n";
+            $this->dosOps->readFile($processDir."active_Selenium.bat");
+            echo "Command File: $command.\n";
+            }
+        if ($debug<2)       // true ist nicht kleiner zwei, muss 1 sein
+            {
+            echo "execute show and do not wait\n";
+            $status = $this->sysOps->ExecuteUserCommand($command,"",true,false,-1,$debug);                   // false do not show true wait, heoir andersrum da selenium offen bleibt  $command,$parameter="",$show=true,$wait=false,$session=-1,$debug=false
+            }
+        return ($status);
+        }
+
+    /* seleniumChromedriverUpdate::copyChromeDriver
+     * return status:
+     *      false   Fehler beim Abarbeiten des Commandfiles
+     *      true    Commandfile abgearbeitet
+     *      101     kein Target Dir
+     *      102     Target bereits vorhanden
+     *      103     kein Target File vorhanden
+     */
+    function copyChromeDriver($sourceFile,$targetDir,$debug=false)
+        {
+        $targetDir = $this->dosOps->correctDirName($targetDir);                 // TargetDir muss Windows naming haben wenn Windows, also Backslash Dir Names
+        $targetDir = $this->dosOps->convertDirName($targetDir,true);            // immer DOS style, Windows command kann nur backslash
+        $path=pathinfo($sourceFile);                // sourceFile aufdroeseln
+        $filename=$path['basename'];
+        $sourceDir=$this->dosOps->correctDirName($path['dirname']);
+        $targetDir=$this->dosOps->correctDirName($targetDir,$debug);                      // true debug
+
+        if ($debug) echo "copyChromeDriver($sourceFile,$targetDir) aufgerufen.\n";
+        if ($targetDir===false) return (101);
+        if (file_exists($targetDir.$filename)===false)
+            {
+            //$selDir = 'C:\\Scripts\\Selenium\\';
+            $processDir = $this->getprocessDir();
+            if ($debug) echo "   write copy routine to script copyChromeDriver.bat, located at $processDir.\n   Source Dir is $sourceDir. Target Dir is $targetDir. Fileneame is $filename.\n";
+            $handle2=fopen($processDir."copyChromeDriver.bat","w");
+            fwrite($handle2,'cd '.$sourceDir."\r\n");
+            fwrite($handle2,'copy '.$filename.' '.$targetDir."\r\n");
+            fclose($handle2); 
+            $sourceFile = $sourceDir.$filename;
+            if ($debug) echo "   Copy Latest ChromeDriver \"$sourceFile\" to Selenium Directory \"$targetDir\".\n";
+            //$status = $this->dosOps->moveFile($sourceFile,$selDir.$latestChromeDriver);
+            //$command = '"copy '.$sourceFile.' '.$selDir.$latestChromeDriver.'"';
+            $command = $processDir."copyChromeDriver.bat";
+            if ($debug) $this->dosOps->readFile($processDir."copyChromeDriver.bat");
+            $status = $this->sysOps->ExecuteUserCommand($command,"",false,true);                   // false do not show true wait
+            if ($debug) 
+                {
+                echo "Status on copying $sourceFile with command $command : \"$status\" \n";
+                if (file_exists($sourceFile)) echo "  Source file available.\n";
+                if (file_exists($targetDir.$filename)) echo "Copy ".$targetDir.$filename." successfull.\n"; 
+                else echo "What happend now ?\n";
+                }
+            if (file_exists($targetDir.$filename)===false) {$filename=false; $status=103;}
+            $this->filename=$filename;
+            return ($status);
+            }
+        else 
+            {
+            $this->filename=$filename;
+            //echo "copyChromedriver ($sourceFile,$targetDir) bereits durchgeführt. \n";
+            return (102);
+            }
+        }
+
+    function deleteChromedriverBackup()
+        {
+        $found = $this->dosOps->findfiles($this->selDirContent,"chromedriver_alt.exe");
+        if ($found)
+            {
+            //echo "Altes chromedriver-alt.exe gefunden. Loeschen \"".$found[0]."\"\n";   
+            $this->dosOps->deleteFile($this->selDir.$found[0]);
+            return(true);
+            }
+        return(false);
+        }
+
+    /* aktuellen chromedriver umbennen auf alt und neuen auf chromedriver ohne Versionsangabe
+     */
+    function renameChromedriver($latestChromeDriver=false,$debug=false)
+        {
+        if ($latestChromeDriver===false) $latestChromeDriver=$this->filename;
+        if ($latestChromeDriver===false) return(false);
+        $processDir = $this->getprocessDir();
+        if ($debug) echo "Selenium had been stopped. Rename Chromedrivers. Write cmd file in $processDir.\n";
+        $handle2=fopen($processDir."rename_Chromedriver.bat","w");
+        fwrite($handle2,"cd ".$this->selDir."\r\n");
+        fwrite($handle2,"rename chromedriver.exe chromedriver_alt.exe\r\n");
+        fwrite($handle2,"rename $latestChromeDriver chromedriver.exe\r\n");
+        fclose($handle2);                 
+
+        $command = $processDir."rename_Chromedriver.bat";
+        if ($debug) $this->dosOps->readFile($processDir."rename_Chromedriver.bat");
+        $status = $this->sysOps->ExecuteUserCommand($command,"",false,true);                   // false do not show true wait
+        if ($debug) echo "Status on renaming $latestChromeDriver with chromedriver.exe and Status : $status \n";
+        return ($status);
+        }
+
+    /* seleniumChromedriverUpdate::readChromedriverVersion
+     * aktuellen chromedriver version auslesen
+     */
+    function readChromedriverVersion($latestChromeDriver=false,$debug=false)
+        {
+        if ($latestChromeDriver===false) $latestChromeDriver=$this->filename;
+        if ($latestChromeDriver===false) return(false);
+        $processDir = $this->getprocessDir();
+        if ($debug) echo "Read Chromedriver Version. Write cmd file in $processDir.\n";
+        $handle2=fopen($processDir."read_ChromedriverVersion.bat","w");
+        fwrite($handle2,"cd ".$this->selDir."\r\n");
+        fwrite($handle2,"chromedriver.exe --version\r\n");
+        fclose($handle2);                 
+
+        $command = $processDir."read_ChromedriverVersion.bat";
+        if ($debug) $this->dosOps->readFile($processDir."read_ChromedriverVersion.bat");
+        $status = $this->sysOps->ExecuteUserCommand($command,"",false,true);                   // false do not show true wait
+        if ($debug) echo "Status on renaming $latestChromeDriver with chromedriver.exe and Status : $status \n";
+        $pos1=strpos($status,"ChromeDriver ");
+        if ($pos1===false) echo "Warning, no ChromeDriver Version output\n";
+        $status=substr($status,$pos1+13,10);
+        return ($status);
+        }
+
+    }
+
 
 /***************************************************************************************************************
  *

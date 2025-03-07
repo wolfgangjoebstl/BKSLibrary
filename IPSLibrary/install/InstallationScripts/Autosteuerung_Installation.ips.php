@@ -245,6 +245,7 @@
 
     $componentHandling = new ComponentHandling();
     $DeviceManager     = new DeviceManagement();
+    $operate           = new AutosteuerungOperator();
 
     echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
     IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
@@ -280,15 +281,13 @@
 
         }
 
-
-
-/* SendWebhook finden und Events entsprechend geofencies anlegen
+/*----------------------------------------------------------------------------------------------------------------------------
+ * SendWebhook finden und Events entsprechend geofencies anlegen
  * Ein registerEvent und ein Install machen, wegen Transparenz
  * sowie Floorplan_GetEventConfiguration() und Autosteuerung_GetEventConfiguration() in Autosteuerung_Class
  *
  */
-    echo "Geofency Liks erzeugen:\n";
-    $operate=new AutosteuerungOperator();
+    echo "Geofency Links erzeugen:\n";
     $geofencies=$operate->getGeofencyInformation(true);         // true für Debug, geofencies wird später noch verwendet
 
     $registerGeofency=new AutosteuerungConfigurationGeofency();            // $scriptIdAutosteuerung weglassen. damit werden keine Events erzeugt
@@ -328,6 +327,12 @@
     $auto=new Autosteuerung();
 	$AutoSetSwitches = $auto->get_Autosteuerung_SetSwitches();      // sicherstellen dass PROFIL, NAME und TABNAME gesetzt sind
     //print_r($AutoSetSwitches);
+
+    // eine eigene AutoSetSwitches Configuration erstellen
+    $setSwitches = new AutosteuerungConfigurationSetSwitches();
+    $configuration=$auto->get_Autosteuerung_SetSwitches();
+    $setSwitches->StoreConfiguration($configuration);               // comment is extra
+    $setSwitches->ChangeComment("look here");
 
     $register=new AutosteuerungHandler($scriptIdAutosteuerung);
 	$setup = $register->get_Configuration();
@@ -429,7 +434,15 @@
     $inputAlexa=CreateVariable("Nachrichten",3,$categoryId_Alexa, 0,'',null,'');
 	$categoryId_Control = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 	$inputControl=CreateVariable("ReglerAktionen",3,$categoryId_Control, 0,'',null,'');
-    
+
+	$categoryId_Available = CreateCategory('Available',   $CategoryIdData, 200);
+    $StatusAnwesenheitID = CreateVariable("StatusAnwesenheit",0, $categoryId_Available,0,"~Presence",null,null,"");
+    $StatusAlarmID    = CreateVariable("StatusAlarm",0, $categoryId_Available,0,"~Presence",null,null,"");
+    AC_SetLoggingStatus($archiveHandlerID,$StatusAnwesenheitID,true);
+    AC_SetAggregationType($archiveHandlerID,$StatusAnwesenheitID,0);      /* normaler Wert */
+    AC_SetLoggingStatus($archiveHandlerID,$StatusAlarmID,true);
+    AC_SetAggregationType($archiveHandlerID,$StatusAlarmID,0);      /* normaler Wert */
+
     $log->LogMessage('Autosteuerung Installation aufgerufen');
     $log_Autosteuerung->LogNachrichten('Autosteuerung Installation aufgerufen');      
 

@@ -300,14 +300,15 @@ if ($_IPS['SENDER']=="Variable")
 				Ventilator2($params,$value,$variableID,false,$wertOpt);
 				break;
 			/*********************************************************************************************/
-		   case "Status":
+		    case "Status":
+                // siehe auch Monitor
                 //echo "Status erkannt mit $wertOpt.\n";
 				if (is_bool($value)) $log_Autosteuerung->LogNachrichten("Status::Wert: ".($value?"EIN":"AUS")." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
                 else                 $log_Autosteuerung->LogNachrichten("Status::Wert: ".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 				$status=Status($params,$value,$variableID,false,$wertOpt);
 				$log_Autosteuerung->LogMessage('Befehl Status wurde ausgeführt : '.json_encode($status));
 				break;		   
-		   case "StatusParallel":           
+		    case "StatusParallel":           
 			   /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
 			   /* array($params[0], $params[1], $params[2],),                     													*/
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe',),      bei Change Lightswitch mit Wert schreiben   */
@@ -318,19 +319,27 @@ if ($_IPS['SENDER']=="Variable")
 				$log_Autosteuerung->LogMessage('Befehl StatusParallel wurde ausgeführt : '.json_encode($status));
 				break;
 			/*********************************************************************************************/
-		   case "StatusRGB":
+		    case "StatusRGB":
 		      statusRGB($params,$value,$variableID,false,$wertOpt);
 				break;
 			/*********************************************************************************************/
-		   case "Switch":
+		    case "Switch":
 				SwitchFunction($params,$value,$variableID,false,$wertOpt);
 		      break;
 			/*********************************************************************************************/
-		   case "Custom":
-		      /* Aufrufen von kundenspezifischen Funktionen */
+		    case "Custom":
+		        /* Aufrufen von kundenspezifischen Funktionen */
 				eval($params[1]);
-		      break;
+		        break;
 			/*********************************************************************************************/
+            case "Monitor": 
+                // braucht keine Parameter, einfach gleich aufrufen wenn Bewegung, sonst wie Status
+                $changesDetected=$auto->statusMonitorSteuerung($debug);            //true für Debug
+                if (is_bool($value)) $log_Autosteuerung->LogNachrichten("Status::Wert: ".($value?"EIN":"AUS")." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+                else                 $log_Autosteuerung->LogNachrichten("Status::Wert: ".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+				$status=Status($params,$value,$variableID,false,$wertOpt);
+				$log_Autosteuerung->LogMessage('Befehl Status wurde ausgeführt : '.json_encode($status));
+                break;   
 		   case "par1":
 		   case "dummy":
 		   case "Dummy":

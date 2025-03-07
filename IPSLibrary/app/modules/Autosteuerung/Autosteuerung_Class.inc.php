@@ -219,7 +219,7 @@ class AutosteuerungHandler
 		 *
 		 * @return string[] Event Konfiguration
 		 */
-		private static function Get_EventConfigurationAuto() {
+		protected static function Get_EventConfigurationAuto() {
 			if (self::$eventConfigurationAuto == null) {
 				self::$eventConfigurationAuto = Autosteuerung_GetEventConfiguration();
 			}
@@ -232,7 +232,7 @@ class AutosteuerungHandler
 		 *
 		 * @param string[] $configuration Neue Event Konfiguration
 		 */
-		private static function Set_EventConfigurationAuto($configuration) {
+		protected static function Set_EventConfigurationAuto($configuration) {
 		   self::$eventConfigurationAuto = $configuration;
 		}
 		
@@ -277,7 +277,7 @@ class AutosteuerungHandler
 		 *
 		 * @param string[] $configuration Konfigurations Array
 		 */
-		private static function StoreEventConfiguration($configuration, $debug=false)
+		protected static function StoreEventConfiguration($configuration, $debug=false)
 		   {
 			// Build Configuration String
 			$configString = '$eventConfiguration = array(';
@@ -312,7 +312,7 @@ class AutosteuerungHandler
 				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
 			}
 			$fileContent = file_get_contents($fileNameFull, true);
-			$pos1 = strpos($fileContent, '$eventConfiguration = array(');
+			$pos1 = strpos($fileContent, '$eventConfiguration = array(');                   // Variable muss sich normalerweise auflösen lassen,bei AutosteuerungHandler immer fix
 			$pos2 = strpos($fileContent, 'return $eventConfiguration;');
 
 			if ($pos1 === false or $pos2 === false) {
@@ -474,7 +474,7 @@ abstract class AutosteuerungConfiguration
 		 *
 		 * @return string[] Event Konfiguration
 		 */
-		private function Get_EventConfigurationAuto() 
+		protected function Get_EventConfigurationAuto() 
 			{
 			if ($this->eventConfigurationAuto == null) 
 				{
@@ -498,7 +498,7 @@ abstract class AutosteuerungConfiguration
 		 *
 		 * @param string[] $configuration Neue Event Konfiguration
 		 */
-		private function Set_EventConfigurationAuto($configuration) {
+		protected function Set_EventConfigurationAuto($configuration) {
 		   $this->eventConfigurationAuto = $configuration;
 		}
 		
@@ -550,7 +550,7 @@ abstract class AutosteuerungConfiguration
 		 *
 		 * @param string[] $configuration Konfigurations Array
 		 */
-		private function InitEventConfiguration()
+		protected function InitEventConfiguration()
 			{
 			// Build Configuration String
 			$configString = chr(9).chr(9).'$'.$this->identifier.' = array('.PHP_EOL.PHP_EOL;
@@ -588,7 +588,7 @@ abstract class AutosteuerungConfiguration
          *
 		 * @param string[] $configuration Konfigurations Array
 		 */
-		private function StoreEventConfiguration($configuration,$comment="")
+		protected function StoreEventConfiguration($configuration,$comment="")
 		   {
 			// Build Configuration String
 			$configString = '$'.$this->identifier.' = array(';
@@ -1084,6 +1084,140 @@ class AutosteuerungConfigurationGeofency extends AutosteuerungConfiguration
 
 	}
 
+
+
+class AutosteuerungConfigurationSetSwitches extends AutosteuerungConfiguration
+    {
+    
+    protected $eventConfigurationAuto = array();
+    protected $scriptID;
+    protected $functionName="Autosteuerung_SetSwitches2";
+    protected $identifier="setswitchesConfiguration";
+    protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+    
+    protected function Get_EventConfigurationAuto()           // neu übernehmen, mit Fehlerbehebung
+        {
+        if ($this->eventConfigurationAuto == null) 
+            {
+            $func=$this->functionName;
+            if (function_exists($func)===false)
+                {
+                echo ">>>>Fehler, Function ".$func."() nicht definiert im Configfile.\n";
+                $this->InitEventConfiguration();
+                $fatalerror=true;
+                $this->eventConfigurationAuto = array();
+                }
+            else $this->eventConfigurationAuto = $func();		/* >>>>>>>> change here */
+            //echo "Config Function heisst : ".$func."\n";	
+            }
+        return $this->eventConfigurationAuto;
+        }
+
+    public function getNameOfClass()            // neu übernehmen
+        {
+        return static::class;
+        }
+
+    protected function InitEventConfiguration()               // neu übernehmen
+        {
+        $class = $this->getNameOfClass();
+        // Build Configuration String
+        $configString  = chr(9).chr(9).'$'.$this->identifier.' = array('.PHP_EOL.PHP_EOL;
+        $configString .= chr(9).chr(9).chr(9).');'.PHP_EOL;
+        $configString .= chr(9).chr(9).'return $'.$this->identifier.';'.PHP_EOL;	
+
+        $commentString  = chr(9).'/* '.$class.'::'.$this->functionName.PHP_EOL;
+        $commentString .= chr(9).' *'.PHP_EOL;
+        $commentString .= chr(9).' */'.PHP_EOL;
+
+        $funcString = $commentString.chr(9).'function '.$this->functionName.'() {'.PHP_EOL;
+        $funcString.=$configString;
+        $funcString.=chr(9).'}'.PHP_EOL.PHP_EOL;				
+
+        // Write to File
+        $fileNameFull = IPS_GetKernelDir().$this->filename;  /* >>>>>>>> change here */
+        if (!file_exists($fileNameFull)) 
+            {
+            throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+            }
+        $fileContent = file_get_contents($fileNameFull, true);
+        $pos3 = strpos($fileContent, '?>');
+        if ($pos3 === false) {
+            throw new IPSMessageHandlerException($fileNameFull.' is not a config file !!!', E_USER_ERROR);
+        }
+        //echo " End of config file Marker ist auf Position ".$pos3."\n"; 
+        $fileContentNew = substr($fileContent, 0, $pos3).$funcString.substr($fileContent, $pos3);
+        //echo $fileContentNew;
+        file_put_contents($fileNameFull, $fileContentNew);
+                        
+        }
+
+    /* Store array structure ohne Bezug auf Events
+     */
+    function StoreConfiguration($configuration)
+        {
+        $ipsOps=new ipsOps(); 
+        $config = self::Get_EventConfigurationAuto();                   // anlegen, wenn noch nicht vorhanden
+
+        // Build Configuration String
+        $configString = '$'.$this->identifier.' = ';
+        if (sizeof($configuration)>0)
+            {
+            $ipsOps->serializeArrayAsPhp($configuration, $configString, 0, 10, false);          // true mit Debug, ConfigString mit Zusatzinformationen anreichern, mit ident 10 anfangen
+            }
+        $configString .= PHP_EOL.chr(9).chr(9);                
+        $fileNameFull = IPS_GetKernelDir().$this->filename;  /* >>>>>>>> change here */
+        if (!file_exists($fileNameFull)) {
+            throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+        }
+        $fileContent = file_get_contents($fileNameFull, true);
+        $pos1 = strpos($fileContent, '$'.$this->identifier.' = array(');
+        $pos2 = strpos($fileContent, 'return $'.$this->identifier.';');
+
+        if ($pos1 === false or $pos2 === false) {
+            throw new IPSMessageHandlerException($this->identifier.' could NOT be found !!!', E_USER_ERROR);
+        }
+        $fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
+        //echo $fileContentNew;
+        file_put_contents($fileNameFull, $fileContentNew);
+        $this->Set_EventConfigurationAuto($configuration);
+        }
+
+    /* Comment is single line without end of line
+     */
+    function ChangeComment($comment="")
+        {
+        $ipsOps=new ipsOps(); 
+        $class = $this->getNameOfClass();
+        $fileNameFull = IPS_GetKernelDir().$this->filename;  /* >>>>>>>> change here */
+        if (!file_exists($fileNameFull)) {
+            throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+        }
+        $fileContent = file_get_contents($fileNameFull, true);
+        $pos1 = strpos($fileContent, '$'.$this->identifier.' = array(');
+        $pos2 = strpos($fileContent, 'return $'.$this->identifier.';');
+        $pos3 = strpos($fileContent, 'function '.$this->functionName);
+        $pos4 = strpos($fileContent, '/* ::'.$this->functionName);
+        if ($pos4===false) $pos4 = strpos($fileContent, '/* '.$class.'::'.$this->functionName);
+        $pos5 = strrpos(substr($fileContent,0,$pos4),"\n");
+        //echo "Class: $class Positionen:  $pos1 : $pos2 : $pos3 : $pos4 : $pos5\n";            // PHP_EOL findet er nicht
+        
+        $commentString  = chr(9).'/* '.$class.'::'.$this->functionName." last changed on ".date("d.m.Y H:i:s").PHP_EOL;
+        $commentString .= chr(9).' * '.$comment.PHP_EOL;
+        $commentString .= chr(9).' */'.PHP_EOL.chr(9);
+
+        if ($pos1 === false or $pos2 === false or $pos3 === false or $pos4 === false or $pos5 === false) {
+            throw new IPSMessageHandlerException($this->identifier.' could NOT be found !!!', E_USER_ERROR);
+        }
+        $fileContentNew = substr($fileContent, 0, $pos5+1).$commentString.substr($fileContent, $pos3);
+        //echo $fileContentNew;
+        file_put_contents($fileNameFull, $fileContentNew);
+        }
+
+
+    } 
+
+
 /*****************************************************************************************************
  *
  * Autosteuerung Operator
@@ -1493,7 +1627,7 @@ class AutosteuerungOperator
             //print_r($configAvailable);
             $anwesend=$this->Anwesend($configAvailable);            // aktuell keine Bewegung in der Wohnung
             if ($debug) echo "Auswertung Anwesend:    ".($anwesend?"Ja":"Nein")."\n";
-            $result = $this->analyseLoggingActivity($logging,$anwesend,$debug);
+            $result = $this->analyseLoggingActivity($logging,$anwesend,$debug);                 // können sehr lang werden die Debug Ausgaben
             /*$summary=array(); $contacts=0;
             foreach ($logging as $id => $entry)               // zweidimensionales array, id ist ein Increment
                 {
@@ -1698,19 +1832,40 @@ class AutosteuerungOperator
         }
 
     /* jetzt die Logging Ereignisse auswerten und zusammenfassen nach Typ (OR Verknüpfung)
-     * erzeugt status und summary und liefert anwesend
+     * Rückmeldung als Array, erzeugt status und summary und liefert als presence anwesend
+     * im Debug Mode erfolgt eine Ausgabe der einzelnen Signale Contact, Motion und Available
+     * Funktion:
+     * der aktuelle Zustand wird mit anwesend übergeben, anwesend ist die Summer der aktuellen bewegungen, kann 0 oder 1 sein, bedeutet erst mal nix
+     * das Logging wird nach CONTACT, MOTION/HOME, AVAILABLE analysiert, die Reihenfolge der Eintraege ist von jetzt in die Vergangenheit
+     * sobald das erste Mal eine MOTION oder ein HOME Ereignis erkannt wird, wird es im status mit Wert und Timestamp gespeichert
+     * sobald das erste Mal ein Contact Ereignis erkannt wird, wird für alle bereits angelegte MOTION/HOME noch ein CONTACT dazugeschrieben
+     *      wenn der Contact 0 ist, also die Türe wieder zu und das Ereignis zum ersten Mal auftritt, wird ein summary lastclosed Eintrag mit Zeitstempel erstellt
+     *      wenn der Contact 1 ist´, also die Türe noch offen und das Ereignis zumn ersten Mal auftritt, wird ein summay lastopened Eintrag mit Zeitstempel erstellt
+     *      wenn Available zum ersten Mal 1 ist, also eine Bewegung erkannt wird und das Ereignis zum ersten Mal auftritt, wird ein summary lastthere Eintrag mit Zeitstempel erstellt
+     *      wenn Available zum ersten Mal 0 ist und das bisherige anwesend (summe der bewegungen) auch 0 ist und das Ereignis zum ersten Mal auftritt, wird ein summary lastaway Eintrag mit Zeitstempel erstellt
+     * das bedeutet wir haben alle Ereignisse erfasst wenn sie das erste Mal auftreten, wenn anwesend 1 ist wird kein lastaway erfasst
+     *      anwesend wird NUR neu berechnet wenn anwesend 0 übergeben wird, die Türe das erste Mal als zu erkannt wird (CONTACT 0), und davor bereits einmal ein lastaway Ereignis eingetreten ist (alle Availables auf 0, und initiales anwesend auch auf 0)
+     *      die Differenz zwischen erstem lastaway und erstem Tür zu wird berechnet, innerhalb von 500 Sekunden ignorieren wir das als Delay bius sich die Bewegungsmelder beruhigt haben
+     *      wenn die Zeitdifferenz größer ist wird rückwärts also in die gegenwart vom Tür zu Ereignis beginnend analysiert, wen ein neuer bewegungsimpuls innerhalb 500 Sekunden hinzukommt wird er ignoriert, sonst  gezaehlt
+     *      wen so ein Ereignis gefunden wurde, Zähler > 0, wird anwesend auf 1 gesetzt, also wir sind noch da. 
+     *
+     * Kurz zusammengefasst wir ermitteln nicht die vergangenheit, verbessern aber die aktuelle bewegungserkennung wenn obwohl aktuell keine Bewegung erkannt wurde aber
+     * nach 500 Sekunden nach dem Türzu Ereignis immer noch neue Bewegungen dazukommen das anwesend 0 auf 1. Das ist alles.
+     *
+     * Die Aufzeiochnung Anwesend aoder nicht erfolgt durch das loggen der ANwesend Variable !
      */
     public function analyseLoggingActivity($logging,$anwesend,$debug=false)
         {
         $summary=array(); $contacts=0;
-
+        $status=array();
+        if ($debug) echo "analyseLoggingActivity aufgerufen für ".sizeof($logging)." Einträge.\n";
             foreach ($logging as $id => $entry)               // zweidimensionales array, id ist ein Increment
                 {
-                if ($debug) echo "   ".str_pad($id,3)." ".$entry["TimeStamp"]." ".date("d.m H:i:s",$entry["TimeStamp"])."  ".str_pad($entry["Oid"],8);
+                if ($debug>1) echo "   ".str_pad($id,3)." ".$entry["TimeStamp"]." ".date("d.m H:i:s",$entry["TimeStamp"])."  ".str_pad($entry["Oid"],8);
                 switch ($entry["Type"])
                     {
                     case "CONTACT":
-                        if ($debug) echo str_pad($entry["Value"],7).str_pad("",16).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        if ($debug>1) echo str_pad($entry["Value"],7).str_pad("",16).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
                         foreach ($status as $name => $statusentry)
                             {
                             if (isset($status[$name]["Contact"])==false)            // noch kein Eintrag
@@ -1762,7 +1917,7 @@ class AutosteuerungOperator
                         break;
                     case "MOTION":
                     case "HOME":
-                        if ($debug) echo str_pad("",8).str_pad($entry["Value"],7).str_pad("",8).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        if ($debug>1) echo str_pad("",8).str_pad($entry["Value"],7).str_pad("",8).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
                         $name=$entry["Name"];
                         if (isset($status[$name])==false) 
                             {
@@ -1771,7 +1926,7 @@ class AutosteuerungOperator
                             }
                         break;
                     case "AVAILABLE":           // nix ausgeben
-                        if ($debug) echo str_pad("",16).str_pad($entry["Value"],7).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
+                        if ($debug>1) echo str_pad("",16).str_pad($entry["Value"],7).str_pad($entry["Type"],12).str_pad($entry["Name"],30)." \n";
                         if ($entry["Value"]==0)  
                             {
                             if ($anwesend==0)       // wenn alle Bewegungsmelder away sind kann der last away ermittelt werden

@@ -12896,10 +12896,10 @@ class fileOps
         $oldstart=false; $oldstring="";
         $tabs=explode(" ",$result);             // Schnelltest
         $countTabs=sizeof($tabs);               // sizeof trifft noch jede Menge Eintraeg mit einem blank                        
+        $delimiter=array();
         if ($countTabs>1)
             {
             //echo "Erste Zeile :\"$result\"\n";                       
-            $delimiter=array();
             foreach ($tabs as $index => $string)            // alle tabs durchgehen, da gibt es auch einzelobjekte als blank
                 {
                 if (($string == " ") || ($string == "")) 

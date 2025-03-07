@@ -132,10 +132,15 @@
             IPSUtils_Include ("Selenium_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");
             if ($debug) echo "Do Init for Operating Mode Selenium.\n";
             $seleniumOperations = new SeleniumOperations();        
-            $CategoryId_Mode        = CreateCategory('Selenium',                $CategoryIdData, 20);
-            $startImacroID          = IPS_GetObjectIdByName("StartSelenium",    $CategoryId_Mode);	
-            $SeleniumStatusID       = IPS_GetObjectIdByName("SeleniumStatus",   $CategoryId_Mode);
-            $SeleniumHtmlStatusID   = IPS_GetObjectIdByName("Status",           $CategoryId_Mode);          // html Darstellung der geladenen verfügbaren Chromedriver Versionen
+            $CategoryId_Mode            = CreateCategory('Selenium',                $CategoryIdData, 20);
+            $startImacroID              = IPS_GetObjectIdByName("StartSelenium",            $CategoryId_Mode);	
+            $SeleniumStatusID           = IPS_GetObjectIdByName("SeleniumStatus",           $CategoryId_Mode);
+            $SeleniumHtmlStatusID       = IPS_GetObjectIdByName("Status",                   $CategoryId_Mode);          // html Darstellung der geladenen verfügbaren Chromedriver Versionen
+            $startActionID              = IPS_GetObjectIdByName("StartAction",              $CategoryId_Mode);	
+            $startActionGroupID         = IPS_GetObjectIdByName("StartGroupCall",           $CategoryId_Mode);
+            $updateChromedriverID       = IPS_GetObjectIdByName("UpdateChromeDriver",       $CategoryId_Mode);
+            $startstoppChromedriverID   = IPS_GetObjectIdByName("StartStoppChromeDriver",   $CategoryId_Mode); 
+
             $sessionID      = $guthabenHandler->getSeleniumSessionID();
             $config=array(
                         "DREI"       =>  array (
@@ -147,26 +152,32 @@
                                             ),
                         );
             $webDriverName=false;
-            if (isset($installedModules["Watchdog"]))
-                {
-                IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
-                IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
-                $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
-                $processDir = $seleniumChromedriverUpdate->getprocessDir();
-                if ($debug) echo "Watchdog Directory : $processDir\n";            
-                }
-            else $SeleniumOnID=false;
-            if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
+            if (isset($installedModules["OperationCenter"]))
                 {
                 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
                 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
                 IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+                $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // OperationCenter former Watchdog class
+                $processDir = $seleniumChromedriverUpdate->getprocessDir();
+                if ($debug) echo "Watchdog Directory : $processDir\n";            
+
                 $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
                 $selDir        = $seleniumChromedriverUpdate->getSeleniumDirectory();
                 $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
                 if ($debug) echo "get filesize of all chromedriver versions.\n";
                 $versionOnShare       = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
                 $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$versionOnShare);
+                if ($actualVersion===false) 
+                    {
+                    echo "Probleme mit der Erkennung der aktuellen chromedriver.exe Version.\n";
+                    // chromedriver.exe --version ausprobieren, siehe rename_Chromedriver in der Watchdog Library
+                    $status=$seleniumChromedriverUpdate->readChromedriverVersion(false,true);
+                    if (strlen($status)>6)
+                        {
+                        $actualVersion=intval(substr($status,0,3));
+                        echo "ChromeDriver Version direkt ausgelesen, Version $status : $actualVersion\n";                
+                        }
+                    }
                 if ($actualVersion===false) 
                     {
                     $updateChromedriver=GetValueFormatted($updateChromedriverID);
@@ -195,11 +206,6 @@
     $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_Mode,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     //$testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMacro,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
     
-    $startActionID              = IPS_GetObjectIdByName("StartAction",              $CategoryId_Mode);	
-    $startActionGroupID         = IPS_GetObjectIdByName("StartGroupCall",           $CategoryId_Mode);
-    $updateChromedriverID       = IPS_GetObjectIdByName("UpdateChromeDriver",       $CategoryId_Mode);
-    $startstoppChromedriverID   = IPS_GetObjectIdByName("StartStoppChromeDriver",   $CategoryId_Mode); 
-
     if ( (isset($GuthabenAllgConfig["Selenium"]["getChromeDriver"])) && ($GuthabenAllgConfig["Selenium"]["getChromeDriver"]) )
         {
         $getChromedriverID          = IPS_GetObjectIdByName("GetChromeDriver",      $CategoryId_Mode);
@@ -1081,8 +1087,7 @@
             {
             $log_Guthabensteuerung->LogNachrichten("Update Chromedriver auf Version $updateChromedriver gestartet");
             //echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
-            $subnet="10.255.255.255";                               // dont know no longer why
-            $seleniumChromedriver=new SeleniumChromedriver($subnet);         // SeleniumChromedriver.OperationCenter Child
+            $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
             $latestVersion=array_key_last($versionOnShare);
             $sourceFile = $seleniumChromedriver->getFilenameOfVersion($updateChromedriver);         // file Adresse erforderlich Quelldatei ermitteln
 
@@ -1158,57 +1163,6 @@
             $config=$guthabenHandler->getConfigChromedriver();
             $configAdd = $seleniumChromedriver->getUpdateNewVersions($config,$html,$actualVersion,$debug);          // first two parameters are updated, getupdatedVersions from Web            
 
-            /*verfügbare chromedriver versionen herunterladen
-            $result = $seleniumChromedriver->getListDownloadableChromeDriverVersion();
-            //print_r($result);
-
-            $html="";
-            $config=$guthabenHandler->getConfigChromedriver();
-            $configAdd = $seleniumChromedriver->getUpdateNewVersions($config,$html,$actualVersion,$debug);          // first two parameters are updated, getupdatedVersions from Web
-
-            $html .= '<table>';
-            //foreach ($result as $id => $entry) $html .= '<tr><td>'.$entry["version"].'</td></tr>';
-
-            //$actualVersionRegister = GetValueFormatted($updateChromedriverID);
-            //echo "Aktuelle Version hier im Einsatz: $actualVersionRegister \n";
-            $config=array();
-            $configOld=json_decode(GetValue($configChromedriverID),true);           // array
-            $configNew=array();             // die neu Konfiguration auf Basis von Old
-            $log_Guthabensteuerung->LogNachrichten("Vorhandene Chromedriver Versionen ".GetValue($configChromedriverID).". Actual Version $actualVersion.");
-            //print_R($configOld);
-            
-            // erzeigt html, configOld als originäre Info vom $configChromedriverID, configNew zum Update von $configChromedriverID, config zum Update aus dem Web:
-            foreach ($result as $version => $entry)         // alle Chromedriver versionen als Tabelle ausgeben, Spalte Versionsnummer, alte Versionsbezeichnung, neue Versionsbezeichnung
-                {
-                if ($version >= ($actualVersion-2))
-                    {
-                    $html .= '<tr><td>'.$version.'</td>';
-                    //print_R($entry);
-                    $configNew[$version]["version"]=$entry["version"];
-                    if (isset($configOld[$version]["version"])) 
-                        {
-                        if ($entry["version"] !== $configOld[$version]["version"])
-                            {
-                            $config[$version]["version"]=$entry["version"];
-                            //echo "Wir beginnen mit Version $version und neuer Revision ".$configOld[$version]["version"]." -> ".$entry["version"]."\n";
-                            }    
-                        else 
-                            {
-                            //echo "Die Version $version und Revision ".$entry["version"]." wurde bereits geladen\n";
-                            }
-                        $html .= '<td>'.$configOld[$version]["version"].'</td><td>'.$entry["version"].'</td>';
-                        }
-                    else            // ganz neue Version
-                        {
-                        $config[$version]["version"]=$entry["version"];
-                        //echo "Wir beginnen mit neuer Version $version und Revision ".$config[$version]["version"]."\n";
-                        $html .= '<td>n.a.</td><td>'.$entry["version"].'</td>';
-                        }
-                    }
-                //else $html .= '<td>'.$entry["version"].'</td><td>n.a.</td>';
-                }
-            $html .= '</table>';
-            */
             if ($debug) echo "---------------\n".$html."\n--------------\n";
     
             $dir=$GuthabenAllgConfig["Selenium"]["DownloadDir"];  

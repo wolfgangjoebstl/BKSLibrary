@@ -18,16 +18,34 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */
 	 
-/*********************************************************************************************/
-/*********************************************************************************************/
-/*                                                                                           */
-/*                              Functions, Klassendefinitionen                               */
-/*                                                                                           
+/****************
+ *
+ * candidated for depricated module, main function not needed
+ *
+ * class
+ *      watchDog
+ *          watchDogAutoStart extends watchDog
+ *          seleniumChromedriverUpdate
+ *
+ *
+ *
+ *
+ *
+ *******************************************************************/
+
+/********************************************************************************************
+ *                                                                                           
+ *                              Functions, Klassendefinitionen                               
+ *   watchDog
+ *                                                                                        
  * Zusammenfassung nutzvoller Funktionen in einer Klasse
  *      __construct
  *      setConfiguration
  *      getConfiguration
+ *      getSeleniumConfiguration
  *      getActiveProcesses
+ *      isSeleniumServer
+ *      isSeleniumServerAtDir
  *      checkAutostartProgram
  *
  */
@@ -344,6 +362,12 @@ class watchDog
 
 /* same as class watchDog
  * but make it more easy to extend
+ *
+ *  createCmdFileActiveProcesses
+ *  createCmdFileSelfShutdown
+ *  createCmdFileSelfRestart
+ *
+ *
  */
 
 class watchDogAutoStart extends watchDog
@@ -387,257 +411,6 @@ class watchDogAutoStart extends watchDog
         }
 
 
-
-    }
-
-/* class handles about Slenium Chromedriver Update
- * uses config from this class
- */
-
-class seleniumChromedriverUpdate extends watchDog
-    {
-
-    var $debug;
-    var $ipsOps,$dosOps;                 // class zur sofortigen verwendung
-    var $selDir;
-    var $selDirContent = array();
-    var $filename;                      // Filename des neuen Chromdrivers
-
-	public function __construct($debug=false)
-		{
-        if ($debug) echo "class SeleniumChromedriverUpdate, Construct Parent class watchDog.\n";
-        $this->debug=$debug;
-        $this->ipsOps = new ipsOps();   
-        $this->dosOps = new dosOps();        
-        parent::__construct();                       // sonst sind die Config Variablen noch nicht eingelesen
-        }
-
-    function getprocessDir()
-        {
-        $configWatchdog = $this->getConfiguration();            
-        $processDir=$this->dosOps->correctDirName($configWatchdog["WatchDogDirectory"]);
-        //echo "Watchdog Directory : $processDir\n";            
-        return ($processDir);
-        }
-
-    function createCmdFileStartSelenium($verzeichnis)
-        {
-        //echo "Write Selenium Startup Script to ".$verzeichnis."start_Selenium.bat\n";
-        $configWD = $this->getConfiguration();
-        if ( ((isset($configWD["Software"]["Selenium"]["Directory"])) && (isset($configWD["Software"]["Selenium"]["Execute"]))) === false) return (false);
-        $handle2=fopen($verzeichnis."start_Selenium.bat","w");
-        fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
-        fwrite($handle2,'cd '.$configWD["Software"]["Selenium"]["Directory"]."\r\n");
-        fwrite($handle2,'java -jar '.$configWD["Software"]["Selenium"]["Execute"]."\r\n");
-        /*  cd C:\Scripts\Selenium\ 
-            java -jar selenium-server-standalone-3.141.59.jar
-            pause       */
-        fwrite($handle2,'pause'."\r\n");
-        fclose($handle2);
-        return (true);
-        }
-
-  function createCmdFileStoppSelenium($verzeichnis=false,$debug=false)
-        {
-        if ($verzeichnis===false) $processDir = $this->getprocessDir();
-        else $processDir=$verzeichnis;
-        if ($debug) echo "Stopp Selenium. Write cmd file in $processDir.\n";
-        $handle2=fopen($processDir."stopp_Selenium.bat","w");
-        fwrite($handle2,"wmic process where \"commandline like '%%java%%'\" delete\r\n");
-        fclose($handle2); 
-        }
-
-    /* setzt selDir und ermittelt selDirContent
-     */
-    function getSeleniumDirectoryContent()
-        {
-        $debug=$this->debug;
-        $configWatchdog = $this->getConfiguration();            
-        if (isset($configWatchdog["Software"]["Selenium"]["Directory"]))
-            {
-            $this->selDir=$this->dosOps->correctDirName($configWatchdog["Software"]["Selenium"]["Directory"]);
-            if ($debug) 
-                {
-                echo "Watchdog config defines where Selenium is operating: ".$this->selDir." \n";
-                $this->dosOps->writeDirStat($this->selDir);                    // Ausgabe eines Verzeichnis 
-                }
-            $this->selDirContent = $this->dosOps->readdirToArray($this->selDir);                   // Inhalt Verzeichnis als Array
-            return ($this->selDirContent);
-            }
-        return (false);
-        }
-
-    /* setzt selDir und ermittelt selDirContent
-     */
-    function getSeleniumDirectory()
-        {
-        $debug=$this->debug;
-        $configWatchdog = $this->getConfiguration();            
-        if (isset($configWatchdog["Software"]["Selenium"]["Directory"]))
-            {
-            $this->selDir=$this->dosOps->correctDirName($configWatchdog["Software"]["Selenium"]["Directory"]);
-            return ($this->selDir);
-            }
-        return (false);
-        }
-
-    /* check Chromedriver Version
-     * anhand des array version wird der Index ausgewählt
-     */
-    function identifyFileByVersion($file,$version, $debugInput=false)
-        {
-        $result=false;
-        $debug=$this->debug || $debugInput;
-        if ($debug) echo "identifyFileByVersion($file,..). Input array to identify version has ".count($version)." entries.\n";
-        if ($this->selDirContent)
-            {
-            $found = $this->dosOps->findfiles($this->selDirContent,$file);
-            if ($found)
-                {
-                $size=filesize($this->selDir.$file);
-                if ($debug) echo "   Actual chromedriver.exe found. Compare versions fo find size $size.\n";   
-                foreach ($version as $index => $info)
-                    {
-                    if ($info["Size"]==$size) 
-                        {
-                        if ($debug) echo "   Found $index, successful.\n";
-                        return ($index); 
-                        }
-                    }
-                if ($debug) echo "File with $size not found in inventory.\n";
-                }
-            else echo "File $file not found.\n";
-            }
-        else echo "Inhalt vom selDir nicht vorhanden selDirContent.\n";
-        if ($debug) echo "   Not found, version maybe older or not latest of its kind.\n";
-        return ($result); 
-        }
-
-    /* ein Script aufrufen mit dem Selenium gestoppt wird. Üblicherweise werden dabei alle java processe gekillt
-     */
-    function stoppSelenium($debug=false)
-        {
-        $status=false;
-        $processDir = $this->getprocessDir();
-        $command = $processDir."stopp_Selenium.bat";
-        if ($debug) 
-            {
-            echo "Stopp Selenium. Start cmd file stopp_Selenium.bat in $processDir.\n";
-            $this->dosOps->readFile($processDir."stopp_Selenium.bat");
-            }
-        if ($debug<2) $status = $this->sysOps->ExecuteUserCommand($command,"",true,false);                   // false do not show, true wait wir brauchen es aber andersrum, sonst bleibt das script hängen
-        return ($status);
-        }
-
-
-    /* ein Script aufrufen mit dem Selenium gestartet wird. 
-     * Wenn Debug 2 dann das Exe nicht aufrufen, erweiterte Fehlersuche
-     */
-    function startSelenium($debug=false)
-        {
-        $status=false;
-        $processDir = $this->getprocessDir();
-        $command = $processDir."start_Selenium.bat";
-        if ($debug) 
-            {
-            echo "Start Selenium. Execute cmd file start_Selenium.bat in $processDir.\n";
-            $this->dosOps->readFile($processDir."start_Selenium.bat");
-            echo "Command File: $command.\n";
-            }
-        if ($debug<2)       // true ist nicht kleiner zwei, muss 1 sein
-            {
-            echo "execute show and do not wait\n";
-            $status = $this->sysOps->ExecuteUserCommand($command,"",true,false,-1,$debug);                   // false do not show true wait, heoir andersrum da selenium offen bleibt  $command,$parameter="",$show=true,$wait=false,$session=-1,$debug=false
-            }
-        return ($status);
-        }
-
-    /* seleniumChromedriverUpdate::copyChromeDriver
-     * return status:
-     *      false   Fehler beim Abarbeiten des Commandfiles
-     *      true    Commandfile abgearbeitet
-     *      101     kein Target Dir
-     *      102     Target bereits vorhanden
-     *      103     kein Target File vorhanden
-     */
-    function copyChromeDriver($sourceFile,$targetDir,$debug=false)
-        {
-        $targetDir = $this->dosOps->correctDirName($targetDir);                 // TargetDir muss Windows naming haben wenn Windows, also Backslash Dir Names
-        $targetDir = $this->dosOps->convertDirName($targetDir,true);            // immer DOS style, Windows command kann nur backslash
-        $path=pathinfo($sourceFile);                // sourceFile aufdroeseln
-        $filename=$path['basename'];
-        $sourceDir=$this->dosOps->correctDirName($path['dirname']);
-        $targetDir=$this->dosOps->correctDirName($targetDir,$debug);                      // true debug
-
-        if ($debug) echo "copyChromeDriver($sourceFile,$targetDir) aufgerufen.\n";
-        if ($targetDir===false) return (101);
-        if (file_exists($targetDir.$filename)===false)
-            {
-            //$selDir = 'C:\\Scripts\\Selenium\\';
-            $processDir = $this->getprocessDir();
-            if ($debug) echo "   write copy routine to script copyChromeDriver.bat, located at $processDir.\n   Source Dir is $sourceDir. Target Dir is $targetDir. Fileneame is $filename.\n";
-            $handle2=fopen($processDir."copyChromeDriver.bat","w");
-            fwrite($handle2,'cd '.$sourceDir."\r\n");
-            fwrite($handle2,'copy '.$filename.' '.$targetDir."\r\n");
-            fclose($handle2); 
-            $sourceFile = $sourceDir.$filename;
-            if ($debug) echo "   Copy Latest ChromeDriver \"$sourceFile\" to Selenium Directory \"$targetDir\".\n";
-            //$status = $this->dosOps->moveFile($sourceFile,$selDir.$latestChromeDriver);
-            //$command = '"copy '.$sourceFile.' '.$selDir.$latestChromeDriver.'"';
-            $command = $processDir."copyChromeDriver.bat";
-            if ($debug) $this->dosOps->readFile($processDir."copyChromeDriver.bat");
-            $status = $this->sysOps->ExecuteUserCommand($command,"",false,true);                   // false do not show true wait
-            if ($debug) 
-                {
-                echo "Status on copying $sourceFile with command $command : \"$status\" \n";
-                if (file_exists($sourceFile)) echo "  Source file available.\n";
-                if (file_exists($targetDir.$filename)) echo "Copy ".$targetDir.$filename." successfull.\n"; 
-                else echo "What happend now ?\n";
-                }
-            if (file_exists($targetDir.$filename)===false) {$filename=false; $status=103;}
-            $this->filename=$filename;
-            return ($status);
-            }
-        else 
-            {
-            $this->filename=$filename;
-            //echo "copyChromedriver ($sourceFile,$targetDir) bereits durchgeführt. \n";
-            return (102);
-            }
-        }
-
-    function deleteChromedriverBackup()
-        {
-        $found = $this->dosOps->findfiles($this->selDirContent,"chromedriver_alt.exe");
-        if ($found)
-            {
-            //echo "Altes chromedriver-alt.exe gefunden. Loeschen \"".$found[0]."\"\n";   
-            $this->dosOps->deleteFile($this->selDir.$found[0]);
-            return(true);
-            }
-        return(false);
-        }
-
-    /* aktuellen chromedriver umbennen auf alt und neuen auf chromedriver ohne Versionsangabe
-     */
-    function renameChromedriver($latestChromeDriver=false,$debug=false)
-        {
-        if ($latestChromeDriver===false) $latestChromeDriver=$this->filename;
-        if ($latestChromeDriver===false) return(false);
-        $processDir = $this->getprocessDir();
-        if ($debug) echo "Selenium had been stopped. Rename Chromedrivers. Write cmd file in $processDir.\n";
-        $handle2=fopen($processDir."rename_Chromedriver.bat","w");
-        fwrite($handle2,"cd ".$this->selDir."\r\n");
-        fwrite($handle2,"rename chromedriver.exe chromedriver_alt.exe\r\n");
-        fwrite($handle2,"rename $latestChromeDriver chromedriver.exe\r\n");
-        fclose($handle2);                 
-
-        $command = $processDir."rename_Chromedriver.bat";
-        if ($debug) $this->dosOps->readFile($processDir."rename_Chromedriver.bat");
-        $status = $this->sysOps->ExecuteUserCommand($command,"",false,true);                   // false do not show true wait
-        if ($debug) echo "Status on renaming $latestChromeDriver with chromedriver.exe and Status : $status \n";
-        return ($status);
-        }
 
     }
 
