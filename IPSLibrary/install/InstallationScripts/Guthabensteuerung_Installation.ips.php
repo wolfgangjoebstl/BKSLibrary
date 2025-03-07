@@ -285,10 +285,12 @@
                 $statusID           = CreateVariable("StatusWebDriverDefault", 3, $CategoryId_Mode,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                 SetValue($statusID,"updated");
                 }
-            if (isset($installedModules["Watchdog"]))
+            if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
                 {
-                echo "\n";
-                echo "Watchdog Module ist installiert, zusätzliche Auswertungen machen.\n";
+                IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+                IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+                IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+
                 IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
                 IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
 
@@ -330,15 +332,9 @@
                 $configWatchdog = $watchDog->getConfiguration();            
                 $processDir=$dosOps->correctDirName($configWatchdog["WatchDogDirectory"]);
                 echo "Watchdog Directory : $processDir\n";            
-                }
-
+                
             //$categoryDreiID = $seleniumOperations->getCategory("DREI");                
             //echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";  
-            if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
-                {
-                IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
-                IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-                IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
                 echo "\n";
                 echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 

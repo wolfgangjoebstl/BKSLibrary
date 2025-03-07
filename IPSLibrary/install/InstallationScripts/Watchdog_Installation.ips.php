@@ -70,6 +70,13 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+    if ( (isset($installedModules["OperationCenter"])) )
+        {
+        IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+        IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+        IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+        }
+
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
