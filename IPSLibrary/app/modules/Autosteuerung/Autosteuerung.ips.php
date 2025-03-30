@@ -393,7 +393,7 @@ if ($_IPS['SENDER']=="TimerEvent")
         case $tim3ID:
 			/* alle 60 Sekunden aufrufen */
             $changesDetected=$auto->statusMonitorSteuerung($debug);            //true für Debug
-            $configZutritt = $operate->Zutritt($debug);
+            $configZutritt = $operate->Zutritt(false,$debug);
             SetValue( $StatusAnwesenheitID,$configZutritt["PRESENCE"]);
             
             /* Monitor automatische ein/aus schalten

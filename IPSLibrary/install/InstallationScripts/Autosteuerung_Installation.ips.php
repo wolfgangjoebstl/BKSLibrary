@@ -564,8 +564,8 @@
 				echo "   Variablen für Alarmanlage in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Sicherheit'));  
 
-				$StatusAnwesendID=CreateVariable("StatusAlarmanlage",0, $AutosteuerungID,0,"~Presence",null,null,"");
-				$StatusAnwesendZuletztID=CreateVariable("StatusAlarmanlageZuletzt",0, $AutosteuerungID,0,"~Presence",null,null,"");
+				$StatusAnwesendID=CreateVariable("StatusAlarmanlage",0, $AutosteuerungID,0,"InActive",null,null,"");
+				$StatusAnwesendZuletztID=CreateVariable("StatusAlarmanlageZuletzt",0, $AutosteuerungID,0,"InActive",null,null,"");
 				IPS_SetHidden($StatusAnwesendZuletztID,true);
 				$register->registerAutoEvent($StatusAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusAnwesendID,true);
@@ -578,6 +578,8 @@
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
+
+                $TabelleAnwesendEreignisseID=CreateVariable("AnwesendEreignisse",3, $AutosteuerungID,1010,"~HTMLBox",null,null,"");			
 
 				$alarm=new AutosteuerungAlarmanlage();
                 if ($debug) echo " --> AutosteuerungAlarmanlage erfolgreich aufgerufen.\n";
@@ -608,7 +610,9 @@
                     /* mehr Informationen anzeigen, wenn wir einen eigenen Tab haben. */
                     echo "Eigener Tab für die Alarmanlage mit Name Sicherheit:\n";
     				$webfront_links[$AutosteuerungID]["OID_R"]=$inputSicherheit;	
-                    print_r($webfront_links[$AutosteuerungID]);			
+                    //print_r($webfront_links[$AutosteuerungID]);			
+                    CreateLinkByDestination("Anwesenheit", $StatusAnwesenheitID,    $AutosteuerungID, 100);
+                    CreateLinkByDestination("Alarmierung", $StatusAlarmID,    $AutosteuerungID, 110);
                     }
 
                 break;										
@@ -871,6 +875,9 @@
 			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputControl;											/* Darstellung rechts im Webfront */				
                     }
 				break;
+			case "TRACKING":
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Tracking'));             
+				break;                
 			case "MONITORMODE":
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'MonitorMode'));             
 
@@ -947,6 +954,7 @@
                 break;                 
 			default:
                 // Check ob Konfiguration auch wirklich passt
+                echo "Default : ".strtoupper($AutoSetSwitch["TABNAME"])."\n";
                 $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
                 if (isset($webFrontConfiguration[$AutoSetSwitch["TABNAME"]])===false) echo "Achtung, ohne einen Eintrag in Autosteuerung_GetWebFrontConfiguration geht gar nichts.\n";
 

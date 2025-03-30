@@ -211,7 +211,11 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
      *  kW
      *  W
      *  Byte, Bytes
-     *  USD,EUR
+     *  DayMonth                date("d.m.
+     *  HourMinute, HourMin
+     *  °                       degree, temperature
+     *  %
+     *  USD,EUR,MM
      *  Date, Time, DateTime
      *
      * second parameter formats width with pads alignment left
@@ -274,7 +278,12 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
                 case "HOURMIN":
                     if (is_numeric($value)) $result = date("H:i",$value);
                     else $result = $value;
-                    break;                                      
+                    break; 
+                case "LAT":
+                case "LON":         // degree plus kommas
+                    if (is_numeric($value)) $result = number_format((float)$value, 4, ",",".")."° $unit";           // wie unten, aber vielleicht kommt noch etwas
+                    else $result = $value;
+                    break;                                     
                 case "°":
                     if (is_numeric($value)) $result = number_format((float)$value, 1, ",",".")."$unit";           // wie unten, aber vielleicht kommt noch etwas
                     else $result = $value;
@@ -2918,6 +2927,13 @@ class profileOps
                 $this->SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
                 $this->SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
                 break;
+	        case "InActive":
+                $this->CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                $this->SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+                $this->SetVariableProfileAssociation($pname, false, "Inactive", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                $this->SetVariableProfileAssociation($pname, true, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                break;                
 	        case "NeinJa":
                 $this->CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
                 $this->SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
@@ -3964,10 +3980,16 @@ class archiveOps
 
 
     /* archiveOps::showValues
-     * es werden die Werte in $werte oder die internen Werte genommen
-     * sind zwar zwei Routinen aber in einer gemeinsamen Funktion
+     * es werden die Werte in $werte oder die internen Werte (wenn false) genommen
+     * sind damit eigentlich zwei Routinen aber in einer gemeinsamen Funktion: wenn werte ein array ist dann erster Teil der Funktion, wenn werte false ist zweiter Teil der Funktion
+     * noch keine Gemeinsamkeiten aktiviert.
+     *
+     * wenn werte false, hier sind die meisten Entwicklungen passiert:
+     *  Verwendung von this->result, function ist immer values, sonst Fehlermeldung
+     *  interne Werte result haben Struktur oid->values->[Value,TimeStamp] || [Avg,TimeStamp]
+     *
      * Ausgabe, echo von historischen Werten, funktioniert für aggregated und geloggte Werte
-     * interne Werte result haben Struktur oid->values->[Value,TimeStamp] || [Avg,TimeStamp]
+     *
      *
      * Ausgabe von historischen Werte mit Berücksichtigung von Duration
      * Problem es fehlt der Nullwert bei geloggten Werten mit Zero Unterdrückung. Kein Problem wenn bei einem Kühlschrank der Verbrauch auf 4W zurückgeht. Aber 0 wird nicht geloggt.
@@ -3975,9 +3997,11 @@ class archiveOps
      *
      * Config Parameter (mit statistics->setConfiguration bereinigt)
      *      ShowTable
+     *          output          [realTable,all]  entweder doecho oder ausgabe als arra mit allen Daten oder nur realTable
      *          align           den Zeitstempel auf Tages, Stunden, Minutenwerte runterrechnen um leichter Übereinstimmungen zu finden
      *          adjust
      *          calculate
+     *          double          [mean,sum]  beim alignment, was passiert mit den doppelten Werten, default ist aufsummieren
      *
      *
      * es fehlt
@@ -3990,9 +4014,12 @@ class archiveOps
         $valuesAdd=array();
         $statistics = new statistics();   
         $config = $statistics->setConfiguration($configInput);   
-        $doecho=true;
-        if ((isset($config["ShowTable"]["output"])) && ($config["ShowTable"]["output"]=="realTable")) { $returnRealTable=true; $doecho=false;  }  
-        else $returnRealTable=false;
+        $doecho=true; $returnRealTable=false;
+        if (isset($config["ShowTable"]["output"]))
+            {
+            if ($config["ShowTable"]["output"]=="realTable") { $returnRealTable=true; $doecho=false;  }  
+            if ($config["ShowTable"]["output"]=="all")       { $doecho=false; }  
+            }
         // einfache Routine
         //foreach ($werte as $wert) echo "   ".date ("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";     
 
@@ -4050,6 +4077,7 @@ class archiveOps
 
         //Darstellung des Result Speicher aus dem archive, das sind dann mehrere oids, synchronisiseren des Zeitstempels und eventuell anpassen erforderlich
         $tabelle=array();
+        $double=array();           // beim alignen gibt es mehrere Werte zum selben Zeitpunkt, was sollen wir machen        
         if ($werte===false)
             {
             if ($debug) echo "showValues mit den intern gespeicherten Daten als Input aufgerufen:\n";                
@@ -4104,8 +4132,29 @@ class archiveOps
                                     }
                                 if (isset($tabelle[$timestamp][$oid])) 
                                     {
-                                    //echo "Doppelter Wert: ".date("d.m.Y H:i",$entry["TimeStamp"])."\n";   
-                                    $entry["Value"] += $tabelle[$timestamp][$oid]["Value"];
+                                    //echo "Doppelter Wert: ".date("d.m.Y H:i",$entry["TimeStamp"])."\n"; 
+                                   if (isset($config["ShowTable"]["doubles"]))
+                                        { 
+                                        if (isset($double[$timestamp][$oid]["Value"]))                                  // das dritte Mal jetzt
+                                            {
+                                            $double[$timestamp][$oid]["Value"][] = $entry["Value"];
+                                            $double[$timestamp][$oid]["Count"]++;
+                                            }
+                                        else 
+                                            {
+                                            $double[$timestamp][$oid]["Value"][] = $tabelle[$timestamp][$oid]["Value"];             // neuer Wert
+                                            $double[$timestamp][$oid]["Value"][] = $entry["Value"];
+                                            $double[$timestamp][$oid]["Count"]=2;
+                                            } 
+                                        if ($config["ShowTable"]["doubles"]=="add") $entry["Value"] += $tabelle[$timestamp][$oid]["Value"];
+                                        elseif ($config["ShowTable"]["doubles"]=="mean")
+                                            {
+                                            $addx=0;
+                                            foreach ($double[$timestamp][$oid]["Value"] as $idx => $addix) $addx += $addix;
+                                            $entry["Value"] = $addx/$double[$timestamp][$oid]["Count"];     
+                                            }
+                                        else $entry["Value"] += $tabelle[$timestamp][$oid]["Value"];
+                                        }
                                     }
                                 $tabelle[$timestamp][$oid]=$entry;              // Value/Timestamp ist der Originalwert, nicht die alignte Variante
                                 $f++;
@@ -4231,6 +4280,7 @@ class archiveOps
             $resultShow["table"]=$tabelle;                  // das sind die bereinigten Werte, wahrscheinlich zu gross
             $resultShow["columns"]=$oids;
             $resultShow["add"]=$valuesAdd;
+            $resultShow["double"]=$double;            
             }
         if ($returnRealTable) return ($resultShow["realtable"]);
         return ($resultShow);
@@ -5299,7 +5349,7 @@ class archiveOps
                     //$mittelWertTag = $meansRoll->meansValues($index,  1);                    // aus den nächsten 1 Werten einen Mittelwert berechnen, 1 liefert den aktuellen Wert
                     if ( ($logCount>($count-$debugCount)) && ($debug>$debugcheck) ) echo str_pad($logCount,6).date("d.m.Y H:i:s",$entry["TimeStamp"])."  $wertAktuell";
                     // Trend für aktuellen und letzten Tageswerte berechnen
-                    if (isset($this->result[$oid]["Values"][($index-1)]))
+                    if ( (isset($this->result[$oid]["Values"][($index-1)])) && ($config["DoCheck"]["isNumeric"]) )          // Auswertung mit Zahlen                    
                         {
                         // Wert und Vorwert nehmen, aus zeitlichem Abstand und der Wertdifferenz den trend ausrechnen
                         if ($config["Aggregated"]) 
@@ -5962,7 +6012,7 @@ class archiveOps
                 if ($i==0) print_R($wert);
                 if ($i<$displayMax)  echo str_pad($indexArchive,7)."  ".nf($wertUsed,"kWh")."   ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   \n";
                 }
-            if ( (is_numeric($wertUsed)==false) || ( ($wertUsed==0) && $config["SuppressZero"] ) ) 
+            if ( ((is_numeric($wertUsed)==false) && $config["DoCheck"]["isNumeric"]) || ( ($wertUsed==0) && $config["DoCheck"]["SuppressZero"] ) ) 
                 {
                 if ( ($d<$displayMax) && $debug2)
                     {
@@ -6744,6 +6794,21 @@ class statistics
 
         configfileParser($logInput, $config, ["SuppressZero","SUPPRESSZERO","suppresszero"],"SuppressZero" ,true);
         configFileParser($logInput, $config, ["maxDistance","MAXDISTANCE","maxdistance"],"maxDistance",false);         // default no check for gaps any longer, just warning
+        
+        configfileParser($logInput, $config2, ["doCheck","DOCHECK","docheck","DoCheck"],"DoCheck" ,false);
+        if (is_array($config2["DoCheck"]))
+            { 
+            configFileParser($config2["DoCheck"], $config["DoCheck"], ["SuppressZero","SUPPRESSZERO","suppresszero"],"SuppressZero" ,true);
+            configFileParser($config2["DoCheck"], $config["DoCheck"], ["maxDistance","MAXDISTANCE","maxdistance"],"maxDistance",false);
+            configFileParser($config2["DoCheck"], $config["DoCheck"], ["isNumeric","ISNUMERIC","isnumeric"],"isNumeric",true);                      //default
+            }
+        else 
+            {
+            $config["DoCheck"]["SuppressZero"] = $config["SuppressZero"];               // kopieren
+            $config["DoCheck"]["maxDistance"] = $config["maxDistance"];
+            $config["DoCheck"]["isNumeric"] = true;
+            }
+
         configFileParser($logInput, $config, ["interpolate","INTERPOLATE","Interpolate"],"Interpolate",false);                                          // Interpolate false, daily, 
         configFileParser($logInput, $config, ["integrate","INTEGRATE","Integrate"],"Integrate",false);                                          // Integrate false, check and correct integrate/counter values 
         configFileParser($logInput, $config, ["deleteSourceOnError","DELETESOURCEONERROR","deletesourceonerror"],"deleteSourceOnError",true);              // true in werte unset machen wenn fehler
@@ -6810,8 +6875,8 @@ class statistics
      */
     public function addWert(&$input,$value)
         {
-        if (isset($input["Avg"]))   $input["Avg"]   +=$value;
-        if (isset($input["Value"])) $input["Value"] +=$value; 
+        if ( (isset($input["Avg"]))   && (is_numeric($input["Avg"])) )   $input["Avg"]   +=$value;
+        if ( (isset($input["Value"])) && (is_numeric($input["Value"])) ) $input["Value"] +=$value;             
         return($input);
         }
 
@@ -6918,6 +6983,7 @@ class meansCalc extends statistics
     function addValue($wertInput)
         {
         if (is_array($this->result)===false) return (false);
+        if (is_numeric($wertInput["Value"])===false) return (false);                                // nicht numerische Werte lassen sich nicht addieren
         if (isset($wertInput["Value"]))         // Funktion mit Value/TimeStamp
             {
             if ($this->configDelta)             // Delta aus den Vorwerten berechnen
@@ -7226,6 +7292,7 @@ class eventLogEvaluate extends statistics
     protected $previousTime;                                            // um die Richtung feststellen zu können
     protected $previousMax,$previousMaxTime,$previousMin,$previousMinTime;
     protected $confEventLog, $confLogChangeNeg, $confLogChangePos, $confLogChangeTime;
+    protected $doString;                                                 // Auswertungen für Strings, statt Zahlen
     protected $inputValues;
     protected $result;
     protected $first=false,$debug;
@@ -7244,6 +7311,7 @@ class eventLogEvaluate extends statistics
         {
         if (is_array($result)===false) return (false);
         $this->debug = $debug;
+        if ($config["DoCheck"]["isNumeric"]==false) $this->doString=true;
 
         $this->result=&$result;
         /* Config vorbereiten */
@@ -7393,6 +7461,7 @@ class eventLogEvaluate extends statistics
         // Art des Meswertes für die weitere Bearbeitung herausfinden 
         if (is_array($this->result)===false) return (false);
         if (is_array($this->inputValues)===false) return (false);           // zusätzliche Daten übergeben mit $config["InputValues"]
+        if ($this->doString) return (false);                        // STring Analysen noch nicht definiert
         if ((is_int($index)) === false) echo $index." ";
         $aggregated=false;
         if (isset($this->inputValues[$index]["Avg"]))                       // wenn Daten als Avg kommen dann aggregated setzen
@@ -8142,7 +8211,7 @@ class meansRollEvaluate extends statistics
                 if ($value)
                     {
                     if ($this->showmax) echo "->".$value;             // den Wert, entweder Value oder Avg
-                    $sumRol += $value;
+                    if (is_numeric($value)) $sumRol += $value;
                     $countRol++;
                     }
                 else $error++;                  // kein Wert
@@ -8271,7 +8340,7 @@ class maxminCalc extends statistics
                     $this->minValue = $wert["Value"]; 
                     $this->minTime  = $wert["TimeStamp"]; 
                     }
-                $this->sum += $wert["Value"];
+                if (is_numeric($wert["Value"])) $this->sum += $wert["Value"];                      
                 if ($wert["TimeStamp"])
                     {
                     if ($this->sumTime===false) $this->sumTime = $wert["TimeStamp"];
@@ -9197,14 +9266,14 @@ class ipsTables
         return ($displayWidth);
         }
 
-    /* showTable
+    /* ipsTables::showTable
      * inputData ist das Array, display die Darstellung und Formatierung, config Zusatzkonfigurationen, debug für zusätzliche echos
      * display und config können weg gelassen werden, dann werden defaultwerte für die einzelnen Spalten angenommen
      *
      * display Einstellungen, ein index pro Spalte, wenn false/default wird ein leeres array erstellt und dieses mit den bestehenden Spalten Keys befüllt
      *  empty
      *  header
-     *  format  dieser Eintrag wird 1:1 an nf weitergeleitet
+     *  format  dieser Eintrag wird 1:1 an nf weitergeleitet : 
      *
      * config Einstellungen
      *  sort            eventuell multisort mit mehreren Spalten
@@ -17512,7 +17581,7 @@ class WfcHandling
  *   getDiscovery
  *   getModules
  *   addNonDiscovery
- *   getInstancesByType Alle installierten Instanzen mit einem bestimmten Typ aös Array ausgeben
+ *   getInstancesByType Alle installierten Instanzen mit einem bestimmten Typ als Array ausgeben
  *   getInstancesByName
  *   getFunctions
  *   getFunctionAsArray
@@ -17898,12 +17967,17 @@ class ModuleHandling
      *  4	Konfigurator
      *  5	Discovery
      *  6	Visualisierung
+     * es werden zuerst alle Instances mit dem selben Type ermittelt. Aus den Instance Parametern wird ein Subset aus OID,Name,ModulName, ModulID, ModuleType ermittelt
+     * dann wird überprüft ob das Modul mit ModulID noch vorhanden ist
+     * settings übergibt ein array[Library]=libraryname, wenn die ModulLibrary ungleich ist wird in der Ausgabe gefiltert
+     * das Ergebnis sind alle Instances mit einem Type aus einer Library, wenn keine Library angegeben wurde ist das Ergebnis alle instances mit einem Type
+     * $instances=$modulhandling->getInstancesByType(1,["Library"=>"Built-In"]);
      */
 	public function getInstancesByType($type,$settings=false,$debug=false)
 		{
         if ($settings===false) $settings=array();
         $configurator=array();
-        if ($debug) echo "getDiscovery aufgerufen :\n"; 
+        if ($debug) echo "getInstancesByType mit Type $type aufgerufen :\n"; 
         $discovery2=IPS_GetInstanceListByModuleType($type);
         $result=array();
         foreach($discovery2 as $instance)
@@ -17912,7 +17986,7 @@ class ModuleHandling
             $result[$instance]["Name"]=IPS_GetName($instance);
             $moduleinfo = IPS_GetInstance($instance)["ModuleInfo"];
             //print_r($moduleinfo);
-            if ($debug) echo "   ".$instance."   ".str_pad(IPS_GetName($instance),42)."    ".$moduleinfo["ModuleName"]."\n";
+            if ($debug>1) echo "   ".$instance."   ".str_pad(IPS_GetName($instance),42)."    ".$moduleinfo["ModuleName"]."\n";
             $result[$instance]["ModuleName"] = $moduleinfo["ModuleName"];
             $result[$instance]["ModuleID"]   = $moduleinfo["ModuleID"];
             $result[$instance]["ModuleType"] = $moduleinfo["ModuleType"];
@@ -17928,7 +18002,8 @@ class ModuleHandling
                 $libraryName=$this->getLibrary($libraryID);
                 $filter=true;
                 if ( (isset($settings["Library"])) && ($settings["Library"]!=$libraryName) ) $filter=false;
-                if ($debug) echo "   ".$entry["OID"]."   ".str_pad($entry["Name"],32)."    ".str_pad($entry["ModuleName"],32)."    ".$libraryName."\n";    
+                elseif ( (isset($settings["Module"])) && ($settings["Module"]!=$entry["ModuleName"]) ) $filter=false;                
+                if ($debug) echo "   ".$entry["OID"]."   ".str_pad($entry["Name"],52)."    ".str_pad($entry["ModuleName"],32)."    ".$libraryName."\n";    
                 if ($filter) 
                     {
                     $configurator[$i]=$entry;

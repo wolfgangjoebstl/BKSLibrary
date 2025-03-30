@@ -1522,6 +1522,10 @@ class AutosteuerungOperator
             configfileParser($configZutritt, $configParsed, ["Geofency","GEOFENCY","geofency" ],"Geofency" ,null); 
             //print_R($configParsed);
 
+            // Direction
+
+            // Alarm
+
             // Vervollständigung der Konfiguration 
             if (isset($configParsed["Condition"]) )
                 {
@@ -1574,7 +1578,7 @@ class AutosteuerungOperator
             else $endtime=$time;
             //$starttime=mktime(date("h", $jetzt),date("i", $jetzt),date("s", $jetzt),date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));  // mktime(int $hour,int $minute,int $second, int $month, int $day, int $year): int|false
             //$starttime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));       // heute 00:00
-            $starttime = $endtime-24*60*60*10;         // vor 24 Stunden
+            $starttime = $endtime-24*60*60*10;         // vor 10*24 Stunden
             $logging = $this->loggingActivity($config,$starttime,$endtime,$debug);
             /*$logging=array(); $id=0;
             foreach ($config as $type => $operation)
@@ -1625,7 +1629,7 @@ class AutosteuerungOperator
             if ($debug>1) print_R($logging[0]);
             //print_R($this->logicAnwesend);
             //print_r($configAvailable);
-            $anwesend=$this->Anwesend($configAvailable);            // aktuell keine Bewegung in der Wohnung
+            $anwesend=$this->Anwesend($configAvailable);            // aktuell keine Bewegung in der Wohnung, Anwesend kann mit unterschiedlichen Konfigurationen
             if ($debug) echo "Auswertung Anwesend:    ".($anwesend?"Ja":"Nein")."\n";
             $result = $this->analyseLoggingActivity($logging,$anwesend,$debug);                 // können sehr lang werden die Debug Ausgaben
             /*$summary=array(); $contacts=0;
