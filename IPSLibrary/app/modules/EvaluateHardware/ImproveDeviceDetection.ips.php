@@ -25,6 +25,9 @@
      *
      * Execute:  Analyse der Konfigurationsdateien und Abgleich mit der gespeicherten Parametrierung
      *
+     *
+     *
+     *
      * verbessert und überprüft die aktuelle Systemkonfiguration
      * mit dem Durchlauf des Scripts sollten Anomalien in der Parametrierung des Systems sichtbar gemacht werden.
      * in der DetectDeviceHandler Configuration werden zusätzliche neue Register angelegt.
@@ -150,6 +153,7 @@
         {    
         //echo "OperationCenter ist installiert.\n";
         IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+        IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
         $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library
         }
 

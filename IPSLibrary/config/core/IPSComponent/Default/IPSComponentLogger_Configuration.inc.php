@@ -27,6 +27,11 @@
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
+     *
+     * Windows C:/Scripts/Logging/Temperature/
+     * Linux   /var/log/symcon/Logging/Temperature     - Log Files (Logfiles...)
+     *         /var/opt/symcon/Logging/
+     *
 	 *
 	 */
 
@@ -34,11 +39,11 @@
 		{
 		return array(
 		   "LogDirectories"    => array (
-			"TemperatureLog"		=> "C:/Scripts/Temperature/",
-			"HumidityLog" 			=> "C:/Scripts/Humidity/",
-			"MotionLog" 			=> "C:/Scripts/Motion/",
-			"CounterLog" 			=> "C:/Scripts/Counter/",
-			"HeatControlLog" 		=> "C:/Scripts/HeatControl/",			
+			"TemperatureLog"		=> "C:/Scripts/Logging/Temperature/",
+			"HumidityLog" 			=> "C:/Scripts/Logging/Humidity/",
+			"MotionLog" 			=> "C:/Scripts/Logging/Motion/",
+			"CounterLog" 			=> "C:/Scripts/Logging/Counter/",
+			"HeatControlLog" 		=> "C:/Scripts/Logging/HeatControl/",			
 										),
 			"LogConfigs"         => array (
 			   "DelayMotion"        => 1800,                            /* verzoegerte Bewegungswerte um Hüllkurve zu erzeugen und kurze Unterbrechungen auszufiltern */

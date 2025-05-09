@@ -126,12 +126,14 @@ class TopologyLibraryManagement
         return($this->deviceGroupInstances);
         }
 
-    /* Liste aller montierten Sockets ausgeben 
+    /* TopologyLibraryManagement::get_SocketList
+     * Liste aller montierten Sockets ausgeben 
      * Format ist gleich, Key ist der Hardwaretyp dann der Name der Instanz mit den Einträgen OID und CONFIG
      *
      */
     public function get_SocketList($discovery, $debug=false)
         {
+        if ($debug) echo "get_SocketList aufgerufen:\n";
         $gateway=array();
         $hardwareTypeDetect = new Hardware();
         foreach ($discovery as $entry)
@@ -139,14 +141,14 @@ class TopologyLibraryManagement
             $hardwareType = $hardwareTypeDetect->getHardwareType($entry["ModuleID"]);
             if ($hardwareType != false) 
                 {
-                if ($debug) echo "    get_SocketList, bearbeite $hardwareType, new Hardware.$hardwareType class\n";
+                if ($debug) echo "    get_SocketList, bearbeite $hardwareType, new class Hardware$hardwareType getSocketID in Hardware_Library \n";
                 $objectClassName = "Hardware".$hardwareType;
-                $object = new $objectClassName($debug); 
+                $object = new $objectClassName(false,$debug);       // übernimmt Config und Debug, see class Hardware
                 $socketID = $object->getSocketID();
                 $validModule = @IPS_GetModule($socketID)["ModuleName"];
                 if ($validModule != "")
                     {    
-                    if ($debug) echo "        SocketID    $socketID    $validModule   \n";
+                    if ($debug) echo "        SocketID :   $socketID  in Module:  $validModule   \n";
                     $sockets=$this->modulhandling->getInstances($socketID);
                     foreach ($sockets as $socket)
                         {
@@ -161,6 +163,7 @@ class TopologyLibraryManagement
                     }
                 elseif ($debug) echo "        SocketID    unbekannt, keine Socketliste anlegen.\n";
                 }
+            else echo $entry["ModuleName"]."\n";   // Fehlermeldung schon in getHardwareType, es fehlt nur am lf
             }
         return($gateway);
         }

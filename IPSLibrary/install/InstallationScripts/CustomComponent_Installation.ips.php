@@ -49,7 +49,7 @@
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
     $startexec=microtime(true);    
-    echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 30 Sek \n";
+    //echo "Abgelaufene Zeit : ".exectime($startexec)." Sek. Max Scripttime is 30 Sek \n";
 	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -799,8 +799,10 @@ if (false)
 	 *
 	 ****************************************************************************************************************/
 
-if ($noinstall==false)
+
+if ( ($noinstall==false) && (isset ($installedModules["EvaluateHardware"])) )
     {
+    echo "Modul RemoteAccess ist NICHT installiert. Variablen selbst hier installieren, möglicherweise nicht alle, check !\n";
 	$commentField="zuletzt Konfiguriert von CustomComponent_Installation um ".date("h:i am d.m.Y ").".";
 
 	IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");

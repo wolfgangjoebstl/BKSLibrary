@@ -2150,7 +2150,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
             $vid = $rpc->IPS_CreateVariable($type);
             $rpc->IPS_SetParent($vid, $id);
             $rpc->IPS_SetName($vid, $name);
-            $rpc->IPS_SetInfo($vid, "this variable was created by script. ");
+            $rpc->IPS_SetInfo($vid, "this variable was created by script RPC_CreateVariableByName, from Server ".IPS_GetName(0).".");
             }
         //echo "Fertig mit ".$vid."\n";
         return $vid;
@@ -10941,15 +10941,19 @@ class ipsOps
 
 /*****************************************************************
  *
- *  Funktionen rund um das Disk Operating System
+ *  Funktionen rund um das Disk Operating System für Windows und soll bald auch vollständig für UNIX funktionieren
+ *  Befehl ExecuteUserCommand und einige andere Befehle die potentielle Ergebnisse evaluieren müssen neu gekapselt werden
  *
- *  ExecuteUserCommand, verwendet entweder IPSEXECUTE oder IPSEXECUTEEX, abhängig wie IPS gestartet wurde, als System user oder als Administrtor
- *  checkProcess, verwendt folgende private functions
+ *  ExecuteUserCommand          verwendet entweder IPSEXECUTE oder IPSEXECUTEEX, abhängig wie IPS gestartet wurde, als System user oder als Administrtor
+ *  getWmicsProcessList
+ *  checkProcess                verwendet folgende private functions
  *      getProcessList
  *      getTaskList
  *      getJavaList
  *  getProcessListFull
+ *  getSystemInfo
  *  checkProcess
+ *  getProcessListFull
  *
  *  getNiceFileSize
  *  formatSize
@@ -10969,7 +10973,9 @@ class sysOps
      */
     public function ExecuteUserCommand($command,$parameter="",$show=false,$wait=false,$session=-1,$debug=false)
         {
-        if ($debug) echo "ExecuteUserCommand $command \n";
+        if (dosOps::getKernelPlattform()=="WINDOWS")            // does not use instantiated data, no construct needed, unix or windows file structure expected
+            {
+            if ($debug) echo "ExecuteUserCommand $command \n";
             $result=@IPS_ExecuteEx($command, $parameter, $show, $wait, $session); 
             if ($result===false) 
                 {
@@ -10984,11 +10990,13 @@ class sysOps
                 if ($debug) echo "Ergebnis IPS_Execute nach retry $result \n";  
                 }
             else if ($debug) echo "Ergebnis IPS_ExecuteEx $result \n"; 
+            }
+        else echo "UNIX Plattform, Windows Befehle nicht relevant.\n";
         return ($result);                                    
         }
 
     /*****************************************************************
-     * sysOps, von checkProcess verwendet
+     * sysOps, von checkProcess verwendet, funktioniert nur für Windows
      * wenn filename übergeben wird, dieses file öffnen, von UTF-16 auf fixed 8Bit ASCII komvertieren
      * alternativ wmic mit IPS_Execute öffnen, ??? wird aber nicht funktionieren
      * ein paar linefeeds rausnehmen und wieder als process.txt speichern
@@ -11310,7 +11318,7 @@ class sysOps
     /***********************************************************************************
      *
      * sysOps::getProcessListFull
-     * eine Liste der aktuell aktiven Prozesse auslesen
+     * eine Liste der aktuell aktiven Prozesse auslesen, funktioniert nur für Windows
      * auch Java jdk berücksichtigen, wird von Watchdog Library getActiveProcesses aufgerufen
      * es wird ein array aus filenamen übergeben, alles Ergebnisse von process Abfragen
      * Verschiedene Typen:
@@ -11318,6 +11326,7 @@ class sysOps
      *      WmicsProcesslist
      *
      * ruft folgende Routinen auf:
+     *      getSystemInfo, SystemInfo
      *      getTaskList
      *      getWmicsProcessList   
      *      getProcessList
@@ -11813,7 +11822,8 @@ class dosOps
         else return("WINDOWS");
         }
 
-    /* dosOps, anhand der Logging Konfiguration herausfinden welches Betriebssystem
+    /* dosOps::getOperatingSystem
+     * anhand der Logging Konfiguration herausfinden welches Betriebssystem
      *
      */
     public function getOperatingSystem()
@@ -11831,6 +11841,34 @@ class dosOps
                 break;           
             default:
                 echo "dosOps::getOperatingSystem, Error, do not know ".$basicConfigs["OperatingSystem"].".\n";
+                return (false);
+                break;
+            }
+        }
+
+
+    /* dosOps::getKernelPlattform 
+     * anhand der Symcon Information herausfinden welches Betriebssystem
+     * kapselt detailliertere Symcon Funktion
+     */
+    public static function getKernelPlattform()
+        {
+        switch (strtoupper(IPS_GetKernelPlatform()))
+            {
+            case "WINDOWS":
+                return("WINDOWS");
+                break;           
+            case "UNIX":
+            case "SYMBOX":
+            case "UBUNTU":
+            case "UBUNTU (DOCKER)":
+            case "RASPERRY PI":
+            case "RASPERRY PI (DOCKER)":
+            case "MAC":
+                return("UNIX");
+                break;           
+            default:
+                echo "dosOps::getKernelPlattform, Error, do not know ".IPS_GetKernelPlatform().".\n";
                 return (false);
                 break;
             }
@@ -11947,7 +11985,7 @@ class dosOps
         return ($filesToRead);
         }
 
-    /* dosOps, fileAvailable
+    /* dosOps::fileAvailable
      *
      * einen Filenamen , auch mit Wildcards, in einem Verzeichnis suchen
      * liefert status true und false zurück
@@ -12031,8 +12069,8 @@ class dosOps
         return $status;
         }
 
-    /* dirAvailable
-     *
+    /* dosOps::dirAvailable
+     * input dir Name der gesucht wird, übergeordnetes Verzeichnis als Name oder wenn mehrere als array, debug
      * ein Verzeichnis in einem Verzeichnis suchen
      * liefert status true und false zurück
      *
@@ -12056,8 +12094,13 @@ class dosOps
                         $dateityp = @filetype( $verzeichnis.$file );            // seit Win11 gibt es neue Fileformate die noch nicht unterstützt werden
                         if ($dateityp == "dir")
                             {
-                            if ($file == $filename)  $status=$verzeichnis;
-                            elseif ($debug) echo $file."\n";
+                            if ($debug) echo str_pad($file,40);
+                            if ($file == $filename)  
+                                {
+                                $status=$verzeichnis;
+                                if ($debug) echo "found \n";
+                                }
+                            elseif ($debug) echo "\n";
                             }
                         elseif ( ($dateityp===false) && $debug) echo "dirAvailable:Fehler bei filetype, check \"$verzeichnis$file\".\n";
                         } /* Ende while */
@@ -12151,7 +12194,9 @@ class dosOps
      *          recursive   true, auch die Unterverzeichnisse einlesen 
      *                  wenn ein array gibt es
      *          recursive   default false
-     *          detailed    default false, true für detaillierte Auswertung
+     *          detailed    default false, true für detaillierte Auswertung, noch nicht implementiert
+     *          dironly     default false, wenn true werden keine files in die Liste übernommen
+     *
      *      newest      interressante Funktion, die Dateinamen/Verzeichnisse verkehrt herum sortieren, wenn -n dann nur die ersten n übernehmen, also mit den ältesten Datum
      *                  Achtung damit wird auch die erste Verzeichnisstrukturebene umbenannt und heisst nur mehr 0...x oder 0..n
      *
@@ -12160,22 +12205,22 @@ class dosOps
 	public function readdirToArray($dir,$configInput=false,$newest=0,$debug=false)
 		{
         $detailed=false;
-        if (is_array($configInput))
+        //if ($debug) echo "readdirToArray aufgerufen für $dir\n";
+        if (is_array($configInput) === false) 
             {
-            $config=array();
-            if ($debug) echo "readdirToArray($dir,".json_encode($configInput)."\n";
-            configfileParser($configInput,$config,["RECURSIVE","recursive","Recursive"],"Recursive",false);
-            configfileParser($configInput,$config,["DETAILED","detailed","Detailed"],"Detailed",false);             // nur die angeführten werden übernommen
-            configfileParser($configInput,$config,["FILTER","filter","Filter"],"Filter",null);             
-            $recursive = $config["Recursive"];
-            $detailed  = $config["Detailed"];    
-            if ($debug) echo "readdirToArray aufgerufen für $dir . Configuration ist ".json_encode($config)."\n";
+            $recursiveDefault=$configInput;
+            $configInput=array();
             }
-        else 
-            {
-            $recursive=$configInput;
-            if ($debug) echo "readdirToArray aufgerufen für $dir\n";
-            }
+        else $recursiveDefault=false;
+        $config=array();
+        if ($debug) echo "readdirToArray($dir,".json_encode($configInput)."\n";
+        configfileParser($configInput,$config,["RECURSIVE","recursive","Recursive"],"Recursive",false);
+        configfileParser($configInput,$config,["DETAILED","detailed","Detailed"],"Detailed",false);             // nur die angeführten werden übernommen
+        configfileParser($configInput,$config,["DIRONLY","dironly","Dironly","DirOnly"],"Dironly",false);             // nur die angeführten werden übernommen
+        configfileParser($configInput,$config,["FILTER","filter","Filter"],"Filter",null);             
+        $recursive = $config["Recursive"];
+        $detailed  = $config["Detailed"];    
+        if ($debug) echo "Configuration ist ".json_encode($config)."\n";
 	   	$result = array();
 		// Test, ob ein Verzeichnis angegeben wurde
 		if ( is_dir ( $dir ) )
@@ -12198,7 +12243,7 @@ class dosOps
 						}
 					else
 						{
-						$result[] = $value;
+                        if ($config["Dironly"]===false) $result[] = $value;
 						}
 					}
 				} // ende foreach
@@ -12479,7 +12524,10 @@ class dosOps
         }
 
 
-    /* einem Verzeichnisbaum ein Backslash oder Slash anhängen, sonst wäre die letzte Position eventuell auch eine Datei */
+    /* einem Verzeichnisbaum ein Backslash oder Slash anhängen, sonst wäre die letzte Position eventuell auch eine Datei 
+     * zusätzliche funktionen
+     *     automatische Erkennung Dos oder Linux am Verzeichnisbaum
+     */
 
 	function correctDirName($verzeichnis,$debug=false)
 		{
@@ -12507,7 +12555,7 @@ class dosOps
 		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		        // Slash kommt im String ausser auf Pos 0 vor, wenn nicht am Ende mit Slash am Ende erweitern
 
         if ($pos3) $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // wenn ein Doppelzeichen ausser am Anfang ist dieses vereinfachen
-        if ($pos4) $verzeichnis = str_replace("//","/",$verzeichnis);
+        if ($pos4 !== false) $verzeichnis = str_replace("//","/",$verzeichnis);     // bei Unix kann es auch 0 sein, da slash an erster Position
         
         // finish to correct dir seperator according to Operating System dos/linux
         if ($dos) 
@@ -15262,24 +15310,7 @@ class ComponentHandling
                     }
 				$oid=$entry["COID"];
                 if ( ($this->debug) || ($debug) ) echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-                /* eigene Routine um Logging zu setzen, erst einmal im Test
-                if ( $archiveID && (ACmySQL_GetLoggingStatus($archiveID,$oid)==false) )
-                    {
-					ACmySQL_SetLoggingStatus($archiveID,$oid,true);
-					//ACmySQL_SetAggregationType($archiveID,$oid,0);            // es gibt nur einen Aggregation Type 0
-					IPS_ApplyChanges($archiveID);
-					echo "       Variable ".$oid." (".IPS_GetName($oid)."), mySQL Archiv logging für dieses Geraeteregister wurde aktiviert.\n";
-                    }
-				// check, es sollten auch alle Quellvariablen gelogged werden 
-				if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)==false)
-					{
-					// Wenn variable noch nicht gelogged automatisch logging einschalten 
-					AC_SetLoggingStatus($this->archiveHandlerID,$oid,true);
-					AC_SetAggregationType($this->archiveHandlerID,$oid,0);
-					IPS_ApplyChanges($this->archiveHandlerID);
-					echo "       Variable ".$oid." (".IPS_GetName($oid)."), Archiv logging für dieses Geraeteregister wurde aktiviert.\n";
-					}   */
-                $this->setLogging($oid);    
+                $this->setLogging($oid);            // Archivieren für diese Variable aktivieren  
 				if ($donotregister==false)      /* Notbremse, oder generell deaktivierbares registrieren */
 					{                    
 	   		        $detectmovement=$entry["DETECTMOVEMENT"];
@@ -15352,9 +15383,23 @@ class ComponentHandling
 							{
 							$rpc = new JSONRPC($Server["Adresse"]);
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
+                            if (isset($Server[$index])===false)             // Workaround for wrong naming of Kategories in Remote Server 
+                                {
+                                echo "      Warning, unknown $index in ".json_encode($Server)."\n"; 
+                                switch ($index)
+                                    {
+                                    case "Schalter":
+                                        $index="Switch";
+                                        echo "      Renamed Index from Schalter to Switch, continue\n";
+                                        break;
+                                    default: 
+                                        echo "      Error, no, solution found, unknown index.\n";
+                                        return(false);
+                                    }
+                                }                            
                             if ($debug) 
                                 {
-                                echo "     Erzeuge Variable in ".$Server[$index]." mit $IndexName.$IndexNameExt und Variabletyp $variabletyp "; 
+                                echo "     Erzeuge Variable in ".$Server[$index]." mit $IndexName$IndexNameExt und Variabletyp $variabletyp "; 
                                 echo "und ".json_encode($struktur[$Name]);
                                 echo ".\n";	
                                 }
@@ -15647,7 +15692,7 @@ class WfcHandling
             } 
         else 
             { 
-            echo "Achtung, Modul Stromheizung ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+            echo "Achtung, class WfcHandling, Modul Stromheizung ist NICHT installiert. Routinen werden uebersprungen.\n"; 
             }
         if (isset ($this->installedModules["CustomComponent"])) 
             { 
@@ -15670,7 +15715,7 @@ class WfcHandling
             } 
         else 
             { 
-            echo "Achtung, Modul CustomComponent ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+            echo "Achtung, class WfcHandling, Modul CustomComponent ist NICHT installiert. Routinen werden uebersprungen.\n"; 
             }
 
         $this->WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
@@ -17574,13 +17619,17 @@ class WfcHandling
  *   printrModules		gibt die gespeicherte Variable für die Module aus, alle Module für alle Libraries
  *
  *   printLibraries     echo Ausgabe der verfügbaren Bibliotheken, das sind die externen Libraries wie Astronomy
- *   getLibrary
+ *   getLibrary         Libraries nach einer bestimmten Needle untersuchen, wenn false alle, nach einer ID nach einem Namen
  *   printModules		Alle Module die einer bestimmten Library zugeordnet sind als echo ausgeben
  *   printInstances		Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben
  *   getInstances		Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben
- *   getDiscovery
- *   getModules
- *   addNonDiscovery
+ *   getDiscovery       Alle installierten Discovery Instanzen nach Typ 5 ausgeben
+ *   getModules         Alle Module die einer bestimmten Library, Auswahl nach ID oder Name, zugeordnet sind ausgeben 
+ *
+ *   addDiscovery       add Discovery Instanzen zu einem array aus einem Array mit Libraries
+ *   addConfigurator    add Configurator Instanzen zu einem array aus einem Array mit bestimmten Libraries
+ *   addNonDiscovery    ander Konfigurator Instanzen dazugeben
+ *
  *   getInstancesByType Alle installierten Instanzen mit einem bestimmten Typ als Array ausgeben
  *   getInstancesByName
  *   getFunctions
@@ -17588,7 +17637,7 @@ class WfcHandling
  *   
  *   get_string_between($input,'{','}')		Unterstützungsfunktion um den json_decode zu unterstützen
  *   selectConfiguration
- *
+ *   lookforkeyinarray      ConfigurationForm analysieren   
  *
  ******************************************************************/
 
@@ -17658,7 +17707,7 @@ class ModuleHandling
 			}
 		}
 
-	/* Libraries untersuchen, wenn
+	/* Libraries nach einer bestimmten Needle untersuchen, wenn
      *  false      alle Libraries als array ausgeben
      *  GUID       Name der Library ausgeben
      *  Name       Name der Library ausgeben
@@ -17868,7 +17917,8 @@ class ModuleHandling
             }
 		}
 
-    /* Alle installierten Discovery Instanzen ausgeben
+    /* ModuleHandling::getDiscovery
+     * Alle installierten Discovery Instanzen nach Typ 5 ausgeben
      *   Homematic
      *
      *   andere müssen manuell mit addNonDiscovery() hinzugefügt werden
@@ -17879,7 +17929,7 @@ class ModuleHandling
         return ($this->getInstancesByType(5,false,$debug));
         }
 
-    /* Alle Module die einer bestimmten Library zugeordnet sind ausgeben 
+    /* Alle Module die einer bestimmten Library, Auswahl nach ID oder Name, zugeordnet sind ausgeben 
      */
 	public function getModules($input, $debug=false)
 		{
@@ -17903,6 +17953,71 @@ class ModuleHandling
         return($modules);
         }
 
+    /* add Discovery Instanzen zu einem array aus einem Array mit Libraries
+     */
+    public function addDiscovery(&$discovery,$libraries,$debug=false)
+        {
+        if ($debug) echo "addDiscovery, all Libraries and Units with Discovery Modul:\n";
+        foreach ($libraries as $library)
+            {
+            $instances=$this->getInstancesByType(5,["Library"=>$library]);          //mit Debug, Discovery aus library
+            if ($debug>1) print_r($instances);
+            foreach ($instances as $instance)
+                {
+                $modName=$instance["ModuleName"];
+                $pos=strpos($modName,"Discovery");
+                $unitName=trim(substr($modName,0,$pos));
+                if ($debug) echo "   ".str_pad($modName,25)."   ".str_pad($library,30)."   $unitName\n";
+                $input["ModuleID"]    = $instance["ModuleID"];        
+                $input["ModuleName"]  = $modName; 
+                $input["UnitName"]    = $unitName; 
+                $input["LibraryName"] = $library; 
+                $discovery[]=$input; 
+                }
+            }
+        return ($discovery);
+        }
+
+    /* add Configurator Instanzen zu einem array aus einem Array mit bestimmten Libraries
+     */
+    public function addConfigurator(&$discovery,$libraries,$debug=false)
+        {
+        if ($debug) echo "addConfigurator \n";
+        $units=array();
+        //print_r($discovery);
+        foreach ($discovery as $entry)
+            {
+            if (isset($entry["UnitName"])) $units[$entry["UnitName"]]=true;                     // wenn discovery schon definiert, keinen Konfigurator dazunehmen
+            }
+        foreach ($libraries as $library)
+            {
+            $instances=$this->getInstancesByType(4,["Library"=>$library]);          //mit Debug, Discovery aus library
+            if ($debug>1) print_r($instances);
+            $modules=array(); 
+            foreach($instances as $instance)
+                {
+                $modules[$instance["ModuleID"]]=$instance;              // gleiche werden überschrieben    
+                }
+            foreach ($modules as $instance)
+                {
+                $modName=$instance["ModuleName"];
+                $pos=strpos($modName,"Configurator");
+                $unitName=trim(substr($modName,0,$pos));
+                if (isset($units[$unitName])===false)
+                    {                   
+                    if ($debug) echo "   ".str_pad($modName,25)."   ".str_pad($library,30)."   $unitName\n"; 
+                    $input["ModuleID"]   = $instance["ModuleID"];        
+                    $input["ModuleName"] = $instance["ModuleName"];  
+                    $input["UnitName"]   = $unitName; 
+                    $units[$unitName]    = true;                        // hinzufügen, nur einmal
+                    $discovery[]=$input; 
+                    }
+                }
+            }
+
+        return ($discovery);
+        }
+
     /* Alle zusätzlichen nicht automatisierbaren Discovery Instanzen ausgeben, dazu discovery anreichern
      *      AmazonEchoConfigurator
      *      NetatmoWeatherConfig
@@ -17911,7 +18026,6 @@ class ModuleHandling
      *      FS20EX Instanzen, FS20 Instanzen, FHT Instanzen         deprecated
      *      CAM Instanzen
      */
-
 	public function addNonDiscovery(&$discovery,$debug=false)
 		{
         //$discovery=array();       // brauchen wir nicht, wird gleich am lebenden Objekt umgesetzt
@@ -17921,18 +18035,22 @@ class ModuleHandling
         * {DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8} = NetatmoWeatherConfig
         *
         */
-        $input["ModuleID"]   = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
-        $input["ModuleName"] = "AmazonEchoConfigurator";
-        $discovery[]=$input;
-        $input["ModuleID"]   = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
-        $input["ModuleName"] = "NetatmoWeatherConfig";
-        $discovery[]=$input;
+        //if (false)
+            {
+            $input["ModuleID"]   = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
+            $input["ModuleName"] = "AmazonEchoConfigurator";
+            $discovery[]=$input;
+            $input["ModuleID"]   = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
+            $input["ModuleName"] = "NetatmoWeatherConfig";
+            $discovery[]=$input;
+            $input["ModuleID"]   = "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}";        // add HUE
+            $input["ModuleName"] = "HUE Configurator";
+            $discovery[]=$input;
+            }                
         $input["ModuleID"]   = "{91624C6F-E67E-47DA-ADFE-9A5A1A89AAC3}";
         $input["ModuleName"] = "HomeMatic RF Interface Configurator";
         $discovery[]=$input;
-        $input["ModuleID"]   = "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}";        // add HUE
-        $input["ModuleName"] = "HUE Configurator";
-        $discovery[]=$input;
+
 
         /* wenn keine Konfiguratoren verfügbar dann die GUIDs der Instanzen eingeben
         *
@@ -18172,6 +18290,252 @@ class ModuleHandling
 			}
         return ($result);    
 		} /* ende function */
+
+    /* lookforkeyinarray
+     * einen besonderen key finden, liese sich auch recursive anstellen
+     * für das Untersuchen von ConfigurationForms
+     */
+    public function lookforkeyinarray($config,$key,$debug)
+        {
+        $actions=false;
+        if ($debug) echo "lookforkeyinarray, debug requested:\n";
+        if (is_array($config))
+            {
+            foreach ($config as $type => $item)
+                {
+                if ($debug) 
+                    {
+                    echo "    ".str_pad($type,23)." | ";
+                    if (is_array($item)) echo sizeof($item);
+                    echo "\n";  
+                    }
+                if ($type==$key) $actions=$item; 
+                if (is_array($item)) foreach ($item as $index => $entry) 
+                    {
+                    if ($debug) 
+                        {                    
+                        echo "        ".str_pad($index,20)." | ";
+                        if (is_array($entry)) echo sizeof($entry);
+                        echo "\n"; 
+                        }
+                    if ($index==$key) $actions=$entry; 
+                    if ($index=="de") ;                             // Schönheitskorrektur für mehr Übersichtlichkeit
+                    elseif (is_array($entry)) foreach ($entry as $topic => $subentry)
+                        {
+                        if ($debug) 
+                            {                         
+                            echo "           ".str_pad($topic,17)." | ";
+                            if (is_array($subentry)) echo sizeof($subentry);
+                            echo "\n";   
+                            }
+                        if ($topic==$key) $actions=$subentry;
+                        }  
+                    }
+                }
+            }
+        else echo "lookforkeyinarray, warning, no array provided.\n";
+        return $actions;
+        }
+
+    /* standardisierte Ausgabe der Daten von ConfigForm
+     * typical script
+            $config=json_decode(IPS_GetConfigurationForm(5333l),true);
+            $actions = $modulhandling->lookforkeyinarray($config,"actions");         // actions->[0]->values odeer actions->values
+            $values  = $modulhandling->lookforkeyinarray($actions[0],"values",$debug); 
+            $resultDevices=$modulhandling->findAllParentsConfigForm($values,$debug);
+            $modulhandling->analyseConfigForm($resultDevices);
+     * return Value ist eine Liste sortiert nach Namen
+     * übernimmt resultDevices von findAllParents, spezifische Eintrage mitnehmen
+     */
+    public function analyseConfigForm($resultDevices,$nonshow=false)
+        {
+        $result=array();
+        if ($nonshow=="array") $show=false;             // keinen text ausgeben, macht die Routine danach
+        else $show=true;
+        foreach ($resultDevices as $idx=>$device)         // mehrere Bridges, use of id, name, child
+            {
+            // additional information
+            if (isset($device["ModelName"])) $modelName=$device["ModelName"];
+            else $modelName="unknown";
+            if (isset($device["Productname"])) { $productName=$device["Productname"]; }
+            else $productName="unknown";
+            if ($show) echo str_pad($device["name"],40)."   $modelName  $productName\n";
+            foreach ($device["child"] as $idx=>$configurator)
+                {
+                if (isset($configurator["instanceID"])) $instanceId=$configurator["instanceID"];
+                else $instanceId="unknown";
+                if (isset($configurator["create"][0]["moduleID"])) $moduleID=$configurator["create"][0]["moduleID"];
+                else $moduleID="unknown";
+                $name=""; $type="unknown";
+                if (isset($configurator["name"])) $name=$configurator["name"];
+                if (isset($configurator["Type"])) $type=$configurator["Type"];
+                if ($name=="") $name=$type;
+                if ($show) echo "     ".str_pad($instanceId,12)."   ".str_pad($name,50)." $moduleID  \n";
+                $result[$idx]["oid"]=$instanceId;
+                $result[$idx]["name"]=$name;
+                $result[$idx]["groupname"]=$device["name"];
+                if ($productName!="unknown") $result[$idx]["productname"]=$productName;
+                }
+            }
+        return $result;            
+        }
+    /* analyseConfigStructure -- depricated, copied from DeviceManagement
+     * Values in der ConfigurationForms gefunden, jetzt analysieren, die ConfigurationForms ist mit parent als hierarchische Struktur aufgebaut
+     * wahrscheinlich immer ähnliche Struktur, hierarchische Struktur flat aufgebaut als geleichwertige Eintraege mit laufender id
+     * wenn parent dann ein child
+     *  
+     *  root   $id => [ id=> , name=>  ,   Productname=> , instanceId=>,  Type=> , ]   
+     *     wenn ein root gefunden ist gleich nach passenden childs durchsuchen              
+     *
+     * name und Productname werden nur übernommen wenn ein Eintrag vorhanden ist, also nicht blank
+     * sonst name=id, type=value[Type], 
+     *
+     * Reihenfolge umdrehen, die Childs erfassen und den Parent anzeigen
+     *
+     */
+    public function analyseConfigStructure($values,$debug=false)
+        {
+        $result=array();
+        if ($debug) echo "analyseConfigStructure \n";
+        foreach ($values as $id => $value)
+            {
+            $itemId=$value["id"];
+            if (isset($value["parent"])==false)     // nur root 
+                {
+                if ($debug) echo "$id   ID : $itemId  ";                                        // Ausgabe zB 0  ID : 1  Stehlampe     Hue white lamp
+                if ( (isset($value["name"])) && ($value["name"] != "")  ) 
+                    {
+                    $name=$value["name"];
+                    if ($debug) echo $value["name"]."     ";
+                    //print_r($value);
+                    }
+                else $name=$id;
+                /*
+                if ( (isset($value["Productname"])) && ($value["Productname"] != "")  )             // Type wird entweder Productname Hue Motion Sensor oder Type device
+                    {
+                    $type=$value["Productname"];
+                    if ($debug) echo $type."     ";
+                    //print_r($value);
+                    }
+                elseif (isset($value["Type"])) $type=$value["Type"];
+                */
+                if ( (isset($value["instanceID"])) && ((int)$value["instanceID"]>0) ) 
+                    {
+                    if ($debug) echo "  OID:  ".$value["instanceID"]."     ";
+                    //print_r($value);
+                    }
+                //if (isset($value["instanceID"])) echo "  OID:  ".$value["instanceID"];
+                foreach ($values as $idx => $child)          // looking for childrens
+                    {
+                    if ( (isset($child["parent"])) && ($child["parent"]==$itemId) ) 
+                        {
+                        //print_r($child);
+                        //if ($debug) echo "\n    $idx  ".$child["Type"]." ";
+                        if ( (isset($child["instanceID"])) && ((int)$child["instanceID"]>0) ) 
+                            {
+                            if ($debug) echo "  OID:  ".$child["instanceID"]."     ";
+                            $deviceOID=$child["instanceID"];
+                            $result[$deviceOID]["instanceID"]=$deviceOID;              // geht sonst bei merge verloren
+                            $result[$deviceOID]["name"]=$name;
+                            //$result[$deviceOID]["Type"]=$type;
+                            //$result[$deviceOID]["TypeChild"]=$child["Type"];
+                            $found=$id;
+                            //print_r($value);
+                            }
+                        }
+                    }
+                if ($debug) echo "\n";
+                }
+            }
+        return($result);
+        }
+
+    /* vorausgesetzte Struktur   id, parent, [ ]  oder ID, parent, [  ], entscheidet welches nicht empty
+     */
+    public function findParentsConfigForm($values,$debug=false)
+        {
+        $result=array();
+        if ($debug) echo "analyseConfigStructure, findParentsConfigForm \n";
+        foreach ($values as $key => $value)
+            {
+            $itemId=false;
+            if ((isset($value["id"])) && ($value["id"] != "")) $itemId=$value["id"];
+            if ((isset($value["ID"]))  && ($value["ID"] != "")) $itemId=$value["ID"];
+            if ($itemId)
+                {
+                if (isset($value["parent"])==false)     // nur root 
+                    {
+                    $result[$itemId]=$value;
+                    }
+                }
+            else            // weder id noch ID vorhanden
+                {
+                echo "findParentsConfigForm, unknown structure: "; 
+                print_R($value);
+                break;
+                }
+            }
+        return($result);
+        }
+
+    /* vorausgesetzte Struktur   id, parent, [ ]
+     * find childs with parent itemId, store with its 
+     */
+    public function findChildsConfigForm($values,$itemId,$debug=false)
+        {
+        $result=array();
+        $parents=$this->findParentsConfigForm($values);
+        if ($debug) echo "analyseConfigStructure, findChildsConfigForm for parent $itemId : \n";
+        foreach ($values as $key => $value)
+            {
+            if ((isset($value["parent"])) && ($value["parent"]==$itemId))     // nur root und parentId = itemId
+                {
+                $value["parent"]=$parents[$itemId];
+                $id=false;
+                if (isset($value["id"])) $id=$value["id"];
+                if (isset($value["ID"])) $id=$value["ID"];
+                if ($id) $result[$id]=$value;
+                }
+            }
+        return($result);
+        }
+
+    /* vorausgesetzte Struktur :  id, parent, [ ]
+     * wir strukturieren nach Child Items und ordnen den Parent zu 
+     */
+    public function findAllChildsConfigForm($values,$debug=false)
+        {
+        $result=array();
+        $parents=$this->findParentsConfigForm($values);
+        if ($debug) echo "analyseConfigStructure, findChildsConfigForm for all parents : \n";
+        foreach ($values as $key => $value)
+            {
+            if (isset($value["parent"]))     // nur root 
+                {
+                $value["parent"]=$parents[$value["parent"]];
+                $itemId=$value["id"];
+                $result[$itemId]=$value;
+                }
+            }
+        return($result);
+        }
+
+
+    /* vorausgesetzte Struktur :  id, parent, [ ]
+     * wir strukturieren nach Parent Items und ordnen die Childs zu
+     */
+    public function findAllParentsConfigForm($values, $debug=false)
+        {
+        $result=array();
+        if ($debug) echo "analyseConfigStructure, findAllParentsConfigForm, findChildsConfigForm for all parents : \n";
+        $parents=$this->findParentsConfigForm($values,$debug);
+        foreach ($parents as $key => $value)
+            {
+            $value["child"]=$this->findChildsConfigForm($values,$key);
+            $result[$key]=$value;
+            }
+        return($result);
+        }
 
 	}           // ende class ModuleHandling
 

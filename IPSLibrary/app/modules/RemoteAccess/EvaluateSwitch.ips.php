@@ -32,6 +32,9 @@
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
     $componentHandling=new ComponentHandling();
+	$commentField="zuletzt Konfiguriert von EvaluateHomematic um ".date("h:i am d.m.Y ").".";
+
+    $debug=false;
 
 	/******************************************** Schalter  *****************************************/
 
@@ -42,19 +45,19 @@
 		{
         /* die Homematic Switche werden installiert, Routine übernimmt install CustomComponents, DetectMovement und RemoteAccess */
 		echo "Homematic Switche werden registriert.\n";
-		$struktur1=$componentHandling->installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,');				/* Homematic Switche */
+		$struktur1=$componentHandling->installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField, $debug);				/* Homematic Switche */
 	    echo "***********************************************************************************************\n";
 		echo "HomematicIP Switche werden registriert.\n";
-		$struktur2=$componentHandling->installComponentFull(HomematicList(),["STATE","SECTION","PROCESS"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,');			    /* HomemeaticIP Switche */
-        print_r($struktur1);
-        print_r($struktur2);
+		$struktur2=$componentHandling->installComponentFull(HomematicList(),["STATE","SECTION","PROCESS"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField, $debug);			    /* HomemeaticIP Switche */
+        //print_r($struktur1);
+        //print_r($struktur2);
         }
 	if (function_exists('FS20List'))
 		{
 	    echo "***********************************************************************************************\n";
 		echo "FS20 Switche werden registriert.\n";
-        $struktur3=$componentHandling->installComponentFull(FS20List(),"StatusVariable",'IPSComponentSwitch_RFS20','IPSModuleSwitch_IPSHeat,');			// Variable heisst Status, es wird übergeordnet nach StatusVariable gesucht
-        print_r($struktur3);
+        $struktur3=$componentHandling->installComponentFull(FS20List(),"StatusVariable",'IPSComponentSwitch_RFS20','IPSModuleSwitch_IPSHeat,',$commentField, $debug);			// Variable heisst Status, es wird übergeordnet nach StatusVariable gesucht
+        //print_r($struktur3);
 		}
 	echo "***********************************************************************************************\n";
 

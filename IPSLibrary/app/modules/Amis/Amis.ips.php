@@ -191,7 +191,8 @@ else
 
     if (isset($installedModules["OperationCenter"]))
         {
-        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');            
+        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');  
+        IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");          
         $DeviceManager = new DeviceManagement();
         echo "--------------------------------\n";
         $result=$DeviceManager->updateHomematicAddressList();

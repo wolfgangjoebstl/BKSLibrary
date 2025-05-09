@@ -93,7 +93,8 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
 
     if (isset($installedModules["OperationCenter"])) 
         {
-        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+		IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");         
         echo "OperationCenter ist installiert.\n";
         //$DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library
         $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library

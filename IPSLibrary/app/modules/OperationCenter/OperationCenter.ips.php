@@ -9,6 +9,9 @@
  *
  * schlichtet auch die Bilder der Webcams, ändern auf neues Verzeichnis ab IPS7
  *
+ * wurde für Windows betriebssystem geschrieben, grosse Problem wenn Betrieb auf Unix erfolgt:
+ *
+ *
  *
  *
  * RouterAufruftimer
@@ -42,6 +45,7 @@
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
@@ -189,6 +193,7 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
 
+    // wird nur für Windows Betriebssystem verwendet
     $verzeichnis=$OperationCenterSetup["SystemDirectory"];
     $filename = $verzeichnis."read_Systeminfo.bat";
     $fileRead=array();
@@ -196,7 +201,7 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$sysOps = new sysOps(); 
     
     $DeviceManager = new DeviceManagement();                            // stürzt aktuell mit HMI_CreateReport ab
-    $DeviceManagerHomematic = new DeviceManagement_Homematic();         // deshalb diese calss verwenden
+    $DeviceManagerHomematic = new DeviceManagement_Homematic();         // deshalb diese class verwenden
     
 
 /**********************************
@@ -378,8 +383,8 @@ if ($_IPS['SENDER']=="WebFront")
                     }                     
                 if (isset($ActionButton[$variableId]["Update"]))
                     {
-                    echo "Update gedrückt. Bitte Geduld :"; 
-                    if (isset ($installedModules["Watchdog"])===false)          // nicht installiert
+                    //echo "Update gedrückt. Bitte Geduld :"; 
+                    if (isset ($installedModules["Watchdog"])===false)          // nicht installiert, batch Datei read_Systeminfo.bat aufrufen
                         {
                         $sysOps->ExecuteUserCommand($filename,"", false, false,-1,false);                          // false nix anzeigen  false nix warten, da Batch writing wäre das ausreichend
                         }
@@ -607,109 +612,6 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
                 $camOperation->showCamSnapshots($camConfig,true);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
                 }
 			} /* Ende isset */        
-
-	/********************************************************
-    *	Erreichbarkeit der Kameras ueberprüfen
-    *
-    * andere Routine als bei pingalldevices, es ist kein Sys_ping sondern direkter Webzugriff
-    *
-	 **********************************************************/
-
-	if (isset ($installedModules["IPSCam"]))
-		{
-		$ipscam_configuration=IPSCam_GetConfiguration();
-		//print_r($ipscam_configuration);
-		echo "\nSind die Webcams erreichbar ....\n";
-		foreach ($ipscam_configuration as $webcam)
-	   		{
-	   		/* es gibt einen IPS Component befehl, der wird jetzt zerlegt, da darin die IP Adresse ist */
-			$webcam_config=explode(',',$webcam['Component']);
-			//print_r($webcam_config);
-            switch ($webcam_config[0])
-                {
-                case "IPSComponentCam_Instar":
-    				$url="http://".$webcam_config[1]."/status.htm";  	/* gets the data from a URL */
-                    break;
-                case "IPSComponentCam_Instar5907":
-                case "IPSComponentCam_Instar720pSeries":
-                case "IPSComponentCam_Instar720pseries":
-                case "IPSComponentCam_Instar1080pSeries":
-                case "IPSComponentCam_Reolink":
-    				$url="http://".$webcam_config[1]."/info.html";  	/* gets the data from a URL */
-                    break;            
-                default:  
-                    echo "Fehler, IPSComponentCam ".$webcam_config[0]." nicht bekannt. url not defined.\n"; 
-                    break; 
-                }
-			echo "  Erreichbarkeit Kamera ".$webcam['Name']."  ".$url."\n";
-			$ch = curl_init($url);
-			$timeout = 5;
-			curl_setopt($ch, CURLOPT_URL, $url);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
-			curl_setopt($ch, CURLOPT_USERPWD, $webcam_config[2].":".$webcam_config[3]);
-			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-			curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
-			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
-			curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
-			curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
-			curl_setopt($ch, CURLOPT_AUTOREFERER, true);     // set referer on redirect
-			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
-   			curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
-			curl_setopt($ch, CURLOPT_MAXREDIRS, 10);       // stop after 10 redirects
-			$data = curl_exec($ch);
-			/* Curl Debug Funktionen */
-
-
-		  	$err     = curl_errno( $ch );
-			$errmsg  = curl_error( $ch );
-			$header  = curl_getinfo( $ch );
-			curl_close($ch);
-			echo "    Channel :".$ch." und IP Adresse aus Header ".$header["primary_ip"].":".$header["primary_port"]."\n";
-
-			if ($err>0)
-			   {
-				echo "    Nicht erreicht, Fehler ".$err." von ";
-				print_r($errmsg);
-				echo "\n";
-				//print_r($header);
-				}
-			else
-			   {
-				switch ($webcam_config[0])
-				   {
-			   	case "IPSComponentCam_Instar":
-						$result1=substr($data,strpos($data,"write(id)"),50);
-						$result2=substr($data,strpos($data,"write(sys_ver)"),50);
-						$result3=substr($data,strpos($data,"alarm_status_info"),50);
-						if (strpos($data,"write(id)")==false)
-			   			{
-							echo "    Nicht ausgelesen.\n";
-							}
-						else
-						   {
-				   		echo "    erreicht !\n";
-							//echo "  KameraID         : ".htmlentities($result1)."\n";
-							//echo "  Firmware Version : ".htmlentities($result2)."\n";
-							//echo "  Alarm Status     : ".htmlentities($result3)."\n";
-							}
-						break;
-				   case "IPSComponentCam_Instar5907":
-						$result1=substr($data,strpos($data,"Kamera ID"),50);
-						if (strpos($data,"Kamera ID")==false)
-			   			{
-							echo "    Nicht ausgelesen.\n";
-							}
-						else
-						   {
-				   		echo "    erreicht !\n";
-							echo "    KameraID         : ".htmlentities($result1)."\n";
-							}
-					default:
-					   break;
-					}
-				}
-			}
-		}
 
 	/********************************************************
    	Auswertung Router MR3420   curl

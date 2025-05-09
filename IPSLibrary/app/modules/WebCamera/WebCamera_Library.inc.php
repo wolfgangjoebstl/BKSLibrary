@@ -107,6 +107,31 @@ class WebCamera
             }
         }
 
+    /* Konfigurationen für IP Adressen etc., soll eine eigene Konfiguration ermöglichen
+     * aktuell merge beider Konfigurationen
+     * Struktur ähnlich zu OperationCenter
+     *
+     *
+     *
+     *
+     */
+    public function setConfiguration()
+        {
+        $config=array();
+        if ((function_exists("WebCamera_Configuration"))===false) IPSUtils_Include ('WebCamera_Configuration.inc.php', 'IPSLibrary::config::modules::WebCamera');				
+        if (function_exists("WebCamera_Configuration"))
+            {
+            $configInput = WebCamera_Configuration(); 
+            configfileParser($configInput, $setup, ["KONFIGURATION","CONFIGURATION","Konfiguration","konfiguration","config" ],"CONFIGURATION" ,"[]");  
+            configfileParser($configInput, $cam, ["CAM","CAMS","cam","camera","Camera" ],"CAM" ,"[]");  
+
+
+            }
+        //array_merge(//$this->oc_Configuration = $config;
+        return ($config);
+        }
+
+
     /* aktuell gilt die Operation Center Configuration als die treibende Konfiguration. 
      * Es sollen so gut wie möglich alle Configurationen hier zusammengefasst werden. 
      */

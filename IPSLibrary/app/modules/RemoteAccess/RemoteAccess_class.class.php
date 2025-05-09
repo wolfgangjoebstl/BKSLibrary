@@ -1101,8 +1101,7 @@ class RemoteAccess
 		return($struktur);
 		}
 
-	/**
-	 * @public
+	/* RemoteAccess::get_listofOIDs
 	 *
 	 * alle OIDs der bei addRemoteServer ermittelten Ergebnisse ausgeben
 	 *
@@ -1113,8 +1112,7 @@ class RemoteAccess
 		return ($this->listofOIDs);
 		}
 
-	/**
-	 * @public
+	/* RemoteAccess::RPC_CreateVariableByName
 	 *
 	 * von der ursprünglichen function uebernommen, Vereinheitlichung des Anlegens von Remote Variablen
 	 * 

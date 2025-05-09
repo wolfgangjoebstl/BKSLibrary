@@ -20,7 +20,7 @@
  *
  * Speicherung von Nachrichten, als Einträge in einem File, als Werte in Objekten und Ausgabe als html tabelle und als echo
  *
- * Variablen Logging wird in verschiedenen Ebenen möglichst zentralisisert unterstützt, CustomComponent Daten in
+ * Variablen Logging wird in verschiedenen Ebenen möglichst zentralisiert unterstützt, CustomComponent Daten in
  * Program::IPSLibrary::data::core::IPSComponent
  * abgespeichert immer in den Kategorien xxx_Auswertung und xxx_Nachrichten und zusätzlich in Mirror als Coponent_Variablenamexxx mit xxx ist Sensor, etc. 
  * in den Kategorien wird längerfristig mit einem standardisierten Namen und VariablenTyp und Profil gespeichert. 
@@ -56,8 +56,8 @@
  *
  *  GetEreignisID
  *
- *  get_IPSComponentLoggerConfig
- *  set_IPSComponentLoggerConfig
+ *  get_IPSComponentLoggerConfig                    // die Logging Konfiguration ausgeben
+ *  set_IPSComponentLoggerConfig                    // die Logging Konfiguration aufbereiten für die Betriebssysteme Linux und Windows
  *
  *  createFullDir
  *
@@ -477,11 +477,17 @@ class Logging
         return ($this->configuration);
         }
 
-    /* konfiguration einlesen und eventuell anpassen oder ergänzen
+    /* Logging::set_IPSComponentLoggerConfig
+     *
+     * Logging Konfiguration einlesen und eventuell anpassen oder ergänzen
      * drei Haupt-Blöcke
      *      BasicConfigs
      *      LogDirectories
      *      LogConfigs
+     *
+     * Für BasicConfigs rausfinden welches Betriebssystem genutzt wird.
+     *      bei Linux muss der Username nicht bekannt sein, Abkürzer mit ~ möglich
+     *
      */
 
     protected function set_IPSComponentLoggerConfig($debug=false)
@@ -505,34 +511,40 @@ class Logging
             configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","C:/Scripts/"); 
             configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["UserDir"],"UserDir","C:/Users/");   
             }
-        else 
+        else                // Linux und Derivate
             {
-            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/");
-            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["UserDir"],"UserDir",null);  
+            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/log/symcon/");
+            // Default Username ermitteln
+            $users = exec('who');               // shell ist immer mit unix user wenn whoami, wir brauchen die echten User mit einem Home Verzeichnis   
+            $user=explode(" ",$users);
+            //print_r($user);
+            $userDir="/home/".$user[0]."/";
+            //echo "Username found : $username \n";
+            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["UserDir"],"UserDir",$userDir);                // /home/USERNAME/  
             }
         configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["OperatingSystem"],"OperatingSystem",$operatingSystem);     
         configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["LogStyle","Logstyle","logstyle","LOGSTYLE"],"LogStyle","text");
 
         /* check logDirectories, replace c:/Scripts/ with systemdir */
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["TemperatureLog"],"TemperatureLog","/Temperature/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["TemperatureLog"],"TemperatureLog","/Logging/Temperature/");    
         $this->createFullDir($config["LogDirectories"]["TemperatureLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HumidityLog"],"HumidityLog","/Humidity/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HumidityLog"],"HumidityLog","/Logging/Humidity/");    
         $this->createFullDir($config["LogDirectories"]["HumidityLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["MotionLog"],"MotionLog","/Motion/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["MotionLog"],"MotionLog","/Logging/Motion/");    
         $this->createFullDir($config["LogDirectories"]["MotionLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ContactLog"],"ContactLog","/Contact/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ContactLog"],"ContactLog","/Logging/Contact/");    
         $this->createFullDir($config["LogDirectories"]["ContactLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["CounterLog"],"CounterLog","/Counter/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["CounterLog"],"CounterLog","/Logging/Counter/");    
         $this->createFullDir($config["LogDirectories"]["CounterLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HeatControlLog"],"HeatControlLog","/HeatControl/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HeatControlLog"],"HeatControlLog","/Logging/HeatControl/");    
         $this->createFullDir($config["LogDirectories"]["HeatControlLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["AnwesenheitssimulationLog"],"AnwesenheitssimulationLog","/Anwesenheitssimulation/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["AnwesenheitssimulationLog"],"AnwesenheitssimulationLog","/Logging/Anwesenheitssimulation/");    
         $this->createFullDir($config["LogDirectories"]["AnwesenheitssimulationLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SensorLog"],"SensorLog","/Sensor/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SensorLog"],"SensorLog","/Logging/Sensor/");    
         $this->createFullDir($config["LogDirectories"]["SensorLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ClimateLog"],"ClimateLog","/Climate/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ClimateLog"],"ClimateLog","/Logging/Climate/");    
         $this->createFullDir($config["LogDirectories"]["ClimateLog"],$config["BasicConfigs"]["SystemDir"]);
-        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SwitchLog"],"SwitchLog","/Switch/");    
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SwitchLog"],"SwitchLog","/Logging/Switch/");    
         $this->createFullDir($config["LogDirectories"]["SwitchLog"],$config["BasicConfigs"]["SystemDir"]);
 
         if ($debug) print_r($config);

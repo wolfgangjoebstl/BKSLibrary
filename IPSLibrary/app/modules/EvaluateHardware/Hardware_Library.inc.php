@@ -23,6 +23,7 @@
  *
  * Hardware
  *      HardwareDenonAVR extends Hardware
+ *      HardwareHomematicExtended
  *      HardwareNetatmoWeather extends Hardware
  *      HardwareHomematic
  *      HardwareHUE
@@ -31,7 +32,7 @@
  *      HardwareFHTFamily
  *      HardwareFS20Family
  *      HardwareFS20ExFamily
- *
+ *      HardwareOpCentCam
  *      HardwareIpsHeat
  *      HardwareEchoControl
  *
@@ -118,7 +119,7 @@ class Hardware
      */
     public function __construct($config=false,$debug=false)
         {
-        //echo "parent class Hardware construct.\n";
+        if ($debug>1) echo "        parent class Hardware construct.\n";
         $configuration=array();
         $this->combineDevices=false;
         $this->createUniqueName=false;
@@ -1007,7 +1008,8 @@ class HardwareHomematicExtended extends HardwareHomematic
         //echo "       getDeviceChannels: Channels hinzufügen.\n"; print_r($this->installedModules);
         if (isset($this->installedModules["OperationCenter"])) 
             {
-            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
+            //IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');  
+            IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter"); 
             $DeviceManager = new DeviceManagement();                    
             $instanz=$entry["OID"];
             //$typedev    = $DeviceManager->getHomematicDeviceType($instanz,4,$debug);     /* true debug, wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
@@ -1375,13 +1377,15 @@ class HardwareHomematic extends Hardware
      */
 	public function __construct($config=false,$debug=false)
 		{
+        if ($debug>1) echo "      construct HardwareHomematic, return socketID, bridgeID, deviceID :\n";
         $this->socketID = "{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}";
         $this->bridgeID = "{5214C3C6-91BC-4FE1-A2D9-A3920261DA74}";
         $this->deviceID = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
         $this->setInstalledModules();
         if (isset($this->installedModules["OperationCenter"])) 
             {
-            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            //IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
             if ($debug>2) echo "class DeviceManagement aufgerufen:\n";   
             $this->DeviceManager = new DeviceManagement_Homematic($debug>2); 
             }
@@ -1456,6 +1460,7 @@ class HardwareHomematic extends Hardware
                     if (isset($this->installedModules["OperationCenter"])) 
                         {
                         $matrix    = $this->DeviceManager->getHomematicHMDevice($instanz,2); 
+                        if ($matrix===false) return (false);            // instanz gibt es nicht
                         if ($debug>2) echo json_encode($matrix),"  \n";
                         if ($matrix[0]<2) return (false);           // vielleicht will ich gerade den Port 0 haben
                         }
@@ -1726,7 +1731,8 @@ class HardwareHomematic extends Hardware
             //echo "       getDeviceChannels: Channels hinzufügen.\n"; print_r($this->installedModules);
             if (isset($this->installedModules["OperationCenter"])) 
                 {
-                IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
+                //IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+                IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");  
                 $DeviceManager = new DeviceManagement();                    
                 $instanz=$entry["OID"];
                 //$typedev    = $DeviceManager->getHomematicDeviceType($instanz,4,$debug);     /* true debug, wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
@@ -1901,7 +1907,8 @@ class HardwareHUE extends Hardware
         $this->setInstalledModules();
         if (isset($this->installedModules["OperationCenter"])) 
             {
-            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            //IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
             if ($debug>2) echo "class DeviceManagement aufgerufen:\n";   
             $this->DeviceManager = new DeviceManagement_Hue($debug>2); 
             }
@@ -2060,13 +2067,15 @@ class HardwareHUEV2 extends Hardware
 
 	public function __construct($config=false,$debug=false)
 		{
+        if ($debug>1) echo "      construct HardwareHUEV2, return bridgeID and deviceName array, use Debug=3 for more Information :\n";
         $this->socketID = "";             // I/O oder Splitter ist der Socket für das Device, hier SEE Client, nicht Teil des Modules
         $this->bridgeID = "{52399872-F02A-4BEB-ACA0-1F6AE04D9663}";             // Configurator, Device Bridge 6786AF05-B089-4BD0-BABA-B2B864CF92E3
         $this->deviceID = ['HUE Button','HUE Light','HUE Device Power','HUE Grouped Light','HUE Light Level','HUE Motion','HUE Relative Rotary','HUE Scene','HUE Temperature'];             // das Gerät selbst
         $this->setInstalledModules();
         if (isset($this->installedModules["OperationCenter"])) 
             {
-            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            //IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
             if ($debug>2) echo "class DeviceManagement aufgerufen:\n";   
             $this->DeviceManager = new DeviceManagement_HueV2($debug>2);              // die Darstellung der ConfigurationForm ist wieder anders als bei Hue
             }

@@ -1571,6 +1571,7 @@
                 
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            if ($debug) echo "      More Data : Input register $variableId $variablename $variableProfile Type: $variableType Ergebnis Mirror ID $mirrorID \n";
 			if ($mirrorID===false)			
 				{	// Spiegelregister noch nicht erzeugt
 				$mirrorID=CreateVariable($variablename,$variableType,$this->Detect_DataID,10, $variableProfile, null,false);

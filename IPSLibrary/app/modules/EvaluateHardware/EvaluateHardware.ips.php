@@ -110,11 +110,12 @@
         echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
         echo "\n";
 
-    /* DeviceManger muss immer installiert werden, wird in Timer als auch RunScript und Execute verwendet */
+    /* DeviceManger für Homematic  muss immer installiert werden, wird in Timer als auch RunScript und Execute verwendet */
 
     if (isset($installedModules["OperationCenter"])) 
         {
         IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+        IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
         echo "OperationCenter ist installiert.\n";
         $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library
         //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
@@ -227,10 +228,15 @@ IPS_SetEventActive($tim1ID,true);
         $summary=array();		/* eine Zusammenfassung nach Typen erstellen */
         
         /************************************
-        *
-        *  Wenn vorhanden Hardware Sockets auflisten, dann kommen die Geräte dran
+        *  Zuerst alle Discovery Module und einige manuell selektierte Konfiguratoren als Ausgangsbasis nehmen
+        *  Dannn vorhandene Hardware Sockets auflisten, dann kommen die Geräte dran
         *  damit kann die Konfiguration des entsprechenden Gateways wieder hergestellt werden
         *
+        *  Funktion soll mehr generisch umgesetzt werden:
+        *     Aber eine Library kann mehrere Funktionsblöcke, sowie auch die Symcon Eigene Library "Built-In" mehrere Discoveries und Configuratoren hat
+        *     Eine Library ist kein Unterscheidungsmerkmal für Funktionsblöcke, Daher weiterhin am Beginn der Bezeichnung festhalten als zusätzlichen Unitname.
+        *     Mit Discovery und hinzugefügten Konfigurator Modulen arbeiten und manuell hinzugefügten Einheiten         
+        *     
         ******************************************/
 
         echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
@@ -348,7 +354,7 @@ IPS_SetEventActive($tim1ID,true);
         *  diese Routine wird in Zukunft nur mehr dazu verwendet eine vollständige Neuinstallation zu unterstützen
         *
         ******************************************/
-        if ( (isset($installedModules["OperationCenter"])) )                // wenn nich nicht installiert gibt es kein Devicemanagement
+        if ( (isset($installedModules["OperationCenter"])) )                // wenn noch nicht installiert gibt es kein Devicemanagement
             {
             //$includefile='<?php'."\n".'$fileList = array('."\n";
             $includefile            = '<?php'."\n";             // für die php IP Symcon Runtime
@@ -736,7 +742,7 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 		foreach ($IPSLightObjects as $name => $object)
 			{
 			$components=explode(",",$object[IPSHEAT_COMPONENT]);
-			echo "  ".$name."  ".$object[IPSHEAT_TYPE]."   ".$components[0]."    ";
+            echo "  ".str_pad($name,40)."  ".str_pad($object[IPSHEAT_TYPE],20)."   ".str_pad($components[0],35)."    ";
 			switch (strtoupper($components[0]))
 				{
 				case "IPSCOMPONENTSWITCH_HOMEMATIC":

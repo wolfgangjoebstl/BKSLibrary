@@ -311,9 +311,7 @@ function LogAlles_Manufacturers() {
 	function OperationCenter_SetUp()
 		{
 		$oc_setup = array(
-			"DropboxDirectory"         	=> 'C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/scripts/',    /* Dont use Blanks or any other character not suitable for filenames */
-			"DropboxStatusDirectory"      => 'C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/Status/',    /* Dont use Blanks or any other character not suitable for filenames */
-			"FirefoxDirectory"        		=> 'C:/Program Files (x86)/Mozilla Firefox/',
+
 					);
 		return $oc_setup;
 		}

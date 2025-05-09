@@ -18,21 +18,54 @@
 	 */ 
 	 
     /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
-    *
-    * 	hier für den Regensensor und die Temperaturwerte der FHT Heizungssteuerungen/zentralen
-    *    Basis ist das File EvaluateVariables_ROID.inc.php
-    *
-    * RemoteAccess				erzeugt die include Files für EvaluateVariables und erstellt die benötigten Profile
-    *
-    * EvaluateAndere				Regensensor, FHT Temperatur (TemeratureVar)
-    * EvaluateButton				Taster Homematic und FS20EX
-    * EvaluateContact			Kontakte Homematic
-    * EvaluateHeatControl		Homematic und FHT Thermostate den Stellwert und den Sollwert
-    * EvaluateHomematic			Homematic Temperatur und Feuchtigkeitswerte
-    * EvaluateMotion				Homematic und FS20 Bewegungsmelder, und die Bewegungsmelder der Cams
+     * es wird immer installComponentFull vewendet
+     *      wichtig immer, es wird addonkeyname verwendet , damit geschieht die Einordnung wo gespeichert wird unf wie
+     *      INDEX definiert die Kategorie auf dem Server, die mit getStructureofROID(INDEX ermitelt wird.
+     *
+     *
+     * 	hier für den Regensensor und die Temperaturwerte der FHT Heizungssteuerungen/zentralen
+     *    Basis ist das File EvaluateVariables_ROID.inc.php
+     *
+     * RemoteAccess				erzeugt die include Files für EvaluateVariables und erstellt die benötigten Profile
+     *
+     * EvaluateAndere				Regensensor, FHT Temperatur (TemeratureVar)
+     * EvaluateButton				Taster Homematic und FS20EX
+     * EvaluateContact			Kontakte Homematic
+     * EvaluateHeatControl		Homematic und FHT Thermostate den Stellwert und den Sollwert
+     * EvaluateHomematic			Homematic Temperatur und Feuchtigkeitswerte
+     *  EvaluateMotion				Homematic und FS20 Bewegungsmelder, und die Bewegungsmelder der Cams
     * EvaluateStronverbrauch 	die von AMIS angelegten Register
     * EvaluateSwitch				Homematic, HomematicIP und FS20 Schalter 
     * EvaluateVariables			Guthaben, SysInfo und RouterDaten Register
+    *
+    * Alternative Konfigurationen:
+    *   Daten aus der externen Datenbank holen, nicht aktiviert
+    *   im Normalfall werden die Daten aus der deviceList synchronisiert
+    *   oder aus der HomematicListe nur für Homematic Komponenten
+    *
+    * es wird installComponentFull verwendet:
+    * addonkeyname definiert die wichtigsten Parameter
+    *           [INDEX] => Klima
+    * getStructureofROID(Klima liest die Struktur am RemoteServer aus, als Basiskategorie ist der Clientname hier KBG47, zum Beispiel:
+    *     [LBG70-2Virt] => Array
+            (
+            [Adresse] => http://wolfgangjoebstl@yahoo.com:Cloudg0606@lbg70-nuc14.tailed7e52.ts.net:3777/api/
+            [ServerName] => 54437
+            [Temperatur] => 30927
+            [Switch] => 41468
+            [Kontakt] => 13417
+            [Taster] => 32719
+            [Bewegung] => 19357
+            [HeatControl] => 20452
+            [Feuchtigkeit] => 54440
+            [SysInfo] => 11884
+            [Klima] => 56009
+            [Helligkeit] => 52378
+            [Stromverbrauch] => 29915
+            [Andere] => 54159
+            [ArchiveHandler] => 27926
+            )
+    * DetectMovement Type (HeatControl,Feuchtigkeit,Temperatur,Movement,Contact)
     *
     *
     *
@@ -79,7 +112,8 @@
         }
     elseif ( (function_exists('deviceList')) )
         {
-        echo "\n\n==Climate von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
+        echo "\n";
+        echo "==Climate von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"],'IPSComponentSensor_Remote','IPSModuleSensor_Remote,',$commentField, $debug);				/* true ist Debug,  */
         echo "==================\n";
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BAROPRESSURE"],'IPSComponentSensor_Remote','IPSModuleSensor_Remote,',$commentField, $debug);		/* true ist Debug,  */

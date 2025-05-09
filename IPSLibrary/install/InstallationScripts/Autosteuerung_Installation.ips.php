@@ -103,6 +103,7 @@
         { 	
         if ($debug) echo "  Modul OperationCenter ist installiert.\n"; 
 		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+		IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 		IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	
 		$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);                
   	    $CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');

@@ -98,7 +98,7 @@
 
  	$installedModules = $moduleManager->GetInstalledModules();
     $systemDir     = $dosOps->getWorkDirectory(); 
-    $opSystem      = $dosOps->getOperatingSystem();
+    $opSystem      = $dosOps->getOperatingSystem();                 // zum Unterscheiden Linux und Windows
 
     if ($debug)
         {
@@ -152,6 +152,7 @@
 	if (isset ($installedModules["OperationCenter"])) 
 		{
 		$log_Install=new Logging($systemDir."/Install/Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
+        $ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('OperationCenter');
 		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
 		}
 		
@@ -162,20 +163,31 @@
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
 
-    // Batch Datei schreiben
-    $verzeichnisSystem=$OperationCenterSetup["SystemDirectory"];
-    $filenameSystem = $verzeichnisSystem."read_Systeminfo.bat";    
-    $handle2=fopen($filenameSystem,"w");
-    fwrite($handle2,'cd '.$verzeichnisSystem."\r\n");
-    fwrite($handle2,'echo %username% >>username.txt'."\r\n");
-    fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
-    fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
-    fwrite($handle2,'jps >>jps.txt'."\r\n");  
-    //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
-    fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
-    //fwrite($handle2,"pause\r\n");
-    fwrite($handle2,'systeminfo >>system.txt'."\r\n");
-    fclose($handle2);
+    if ($opSystem != "UNIX")
+        {
+        // Batch Datei schreiben für Windows Betriebssystem
+        $verzeichnisSystem=$OperationCenterSetup["SystemDirectory"];
+        $filenameSystem = $verzeichnisSystem."read_Systeminfo.bat";    
+        $handle2=fopen($filenameSystem,"w");
+        fwrite($handle2,'cd '.$verzeichnisSystem."\r\n");
+        fwrite($handle2,'echo %username% >>username.txt'."\r\n");
+        fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
+        fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
+        fwrite($handle2,'jps >>jps.txt'."\r\n");  
+        //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
+        fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
+        //fwrite($handle2,"pause\r\n");
+        fwrite($handle2,'systeminfo >>system.txt'."\r\n");
+        fclose($handle2);
+        }
+    else            // Unix Mode
+        {
+        // list of users and active user
+        // list of active processes, tasks, and java apps
+        // complete systeminfo
+        // sys ping alternative  
+        // alternative for running scripts, $sysOps->ExecuteUserCommand  
+        }
 
 	$modulhandling = new ModuleHandling();
 	
@@ -304,11 +316,11 @@
 
     // Timer12, change to new script
 	//$tim12ID=$timer->CreateTimerSync("HighSpeedUpdate",10);					                    /* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
-    $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptIdOperationCenter);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
-    IPS_SetEventActive($tim12ID,false);
+    //$tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptIdOperationCenter);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
 
     $timerOps = new timerOps();
     $tim12ID=$timerOps->CreateTimerSync("HighSpeedUpdate",10, $scriptIdFastPollShort);
+    IPS_SetEventActive($tim12ID,false);
 
 	/*******************************
 	 *
@@ -680,6 +692,7 @@
 	$HostnameID   			= CreateVariableByName($categoryId_SystemInfo, "Hostname", 3, "", "", 10);                      /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 	$SystemNameID			= CreateVariableByName($categoryId_SystemInfo, "Betriebssystemname", 3, "", "", 20);            /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
 	$SystemVersionID		= CreateVariableByName($categoryId_SystemInfo, "Betriebssystemversion", 3, "", "", 30);         /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$SystemCodenameID		= CreateVariableByName($categoryId_SystemInfo, "SystemCodename", 3, "", "", 35);	
 	$HotfixID				= CreateVariableByName($categoryId_SystemInfo, "Hotfix", 3, "", "", 40);                        /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	$ExternalIP				= CreateVariableByName($categoryId_SystemInfo, "ExternalIP", 3, "", "", 100);                   /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	$UptimeID				= CreateVariableByName($categoryId_SystemInfo, "IPS_UpTime", 3, "", "", 200);                   /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
@@ -701,40 +714,45 @@
 				INIT, Backup Funktionen
 
 	*************************************************************/
-    echo "Init und Vorbereitung Backup Funktionen:\n";
-	$categoryId_BackupFunction	= CreateCategory('Backup',   $CategoryIdData, 500);
-	/* Hilfe zur Verwendung von CreateVariable      ($name,$type,$parentid, $position,$profile,$Action,$default,$icon ); verwendet ID zur Wiedererkennung von Variablen nach einer Namensänderung 
-                       function CreateVariableByName($parentid, $name, $type, $profile="", $ident="", $position=0, $action=0)*/
-	$StatusSchalterBackupID		       = CreateVariableByName($categoryId_BackupFunction, "Backup-Funktion"    ,1, "AusEinAuto",                        "", 100, $scriptIdOperationCenter);
-	$StatusSchalterActionBackupID	   = CreateVariableByName($categoryId_BackupFunction, "Backup-Actions"     ,1, "RepairRestartFullIncrementCleanup", "", 110, $scriptIdOperationCenter);
-	$StatusSchalterOverwriteBackupID   = CreateVariableByName($categoryId_BackupFunction, "Backup-Overwrite"   ,1, "KeepOverwriteAuto",                 "", 120, $scriptIdOperationCenter);
-    $StatusSliderMaxcopyID             = CreateVariableByName($categoryId_BackupFunction, "Maxcopy per Session",1, "MaxCopySlider",                     "", 130, $scriptIdOperationCenter);
 
-	$StatusBackupId				= CreateVariableByName($categoryId_BackupFunction, "Status"          ,3,  "",         "",   20); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-	$ConfigurationBackupId		= CreateVariableByName($categoryId_BackupFunction, "Configuration"   ,3,  "",         "", 2000); 		/* speichert die konfiguration im json Format */	
-	$TokenBackupId		        = CreateVariableByName($categoryId_BackupFunction, "Token"           ,3,  "",         "", 2010); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
-	$ErrorBackupId		        = CreateVariableByName($categoryId_BackupFunction, "LastErrorMessage",3,  "",         "", 2020); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
-	$ExecTimeBackupId		    = CreateVariableByName($categoryId_BackupFunction, "ExecTime"        ,3,  "",         "", 2050); 		        /* maximale Durchlaufzeit um festzustellen ob Backup noch schneller gemacht werden kann */	
-    $TableStatusBackupId        = CreateVariableByName($categoryId_BackupFunction, "StatusTable"     ,3,  "~HTMLBox", "", 5000);      /* man kann in einer tabelle alles mögliche darstellen */
+    if (strtoupper($OperationCenterSetup["BACKUP"]["Status"])=="ENABLED")
+        {
+        echo "Init und Vorbereitung Backup Funktionen:\n";
+        $categoryId_BackupFunction	= CreateCategory('Backup',   $CategoryIdData, 500);
+        /* Hilfe zur Verwendung von CreateVariable      ($name,$type,$parentid, $position,$profile,$Action,$default,$icon ); verwendet ID zur Wiedererkennung von Variablen nach einer Namensänderung 
+                        function CreateVariableByName($parentid, $name, $type, $profile="", $ident="", $position=0, $action=0)*/
+        $StatusSchalterBackupID		       = CreateVariableByName($categoryId_BackupFunction, "Backup-Funktion"    ,1, "AusEinAuto",                        "", 100, $scriptIdOperationCenter);
+        $StatusSchalterActionBackupID	   = CreateVariableByName($categoryId_BackupFunction, "Backup-Actions"     ,1, "RepairRestartFullIncrementCleanup", "", 110, $scriptIdOperationCenter);
+        $StatusSchalterOverwriteBackupID   = CreateVariableByName($categoryId_BackupFunction, "Backup-Overwrite"   ,1, "KeepOverwriteAuto",                 "", 120, $scriptIdOperationCenter);
+        $StatusSliderMaxcopyID             = CreateVariableByName($categoryId_BackupFunction, "Maxcopy per Session",1, "MaxCopySlider",                     "", 130, $scriptIdOperationCenter);
 
-    IPS_SetHidden($ConfigurationBackupId,true);
-    IPS_SetHidden($TokenBackupId,true);
+        $StatusBackupId				= CreateVariableByName($categoryId_BackupFunction, "Status"          ,3,  "",         "",   20); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+        $ConfigurationBackupId		= CreateVariableByName($categoryId_BackupFunction, "Configuration"   ,3,  "",         "", 2000); 		/* speichert die konfiguration im json Format */	
+        $TokenBackupId		        = CreateVariableByName($categoryId_BackupFunction, "Token"           ,3,  "",         "", 2010); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
+        $ErrorBackupId		        = CreateVariableByName($categoryId_BackupFunction, "LastErrorMessage",3,  "",         "", 2020); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
+        $ExecTimeBackupId		    = CreateVariableByName($categoryId_BackupFunction, "ExecTime"        ,3,  "",         "", 2050); 		        /* maximale Durchlaufzeit um festzustellen ob Backup noch schneller gemacht werden kann */	
+        $TableStatusBackupId        = CreateVariableByName($categoryId_BackupFunction, "StatusTable"     ,3,  "~HTMLBox", "", 5000);      /* man kann in einer tabelle alles mögliche darstellen */
 
-    $subnet='10.255.255.255';
-    $BackupCenter=new BackupIpsymcon($subnet);
+        IPS_SetHidden($ConfigurationBackupId,true);
+        IPS_SetHidden($TokenBackupId,true);
 
-    $params=$BackupCenter->getConfigurationStatus("array");
-    //print_R($params);
-    if (isset($params["BackupDirectoriesandFiles"]) == false) $params["BackupDirectoriesandFiles"]=array("db","media","modules","scripts","webfront","settings.json");
-    if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$dosOps->correctDirName($BackupCenter->getSourceDrive());
-    if (isset($params["cleanup"])===false) $params["cleanup"]="finished";
-    if (isset($params["maxcopy"])===false) $params["maxcopy"]=500;
-    if (isset($params["maxtime"])===false) $params["maxtime"]=100;
-    $params["status"]="finished";
-    $BackupCenter->setConfigurationStatus($params,"array");
+        $subnet='10.255.255.255';
+        $BackupCenter=new BackupIpsymcon($subnet);
 
-    /* Default Parameter after Install */
-    $BackupCenter->configBackup(["update" => "overwrite"]);    
+        $params=$BackupCenter->getConfigurationStatus("array");
+        //print_R($params);
+        if (isset($params["BackupDirectoriesandFiles"]) == false) $params["BackupDirectoriesandFiles"]=array("db","media","modules","scripts","webfront","settings.json");
+        if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$dosOps->correctDirName($BackupCenter->getSourceDrive());
+        if (isset($params["cleanup"])===false) $params["cleanup"]="finished";
+        if (isset($params["maxcopy"])===false) $params["maxcopy"]=500;
+        if (isset($params["maxtime"])===false) $params["maxtime"]=100;
+        $params["status"]="finished";
+        $BackupCenter->setConfigurationStatus($params,"array");
+
+        /* Default Parameter after Install */
+        $BackupCenter->configBackup(["update" => "overwrite"]);    
+        }
+    else echo "Backup Funktionen nicht aktiviert.\n";
 
 	/*******************************
      *
@@ -1675,7 +1693,10 @@
         //CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
 		//CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
 
-		CreateLinkByDestination('Backup', $categoryId_BackupFunction,    $categoryId_WebFront,  850);
+        if (strtoupper($OperationCenterSetup["BACKUP"]["Status"])=="ENABLED")
+            {
+		    CreateLinkByDestination('Backup', $categoryId_BackupFunction,    $categoryId_WebFront,  850);
+            }
 		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
 
 		/* für Hardware */
@@ -2048,6 +2069,7 @@
 	if (isset ($installedModules["OperationCenter"])) 
 		{
 		$log_Install->LogMessage("Install Module OperationCenter abgeschlossen.");
+        echo "Install Module OperationCenter abgeschlossen.\n";
 		}
 
 	// ----------------------------------------------------------------------------------------------------------------------------
