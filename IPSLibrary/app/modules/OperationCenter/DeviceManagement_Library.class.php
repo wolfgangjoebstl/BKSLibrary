@@ -28,7 +28,7 @@
  *
  *
  *
- * diese Klassen werden hier behandelt:
+ * diese Klassen werden hier behandelt, waren vorher in der OperationCenter_Library
  *
  *
  *      DeviceManagement  

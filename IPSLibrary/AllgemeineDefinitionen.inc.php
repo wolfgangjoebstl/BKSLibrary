@@ -1953,7 +1953,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
         $VariableId = @IPS_GetVariableIDByName($name, $parentID);
         if ($VariableId === false)
             {
-            echo "Create Variable Name $name Type $type in $parentID:\n";
+            echo "CreateVariableByName : $name Type $type in $parentID:\n";
             $VariableId = @IPS_CreateVariable($type);
             if ($VariableId === false ) throw new Exception("Cannot CreateVariable with Type $type");
             IPS_SetParent($VariableId, $parentID);
@@ -4020,6 +4020,11 @@ class archiveOps
             if ($config["ShowTable"]["output"]=="realTable") { $returnRealTable=true; $doecho=false;  }  
             if ($config["ShowTable"]["output"]=="all")       { $doecho=false; }  
             }
+        if (isset($config["ShowTable"]["doecho"]))
+            {
+            if ($config["ShowTable"]["doecho"]==true) { $doecho=true;  }  
+            }
+            
         // einfache Routine
         //foreach ($werte as $wert) echo "   ".date ("d.m.Y H:i:s",$wert["TimeStamp"])."   ".$wert["Value"]."\n";     
 
@@ -4249,6 +4254,7 @@ class archiveOps
                 if ($pullwrite && $target)                      // source für das target gefunden, dort Werte hinzufügen, dazu correct einfach als Index hochzählen
                     {
                     // mit Source oder mit Delta
+                    echo "Add Data Source \"$pullwrite\" to Target \"$target\" \n";
                     $valuesAdd[$target][$pullwrite][$correct]["Value"]=$targetValue;            // source nicht mehr relevant, sondern nur wo werden die Wert gespeichert
                     $valuesAdd[$target][$pullwrite][$correct]["TimeStamp"]=$targetTimeStamp;
                     $correct++;
@@ -4275,7 +4281,7 @@ class archiveOps
                 $realtable[$line]["TimeStamp"]=$timeStamp;
                 $line++;
                 //$line--;
-                }
+                }       // Zeile für Zeile ausgeben
             $resultShow["realtable"]=$realtable;                  // ausgabefertige version
             $resultShow["table"]=$tabelle;                  // das sind die bereinigten Werte, wahrscheinlich zu gross
             $resultShow["columns"]=$oids;
@@ -5906,7 +5912,7 @@ class archiveOps
 
     private function cleanupStoreValues(&$werte,&$oid,$configInput,$debug=false)
         {
-        $deleteIndex=array();
+        $deleteIndex=array(); $deleteReason=array();                                // zusätzlich auch den Grund mitgeben
         $statistics = new statistics();
         $config = $statistics->setConfiguration($configInput);                      // braucht man nicht wurde schon bereinigt
         if (isset($config["cleanupData"])) 
@@ -6020,12 +6026,18 @@ class archiveOps
                     else echo str_pad($indexArchive,7)."  $wertUsed   ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   fehlerhafter Eintrag, Wert is 0 und config[suppressZero] ist gesetzt.\n";
                     } 
                 $deleteIndex[$indexArchive]=$wert["TimeStamp"];
+                $deleteReason[$indexArchive]["TimeStamp"]=$wert["TimeStamp"];
+                $deleteReason[$indexArchive]["ValueChecked"]=$wertUsed;
+                $deleteReason[$indexArchive]["Reason"]="Zero or not numeric";
                 $d++;    
                 }               
             elseif (isset($check[$wert["TimeStamp"]]))
                 {
                 if ( ($d<$displayMax) && $debug2) echo str_pad($indexArchive,7)."  ".nf($wertUsed,"kWh")."   ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   doppelter Eintrag\n";
                 $deleteIndex[$indexArchive]=$wert["TimeStamp"];
+                $deleteReason[$indexArchive]["TimeStamp"]=$wert["TimeStamp"];
+                $deleteReason[$indexArchive]["ValueChecked"]=$wertUsed;
+                $deleteReason[$indexArchive]["Reason"]="Double";
                 $d++;
                 }
             else
@@ -6036,6 +6048,9 @@ class archiveOps
                         {
                         if ( ($d<$displayMax) && $debug2) echo str_pad($indexArchive,7)."  ".nf($wertUsed,"kWh")."   ".date("d.m.Y H:i:s",$wert["TimeStamp"])."   Eintrag ausserhalb der Grenzen\n";
                         $deleteIndex[$indexArchive]=$wert["TimeStamp"];
+                        $deleteReason[$indexArchive]["TimeStamp"]=$wert["TimeStamp"];
+                        $deleteReason[$indexArchive]["ValueChecked"]=$wertUsed;
+                        $deleteReason[$indexArchive]["Reason"]="Range";                        
                         $d++;
                         }  
                     }
@@ -6183,7 +6198,11 @@ class archiveOps
         $result=array();
         $result["LogCount"]=$logCount;
         $result["delete"] = $deleteIndex;
-        if (sizeof($deleteIndex)>0) $this->result[$oid]["CleanUp"]["delete"]=$deleteIndex;
+        if (sizeof($deleteIndex)>0) 
+            {
+            if ($configCleanUp["provideReason"]) $this->result[$oid]["CleanUp"]["delete"]=$deleteReason;
+            else $this->result[$oid]["CleanUp"]["delete"]=$deleteIndex;
+            }
         return ($result);
         }
 
@@ -6674,6 +6693,7 @@ class statistics
         configfileParser($configInput, $config, ["range","RANGE","Range"],"Range",null);
         configfileParser($configInput, $config, ["maxLogsperInterval"],"maxLogsperInterval",10000);         // wird vor Aufruf cleanup angepasst auf Länge array
         configfileParser($configInput, $config, ["deleteSourceOnError"],"deleteSourceOnError",true);
+        configfileParser($configInput, $config, ["provideReason"],"provideReason",false);
         return ($config);
         }
 
@@ -10953,7 +10973,6 @@ class ipsOps
  *  getProcessListFull
  *  getSystemInfo
  *  checkProcess
- *  getProcessListFull
  *
  *  getNiceFileSize
  *  formatSize

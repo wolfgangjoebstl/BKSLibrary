@@ -384,12 +384,16 @@ if ($_IPS['SENDER']=="WebFront")
                 if (isset($ActionButton[$variableId]["Update"]))
                     {
                     //echo "Update gedrückt. Bitte Geduld :"; 
-                    if (isset ($installedModules["Watchdog"])===false)          // nicht installiert, batch Datei read_Systeminfo.bat aufrufen
-                        {
-                        $sysOps->ExecuteUserCommand($filename,"", false, false,-1,false);                          // false nix anzeigen  false nix warten, da Batch writing wäre das ausreichend
-                        }
-                    else $OperationCenter->SystemInfo();                            // bei den LBG und BKS einmal so lassen
-                    $sysOps->getProcessListFull($fileRead);                 // um 00:50 aufrufen und um um 3:50 auswerten
+                    $sysOps->ExecuteUserCommand($filename,"", false, false,-1,false);                          // false nix anzeigen  false nix warten, da Batch writing wäre das ausreichend
+                    // $OperationCenter->SystemInfo();                            //  ohne Parameter fragt SystemInfo selbst ab, mit Parameter wird der Input aus einer Variable extrahiert
+
+                    $categoryId_SysInfo = CreateCategory('SystemInfo', 		$CategoryIdData, 230);
+                    $sumTableHtmlID     = IPS_GetObjectIdByName("SystemInfoOverview", $categoryId_SysInfo);           // obige Informationen als kleine Tabelle erstellen
+                    $sysOps->getProcessListFull($fileRead);                 // startet getSystemInfo($filename["SystemInfo"] um die Werte aus der Systeminfo Datei zu extrahieren
+ 
+                    $html=true;
+                    $sumTableHtml=$OperationCenter->readSystemInfo($html);             // die Systeminfo als html Tabelle zusammenstellen
+                    SetValue($sumTableHtmlID, $sumTableHtml);
 
                     $categoryId_SysPing    	= CreateCategory('SysPing',       	$CategoryIdData, 200);
                     $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$categoryId_SysPing);
@@ -400,6 +404,7 @@ if ($_IPS['SENDER']=="WebFront")
 
                     //$pingOperation->SysPingAllDevices($log_OperationCenter);          
                     $pingOperation->writeSysPingStatistics(); 
+  
                     }                     
 				}	
 			break;

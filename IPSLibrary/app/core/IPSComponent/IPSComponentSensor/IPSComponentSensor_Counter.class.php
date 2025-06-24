@@ -157,7 +157,7 @@
 			echo "IPSComponentSensor_Counter:HandleEvent, Counter Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			//IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
-			$debug=false;
+			$debug=true;
 			$log=new Counter_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben
 			$result=$log->Counter_LogValue($value, $debug);
             $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID,$debug);   
@@ -347,7 +347,7 @@
 		function Counter_LogValue($value, $debug)
 			{
             // noch ein bisschen genauer anschauen, Vereinheitlichung Homematic und Netatmo Regenmesser
-            if ($debug) ; // im Debug Mode falsche Werte mit $value einschleusen  
+            if ($debug) echo "Counter_LogValue Debug Mode, use $value \n"; // im Debug Mode falsche Werte mit $value einschleusen  
             else $value=GetValue($this->variable);
 
 			// result formatieren für Ausgabe in den LogNachrichten
@@ -414,7 +414,8 @@
 					}
 				else
 					{
-					SetValue($this->counterOffsetLogID,GetValue($this->counterOffsetLogID)-$diff);
+					SetValue($this->counterOffsetLogID,GetValue($this->counterOffsetLogID)-$diff);      // counterOffsetLogID wird größer
+                    SetValue($this->counterLogID,GetValue($this->variable));                            // counterLogID ist nur das Pendant von variable um diff zu ermitteln
                     //SetValue($this->counterOffsetLogID,-$diff);
 					}						
                 

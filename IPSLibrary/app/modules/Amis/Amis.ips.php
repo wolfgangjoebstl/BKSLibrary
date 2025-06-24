@@ -160,7 +160,7 @@ if ($_IPS['SENDER']=="WebFront")
         }
 
 	}
-else
+else            // script called
 	{	
     ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
     $debug=false;
@@ -232,6 +232,7 @@ else
             $hardwareTypeDetect->writeRegisterStatistics($statistic);        
             }
         $deviceListFiltered = $hardwareTypeDetect->getDeviceListFiltered(deviceList(),["TYPECHAN" => "TYPE_METER_POWER"],"Install");     // true with Debug, Install hat keinen Einfluss mehr, gibt nur mehr das
+        //echo "Doublecheck Energy Registers:\n";
         $amis->doublecheckEnergyRegisters($deviceListFiltered,$debug);
         /*print_r($deviceListFiltered);
         $powerMeter=array();

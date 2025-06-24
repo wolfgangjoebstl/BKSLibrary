@@ -74,7 +74,11 @@
         IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');            
         }   
 
-    if ($_IPS['SENDER']=="Execute") $debug=true;            // Mehr Ausgaben produzieren
+    if ($_IPS['SENDER']=="Execute") 
+        {
+        $debug=true;            // Mehr Ausgaben produzieren
+        echo "Debug aktiviert.\n";
+        }
 	else $debug=false;
 
     /******************************************************
@@ -182,6 +186,7 @@
         {
         $controlDataQuality="TempTage";             // Simulate KeyPress  
         $controlDataQuality="RegenTage";             // Simulate KeyPress  
+        echo "Simulate Keypress $controlDataQuality \n";
         }
 
     /* es kommt ein Webfront Tastendruck rein, hier bearbeiten

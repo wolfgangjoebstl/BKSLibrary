@@ -37,6 +37,9 @@
  * Berechnung der Parameter für Giessen und Giessdauer
  *          GetValue($GiessTimeID), Immer 5 Minuten vor Giesbeginn die Giessdauer berechnen  SetValue($GiessTimeID,$gartensteuerung->Giessdauer($GartensteuerungConfiguration["Configuration"]))
  *
+ * Klimaauswertungen, wie werden Regenereignisse gespeichert
+ *
+ *
  *
  * Abhängig von der Configuration werden zusaetzliche Webfront Tabs aktiviert:
  *      Statistics  für Statistik Auswertungen 
@@ -174,7 +177,9 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 /******************************************************
 
 				EXECUTE
-
+*
+* wenn Execute werden zusaetzliche bfragen und Auswertungen gestartet
+*
 *************************************************************/
 
  if ($_IPS['SENDER']=="Execute")
@@ -183,7 +188,7 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	//$variableTempID = $gartensteuerung->getConfig_aussentempID();
 	//$variableID     = $gartensteuerung->getConfig_raincounterID();
     $variableTempID   = $configuration["AussenTemp"];
-    $variableID       = $configuration["RainCounter"];
+    $variableID       = $configuration["RainCounter"];          // Source Increment damit aggregiert werden kann, nicht das Target register
 	
 	echo "\n";	
 	echo "=======EXECUTE====================================================\n";
@@ -355,12 +360,16 @@ IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::mod
 	//print_R($werteLog);
 
 	//foreach ($gartensteuerungStatistics->regenStatistik as $regeneintrag)
+    echo "List Rain Events:\n";
     $regenStatistik = $gartensteuerungStatistics->listRainEvents();
     //print_R($regenStatistik);             //   Beispiel  [1720376247] => Array( [Beginn] => 1720376247, [Ende] => 1720378510,  [Regen] => 0.9,   [Max] => 6 )
+    echo "get Rain Registers:\n";
     $rainRegs=$gartensteuerungStatistics->getRainRegisters();
     //print_r($rainRegs);
-    $gartensteuerungStatistics->getRainAmountSince();
-
+    echo "get Rain Amount:\n";
+    $gartensteuerungStatistics->getRainAmountSince($debug);
+    print_R($regenStatistik);
+    echo "done\n";
     foreach ($regenStatistik as $regeneintrag)     // Register regenStatistik wird nicht mehr vom construct geschrieben
 		{
 		echo "Regenbeginn ".date("d.m H:i",$regeneintrag["Beginn"]).

@@ -378,7 +378,7 @@
                     //echo "variableID $variableID (".$this->ipsOps->path($variableID).")\n"; 
                     break;
                 default:
-                    echo "Warnung, Match aber kein Eintrag für den Typ ".$meter["TYPE"]."\n";  
+                    if ($debug) echo "Warnung, Match aber kein Eintrag für den Typ ".$meter["TYPE"]."\n";  
                     //print_R($meter);  
                     break;
                 }

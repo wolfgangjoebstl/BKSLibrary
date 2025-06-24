@@ -293,51 +293,25 @@ class WebCamera
         for ($i=0; $i<$maxCount; $i++)
             {
             $Cam=$camConfig[$j];
-            if (isset($Cam["COMPONENT"]))
+            if ( ! ((isset($Cam["STATUS"])) && (strtoupper($Cam["STATUS"])=="DISABLED") ) )
                 {
-                echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
-
-                /* 
-                $componentDef=explode(",",$Cam["COMPONENT"]);
-                print_r($componentDef);        // 0 component 1 domainname:port 2 user 3 password  , 1 bis 3 aus den anderen Angaben vervollstaendigen 
-
-                $component       = IPSComponent::CreateObjectByParams($Cam["COMPONENT"]);
-                $size=0; $command=100;
-                $urlPicture      = $component->Get_URLPicture($size);
-                $urlLiveStream   = $component->Get_URLLiveStream($size);
-                $urlCommand      = $component->Get_URL($command); // zum steuern wenn beweglich
-                //Get_Width, Get_Height
-
-                Livestream
-                Instar       small||medium||large    /videostream.cgi?user=admin&pwd=cloudg06&resolution={8||8||32}
-                Instar 720p  small||medium||large    /cgi-bin/hi3510/mjpegstream.cgi?-chn={13||12||11}&-usr=admin&-pwd=cloudg06
-                Instar 1080p small||medium||large    /mjpegstream.cgi?-chn={13||12||11}&-usr=admin&-pwd=cloudg06
-                                small||medium||large    rtsp://admin:instar@IP-Address:RTSP-Port/{13||12||11}
-                Reolink                              rtsp://admin:111111@192.168.0.110:554//h264Preview_01_main
-                                        Sub Stream:  rtsp://admin:111111@192.168.0.110:554//h264Preview_01_sub      
-                        
-                pictures
-                Instar                             /snapshot.cgi?user=admin&pwd=cloudg06&next_url=snapshot.jpg
-                Instar  720p small||medium||large  /tmpfs/{auto2.jpg||auto.jpg||snap.jpg}?usr=admin&pwd=cloudg06 
-                Instar 1080p small||medium||large  /tmpfs/{auto2.jpg||auto.jpg||snap.jpg}?usr=admin&pwd=cloudg06 
-                Reolink                            /cgi-bin/api.cgi?cmd=Snap&channel=0&rs=(any combination of numbers and letters)&user=admin&password=cloudg06
-
-
-                */
-
-                //print_R($Cam);
-                $status = $this->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");         // $Cam ist Camer Configuration
-                if ($status === false) 
+                if (isset($Cam["COMPONENT"]))
                     {
-                    echo "    Download Image from Camera ".$Cam["NAME"]." mit ".$Cam["COMPONENT"]." nicht erfolgreich.\n";
-                    if (isset($Cam["COMPONENTALT"])) 
+                    echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
+                    //print_R($Cam);
+                    $status = $this->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");         // $Cam ist Camer Configuration
+                    if ($status === false) 
                         {
-                        $Cam["COMPONENT"]=$Cam["COMPONENTALT"];
-                        $status = $this->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg", true);     // true Debug
-                        if ($status === false) echo "    Download Image (alt. try) from Camera ".$Cam["NAME"]." mit ".$Cam["COMPONENT"]." nicht erfolgreich.\n";
+                        echo "    Download Image from Camera ".$Cam["NAME"]." mit ".$Cam["COMPONENT"]." nicht erfolgreich.\n";
+                        if (isset($Cam["COMPONENTALT"])) 
+                            {
+                            $Cam["COMPONENT"]=$Cam["COMPONENTALT"];
+                            $status = $this->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg", true);     // true Debug
+                            if ($status === false) echo "    Download Image (alt. try) from Camera ".$Cam["NAME"]." mit ".$Cam["COMPONENT"]." nicht erfolgreich.\n";
+                            }
                         }
-                    }
-                }                   // kein Component verfügbar , der Nächste bitte
+                    }                     // kein Component verfügbar , der Nächste bitte
+                }     
             $j++;
             if ($j==$maxCount) $j=0;                // Beim nächsten Mal gehts hier weiter. Bei Timeouts einfach mit der nächsten Kamera weitermachen
             SetValue($this->camIndexID,$j);

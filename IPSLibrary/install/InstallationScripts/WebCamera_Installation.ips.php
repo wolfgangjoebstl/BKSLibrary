@@ -34,7 +34,11 @@
      * Externe gehen auch aber die Bandbreite ist recht gross.
      * in der IPSCam können mehrere Kameras sein, auch welche die nur über extern erreichbar sind
 	 *
-	 *
+	 * echo "Webfront Administrator ".json_encode($CamTableCaptureID)." \n"; liefert eine falsche BaseID für die Instalation des Webfronts
+     *
+     * empty class in DownloadImageFromCams
+     *
+     *
 	 * @file          WebCamera_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 *
@@ -419,6 +423,7 @@
         echo "\n==========================================================\n";
         //echo "------StillPics View aufbauen, so wie auch im Timer\n";
         $zielVerzeichnis = $webCamera->zielVerzeichnis();
+        print_R($camConfig);
         $webCamera->DownloadImageFromCams($camConfig, $zielVerzeichnis);            // von allen Cameras ein Bild herunterladen, wenn zwei Kameras nicht erreichbar sind abbrechen
         
         $camOperation = new CamOperation();
@@ -573,6 +578,7 @@
 
         if (isset($configWFront["Administrator"]))
             {
+            echo "Webfront Administrator ".json_encode($CamTableCaptureID)." \n";                
             $configWF = $configWFront["Administrator"];            
             $configWF["TabItem"]="CamCapture";                          // different path item from WebCamera, local override for captured selected Pictures
             $configWF["TabIcon"]="Window";                              // different Icon
@@ -791,7 +797,7 @@
 							
     function installWebfrontCaptures($configWF,$CamTableCaptureID, $debug=false)
         {
-        echo "installWebfrontCaptures:\n";
+        echo "installWebfrontCaptures ".json_encode($configWF).":\n";
         $full=false;
         $ipsOps=new ipsOps();
         if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) && (isset($CamTableCaptureID["Base"])) )

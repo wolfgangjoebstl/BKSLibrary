@@ -30,7 +30,7 @@
  *
  * webfront/user Verzeichnis auf user/ geändert wenn IPS7
  *
- * diese Klassen werden hier behandelt:
+ * diese Klassen werden hier behandelt, Anordnung der Übersicht halber etwas angepasst:
  *
  * OperationCenterConfig
  *          SeleniumChromedriver            extend OperationCenterConfig
@@ -43,17 +43,20 @@
  *          PingOperation           extend OperationCenter
  *          CamOperation            extend OperationCenter
  *
+ * statusDisplay
+ * parsefile
+ * TimerHandling
+ *
+ * und einige Allgemeine Funktionen
+ *
+ * in eine eigene Datei DeviceManagement_Library verschoben wurde:
+ *
  *      DeviceManagement  
  *          DeviceManagement_FS20       extends DeviceManagement
  *          DeviceManagement_Homematic  extends DeviceManagement
  *          DeviceManagement_Hue        extends DeviceManagement
  *          DeviceManagement_HueV2      extends DeviceManagement_Hue
  *
- * statusDisplay
- * parsefile
- * TimerHandling
- *
- * und einige Allgemeine Funktionen
  */
 
 
@@ -178,6 +181,8 @@ class OperationCenterConfig
     
     /* OperationCenterConfig::setConfigurationSoftware          formerly part of Watchdog, reads both config files in order Watchdog->OperationCenter
      * überprüfen der Konfiguration und Speichern
+     * aufgerufen von
+     *
      */
     function setConfigurationSoftware()
         {
@@ -268,28 +273,33 @@ class OperationCenterConfig
                     $config["ROUTER"][$name]=$router;
                     }
                 }
-            configfileParser($configInput, $configCam, ["CAM" ],"CAM" ,"[]");  
+
+            configfileParser($configInput, $config, ["FTP" ],"FTP" ,["Mode"=>"disabled"]);  
+
+            configfileParser($configInput, $configCam, ["CAM" ],"CAM" ,[]);  
             //print_r($configCam);
             
-            $config["CAM"]=$this->setCamConfig($configCam)["CAM"];
-            configfileParser($configInput, $config, ["LED" ],"LED" ,"[]");  
+            $config["CAM"]=$this->setCamConfig($configCam,$config)["CAM"];
+            configfileParser($configInput, $config, ["LED" ],"LED" ,[]);  
             
-            
-            configfileParser($configInput, $config, ["DENON" ],"DENON" ,"[]");  
-
-
+            configfileParser($configInput, $config, ["DENON" ],"DENON" ,[]);
 
             }
         //$this->oc_Configuration = $config;
         return ($config);
         }
 
-    public function setCamConfig($camConfig)
+    /*
+     * aufgerufen von setConfiguration
+     * nutzt Input von setSetup, wenn dort das FTP.Directory definiert ist, wird es als Ergänzung zum FTPFOLDER verwendet
+     * alternativ kann es auch hier als zweiter Parameter übergeben werden
+     */
+    public function setCamConfig($camConfig,$setup=false)
         {
-        $setup = $this->setSetup();
+        if ($setup===false) $setup = $this->setSetup();
         $dosOps=new dosOps();
         $ftp=false;
-        if (isset($setup["FTP"])) $ftp=$setup["FTP"];
+        if (isset($setup["FTP"]["Directory"])) $ftp=$setup["FTP"];
         $config=array();
         foreach ($camConfig as $index=>$configInput);           // identify Index
         //echo "setCamConfig for $index : ";print_r($configInput);
@@ -302,7 +312,8 @@ class OperationCenterConfig
             configfileParser($camera, $config, ["FTPFOLDER" ],"FTPFOLDER" ,"");
             
             //echo "setCamConfig ftp directory calculated ".$config["FTPFOLDER"]."\n";
-            $config["FTPFOLDER"]=$dosOps->correctDirName($ftp["Directory"].$config["FTPFOLDER"]);
+            if ($ftp) $config["FTPFOLDER"]=$dosOps->correctDirName($ftp["Directory"].$config["FTPFOLDER"]);
+            else $config["FTPFOLDER"]=$dosOps->correctDirName($config["FTPFOLDER"]);;
 
             configfileParser($camera, $config, ["MAC" ],"MAC" ,"");
             configfileParser($camera, $config, ["IPADRESSE" ],"IPADRESSE" ,"");
@@ -334,6 +345,8 @@ class OperationCenterConfig
                 }
             $output[$index][$camName]=$config;
             }
+        if (sizeof($output)==0) return ["CAM"=>array()];
+        
         //print_r($output);
         //$output[$index]=$configInput;
         return($output);
@@ -578,7 +591,7 @@ class OperationCenter extends OperationCenterConfig
 	 *
 	 */
 	 
-	function whatismyIPaddress1()
+	function whatismyIPaddress1($debug=false)
 		{
 		$posP[0]["IP"]="unknown";
 		$url="http://checkip.dyndns.com/";
@@ -600,7 +613,7 @@ class OperationCenter extends OperationCenterConfig
 
 		/* letzte Alternative ist die Webcam selbst */
 
-		echo "\n";
+		if ($debug) echo "\n";
 		if ($result1==false)
 			{
 			echo "Server reagiert nicht. Ip Adresse anders ermitteln.\n";
@@ -1338,7 +1351,7 @@ class OperationCenter extends OperationCenterConfig
 	 */
 	 function SystemInfo($text=false,$debug=false)
 	 	{
-
+        $sysOps = new sysOps(); 
 		$HostnameID   		= IPS_GetObjectIdByName("Hostname", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		$SystemNameID		= IPS_GetObjectIdByName("Betriebssystemname", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
 		$SystemVersionID	= IPS_GetObjectIdByName("Betriebssystemversion", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
@@ -1352,7 +1365,8 @@ class OperationCenter extends OperationCenterConfig
 		$UptimeID			= IPS_GetObjectIdByName("IPS_UpTime", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		$VersionID			= IPS_GetObjectIdByName("IPS_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		
-        $VersionJavaID		= IPS_GetObjectIdByName("Java_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+        $VersionJavaID		= IPS_GetObjectIdByName("Java_Version", $this->categoryId_SysInfo); 	
+        $tailScaleInfoID   	= IPS_GetObjectIdByName("TailScaleInfo", $this->categoryId_SysInfo); 
 
         /* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
 
@@ -1374,11 +1388,15 @@ class OperationCenter extends OperationCenterConfig
             {
             // exec('systeminfo',$catch);   // ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden 
             //$resultSystemInfo=IPS_EXECUTE("systeminfo","", true, true);
-            if ($text===false) $resultSystemInfo=$this->sysOps->ExecuteUserCommand("systeminfo","", false, true);           // gleicher Aufruf für alle
+            if ($text===false) $resultSystemInfo=$this->sysOps->ExecuteUserCommand("C:/Windows/System32/systeminfo.exe","", false, true);           // gleicher Aufruf für alle
             else $resultSystemInfo=$text;
-            //echo $resultSystemInfo;
             $catch=explode("\x0A",$resultSystemInfo);             //zeilenweise als array speichern
-            //print_R($catch);
+            if ($debug) 
+                {
+                echo "Ergebnis der Abfrage mit Befehl systeminfo : \n";
+                echo $resultSystemInfo;
+                print_R($catch);
+                }
 
             foreach($catch as $line)
                 {
@@ -1411,7 +1429,7 @@ class OperationCenter extends OperationCenterConfig
                 }
             if ($debug>1) echo "Ausgabe direkt:\n".$PrintLines."\n";		
 
-            /* auch Java ist in einem Windowsverzeichnis versteckt, nach Verzeichnis suchen */
+            /* auch Java ist in einem Windowsverzeichnis versteckt, nach Verzeichnis suchen 
             $dirs = ['C:/Program Files','C:/Program Files (x86)'];
 
             if ($debug) echo "Look for Java:\n";
@@ -1431,7 +1449,7 @@ class OperationCenter extends OperationCenterConfig
                         {
                         if ($entry != "latest")
                             {
-                            echo "more Java Versions are available. Here : $entry \n";
+                            if ($debug) echo "more Java Versions are available. Here : $entry \n";
                             }
                         }
                     }
@@ -1445,6 +1463,27 @@ class OperationCenter extends OperationCenterConfig
                 $results["Java_Version"]=$javaVersion;
                 SetValue($VersionJavaID,$javaVersion);
                 }
+            */
+
+            $dir=$this->appInstalledWin("Java");            // funktioniert nur für Windows
+            if ($dir) 
+                {
+                if ($debug) echo "Java Installed at $dir \n";
+                $javaVersion=$this->getJavaVersion($dir,$debug);
+                if ($debug) echo "Java version : $javaVersion.\n"; 
+                SetValue($VersionJavaID,$javaVersion);
+                }
+
+            $dir=$this->appInstalledWin("Tailscale");       // funktioniert nur für Windows
+            if ($dir) 
+                {
+                echo "TailScale Installed at $dir \n";
+                $status=json_encode($this->getTailScaleStatus($dir,$debug));
+                //print_R($status);
+                }
+            else $staus="disabled";
+            SetValue($tailScaleInfoID,$status);
+
             if (isset($results["Hostname"])) 
                 {
                 SetValue($HostnameID,$results["Hostname"]);
@@ -1452,6 +1491,11 @@ class OperationCenter extends OperationCenterConfig
                 SetValue($SystemVersionID,trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," "))));
                 SetValue($HotfixID,trim(substr($results["Hotfix(es)"],0,strpos($results["Hotfix(es)"]," "))));
                 SetValue($MemoryID,$results["Verfuegbarer physischer Speicher"]." von ".$results["Gesamter physischer Speicher"]." verfuegbar. ".$results["Virtueller Arbeitsspeicher"]." Virtualisiert.");
+                }
+            else 
+                {
+                echo "Hostname not evaluated out of SystemInfo, something might be wrong.\n";
+                print_r($results);
                 }
             }
         else
@@ -1503,6 +1547,7 @@ class OperationCenter extends OperationCenterConfig
 		//$IPAdresse=$this->whatismyIPaddress2();
 		//$results["ExterneIP"]=$IPAdresse;
 		$IPAdresse=$this->whatismyIPaddress1()[0]["IP"];
+
 		if (GetValue($ExternalIP) !== $IPAdresse) SetValue($ExternalIP,$IPAdresse);
 		$results["ExterneIP"]=$IPAdresse;
 
@@ -1717,8 +1762,18 @@ class OperationCenter extends OperationCenterConfig
 	 *
 	 * Die von SystemInfo aus dem PC (via systeminfo) ausgelesenen und gespeicherten Daten werden für die Textausgabe formatiert und angereichert
 	 * es werden keine Daten ausgelesen oder verarbeitet, hier erfolgt nur die Darstellung
+     * verwendet werden aus der Category SysInfo :
+     *      Hostname
+     *      Betriebssystemname
+     *      Betriebssystemversion, der CodeName wird aus der versionsnummer berechnet
+     *      Hotfix
+     *      ExternalIP
+     *      IPS_UpTime
+     *      IPS_Version
+     *      call updateUser
      *
-     * Ausnahme: updateUser() soll für Windows und Unix funktionieren
+     *   Ausnahme: updateUser() soll für Windows und Unix funktionieren
+     *
      *
      */								
 	 function readSystemInfo($html=false)
@@ -1735,11 +1790,12 @@ class OperationCenter extends OperationCenterConfig
 		$SystemNameID		= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
 		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		$MemAvailableID	    = CreateVariableByName($this->categoryId_SysInfo, "Memory", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
-    	$SystemCodenameID	= CreateVariableByName($this->categoryId_SysInfo, "SystemCodename", 3);	
+        $tailScaleInfoID   	= CreateVariableByName($this->categoryId_SysInfo, "TailScaleInfo", 3); 
+    	$SystemCodenameID	= IPS_GetObjectIdByName("SystemCodename",$this->categoryId_SysInfo);	
+        $VersionJavaID		= IPS_GetObjectIdByName("Java_Version", $this->categoryId_SysInfo); 
         
         if (dosOps::getKernelPlattform() == "WINDOWS")
             {
-            $VersionJavaID		= IPS_GetObjectIdByName("Java_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
             $Version=explode(".",getValue($SystemVersionID));
             //print_r($Version);
             if (isset($Version[2]))         // Windows System
@@ -1788,7 +1844,7 @@ class OperationCenter extends OperationCenterConfig
 		$PrintLn.="   ".str_pad("Betriebssystem Codename",30)." = ".str_pad($Codename,30)."   \n";
 		$PrintLn.="   ".str_pad("Anzahl Hotfix",30)." = ".str_pad(GetValue($HotfixID),30)."   (".date("d.m H:i",IPS_GetVariable($HotfixID)["VariableChanged"]).") \n";
 		$PrintLn.="   ".str_pad("External IP Adresse",30)." = ".str_pad(GetValue($ExternalIP),30)."   (".date("d.m H:i",IPS_GetVariable($ExternalIP)["VariableChanged"]).") \n";
-		$PrintLn.="   ".str_pad("Memory Available",30)." = ".str_pad(GetValue($ExternalIP),30)."   (".date("d.m H:i",IPS_GetVariable($MemAvailableID)["VariableChanged"]).") \n";
+		$PrintLn.="   ".str_pad("Memory Available",30)." = ".str_pad(GetValue($MemAvailableID),30)."   (".date("d.m H:i",IPS_GetVariable($MemAvailableID)["VariableChanged"]).") \n";
 		$PrintLn.="   ".str_pad("IPS Uptime",30)." = ".str_pad(GetValue($UptimeID),30)."   (".date("d.m H:i",IPS_GetVariable($UptimeID)["VariableChanged"]).") \n";
 		$PrintLn.="   ".str_pad("IPS Version",30)." = ".str_pad(GetValue($VersionID),30)."   (".date("d.m H:i",IPS_GetVariable($VersionID)["VariableChanged"]).") \n";
 
@@ -1802,7 +1858,16 @@ class OperationCenter extends OperationCenterConfig
         $PrintHtml .= '<tr><td>IPS Uptime</td><td>'.GetValue($UptimeID).'</td></tr>';
         $PrintHtml .= '<tr><td>IPS Version</td><td>'.GetValue($VersionID).'</td</tr>';
         $PrintHtml .= '<tr>'.$this->updateUser().'</tr>';                            // bei der Anzeige schnell ein paar Werte schreiben
-        $PrintHtml .= '<tr><td>Java Version</td><td>'.GetValue($VersionJavaID).'</td></tr>';
+        if (dosOps::getKernelPlattform() == "WINDOWS")
+            {
+            $PrintHtml .= '<tr><td>Java Version</td><td>'.GetValue($VersionJavaID).'</td></tr>';
+    		$PrintLn   .= "   ".str_pad("Java Version",30)." = ".str_pad(GetValue($VersionJavaID),30)."   (".date("d.m H:i",IPS_GetVariable($VersionJavaID)["VariableChanged"]).") \n";
+            }
+        if (GetValue($tailScaleInfoID) != "disabled")
+            {
+            $PrintHtml .= '<tr><td>TailScale</td><td>installed</td></tr>';
+    		$PrintLn   .= "   ".str_pad("TailScale",30)." = VPN installed   (".date("d.m H:i",IPS_GetVariable($VersionJavaID)["VariableChanged"]).") \n";
+            }
         $PrintHtml .= '<tr><td align="right" colspan="2"><font size="-1">last update on '.$latestChange.'</font></td></tr>';    
         $PrintHtml .='</table>';
         

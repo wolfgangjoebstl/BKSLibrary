@@ -698,6 +698,7 @@
 	$UptimeID				= CreateVariableByName($categoryId_SystemInfo, "IPS_UpTime", 3, "", "", 200);                   /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	$VersionID				= CreateVariableByName($categoryId_SystemInfo, "IPS_Version", 3, "", "", 210); 	
 	$javaVersionID   		= CreateVariableByName($categoryId_SystemInfo, "Java_Version", 3, "", "", 210); 
+	$tailScaleInfoID   		= CreateVariableByName($categoryId_SystemInfo, "TailScaleInfo", 3, "", "", 220); 
     $MemoryID				= CreateVariableByName($categoryId_SystemInfo, "Memory", 3, "", "", 50); 	
     $UserID 				= CreateVariableByName($categoryId_SystemInfo, "User", 3, "", "", 50); 	                        // json Tabelle für alle User
     $AdministratorID     	= CreateVariableByName($categoryId_SystemInfo, "AdministratorID", 3, "", "", 50); 	            // eine Zahl, aber lassen wir sie als String
