@@ -103,16 +103,24 @@
 			if ($this->debug) echo "IPSComponentSensor_Remote: Construct Sensor with ($instanceId,$remoteOID,$tempValue).\n";	
             if (strpos($instanceId,":") !== false)                // par1 manchmal auch par2, rausfinden
                 {
+                // RemoteOID hat einen : daher erster Parameter
                 $this->tempObject   = $remoteOID;         // alte Parametrierung, var1 ist die Server:remoteOID Parametrierung
                 $this->RemoteOID    = $instanceId;                    
                 }
-            else                                            // zweiter Parameter
+            elseif ($instanceId)                                            // zweiter Parameter
                 {
                 if ($this->debug) echo "   Erster Parameter, lokale ID  --> (".IPS_GetName($instanceId).")\n";
                 $this->tempObject   = $instanceId;
                 $this->RemoteOID    = $remoteOID;                    
                 }
-			$this->tempValue    = $tempValue;           // par3
+            else
+                {
+                if ($this->debug) echo "  InstanzId nicht übergeben, spaeter herausfinden versuchen.\n";
+                $this->tempObject   = $instanceId;
+                $this->RemoteOID    = $remoteOID;                    
+                }
+			
+            $this->tempValue    = $tempValue;           // par3
 
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
@@ -166,7 +174,7 @@
     			//IPSLogger_Inf(__file__, 'IPSComponentSensor_Remote HandleEvent: Sensor Remote Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			    echo "IPSComponentSensor_Remote:HandleEvent Wert != Mirror, VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."   \"".$this->tempValue."\"\n";
     			$result=$log->Sensor_LogValue($value,$debug);                  // SetValue($this->variableLogID,GetValue($this->variable));
-                $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
+                if ($this->RemoteOID) $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
                 }
             else 
                 {
@@ -197,8 +205,8 @@
             $log=new Sensor_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
             $mirrorValue=$log->updateMirorVariableValue($value);
             $result=$log->Sensor_LogValue($value,$debug);                  // SetValue($this->variableLogID,GetValue($this->variable));
-            if ($debug) echo "log::RemoteLogValue($value, $this->remServer, $this->RemoteOID \n";
-            $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
+            if ($debug) echo "log::RemoteLogValue($value, ".json_encode($this->remServer).", $this->RemoteOID \n";
+            if ($this->RemoteOID) $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID, $debug );
 			}
 
 		/**

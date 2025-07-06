@@ -1,5 +1,5 @@
 <?php
-/*erstellt von RemoteAccess::add_Guthabensteuerung() am 09.05.2025 05:05
+/*erstellt von RemoteAccess::add_Guthabensteuerung() am 06.07.2025 05:05
  */
 function GuthabensteuerungList() { return array(
     "Phone_Cost" => array(
@@ -53,7 +53,7 @@ function GuthabensteuerungList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_Amis() am 09.05.2025 05:05
+/*erstellt von RemoteAccess::add_Amis() am 06.07.2025 05:05
  */
 function AmisStromverbrauchList() { return array(
     "Wohnung-LBG70_Wirkenergie" => array(
@@ -210,24 +210,38 @@ function AmisStromverbrauchList() { return array(
          "Profile"  => "~Power", 
          "Order"    => "121", 
              	),
+    "Wohnzimmer-MeshedRouter_Wirkenergie" => array(
+         "OID" => 57417, 
+         "Name" => "Wohnzimmer-MeshedRouter_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "122", 
+             	),
+    "Wohnzimmer-MeshedRouter_Wirkleistung" => array(
+         "OID" => 30415, 
+         "Name" => "Wohnzimmer-MeshedRouter_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "123", 
+             	),
     "Statusanzeige_Wirkenergie" => array(
          "OID" => 22647, 
          "Name" => "Statusanzeige_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
-         "Order"    => "122", 
+         "Order"    => "124", 
              	),
     "Statusanzeige_Wirkleistung" => array(
          "OID" => 47717, 
          "Name" => "Statusanzeige_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
-         "Order"    => "123", 
+         "Order"    => "125", 
              	),
 
       );}
 
-/*erstellt von RemoteAccess::add_SysInfo() am 09.05.2025 05:05
+/*erstellt von RemoteAccess::add_SysInfo() am 06.07.2025 05:05
  */
 function SysInfoList() { return array(
     "Hostname" => array(
@@ -282,7 +296,7 @@ function SysInfoList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_RemoteServer() am 09.05.2025 05:05
+/*erstellt von RemoteAccess::add_RemoteServer() am 06.07.2025 05:05
  */
 function ROID_List() { return array(
       );}

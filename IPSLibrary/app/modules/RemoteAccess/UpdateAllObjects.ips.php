@@ -92,6 +92,7 @@ if ( ($_IPS['SENDER']=="Execute") )
 	echo "===================================================================\n";	
 	echo "Delete registered Events ".sizeof($delete)." Eintraege : \n";
     $i=1;
+    print_r($delete);
 	foreach ($delete as $oid => $data)
 		{
 		echo "$i Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";

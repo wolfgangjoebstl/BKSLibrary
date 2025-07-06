@@ -564,12 +564,20 @@
 
             //--------------------------------------------------
             $config["TabItem"]="CamCapture";                          // different path item from WebCamera, local override for captured selected Pictures
-            //no need for new category, use the one from IPSCam
-            $categoryId_WebFrontCapture = $CamTableCaptureID["Base"];
-            //$wfcHandling->DeleteWFCItems("Cam_");         // vorerst Easy Display ohne Sub Webfronts
-            //$wfcHandling->DeleteWFCItems("CamCapture");
-            echo "Create Sub-Category ".$config["TabItem"]." in ".IPS_GetName($categoryId_WebFront)." and link it to existing Category $categoryId_WebFrontMonitor.\n";
-            $wfcHandling->CreateWFCItemCategory  ($config["TabItem"], $config["TabPaneItem"],   ($config["TabOrder"]+600), $config["TabItem"], $config["TabIcon"], $categoryId_WebFrontCapture /*BaseId*/, 'false' /*BarBottomVisible*/ );
+            if (isset($CamTableCaptureID["Base"]))          // check wenn keine Configuration vorhanden ist
+                {
+                //no need for new category, use the one from IPSCam
+                $categoryId_WebFrontCapture = $CamTableCaptureID["Base"];
+                //$wfcHandling->DeleteWFCItems("Cam_");         // vorerst Easy Display ohne Sub Webfronts
+                //$wfcHandling->DeleteWFCItems("CamCapture");
+                echo "Create Sub-Category ".$config["TabItem"]." in ".IPS_GetName($categoryId_WebFront)." and link it to existing Category $categoryId_WebFrontMonitor.\n";
+                $wfcHandling->CreateWFCItemCategory  ($config["TabItem"], $config["TabPaneItem"],   ($config["TabOrder"]+600), $config["TabItem"], $config["TabIcon"], $categoryId_WebFrontCapture /*BaseId*/, 'false' /*BarBottomVisible*/ );
+                }
+            else 
+                {
+                echo "Delete WFC Item ".$config["TabItem"].". Take Care, may delete TabItem*  \n";
+                //$wfcHandling->DeleteWFCItems($config["TabItem"]);
+                }
 
             $wfcHandling->write_WebfrontConfig($config["ConfigId"]);
             }

@@ -882,7 +882,7 @@
             if ($debug) echo "DetectHandler::RegisterEvent, Aufruf mit VariableID $variableId (".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId)).") für EventType $eventType $componentParams $moduleParams \n";
             $configurationAuto = $this->Get_EventConfigurationAuto();
             //print_r($configurationAuto);
-            $comment = "Letzter Befel war RegisterEvent mit VariableID ".$variableId." ".date("d.m.Y H:i:s");
+            $comment = "Letzter Befehl war RegisterEvent mit VariableID ".$variableId." ".date("d.m.Y H:i:s");
             // Search Configuration
             $found = false;
             $update=false;                      // nur wenn update true ist das File neu schreiben
@@ -4921,6 +4921,8 @@ class TestMovement
      */
     public function getComponentEventListTable($resultEventList,$filter="",$htmlOutput=false,$debug=false)
         {
+        $messageHandler = new IPSMessageHandlerExtended();          // kann auch register loeschen
+
 		$html="";
 		$html.="<style>";
 		$html.='#customers { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; font-size: 12px; color:black; border-collapse: collapse; width: 100%; }';

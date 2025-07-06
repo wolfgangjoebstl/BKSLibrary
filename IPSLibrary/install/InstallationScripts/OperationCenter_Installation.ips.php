@@ -75,6 +75,8 @@
 
 	IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+    IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");    
+
     IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
     IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 	IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -1626,6 +1628,27 @@
         $resultStreamRadio[0]["Data"]["Homematic Inventory Report"]=$HMI_ReportStatusID;
         }
 
+
+    $paneName="RemoteAccess"; $paneIcon = "People"; $paneOrder = 9000; 
+
+    $configWFra = $configWFront["Administrator"];
+    $configWFra["Path"].=".".$paneName;           // Category and WFC PanName Split or Category is same
+    $tabPaneParent=$configWFra["TabPaneItem"];
+    $configWFra["TabPaneItem"]=$paneName;
+    $configWFra["TabPaneParent"]=$tabPaneParent;
+    $configWFra["TabPaneName"]=$paneName;
+    $configWFra["TabPaneIcon"]=$paneIcon;
+    $configWFra["TabPaneOrder"]=$paneOrder;
+    echo "$paneName Submodule im Administrator Webfront $tabPaneParent mit Namen ".$configWFra["TabPaneItem"]." abspeichern.\n";
+
+    $categoryIdSubModul    = CreateCategory($paneName,      $CategoryIdData, 6000);             
+    $htmlBoxID=CreateVariable("htmlBigBox",3, $categoryIdSubModul,150,"~HTMLBox",null, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+
+    $resultAccess=array();
+    $resultAccess[0]["Stream"]["Name"]='ServerData';
+    $resultAccess[0]["Stream"]["OID"]=$htmlBoxID;
+
+
     if (isset($configWFront["Administrator"]))
         {
         echo "Administrator:\n";
@@ -1635,6 +1658,8 @@
         
         $configWF["TabItem"]="RadioStatus";
         installWebfrontRadio($configWF,$resultStreamRadio);
+        
+        installWebfrontRemoteAccess($configWFra,$resultAccess);
 		}
 
     if (isset($configWFront["User"]))
@@ -2076,6 +2101,53 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Local Functions
 	// ----------------------------------------------------------------------------------------------------------------------------
+
+
+
+    /*
+     * configWF braucht eine gewisse Mindestanzahlan Parametern sonst passiert nichts
+     * verwendet wfcHandling
+     *
+     */
+    function installWebfrontRemoteAccess($configWF,$resultStream=false)
+        {
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["TabItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
+            {
+            $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+            $wfcHandling->read_WebfrontConfig($configWF["ConfigId"]);         // register Webfront Confígurator ID  
+
+            $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.OperationCenter
+            
+            echo "installWebfrontRemoteAccess, Path ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
+            echo "----------------------------------------------------------------------------------------------------------------------------------\n";
+
+        	$wfcHandling->CreateWFCItemCategory ($configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"], $categoryId_WebFront /*ID of Category*/); 
+            
+            if ($resultStream !== false)        
+                {
+                $resultStream[0]["Stream"]["Link"]=$categoryId_WebFront;
+                $count=sizeof($resultStream);           // spaetestens jetzt sind es immer 1 Eintrage#
+                echo "Jetzt diese Kategorien zuordnen: ".json_encode($resultStream)."\n";
+                //print_r($resultStream);               // Name, OID, Link
+                for ($i=0;$i<$count;$i++) 
+                    {
+                    if (isset($resultStream[$i]["Stream"]["Name"]))
+                        {
+                        CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);        // Name, OID und Parent für Link
+                        if (isset($resultStream[$i]["Data"]))
+                            { 
+                            foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $resultStream[$i]["Stream"]["Link"], 1000+$i*10);
+                            }
+                        }
+                    }
+                }	
+
+            $wfcHandling->write_WebfrontConfig($configWF["ConfigId"]);
+            }
+        }
+
+
+
 
     /*******************************************************************
      *

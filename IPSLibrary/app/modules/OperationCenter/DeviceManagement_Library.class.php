@@ -944,21 +944,31 @@ class DeviceManagement
      * wenn länger als einen Tag kein Update dann wird das Update neu angefordert
      * wenn das Update angefordert wurde und noch nicht erfolgt ist gibt es eine Fehlermeldung und es wird nicht mehr angefordert
 	 *
-	 *****************************************************************************/
-
+	 * die AdressListe wird trotzdem, allerdings basierend auf den letzten Daten erstellt. Andernfalls  funktioniert zum Beispiel evaluateHardware nicht mehr, da alle Hoimematic Adressen fehlen
+     */
 	function getHomematicAddressList($callCreateReport=false, $debug=false, $supress=false)
 		{
         if ($debug>1) echo "DeviceManagement::getHomematicAddressList aufgerufen : Evaluate HMI : ".json_encode($this->HMIs)."\n";
 		$countHMI = sizeof($this->HMIs);
-		$addresses=array();
+		$addresses=array();         // Ergebnis
 		if ($countHMI>0)
 			{
 			$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
 			foreach ($this->HMIs as $HMI)
 				{
+                $HomeMaticEntries=false;
                 if ($DeviceListe=$this->updateHmiReport($HMI,$debug, $supress))
                     {
                     $HomeMaticEntries=json_decode(GetValue($DeviceListe),true); 
+                    }
+                else 
+                    {
+                    echo  "DeviceListe $HMI NICHT erzeugt\n";
+                    $deviceListId            = @IPS_GetObjectIDByName("Device Liste",$HMI);
+                    if ($deviceListId) $HomeMaticEntries=json_decode(GetValue($deviceListId),true);
+                    }
+                if ($HomeMaticEntries)    
+                    {
                     foreach ($HomeMaticEntries as $HomeMaticEntry)
                         {
                         if (isset($HomeMaticEntry["HM_address"])) 
@@ -968,9 +978,7 @@ class DeviceManagement
                             //print_r($HomeMaticEntry);
                             }
                         }
-
                     }
-                else echo  "DeviceListe $HMI NICHT erzeugt\n";
 				}       // ende foreach					
 			}
 		if ($debug)
@@ -1025,7 +1033,7 @@ class DeviceManagement
             echo $configHMI."\n";
             echo "IDs found as childrens under Report Instance : LastUpdate $lastUpdateRequestTimeId DeviceList $deviceListId \n";
             }
-        if (isset($deviceListId))
+        if ($deviceListId)                  // bei false nicht verwenden, Variable nicht vorhanden
             {
             $lastUpdate=IPS_GetVariable($deviceListId)["VariableChanged"];
             $noUpdate=time()-$lastUpdate;
@@ -1688,7 +1696,22 @@ class DeviceManagement
                 $resultType[$i] = "TYPE_METER_HUMIDITY";
                 $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
                 }
-            }                    
+            } 
+        elseif ( (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
+            {
+            $result[1] = "IP Funk Temperatursensor";
+            $result[0] = "Temperatursensor";
+            $i=0;
+            $resultType[$i] = "TYPE_METER_TEMPERATURE";            
+            $resultReg[$i]["TEMPERATURE"]="ACTUAL_TEMPERATURE";
+            $resultReg[$i]["HUMIDITY"]="HUMIDITY";
+            if (array_search("HUMIDITY",$registerNew) !== false) 
+                {
+                $i++;
+                $resultType[$i] = "TYPE_METER_HUMIDITY";
+                $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
+                }
+            }                                 
         /*------Taster-------------------------------*/
         elseif (array_search("PRESS_SHORT",$registerNew) !== false) /* Taster */
             {
@@ -2063,7 +2086,9 @@ class DeviceManagement
                     case "HM-Sec-SC-2":
                     case "HMIP-SWDO":
                     case "HmIP-SWDO-2":                 // immer neue Varianten, das ist ein optischer Sensor
+                    case "HmIP-SWDO-PL-2":              // STATE Variable ist Integer, 3 Varianten
                     case "HmIP-SWDM":                   // magnetischer Sensor
+                    case "HmIP-SRH":                    // Kontakt der den Türgriff erfasst, 3 Positionen, Integer
                         $result="Tuerkontakt";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -2166,6 +2191,7 @@ class DeviceManagement
 
                     case "HM-WDS10-TH-O":
                     case "HM-WDS40-TH-I":
+                    case "HmIP-STHO":                                   // sieht aus wie ein Lichtsensor, ist für den Aussenbereich
                     case "HmIP-STHD":                                   // sieht aus wie ein Thermostat und hat auch versteckte Thermostatfunktionen
                         $result="Temperatur und Feuchtigkeitssensor";
                         $matrix=[0,2,1,1,1,1,1,1];                        
@@ -3649,7 +3675,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
 
     public function __construct($debug)
         {
-        //$debug=true;
+        //$debug=2;
         if ($debug) echo "DeviceManagement_HueV2 construct started.\n";
         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
         $oids = $modulhandling->getInstances(["{52399872-F02A-4BEB-ACA0-1F6AE04D9663}","{943D4F07-294C-4FFC-98E1-82E78D3B4584}","{2024E794-672B-49E2-894D-ED04414D8061}","{2DCB7BB9-4634-4419-AE68-C0CC771547E5}"]);        // es gibt 4 Configuratioren Device, Room, Scene, Zone
@@ -3750,6 +3776,9 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
             //echo "    $oid \n";
             switch ($item["Type"])
                 {
+                case "Hue lightstrip plus":
+                case "Hue bloom":
+                case "Hue Play":
                 case "Extended color light":
                 case "Hue color lamp":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_RGB";
@@ -3760,6 +3789,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                     $this->itemslist[$oid]["TypeDev"]="TYPE_AMBIENT";
                     break;
                 case "Hue white lamp":              // wenn typeChild definiert und nicht light aufpassen   
+                case "Hue white candle":
                 case "Hue dimmer lamp":
                     if (isset($item["TypeChild"]))
                         {
