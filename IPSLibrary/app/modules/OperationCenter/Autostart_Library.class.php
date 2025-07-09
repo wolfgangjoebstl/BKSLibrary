@@ -34,7 +34,21 @@
  *
  */
  
- 
+ class AutostartHandler
+    {
+
+    /* getEventScripts
+     * es gibt events beim Hoch und Herunterfahren des Systems die ein Script auslesen
+     * diese Scripts definieren 
+     */
+    public function getEventScripts()
+        {
+
+
+
+        }
+
+    }
  
  
  
