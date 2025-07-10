@@ -2110,7 +2110,7 @@ class EvaluateHardware
         //Auflisten
         $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
         $includehomematic .=	'function getHomematicConfiguration() {'."\n".'            return array('." \n";
-        if (isset($this->installedModules["OperationCenter"]))    $DeviceManager = new DeviceManagement();
+        if (isset($this->installedModules["OperationCenter"]))    $DeviceManager = new DeviceManagement_Homematic();
         
         echo "\nHomematic Geräte auswerten und getHomematicConfiguration() schreiben: \n\n";
         $serienNummer=array(); $i=0;
