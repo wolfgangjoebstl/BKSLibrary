@@ -1717,6 +1717,41 @@
             }
 
 
+        /*  DetectClimateHandler::registerMirrorByID 
+         *  DetectDeviceHandler kümmert sich um die Bearbeitung von MirrorID im Zusammenhang mit der Topologie
+         *
+         *  komplexere Routine in EvaluateHardware für Liste Events , übernimmt das Mirroregister in die Konfiguration !!!
+         *  generiert zuätzliche Einträge, kontrolliert ob Fehler sind, und wenn nicht keine Übernahme
+         *
+         */
+        public function registerMirrorByID($DetectDeviceHandler,$oid,$debug=false)
+            {
+            $eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();
+            $eventClimateConfig=$this->Get_EventConfigurationAuto(); 
+            $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            if ($debug) echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+            $moid=$this->getMirrorRegister($oid);
+            if ($moid !== false) 
+                {
+                $mirror = IPS_GetName($moid);    
+                // überwacht ob Logging im Spiegelregister erfolgt
+                $werte = @AC_GetLoggedValues($archiveHandlerID,$moid, time()-60*24*60*60, time(),1000);
+                if ($werte === false) echo "        Kein Logging für Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).")\n";  
+                // überwacht ob die oid registriert ist
+                if (isset($eventDeviceConfig[$oid])===false) echo "        DetectDeviceHandler->Get_EventConfigurationAuto() ist für $oid false  \n";
+                if (isset($eventClimateConfig[$oid])===false)   echo "        DetectClimateHandler->Get_EventConfigurationAuto() ist für $oid false  \n";               // <- hier anpasen
+                if (IPS_ObjectExists($oid)===false)          echo "        IPS_ObjectExists($oid) ist false \n";   
+
+                $result=$DetectDeviceHandler->RegisterEvent($moid,'Topology','','Climate');		            // <- hier anpasen
+                // das Mirror Register in die Konfiguration schreiben
+                // <- hier anpasen
+                $this->RegisterEvent($oid,"Climate",'','mirror->'.$mirror);     // par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig
+
+                if ($result) { if ($debug) echo "   *** register Event $moid: $typ\n"; }
+                }
+            }                 
+
+
 		}
 
 /******************************************************************************************************************/

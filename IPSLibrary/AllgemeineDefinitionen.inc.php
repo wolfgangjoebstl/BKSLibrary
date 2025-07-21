@@ -9302,6 +9302,7 @@ class ipsTables
      *  display
      *  text
      *
+     * verwendet getColumnsName, analyseConfig, processData, insertHeader, analyseData 
      */
 
 
@@ -9472,20 +9473,31 @@ class ipsTables
                     $text=""; 
                     //if (false)          // mit einzigartiger id
                         {
-                        $text .= "<style>";
-                        $text.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
-                        if ($size==0) $text.='font-size: 100%; width: 100%;';
-                        elseif ($size==-1) $text.='font-size:50%vw; max-width: 900px ';        // responsive font size
-                        else $text.='font-size: 150%; width: 100%;';
-                        $text.='color:black; border-collapse: collapse;  }';
-                        //$wert .= '<font size="1" face="Courier New" >';
-                        $text.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
-                        $text.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
-                        $text.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
-                        $text.='#'.$id.' tr:hover {background-color: #ddd;}';
-                        $text.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
-                        $text.="</style>";
-                        $text .= '<div id="'.$id.'">';
+                        if ($id)
+                            {
+                            $text .= "<style>";
+                            $text.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
+                            if ($size==0) $text.='font-size: 100%; width: 100%;';
+                            elseif ($size==-1) $text.='font-size:50%vw; max-width: 900px ';        // responsive font size
+                            else $text.='font-size: 150%; width: 100%;';
+                            $text.='color:black; border-collapse: collapse;  }';
+                            //$wert .= '<font size="1" face="Courier New" >';
+                            $text.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+                            $text.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
+                            $text.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
+                            $text.='#'.$id.' tr:hover {background-color: #ddd;}';
+                            $text.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
+                            $text.="</style>";
+                            $text .= '<div id="'.$id.'">';
+                            }
+                        else
+                            {
+                            if (isset($config["format"]["reuse-styleid"]))
+                                {
+                                $text .= '<div id="'.$config["format"]["reuse-styleid"].'">';
+                                }
+                            else $text .= '<div>';           //gar keine verwenden
+                            }
                         $text .= '<table class="sortierbar">';
                         }
                     if (false)          // mit class, mehrfach verwendbar, aber nur einmal definierbar, im Skin css
@@ -15072,7 +15084,7 @@ class ComponentHandling
                 $profile="Pressure";
                 break;   
             case "RAIN_COUNTER":
-                $detectmovement="Weather";
+                $detectmovement="Weather";              // vorerst gemeinsam mit Climate bearbeiten, aber eigene Erkennung
                 $variabletyp=2; 		/* Float, Typ Variable am remote Server */	
                 $index="Klima";         /* Struktur am Remote Server, muss schon vorher angelegt sein */
                 $indexNameExt="_Rain";								/* gemeinsam mit den CO2 Werten abspeichern */                
@@ -15346,6 +15358,7 @@ class ComponentHandling
 							    $DetectSensorHandler = new DetectSensorHandler();						
     							$DetectSensorHandler->RegisterEvent($oid,"Sensor",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 	    						break;
+                            case "Weather":     // nicht nur für Baro und Co2, auch für RegenCounter 
 						    case "Climate":      //neu
 							    $DetectClimateHandler = new DetectClimateHandler();						
     							$DetectClimateHandler->RegisterEvent($oid,"Climate",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */

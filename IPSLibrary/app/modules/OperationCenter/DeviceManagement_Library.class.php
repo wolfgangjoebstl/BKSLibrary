@@ -707,8 +707,8 @@ class DeviceManagement
             $result[$index]["Name"]=$Key["Name"];
             $result[$index]["OID"]=$Key["COID"];
             $index++;					
-            $this->log_OperationCenter->LogMessage('HardwareStatus Gerät '.$Key["Name"].' meldet sich nicht');
-            $this->log_OperationCenter->LogNachrichten('HardwareStatus Gerät '.$Key["Name"].' meldet sich nicht');
+            $this->log_OperationCenter->LogMessage('HardwareStatus Gerät '.$Key["Name"].' meldet sich seit 2 Tagen nicht, check '.$Key["COID"]);
+            $this->log_OperationCenter->LogNachrichten('HardwareStatus Gerät '.$Key["Name"].' meldet sich seit 2 Tagen nicht, check '.$Key["COID"]);
             return (false);
             }
         return (true);
@@ -1697,7 +1697,8 @@ class DeviceManagement
                 $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
                 }
             } 
-        elseif ( (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
+        /* Temperatur Sensor , aber keine Wetterstation, kommt erst später -------------*/
+        elseif ( (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) && (array_search("RAIN_COUNTER",$registerNew) == false))   
             {
             $result[1] = "IP Funk Temperatursensor";
             $result[0] = "Temperatursensor";

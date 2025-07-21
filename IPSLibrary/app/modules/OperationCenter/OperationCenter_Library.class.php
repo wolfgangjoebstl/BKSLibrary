@@ -165,6 +165,12 @@ class OperationCenterConfig
         $config["SystemDirectory"] = $dosOps->correctDirName($systemDir.$config["SystemDirectory"]);
         $dosOps->mkdirtree($config["SystemDirectory"]); 
 
+        /* Logging Directory for activities to be noted */
+        configfileParser($configInput, $config, ["LogDirectory","Logdirectory","logdirectory","Logging"],"LogDirectory","Logging");
+        if ( (strpos($config["LogDirectory"],"C:/Scripts")===0) || (strpos($config["LogDirectory"],'C:\Scripts')===0) ) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts
+        $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
+        $dosOps->mkdirtree($config["LogDirectory"]);         
+
         /* Backup */
         configfileParser($configInput, $config, ["BACKUP","Backup"],"BACKUP",'{"Directory":"/Backup/","FREQUENCE":"Day","FULL":["Mon","Wed"],"KEEPDAY":10,"KEEPMONTH":10,"KEEPYEAR":2}');  
         // es werden alle Subkonfigurationen kopiert, wenn das nicht sein soll einmal umsetzen
@@ -2475,10 +2481,22 @@ class OperationCenter extends OperationCenterConfig
         $categoryId_SysPingControl  = @IPS_GetObjectIDByName('SysPingControl',   $categoryId_SysPing);
     	$SysPingSortTableID         = @IPS_GetObjectIDByName("SortPingTable", $categoryId_SysPingControl ); 
         $SysPingUpdateID            = @IPS_GetObjectIDByName("Update", $categoryId_SysPingControl); 
-        
-        $actionButton[$SysPingSortTableID]["Monitor"]["SysPingTable"]=true;
-        $actionButton[$SysPingUpdateID]["Update"]["SysPingUpdate"]=true;
-		return($actionButton);
+                
+        if ($SysPingSortTableID)
+            {
+            $actionButton[$SysPingSortTableID]["Monitor"]["SysPingTable"]=true;
+            $actionButton[$SysPingUpdateID]["Update"]["SysPingUpdate"]=true;
+            }
+
+        /* weitere Tabs, wie DoctorBag -> RemoteAccess */
+        $categoryId_RemoteAccess    = @IPS_GetObjectIDByName('RemoteAccess',   $this->CategoryIdData); 
+        $RemoteAccessUpdateID            = @IPS_GetObjectIDByName("Update", $categoryId_RemoteAccess);         
+        if ($RemoteAccessUpdateID)
+            {
+            $actionButton[$RemoteAccessUpdateID]["RemoteAccess"]["Update"]=true;
+
+            }
+        return($actionButton);
 		}
 
 	/**
@@ -8553,6 +8571,173 @@ class seleniumChromedriverUpdate extends OperationCenterConfig
 
     }
 
+/* class handles data display in RemoteAccess Data Pane
+ *      showSqlStatus
+ *      showRemoteAcessStatus
+ *      showTailscaleStatus
+ *
+ */
+
+class RemoteAccessData
+    {
+
+    /* gibt nur die OID der ersten SQL Instanz zurück
+     */
+    function showSqlStatus($debug=false)
+        {
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        $oidResult = $modulhandling->getInstances('MySQL');
+        if (sizeof($oidResult)>0) 
+            {
+            $oid=$oidResult[0];           // ersten treffer new_checkbox_tree_get_multi_selection
+            if ($debug) echo "sqlHandle: new $oid (".IPS_GetName($oid).") for MySQL Database found.\n";
+            return ($oid);
+            }
+        else 
+            {
+            if ($debug) echo "sqlHandle: OID einer Instance MySQL not found.\n";
+            return (false);
+            }
+        }
+
+    /* rausfinden wann die letzten Updates von IPS Version waren
+     *
+     */
+    function showRemoteAcessStatus($debug=false)    
+        {
+        $ipsOps = new ipsOps();
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        // ab IPS7 gibt es das webfront Verzeichnis nicht mehr verschoben in das user verzeichnis
+        IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
+        $moduleManagerRA  = new ModuleManagerIPS7('RemoteAccess'   ,$repository);
+
+        $WFC10_Enabled        = $moduleManagerRA->GetConfigValue('Enabled', 'WFC10');
+        if ($WFC10_Enabled==true)
+            {
+            $WFC10_Path        	 = $moduleManagerRA->GetConfigValue('Path', 'WFC10');
+            if ($debug) echo "\nWebportal RemoteAccess Administrator installieren auf lokalem Pfad : ".$WFC10_Path." Make Summary:\n";
+            $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+            
+            $inputData=array();
+            $serverName=array();
+            $server = $ipsOps->getChildrenIDsOfType($categoryId_WebFront,0);
+            $object = "IPS_Version";
+            if ($debug) echo "   Search for Category SysInfo and Object IPS_Version:\n";
+            $line=0;
+            foreach($server as $entry)
+                {
+                $name=IPS_GetName($entry);
+                $serverName[$entry]=$name; 
+                $oid        = @IPS_GetCategoryIDByName($name, $categoryId_WebFront); 
+                $vid        = @IPS_GetCategoryIDByName("SysInfo", $oid);
+                $variableId = @IPS_GetObjectIDByName($object, $vid);
+                if ($variableId) 
+                    {
+                    $data=IPS_GetVariable($variableId);
+                    if ($debug) echo "    ".str_pad($name,20).str_pad($vid,10).str_pad(GetValue($variableId),15)."     ".date("d.m.Y H:i",$data["VariableChanged"])."   ".date("d.m.Y H:i",$data["VariableUpdated"])." \n"; 
+
+                    $inputData[$line]["Server"]=$name;
+                    $inputData[$line]["Version"]=GetValue($variableId);
+                    $inputData[$line]["Object"]=$object; 
+                    $inputData[$line]["VariableChanged"]=$data["VariableChanged"]; 
+                    $inputData[$line]["VariableUpdated"]=$data["VariableUpdated"]; 
+
+                    $line++;
+                    }
+                }
+            //print_r($serverName);
+            //print_R($inputData);
+
+            // show inputData, zeilenweise strukturiert
+            $ipsTables = new ipsTables();
+            $config["html"]='html';  
+            $config["insert"]["Header"]    = true;              // Header erste Zeile darstellen  
+            $config["format"]["class-id"] = "OpCent";
+            $display = [
+                            "Server"                        => ["header"=>"Server","format"=>""],
+                            "Object"                        => ["header"=>"Object","format"=>""],
+                            "Version"                       => ["header"=>"Version","format"=>""],
+                            "VariableChanged"               => ["header"=>"VariableChanged","format"=>"datetime"],
+                            "VariableUpdated"               => ["header"=>"VariableUpdated","format"=>"datetime"],
+                        ];
+            $text = $ipsTables->showTable($inputData, $display ,$config,false);                // true Debug
+            return ($text);  
+            }
+        else return (false);
+        }
+
+    /* show tailscale Status
+     *
+     */
+    function showTailscaleStatus($resultSystemInfo,$debug=false)
+        {
+        $dosOps = new dosOps();
+        $sysOps = new sysOps();
+
+        $lines=explode("\n",$resultSystemInfo);
+        //print_r($lines);
+        $tailScaleServer=array();
+        $num=0;
+        foreach ($lines as $line)
+            {
+            $params=explode(" ",$line);
+            foreach ($params as $id=>$param) 
+                {
+                //echo "\"$param\" ";
+                if ($param=="") unset($params[$id]);
+                }
+            //print_r($params);
+            $sub=0;
+            foreach ($params as $id=>$param) 
+                {
+                //echo "\"$param\" ";
+                switch ($sub)
+                    {
+                    case 0:
+                        $tailScaleServer[$num]["IP"]=$param;
+                        break;
+                    case 1:
+                        $tailScaleServer[$num]["NAME"]=$param;
+                        break;
+                    case 2:
+                        $tailScaleServer[$num]["USER"]=$param;                            
+                        break;
+                    case 3:
+                        $tailScaleServer[$num]["SYSTEM"]=$param;                            
+                        break;
+                    case 4:
+                        if ($debug) echo "Status of ".$tailScaleServer[$num]["NAME"]." is $param \n";
+                        //if 
+                        $tailScaleServer[$num]["STATUS"]=$param;                            
+                        break;                            
+                    default:
+                        break;
+                    }
+                $sub++;
+                }
+            $num++;
+            }
+        if ($debug) print_r($tailScaleServer);
+
+        // fertige Routinen für eine Tabelle in der HMLBox verwenden
+        $ipsTables = new ipsTables();
+        $config["html"]='html';  
+        $config["insert"]["Header"]    = true;              // Header erste Zeile darstellen  
+        $config["format"]["class-id"] = false;
+        $config["format"]["reuse-styleid"] = "OpCent";
+        $display = [
+                "NAME"                        => ["header"=>"Name","format"=>""],
+                "IP"                        => ["header"=>"IP Adr","format"=>""],
+                "USER"                       => ["header"=>"User","format"=>""],
+                "SYSTEM"                       => ["header"=>"System","format"=>""],
+                "STATUS"                       => ["header"=>"Status","format"=>""],
+            ];
+        $text = $ipsTables->showTable($tailScaleServer, $display ,$config,false);                // true Debug
+        return $text;   
+                
+        }
+
+    } 
 
 /***************************************************************************************************************
  *

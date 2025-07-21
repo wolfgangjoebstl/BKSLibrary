@@ -201,7 +201,7 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$sysOps = new sysOps(); 
     
     $DeviceManager = new DeviceManagement();                            // stürzt aktuell mit HMI_CreateReport ab
-    $DeviceManagerHomematic = new DeviceManagement_Homematic();         // deshalb diese class verwenden
+    //$DeviceManagerHomematic = new DeviceManagement_Homematic();         // deshalb diese class verwenden
     
 
 /**********************************
@@ -235,10 +235,17 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 
 	$ActionButton=$OperationCenter->get_ActionButton();
 	$ActionButton+=$DeviceManager->get_ActionButton();
-    $ActionButton+=$DeviceManagerHomematic->get_ActionButton();
+    //$ActionButton+=$DeviceManagerHomematic->get_ActionButton();               // keine zusätzlichen Buttons
 	$ActionButton+=$BackupCenter->get_ActionButton();
 
-/*********************************************************************************************/
+/********************************************************************************************
+ *  HMI Buttons in Doctor Bag -> HMI
+ *  Router Management, SNMP FastPoll
+ *  Backup Funktionen
+ *  Monitor
+ *  Update
+ *
+ */
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -383,7 +390,7 @@ if ($_IPS['SENDER']=="WebFront")
                     }                     
                 if (isset($ActionButton[$variableId]["Update"]))
                     {
-                    //echo "Update gedrückt. Bitte Geduld :"; 
+                    //echo "Update gedrückt. Bitte Geduld :";                   // kommt nicht etwa schneller, sondern mit allen Ergebnissen gemeinsam am Ende
                     $sysOps->ExecuteUserCommand($filename,"", false, false,-1,false);                          // false nix anzeigen  false nix warten, da Batch writing wäre das ausreichend
                     // $OperationCenter->SystemInfo();                            //  ohne Parameter fragt SystemInfo selbst ab, mit Parameter wird der Input aus einer Variable extrahiert
 
@@ -405,7 +412,40 @@ if ($_IPS['SENDER']=="WebFront")
                     //$pingOperation->SysPingAllDevices($log_OperationCenter);          
                     $pingOperation->writeSysPingStatistics(); 
   
-                    }                     
+                    }  
+                if (isset($ActionButton[$variableId]["RemoteAccess"]))
+                    {
+                    $remoteaccessId = getCategoryIdByName($CategoryIdData, "RemoteAccess");
+                    $htmlBoxId = getVariableIDByName($remoteaccessId, "htmlBigBox");                        
+                    $dir=$OperationCenter->appInstalledWin("Tailscale");
+                    if ($dir) 
+                        {
+                        $remoteaccessData = new RemoteAccessData();
+                        if ($oid=$remoteaccessData->showSqlStatus())
+                            {
+                            echo "SQL Instanz installiert : $oid \n";
+                            }
+                        echo "TailScale Installed at $dir \n";
+                        $resultSystemInfo=$sysOps->ExecuteUserCommand($dir."tailscale.exe","status", false, true);
+
+                        /* verwendung von ipsTables, mehrfache verwendung ergibt jede Menge gleicher Styles, die aber nicht richtig gekapselt sind
+                        */
+
+                        $html  = "<div>";
+                        $html .= $remoteaccessData->showTailscaleStatus($resultSystemInfo);         // immer als zweites, does reuse of style
+                        $html .= "</div><div>";
+                        $html .= $remoteaccessData->showRemoteAcessStatus();
+                        $html .= "</div>";
+
+                        $remoteaccessId = getCategoryIdByName($CategoryIdData, "RemoteAccess");
+                        $htmlBoxId = getVariableIDByName($remoteaccessId, "htmlBigBox");
+                        echo "Remote Access Data Id in OperationCenter : $remoteaccessId  View html Box : $htmlBoxId \n";
+                        if ($htmlBoxId)
+                            {
+                            SetValue($htmlBoxId,$html);
+                            }
+                        }
+                    }                                       
 				}	
 			break;
 		}

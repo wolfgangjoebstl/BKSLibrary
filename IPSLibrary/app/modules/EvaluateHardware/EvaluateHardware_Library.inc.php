@@ -1804,7 +1804,7 @@ class EvaluateHardware
         $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
         $includefile.='function FHTList() { return array('."\n";
         if (isset($this->installedModules["DetectMovement"]))     $DetectDeviceHandler = new DetectDeviceHandler(); 
-        if (isset($this->installedModules["OperationCenter"]))    $DeviceManager = new DeviceManagement();
+        if (isset($this->installedModules["OperationCenter"]))    $DeviceManager = new DeviceManagement_FS20();
 
         echo "\nFHT Geräte Instanzen gefunden: ".sizeof($alleInstanzen)."\n\n";
         foreach ($alleInstanzen as $instanz)

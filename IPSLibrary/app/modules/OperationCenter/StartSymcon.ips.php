@@ -34,14 +34,6 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
         $moduleManager = new IPSModuleManager('OperationCenter',$repository);
         }
 
-    $installedModules = $moduleManager->GetInstalledModules();
-    $inst_modules="\nInstallierte Module:\n";
-    foreach ($installedModules as $name=>$modules)
-        {
-        $inst_modules.=str_pad($name,30)." ".$modules."\n";
-        }
-    echo $inst_modules."\n\n";
-
     $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
     $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
@@ -54,33 +46,27 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
 	echo "StartSymcon hat die ScriptID       ".$scriptIdStartSymcon." \n";
 	echo "StoppSymcon hat die ScriptID       ".$scriptIdStoppSymcon." \n";
 
-    echo "Folgende Module werden von OperationCenter bearbeitet:\n";
-    if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
-    if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n"; }
-    if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
-    if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
-    echo "\n";
+    $autostart = new AutostartHandler();
+    //$config = $autostart->getSetup();
+    $configWatchdog = $autostart->getConfiguration();
 
+    $categoryId_WatchdogFunction	= CreateCategory('Watchdog',   $CategoryIdData, 600);
 
-    $OperationConfig=new OperationCenterConfig();
-    $configSetup=$OperationConfig->setSetup();
-
-    $sysOps = new sysOps();
-
-    $systemDir     = $dosOps->getWorkDirectory();       // systemdir festlegen, typisch auf Windows C:/Scripts/
-
+    $ScriptCounterID = CreateVariableByName($categoryId_WatchdogFunction,"AutostartScriptCounter",1);
+    $ProcessStartID  = CreateVariableByName($categoryId_WatchdogFunction,"ProcessStart",3);
+    
     /* Logging konfigurieren und festlegen */
 
 	echo "\nStartSymcon: OperationCenter Logspeicher für Start und Stopp vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$log_Watchdog=new Logging($systemDir."Log_Autostart.csv",$input);
-
+    $log_Watchdog=new Logging($configWatchdog["LogDirectory"]."Log_Watchdog.csv",$input);    
 
 	if ($_IPS['SENDER']=="Startup")
 		{
 		echo "IPS Server fährt hoch, im Startup gestartet, Autostart Prozess beginnen.\n";
 		IPSLogger_Dbg(__file__, "Autostart: Script durch IPS Startup prozess aufgerufen *****************  ");
+
 
         /********************************************************************
         *
@@ -91,8 +77,8 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
         **********************************************************************/
 
         echo "\n";
-        $processes    = $watchDog->getActiveProcesses();
-        $processStart = $watchDog->checkAutostartProgram($processes);
+        $processes    = $autostart->getActiveProcesses();
+        $processStart = $autostart->checkAutostartProgram($processes);
         echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
         print_r($processStart);
         SetValue($ProcessStartID,json_encode($processStart));
@@ -101,17 +87,12 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
 		$status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		if ($status==false)
 			{
-			$log_OperationCenter->LogMessage(    'Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
-			$log_OperationCenter->LogNachrichten('Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+			$log_Watchdog->LogMessage(    'Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+			$log_Watchdog->LogNachrichten('Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
 			}
 
-		IPS_SetEventActive($tim3ID,true);
-		SetValue($ScriptCounterID,1);
-
-		$log_Watchdog->LogMessage(    'Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
-		$log_Watchdog->LogNachrichten('Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
-		$log_OperationCenter->LogMessage(    'Lokaler Server wird im Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
-		$log_OperationCenter->LogNachrichten('Lokaler Server wird im Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_Watchdog->LogMessage(    'Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartSymcon');
+		$log_Watchdog->LogNachrichten('Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartSymcon');
 		}
 
 
@@ -121,7 +102,8 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
 		echo "Von der Console aus gestartet, Autostart Prozess beginnen.\n";
         echo "\n";
         echo "Konfiguration ausgeben:\n";
-        print_r($configSetup);
+        print_r($configWatchdog);
+        echo "Nachrichtenspeicher ist hier ".$input."\n";
                 
         $autostart = new AutostartHandler();
 
@@ -133,39 +115,42 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
         *
         **********************************************************************/
 
-    if (false)
-        {
-        echo "\n";
-        $processes    = $watchDog->getActiveProcesses();
-        $processStart = $watchDog->checkAutostartProgram($processes);
-        echo "Ermittlung aktiver Prozese abgeschlossen. Die folgenden Programme muessen gestartet (wenn On) werden:\n";
-        print_r($processStart);
-        SetValue($ProcessStartID,json_encode($processStart));
-        echo "Abgelaufene Zeit nach Start Execute: ".exectime($startexec)." Sek \n";
-
-        /* mehrere Optionen, entweder den ganzen IP Symcon Server hochfahren oder einzelne Prozesse durchstarten 
-         * seit es keinen externen Watchdog mehr gibt hat das Hochstarten nicht mehr soviel Bedeutung
-         */
-
-        if (true)
+        //if (false)
             {
-            if ($processStart["selenium"] == "On")
+            echo "\n";
+            $processes    = $autostart->getActiveProcesses();
+            $processStart = $autostart->checkAutostartProgram($processes);
+            echo "Ermittlung aktiver Prozese abgeschlossen. Die folgenden Programme muessen gestartet (wenn On) werden:\n";
+            print_r($processStart);
+            SetValue($ProcessStartID,json_encode($processStart));
+            echo "Abgelaufene Zeit nach Start Execute: ".exectime($startexec)." Sek \n";
+
+            /* mehrere Optionen, entweder den ganzen IP Symcon Server hochfahren oder einzelne Prozesse durchstarten 
+            * seit es keinen externen Watchdog mehr gibt hat das Hochstarten nicht mehr soviel Bedeutung
+            */
+
+            if (true)
                 {
-                echo "selenium.exe wird neu gestartet.\n";
-                IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
-                writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
-                $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);                
-                //IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
-                $processStart["selenium"] == "Off";
-                SetValue($ProcessStartID,json_encode($processStart));
+                if ($processStart["selenium"] == "On")
+                    {
+                    $sysOps = new sysOps();
+                    $verzeichnis=$configWatchdog["WatchDogDirectory"];
+                    $unterverzeichnis="";                        
+                    echo "selenium.exe wird neu gestartet.\n";
+                    IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
+                    writeLogEvent("Autostart (Watchdog)".$configWatchdog["Software"]["Selenium"]["Directory"].$configWatchdog["Software"]["Selenium"]["Execute"]);
+                    $sysOps->ExecuteUserCommand($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);                
+                    //IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
+                    $processStart["selenium"] == "Off";
+                    SetValue($ProcessStartID,json_encode($processStart));
+                    }
+                else
+                    {
+                    echo "Selenium.exe muss nicht neu gestartet werden.\n";
+                    }
                 }
-            else
-                {
-                echo "Selenium.exe muss nicht neu gestartet werden.\n";
-                }
+            
             }
-           
-		}
     }
 
 ?>

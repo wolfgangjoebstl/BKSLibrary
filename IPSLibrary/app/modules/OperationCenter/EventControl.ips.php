@@ -2,7 +2,7 @@
 
 /***********************************************************************
  *
- * StoppSymcon
+ * Event Control
  *
  *
  *
@@ -25,8 +25,6 @@
     $dosOps = new dosOps();
     $sysOps = new sysOps();
 
-    $systemDir     = $dosOps->getWorkDirectory();       // systemdir festlegen, typisch auf Windows C:/Scripts/
-
     $OperationConfig=new OperationCenterConfig();
 
     $configSetup=$OperationConfig->setSetup();
@@ -38,10 +36,9 @@
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging($configSetup["LogDirectory"]."Log_Watchdog.csv",$input);    
 
-	$log_Watchdog->LogMessage(    'Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartSymcon');
-	$log_Watchdog->LogNachrichten('Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartSymcon');
+	$log_Watchdog->LogMessage(    'Controlled Event Occured');
+	$log_Watchdog->LogNachrichten('Controlled Event Occured');
 
-	tts_play(1,"Gute Nacht, Symcon stoppt",'',2);
 	
 
 

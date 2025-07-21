@@ -18,7 +18,7 @@
  */ 
 
 /* EvaluateHardware
- * evalualiert vorhandene Informationen und beschreibt die beiden Dateiein vollstaendig neu:
+ * evalualiert vorhandene Informationen und beschreibt die beiden Dateien vollstaendig neu:
  *      EvaluateHardware_Devicelist.inc.php
  *      EvaluateHardware_Include.inc.php
  * Herausfinden welche Hardware verbaut ist und in IPSComponent und IPSHomematic bekannt machen
@@ -41,7 +41,7 @@
  * Die alte Geräte abhängige Devicelist ist jetzt in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php
  *      mit functions pro gerätetyp
  *	
- * wenn DetectMovement und die TopologyMappingLibrary instaliert ist, wird eine Topologie aufgebaut.
+ * wenn DetectMovement und die TopologyMappingLibrary installiert ist, wird eine Topologie aufgebaut.
  *
  */
 
@@ -260,7 +260,7 @@ IPS_SetEventActive($tim1ID,true);
         echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
         $configDeviceList=array();
         $configDeviceList["uniqueNames"]="Create";
-        $deviceList = $topologyLibrary->get_DeviceList($hardware,$configDeviceList, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
+        $deviceList = $topologyLibrary->get_DeviceList($hardware,$configDeviceList, false);        // class is in EvaluateHardware_Library, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
         echo "\n";
 
         $includefileDevices     = '<?php'."\n";             // für die php Devices and Gateways, neu
