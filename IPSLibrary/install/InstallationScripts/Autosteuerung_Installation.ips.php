@@ -447,6 +447,10 @@
     $log->LogMessage('Autosteuerung Installation aufgerufen');
     $log_Autosteuerung->LogNachrichten('Autosteuerung Installation aufgerufen');      
 
+    $profileOps = new profileOps();         // local                Profilverwaltung, InActive wird fürAlarmanlage benötigt
+	$profilname=array("InActive"=>"update");
+    $profileOps->synchronizeProfiles($profilname);  
+
     $tabs=array();                          // neue Darstellung
 	$webfront_links=array();
 	foreach ($AutoSetSwitches as $nameAuto => $AutoSetSwitch)

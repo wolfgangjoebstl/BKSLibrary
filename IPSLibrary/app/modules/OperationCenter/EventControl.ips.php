@@ -35,9 +35,13 @@
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging($configSetup["LogDirectory"]."Log_Watchdog.csv",$input);    
-
-	$log_Watchdog->LogMessage(    'Controlled Event Occured');
-	$log_Watchdog->LogNachrichten('Controlled Event Occured');
+    
+    $instance = $_IPS['INSTANCE'];	        //InstanceID for state change
+    $instanceName = IPS_GetName($instance);
+    $status = $_IPS['STATUS'];              //	State of the instance. A list of possible values is found here: IPS_GetInstance
+    $statusText = $_IPS['STATUSTEXT'];
+	$log_Watchdog->LogMessage("$instanceName ($instance) has new Status $status : $statustext , info from EventControl");
+	$log_Watchdog->LogNachrichten("$instanceName ($instance) has new Status $status : $statustext , info from EventControl");
 
 	
 

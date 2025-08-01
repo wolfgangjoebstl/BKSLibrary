@@ -5295,7 +5295,7 @@
 		function showAstronomyChartResponsive($debug=false)
 			{
             $htmlAstro="";
-            $geo = new geoOps();            // Moon calcs included
+            $geo = new astronomyOps();            // Moon calcs included
             $sun = $geo->calculateSunCoordinates();
             $moon = $geo->calculateMoonCoordinates();
             $htmlAstro .= $geo->getSunMoonView($sun['sunazimut'], $sun['sunaltitude'], $moon['moonazimut'], $moon['moonaltitude']);      // file schreiben und iFrame ausgeben
@@ -5330,7 +5330,7 @@
 		function showAstronomyMoonResponsive($debug=false)
 			{
             $htmlAstro="";
-            $geo = new geoOps();            // Moon calcs included
+            $geo = new astronomyOps();            // Moon calcs included
             $tagsek = 24*60*60;
             $time = time()-$tagsek;
             $Tag = array("gestern","heute","morgen");

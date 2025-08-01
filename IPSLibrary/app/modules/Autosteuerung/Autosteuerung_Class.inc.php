@@ -1732,7 +1732,11 @@ class AutosteuerungOperator
                     }
                 }
             }
-        else echo "Autosteuerung Zutritt Konfiguration NICHT vorhanden.:\n";
+        else 
+            {
+            echo "Autosteuerung Zutritt Konfiguration NICHT vorhanden.:\n";
+            return (false);
+            }        
         $config["STATUS"]=$status;
         $config["SUMMARY"]=$result["Summary"];
         $config["PRESENCE"]=$result["Presence"];

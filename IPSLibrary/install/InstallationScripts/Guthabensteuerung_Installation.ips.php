@@ -285,44 +285,40 @@
                 $statusID           = CreateVariable("StatusWebDriverDefault", 3, $CategoryId_Mode,1010,"~HTMLBox",null,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')                     
                 SetValue($statusID,"updated");
                 }
-            if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
+
+            if (isset($installedModules["Watchdog"]))
+                {
+                IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
+                IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
+                $watchDog = new watchDogAutoStart();
+                }
+            else    
+                {
+                IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+                $watchDog = new AutostartHandler();
+                }
+
+            if (isset($installedModules["OperationCenter"]))
                 {
                 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
                 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
                 IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+                    
+                $SeleniumStatusID       = CreateVariableByName($CategoryId_Mode,"SeleniumStatus",  3, ""        , "", 120);
+                $SeleniumOnID           = CreateVariableByName($CategoryId_Mode,"SeleniumRunning", 3, "",         "", 110);
+                $SeleniumHtmlStatusID   = CreateVariableByName($CategoryId_Mode,"Status",          3, "~HTMLBox", "", 600);
+                $SeleniumActiveID       = CreateVariableByName($CategoryId_Mode,"SeleniumActive", 3, "~HTMLBox",         "", 610);
 
-                IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");
-                IPSUtils_Include ("Watchdog_Library.inc.php","IPSLibrary::app::modules::Watchdog");
-
-                $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
-                $processDir = $seleniumChromedriverUpdate->getprocessDir();
-
-                $watchDog = new watchDogAutoStart();
                 $config = $watchDog->getConfiguration();
 
                 // check if Selenium Java process is running, will be done automatically with timer interogation
                 if ($DoWatchdogProcessActiveCheck)                              // nur machen wenn Zeit ist, default maeßig ausgeschaltet
                     {
-                    $processes    = $watchDog->getActiveProcesses();
+                    $processes    = $watchDog->getActiveProcesses();                        // braucht 30 Sekunden, mindestens
                     $processStart = $watchDog->checkAutostartProgram($processes);
                     echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
                     print_r($processStart);
                     }
-                    
-                $SeleniumStatusID       = CreateVariableByName($CategoryId_Mode,"SeleniumStatus",  3, ""        , "", 120);
-                $SeleniumOnID           = CreateVariableByName($CategoryId_Mode,"SeleniumRunning", 3, "",         "", 110);
-                $SeleniumHtmlStatusID   = CreateVariableByName($CategoryId_Mode,"Status",          3, "~HTMLBox", "", 600);
-                $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
-                $nameID=["None"];
-                echo "Update Profile $pname with ".json_encode($nameID)."\n";
-                $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
-                $updateChromedriverID          = CreateVariableByName($CategoryId_Mode,"UpdateChromeDriver", 1,$pname,"",120,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-
-                $pname="StartStoppChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
-                $nameID=["Start","Stopp","Reset"];
-                echo "Update Profile $pname with ".json_encode($nameID)."\n";
-                $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
-                $startstoppChromedriverID      = CreateVariableByName($CategoryId_Mode,"StartStoppChromeDriver", 1,$pname,"",200,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 
                 if (isset($processStart["selenium"])) 
                     {
@@ -331,7 +327,22 @@
                     }
                 $configWatchdog = $watchDog->getConfiguration();            
                 $processDir=$dosOps->correctDirName($configWatchdog["WatchDogDirectory"]);
-                echo "Watchdog Directory : $processDir\n";            
+                echo "Watchdog Directory : $processDir\n";                  
+
+                $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
+                $processDir = $seleniumChromedriverUpdate->getprocessDir();
+
+                $pname="UpdateChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+                $nameID=["None"];
+                echo "Update Profile $pname with ".json_encode($nameID)."\n";
+                $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+                $updateChromedriverID          = CreateVariableByName($CategoryId_Mode,"UpdateChromeDriver", 1,$pname,"",120,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
+                $pname="StartStoppChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
+                $nameID=["Start","Stopp","Reset","Check"];
+                echo "Update Profile $pname with ".json_encode($nameID)."\n";
+                $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
+                $startstoppChromedriverID      = CreateVariableByName($CategoryId_Mode,"StartStoppChromeDriver", 1,$pname,"",200,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
                 
             //$categoryDreiID = $seleniumOperations->getCategory("DREI");                
             //echo "Category DREI : $categoryDreiID (".IPS_GetName($categoryDreiID).") in ".IPS_GetName(IPS_GetParent($categoryDreiID))."\n";  
@@ -907,7 +918,7 @@
  *
  **********************************************************/
 
-    echo " Selenium Webfront initialisieren. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+    echo "Selenium Webfront initialisieren. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
     /*
     echo "\n";
@@ -1047,7 +1058,12 @@
 
                 $webfront_links["Selenium"]["Auswertung"][$startstoppChromedriverID]["NAME"]="StartStopp Chromedriver";
                 $webfront_links["Selenium"]["Auswertung"][$startstoppChromedriverID]["ORDER"]=800;
-                $webfront_links["Selenium"]["Auswertung"][$startstoppChromedriverID]["ADMINISTRATOR"]=true;           
+                $webfront_links["Selenium"]["Auswertung"][$startstoppChromedriverID]["ADMINISTRATOR"]=true;     
+
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumActiveID]["NAME"]="StartStopp Chromedriver Result";
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumActiveID]["ORDER"]=810;
+                $webfront_links["Selenium"]["Auswertung"][$SeleniumActiveID]["ADMINISTRATOR"]=true;
+                      
                 }
             if ($getChromedriverID)          // Chromedriver versionen nachladen in Synology Drive nicht auf jedem PC 
                 {
@@ -1069,18 +1085,18 @@
             if ($result === false) echo "---------\n".$seleniumHandler->readFailure()."\n---------------------\n";
             else echo "Selenium Webdriver ordnungsgemaess gestartet.\n";
 
-            echo "Webfront Selenium do install:\n";
-            $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, kein interop mode, ist in der Kopie der Config in der class
+            echo "Webfront Selenium do install for ".IPS_GetName($WFC10_ConfigId)." ($WFC10_ConfigId):\n";
+            //$wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, kein interop mode, ist in der Kopie der Config in der class
 
             if ($DoDelete)          // alles was mit Money anfängt löschen
                 {
-                echo "Delete Panes starting with ".$configWF["TabPaneItem"]."\n";
+                echo "Delete Panes starting with ".$configWF["TabPaneItem"]." DoDelete Status $DoDelete. \n";
                 $wfcHandling->deletePane($configWF["TabPaneItem"]);              /* alle Spuren von vormals beseitigen */
                 }
-            //print_R($webfront_links);
+            print_R($webfront_links);
 
-            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
-            $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);                    // funktioniert, Ergebnis der Änderungen wird abgespeichert
+            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug, schreibt automatisch
+            //$wfcHandling->write_WebfrontConfig($WFC10_ConfigId);                    // funktioniert, Ergebnis der Änderungen wird abgespeichert
             echo "Webfront Selenium successfull installed.\n";
             }
 
@@ -1151,7 +1167,7 @@
                 }
             if ($DoDelete)          // alles was mit Money anfängt löschen
                 {
-                echo "Delete Panes starting with ".$configWF["TabPaneItem"]."\n";
+                echo "Delete Panes starting with ".$configWF["TabPaneItem"]." DoDelete Status $DoDelete.\n";
                 $wfcHandling->deletePane($configWF["TabPaneItem"]);              /* alle Spuren von vormals beseitigen */
                 }
 

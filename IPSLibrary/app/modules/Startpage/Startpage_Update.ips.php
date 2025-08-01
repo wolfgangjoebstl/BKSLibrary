@@ -90,7 +90,7 @@
  */
 
 
-class geoOps
+class astronomyOps
     {
     
     use joebstl\MoonCalculations;

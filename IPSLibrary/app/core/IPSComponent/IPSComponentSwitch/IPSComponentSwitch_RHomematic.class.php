@@ -214,7 +214,7 @@
                 {
                 echo "Zurückstellen des Error Handlers, Info in Variable zu AllgemeneDefinitionen zwischengespeichert in : ".$this->ErrorHandlerAltID." \n";    
                 $alter_error_handler=GetValue($this->ErrorHandlerAltID);                  
-                set_error_handler($alter_error_handler);
+                //set_error_handler($alter_error_handler);
                 }
 		    }
 

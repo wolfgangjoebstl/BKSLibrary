@@ -9146,7 +9146,7 @@ class ipsTables
             }
         unset ($config["display"]); 
         $config["display"] = $this->checkDisplayConfig($display);
-        if (isset($config["format"]["class-id"])===false)   $config["format"]["class-id"]="easycharts-api";           // make it short
+        if (isset($config["format"]["class-id"])===false)   $config["format"]["class-id"]=uniqid("a");           // make it short
         if (isset($config["format"]["header-id"])===false)  $config["format"]["header-id"]="hrow";          // make it short
         return ($config);
         }
@@ -9303,6 +9303,73 @@ class ipsTables
      *  text
      *
      * verwendet getColumnsName, analyseConfig, processData, insertHeader, analyseData 
+     *
+     * Schwierig ist die css Formatierung mit <styles>
+     * css Formatierungen können global auf eine class oder individuell auf eine einzigartige element id ausgerichtet sein
+     *  <style> 
+     *      #id table { font-family: "Trebuchet MS" }                       individuell für ein element, wahrscheinlich ein div
+     *      p {  text-align: center;   color: red; }                        global für alle p s
+     *      .center {  text-align: center; }                                für alle Elemente die der class center angehören
+     *
+     * Wenn ein ipsTable erstellt wird, wird automatisch eine unique id erzeugt, damit kann nur ein table gezeichnet werden
+     * wenn ein style für mehrere tables verwendet werden soll, dann muss die Formatierung von der eigentlichen Erstellung der Tabelle abgetrennt werden
+     * ein übergeordnetes div mit einer unqeid definiert eine container struktur und wird für mehrere Tabellen verwendet
+     *
+     * analyseConfig kennt folgende Parameter
+     *          class-id ist irreführend, soll eine uniqid darstellen, ist immer gesetzt, ausser mit false rauskonfiguriert
+     *          dann wird ein style in das html eingefügt
+     *          sonst wird kein style definiert, es gilt
+     *          wenn reuse-styleid gesetzt ist würde auf diese verwiesen werden, das bedeutet der style mit der id ist an anderer Stelle definiert, muss aber denoch unique sein
+     *          oder wenn diese auch nicht wird ein normales div eingetragen
+     * auskommentiert sind noch class Definitionen möglich
+     *
+     * einfacher wäre es das ganze zwischen zwei html /html tags zu setzen. Ein html Block ist das Root für ein DOMs
+     *
+     * mehrere Tabellen als flex box
+     *
+		.maindiv1 { width: 100%; height: 100%;          // div darunter übereinander rechtsbündig darstellen, das sind maindiv2 und menueleiste
+		  display: flex;  flex-direction: column; flex-wrap: nowrap;        
+		  justify-content: space-between;
+		  align-items: flex-start; align-content: flex-start;
+		  box-sizing: border-box; padding: 0px 0px 0px 0px;
+		}
+        .maindiv1>* { position: relative;	z-index: 1;     // zusaetzliche Formatierung für die divs unter maindiv1 : 
+		}
+		.maindiv2 { width: 100%; height: 90%;           // div darunter für left-aligned, center-aligned und right aligned
+		  display: flex; position: relative; 
+		  justify-content: space-between;
+		  align-items: center;
+		  box-sizing: border-box;
+		}
+     <div id=a1234 class="maindiv1">
+        <div class="maindiv2">
+            <div class="left-aligned">
+                <div class="left-aligned2" style="align-items: flex-start">
+                <p id="debuginfo" style="color:white;">Test</p>
+                </div>
+                <div class="left-aligned2" style="align-items: center">
+                </div>
+            </div>
+            <div class="center-aligned">
+            
+            </div>
+            <div class="right-aligned">
+                <div  class="right-aligned2" style="align-items: center">
+                </div>
+                <div  class="right-aligned2" style="align-items: flex-end">
+                </div> 
+            </div>
+        </div>
+        <div class="hidden" id="menueleiste">
+            <div class="menueleistelinks">
+            </div>
+            <div class="menueleisterechts">
+            </div>	
+        </div>
+    </div> 
+     
+     
+     *
      */
 
 
@@ -11289,7 +11356,7 @@ class sysOps
      * die aktuell gestarteten Java Programme werden erfasst
      *
      */
-    private function getJavaList($filename=false,$debug=false)
+    public function getJavaList($filename=false,$debug=false)
         {
         if ($debug) echo "getJavaList($filename,... aufgerufen.\n";
         $lines=0;
@@ -12014,6 +12081,67 @@ class dosOps
                 }    
             }                       
         return ($filesToRead);
+        }
+
+
+    /* dosOps::findfilesRecursive
+     * wie findfiles aber rekursive Implementierung
+     * für array 
+     */
+    function findFilesRecursive(&$result,$path,$list,$target="*",$indent="",$debug=false)
+        {
+        $pos=strpos($target,"*.");
+        if ( $pos === false )
+            {
+            // echo "findItem, wir suchen nach dem Filenamen \"".$target."\"\n";
+            $detExt=false;
+            }
+        else
+            {
+            $targetext=substr($target,$pos+1,20);
+            // echo "findItem, wir suchen nach der Extension \"*".$target."\"\n";
+            $detExt=true;
+            $ignoreCase=true;
+            }            
+        foreach ($list as $dir => $item)
+            {   
+            if (is_array($item)) 
+                {
+                if ($debug) echo $indent."$dir \n";
+                $this->findFilesRecursive($result,$path.DIRECTORY_SEPARATOR.$dir,$item,$target,$indent."  "); 
+                }
+            else 
+                {
+                $count=sizeof($result);
+                if ($detExt)
+                    {
+                    /* Wir suchen eine Extension, filename ist die extension */
+                    if ($ignoreCase) $pos = stripos($item,$targetext);
+                    else
+                        {
+                        $pos = strpos($item,$targetext);
+                        //if ($pos===false) $pos = strpos(strtoupper($file),strtoupper($filename));
+                        }
+                    if ( ($pos > 0 ) )
+                        {
+                        $len = strlen($item)-strlen($targetext)-$pos;
+                        //echo "Filename \"".$file."\" gefunden. Laenge Extension : ".$len." ".$pos."\n";
+                        if ( $len == 0 ) 
+                            {
+                            $result[$count]["Filename"]=$item;
+                            $result[$count]["Path"]=$path;
+                            if ($debug) echo $indent."$count $path".DIRECTORY_SEPARATOR."$item \n";                                        
+                            }
+                        }
+                    } 
+                elseif ( ($item==$target) || (trim($target)=="*") )
+                    {   
+                    $result[$count]["Filename"]=$item;
+                    $result[$count]["Path"]=$path;
+                    if ($debug) echo $indent."$count $path".DIRECTORY_SEPARATOR."$item \n";
+                    }
+                }
+            }
         }
 
     /* dosOps::fileAvailable
@@ -13349,6 +13477,49 @@ class fileOps
         return($resultArray);
         }
 
+    /* eigentlich zugeschnitten auf die Ausgaben die für Selenium processes benötigt werden
+     */
+    function analyseContent($content, $key, $maxempty=0, $debug=false)
+        {
+        $fileOps = new fileOps();
+        $i=0; $result=array(); $ignore=0;  $maxCol=1;        
+        foreach ($content as $index => $line)
+            {
+            //echo $line."\n";
+            if ($i==0) 
+                {
+                $pos=strpos($line, $key); 
+                if (($pos !==false) && ($pos < 10) )
+                    {
+                    if ($debug) echo ":".$line."\n";
+                    $delimiter = $this->readFirstLineFixed($line,"ASCII",false);          // true für Debug
+                    $maxCol=sizeof($delimiter);
+                    if ($debug>1) print_r($delimiter);
+                    $i++;
+                    }
+                }
+            else
+                {
+                $ergebnis = $this->readFileFixedLine($line,$delimiter,false);            // andernfalls debug einsetzen
+                if (sizeof($ergebnis)>=$maxCol) 
+                    {
+                    if ($debug) echo ":".$line."\n";
+                    $result[$i]=$ergebnis;
+                    $ignore=0;
+                    }
+                else 
+                    {
+                    if ($ignore>=$maxempty) break;                                  // leere zeile ist Abbruch
+                    $ignore++;
+                    }
+                $i++;
+                }
+            }
+        $better=array();
+        foreach ($result as $entry ) $better[]=$entry;    
+        return ($better);
+        }
+
 
     /* ein csv File einlesen und die erste Zeile als array übergeben für die Verwendung als index. 
      * die php Funktion fgetcsv macht dabei die Arbeit
@@ -13982,6 +14153,7 @@ class timerOps
 
 	/* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
      * hier die Variante mit Angabe von Stunde und Minute pro Tag
+     * Timer wird automatisch gestartet
      */
 
 	public function CreateTimerHour($name,$stunde,$minute,$scriptID,$debug=false)
@@ -14009,7 +14181,7 @@ class timerOps
 
     /* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
      * hier die Variante die alle x Sekunden aufgerufen wird
-     *
+     * Timer wird nicht automatisch gestartet
      */
 
 	public function CreateTimerSync($name,$sekunden,$scriptID,$debug=false)
@@ -15688,7 +15860,8 @@ class WfcHandling
 
     protected $linkTable;                               // ale Links die seit der initialisiserung geschrieben wurden
 
-    /* legt schon eine Menge Variablen an:
+    /* WfcHandling::__construct
+     * legt schon eine Menge Variablen an:
      * die installierten Module
      * wenn Stromheizung oder CustomComponents werden die passenden Kategorien auch gleich angelegt
      * die ID des Default Webfront Konfigurators
@@ -15770,7 +15943,7 @@ class WfcHandling
 	    //echo "\n"; */       
         }
 
-    /* WfcHandling::
+    /* WfcHandling::get_Webfronts
      * alle Visualisierungen auslesen 
      */
     public function get_Webfronts()
@@ -15779,7 +15952,8 @@ class WfcHandling
         return($modulhandling->getInstancesByType(6));                 // alle Visualisiserungen    
         }
 
-    /* Abfrage als Tabelle alle Webfronts mit dem Namen als ID
+    /* WfcHandling::get_WebfrontConfigID
+     * Abfrage als Tabelle alle Webfronts mit dem Namen als ID
      * zB Array
      * (
      *  [Administrator] => 36728
@@ -15792,7 +15966,8 @@ class WfcHandling
         return($this->WebfrontConfigID);
         }
 
-    /* nur den Link anlegen, nicht soviel Automatik
+    /* WfcHandling::createLinkinWebfront
+     * nur den Link anlegen, nicht soviel Automatik
      * wird in Stromheizung_Installation verwendet, 
      * link kann einen :: enthalten, zusätzliche Aktion ist die Zuordnung des vorderen Teils zu einem CustomComponent
      *
@@ -15837,7 +16012,8 @@ class WfcHandling
             }
         }
 
-    /* besser als CreateLinkByDestination
+    /* WfcHandling::CreateLinkWithDestination
+     * besser als CreateLinkByDestination
      * bessert Fehler selbstständig aus, kürzt Links auf Links ab
      *
      */
@@ -15864,7 +16040,7 @@ class WfcHandling
         }
 
 
-    /* initiateLinkTable
+    /* WfcHandling::initiateLinkTable
      * ein json string eines arrays mit allen Links, Namen und ID
      * parentId => TargetID
      */
@@ -15936,15 +16112,17 @@ class WfcHandling
 		    }
     	}
 
-    /* deliver the content of the linkTable
+    /* WfcHandling::getLinkTable
+     * deliver the content of the linkTable
      */
     public function getLinkTable()
         {
         return(json_encode($this->linkTable));
         }
 
-    /* echo der installierten Webfront Konfiguratoren, IDs werden in construct angelegt */
-
+    /* WfcHandling::get_WfcStatus
+     * echo der installierten Webfront Konfiguratoren, IDs werden in construct angelegt 
+     */
     public function get_WfcStatus()
         {
 	    echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n";
@@ -15958,17 +16136,18 @@ class WfcHandling
 
     /************************************************************************************/
 
-    /* eine WFC Struktur mit einem ident ausgeben */
-
+    /* WfcHandling::print_wfc
+     * eine WFC Struktur mit einem ident ausgeben 
+     */
     public function print_wfc($input)
         {
         $this->write_wfc($input,"",10);    
         }
 
-    /* rekursive Funktion, eine WFC Struktur mit einem ident ausgeben, von print_wfc aufgerufen 
+    /* WfcHandling::write_wfc
+     * rekursive Funktion, eine WFC Struktur mit einem ident ausgeben, von print_wfc aufgerufen 
      * durch den rekursiven Aufruf wird ident immer um drei blanks länger
      */
-
     private function write_wfc($input,$indent,$level)
 	    {
     	if (is_array($input) && (sizeof($input) > 0) && ($level>0) )
@@ -15984,7 +16163,8 @@ class WfcHandling
 	    	}	
     	}
 
-    /* rekursive Funktion, in einer WFC Struktur einen Namen suchen 
+    /* WfcHandling::search_wfc
+     * rekursive Funktion, in einer WFC Struktur einen Namen suchen 
      * die STruktur wird als array übergeben
      */
     private function search_wfc($input,$search,$tree)
@@ -16017,7 +16197,7 @@ class WfcHandling
 	    return($result);						
 	    }
 
-    /*****************************************
+    /* WfcHandling::read_wfc
      * Die Konfiguration eines Webfronts auslesen, sehr hilfreich
      * Gibt ein Array $resultWebfront als return Wert zurück
      * Webfront Configurator Instanzen ermitteln
@@ -16027,8 +16207,8 @@ class WfcHandling
      *
      *
      *
-     **************************************/
-
+     *
+     */
     public function read_wfc($level=10,$debug=false)
 	    {
     	if ($debug) echo "   read_wfc($level aufgerufen:\n";
@@ -16047,9 +16227,9 @@ class WfcHandling
         return ($resultWebfront);    
     	}   // ende function
 
-    /*  wenn instanz false dann nimmt er den internen Speicher
+    /* WfcHandling::read_wfcByInstance  
+     * wenn instanz false dann nimmt er den internen Speicher
      */
-
     public function read_wfcByInstance($instanz,$level,$debug=false)
         {
         if ($debug) echo "read_wfcByInstance($instanz ...\n";
@@ -16177,7 +16357,8 @@ class WfcHandling
         else return (false);
     	}
 
-    /* ein Abbild der Webfront Konfig schaffen, später modifizieren und dann wieder schreiben
+    /* WfcHandling::read_WebfrontConfig 
+     * ein Abbild der Webfront Konfig schaffen, später modifizieren und dann wieder schreiben
      */
     public function read_WebfrontConfig($instanz)
         {
@@ -16186,14 +16367,16 @@ class WfcHandling
         return (true);
         }
 
-    /* Webfront Konfig in schreibbarem zustand auslesen
+    /* WfcHandling::get_WebfrontConfig
+     * Webfront Konfig in schreibbarem zustand auslesen
      */
     public function get_WebfrontConfig()
         {
         return(json_encode($this->configWebfront));
         }
 
-    /* Webfront Konfig schreiben , mit Apply Changes aber ohne reload Webfront
+    /* WfcHandling::write_WebfrontConfig
+     * Webfront Konfig schreiben , mit Apply Changes aber ohne reload Webfront
      */
     public function write_WebfrontConfig($instanz)
         {
@@ -16207,12 +16390,13 @@ class WfcHandling
      * schrittweise alle eliminieren, ab IPS 6.3 wird von Symcon umgestellt
      */
 
-    /* die Webfront Config für die Items ausgeben, legacy mode wenn configID beim construct übergeben wird
+    /* WfcHandling::GetItems
+     * die Webfront Config für die Items ausgeben, legacy mode wenn configID beim construct übergeben wird
      * Parameter instanz 
      *     Wert,extern: mit IPS_GetConfiguration($instanz) 
      *     false intern: für eine bestimmte Instanz >configWebfront["Items"] die mit read_WebfrontConfig eingelesen wurde
      */
-    public function GetItems($instanz=false)
+    public function GetItems($instanz=false,$debug=false)
         {
         if ($this->configID) return(WFC_GetItems($this->configID));                       // interop mode needs instance
         //$ItemList = WFC_GetItems($instanz);
@@ -16225,13 +16409,23 @@ class WfcHandling
             }
         else            // aus dem internen Abbild auslesen
             {
-            if (isset($this->configWebfront["Items"])) $ItemList = json_decode($this->configWebfront["Items"],true);            
-            else return (false);
+            if (isset($this->configWebfront["Items"])) 
+                {
+                $ItemList = json_decode($this->configWebfront["Items"],true);            
+                //if ($debug) { echo "GetItems ".$this->configID." $instanz reads configWebfront : \n"; print_R($ItemList); }
+                }
+            else 
+                {
+                echo "Error, GetItems($instanz) without Items.\n";
+                print_R($this->configWebfront);
+                return (false);
+                }
             }
         return ($ItemList);
         }
 
-    /* Items mit einem Namen oder dem Beginn des selben Namens finden, Ausgabe als array
+    /* WfcHandling::GetItemsByName
+     * Items mit einem Namen oder dem Beginn des selben Namens finden, Ausgabe als array
      * benötigt read_WebfrontConfig(instanz) zum Einlesen der Konfiguration
      */
     public function GetItemsByName($name=false)
@@ -16263,7 +16457,8 @@ class WfcHandling
             }
         }
 
-    /* Items mit einem Namen oder dem Beginn des selben Namens als Parent finden, Ausgabe als array
+    /* WfcHandling::GetItemsByParentName
+     * Items mit einem Namen oder dem Beginn des selben Namens als Parent finden, Ausgabe als array
      * benötigt read_WebfrontConfig(instanz) zum Einlesen der Konfiguration
      * bricht nicht ab wenn der Name genau gefunden wird, da mehrere Treffer sicher sind
      */
@@ -16298,7 +16493,8 @@ class WfcHandling
             }
         }
 
-    /* die Webfront Config für ein Item oder wenn false für alle Items ausgeben, gleich wie exists_WFCItem
+    /* WfcHandling::GetItem
+     * die Webfront Config für ein Item oder wenn false für alle Items ausgeben, gleich wie exists_WFCItem
      * die ItemId ist ein Index und kein Name, daher alle Einträge durchgehen und mit ID vergleichen
      * Item ID muss vollstaendig überein stimmen
      *
@@ -16320,9 +16516,9 @@ class WfcHandling
         return($nameID);
         } 
 
-    /* Zuordnung Index und Name in itemID herstellen und in der class speichern
+    /* WfcHandling::update_itemListWebfront
+     * Zuordnung Index und Name in itemID herstellen und in der class speichern
      */
-
     private function update_itemListWebfront()
         {
         $configItems = json_decode($this->configWebfront["Items"],true); 
@@ -16334,15 +16530,18 @@ class WfcHandling
         $this->itemListWebfront=$nameID;
         }
 
-    /* die interne Webfront Config mit der neuen Items Config überschreiben
+    /* WfcHandling::UpdateItems
+     * die interne Webfront Config mit der neuen Items Config überschreiben
      */
     public function UpdateItems($configItems)
         {
         $this->configWebfront["Items"] = json_encode($configItems);
+        $this->update_itemListWebfront();                                           // wenn configWebfront geändert wird auch den Bezugspunkt ändern
         return (true);
         }
 
-    /* die interne Webfront Config mit der Config für ein Item überschreiben
+    /* WfcHandling::UpdateItem
+     * die interne Webfront Config mit der Config für ein Item überschreiben
      */
     public function UpdateItem($ItemId,$configItem)
         {
@@ -16360,7 +16559,10 @@ class WfcHandling
         else return (false);
         }        
 
-    /*Array
+    /* WfcHandling::AddItem
+     * benutzt UpdateItems(ConfigItems), hängt vorher die neue Konfiguration zu configWebfront["Items"]
+     *
+     * Array
         (
         [ParentID] => roottp
         [Visible] => 1
@@ -16370,7 +16572,6 @@ class WfcHandling
         [ClassName] => TabPane
         )
      */
-
     public function AddItem($ItemId, $ClassName, $Configuration, $ParentId)
         {
         $configItem=array();
@@ -16391,6 +16592,8 @@ class WfcHandling
         return (false);
         }
 
+    /* WfcHandling::DeleteItem
+     */
     public function DeleteItem($ItemId)
         {
         if (isset($this->itemListWebfront[$ItemId])) 
@@ -16408,7 +16611,7 @@ class WfcHandling
         return (false);
         }
 
-	/**
+	/* WfcHandling::ReloadAllWebFronts
 	 * Lädt alle WebFronts neu
 	 */
 	function ReloadAllWebFronts() {
@@ -16418,7 +16621,8 @@ class WfcHandling
 		}
 	}
 
-    /* Liefert die ID des ersten gefundenen WebFront Konfigurators
+    /* WfcHandling::GetWFCIdDefault
+     * Liefert die ID des ersten gefundenen WebFront Konfigurators
 	 *
 	 * Die Funktion gibt die ID des ersten WebFront Konfigurators zurück. Wenn keiner existiert, wird 'false' zurückgegeben.
 	 *
@@ -16431,7 +16635,8 @@ class WfcHandling
 		return false;
 	}
 
-	/** Existenz eines WebFront Konfigurator Items überprüfen
+	/* WfcHandling::exists_WFCItem
+     * Existenz eines WebFront Konfigurator Items überprüfen
 	 *
 	 * Der Befehl überprüft ob ein bestimmtes Item im WebFront Konfigurator existiert
 	 *
@@ -16440,20 +16645,26 @@ class WfcHandling
 	 * @return boolean TRUE wenn das Item existiert anderenfalls FALSE
 	 *
 	 */
-	function exists_WFCItem($ItemId, $WFCId=false) 
+	function exists_WFCItem($ItemId, $WFCId=false, $debug=false) 
         {
-        $ItemList = $this->GetItems($WFCId);            // wenn WFCId false dann internen Speicher nehmen
+        $ItemList = $this->GetItems($WFCId,$debug);            // wenn WFCId false dann internen Speicher nehmen
         if ($ItemList !== false)
             {
             foreach ($ItemList as $Item) 
                 {
                 if ($Item['ID']==$ItemId) return true;
                 }
+            foreach ($ItemList as $Item)
+                {
+                if ($debug) echo $Item['ID']."\n";
+                }
             }
-	   return false;
+        elseif ($debug) echo "Warning, exists_WFCItem, itemList from GetItems($WFCId) is false.\n";
+	    return false;
 	}    
     
-    /* spezielle Formattierung berücksichtigen
+    /* WfcHandling::PrepareWFCItemData
+     * spezielle Formattierung berücksichtigen
      * für ItemId, ParentId, Title 
      * Blank mit underscore tauschen, nur für Item und Parent
      * bei IP Symcon Version 1 und 2 auch noch utf encoden
@@ -16472,7 +16683,8 @@ class WfcHandling
 		}
 	}
 
-    /* wichtigste Funktion, verwendet allerdings jede Menge proprietären Quatsch
+    /* WfcHandling::CreateWFCItem
+     * wichtigste Funktion, verwendet allerdings jede Menge proprietären Quatsch
      * wenn nicht vorhanden mit AddItem beginnen, dann UpdateConfiguration
      */
 	function CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, $ClassName, $Configuration) 
@@ -16487,7 +16699,8 @@ class WfcHandling
 		$this->UpdatePosition($ItemId, $Position);
         }
 
-	/** Anlegen eines TabPanes im WebFront Konfigurator
+	/* WfcHandling::CreateWFCItemTabPane
+     * Anlegen eines TabPanes im WebFront Konfigurator
 	 *
 	 * Der Befehl legt im WebFront Konfigurator ein TabPane mit dem Element Namen $ItemId an
 	 *
@@ -16508,7 +16721,8 @@ class WfcHandling
 		$this->CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, 'TabPane', $Configuration);
 	    }
 
-	/** Anlegen eines SplitPanes im WebFront Konfigurator
+	/* WfcHandling::CreateWFCItemSplitPane
+     * Anlegen eines SplitPanes im WebFront Konfigurator
 	 *
 	 * Der Befehl legt im WebFront Konfigurator ein SplitPane mit dem Element Namen $ItemId an
 	 *
@@ -16534,7 +16748,8 @@ class WfcHandling
 		$this->CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, 'SplitPane', $Configuration);
 	    }
 
-	/** Anlegen einer Kategorie im WebFront Konfigurator
+	/* WfcHandling::CreateWFCItemCategory
+     * Anlegen einer Kategorie im WebFront Konfigurator
 	 *
 	 * Der Befehl legt im WebFront Konfigurator eine Kategorie mit dem Element Namen $ItemId an
 	 *
@@ -16560,7 +16775,8 @@ class WfcHandling
 		$this->CreateWFCItem ($ItemId, $ParentId, $Position, $Title, $Icon, 'Category', $Configuration);
     	}
 
-	/** Anlegen einer ExternalPage im WebFront Konfigurator
+	/* WfcHandling::CreateWFCItemExternalPage
+     * Anlegen einer ExternalPage im WebFront Konfigurator
 	 *
 	 * Der Befehl legt im WebFront Konfigurator eine ExternalPage mit dem Element Namen $ItemId an
 	 *
@@ -16584,7 +16800,8 @@ class WfcHandling
 	    }
 
 
-	/** Anlegen eines Widget im WebFront Konfigurator
+	/* WfcHandling::CreateWFCItemWidget 
+     * Anlegen eines Widget im WebFront Konfigurator
 	 *
 	 * Der Befehl legt im WebFront Konfigurator ein Widget mit dem Element Namen $ItemId an
 	 *
@@ -16603,13 +16820,14 @@ class WfcHandling
 		$this->CreateWFCItem ($ItemId, $ParentId, $Position, '', '', 'InfoWidget', $Configuration);
 	}
 
-    /* WFC_UpdateVisibility             $configItem["Visible"]
+    /* WfcHandling::UpdateConfiguration
+     * 
+     * WFC_UpdateVisibility             $configItem["Visible"]
      * WFC_UpdatePosition               $configItem["Position"]
      * WFC_UpdateParentID               $configItem["ParentID"]    
      * WFC_UpdateConfiguration          $configItem["Configuration"]
      *        
      */
-
     public function UpdateConfiguration($ItemId, $Configuration)
         {
         if ($this->configID) return(WFC_UpdateConfiguration($this->configID, $ItemId, $Configuration));
@@ -16633,6 +16851,9 @@ class WfcHandling
         else return (false);
         }
 
+    /* WfcHandling::UpdateParentID
+     * liest itemListWebfront
+     */
     public function UpdateParentID($ItemId, $ParentId)
         {
         if ($this->configID) return(WFC_UpdateParentID($this->configID, $ItemId, $ParentId));
@@ -16655,14 +16876,15 @@ class WfcHandling
             }
         else 
             {
-            echo "Warning, UpdateParentID, $ItemId not found in Webfront Config.\n";
+            echo "Warning, UpdateParentID, $ItemId not found in Webfront Config itemListWebfront.\n";
             //print_R($this->itemListWebfront);
             return (false);
             }
         }
 
-    /* Update Position schwierig wenn das Element egerade erzeugt wurde, da die Item ID noch nicht in der internen Config ist */
-
+    /* WfcHandling::UpdatePosition
+     * Update Position schwierig wenn das Element egerade erzeugt wurde, da die Item ID noch nicht in der internen Config ist 
+     */
     public function UpdatePosition($ItemId, $Position)
         {
         if ($this->configID) return(WFC_UpdatePosition($this->configID, $ItemId, $Position));            
@@ -16692,6 +16914,9 @@ class WfcHandling
             }
         }
 
+    /* WfcHandling::UpdateVisibility
+     *
+     */
     public function UpdateVisibility($ItemId, $Visibility)
         {
         if ($this->configID) return(WFC_UpdateVisibility($this->configID, $ItemId, $Visibility));
@@ -16719,7 +16944,8 @@ class WfcHandling
             }
         }
         
-	/** Löschen eines kompletten Objektbaumes aus dem WebFront Konfigurator
+	/* WfcHandling::DeleteWFCItems
+     * Löschen eines kompletten Objektbaumes aus dem WebFront Konfigurator
 	 *
 	 * Der Befehl löscht im WebFront Konfigurator einen Teilbaum durch Angabe des Root Element Namens $ItemId
 	 *
@@ -16736,7 +16962,8 @@ class WfcHandling
 		}
 	}
 
-	/** Löschen ein Element aus dem WebFront Konfigurator
+	/* WfcHandling::DeleteWFCItem
+    * Löschen ein Element aus dem WebFront Konfigurator
 	 *
 	 * Der Befehl löscht im WebFront Konfigurator ein Element durch Angabe des Element Namens $ItemId
 	 *
@@ -16919,6 +17146,9 @@ class WfcHandling
         return ($WebfrontConfigID);  
         }
 
+    /* WfcHandling::anzahlItems
+     *
+     */
     private function anzahlItems($webfront_links)
         {
         $result = new stdClass();
@@ -16943,7 +17173,7 @@ class WfcHandling
         return ($result);        
         }
 
-    /*
+    /* WfcHandling::easySetupWebfront
      *
      *
      * Beispiel alternative Struktur ohne Nachrichtenspeicher
@@ -16966,6 +17196,8 @@ class WfcHandling
 
     /******
      * Verwendung in Amis, Autosteuerung, CustomComponent, Guthabensteuerung
+     *
+     * instanz from scope, liest und schreibt automatisch
      *
      * Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte Teil des WebfrontConfigID übergeben 
      * ruft setupWebfrontEntry mit der richtigen Webfront ConfigID und dem Namen des Webfronts (Administrator/User)
@@ -17026,6 +17258,9 @@ class WfcHandling
             $scope=$config;
             $empty=true;
             }
+        $WebfrontConfigID = $this->get_WebfrontConfigID();   
+        if (isset($WebfrontConfigID[$scope])) $this->read_WebfrontConfig($WebfrontConfigID[$scope]);           // instanz from scope, liest und schreibt automatisch
+        else return(false);
         $status=false;
         $ipsOps = new ipsOps();
         $this->configWF=$configWF;                                              /* mitnehmen in die anderen Routinen */
@@ -17119,13 +17354,15 @@ class WfcHandling
 		        IPS_SetHidden($categoryId_WebFront, true); //Objekt verstecken
                 if ($this->configWF["TabPaneParent"] != "roottp") 
                     {
-                    if ( $this->exists_WFCItem($this->configWF["TabPaneParent"]) )   
+                    if ( $this->exists_WFCItem($this->configWF["TabPaneParent"],false,false) )               // true mit Debug
                         {                     
                         //print_R($webfront_links);
                         if (sizeof($webfront_links)==1)                 // Unterscheidung ob TabPaneParent oder TabPaneItem genommen wird
                             {
                             if ($debug) echo "Installation im ".$this->configWF["TabPaneParent"].", nur ein Key ".array_key_first($webfront_links).":\n";
                             if ($active) $this->setupWebfront($webfront_links,$this->configWF["TabPaneParent"],$categoryId_WebFront, $scope, $debug);
+                            $this->write_WebfrontConfig($WebfrontConfigID[$scope]);
+                            echo "easySetupWebfront, write_WebfrontConfig for ".$WebfrontConfigID[$scope]." completed.\n";
                             }
                         elseif (sizeof($webfront_links)>1) 
                             {
@@ -17136,10 +17373,24 @@ class WfcHandling
                                 echo "\n";
                                 }
                             if ($active) $this->setupWebfront($webfront_links,$this->configWF["TabPaneItem"],$categoryId_WebFront, $scope, $debug);
+                            $this->write_WebfrontConfig($WebfrontConfigID[$scope]);
+                            echo "easySetupWebfront, write_WebfrontConfig for ".$WebfrontConfigID[$scope]." completed.\n";
                             }
                         else echo "easySetupWebfront: Fehler, Webfront Konfiguration für Darstellung der Daten leer.\n"; 
                         }
-                    else echo "easySetupWebfront: Fehler, Webfront TabPaneParent ".$this->configWF["TabPaneParent"]." nicht vorhanden.\n";                
+                    else 
+                        {
+                        echo "easySetupWebfront: Fehler, Webfront ".$this->configID." with TabPaneParent ".$this->configWF["TabPaneParent"]." nicht vorhanden.\n";  
+                        $wfc=$this->read_wfc();                 // false interne Datenbank für Config nehmen, nur die Struktur auslesen, ich brauch alle Namen, den nur so funktionieren die Filter, Keys zum löschen
+                        if (is_array($wfc))
+                            {
+                            foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+                                {
+                                echo "\n------$index:\n";
+                                $this->print_wfc($wfc[$index]);
+                                }
+                            }              
+                        }
                     }
                 else echo "easySetupWebfront: Fehler, Webfront TabPaneParent roottp nicht erlaubt.\n";
                 }
@@ -17152,13 +17403,13 @@ class WfcHandling
             }
         }                           // ende function
 
-    /******
+    /* WfcHandling::setupWebfront
+     *
      * Verwendung intern und von sprachsteuerung Install
      * Aufbau einer Webfront Seite, Aufruf erfolgt von easysetupwebfront
      * ruft selbst setupWebfrontEntry auf, macht nur kurzen Plausi check
      *
      */
-
     public function setupWebfront($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFront,$scope, $debug=false)
         {
         $active=true;            
@@ -17173,7 +17424,7 @@ class WfcHandling
 			}
 		}
 
-    /* setupWebfrontEntry, intern
+    /* WfcHandling::setupWebfrontEntry, intern
      * anders probieren, nicht den scope übergeben, kann private auch sein, wird nur intern von setupWebfront verwendet 
      *
      * Parametrierung ist in $webfront_links
@@ -17407,7 +17658,8 @@ class WfcHandling
 
 
 
-    /* Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem
+    /* WfcHandling::createSplitPane
+     * Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem
      * Nutzt zusätzlich einen class parameter paneConfig mit width
      */
     private function createSplitPane($webfront_group, $Name, $tabItem, $WFC10_TabPaneItem,$categoryId_WebFrontSubTab,$scope="Administrator", $debug=false)
@@ -17452,7 +17704,8 @@ class WfcHandling
             
         }
 
-    /* createLinks, die eigentliche Routine, speichere die Links, es gibt zwei Kategorien Left und Right, 
+    /* WfcHandling::createGroupLinks
+     * createLinks, die eigentliche Routine, speichere die Links, es gibt zwei Kategorien Left und Right, 
      * Übergabestruktur ist immer noch mit group arrays mit Keys und link arrays mit OID (integer value) und entry arrays mit key OID und arrays NAME, ORDER
      * wenn Right default oder false ist wird Right mit Left beschrieben, also sind beide gleich
      *
@@ -17471,7 +17724,6 @@ class WfcHandling
      *      Link wird auf die OID mit dem Namen NAME und der Position ORDER angelegt
      * 
      */
-
     private function createGroupLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
         {
         //$debug=true;
@@ -17555,6 +17807,9 @@ class WfcHandling
 
         }
 
+    /* WfcHandling::createLinks
+     *
+     */
     private function createLinks($webfront_group,$scope,$categoryIdLeft,$categoryIdRight=false, $debug=false)
         {
         //$debug=true;
@@ -17604,7 +17859,8 @@ class WfcHandling
 
 
 
-    /** Anlegen eines TabPanes im WebFront Konfigurator, Nutzung von IPSInstaller
+    /* WfcHandling::CreateWFCItemRootTabPane
+     * Anlegen eines TabPanes im WebFront Konfigurator, Nutzung von IPSInstaller
 	 *
 	 * Der Befehl legt im WebFront Konfigurator ein TabPane mit dem Element Namen $ItemId an
 	 *
@@ -17623,7 +17879,8 @@ class WfcHandling
 		CreateWFCItem ($WFCId, $ItemId, $ParentId, $Position, $Title, $Icon, 'TabPane', $Configuration);
 	    }
 
-    /* does not delete Panes as long there is no write command
+    /* WfcHandling::deletePane
+     * does not delete Panes as long there is no write command
      * works on internal config copy now
      */
 
@@ -17646,7 +17903,8 @@ class WfcHandling
  *
  * Module und Klassendefinitionen
  *
- * __construct	 		speichert bereits alle Libraries und Module bereits in Klassenvariablen ab
+ * __construct	 		speichert bereits alle Libraries und Module in Klassenvariablen ab, braucht dann natürlich etwas Platz
+ *
  *   printrLibraries	gibt die gespeicherte Variable für die Library aus
  *   printrModules		gibt die gespeicherte Variable für die Module aus, alle Module für alle Libraries
  *
@@ -17669,7 +17927,17 @@ class WfcHandling
  *   
  *   get_string_between($input,'{','}')		Unterstützungsfunktion um den json_decode zu unterstützen
  *   selectConfiguration
- *   lookforkeyinarray      ConfigurationForm analysieren   
+ *
+ *   Instanzen haben configurationForm, dieses analysieren
+ *
+ *   lookforkeyinarray      ConfigurationForm analysieren 
+ *   analyseConfigForm   
+ *   analyseConfigStructure
+ *   findParentsConfigForm
+ *   findChildsConfigForm
+ *   findAllChildsConfigForm
+ *   findAllParentsConfigForm
+ *
  *
  ******************************************************************/
 
@@ -17682,6 +17950,8 @@ class ModuleHandling
 	private $debug;
     private $ips;       // Hilfestellung
 	
+    /* verwendet class storage for libraries and modules, mit Indizierter Suche 
+     */
 	public function __construct($debug=false)
 		{
 		$this->debug=$debug;
@@ -18327,7 +18597,7 @@ class ModuleHandling
      * einen besonderen key finden, liese sich auch recursive anstellen
      * für das Untersuchen von ConfigurationForms
      */
-    public function lookforkeyinarray($config,$key,$debug)
+    public function lookforkeyinarray($config,$key,$debug=false)
         {
         $actions=false;
         if ($debug) echo "lookforkeyinarray, debug requested:\n";
@@ -18369,10 +18639,37 @@ class ModuleHandling
         return $actions;
         }
 
+    // look for caption in actions, elements aso that has Values
+    function lookforkeytypecaptioninarray($form,$look,$debug=false)
+        {
+        if ( (is_array($look)) && (is_array($form)) )
+            {
+            if ( (isset($look["key"])) && (isset($look["type"])) && (isset($look["caption"])) )  
+                {             
+                foreach ($form as $key => $item)
+                    {
+                    if ($debug) echo "   $key \n";
+                    foreach ($item as $index => $entry)
+                        {
+                        if (isset($entry["type"])) $type=$entry["type"];
+                        else $type="";
+                        if (isset($entry["caption"])) $caption=$entry["caption"];
+                        else $type="";            
+                        if ($debug) echo "    ".str_pad($index,3).str_pad($type,20).str_pad($caption,40)."\n";
+                        // wir finden key,type,caption  return key index
+                        if ( ($look["key"]==$key) && ($look["type"]==$type) && ($look["caption"]==$caption) )
+                            return ["key"=>$key,"index"=>$index];
+                        }
+                    }
+                }
+            }
+        return false;
+        }
+
     /* standardisierte Ausgabe der Daten von ConfigForm
      * typical script
             $config=json_decode(IPS_GetConfigurationForm(5333l),true);
-            $actions = $modulhandling->lookforkeyinarray($config,"actions");         // actions->[0]->values odeer actions->values
+            $actions = $modulhandling->lookforkeyinarray($config,"actions");         // actions->[0]->values oder actions->values
             $values  = $modulhandling->lookforkeyinarray($actions[0],"values",$debug); 
             $resultDevices=$modulhandling->findAllParentsConfigForm($values,$debug);
             $modulhandling->analyseConfigForm($resultDevices);
@@ -18413,7 +18710,7 @@ class ModuleHandling
         }
     /* analyseConfigStructure -- depricated, copied from DeviceManagement
      * Values in der ConfigurationForms gefunden, jetzt analysieren, die ConfigurationForms ist mit parent als hierarchische Struktur aufgebaut
-     * wahrscheinlich immer ähnliche Struktur, hierarchische Struktur flat aufgebaut als geleichwertige Eintraege mit laufender id
+     * wahrscheinlich immer ähnliche Struktur, hierarchische Struktur flat aufgebaut als gleichwertige Eintraege mit laufender id
      * wenn parent dann ein child
      *  
      *  root   $id => [ id=> , name=>  ,   Productname=> , instanceId=>,  Type=> , ]   
@@ -18705,10 +19002,14 @@ Alternativer Error Handler
 
 ******************************************************************/
 
-function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$Vars)
+function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile)
     {
+    $errorReporting=error_reporting();    
+    echo "\n";
+    //echo "AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile ... Error Reporting: ".($errorReporting & $fehlercode)." \n";
     if (!(error_reporting() & $fehlercode)) 
         {
+        echo "AD_ErrorHandler, unprocessed error code : [$fehlercode] $fehlertext in $fehlerdatei:$fehlerzeile\n";
         // Dieser Fehlercode ist nicht in error_reporting enthalten
         return;
         }
@@ -18716,38 +19017,37 @@ function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$V
     switch ($fehlercode) 
         {
         case E_WARNING:
-            echo "<b>WARNING</b> [$fehlercode] $fehlertext<br />\n";
-            if (strpos($fehlertext,"DUTY_CYCLE") !== false) $noerror=true;
+            echo "<b>AD_ErrorHandler, WARNING</b> [$fehlercode] $fehlertext in $fehlerdatei:$fehlerzeile<br />\n";
+            if (strpos($fehlertext,"DUTY_CYCLE") !== false) $noerror=true;          // DUTY_CYCLE Fehler unterdrücken
             else
                 {
-                echo "  Warning in Zeile $fehlerzeile in der Datei $fehlerdatei";
-                echo ", PHP " . PHP_VERSION . " (" . PHP_OS . ")<br />\n";
+                //echo "  Warning in Zeile $fehlerzeile in der Datei $fehlerdatei";
+                //echo ", PHP " . PHP_VERSION . " (" . PHP_OS . ")<br />\n";
                 //print_r($Vars); echo "\n";            
                 }
             break;
         case E_USER_ERROR:
-            echo "<b>Mein FEHLER</b> [$fehlercode] $fehlertext<br />\n";
-            echo "  Fataler Fehler in Zeile $fehlerzeile in der Datei $fehlerdatei";
-            echo ", PHP " . PHP_VERSION . " (" . PHP_OS . ")<br />\n";
-            echo "Abbruch...<br />\n";
-            exit(1);
+            echo "<b>AD_ErrorHandler, USER ERROR</b> [$fehlercode] $fehlertext in $fehlerdatei:$fehlerzeile<br />\n";
+            //echo "  User Fehler in Zeile $fehlerzeile in der Datei $fehlerdatei";
+            //echo ", PHP " . PHP_VERSION . " (" . PHP_OS . ")<br />\n";
+            //echo "Abbruch...<br />\n";
+            //exit(1);
             break;
         case E_USER_WARNING:
-            echo "<b>Meine WARNUNG</b> [$fehlercode] $fehlertext<br />\n";
+            echo "<b>AD_ErrorHandler, USER WARNING</b> [$fehlercode] $fehlertext in $fehlerdatei:$fehlerzeile<br />\n";
             break;
         case E_USER_NOTICE:
-            echo "<b>Mein HINWEIS</b> [$fehlercode] $fehlertext<br />\n";
+            echo "<b>AD_ErrorHandler, USER NOTICE</b> [$fehlercode] $fehlertext in $fehlerdatei:$fehlerzeile<br />\n";
             break;
         default:
-            echo "Unbekannter Fehlertyp: [$fehlercode] $fehlertext<br />\n";
+            echo "AD_ErrorHandler, Unbekannter Fehlertyp: [$fehlercode] $fehlertext in $fehlerdatei:$fehlerzeile<br />\n";
             break;
         }
-    if ($noerror=false)
+    if ($noerror==false)
         {
     	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 	    $AllgemeineDefId     = IPS_GetObjectIDByName('AllgemeineDefinitionen',$moduleManager->GetModuleCategoryID('data'));
-    
-        echo "ScriptID ist ".$AllgemeineDefId."  ".IPS_GetName($AllgemeineDefId)."/".IPS_GetName(IPS_GetParent($AllgemeineDefId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($AllgemeineDefId)))."\n";    
+        //echo "ScriptID ist ".$AllgemeineDefId."  ".IPS_GetName($AllgemeineDefId)."/".IPS_GetName(IPS_GetParent($AllgemeineDefId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($AllgemeineDefId)))."\n";    
     
         if ($AllgemeineDefId===false)
             {
@@ -18761,9 +19061,11 @@ function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$V
             $ErrorHandler=GetValue($ErrorHandlerAltID);
             if (function_exists($ErrorHandler) == true)
                 {
-                //echo "Naechsten Error Handler aufrufen.\n";
+                echo "Nächsten Error Handler aufrufen basierend auf $ErrorHandlerAltID : $ErrorHandler  ";
+                echo str_pad(sprintf('%b', $fehlercode),16,"0",STR_PAD_LEFT)." Mask $errorReporting : ".str_pad(sprintf('%b', $errorReporting),16,"0",STR_PAD_LEFT)."  ".str_pad(sprintf('%b', E_ALL),16,"0",STR_PAD_LEFT);
+                echo "\n";
                 /* function IPSLogger_PhpErrorHandler ($ErrType, $ErrMsg, $FileName, $LineNum, $Vars) */
-                $fehler=$ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile, $Vars);
+                $fehler=$ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile);
                 }
             else return (true);
             }

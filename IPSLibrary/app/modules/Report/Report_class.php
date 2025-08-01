@@ -194,7 +194,7 @@
             $webOps->setSelectButtons($buttonValues,$categoryIdSelectValues);
             $buttonsId = $webOps->getSelectButtons();
             $selectButton=false;
-            foreach ($buttonsId as $id => $button)
+            foreach ($buttonsId as $id => $button)              // Auswahl der Reoports/Dashboard, Buttons übereinander links
                 {
                 if ($variableId == $button["ID"]) 
                     { 
@@ -211,9 +211,9 @@
                 $value=true;
                 //echo "Select Button gedrückt, ID ist $id Variable Identifier ist $variableIdent. Kompatibilität $variableId ,\n";
                 }
-            else 
+            else            // irgendeine andere Taste, aus den Feldern rechts, Offset und Periode
                 {
-                $variableIdent = IPS_GetIdent($variableId);
+                $variableIdent = IPS_GetIdent($variableId);         // mit dem Identifier arbeiten
 
                 if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)                                         // entweder die letzte Zahl ist der Index
                     {   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */

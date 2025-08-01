@@ -196,11 +196,17 @@ class OperationCenterConfig
         $dosOps=new dosOps();
         $systemDir     = $dosOps->getWorkDirectory(); 
 
-        if ((function_exists("Watchdog_Configuration"))===false) IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");				
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        $moduleManager = new IPSModuleManager('OperationCenter',$repository);
+        $installedModules   = $moduleManager->GetInstalledModules();
+        if (isset($installedModules["Watchdog"]))
+            {
+            if ((function_exists("Watchdog_Configuration"))===false) IPSUtils_Include ("Watchdog_Configuration.inc.php","IPSLibrary::config::modules::Watchdog");				
+            }
         if (function_exists("Watchdog_Configuration")) $configInput=Watchdog_Configuration();
         else 
             {
-            echo "Warning, Watchdog_Configuration.inc.php Konfig File nicht included oder Funktion Watchdog_Configuration() nicht vorhanden. Es wird mit Werten aus dem OperationCenter gearbeitet.\n";
+            //echo "Warning, Watchdog_Configuration.inc.php Konfig File nicht included oder Funktion Watchdog_Configuration() nicht vorhanden. Es wird mit Werten aus dem OperationCenter gearbeitet.\n";
             $configInput=$this->setSetup();
             }
 
@@ -8452,8 +8458,8 @@ class seleniumChromedriverUpdate extends OperationCenterConfig
             }
         if ($debug<2)       // true ist nicht kleiner zwei, muss 1 sein
             {
-            echo "execute show and do not wait\n";
-            $status = $this->sysOps->ExecuteUserCommand($command,"",true,false,-1,$debug);                   // false do not show true wait, heoir andersrum da selenium offen bleibt  $command,$parameter="",$show=true,$wait=false,$session=-1,$debug=false
+            if ($debug) echo "activeSelenium, execute show and wait for $command\n";
+            $status = $this->sysOps->ExecuteUserCommand($command,"",true,true,-1,$debug);                   // false do not show true wait, heoir andersrum da selenium offen bleibt  $command,$parameter="",$show=true,$wait=false,$session=-1,$debug=false
             }
         return ($status);
         }
@@ -8652,7 +8658,7 @@ class RemoteAccessData
             $ipsTables = new ipsTables();
             $config["html"]='html';  
             $config["insert"]["Header"]    = true;              // Header erste Zeile darstellen  
-            $config["format"]["class-id"] = "OpCent";
+            $config["format"]["class-id"] = false;
             $display = [
                             "Server"                        => ["header"=>"Server","format"=>""],
                             "Object"                        => ["header"=>"Object","format"=>""],
@@ -8724,7 +8730,7 @@ class RemoteAccessData
         $config["html"]='html';  
         $config["insert"]["Header"]    = true;              // Header erste Zeile darstellen  
         $config["format"]["class-id"] = false;
-        $config["format"]["reuse-styleid"] = "OpCent";
+        //$config["format"]["reuse-styleid"] = "OpCent";
         $display = [
                 "NAME"                        => ["header"=>"Name","format"=>""],
                 "IP"                        => ["header"=>"IP Adr","format"=>""],

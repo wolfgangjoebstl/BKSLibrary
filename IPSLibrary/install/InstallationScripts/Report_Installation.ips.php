@@ -31,6 +31,10 @@
      *      Report Config abarbeiten
      *      WebFront Installation
      *
+     * Auswahl der anzuzeigenden Reports
+     *      SelectReports , lokale Variable
+     *          nach dem gewünschten report benannte Links auf Common/SelectValues
+     *          kommt es zum Aufruf des ReportAction Manager, dieser führt zu einer Änderung der aufsteigend benannten Variablen in Common SelectValue[x]
      *
 	 * @file          Report_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -378,7 +382,7 @@
         $configWf=$configWFront["Administrator"];
 
         echo "\nWebportal Report SplitPane installieren in: ".$configWf["Path"]." \n";
-		$categoryId_WebFront         = CreateCategoryPath($configWf["Path"]."3");         // neueste Variante es gibt bereits "", "2" und jetzt "3"
+		$categoryId_WebFront         = CreateCategoryPath($configWf["Path"]);         // neueste Variante es gibt bereits "", "2" und jetzt "3"
 		$ipsOps->emptyCategory($categoryId_WebFront);
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFront, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFront, 20);
@@ -389,7 +393,10 @@
         echo "Webfront SplitPane mit Parameter : ConfigId ".$configWf["ConfigId"]." TabItem ".$configWf["TabItem"]." TabPaneItem ".$configWf["TabPaneItem"]." TabPaneParent ".$configWf["TabPaneParent"];
         echo " TabPaneOrder ".$configWf["TabPaneOrder"]." TabPaneName ".$configWf["TabPaneName"]." TabPaneIcon ".$configWf["TabPaneIcon"]."\n";
         if ($dodelete) $wfcHandling->DeleteWFCItems("Report");         // alles was mit report anfängt
-        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);      
+
+
+
         $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
         //$wfcHandling->deletePane ($WFC10_ConfigId);
         //$wfcHandling->deletePane ($configWf["TabItem"]);
@@ -421,140 +428,18 @@
             } 
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
         }
-
-
-
-
-if (false)
-    {
-	if ($WFC10_Enabled) {
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path."2");
-		EmptyCategory($categoryId_WebFront);
-		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFront, 10);
-		$categoryIdRight = CreateCategory('Right', $categoryId_WebFront, 20);
-        SetValue($visualizationCategoryID,$categoryIdRight);
-		echo "Kategorien erstellt, Main: ".$categoryId_WebFront." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
-
-		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
-		if ($dodelete) 
-            {
-            echo "Webfront ".$WFC10_ConfigId." löscht TabItem :".$tabItem."\n";
-		    DeleteWFCItems($WFC10_ConfigId, $tabItem);
-            }
-		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
-		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName."2",     $WFC10_TabIcon, 1 /*Vertical*/, 360 /*Width*/, 0 /*Target=Pane1*/, 1/*UsePixel*/, 'true');
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
-
-		// Left Panel
-
-		$instanceId = CreateDummyInstance("Berichte", $categoryIdLeft, 30);
-		if ( function_exists("Report_GetValueConfiguration") == true )
-			{		
-			foreach (Report_GetValueConfiguration() as $idx=>$data)
-				{
-				if ($data[IPSRP_PROPERTY_DISPLAY])
-					{
-					$variableIdSelectValue  = IPS_GetObjectIDByIdent(IPSRP_VAR_SELECTVALUE.$idx, $categoryIdCommon);
-					$valueType = $data[IPSRP_PROPERTY_VALUETYPE];
-					switch($valueType)
-						{
-						case IPSRP_VALUETYPE_GAS:
-							CreateLink($data[IPSRP_PROPERTY_NAME], $variableIdSelectValue, $categoryIdLeft, $idx);
-							break;
-						case IPSRP_VALUETYPE_WATER:
-							CreateLink($data[IPSRP_PROPERTY_NAME], $variableIdSelectValue, $categoryIdLeft, $idx);
-							break;
-						default:
-							CreateLink($data[IPSRP_PROPERTY_NAME], $variableIdSelectValue, $instanceId, $idx);
-						}
-					}
-				}
-			}
-			
-		// Right Panel
-		CreateLink('Type/Offset',       $variableIdTypeOffset,  $categoryIdRight, 10);
-		CreateLink('Zeitraum',          $variableIdPeriodCount, $categoryIdRight, 20);
-		CreateLink('Chart',             $variableIdChartHtml,   $categoryIdRight, 40);
-        CreateLink('AddSelector',       $ReportDataSelectorID,   $categoryIdRight, 100);
-        CreateLink('DataTable',         $ReportDataTableID,   $categoryIdRight, 110);
-
-		ReloadAllWebFronts();
-	    }
-
-
-    /* alte variante, bald nicht mehr benötigt */
-	if ($WFC10_Enabled)
-		{
-		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		CreateLinkByDestination('Uebersicht', $variableIdHTML,    $categoryId_WebFront,  20);
-		CreateLinkByDestination('ReportPageType', $ReportPageTypeID,    $categoryId_WebFront,  10);
-		CreateLinkByDestination('ReportTimeType', $ReportTimeTypeID,    $categoryId_WebFront,  11);
-		}
-    }       // ende if false
 		
 	if ($WFC10User_Enabled)
 		{
         $configWf=$configWFront["User"];
         echo "\nWebportal User Report installieren in: ".$configWf["Path"]." \n";
 		$categoryId_WebFront         = CreateCategoryPath($configWf["Path"]);
-
 		}
-
-
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// Mobile Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
-
-/*
-	if ($Mobile_Enabled )
-		{
-		$mobileId  = CreateCategoryPath($Mobile_Path, $Mobile_PathOrder, $Mobile_PathIcon);
-		$mobileId  = CreateCategory($Mobile_Name, $mobileId, $Mobile_Order, $Mobile_Icon);
-		EmptyCategory($mobileId);
-
-		CreateLink('Chart',         $variableIdChartHtml,   $mobileId, 10);
-
-		$instanceIdChart  = CreateDummyInstance("Chart Auswahl", $mobileId, 20);
-		CreateLink('Statistic', $variableIdTypeOffset,  $instanceIdChart, 10);
-
-		$instanceIdChart  = CreateDummyInstance("Zeitraum", $mobileId, 30);
-		CreateLink('Zeitraum',      $variableIdPeriodCount, $instanceIdChart, 50);
-		CreateLink('Anzahl',        $variableIdTimeCount,   $instanceIdChart, 60);
-		CreateLink('Anzahl -',      $scriptIdCountMinus,    $instanceIdChart, 70);
-		CreateLink('Anzahl +',      $scriptIdCountPlus,     $instanceIdChart, 80);
-		CreateLink('Zeit Offset',   $variableIdTimeOffset,  $instanceIdChart, 20);
-		CreateLink('Zeit Zurück',   $scriptIdNavPrev,       $instanceIdChart, 30);
-		CreateLink('Zeit Vorwärts', $scriptIdNavNext,       $instanceIdChart, 40);
-
-		$instanceIdChart = CreateDummyInstance("Auswahl Verbraucher", $mobileId, 40);
-		foreach (IPSPowerControl_GetValueConfiguration() as $idx=>$data) {
-			if ($data[IPSPC_PROPERTY_DISPLAY]) {
-				$variableIdSelectValue  = IPS_GetObjectIDByIdent(IPSPC_VAR_SELECTVALUE.$idx, $categoryIdCommon);
-				$valueType = $data[IPSPC_PROPERTY_VALUETYPE];
-				switch($valueType) {
-					case IPSPC_VALUETYPE_GAS:
-						CreateLink($data[IPSPC_PROPERTY_NAME], $variableIdSelectValue, $instanceIdChart, $idx);
-						break;
-					case IPSPC_VALUETYPE_WATER:
-						CreateLink($data[IPSPC_PROPERTY_NAME], $variableIdSelectValue, $instanceIdChart, $idx);
-						break;
-					default:
-						CreateLink($data[IPSPC_PROPERTY_NAME], $variableIdSelectValue, $instanceIdChart, $idx);
-				}
-			}
-		}
-	}
-
-*/
 
 	if ($Mobile_Enabled)
 		{
 		echo "\nWebportal Mobile installieren auf ".$Mobile_Path.": \n";
 		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
-
 		}
 
 	if ($Retro_Enabled)
@@ -563,19 +448,6 @@ if (false)
 		createPortal($Retro_Path);
 		}
 
-
-/** Anlegen eines Profils mit Associations
-	 *
-	 * der Befehl legt ein Profile an und erzeugt für die übergebenen Werte Assoziationen
-	 *
-	 * @param string $Name Name des Profiles
-	 * @param string $Associations[] Array mit Wert und Namens Zuordnungen
-	 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
-	 * @param integer $Color[] Array mit Farbwerten im HTML Farbcode (z.b. 0x0000FF für Blau). Sonderfall: -1 für Transparent
-	 * @param boolean $DeleteProfile Profile löschen und neu generieren
-	 *
-	 *   function CreateProfile_Associations ($Name, $Associations, $Icon="", $Color=-1, $DeleteProfile=true)
-	 */
 
 
 ?>

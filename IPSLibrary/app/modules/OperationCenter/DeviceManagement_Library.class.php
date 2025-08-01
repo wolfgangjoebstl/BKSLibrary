@@ -702,7 +702,7 @@ class DeviceManagement
      */
     private function checkVariableChanged(&$result,&$index,$Key)
         {
-        if ((time()-IPS_GetVariable($Key["COID"])["VariableChanged"])>(60*60*24*2)) 
+        if ((time()-IPS_GetVariable($Key["COID"])["VariableUpdated"])>(60*60*24*2))         // vorher VariableChanged, zu unsicher da nicht immer Änderungen erfolgen
             {           
             $result[$index]["Name"]=$Key["Name"];
             $result[$index]["OID"]=$Key["COID"];
@@ -827,14 +827,19 @@ class DeviceManagement
 
 	/* DeviceManagement::get_ActionButton()
 	 * Zusammenfassung aller ActionButtons in dieser Klasse
-	 *
+	 * funktioniert auch ohne DeviceManagment_Homematic, holt sich die Inventories automatisch
 	 */
 	 
 	function get_ActionButton($debug=false)
 		{
-		$countHMI = sizeof($this->HMIs);
+        if (sizeof($this->HMIs)==0) 
+            {
+            //echo "No Homematic Instances, doublecheck and call class DeviceManagement_Homematic.\n";
+            $modulhandling = new ModuleHandling();
+            $this->HMIs=$modulhandling->getInstances('HM Inventory Report Creator');
+            }
+        $countHMI = sizeof($this->HMIs);            
 		if ($debug) echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
-        if ($this->HMIs==0) echo "No Homematic Instances, doublecheck and call class DeviceManagement_Homematic.\n";
 	    $ActionButton=array();
 		if ($countHMI>0)
 	        {

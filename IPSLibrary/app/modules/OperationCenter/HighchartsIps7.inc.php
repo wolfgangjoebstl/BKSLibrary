@@ -848,7 +848,7 @@
 		// Werte ersetzten (sinnvoll für Boolean, oder Integer - z.B.: Tür/Fenster-Kontakt oder Drehgriffkontakt)
 		if ($serie['ReplaceValues'] != false)
 		{
-			if (is_int($val) && isset($serie['ReplaceValues'][$val]))
+			if ((is_int($val)||is_bool($val)) && isset($serie['ReplaceValues'][$val]))
 				$val = $serie['ReplaceValues'][$val];
 		}
 

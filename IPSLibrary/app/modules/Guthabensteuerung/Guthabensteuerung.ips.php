@@ -523,18 +523,15 @@
                 IPS_SetEventActive($tim5ID,false);
                 break;      // Ende Timer5
             case $tim22ID:                              // check availability of Selenium driver, dauert so lange darum in einen Timer ausgelagert
-                if (isset($installedModules["Watchdog"]))
+                // change from Watchdog Module, check
+                $processes    = $seleniumChromedriverUpdate->getActiveProcesses();
+                $processStart = $seleniumChromedriverUpdate->checkAutostartProgram($processes);
+                $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
+                if (isset($processStart["selenium"])) 
                     {
-                    if ($debug) echo "Watchdog Modul available, get Active Processes:\n";
-                    $processes    = $seleniumChromedriverUpdate->getActiveProcesses();
-                    $processStart = $seleniumChromedriverUpdate->checkAutostartProgram($processes);
-                    $SeleniumOnID           = IPS_GetObjectIdByName("SeleniumRunning", $CategoryId_Mode);
-                    if (isset($processStart["selenium"])) 
-                        {
-                        $date=date("d.m.Y H:i:s");
-                        if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active since $date");
-                        else SetValue($SeleniumOnID,"Idle since $date");
-                        }
+                    $date=date("d.m.Y H:i:s");
+                    if ($processStart["selenium"]=="Off") SetValue($SeleniumOnID,"Active since $date");
+                    else SetValue($SeleniumOnID,"Idle since $date");
                     }
                 break;
             default:                    // kein bekannter Timer
@@ -588,7 +585,6 @@
                 {
                 case ($startstoppChromedriverID):            //Start , Stopp , Reset Chromedriver
                     $action=GetValueFormatted($startstoppChromedriverID); 
-                    echo "Requested Action $action";               
                     switch ($action)
                         {
                         case "Start":
@@ -600,6 +596,73 @@
                         case "Reset":
                             $seleniumChromedriverUpdate->stoppSelenium(); 
                             $seleniumChromedriverUpdate->startSelenium(); 
+                            break;
+                        case "Check":
+                            //echo "Requested Action $action <br>";   
+                            $statusRequestedAction=$seleniumChromedriverUpdate->activeSelenium(); 
+                            $content = str_replace(array("\r\n", "\n\r", "\r"), "\n", $statusRequestedAction);                     // Zeilenumbruch vereinheitlichen
+                            $content = explode("\n", $content);                                         // und in Array umrechnen
+                            $firstline=false;
+                            $fileOps=new fileOps();
+
+                            $userName=$fileOps->analyseContent($content, "BENUTZERNAME");
+                            $process=$fileOps->analyseContent($content, "CommandLine",2);
+
+                            $id="a1234"; $class="maindiv1";
+                            $text = "<style>";
+                            $text.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
+                            $text.='font-size:12px; max-width: 900px ';        // responsive font size
+                            $text.='color:black; border-collapse: collapse;  }';
+                            $text.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+                            $text.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
+                            $text.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
+                            $text.='#'.$id.' tr:hover {background-color: #ddd;}';
+                            $text.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
+
+                            // div darunter übereinander rechtsbündig darstellen
+                            $text.=".".$class." { width: 100%; height: 100%;          
+                                display: flex;  flex-direction: column; flex-wrap: wrap;        
+                                justify-content: space-between;
+                                align-items: flex-start; align-content: flex-start;
+                                box-sizing: border-box; padding: 1px 1px 1px 1px;		}";
+                            // zusaetzliche Formatierung für die divs unter maindiv1 :
+                            $text.=".".$class."1>* { position: relative;	z-index: 1; }"; 
+                            // div darunter für left-aligned, center-aligned und right aligned
+                            $text.=".".$class."2 { width: 100%; height: 90%;           
+                                display: flex; position: relative; 
+                                justify-content: space-between;
+                                align-items: center;
+                                box-sizing: border-box;	padding: 0px 0px 5px 0px;	}";
+                            $text.="</style>";
+                            
+                            $html=$text;
+                            $html .= "<div class=".$class."1 id=$id>";
+                            /* html ohne html block aber mit style und unterschiedlicher id
+                            */
+                            $html .= "<div class=".$class."2 >";
+
+                            $ipsTables = new ipsTables();             // create classes used in this class, standard creation of tables
+                            $config=array();
+                            $config["html"]    = 'html'; 
+                            $config["insert"]["Header"]    = true;
+                            $config["format"]["class-id"]=false;                // ein div ohne Formatierungen
+                            $html.=$ipsTables->showTable($userName,false,$config);
+                            //print_r($config);                   // die config wird erweitert, sozusagen als Ergebnis
+                            $html .= "</div>";
+
+                            $html .= "<div class=".$class."2 >";
+
+                            $config=array();
+                            $config["html"]    = 'html'; 
+                            $config["insert"]["Header"]    = true;
+                            $config["format"]["class-id"]=false;
+                            $html.=$ipsTables->showTable($process,false,$config);
+
+                            $html .= "</div>";
+                            $html .= "</div>";
+
+                            $SeleniumActiveID = IPS_GetObjectIdByName("SeleniumActive", $CategoryId_Mode);          
+                            if ($SeleniumActiveID) SetValue($SeleniumActiveID,$html);
                             break;
                         }
                     break;
@@ -685,10 +748,10 @@
                             break;	
                         }       // end switch
                     break;
-                case $startActionID:                                                // StartAction im Selenioum/Tools , ein bestimmter Einzel Aufruf aus Hosts für Selenium
+                case $startActionID:                                                // StartAction im Selenium/Tools , ein bestimmter Einzel Aufruf aus Hosts für Selenium
                     $reguestedAction=GetValueFormatted($startActionID);
                     break;
-                case $startActionGroupID:                                           // StartGroupCall im Selenioum/Tools , ein bestimmter Gruppen Aufruf aus Hosts für Selenium
+                case $startActionGroupID:                                           // StartGroupCall im Selenium/Tools , ein bestimmter Gruppen Aufruf aus Hosts für Selenium
                     $reguestedAction=GetValueFormatted($startActionGroupID);
                     break;
                 case $updateApiTableID:
@@ -1083,7 +1146,8 @@
      */
     if ($updateChromedriver)            
         {
-        if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
+        // change from Watchdog Module, check
+        if (isset($installedModules["OperationCenter"])) 
             {
             $log_Guthabensteuerung->LogNachrichten("Update Chromedriver auf Version $updateChromedriver gestartet");
             //echo "OperationCenter Module ist installiert, zusätzliche Funktionen zur Automatisierung Update Chromedriver machen.\n"; 
@@ -1139,7 +1203,8 @@
     if ($getChromedriver)               
         {
         $html="";
-        if ( (isset($installedModules["OperationCenter"])) && (isset($installedModules["Watchdog"])) )
+        // change from Watchdog Module, check
+        if (isset($installedModules["OperationCenter"])) 
             {
             $SeleniumUpdate = new SeleniumUpdate();
             $result = $SeleniumUpdate->installEnvironment($GuthabenAllgConfig["Selenium"]["DownloadDir"]);      // gibt targetdir und den status von 7za.exe aus.

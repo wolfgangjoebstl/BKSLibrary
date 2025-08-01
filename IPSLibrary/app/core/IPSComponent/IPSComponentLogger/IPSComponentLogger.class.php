@@ -1749,6 +1749,7 @@ class Logging
             $messages = json_decode($messageJson,true);
             //IPSLogger_Inf(__file__, "Logging:PrintNachrichten ".$messageJson."   ".$this->log_File."   ".$this->zeile1);
             $PrintHtml .= '<tr><td>Date</td><td>Message</td></tr>';
+            $result="";
             if (is_array($messages))
                 {
                 if (count($messages)>0) 
@@ -1756,6 +1757,7 @@ class Logging
                     foreach ($messages as $timeIndex => $message)
                         {
                         $PrintHtml .= '<tr><td>'.date("d.m H:i:s",$timeIndex).'</td><td>'.$message.'</td></tr>';
+                        $result .= date("d.m H:i:s",$timeIndex)."  ".$message."\n";
                         }
                     }
                 }

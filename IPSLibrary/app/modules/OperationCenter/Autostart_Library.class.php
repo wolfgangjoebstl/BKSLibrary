@@ -248,9 +248,16 @@ IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules:
 
     function checkAutostartProgram($processesFound=array(),$debug=false)
         {
-    	 /* feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden */
-        $processStart=array("selenium" => "On","vmplayer" => "On", "iTunes" => "On", "Firefox" => "On", "Chrome" => "On");
+        if ($debug>1) print_r($this->configuration);
+
+    	/* feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden 
+         * array hat eigentlich nichts mit dem folgenden array zu tun
+         *  darum Umsetzung vmware auf vmplayer
+         */
+        $processStart=array("selenium" => "On","vmware.exe" => "On", "iTunes" => "On", "Firefox" => "On", "Chrome" => "On");
         $processStart=$this->sysOps->checkProcess($processStart,$processesFound,$debug);        // true wenn Debug
+
+        $processStart["vmplayer"]=$processStart["vmware.exe"];          // Umsetzen auf vmplayer
 
         /* Extra Checks für Zusatzprogramme */
 
@@ -369,6 +376,15 @@ class AutostartHandlerInstall extends AutostartHandler
         fwrite($handle2,'echo %username% wmic Path win32_process'."\r\n");
         //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
         fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
+        //fwrite($handle2,"pause\r\n");
+        fclose($handle2);
+        }
+
+    function createCmdFileActiveJavaProcesses($verzeichnis)
+        {
+        $handle2=fopen($verzeichnis."read_javaprocesses.bat","w");
+        fwrite($handle2,'cd '.$verzeichnis."\r\n");
+        fwrite($handle2,'"C:\Program Files\Java\jdk-24.0.2\bin\jps.exe" >>jps.txt'."\r\n");  
         //fwrite($handle2,"pause\r\n");
         fclose($handle2);
         }

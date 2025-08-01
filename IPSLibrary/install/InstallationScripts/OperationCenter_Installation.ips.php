@@ -165,32 +165,6 @@
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
 
-    if ($opSystem != "UNIX")
-        {
-        // Batch Datei schreiben für Windows Betriebssystem
-        $verzeichnisSystem=$OperationCenterSetup["SystemDirectory"];
-        $filenameSystem = $verzeichnisSystem."read_Systeminfo.bat";    
-        $handle2=fopen($filenameSystem,"w");
-        fwrite($handle2,'cd '.$verzeichnisSystem."\r\n");
-        fwrite($handle2,'echo %username% >>username.txt'."\r\n");
-        fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
-        fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
-        fwrite($handle2,'jps >>jps.txt'."\r\n");  
-        //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
-        fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
-        //fwrite($handle2,"pause\r\n");
-        fwrite($handle2,'systeminfo >>system.txt'."\r\n");
-        fclose($handle2);
-        }
-    else            // Unix Mode
-        {
-        // list of users and active user
-        // list of active processes, tasks, and java apps
-        // complete systeminfo
-        // sys ping alternative  
-        // alternative for running scripts, $sysOps->ExecuteUserCommand  
-        }
-
 	$modulhandling = new ModuleHandling();
 	
     /*----------------------------------------------------------------------------------------------------------------------------
@@ -225,6 +199,15 @@
 	$scriptIdOperationCenter  = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 	$scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
     $scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
+	$scriptIdStartSymcon    = IPS_GetScriptIDByName('StartSymcon', $CategoryIdApp);
+	$scriptIdStoppSymcon    = IPS_GetScriptIDByName('StoppSymcon', $CategoryIdApp);
+
+    if ($debug)
+        {
+        echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
+        echo "OperationCenter StartSymcon hat die ScriptID       ".$scriptIdStartSymcon." \n";
+        echo "OperationCenter StoppSymcon hat die ScriptID       ".$scriptIdStoppSymcon." \n";
+        }
 
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
@@ -302,27 +285,102 @@
 		echo "   Timer Event CyclicUpdate bereits angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
   		IPS_SetEventActive($tim5ID,true);
   		}
-		
-	$tim1ID=$timer->CreateTimerOC("RouterAufruftimer",00,20);				/* Eventuell Router regelmaessig auslesen */	
-	$tim10ID=$timer->CreateTimerOC("Maintenance",01,20);						/* Starte Maintanenance Funktionen */	
-	$tim6ID=$timer->CreateTimerOC("CopyScriptsTimer",02,20);	
-	$tim8ID=$timer->CreateTimerOC("SystemInfo",02,30);
-	$tim9ID=$timer->CreateTimerOC("Homematic",02,40);	
-	$tim14ID=$timer->CreateTimerOC("UpdateStatus",03,40);
-	$tim7ID=$timer->CreateTimerOC("FileStatus",03,50);
-	$tim13ID=$timer->CreateTimerOC("CleanUpEndofDay",22,40);	
-		
-	$tim11ID=$timer->CreateTimerSync("MoveLogFiles",150);						/* Maintanenance Funktion: Move Log Files, Backup Funktion */	
-	$tim2ID=$timer->CreateTimerSync("MoveCamFiles",150);
-	$tim3ID=$timer->CreateTimerSync("RouterExectimer",150);
-
-    // Timer12, change to new script
-	//$tim12ID=$timer->CreateTimerSync("HighSpeedUpdate",10);					                    /* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
-    //$tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptIdOperationCenter);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
-
+	
     $timerOps = new timerOps();
-    $tim12ID=$timerOps->CreateTimerSync("HighSpeedUpdate",10, $scriptIdFastPollShort);
+
+	$tim1ID  = $timerOps->CreateTimerHour("RouterAufruftimer",00,20, $scriptIdOperationCenter);				/* Eventuell Router regelmaessig auslesen */	
+	$tim10ID = $timerOps->CreateTimerHour("Maintenance",01,20, $scriptIdOperationCenter);						/* Starte Maintanenance Funktionen */	
+	$tim6ID  = $timerOps->CreateTimerHour("CopyScriptsTimer",02,20, $scriptIdOperationCenter);	
+	$tim8ID  = $timerOps->CreateTimerHour("SystemInfo",02,30, $scriptIdOperationCenter);
+	$tim9ID  = $timerOps->CreateTimerHour("Homematic",02,40, $scriptIdOperationCenter);	
+	$tim14ID = $timerOps->CreateTimerHour("UpdateStatus",03,40, $scriptIdOperationCenter);
+	$tim7ID  = $timerOps->CreateTimerHour("FileStatus",03,50, $scriptIdOperationCenter);
+	$tim13ID = $timerOps->CreateTimerHour("CleanUpEndofDay",22,40, $scriptIdOperationCenter);	
+		
+	$tim11ID = $timerOps->CreateTimerSync("MoveLogFiles",150, $scriptIdOperationCenter);						/* Maintanenance Funktion: Move Log Files, Backup Funktion */	
+	$tim2ID  = $timerOps->CreateTimerSync("MoveCamFiles",150, $scriptIdOperationCenter);
+	$tim3ID  = $timerOps->CreateTimerSync("RouterExectimer",150, $scriptIdOperationCenter);
+
+    $tim12ID = $timerOps->CreateTimerSync("HighSpeedUpdate",10, $scriptIdFastPollShort);
     IPS_SetEventActive($tim12ID,false);
+
+    /* Watchdog Timer für Autostart
+     * AutoStartPerDay immer um 4:12
+     * AutoStart alle 60 Sekunden wenn aktiviert zum automatischen Hochfahren der Programme
+ 
+	$tim15ID = @IPS_GetEventIDByName("AutoStart", $scriptIdStartSymcon);
+	if ($tim15ID==false)
+		{
+		$tim15ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim15ID, $scriptIdStartSymcon);
+		IPS_SetName($tim15ID, "AutoStart");
+		IPS_SetEventCyclic($tim15ID,0,1,0,0,1,60);      // alle 60 sec 
+  		//IPS_SetEventActive($tim3ID,true);
+		IPS_SetEventCyclicTimeFrom($tim15ID,0,3,0);  // damit die Timer hintereinander ausgeführt werden, hier Minute 3, eh im SymconAutostart
+		IPS_SetEventCyclicTimeTo($tim15ID, 0, 0, 0);		
+		echo "   Timer Event AutoStart neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		}
+	else
+		{
+		echo "   Timer Event AutoStart bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		IPS_SetEventCyclicTimeFrom($tim15ID,0,3,0);  // damit die Timer hintereinander ausgeführt werden 
+		IPS_SetEventCyclicTimeTo($tim15ID, 0, 0, 0);	
+  		}   */   
+
+    $timerOps->CreateTimerSync("AutoStart", 60, $scriptIdStartSymcon);    
+    $timerOps->CreateTimerHour("AutoStartPerDay",4,12,$scriptIdStartSymcon);
+
+	/*******************************
+	 *
+	 * Event Control
+	 *
+	 ********************************/
+
+	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+
+    $eventControl=$modulhandling->getInstances('Event Control')[0];         // mit Zuversicht ausgehen dass es nur eine gibt
+    $config=json_decode(IPS_GetConfiguration($eventControl));
+    //print_R($config);
+
+    $modulhandling = new ModuleHandling();
+    $HMIs=$modulhandling->getInstances('HM Inventory Report Creator');
+    //print_r($HMIs);
+    $HmiInstanz=sizeof($HMIs);
+
+    $ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
+    $HomInstanz=sizeof($ids);
+    $events=array();
+    if ($HomInstanz>0)
+        {
+        foreach ($ids as $id)
+            {
+            echo $id."  ".IPS_GetName($id)."  \n";
+            $events[]=["DeviceID"=>$id,"ScriptID"=>$scriptIdEventControl];
+            }    
+        }
+    if ($HmiInstanz>0)
+        {
+        foreach ($HMIs as $id)
+            {
+            echo $id."  ".IPS_GetName($id)."  \n";
+            $events[]=["DeviceID"=>$id,"ScriptID"=>$scriptIdEventControl];
+            }    
+        }        
+    //echo json_encode($events)."\n";
+
+    If ($config->StartupScript != $scriptIdStartSymcon) 
+        {
+        echo "StartupScript has wrong configuration, set ".$config->StartupScript." to $scriptIdStartSymcon \n";
+        IPS_SetProperty($eventControl,"StartupScript",$scriptIdStartSymcon);
+        }
+    If ($config->ShutdownScript != $scriptIdStoppSymcon) 
+        {
+        echo "ShutdownScript has wrong configuration, set ".$config->ShutdownScript." to $scriptIdStoppSymcon \n";
+        IPS_SetProperty($eventControl,"ShutdownScript",$scriptIdStoppSymcon);
+        
+        }  
+    IPS_SetProperty($eventControl,"StatusEvents",json_encode($events));              
+    IPS_ApplyChanges($eventControl);
 
 	/*******************************
 	 *
@@ -767,135 +825,166 @@
     *
 	*************************************************************/
     
-    if (isset ($installedModules["Watchdog"])==false)       // nur aktivieren wenn kein Watchdog Modul vorhanden 
-		{
-        IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-        $categoryId_WatchdogFunction	= CreateCategory('Watchdog',   $CategoryIdData, 600);
-
-        $ScriptCounterID = CreateVariableByName($categoryId_WatchdogFunction,"AutostartScriptCounter",1);
-        $ProcessStartID  = CreateVariableByName($categoryId_WatchdogFunction,"ProcessStart",3);                         // welche Prozesse müssen noch gestartet werden, json encoded
-
-        if (isset($OperationCenterSetup["LogDirectory"]))
+    if ($opSystem != "UNIX")
+        {
+        if (isset ($installedModules["Watchdog"])==false)       // nur aktivieren wenn kein Watchdog Modul vorhanden 
             {
-            // html Nachrichtenspeicher ist der selbe für alle
-            // file Nachrichtenlog ist ein anderer, dazu logDirectory verwenden
+            IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+            $categoryId_WatchdogFunction	= CreateCategory('Watchdog',   $CategoryIdData, 600);
 
-            // Logging konfigurieren und festlegen 
+            $ScriptCounterID = CreateVariableByName($categoryId_WatchdogFunction,"AutostartScriptCounter",1);
+            $ProcessStartID  = CreateVariableByName($categoryId_WatchdogFunction,"ProcessStart",3);                         // welche Prozesse müssen noch gestartet werden, json encoded
 
-            echo "\nStartWatchdog: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
-            $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
-            $input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-            $log_Watchdog=new Logging($configSetup["LogDirectory"]."Log_Watchdog.csv",$input);
-            echo "Nachrichten in ".$configSetup["LogDirectory"]."Log_Watchdog.csv    \n";
-
-            $autostart = new AutostartHandler();
-            //$config = $autostart->getSetup();
-            $configWatchdog = $autostart->getConfiguration();
-
-            $verzeichnis=$configWatchdog["WatchDogDirectory"];
-            $unterverzeichnis="";    
-
-            if (strlen($verzeichnis.$unterverzeichnis)>10)
+            if (isset($OperationCenterSetup["LogDirectory"]))
                 {
-                echo "Create Autostart Batch files in $verzeichnis$unterverzeichnis \n";
-                $autostartInstall = new AutostartHandlerInstall();
-                $autostartInstall->createCmdFileActiveProcesses($verzeichnis.$unterverzeichnis);
-                $autostartInstall->createCmdFileSelfShutdown($verzeichnis.$unterverzeichnis);
-                $autostartInstall->createCmdFileSelfRestart($verzeichnis.$unterverzeichnis);
+                // html Nachrichtenspeicher ist der selbe für alle
+                // file Nachrichtenlog ist ein anderer, dazu logDirectory verwenden
 
-                if (strtoupper($configWatchdog["Software"]["Selenium"]["Autostart"])=="YES")
-                    {
-                    $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
-                    // scriptfile schreiben
-                    $seleniumChromedriverUpdate->createCmdFileStartSelenium($verzeichnis.$unterverzeichnis);       
-                    $seleniumChromedriverUpdate->createCmdFileStoppSelenium($verzeichnis.$unterverzeichnis);       
-                    }
+                // Logging konfigurieren und festlegen 
 
-                if (strtoupper($configWatchdog["Software"]["Firefox"]["Autostart"])=="YES" )
+                echo "\nStartWatchdog: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
+                $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+                $input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+                $log_Watchdog=new Logging($configSetup["LogDirectory"]."Log_Watchdog.csv",$input);
+                echo "Nachrichten in ".$configSetup["LogDirectory"]."Log_Watchdog.csv    \n";
+
+                $autostart = new AutostartHandler();
+                //$config = $autostart->getSetup();
+                $configWatchdog = $autostart->getConfiguration();
+
+                $verzeichnis=$configWatchdog["WatchDogDirectory"];
+                $unterverzeichnis="";    
+
+                if (strlen($verzeichnis.$unterverzeichnis)>10)
                     {
-                    echo "Schreibe Batchfile zum automatischen Start von Firefox.\n";
-                    $handle2=fopen($verzeichnis.$unterverzeichnis."start_firefox.bat","w");        
-                    fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
-                    if (is_array($configWatchdog["Software"]["Firefox"]["Url"]))
+                    echo "Create Autostart Batch files in $verzeichnis$unterverzeichnis \n";
+                    $autostartInstall = new AutostartHandlerInstall();
+                    $autostartInstall->createCmdFileActiveProcesses($verzeichnis.$unterverzeichnis);
+                    $autostartInstall->createCmdFileSelfShutdown($verzeichnis.$unterverzeichnis);
+                    $autostartInstall->createCmdFileSelfRestart($verzeichnis.$unterverzeichnis);
+
+                    if (strtoupper($configWatchdog["Software"]["Selenium"]["Autostart"])=="YES")
                         {
-                        echo "   mehrere Urls sollen gestartet werden.\n";
-                        $command='"'.$configWatchdog["Software"]["Firefox"]["Directory"].'firefox.exe" ';
-                        foreach ($configWatchdog["Software"]["Firefox"]["Url"] as $url) $command.=' "'.$url.'" ';
-                        $command.="\r\n";
-                        fwrite($handle2,$command);
-                        echo "   Befehl ist jetzt : $command\n";
+                        $seleniumChromedriverUpdate = new seleniumChromedriverUpdate();     // Watchdog class
+                        // scriptfile schreiben
+                        $seleniumChromedriverUpdate->createCmdFileStartSelenium($verzeichnis.$unterverzeichnis);       
+                        $seleniumChromedriverUpdate->createCmdFileStoppSelenium($verzeichnis.$unterverzeichnis);     
+                        $seleniumChromedriverUpdate->createCmdFileActiveSelenium($verzeichnis.$unterverzeichnis);  
                         }
-                    else fwrite($handle2,'"'.$configWatchdog["Software"]["Firefox"]["Directory"].'firefox.exe" "'.$configWatchdog["Software"]["Firefox"]["Url"].'"'."\r\n");
-                    fclose($handle2);
-                    }
 
-                if (strtoupper($configWatchdog["Software"]["Chrome"]["Autostart"])=="YES" )
-                    {
-                    echo "Schreibe Batchfile zum automatischen Start von Chrome.\n";
-                    $handle2=fopen($verzeichnis.$unterverzeichnis."start_chrome.bat","w");        
-                    fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
-                    if (is_array($configWatchdog["Software"]["Chrome"]["Url"]))
+                    if (strtoupper($configWatchdog["Software"]["Firefox"]["Autostart"])=="YES" )
                         {
-                        echo "   mehrere Urls sollen gestartet werden.\n";
-                        $command='"'.$configWatchdog["Software"]["Chrome"]["Directory"].'chrome.exe" ';
-                        foreach ($configWatchdog["Software"]["Chrome"]["Url"] as $url) $command.=' "'.$url.'" ';
-                        $command.="\r\n";
-                        fwrite($handle2,$command);
-                        echo "   Befehl ist jetzt : $command\n";
+                        echo "Schreibe Batchfile zum automatischen Start von Firefox.\n";
+                        $handle2=fopen($verzeichnis.$unterverzeichnis."start_firefox.bat","w");        
+                        fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
+                        if (is_array($configWatchdog["Software"]["Firefox"]["Url"]))
+                            {
+                            echo "   mehrere Urls sollen gestartet werden.\n";
+                            $command='"'.$configWatchdog["Software"]["Firefox"]["Directory"].'firefox.exe" ';
+                            foreach ($configWatchdog["Software"]["Firefox"]["Url"] as $url) $command.=' "'.$url.'" ';
+                            $command.="\r\n";
+                            fwrite($handle2,$command);
+                            echo "   Befehl ist jetzt : $command\n";
+                            }
+                        else fwrite($handle2,'"'.$configWatchdog["Software"]["Firefox"]["Directory"].'firefox.exe" "'.$configWatchdog["Software"]["Firefox"]["Url"].'"'."\r\n");
+                        fclose($handle2);
                         }
-                    else fwrite($handle2,'"'.$configWatchdog["Software"]["Chrome"]["Directory"].'chrome.exe" "'.$configWatchdog["Software"]["Chrome"]["Url"].'"'."\r\n");
-                    fclose($handle2);
+
+                    if (strtoupper($configWatchdog["Software"]["Chrome"]["Autostart"])=="YES" )
+                        {
+                        echo "Schreibe Batchfile zum automatischen Start von Chrome.\n";
+                        $handle2=fopen($verzeichnis.$unterverzeichnis."start_chrome.bat","w");        
+                        fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
+                        if (is_array($configWatchdog["Software"]["Chrome"]["Url"]))
+                            {
+                            echo "   mehrere Urls sollen gestartet werden.\n";
+                            $command='"'.$configWatchdog["Software"]["Chrome"]["Directory"].'chrome.exe" ';
+                            foreach ($configWatchdog["Software"]["Chrome"]["Url"] as $url) $command.=' "'.$url.'" ';
+                            $command.="\r\n";
+                            fwrite($handle2,$command);
+                            echo "   Befehl ist jetzt : $command\n";
+                            }
+                        else fwrite($handle2,'"'.$configWatchdog["Software"]["Chrome"]["Directory"].'chrome.exe" "'.$configWatchdog["Software"]["Chrome"]["Url"].'"'."\r\n");
+                        fclose($handle2);
+                        }
+
+                    if (strtoupper($configWatchdog["Software"]["iTunes"]["Autostart"])=="YES" )
+                        {
+                        echo "Schreibe Batchfile zum automatischen Kill von Java und Soap zur Steuerung von iTunes.\n";
+                        $handle2=fopen($verzeichnis.$unterverzeichnis."kill_java.bat","w");
+                        fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
+                        //fwrite($handle2,"pause\r\n");
+                        fclose($handle2);
+
+                        $handle2=fopen($verzeichnis.$unterverzeichnis."start_soap.bat","w");
+                        fwrite($handle2,'c:/scripts/nircmd.exe closeprocess java.exe'."\r\n");
+                        fwrite($handle2,'echo ------------------------------------------------ >>c:/scripts/log.txt'."\r\n");
+                        fwrite($handle2,'echo %date% %time% shutdown soap >>c:/scripts/log.txt'."\r\n");
+                        fwrite($handle2,'ping 127.0.0.1 -n 4'."\r\n");
+                        fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
+                        //fwrite($handle2,'c:/Windows/System32/Taskkill.exe /F /FI "IMAGENAME eq java.exe"'."\r\n");
+                        fwrite($handle2,'ping 127.0.0.1 -n 2'."\r\n");
+                        fwrite($handle2,'cd c:/scripts/'."\r\n");
+                        fwrite($handle2,'%windir%/system32/java -jar iTunesSoap_Beta1.jar '.$configWatchdog["Software"]["iTunes"]["SoapIP"].' '.$configWatchdog["Software"]["iTunes"]["SoapIP"].':8085'."\r\n");
+                        fwrite($handle2,'rem pause'."\r\n");
+                        fclose($handle2);
+
+                        echo "Schreibe Batchfile zum automatischen Start von iTunes.\n";
+                        $handle2=fopen($verzeichnis.$unterverzeichnis."start_iTunes.bat","w");
+                        fwrite($handle2,'"'.$configWatchdog["Software"]["iTunes"]["Directory"].'iTunes.exe"'."\r\n");
+                        fclose($handle2);
+
+                        echo "Schreibe Batchfile zum automatischen Stopp von iTunes.\n";
+                        $handle2=fopen($verzeichnis.$unterverzeichnis."kill_itunes.bat","w");
+                        fwrite($handle2,'c:/Windows/System32/taskkill.exe /im itunes.exe');
+                        fwrite($handle2,"\r\n");
+                        fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe');
+                        fwrite($handle2,"\r\n");
+                        //fwrite($handle2,"pause\r\n");
+                        fclose($handle2);
+                        }
+                        
+                    if (strtoupper($configWatchdog["Software"]["VMware"]["Autostart"])=="YES" )
+                        {
+                        echo "Schreib Batchfile zum automatischen Start der VMware.\n";
+                        $handle2=fopen($verzeichnis.$unterverzeichnis."start_VMware.bat","w");
+                        fwrite($handle2,'"'.$configWatchdog["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWatchdog["Software"]["VMware"]["DirFiles"].$configWatchdog["Software"]["VMware"]["FileName"].'"'."\r\n");
+                        fclose($handle2);
+                        }
+                    echo "\n-----------------------------\nWatchdog Installation beendet.\n";
                     }
-
-                if (strtoupper($configWatchdog["Software"]["iTunes"]["Autostart"])=="YES" )
-                    {
-                    echo "Schreibe Batchfile zum automatischen Kill von Java und Soap zur Steuerung von iTunes.\n";
-                    $handle2=fopen($verzeichnis.$unterverzeichnis."kill_java.bat","w");
-                    fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
-                    //fwrite($handle2,"pause\r\n");
-                    fclose($handle2);
-
-                    $handle2=fopen($verzeichnis.$unterverzeichnis."start_soap.bat","w");
-                    fwrite($handle2,'c:/scripts/nircmd.exe closeprocess java.exe'."\r\n");
-                    fwrite($handle2,'echo ------------------------------------------------ >>c:/scripts/log.txt'."\r\n");
-                    fwrite($handle2,'echo %date% %time% shutdown soap >>c:/scripts/log.txt'."\r\n");
-                    fwrite($handle2,'ping 127.0.0.1 -n 4'."\r\n");
-                    fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
-                    //fwrite($handle2,'c:/Windows/System32/Taskkill.exe /F /FI "IMAGENAME eq java.exe"'."\r\n");
-                    fwrite($handle2,'ping 127.0.0.1 -n 2'."\r\n");
-                    fwrite($handle2,'cd c:/scripts/'."\r\n");
-                    fwrite($handle2,'%windir%/system32/java -jar iTunesSoap_Beta1.jar '.$configWatchdog["Software"]["iTunes"]["SoapIP"].' '.$configWatchdog["Software"]["iTunes"]["SoapIP"].':8085'."\r\n");
-                    fwrite($handle2,'rem pause'."\r\n");
-                    fclose($handle2);
-
-                    echo "Schreibe Batchfile zum automatischen Start von iTunes.\n";
-                    $handle2=fopen($verzeichnis.$unterverzeichnis."start_iTunes.bat","w");
-                    fwrite($handle2,'"'.$configWatchdog["Software"]["iTunes"]["Directory"].'iTunes.exe"'."\r\n");
-                    fclose($handle2);
-
-                    echo "Schreibe Batchfile zum automatischen Stopp von iTunes.\n";
-                    $handle2=fopen($verzeichnis.$unterverzeichnis."kill_itunes.bat","w");
-                    fwrite($handle2,'c:/Windows/System32/taskkill.exe /im itunes.exe');
-                    fwrite($handle2,"\r\n");
-                    fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe');
-                    fwrite($handle2,"\r\n");
-                    //fwrite($handle2,"pause\r\n");
-                    fclose($handle2);
-                    }
-                    
-                if (strtoupper($configWatchdog["Software"]["VMware"]["Autostart"])=="YES" )
-                    {
-                    echo "Schreib Batchfile zum automatischen Start der VMware.\n";
-                    $handle2=fopen($verzeichnis.$unterverzeichnis."start_VMware.bat","w");
-                    fwrite($handle2,'"'.$configWatchdog["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWatchdog["Software"]["VMware"]["DirFiles"].$configWatchdog["Software"]["VMware"]["FileName"].'"'."\r\n");
-                    fclose($handle2);
-                    }
-                echo "\n-----------------------------\nWatchdog Installation beendet.\n";
                 }
+            print_r($configWatchdog);
             }
-        print_r($configWatchdog);
+        else
+            {           // Batch Datei read_Systeminfo.bat schreiben für Windows Betriebssystem, wenn Watchdog Modul installiert ist
+            $verzeichnisSystem=$OperationCenterSetup["SystemDirectory"];
+            $filenameSystem = $verzeichnisSystem."read_Systeminfo.bat";    
+            $handle2=fopen($filenameSystem,"w");
+            fwrite($handle2,'cd '.$verzeichnisSystem."\r\n");
+            fwrite($handle2,'echo %username% >>username.txt'."\r\n");
+            fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
+            fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
+            fwrite($handle2,'jps >>jps.txt'."\r\n");  
+            //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
+            fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
+            //fwrite($handle2,"pause\r\n");
+            fwrite($handle2,'systeminfo >>system.txt'."\r\n");
+            fclose($handle2);
+            }
+        }
+    else            // Unix Mode
+        {
+        // list of users and active user
+        // list of active processes, tasks, and java apps
+        // complete systeminfo
+        // sys ping alternative  
+        // alternative for running scripts, $sysOps->ExecuteUserCommand  
         }
 
+
+
+        
 	/*******************************
      *
      * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen

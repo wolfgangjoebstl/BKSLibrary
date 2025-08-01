@@ -254,7 +254,8 @@ if ($_IPS['SENDER']=="WebFront")
     $value=$_IPS['VALUE'];
     $oldvalue=GetValue($variableId);
 	SetValue($variableId,$value);
-    //echo "Taste gedrückt. $variableId ".IPS_GetName($variableId)."\n";
+    $debugWebfront=false;
+    if ($debugWebfront) echo "Taste gedrückt. $variableId ".IPS_GetName($variableId)."\n";
 	switch ($variableId)
 		{
 		case 0:
@@ -263,7 +264,7 @@ if ($_IPS['SENDER']=="WebFront")
             //echo "OperationCenter $variableId ";        
 		    if (array_key_exists($variableId,$ActionButton))
 		        {
-                //echo "found ";                    
+                if ($debugWebfront) echo "found ";                    
                 /* nach Klassen getrennt auswerten, Routine kann in die Klasse später übernommen werden */
 				if (isset($ActionButton[$variableId]["DeviceManagement"]))
 					{
@@ -430,11 +431,49 @@ if ($_IPS['SENDER']=="WebFront")
 
                         /* verwendung von ipsTables, mehrfache verwendung ergibt jede Menge gleicher Styles, die aber nicht richtig gekapselt sind
                         */
+                        $id="a1235"; $class="maindiv2";
+                        $text = "<style>";
+                        $text.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
+                        $text.='font-size:16px; max-width: 900px ';        // responsive font size   
+                        $text.='color:black; border-collapse: collapse;  }';
+                        $text.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+                        $text.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
+                        $text.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
+                        $text.='#'.$id.' tr:hover {background-color: #ddd;}';
+                        $text.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
 
-                        $html  = "<div>";
+                        /* class1 flex container mit den class2 darunterliegenden div 
+                           darunter übereinander rechtsbündig darstellen 
+                           display: flex; reicht zum nebeneinander darstellen
+                           wrap kann verwendet werden, aber Achtung mit der größe der Tabellen darunter
+                           */
+                        $text.=".".$class."1 {  idth: 100%; height: 100%;         
+                            display: flex;  
+                            flex-direction: row; flex-wrap: wrap;        
+                            justify-content: space-between;   ";
+                            //align-items: flex-start; align-content: flex-start;
+                            $text.="box-sizing: border-box; padding: 1px 1px 1px 1px;		}"; 
+                        // zusaetzliche Formatierung für die divs unter maindiv1 :
+                        $text.=".".$class."1>* { position: relative;	z-index: 1; }"; 
+                        // div darunter für left-aligned, center-aligned und right aligned
+                        $text.=".".$class."2 { ";          
+                            $text.="display: flex; position: relative; 
+                            flex-direction: line; flex-wrap: wrap;
+                            justify-content: space-between;
+                            align-items: center;
+                            box-sizing: border-box;	padding: 0px 0px 5px 0px;	}"; 
+                        $text.="</style>";
+                        $html=$text;
+                        $html .= "<div class=".$class."1 id=$id>";
+                        /* html ohne html block aber mit style und unterschiedlicher id
+                        */
+                        $html .= "<div class=".$class."2 >";
                         $html .= $remoteaccessData->showTailscaleStatus($resultSystemInfo);         // immer als zweites, does reuse of style
-                        $html .= "</div><div>";
+                        $html .= "</div>";
+                        $html .= "<div class=".$class."2 >";
+
                         $html .= $remoteaccessData->showRemoteAcessStatus();
+                        $html .= "</div>";
                         $html .= "</div>";
 
                         $remoteaccessId = getCategoryIdByName($CategoryIdData, "RemoteAccess");
