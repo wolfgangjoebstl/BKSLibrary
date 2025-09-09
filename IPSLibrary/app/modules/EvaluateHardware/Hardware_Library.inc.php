@@ -35,7 +35,8 @@
  *      HardwareOpCentCam
  *      HardwareIpsHeat
  *      HardwareEchoControl
- *
+ *      HardwareSwitchBot
+ *      HardwareMQTTClient
  *
  *
  *	summary of class Hardware
@@ -88,11 +89,11 @@
  *      getDeviceConfiguration
  *
  *
- *      getDeviceCheck
- *      getDeviceParameter
- *      getDeviceChannels
+ *      getDeviceCheck              überprüft den Namen der den Index in deviceList darstellt auf einzigartigkeit, andernfalls wird wenn aktiviert der Type drangehängt
+ *      getDeviceParameter          erzeugt die Instances
+ *      getDeviceChannels           erzeugt die Channels
  *      getDeviceTopology
- *      getDeviceInformation
+ *      getDeviceInformation        erzeugt Device
  *      getDeviceActuators
  *      getDeviceActuatorsFromIpsHeat
  *      getDeviceListFiltered
@@ -220,6 +221,15 @@ class Hardware
             case "{81F09287-FDDF-204E-98CB-30B27D106ECE}":           // IPSHeat Instanzen, ModuleID erfunden 
                 $hardwareType="IPSHeat";
                 break;
+            case "{2408C0E0-E672-7FE5-414B-F78C9B9244E4}":          // MQTT Client
+                $hardwareType="MQTTClient";
+                break;
+            case "{0D86E724-D3DB-5685-03CE-DDD6B981F39B}":          // SwitchBot
+                $hardwareType="SwitchBot";
+                break;
+            case "{CC4F15B1-81C2-4F45-8D53-972F0C9C8103}":          // MQTT Server
+                $hardwareType="MQTTServer";
+                break;
             default:
                 echo "getHardwareType, hardwareType unknown for ModuleID $moduleID.";
                 $hardwareType=false;
@@ -250,6 +260,7 @@ class Hardware
      * es wird geprüft ob der name als Index bereits vergeben ist, Index muss ein uniqueName sein.
      * wenn config für createUniqueName ein true ist dann bei doppelten Namen einen neuen Namen definieren
      *
+     * entry wird übergeben, entry hat als Einträge OID und CONFIFG
      * 
      * wird überschrieben von HardwareHomematic und HardwareHomematicExtended
      *
@@ -277,7 +288,7 @@ class Hardware
                 if ($debug) echo "          ------------------------------------------------------------------------------------------------------\n";
                 echo "          getDeviceCheck:Allgemein, create unique Names aktiviert, Name wird von $name auf $name$type geändert:\n";
                 $realname=$name;
-                $name = $name.$type;            // wird zurückgegeben, nur ein Pointer
+                $name = $name.$type;            // wird ebenfalls zurückgegeben, nur ein Pointer, die Folegeroutinen arbeiten mit name
                 $deviceList[$name]["Name"]=$realname;
                 $deviceList[$name]["Type"]=$type;
                 return (true);
@@ -318,6 +329,17 @@ class Hardware
      *
      * Type ist ein muss für die Devicelist, getComponent macht die Erkennung darauf basierend
      *
+     * erzeugt 
+     *  $ame 
+     *      Type
+     *      Name
+     *      Instances
+     *          Port#           (laufende Nummer)
+     *              OID
+     *              NAME
+     *              CONFIG oder ähnliche aus der Instanz Konfiguration
+     *     
+     *
      */
 
     public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
@@ -334,8 +356,18 @@ class Hardware
      * die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät kann mehrere Instances und Channels haben, 
      * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
      * zumindest RegisterAll schreiben
+     *
+     * verwendet 
+     *  $name
+     *      Instances
+     *          Port#
+     * erzeugt
+     *  $name
+     *      Channels 
+     *          Port#
+     *              Name
+     *              RegisterAll
      */
-
     public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)                 // class Hardware
         {
         if ($debug) echo "          getDeviceChannels:Allgemein aufgerufen für ".$entry["OID"]." mit $name $type. Keine Funktion hinterlegt.\n";
@@ -375,20 +407,20 @@ class Hardware
         return (true);
         }
 
-    /* die Device Liste (Geräteliste) um die Beschreibung der Topologie erweitern
+    /* Hardware::getDeviceTopology
+     * die Device Liste (Geräteliste) um die Beschreibung der Topologie erweitern
      *
      */
-
     public function getDeviceTopology(&$deviceList, $name, $type, $entry, $debug=false)
         {
         if ($debug) echo"          getDeviceTopology:Allgemein aufgerufen. Keine Funktion hinterlegt.\n";
         return (true);
         }
 
-    /* die Device Liste (Geräteliste) um die Beschreibung der Devices erweitern, ein Gerät pro Device, die Hardware selber
+    /* Hardware::getDeviceInformation 
+     *  die Device Liste (Geräteliste) um die Beschreibung der Devices erweitern, ein Gerät pro Device, die Hardware selber
      *
      */
-
     public function getDeviceInformation(&$deviceList, $name, $type, $entry, $debug=false)
         {
         if ($debug) echo"          getDeviceInformation:Allgemein aufgerufen. Keine Funktion hinterlegt.\n";
@@ -399,7 +431,6 @@ class Hardware
      * die Device Liste (Geräteliste) um die Actuators erweitern, ein Gerät kann Actuators haben, muss aber nicht
      * für jede Hardware Gerätetype individuell, oder besser am Ende mit getDeviceActuatorsFromIpsHeat für alle gemeinsam auf einmal
      */
-
     public function getDeviceActuators(&$deviceList, $name, $type, $entry, $debug=false)
         {
         if ($debug) echo"          getDeviceActuators:Allgemein aufgerufen. Keine Funktion hinterlegt.\n";
@@ -897,14 +928,10 @@ class HardwareHomematicExtended extends HardwareHomematic
      * entry beinhaltet die Configuration unter ["CONFIG"], Configuration ist json encoded
      * entry beinhaltet auch ["OID"] , check wenn OperationCenter Modul installiert ist
      *
-     * Rückgabe false wenn
-     *    wenn Name ohne Doppelpunkt
-     *    es gibt eine Adresse mit einem : in der Konfiguration
-     *    kein Port 0 in der Adresse
+     * Rückgabe false für Extended erleichtert nur mehr wenn
+     *    es gibt eine Eintrag Adresse in der Config
      *    wenn OperationCenter Modul installiert ist 
-     *      Matrix Auswertung erfolgreich
-     *      Port muss in Matrix ein Index sein mit Eintrag 1 oder größer
-     *      typedev Auswertung muss auch erfolgreich sein
+     *      typedev Auswertung muss erfolgreich sein
      *
      * Homematic, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
      * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
@@ -960,7 +987,17 @@ class HardwareHomematicExtended extends HardwareHomematic
      *
      *
      * verwendet einheitlich getHomematicDeviceType
-     *
+     *     
+     * erzeugt 
+     *  $name 
+     *      Type
+     *      Name
+     *      Instances
+     *          Port#           (laufende Nummer)
+     *              OID
+     *              TYPEDEV
+     *              NAME
+     *              CONFIG oder ähnlich aus der Instanz
      */
 
     public function getDeviceParameter(&$deviceList,$name, $type, $entry, $debug=false)
@@ -1048,7 +1085,8 @@ class HardwareHomematicExtended extends HardwareHomematic
         return (true);
         }
 
-    /* eigenes Tab mit Device befüllen, wird aktuell von  getDeviceParameter gemacht
+    /* HardwareHomematicExtended::getDeviceInformation 
+     * eigenes Tab mit Device befüllen, wird aktuell von  getDeviceParameter gemacht
      *
      */
 
@@ -1356,9 +1394,13 @@ class HardwareNetatmoWeather extends Hardware
  * die Device Liste deviceList aus der Geräteliste erstellen, Antwort ist ein Geräteeintrag
  *
  *      getDeviceCheck
- *      getDeviceParameter              Instanzen anlegen, pro Gerät mehrere Instanzen
- *      getDeviceChannels
- *      getDeviceInformation
+ *          getDeviceParameter              Instanzen anlegen, pro Gerät mehrere Instanzen
+ *          getDeviceChannels
+ *          getDeviceActuators
+ *          getDeviceInformation
+ *          getDeviceTopology
+ *      getDeviceActuatorsFromIpsHeat
+ *
  *      checkConfig
  *
  *
@@ -1390,6 +1432,35 @@ class HardwareHomematic extends Hardware
             $this->DeviceManager = new DeviceManagement_Homematic($debug>2); 
             }
         parent::__construct($config,$debug);
+        if ($this->combineDevices) 
+            {
+            if ($debug) echo "    HardwareHomematic, combineDevices angefordert.\n"; 
+            foreach ($this->configuration["combineDevices"] as $idx => $entry)                // Hardwarelist, nocheinmal für alle Geräte eines Typs
+                {
+                // Definition des Namen
+                if (isset($entry["NAME"])) $name=$entry["NAME"];            // id der Homematic Config gibt es keinen Namen
+                else 
+                    {
+                    $nameSelect=explode(":",$idx);
+                    if (isset($nameSelect[0])) $name=$nameSelect[0];            // name ist der Teil vor dem ersten Doppelpunkt
+                    else $name=$idx;
+                    }
+                $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+                if (isset($result["Address"])) 
+                    {
+                    $addressSelect=explode(":",$result["Address"]);
+                    if (count($addressSelect)>1)
+                        {
+                        $port=(integer)$addressSelect[1];
+                        $deviceId=$addressSelect[0];
+                        $this->ListofDevices[$deviceId][$entry["OID"]]=$entry["CONFIG"];
+                        if (isset($this->ListofDevices[$deviceId]["NAME"])==false) $this->ListofDevices[$deviceId]["NAME"]=$name;
+                        }
+                    else echo "HardwareHomematic, Error No : in Adress\n";
+                    }
+                else echo "HardwareHomematic, Error No Adress \n";
+                }
+            }
         }
 
     /* HardwareHomematic::getDeviceCheck
@@ -1529,22 +1600,37 @@ class HardwareHomematic extends Hardware
     /* HardwareHomematic::getDeviceParameter
      * die Homematic Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
      * Antwort ist true wenn alles in Ordnung verlaufen ist
+     *
      * Entry wird direkt in die Devicelist unter Instances integriert, Name ist der Key des Eintrags mit dem integriert wird, Subkategorie ist eben Instances, Entry ist der Wert der eingesetzt wird 
      * Das Gerät Name wird um den Typ Type erweitert, beim Eintrag entry wird der Name zusätzlich gespeichert
      *
-     * SubType      Funk|Wired|IP
-     * Information  DeviceManager->getHomematicHMDevice($instanz,1)     zB 'Schaltaktor 1-fach Energiemessung'
-     * Serialnummer $entry["CONFIG"]["Address"][0]
-     * Type
-     * Instances    holt sich die Instanznummer aus der Portnummer, die in der Config gespeichet ist
-     *
-     *
+     * Name für DeviceList wird aus $nameSelect=explode(":",$name)[0] gewonnen. Sollte aber bereit richtig abgeändert worden sein 
      *
      * verwendet DeviceManager 
-     *      DeviceManager->getHomematicHMDevice($instanz,2)
-     *      TYPEDEV         DeviceManager->getHomematicDeviceType($instanz,0)
+     *      DeviceManager->getHomematicHMDevice($instanz,2)                         Pausicheck, Matrix definiert, Port verwendbar
+     *      TYPEDEV         DeviceManager->getHomematicDeviceType($instanz,0)       definiert TYPEDEV
      *      Information     DeviceManager->getHomematicHMDevice($instanz,1)
      *      TypeDevice      DeviceManager->getHomematicHMDevice($instanz,0);
+     *
+     * deviceInfo wird nicht geschrieben: deviceList[$nameSelect[0]]["Device"], macht getDeviceInformation
+     * wir schreiben in deviceList[$nameSelect[0]]
+     *      Instances.Port
+     *          NAME
+     *
+     * erzeugt 
+     *  Name calculated from explode(":",$name)[0]
+     *      Type
+     *      Name
+     *      Instances
+     *          Port calculated from explode(":",$entry["CONFIG"][Address])[1]
+     *              OID
+     *              TYPEDEV
+     *              NAME
+     *              CONFIG 
+     *              und ähnliches aus der Instanz
+     *
+     * 
+     * 
      */
 
     public function getDeviceParameter(&$deviceList,$name, $type, $entry, $debug=false)
@@ -1554,7 +1640,6 @@ class HardwareHomematic extends Hardware
         /* sehr schwierig, Devices sind nicht automatisch Instanzen */
         /* Zusammenfassen ausprobieren, erster Check alle Homematic Instanzen haben einen Doppelpunkt im Namen */
 
-        $deviceInfo=array();
 
         $nameSelect=explode(":",$name);
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
@@ -1564,26 +1649,6 @@ class HardwareHomematic extends Hardware
         /* Durchführung */            
 
         if ($debug) echo "          HardwareHomematic::getDeviceParameter Name \"".$nameSelect[0]."\" neuer Eintrag.".str_pad(" In deviceList unter ".$nameSelect[0]." Port $port.",50)."\n";
-        if (isset($result["Protocol"])) 
-            {
-            switch ($result["Protocol"])
-                {
-                case 0:
-                    //$deviceList[$nameSelect[0]]["SubType"]="Funk"; 
-                    $deviceInfo["SubType"]="Funk";                           
-                    break;
-                case 1:
-                    //$deviceList[$nameSelect[0]]["SubType"]="Wired";
-                    $deviceInfo["SubType"]="Wired";                            
-                    break;
-                case 2:
-                    //$deviceList[$nameSelect[0]]["SubType"]="IP";
-                    $deviceInfo["SubType"]="IP";                            
-                    break;
-                default:
-                    break;    
-                }
-            }
 
         /* Sonderfunktionen wenn OperationCenter Modul installiert ist */
 
@@ -1596,8 +1661,33 @@ class HardwareHomematic extends Hardware
                 if ($debug) echo "             Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)."  ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  $port und in der Matrix.";
                 }
             else echo "   >>Fehler, HardwareHomematic::getDeviceParameter, keine Ausgabe der Matrix. Gerät nicht in getHomematicHMDevice hinterlegt.\n";
+            $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+            if ($debug) echo "    TYPEDEV: $typedev";
+            $entry["TYPEDEV"]=$typedev;
+            
+            if (strpos($nameSelect[0],"HM") === 0) 
+                {
+                echo "      >>Fehler, HardwareHomematic::getDeviceParameter: Name starts with HM, is probably new one, has not been renamed : \"".IPS_GetName($instanz)."\" ($instanz/".$result["Address"]."): ";
+                $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0,true);     /* noch einmal mit Debug wenn Name mit HM anfangt */
+                }
 
+            if (isset($deviceList[$nameSelect[0]]["Instances"][$port])) echo "\n     >> Fehler Port $port bereits definiert. Wird ueberschrieben.\n";                          
+            $deviceList[$nameSelect[0]]["Type"]=$type;
 
+            if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];
+            else $entry["NAME"]=$name;
+
+            $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
+
+            /*
+            $infodev    = $this->DeviceManager->getHomematicHMDevice($instanz,1);     // Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens 
+            if ($infodev<>"")   
+                {
+                //$deviceList[$nameSelect[0]]["Information"]=$infodev;
+                $deviceInfo["Information"]=$infodev;
+                if ($debug) echo "            INFO: $infodev  ";
+                }
+            else echo "\n       >>Fehler, HardwareHomematic::getDeviceParameter, \"".IPS_GetName($instanz)."\" ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";
             //echo " $instanz: ";
             //$typeInst   = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
             //$HMDevice   = $DeviceManager->getHomematicHMDevice($instanz);
@@ -1613,30 +1703,31 @@ class HardwareHomematic extends Hardware
                 }
             echo "\n";
                 
-            */
+            $deviceInfo=array();
 
-            $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
-            if ($debug) echo "    TYPEDEV: $typedev";
-            $entry["TYPEDEV"]=$typedev;
-            
-            if (strpos($nameSelect[0],"HM") === 0) 
+            if (isset($result["Protocol"])) 
                 {
-                echo "      >>Fehler, HardwareHomematic::getDeviceParameter: Name starts with HM, is probably new one, has not been renamed : \"".IPS_GetName($instanz)."\" ($instanz/".$result["Address"]."): ";
-                $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0,true);     /* noch einmal mit Debug wenn Name mit HM anfangt */
+                switch ($result["Protocol"])
+                    {
+                    case 0:
+                        //$deviceList[$nameSelect[0]]["SubType"]="Funk"; 
+                        $deviceInfo["SubType"]="Funk";                           
+                        break;
+                    case 1:
+                        //$deviceList[$nameSelect[0]]["SubType"]="Wired";
+                        $deviceInfo["SubType"]="Wired";                            
+                        break;
+                    case 2:
+                        //$deviceList[$nameSelect[0]]["SubType"]="IP";
+                        $deviceInfo["SubType"]="IP";                            
+                        break;
+                    default:
+                        break;    
+                    }
                 }
-
-            //$infodev    = $DeviceManager->getHomematicDeviceType($instanz,1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ der Instanz in beschreibender Form aus */
-            $infodev    = $this->DeviceManager->getHomematicHMDevice($instanz,1);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
-            if ($infodev<>"")   
-                {
-                //$deviceList[$nameSelect[0]]["Information"]=$infodev;
-                $deviceInfo["Information"]=$infodev;
-                if ($debug) echo "            INFO: $infodev  ";
-                }
-            else echo "\n       >>Fehler, HardwareHomematic::getDeviceParameter, \"".IPS_GetName($instanz)."\" ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";
-            //$deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
-            $deviceInfo["Serialnummer"]=$addressSelect[0];
-            /*
+            $deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
+            $deviceList[$nameSelect[0]]["TypeDevice"]=$this->DeviceManager->getHomematicHMDevice($instanz,0);           
+            $deviceInfo["Serialnummer"]=$addressSelect[0];            
             $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus
             if ($typedev<>"")  
                 {
@@ -1644,18 +1735,9 @@ class HardwareHomematic extends Hardware
                 $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
                 }
             else "Fehler $instanz: keine Channels ermittelt.\n";
-            */
-
-            if (isset($deviceList[$nameSelect[0]]["Instances"][$port])) echo "\n     >> Fehler Port $port bereits definiert. Wird ueberschrieben.\n";                          
-            $deviceList[$nameSelect[0]]["Type"]=$type;
-            //$deviceList[$nameSelect[0]]["TypeDevice"]=$this->DeviceManager->getHomematicHMDevice($instanz,0);
             $deviceInfo["TypeDevice"]=$this->DeviceManager->getHomematicHMDevice($instanz,0);
-            if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];
-            else $entry["NAME"]=$name;
-            $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
-
-
-            //$deviceList[$nameSelect[0]]["Device"][]=$deviceInfo;
+            $deviceList[$nameSelect[0]]["Device"][]=$deviceInfo;
+            */
             if ($debug) echo "\n";
             return (true);
             }
@@ -1787,7 +1869,14 @@ class HardwareHomematic extends Hardware
         else return (false);
         }
 
-    /* eigenes Tab mit Device befüllen, wird aktuell von  getDeviceParameter gemacht
+    /* HardwareHomematic::getDeviceInformation
+     * eigenes Tab mit Device befüllen, wird aktuell von  getDeviceParameter gemacht
+     * CONFIG analysieren und abspeichern
+     *      SubType         Funk|Wired|IP
+     *      Serialnummer    $entry["CONFIG"]["Address"][0]
+     *      Gateway
+     *      Information      DeviceManager->getHomematicHMDevice($instanz,1)     zB 'Schaltaktor 1-fach Energiemessung'
+     *      TypeDev
      *
      */
 
@@ -2062,9 +2151,13 @@ class HardwareHUEV2 extends Hardware
 	
     protected $socketID, $bridgeID, $deviceID;
 	
-    /* wir können devices zusammenlegen wenn gewünscht 
+    /* wir können devices zusammenlegen wenn gewünscht, Vorverarbeitung beginnt bereits im construct 
+     * in configuration.combineDevices sind alle Geräte gespeichert, eine ListofDevices erstellen
+     *      Index ist die DeviceID, also die einzigartige, unique Adresse des Gerätes, das mehrere Instanzen haben kann
+     *      Subindex ist die OID, also die IDs der Instanzen mit gleicher Adresse/DeviceID
+     *      unter dem Subindex wird die Configuration gespeichert
+     *      es gibt einen Namen, die Regle ist das erste Gerät das in der Liste vorkommt bestimmt den Namen
      */
-
 	public function __construct($config=false,$debug=false)
 		{
         if ($debug>1) echo "      construct HardwareHUEV2, return bridgeID and deviceName array, use Debug=3 for more Information :\n";
@@ -2083,7 +2176,7 @@ class HardwareHUEV2 extends Hardware
         if ($this->combineDevices) 
             {
             if ($debug) echo "    HardwareHUEV2, combineDevices angefordert.\n"; 
-            foreach ($this->configuration["combineDevices"] as $idx => $entry)                // Hardwarelist, nocheinmal für alle Geräte
+            foreach ($this->configuration["combineDevices"] as $idx => $entry)                // Hardwarelist, nocheinmal für alle Geräte eines Typs
                 {
                 if (isset($entry["NAME"])) $name=$entry["NAME"];
                 else $name=$idx;
@@ -2147,7 +2240,7 @@ class HardwareHUEV2 extends Hardware
      *       $object->getDeviceTopology(....);              // zusaettlich Topolgie Informationen ablegen
      *       }
      *
-     *
+     * verwendet ListofDevices
      */
 
     public function getDeviceCheck(&$deviceList, &$name, $type, $entry, $debug=false)
@@ -3157,7 +3250,7 @@ class HardwareIpsHeat extends Hardware
 class HardwareEchoControl extends Hardware
 	{
 	
-    protected $bridgeID, $deviceID;
+    protected $socketID, $bridgeID, $deviceID;
 	
 	public function __construct($config=false,$debug=false)
 		{
@@ -3250,6 +3343,342 @@ class HardwareEchoControl extends Hardware
         return (true);
         }        
 
+    }
+
+
+/*********************************
+ * 
+ * SwitchBot, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ * übernimmt config und gibt sie an class Hardware weiter
+ *
+ * erstellt Einträge in der Deviceliste
+ *  uniqueName          Name der einzigen Instanz, oder Name bis zum Doppelpunkt oder NameType zusammen
+ *      Instances
+ *          0
+ *              OID
+ *              CONFIG
+ *              NAME
+ *      Channels
+ *          0
+ *              RegisterAll
+ *      Type
+ *      Name
+ *
+ *
+ ****************************************/
+
+class HardwareSwitchBot extends Hardware
+	{
+	
+    protected $socketID, $bridgeID, $deviceID;
+	
+	public function __construct($config=false,$debug=false)
+		{
+        $this->socketID = "{652A1EF5-9461-A361-8D30-80A4DD532931}";             // Splitter, verwendet kein I/O Socket           
+        $this->bridgeID = "";
+        $this->deviceID = "{074E9906-6BB5-E403-3987-2C7E11EAF46C}";
+        parent::__construct($config,$debug);        
+        }
+
+
+    /* HardwareSwitchBot::getDeviceChannels
+     * die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät kann mehrere Instances und Channels haben, 
+     * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
+     * zumindest RegisterAll schreiben
+     *
+     * verwendet 
+     *  $name
+     *      Instances
+     *          Port#
+     * erzeugt
+     *  $name
+     *      Channels 
+     *          Port#
+     *              Name
+     *              RegisterAll
+     */
+
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)                 // class Hardware
+        {
+        if ($debug) echo "          getDeviceChannels:Allgemein aufgerufen für ".$entry["OID"]." mit $name $type. Keine Funktion hinterlegt.\n";
+        //print_r($deviceList[$name]["Instances"]);
+        //print_r($entry);
+        
+        $oids=array();                                                          // inventory of all oids defined in instances
+        foreach ($deviceList[$name]["Instances"] as $port => $register) 
+            {
+            $oids[$register["OID"]]=$port;
+            }
+        if (isset($oids[$entry["OID"]])===false)                                // plausi check if this OID is part of Instances
+            {
+            echo "  >> irgendetwas ist falsch.\n";
+            return (false);                                     // nix zum tun, Abbruch
+            }
+        foreach ($oids as $oid => $port)                // alle OIDs durchgehen, es ist eh immer nur eine Instanz per Device bei Switchbot
+            {
+            $typedev=$this->getSwitchbotDeviceType($oid,4,false);
+            if ($typedev<>"")  
+                {
+                $deviceList[$name]["Channels"][$port]=$typedev;
+                if (isset($deviceList[$name]["Name"])) $deviceList[$name]["Channels"][$port]["Name"]=$deviceList[$name]["Name"];  
+                else $deviceList[$name]["Channels"][$port]["Name"]=$name;               
+                }
+            else
+                {
+                echo "   >>getDeviceChannels, Fehler $name: keine Channels ermittelt.\n";
+                }
+            /*
+            $cids = IPS_GetChildrenIDs($oid);
+            $register=array();
+            foreach($cids as $cid)
+                {
+                $register[]=IPS_GetName($cid);
+                }
+            sort($register);
+            $registerNew=array();
+            $oldvalue="";        
+            // gleiche Einträge eliminieren 
+            foreach ($register as $index => $value)
+                {
+                if ($value!=$oldvalue) {$registerNew[]=$value;}
+                $oldvalue=$value;
+                } 
+            $deviceList[$name]["Channels"][$port]["RegisterAll"]=$registerNew;
+            if (isset($deviceList[$name]["Name"])) $deviceList[$name]["Channels"][$port]["NAME"]=$deviceList[$name]["Name"];           // Index und Name sind unterschiedlich
+            else $deviceList[$name]["Channels"][$port]["NAME"]=$name;  */
+            }
+        return (true);
+        }
+
+
+    /*********************************
+     *
+     * gibt für einen SwitchBot Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     * vorher die Childrens der Instanz ermitteln und dann SwitchbotDeviceType aufrufen.
+     *
+     *
+     ***********************************************/
+
+    function getSwitchbotDeviceType($instanz, $outputVersion=false, $debug=false)
+	    {
+    	$cids = IPS_GetChildrenIDs($instanz);
+	    $data=array();
+    	foreach($cids as $cid)
+	    	{
+		    $data[$cid]=IPS_GetName($cid);
+    		}
+    	return ($this->SwitchbotDeviceType($data,$outputVersion, $debug));
+    	}
+
+    /*********************************
+     * 
+     * SwitchBot Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+     *
+     * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
+     * übergeben wird das Array das alle auch doppelte Eintraege hat. Folgende Muster werden ausgewertet:
+     *
+     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
+     *   false   die aktuelle Kategorisierung
+     *
+     *
+     ****************************************/
+
+    private function SwitchbotDeviceType($register, $outputVersion=false, $debug=false)
+        {
+		sort($register);                // register sind alle childrens mit Namen als array, sort sortiert gleiche jintereinander
+        $registerNew=array();
+    	$oldvalue="";        
+        // gleiche Einträge die hinterienander kommen eliminieren 
+	    foreach ($register as $index => $value)
+		    {
+	    	if ($value!=$oldvalue) {$registerNew[]=$value;}
+		    $oldvalue=$value;
+			}         
+        $found=true; 
+        if ($debug) 
+            {
+            echo "                SwitchbotDeviceType: Info mit Debug aufgerufen. Parameter \"";
+            foreach ($registerNew as $entry) echo "$entry ";
+            echo "\"\n";
+            }
+
+        /* result wird geschrieben, 4 Ausgabevarianten, Variante 4 wird für die devicelist verwendet
+         *
+         * 0 Textuelle Beschreibung
+         * 1 Medium und Textuelle Beschreibung
+         * 2 Typbeschreibung wie TYPECHAN in der DeviceList
+         * 3 Dieses Register und alle register
+         * 4 TYPECHAN Zusammenfassung und registerAll 
+         *
+         */
+
+        /*--Regensensor-----------------------------------
+        if ( array_search("Regenmenge",$registerNew) !== false)            // Sensor Raumklima 
+            {
+            $resultRegCounter["RAIN_COUNTER"]="Regenmenge";
+
+            $result[0] = "Regensensor";
+            $result[1] = "Funk Regensensor";
+            $result[2] = "TYPE_METER_CLIMATE";
+
+            $result[3]["Type"] = "TYPE_METER_CLIMATE";            
+            $result[3]["Register"] = $resultRegCounter;
+            $result[3]["RegisterAll"]=$registerNew;  
+            $result[4]["TYPECHAN"] = "TYPE_METER_CLIMATE";   
+            $result[4]["TYPE_METER_CLIMATE"] = $resultRegCounter;                       
+            $result[4]["RegisterAll"]=$registerNew;                      
+            }
+
+        /*--Raumklimasensor-----------------------------------
+        elseif ( array_search("CO2",$registerNew) !== false)            // Sensor Raumklima 
+            {
+            if ($debug) echo "                     Sensor Raumklima gefunden.\n";
+            $resultRegTemp["TEMPERATURE"]="Temperatur";
+            $resultRegTemp["HUMIDITY"]="Luftfeuchtigkeit";
+            $resultRegHumi["HUMIDITY"]="Luftfeuchtigkeit";
+            $resultRegClim["CO2"]="CO2";
+            $resultRegClim["BAROPRESSURE"]="Luftdruck";
+            $resultRegClim["NOISE"]="Lärm";
+
+            $result[0] = "Raumklimasensor";
+            $result[1] = "Funk Raumklimasensor";
+            $result[2] = "TYPE_METER_CLIMATE";            
+            $result[3]["Type"] = "TYPE_METER_CLIMATE";            
+            $result[3]["Register"] = array_merge($resultRegTemp, $resultRegClim);
+            $result[3]["RegisterAll"]=$registerNew;
+            $result[4]["TYPECHAN"] = "TYPE_METER_TEMPERATURE,TYPE_METER_HUMIDITY,TYPE_METER_CLIMATE";              
+            $result[4]["TYPE_METER_CLIMATE"] = $resultRegClim;
+            $result[4]["TYPE_METER_TEMPERATURE"] = $resultRegTemp;
+            $result[4]["TYPE_METER_HUMIDITY"] = $resultRegHumi;
+            $result[4]["RegisterAll"]=$registerNew;
+            }       */
+
+        /*--Temperatursensor, Aussen-----------------------------------
+         * ein TYPE_METER_TEMPERATURE hat TEMPERATURE und HUMIDITY
+         * ein TYPE_METER_HUMIDITY hat nur HUMIITY
+         */
+        if ( (array_search("Temperatur",$registerNew) !== false) &&  (array_search("Feuchtigkeit",$registerNew) !== false) )           // Sensor Temperatur und Feuchtigkeit
+            {
+            //print_r($registerNew);
+            if ($debug) echo "                     Sensor Temperatur gefunden.\n";
+            $resultRegTemp["TEMPERATURE"]="Temperatur";
+            $resultRegTemp["HUMIDITY"]="Feuchtigkeit";
+            $resultRegHumi["HUMIDITY"]="Feuchtigkeit";
+
+            $result[0] = "Temperatursensor";
+            $result[1] = "Funk Temperatursensor";
+            $result[2] = "TYPE_METER_TEMPERATURE";            
+            $result[3]["Type"] = "TYPE_METER_TEMPERATURE";            
+            $result[3]["Register"] = $resultRegTemp;
+            $result[3]["RegisterAll"]=$registerNew;
+            $result[4]["TYPECHAN"] = "TYPE_METER_TEMPERATURE,TYPE_METER_HUMIDITY";              
+            $result[4]["TYPE_METER_TEMPERATURE"] = $resultRegTemp;
+            $result[4]["TYPE_METER_HUMIDITY"] = $resultRegHumi;
+            $result[4]["RegisterAll"]=$registerNew;
+            }
+        elseif ( array_search("Status",$registerNew) !== false)            // ein Hub ohne Messwerte, zumindest als Gerät erkennen 
+            {
+            $result[0] = "Hub";
+            $result[1] = "Switchbot Hub";
+            $result[2] = "";            
+            $result[3]["RegisterAll"]=$registerNew;
+            $result[4]["RegisterAll"]=$registerNew;
+            }    
+        else
+            {
+            $found=false;
+            echo "   >>SwitchBotDeviceType, Fehler kenne Objekt nicht. Werte im Objekt sind :\n";
+            print_r($registerNew);
+            }
+
+        if ($found) 
+            {
+            if ($outputVersion==false) return($result[2]);
+            elseif ($outputVersion==2) return ($result[1]);
+            elseif ($outputVersion==3) return ($result[3]);
+            elseif ($outputVersion==4) return ($result[4]);
+			else return ($result[0]);
+            }
+        else 
+            {
+            if ($outputVersion>100) 
+                {
+                $result = "";
+                foreach ($registerNew as $entry) $result .= $entry." ";
+                return ($result);
+                }
+            else return (false);
+            }
+        }
+
+   /* HardwareSwitchBot::getDeviceInformation
+     * eigenes Tab mit Device befüllen, wird aktuell von  getDeviceParameter gemacht
+     * CONFIG analysieren und abspeichern
+     *      deviceID
+     *      Gateway
+     *      Information      DeviceManager->getHomematicHMDevice($instanz,1)     zB 'Schaltaktor 1-fach Energiemessung'
+     *      TypeDev
+     *
+     */
+
+    public function getDeviceInformation(&$deviceList,$name, $type, $entry, $debug=false)
+        {
+        $deviceInfo=array();
+        $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+        $deviceInfo["deviceID"]   = $result["deviceID"];
+        $deviceInfo["deviceName"] = $result["deviceName"];
+        $deviceInfo["deviceType"] = $result["deviceType"];
+        $deviceInfo["parameter"]  = $result["parameter"];
+        $deviceList[$name]["Device"][0]=$deviceInfo;                      
+        }
+
+    }
+
+
+/*********************************
+ * 
+ * MQTTClient, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ *
+ *
+ *
+ ****************************************/
+
+class HardwareMQTTClient extends Hardware
+	{
+	
+    protected $socketID, $bridgeID, $deviceID;
+	
+	public function __construct($config=false,$debug=false)
+		{
+        $this->socketID = "{F7A0DD2E-7684-95C0-64C2-D2A9DC47577B}";         //Splitter, verwendet Standard Client Socket         
+        $this->bridgeID = "";
+        $this->deviceID = "{91D174F2-AE0F-B8D8-5EF4-6232B9083CCF}";
+        parent::__construct($config,$debug);        
+        }
+    }
+
+
+/*********************************
+ * 
+ * MQTTServer, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ *
+ *
+ *
+ ****************************************/
+
+class HardwareMQTTServer extends Hardware
+	{
+	
+    protected $socketID, $bridgeID, $deviceID;
+	
+	public function __construct($config=false,$debug=false)
+		{
+        $this->socketID = "{C6D2AEB3-6E1F-4B2E-8E69-3A1A00246850}";         //Splitter, verwendet Standard Client Socket         
+        $this->bridgeID = "";
+        $this->deviceID = "{01C00ADD-D04E-452E-B66A-D253278743FE}";
+        parent::__construct($config,$debug);        
+        }
     }
 
 

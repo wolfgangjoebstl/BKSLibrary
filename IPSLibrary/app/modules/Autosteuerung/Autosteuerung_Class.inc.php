@@ -419,7 +419,9 @@ class AutosteuerungHandler
  *    AutosteuerungConfiguration, abstract class für:
  *       AutosteuerungConfigurationAlexa 
  *       AutosteuerungConfigurationHandler
- *       AutosteuerungConfigurationFloorplan
+ *       AutosteuerungConfigurationFloorplan            zum Zeichnen des Floorplans
+ *       AutosteuerungConfigurationGeofency
+ *       AutosteuerungConfigurationSetSwitches
  *
  *              Get_EventConfigurationAuto()
  *              Set_EventConfigurationAuto
@@ -463,8 +465,9 @@ abstract class AutosteuerungConfiguration
 		 * wenn false wird kein Event erzeugt aber die Konfiguration erweitert
          *
 		 */
-		public function __construct($scriptID=false) {
+		public function __construct($scriptID=false,$debug=false) {
 			$this->scriptID=$scriptID;
+            $this->debug=$debug;
 		}
 
 		/**
@@ -486,7 +489,7 @@ abstract class AutosteuerungConfiguration
 					$fatalerror=true;
 					}
 				$this->eventConfigurationAuto = $func();		/* >>>>>>>> change here */
-				echo "Config Function heisst : ".$func."\n";	
+				if ($this->debug) echo "Config Function heisst : ".$func."\n";	
 				}
 			return $this->eventConfigurationAuto;
 			}
@@ -890,6 +893,8 @@ abstract class AutosteuerungConfiguration
 
 	} /* ende class */
 
+/* class extends abstract class
+ */
 class AutosteuerungConfigurationAlexa extends AutosteuerungConfiguration
 	{
 	
@@ -898,9 +903,12 @@ class AutosteuerungConfigurationAlexa extends AutosteuerungConfiguration
 	protected $functionName="Alexa_GetEventConfiguration";
 	protected $identifier="alexaConfiguration";
 	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
-	
+	protected $debug=false;
+
 	} 
 
+/* class extends abstract class
+ */
 class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
 	{
 	
@@ -909,6 +917,7 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
 	protected $functionName="Autosteuerung_GetEventConfiguration";
 	protected $identifier="eventConfiguration";
 	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+	protected $debug=false;
 
 	} 
 
@@ -925,6 +934,7 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
  *
  * enthält zusätzliche Funktionen für die Darstellung und Nutzung des Floorplans
  *
+ * class extends abstract class
  *
  */ 
 class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
@@ -935,6 +945,7 @@ class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
 	protected $functionName="Floorplan_GetEventConfiguration";
 	protected $identifier="floorplanConfiguration";
 	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+	protected $debug=false;
 
     /* writePhpFile
      * erstellt ein File bewegungsstatus.php das anhand Floorplan_GetEventConfiguration() die Werte als json zurückgibt
@@ -1056,20 +1067,10 @@ class AutosteuerungConfigurationFloorplan extends AutosteuerungConfiguration
 
 	} 
 
-/* die Konfiguration für die Anzeige von Stati der Hausautomatisierung auf einem svg Floorplan, als Ablöse für Anwesend
- *
- * beim ersten Aufruf gibt es jede Menge Fehlermeldungen aber es wird ein Config file am Ende des config Files angelegt
- * es wird Get_EventConfigurationAuto() aufgerufen. Wenn die function Floorplan_GetEventConfiguration noch nicht existiert wird InitEventConfiguration aufgerufen
- * die abstract class ist AutosteuerungConfiguration
- *
- * das sind Schwestermodule von detectmovement und evaluateHardware
- * die detectMovement Library ist umfangreicher und für die Behandlung von Events ausgelegt. bei Topology wurde dieses konzept aber ebenfalls ausgehebelt
- * es gibt aber parallelen, die abstract class ist der DetectHandler
- * Wenn die function GetEventConfiguration noch nicht existiert wird InitEventConfiguration aufgerufen
- *
- * enthält zusätzliche Funktionen für die Darstellung und Nutzung des Floorplans
+/* die Konfiguration für die Anzeige von Geofency Informationen
  *
  *
+ * class extends abstract class
  */ 
 class AutosteuerungConfigurationGeofency extends AutosteuerungConfiguration
 	{
@@ -1079,13 +1080,14 @@ class AutosteuerungConfigurationGeofency extends AutosteuerungConfiguration
 	protected $functionName="Geofency_GetEventConfiguration";
 	protected $identifier="geofencyConfiguration";
 	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+	protected $debug=false;
 
 
 
 	}
 
-
-
+/* class extends abstract class
+ */
 class AutosteuerungConfigurationSetSwitches extends AutosteuerungConfiguration
     {
     
@@ -1094,7 +1096,8 @@ class AutosteuerungConfigurationSetSwitches extends AutosteuerungConfiguration
     protected $functionName="Autosteuerung_SetSwitches2";
     protected $identifier="setswitchesConfiguration";
     protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
-    
+ 	protected $debug=false;
+   
     protected function Get_EventConfigurationAuto()           // neu übernehmen, mit Fehlerbehebung
         {
         if ($this->eventConfigurationAuto == null) 

@@ -58,6 +58,16 @@
 
     IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 
+    /* Temperatur bearbeiten, folgende Routinen implementiert
+     *      __construct
+     *      remoteServerAvailable
+     *      HandleEvent
+     *      GetComponentParams          return get_class($this)
+     *      GetComponentLogger          return "Temperature_Logging";
+     *      SetValueROID
+     *
+     * nutzt LOgging
+     */
 	class IPSComponentSensor_Temperatur extends IPSComponentSensor {
 
 		private $tempObject;
@@ -80,7 +90,8 @@
 		 */
 		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-			echo "IPSComponentSensor_Temperatur: Construct Temperature Sensor with ($instanceId,$remoteOID,$tempValue).\n";		
+			$debug=false;
+            if ($debug) echo "IPSComponentSensor_Temperatur: Construct Temperature Sensor with ($instanceId,$remoteOID,$tempValue).\n";		
             //$this->RemoteOID    = instanceID;                // par1 manchmal auch par2		
 			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1
 			$this->tempValue    = $tempValue;           // par3
@@ -120,7 +131,8 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			echo "IPSComponentSensor_Temperatur:HandleEvent, Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+            $debug=false;
+			if ($debug) echo "IPSComponentSensor_Temperatur:HandleEvent, Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			/* aussuchen ob IPSLogger_Dbg oder IPSLogger_Inf der richtige Level für die Analyse, produziert viele Daten ! */
             //IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
@@ -130,7 +142,7 @@
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // kann so nicht festgetsellt werden, da der Wert in value bereits die Änderung auslöst. Dazu Spiegelvariable verwenden.
                 {
 			    //IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:HandleEvent mit VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
-			    echo "  IPSComponentSensor_Temperatur:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
+			    if ($debug) echo "  IPSComponentSensor_Temperatur:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                 //echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
                 $result=$log->Temperature_LogValue();
                 //echo "Aktuelle Laufzeit nach Logging ".exectime($startexec)." Sekunden.\n"; 
@@ -141,7 +153,7 @@
             else 
                 {
                 //IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
-			    echo "  IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> für VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
+			    if ($debug) echo "  IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> für VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                 }
 			}
 
@@ -247,7 +259,7 @@
          *
          */
 
-		function __construct($variable,$variablename=Null,$variableTypeReg="unknown",$debug=false)
+		function __construct($variable,$variablename=null,$value=null,$variableTypeReg="unknown",$debug=false)
 			{
             if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
             else $this->debug=$debug;

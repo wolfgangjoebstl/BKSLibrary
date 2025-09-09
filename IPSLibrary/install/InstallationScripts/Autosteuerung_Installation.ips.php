@@ -248,7 +248,7 @@
     $DeviceManager     = new DeviceManagement();
     $operate           = new AutosteuerungOperator();
 
-    echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
+    if ($debug) echo "Geräte mit getComponent suchen, geht jetzt mit HardwareList und DeviceList.\n";
     IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
     $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
 
@@ -257,7 +257,7 @@
     $countPowerLock=(sizeof($resultKey));				
     $resulttext="Alle Tuerschloesser Aktuatoren ausgeben ($countPowerLock):\n";            
     $resulttext.=$DeviceManager->writeCheckStatus($resultKey);          
-    echo $resulttext;
+    if ($debug) echo $resulttext;
     //print_r($resultKey);
     foreach ($resultKey as $homematic=>$entry)
         {
@@ -269,7 +269,7 @@
     $countPowerLock+=(sizeof($resultState));				
     $resulttext="Alle Tuerschloesser Stati ausgeben ($countPowerLock):\n";            
     $resulttext.=$DeviceManager->writeCheckStatus($resultState);          
-    echo $resulttext;
+    if ($debug) echo $resulttext;
     //print_r($resultState);
     foreach ($resultState as $homematic=>$entry)
         {
@@ -278,7 +278,7 @@
 
     if ($countPowerLock>0)
         {
-        echo "Es wird ein PowerLock von Homematic verwendet. Die Darstellung erfolgt unter Alarmanlage/Tab Sicherheit:\n";
+        if ($debug) echo "Es wird ein PowerLock von Homematic verwendet. Die Darstellung erfolgt unter Alarmanlage/Tab Sicherheit:\n";
 
         }
 
@@ -288,8 +288,8 @@
  * sowie Floorplan_GetEventConfiguration() und Autosteuerung_GetEventConfiguration() in Autosteuerung_Class
  *
  */
-    echo "Geofency Links erzeugen:\n";
-    $geofencies=$operate->getGeofencyInformation(true);         // true für Debug, geofencies wird später noch verwendet
+    if ($debug) echo "Geofency Links erzeugen:\n";
+    $geofencies=$operate->getGeofencyInformation($debug);         // true für Debug, geofencies wird später noch verwendet
 
     $registerGeofency=new AutosteuerungConfigurationGeofency();            // $scriptIdAutosteuerung weglassen. damit werden keine Events erzeugt
     //print_R($geofencies);
@@ -308,7 +308,7 @@
  * check function as UC01 in HandleAlexaEvents
  */
 
-    echo "TopologyPlusLinks erzeugen, Basis ist die unified Topology. Ableitung eines php files für die Darstellung eines Floorplans\n";
+    if ($debug) echo "TopologyPlusLinks erzeugen, Basis ist die unified Topology. Ableitung eines php files für die Darstellung eines Floorplans\n";
     $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
     $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
 
@@ -341,7 +341,7 @@
 
     if (isset($setup["FloorPlan"]["PlaceToStart"])) $home = $setup["FloorPlan"]["PlaceToStart"];
     else $home="LBG70";
-    echo "Erstellung Floorplan für diese lokale Topologie: $home\n";
+    if ($debug) echo "Erstellung Floorplan für diese lokale Topologie: $home\n";
 
     $result = $DetectDeviceHandler->evalTopology($home,false);          // verwendet topology ohne Erweiterungen, true für Anzeige der topologie
     $object=false;
@@ -594,6 +594,8 @@
                     {
                     // CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				    $SliderLockID=CreateVariable("LockBuilding",1, $AutosteuerungID,100,"~Intensity.100",$scriptIdWebfrontControl,null,"");			
+				    $SliderLockInfoID = CreateVariable("LockBuildingInfo",3, $AutosteuerungID,110,"~HTMLBox");			
+                    SetValue($SliderLockInfoID,'<table style="width:100%;"><td>Zu   <-->   Auf</td></table>');
 
 
                     $order=200;
@@ -1113,39 +1115,6 @@
 	    print_r($webfront_links); 
         }
 
-    /*  if ( ($WFC10_Enabled) && (isset($configWFront["Administrator"])) )
-            {
-            $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
-
-            // Init for all Webfronts, necessary only once
-            $categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
-            $wfcHandling->CreateWFCItemCategory('Admin',   "roottp",   0, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   , 'true' );
-            $wfcHandling->UpdateVisibility("root",false);	            // gibts eh nicht, aber wenn verstecken			
-            $wfcHandling->UpdateVisibility("dwd",false);                // gibts eh nicht, aber wenn verstecken
-
-            $configWf=$configWFront["Administrator"];
-            $configWf["Path"] .="Test";            // sonst loescht er immer die aktuellen Kategorien
-            $wfcHandling->CreateWFCItemTabPane($configWf["TabPaneItem"], $configWf["TabPaneParent"],  $configWf["TabPaneOrder"], $configWf["TabPaneName"], $configWf["TabPaneIcon"]);
-            $configWf["TabPaneParent"]=$configWf["TabPaneItem"];          // überschreiben wenn roottp, wir sind jetzt bereits eins drunter, Autosteuerungs Auto wurde bereits angelegt  
-            $configWf["TabPaneItem"] = $configWf["TabPaneItem"].$configWf["TabItem"];  
-            echo "\n\n===================================================================================================\n";            
-            $wfcHandling->easySetupWebfront($configWf,$webfront_links, "Administrator", true);
-
-            //$wfc=$wfcHandling->read_wfc(1);
-            $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
-            foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
-                {
-                echo "\n------$index:\n";
-                $wfcHandling->print_wfc($wfc[$index]);
-                }        
-            }
-        if ( ($WFC10User_Enabled) && (isset($configWFront["User"])) )
-            {
-            $configWF = $configWFront["User"];
-            echo "\n\n===================================================================================================\n";
-            $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
-            }           */
-
     // mit easysetup das Webfront erstellen
     if (isset($configWFront["Administrator"])) 
         {
@@ -1195,7 +1164,7 @@
         $configWF = $configWFront["Administrator"];
         $configWF["TabPaneParent"]=$configWF["TabPaneItem"];          // überschreiben wenn roottp, wir sind jetzt bereits eins drunter, Autosteuerungs Auto wurde bereits angelegt
         echo "\n\n===================================================================================================\n";
-        $wfcHandling =  new WfcHandling($WFC10_ConfigId);
+        //$wfcHandling =  new WfcHandling($WFC10_ConfigId);         // moderne Umsetzung, schneller
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
         } 
 
@@ -1203,7 +1172,7 @@
         {
         $configWF = $configWFront["User"];
         echo "\n\n===================================================================================================\n";
-        $wfcHandling =  new WfcHandling($WFC10User_ConfigId);
+        //$wfcHandling =  new WfcHandling($WFC10User_ConfigId);
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,"User");
         } 
 

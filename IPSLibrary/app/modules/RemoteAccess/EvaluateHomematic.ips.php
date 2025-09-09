@@ -19,7 +19,12 @@
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
- *	hier für Homematic Temperatur und Feuchtigkeits Werte
+ *	hier für Temperatur und Feuchtigkeits Werte
+ *  ursprünglich für Homematic geschrieben
+ *
+ *  ["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"]
+ *  ["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"]
+ *  ["TYPECHAN" => "TYPE_METER_HUMIDITY","REGISTER" => "HUMIDITY"]
  *
  */
 
@@ -69,6 +74,7 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 
     	$debug=false;
 		$testMovement = new TestMovement($debug);
+        $testMovement->syncEventList($debug);       // speichert eventList und eventListDelete, vorher Teil des Constructs
         }
 
     $componentHandling=new ComponentHandling();

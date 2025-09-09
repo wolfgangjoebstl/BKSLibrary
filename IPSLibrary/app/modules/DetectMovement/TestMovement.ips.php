@@ -58,6 +58,8 @@ $categoryId_DetectMovement    = CreateCategory('DetectMovement',   $CategoryIdDa
 $TableEventsID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");		
 
 $testMovement = new TestMovement($debug);         // eigentlich TestMovement
+$testMovement->syncEventList($debug);       // speichert eventList und eventListDelete, früher Teil des constructs
+
 
 /****************************************************************************************************************/
 /*                                                                                                              */

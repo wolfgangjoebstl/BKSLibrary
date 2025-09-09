@@ -10,9 +10,16 @@
 	 */
 
    /**
-    * @class IPSComponentShutter_Homematic
+    * @class IPSComponentHeatControl_Homematic
     *
-    * Definiert ein IPSComponentShutter_Homematic Object, das ein IPSComponentShutter Object für Homematic implementiert.
+    * Definiert ein IPSComponentHeatControl_Homematic Object, das ein IPSComponentShutter Object für Homematic implementiert.
+    * IPSComponentHeatControl_Homematic mit Module IPSModule, Speicherort ist die Kategorie IPSComponentHeatControl, Wert vor dem Underscore, immer mit IPSComponent
+    *
+    * wir haben
+    *       __construct         Abspeicherung der Inputvariablen in der class udn um die RemoteServer kümmern
+    *       HandleEvent         ruft HeatControl_Logging($variable)->HeatControl_LogValue($value)
+    *
+    * fehlende Methoden siehe abstract IPSComponentHeatControl
     *
     */
 
@@ -113,7 +120,7 @@
 
 		public function GetComponentLogger() 
 			{
-            return "";
+            return "HeatControl_Logging";
             }
 
 		/**

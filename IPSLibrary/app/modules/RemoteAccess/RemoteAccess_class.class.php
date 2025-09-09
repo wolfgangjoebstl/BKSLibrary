@@ -46,7 +46,13 @@
 	 *
 	 * Um Zeit zu sparen werden nur die mit Logging enable und im Status Active konfigurierten Server angesprochen
 	 *
-	 * getRemoteServer()
+     * __construct                      remServer=RemoteAccess_GetConfigurationNew();	 es werden nur die Server in die Liste aufgenommen die "STATUS"=="Active" und "LOGGING"=="Enabled" haben    
+	 * getRemoteServer()                get remServer
+     * createXconfig                    schreibt einen lokalen Eintrag auf einem remote Server
+     *      createXconfigSub
+     * getXConfig                       liest diesen Eintrag vom remote Server
+     * processXConfig
+     * checkServerOIDData               verwendet in UpdateAllObjects
      *
      * Die Struktur der Remote Server wird vorab erfasst und gespeichert um Zeit zu sparen
 	 * abgespeichert wird als Includefile das regelmaessig erzeugt wird
@@ -92,6 +98,7 @@ class RemoteAccess
 	{
 
 	public $includefile;
+    public $errorinfo;                  // additional info if a routine fails
 	private $remServer=array();
 	private $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion","Pressure","CO2","Rainfall","Helligkeit");      // diese Profile werden installiert
 	private $listofOIDs=array();
@@ -130,14 +137,15 @@ class RemoteAccess
 		return($this->remServer);
 		}
 		
-    /* Beschleunigung des Ablaufs
+    /* RemoteAccess::createXconfig
+     * Beschleunigung des Ablaufs, Aufruf in EvaluateHardware
      * Analysiert Structure in Visualization und speichere sie serialisiert in einer Variable
-     * beschleunigt täglichen Aufruf von RemoteAccess
-     * damit Upodate bereits erfolgt ist Aufruf in EvaluateHardware
+     *      Visualization.WebFront.Administrator.RemoteAccess
+     * beschleunigt täglichen Aufruf von RemoteAccess. Geht jede Kategorie (Server) durch
+     * damit Update bereits erfolgt ist, 
      */		 
     public function createXconfig()
         {
-        
         $configId = @IPS_GetObjectIDByIdent("XConfigurator", 0);
         if ($configId === false)
             {
@@ -178,6 +186,13 @@ class RemoteAccess
         SetValue($configId, json_encode($result));
         }
 
+    /* recursiver teil zu obiger function , aber nicht recursiv, erweitert result um einen Eintrag mit . als Index
+     * liest die Childrens einer id mit Typ Kategorie
+     *   pro Children Kategorie ein Eintrag mit name.OID=oid
+     *   wenn in der Children Kategorie weitere Variablenchildren angesiedelt sind
+     *   Childs.[name]=oid
+     *
+     */
     private function createXConfigSub(&$result,$raId)
         {
         $entries=$this->ipsOps->getChildrenIDsOfType($raId,2);                        // das sind alle Kategorien
@@ -199,6 +214,11 @@ class RemoteAccess
             }
         }
 
+    /* liest die Daten von einem remote Server
+     * Variable heisst XConfigurator und ist im Root
+     * verwendet in add_RemoteServer zum erstellen einer ROID Liste als include File basierend auf xconfig wenn bereits vorhanden
+     * verwendet in get_StructureofROID um diese Liste oder gleich xconfig zu lesen
+     */
     public function getXConfig($Server)
         {
         $rpc = new JSONRPC($Server);
@@ -216,6 +236,104 @@ class RemoteAccess
         else $xconfig=array();
 
         return ($xconfig);
+        }
+
+    /* verwendet zum Verifzieren von Remote OIDs
+     * man bekommt ein sehr handliches Format um die Kurzbeezeichungen Server:OID zu prüfen
+     * verwendet Lifedaten, also macht auch zuerst ein Server Ping 
+     */
+    public function processXConfig($source="BKS01-2",$debug=false)
+        {
+        $xconfig=array();
+        $result = $this->server_ping(true);
+        foreach ($result as $server => $entry)
+            {
+            if ($entry["Status"])
+                {
+                $xconfig[$server]=$this->getXConfig($entry["Name"]);
+                }    
+            }
+        if ($debug>1) print_r($xconfig);
+        echo "-----------------------------------------------------------------\n";
+        $result=array();
+        foreach ($xconfig as $server => $entry)
+            {            
+            echo $server."   \n";   
+            foreach ($entry as $client => $xconfig) 
+                {
+                $rootid=$xconfig["OID"];
+                echo "      ".str_pad($client,22)."   $rootid \n";
+                if ($client==$source) 
+                    {
+                    //print_r($xconfig);
+                    $oids=array();
+                    foreach ($xconfig as $id => $xentry)                // client ist richtig, wir lesen OID, . und Childs
+                        {
+                        echo "            $id    \n";
+                        if ($id == "Childs") $childs=$xentry;
+                        if (is_array($xentry))                          // das wäre dann nur mehr Childs und .
+                            {   
+                            foreach ($xentry as $sid => $sentry)
+                                {
+                                echo "                   $sid     \n"; 
+                                if (is_array($sentry))
+                                    {
+                                    foreach ($sentry as $ssid => $ssentry)
+                                        {
+                                        if (is_array($ssentry)) $json = json_encode($ssentry);
+                                        else $json = "";
+                                        echo "                     ".str_pad($ssid,40)."     $json \n";
+                                        if (isset($ssentry["OID"])) $oids[$ssentry["OID"]]=$ssid;
+
+                                        }    
+                                    }   
+                                }
+                            }
+                         }
+                    $result[$server]=$oids;
+                    }
+
+                }
+            }
+        return ($result);
+        }
+
+    /* data ist das Component Field
+     * input possible on Position 1 or 2
+     */
+    public function checkServerOIDData($input,$data,$debug=false)
+        {
+        $result=true; $info="";
+        $remotedata=array();
+
+        $componentdata=explode(",",$data[1]);
+        //print_R($componentdata);
+        if (isset($componentdata[2])) $remotedata=explode(";",$componentdata[2]);
+        if ( (sizeof($remotedata)==0) && (isset($componentdata[1])) ) $remotedata=explode(";",$componentdata[1]);
+        if (sizeof($remotedata)>0)
+            {
+            //print_r($remotedata);
+            foreach ($remotedata as $id => $serverinfo)
+                {
+                if (strlen($serverinfo)>4)          // immer ein leerer Parameter am Ende durch zusätzlichen ;
+                    {
+                    $serverdata = explode(":",$serverinfo);
+                    if ($debug) echo "       ".str_pad($serverinfo,30);   
+                    if (isset($input[$serverdata[0]][$serverdata[1]]))
+                        {
+                        if ($debug) echo " ok  \n";
+                        } 
+                    else 
+                        {
+                        if ($debug) echo " fail   \n";
+                        $info .= $serverdata[0].":".$serverdata[1]." failed";
+                        $result=false;
+                        }
+                    }
+                }
+            }
+        if ($info != "") echo $info;
+        return $result;
         }
 
 	/**
@@ -379,7 +497,7 @@ class RemoteAccess
 
 
 	/**
-	 * @public
+	 * RemoteAccess::server_ping
 	 *
 	 * sys ping IP Adresse von bekannten IP Symcon Servern
 	 *

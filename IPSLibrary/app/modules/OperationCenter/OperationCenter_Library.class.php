@@ -1037,7 +1037,13 @@ class OperationCenter extends OperationCenterConfig
 	 * Verwendet selbes Config File wie für die Remote Log Server, es wurden zusätzliche Parameter zur Unterscheidung eingeführt
 	 *
 	 * Wenn der Remote Server erreichbar ist werden Kernel Version und Uptime abgefragt und lokal gespeichert
-	 *
+     * $categoryId_SysPingControl    data.modules.OperationCenter.SysPing.SysPingControl
+     *          $ServerUpdateStatusID       "ServerUpdate_".$Name
+     * categoryId_SysPing           data.modules.OperationCenter.SysPing
+     *          $ServerStatusID             "ServerUpdate_".$Name
+	 * categoryId_Access            data.modules.OperationCenter.AccessServer
+     *          $IPS_UpTimeID               $Name."_IPS_UpTime"                     wenn 0 ist der Server nicht erreichbar
+     *
 	 */
 	function server_ping($debug=false)
 		{

@@ -51,6 +51,7 @@
 
     $startexec=microtime(true);
     $executeExecute=true;                  // false den Execute Teil nicht ausführen, wie wenn Webfront aufgerufen wird
+    $debug=false;
 
     /***************************************************************************
      * 
@@ -147,6 +148,7 @@
 
     	$debug=false;
 		$testMovement = new TestMovement($debug);
+        $testMovement->syncEventList($debug);       // speichert eventList und eventListDelete, vorher Teil des Constructs
         }
 
     if (isset($installedModules["OperationCenter"])) 
@@ -183,8 +185,8 @@
             	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
                 if ($messageTableID)
                     {
-                    $filter="IPSMessageHandler_Event";
-                    $resultEventList = $testMovement->getEventListfromIPS($filter,false);                           // false no Debug
+                    $filter="IPSMessageHandler_Event";          // alle EventIDs die als Parent dieses Script haben
+                    $resultEventList = $testMovement->getEventListfromIPS($filter,false);                           // false no Debug, erst einmal alle Events von IP Symcon auslesen und in einem neuen Format ausgeben
                     foreach ($resultEventList as $index => $entry)
                         {
                         $trigger = $entry["TriggerVariableID"];
@@ -205,6 +207,15 @@
                         default:
                             break;
                         }
+                    /* das Ergebnis der Events in resultEventList auswerten , filter="IPSMessageHandler_Event" true Html no debug
+                     * erwartetes Format, Tabelle indexiert und als html Dargestellt
+                     *      OID
+                     *      Name
+                     *      LastRun
+                     *      Pfad
+                     *      Type
+                     *      Script 
+                     */                       
                     $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,false);             // false no Debug, wenn file IPSMessage_Handler ist gibt es detailliertere Informationen
                     setValue($messageTableID,$html);
                     }
@@ -351,10 +362,10 @@
                 echo "\n";
                 }
             $filter="IPSMessageHandler_Event";
-            $resultEventList = $testMovement->getEventListfromIPS($filter,true);
+            $resultEventList = $testMovement->getEventListfromIPS($filter,$debug);
             //$ipsOps->intelliSort($resultEventList,"OID");                           // Event ID
             $ipsOps->intelliSort($resultEventList,"Name");                           // Device Event ID
-            $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,true);
+            $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,$debug);        // getComponentEventListTable($resultEventList,$filter="",$htmlOutput=false,$debug=false)
             echo $html;
 
             }
@@ -565,7 +576,7 @@
             echo "========================================================================\n";    
             echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
             $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList,false);                // false keine Warnings ausgeben
-            print_r($statistic);
+            if ($debug) print_r($statistic);
 
 
             echo "========================================================================\n";    
@@ -666,12 +677,12 @@
         echo "Auflistung aller DetectDeviceHandler Instanzen:\n";
         $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
         $eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();        
-        $DetectDeviceHandler->Print_EventConfigurationAuto(false);
+        if ($debug) $DetectDeviceHandler->Print_EventConfigurationAuto(false);
         echo "\n";
 
         echo "Bewegungsregister Auflistung der Events:\n";
         $DetectMovementHandler = new DetectMovementHandler();
-        $DetectMovementHandler->Print_EventConfigurationAuto(true);         // true extended display
+        if ($debug) $DetectMovementHandler->Print_EventConfigurationAuto(true);         // true extended display
         echo "\n";
 
         $eventListonOID=array();
@@ -721,7 +732,7 @@
 
         echo "Temperaturregister Auflistung der Events:\n";
         $DetectTemperatureHandler = new DetectTemperatureHandler();
-        $DetectTemperatureHandler->Print_EventConfigurationAuto(true);         // true extended display
+        if ($debug) $DetectTemperatureHandler->Print_EventConfigurationAuto(true);         // true extended display
 
     	$events=$DetectTemperatureHandler->ListEvents();
         $eventTempConfig=$DetectTemperatureHandler->Get_EventConfigurationAuto();    
@@ -757,7 +768,8 @@
         $mirrorsTempFound=array();   
         }
 
-    if ( (isset($installedModules["CustomComponent"]) )                   ) 
+
+    if ( (isset($installedModules["CustomComponent"]) )   && $debug                ) 
         {    
 
         $moduleManagerCC = new IPSModuleManager('CustomComponent',$repository);
@@ -786,7 +798,7 @@
         $DetectTemperatureHandler->checkMirrorRegisters($TempAuswertungID,$mirrorsFound);
         }
 
-    if ( (isset($installedModules["DetectMovement"]) )             )
+    if ( (isset($installedModules["DetectMovement"]) )  && $debug           )
         {    
 
         echo "\n";
@@ -872,7 +884,8 @@
             //$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');		
             }
         }	
-        echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
+        echo "Aktuelle Laufzeit ".exectime($startexec)." Sekunden\n";
+
 
     }       // nur wenn Script Execute
 //else echo "kein Execute";             // Test ob das das Ende von Execute ist

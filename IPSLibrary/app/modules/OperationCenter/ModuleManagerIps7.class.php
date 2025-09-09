@@ -5,6 +5,15 @@
 	 *
 	 * Der IPSModuleManager bildet das Herzstück des IPSLibrary Installers. Er beinhaltet diverse Konfigurations Möglichkeiten, die
 	 * man in der Datei IPSModuleManager.ini verändern kann (Ablagerort: IPSLibrary.install.InitializationFile).
+     *
+     *  class
+     *      ModuleManagerIPS7
+     *      FileVersionHandlerIPS7 extends IPSVersionHandler
+     *      ConfigurationExceptionIPS7
+     *      ConfigHandlerIPS7
+     *      IniConfigHandlerIPS7 extends ConfigHandlerIPS7
+     *      UtilExceptionIPS7
+     *      FileHandlerIPS7 extends IPSFileHandler
 	 *
 	 * @file          IPSModuleManager.class.php
 	 * @author        Andreas Brauneis fork Wolfgang Jöbstl
@@ -20,10 +29,26 @@
 	IPSUtils_Include ("IPSLogHandler.class.php",               "IPSLibrary::install::IPSModuleManager::IPSLogHandler");
 
 	/**
-	 * @class IPSModuleManager
+	 * @class ModuleManagerIPS7 as fork of IPSModuleManager
 	 *
 	 * Klasse zur Installation neuer Module und zum Update bestehender Module
-	 *
+     *
+     *      __construct
+     *      getSourceRepository     return($this->sourceRepository)
+     *      VersionHandler          return $this->versionHandler
+     *      ManagerConfigHandler
+     *      ModuleConfigHandler
+     *      LogHandler              return $this->logHandler
+     *      GetConfigValue, GetConfigValueInt, GetConfigValueBool, GetConfigValueFloat
+     *      GetConfigValueDef, GetConfigValueIntDef, GetConfigValueBoolDef, GetConfigValueFloatDef
+     *      GetModuleCategoryPath
+     *
+     *      DeployModuleFiles
+     *      DeployModule
+     *
+     *      DeployModuleWebfront
+     *      DeployAllModules
+     *
 	 * @author Andreas Brauneis
 	 * @version
 	 *  Version 2.5.1, 05.01.2012<br/>
@@ -100,7 +125,7 @@
 			$this->scriptHandler       = new IPSScriptHandler($libraryBasePath);
 
 			// Create File Handler
-			$this->fileHandler         = new IPSFileHandler();
+			$this->fileHandler         = new FileHandlerIPS7($this->logHandler);
 
 			// Create Backup Handler
 			$backupDirectory           = $this->managerConfigHandler->GetValueDef('BackupLoadDirectory', '', IPS_GetKernelDir().'backup/IPSLibrary_Load/');
@@ -512,6 +537,7 @@
 		 * @return array[] Liste mit Filenamen
 		 */
 		private function GetScriptList($fileKey, $fileTypeSection, $baseDirectory) {
+            $dosOps = new dosOps();
 			if ($fileKey=='DownloadFiles') {
 				return array($this->GetModuleDownloadListFile($baseDirectory));
 			}
@@ -543,12 +569,13 @@
 						$fullScriptName   = $baseDirectory.'::'.$namespace.'::'.$script;
 						break;
 					case 'WebFront':
-						if ($baseDirectory==IPS_GetKernelDir().'scripts/') {
+						if ($baseDirectory==$dosOps->correctDirName(IPS_GetKernelDir().'scripts/')) {
                             $ipsOps=new ipsOps();
                             if ($ipsOps->ipsVersion7check()) $fullScriptName   = IPS_GetKernelDir().'user/'.$this->moduleName.'/'.$script;				// jw, change 
 							else $fullScriptName   = IPS_GetKernelDir().'webfront/user/'.$this->moduleName.'/'.$script;
-                            echo $fullScriptName."\n";
+                            //echo "Webfronts correction $fullScriptName \n";
 						} else {
+                            //echo "   Webfronts Base Directory is $baseDirectory but not ".IPS_GetKernelDir().'scripts/'."\n";
 							$fullScriptName   = $baseDirectory.'/IPSLibrary/webfront/'.$this->moduleName.'/'.$script;
                             //echo "$baseDirectory results into $fullScriptName \n";
 						}
@@ -960,6 +987,7 @@
 		 * @public
 		 *
 		 * Exportiert eine Liste von Dateien anhand des Filetypes
+         * verwendet IPSBackupHandler
 		 *
 		 * @param string $fileKey Type des Files (ScriptList, DefaultList, ExampleList, ...)
 		 * @param string $fileTypeSection Filetype Section (app, config, webfront ...)
@@ -1027,7 +1055,12 @@
 		 * @public
 		 *
 		 * Exportiert einkomplettes Module zu einem Ziel Verzeichnis
-		 *
+         * verwendet logHandler
+         * ruft DeployModuleFiles für alle kategorien auf: 
+         *      DownloadFiles  in Instal
+         *      DefaultFiles   in App
+		 *      usw
+         *
 		 * @param string $sourceRepository Pfad/Url zum Source Repository, das zum Speichern verwendet werden soll
 		 * @param string $changeText Text der für die ChangeList verwendet werden soll
 		 * @param boolean $installationRequired Installation durch Änderung notwendig
@@ -1089,12 +1122,91 @@
 			}
 		}
 
+		/**
+		 * @public
+		 *
+		 * Exportiert einkomplettes Module zu einem Ziel Verzeichnis
+         * verwendet logHandler
+         * ruft DeployModuleFiles für alle kategorien auf: 
+         *      DownloadFiles  in Instal
+         *      DefaultFiles   in App
+		 *      usw
+         *
+		 * @param string $sourceRepository Pfad/Url zum Source Repository, das zum Speichern verwendet werden soll
+		 * @param string $changeText Text der für die ChangeList verwendet werden soll
+		 * @param boolean $installationRequired Installation durch Änderung notwendig
+		 */
+		public function CheckModule($sourceRepository='', $diffdir="/temp", $debug=false) {
+			if ($sourceRepository=='') {
+				$sourceRepository = $this->sourceRepository;
+			}
+			$sourceRepository = IPSFileHandler::AddTrailingPathDelimiter($sourceRepository);
+
+            if ($debug) echo 'Start IPS7 Deploy Check of Module "'.$this->moduleName.'"'." to $sourceRepository \n";
+			//$this->logHandler->Log('Start IPS7 Deploy Check of Module "'.$this->moduleName.'"'." to $sourceRepository");
+
+			
+			$this->CheckModuleFiles('DownloadFiles','Install',  $sourceRepository, $diffdir, $debug);
+        
+			$this->CheckModuleFiles('DefaultFiles', 'App',      $sourceRepository, $diffdir, $debug);
+			$this->CheckModuleFiles('ScriptFiles',  'App',      $sourceRepository, $diffdir, $debug);
+
+			$this->CheckModuleFiles('ScriptFiles',  'Config',   $sourceRepository, $diffdir, $debug);
+			$this->CheckModuleFiles('DefaultFiles', 'Config',   $sourceRepository, $diffdir, $debug);
+			$this->CheckModuleFiles('ExampleFiles', 'Config',   $sourceRepository, $diffdir, $debug);
+
+			$this->CheckModuleFiles('DownloadFiles','Install',  $sourceRepository, $diffdir, $debug);
+			$this->CheckModuleFiles('InstallFiles', 'Install',  $sourceRepository, $diffdir, $debug);
+			$this->CheckModuleFiles('DefaultFiles', 'Install',  $sourceRepository, $diffdir, $debug);
+			$this->CheckModuleFiles('ExampleFiles', 'Install',  $sourceRepository, $diffdir, $debug);
+
+			$this->CheckModuleFiles('ScriptFiles',  'WebFront', $sourceRepository, $diffdir, $debug);
+			$this->CheckModuleFiles('ExampleFiles', 'WebFront', $sourceRepository, $diffdir, $debug);
+
+			if ($debug) echo "Finished Deploy of Module \"".$this->moduleName."\" \n";
+            //$this->logHandler->Log('Finished Deploy of Module "'.$this->moduleName.'"');
+		}
+
+		/**
+		 * @public
+		 *
+		 * Exportiert eine Liste von Dateien anhand des Filetypes
+         * verwendet IPSBackupHandler
+		 *
+		 * @param string $fileKey Type des Files (ScriptList, DefaultList, ExampleList, ...)
+		 * @param string $fileTypeSection Filetype Section (app, config, webfront ...)
+		 * @param string $sourceRepository Pfad/Url zum Source Repository, das zum Speichern verwendet werden soll
+		 */
+		private function CheckModuleFiles($fileKey, $fileTypeSection, $sourceRepository, $diffdir, $debug=false) {
+            $dosOps = new dosOps();
+			$backupDirectory = $this->managerConfigHandler->GetValueDef('DeployBackupDirectory', '', IPS_GetKernelDir().'backup/IPSLibrary_Deploy/');
+			$backupHandler   = new IPSBackupHandler($backupDirectory);
+				
+			$localList       = $this->GetScriptList($fileKey, $fileTypeSection, $dosOps->correctDirName(IPS_GetKernelDir().'scripts/'));		 
+			$repositoryList  = $this->GetScriptList($fileKey, $fileTypeSection, $dosOps->correctDirName($sourceRepository));
+			$backupList      = $this->GetScriptList($fileKey, $fileTypeSection, $dosOps->correctDirName($backupHandler->GetBackupDirectory()));
+
+            //print_R($localList); print_R($repositoryList); print_R($backupList);
+
+			//$this->backupHandler->CreateBackup($repositoryList, $backupList);
+			//$this->fileHandler->FilterEqualFiles($localList, $repositoryList);
+			//$this->fileHandler->WriteFiles($localList, $repositoryList);
+
+            $this->fileHandler->CheckFiles($localList, $repositoryList,$diffdir, true, $debug);
+		}
+
+
+
 	}
 
    /**
     * @class IPSFileVersionHandler
     *
     * Implementierung einer Versions-Verwaltung der IPSLibrary Module auf Basis Files
+    *
+    *      StoreModuleVersions
+    *      BuildKnownModules
+	*      IncreaseModuleVersion
     *
     * @author Andreas Brauneis
     * @version
@@ -1224,7 +1336,7 @@
 			file_put_contents($this->fileNameInstalledModules, $fileContent);
 		}
 
-		/**
+		/* FileVersionHandlerIPS7::StoreModuleVersions
 		 * @public
 		 *
 		 * Speicherung der Versions Daten
@@ -1235,7 +1347,7 @@
 			$this->WriteFileInstalledModules();
 		}
 		
-        /**
+        /* FileVersionHandlerIPS7::BuildKnownModules
 		 * Overwrite BuildKnownModules
 		 *
 		 * Erzeugt das File KnownModules, hier ohne echo Ausgabe
@@ -1735,6 +1847,174 @@
 	}
 
 
+    /* Erweiterung um geänderte Dateien zu identifiziern
+    *
+    */
+    class FileHandlerIPS7 extends IPSFileHandler
+        {
+        
+        protected $logHandler;
+
+        public function __construct($logHandler)
+            {
+            $this->logHandler = $logHandler;
+            parent::__construct();
+            }
+		/**
+		 * @public
+		 *
+		 * Kopieren von Files
+		 *
+		 * @param string $sourceList Liste der Files, die kopiert werden soll
+		 * @param string $destinationList Liste der Files, die erzeugt werden soll
+		 * @param boolean $raiseError gibt an ob ein Error geraised werden soll oder ob die Function im Falle eines Fehlers false retounieren soll
+		 * @return boolean true für OK, false bei Fehler beim Kopiervorgang
+		 * @throws IPSFileHandlerException wenn Fehler beim Erzeugen der Zieldatei auftritt
+		 */
+		public function CheckFiles ($sourceList, $destinationList, $diffdir, $raiseError=true,  $debug=false) {
+            $dosOps = new dosOps();
+			foreach ($sourceList as $idx=>$sourceScript) {
+				$destinationScript     = $destinationList[$idx];
+                $sourceScript = $dosOps->correctFileName($sourceScript);
+                $destinationScript = $dosOps->correctFileName($destinationScript);
+                $fileName = $dosOps->getFileName($sourceScript);
+                $difffile = $dosOps->correctDirName($diffdir).$fileName;
+                $result = $this->CheckFile($sourceScript, $destinationScript, $difffile, $raiseError,$debug);
+                if ($debug) 
+                    {
+                    //echo "CheckFile $fileName : $sourceScript, $destinationScript, $raiseError to $difffile\n";
+                    //echo "CheckFile $fileName : \n";
+                    }
+                else   
+                    { 
+					if ($result>0) { 	
+						echo "File $fileName has been changed, $result differences, copy from $sourceScript to $destinationScript \n";
+						//$this->logHandler->Log("File $fileName has been changed, copy from $sourceScript to $destinationScript");
+						//echo "Copy File $sourceScript to $destinationScript \n";
+					}
+                    //$result = $this->CopyFile($sourceScript, $destinationScript, $raiseError);
+                    if ($result===false) { return false; }
+                    }
+			}
+			return true;
+		}
+
+
+		/**
+		 * @public
+		 *
+		 * Erzeugt Files aus den zugrundeliegenden Default Files 
+         *
+         * verwende xdiff_file_diff, speichere die Unterschiede im tmp File
+		 *
+		 * @param string $sourceFile Datei die kopiert werden soll
+		 * @param string $destinationFile Datei die erzeugt werden soll
+		 * @param boolean $raiseError gibt an ob ein Error geraised werden soll oder ob die Function im Falle eines Fehlers false retounieren soll
+		 * @return boolean true für OK, false bei Fehler beim Kopiervorgang
+		 * @throws IPSFileHandlerException wenn Fehler beim Erzeugen der Zieldatei auftritt
+		 */
+		public function CheckFile($sourceFile, $destinationFile, $diffdir, $raiseError=true,$debug=false) {
+            $result=false;
+            $dosOps = new dosOps();
+			$destinationFilePath = pathinfo($destinationFile, PATHINFO_DIRNAME);
+			if (!file_exists($destinationFilePath)) {
+				if ($debug) echo "Create Directory $destinationFilePath \n";
+                $this->logHandler->Log("Create Directory $destinationFilePath");
+                if (!mkdir($destinationFilePath, 0755, true)) {
+                    throw new IPSFileHandlerException('Create Directory '.$destinationFilePath.' failed !',E_USER_ERROR);
+                }
+			}
+			
+			$destinationFile = str_replace('\\','/', $destinationFile);
+			$destinationFile = str_replace('//','/', $destinationFile);
+			if (strpos($sourceFile, 'https')===0) {
+				$sourceFile = str_replace('\\','/', $sourceFile);
+				$sourceFile = str_replace('//','/', $sourceFile);
+				$sourceFile = str_replace('https:/','https://', $sourceFile);
+				if ($debug) echo "CheckFile $sourceFile ---> $destinationFile\n";
+                $this->logHandler->Log("CheckFile $sourceFile ---> $destinationFile");
+                /*
+				$curl_handle=curl_init();
+				global $_IPS;
+				if (array_key_exists('PROXY', $_IPS)) {
+					$proxy = $_IPS['PROXY'];
+					if ( $proxy != '' ) {
+						curl_setopt($curl_handle, CURLOPT_HTTPPROXYTUNNEL, 1);
+						curl_setopt($curl_handle, CURLOPT_PROXY, $proxy);
+					}
+				}
+				curl_setopt($curl_handle, CURLOPT_URL,$sourceFile);
+				curl_setopt($curl_handle, CURLOPT_CONNECTTIMEOUT, 10);
+				curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER,true);
+				curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, false);
+				curl_setopt($curl_handle, CURLOPT_FOLLOWLOCATION, true);
+				curl_setopt($curl_handle, CURLOPT_FAILONERROR, true);
+				$fileContent = curl_exec($curl_handle);
+				//$fileContent = html_entity_decode($fileContent, ENT_COMPAT, 'ISO-8859-1');
+				if ($fileContent===false) {
+					$this->logHandler->Log("Download Destination File $sourceFile failed --> Retry ...");
+					$fileContent = curl_exec($curl_handle);
+				}
+				if ($fileContent===false) {
+					$this->logHandler->Log("Download Destination File $sourceFile failed --> Retry ...");
+					$fileContent = curl_exec($curl_handle);
+				}
+				if ($fileContent===false) {
+					if ($raiseError) {
+						throw new IPSFileHandlerException('File '.$destinationFile.' could NOT be found on the Server !!!',
+						                                  E_USER_ERROR);
+					} else {
+						return false;
+					}
+				}
+				curl_close($curl_handle);
+
+				$result = file_put_contents($destinationFile, $fileContent);
+				if ($result===false) {
+					$this->logHandler->Log("Write Destination File $destinationFile failed --> Retry ...");
+					sleep(1);
+					$result = file_put_contents($destinationFile, $fileContent);
+					if ($result===false and $raiseError) {
+						throw new IPSFileHandlerException('Error writing File Content to '.$destinationFile,
+														E_USER_ERROR);
+					}  
+				}           */
+			} else {
+                if (!file_exists($sourceFile))  {
+                    throw new Exception("File $sourceFile does not exist.");
+                }
+                if (!file_exists($destinationFile)) {
+                    throw new Exception("File $destinationFile does not exist.");
+                }
+                $sourceLastChange=filemtime($sourceFile);
+                $destinationLastChange=filemtime($destinationFile);
+                $fileName = $dosOps->getFileName($sourceFile);
+                //xdiff_file_diff(string $old_file,string $new_file,string $dest, int $context = 3,bool $minimal = false): bool
+                //xdiff_file_diff($sourceFile,$destinationFile,$diffdir);
+                $diff = $dosOps->fileCompare($sourceFile,$destinationFile,$diffdir);
+                $result=sizeof($diff);
+                if ($destinationLastChange > $sourceLastChange) echo "Warning, $destinationFile is younger than $sourceFile \n";
+				if ($debug) 
+                    {
+                    //echo "Check Copy $sourceFile --> $destinationFile \n";
+                    echo "  ".str_pad($fileName,40)."   ".date("d.m.Y H:i:s",$sourceLastChange)." --> ".date("d.m.Y H:i:s",$destinationLastChange)."   ".sizeof($diff)." Differences\n";
+                    }
+                else  {
+                    //$this->logHandler->Log("CheckFile $sourceFile --> $destinationFile");
+				    //$result = @copy ($sourceFile, $destinationFile);
+                    //ToDo - Check Errorhandling ...
+                    if ($result===false and $raiseError) {
+                        throw new IPSFileHandlerException('Error while Check File '.$sourceFile.' to '.$destinationFile,
+                                                        E_USER_ERROR);
+                    }
+                }
+			}
+			return $result;
+		}
+
+
+
+        }
 
 	/** @}*/
 ?>

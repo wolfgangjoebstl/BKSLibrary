@@ -43,6 +43,15 @@
  *	
  * wenn DetectMovement und die TopologyMappingLibrary installiert ist, wird eine Topologie aufgebaut.
  *
+ * Ablauf der Routine, des Scripts:
+ *      $discovery = $modulhandling->getDiscovery();    // in AllgemeineDefinitionen, alle Discovery Instanzen auslesen
+ *      $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Konfigurator Module hinzufügen
+ *      $socket     = $topologyLibrary->get_SocketList($discovery);
+ *      $gateway    = $topologyLibrary->get_GatewayList($discovery);
+ *      $hardware   = $topologyLibrary->get_HardwareList($discovery);
+ *      $deviceList = $topologyLibrary->get_DeviceList($hardware,$configDeviceList, false);        // class is in EvaluateHardware_Library, 
+ *
+ *
  */
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
@@ -52,6 +61,7 @@
 
     $ExecuteExecute=false;          // false: Execute routine gesperrt, es wird eh immer die Timer Routine aufgerufen. Ist das selbe !
     $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
+    $instTopologyDevices=true;      // jede menge Topology Devices erstellen, werden vielleicht zur Anzeige verwendet
 
 /******************************************************
  *
@@ -317,15 +327,17 @@ IPS_SetEventActive($tim1ID,true);
                     $topinstconfig["Use"]["Room"]=true;
                     $topinstconfig["Use"]["Place"]=true;
                     $topinstconfig["Use"]["DeviceGroup"]=true;
-                    //$topinstconfig["Use"]["Device"]=true;                                       // Topology Device nicht erstellen
+                    if ($instTopologyDevices) $topinstconfig["Use"]["Device"]=true;                                       // Topology Device nicht erstellen
                     $topologyLibrary->createTopologyInstances($topology,$topinstconfig);           // wenn so konfiguriert :  Topologie TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup in Kategorie Topologie erstellen
                     echo "----------------------------------------\n";
                     echo "SortTopologyInstances wird aufgerufen um die einzelnen Geräte in die Topologie einzusortieren:\n";
-                    $topinstconfig["Use"]["Device"]="Actuators";                               // nur die Actuators hinzufügen
+                    if ($instTopologyDevices) ;                                                     // alle Geräte hinzufügen
+                    else $topinstconfig["Use"]["Device"]="Actuators";                               // nur die Actuators hinzufügen
                     $debug=true;
                     $topologyLibrary->sortTopologyInstances($deviceList,$topology, $channelEventList,$deviceEventList,$topinstconfig,$debug);           // neu abgeänderte Routine in Arbeit
                     echo "----------------------------------------\n";
-                    
+                    // check ImproveDeviceDetection for additonal Features
+
                     // Teil von Install, trotzdem täglich durchführen
                     $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$channelEventList,false);        // true,2 for Debug, 1 für Warnings  Verwendet ~ in den Ortsangaben, dadurch werden die Orte wieder eindeutig ohne den Pfad zu wissen
                     $topinstconfig["Show"]["Instances"]=true;

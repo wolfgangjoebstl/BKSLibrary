@@ -55,7 +55,7 @@
       * ipsOps                  Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
       * dosOps
       * sysOps
-      * fileOps
+      * fileOps                 Zusammenfassung von Funktionen rund um das lesen und schreiben von Datenbanken im csv Forma
       * timerOps
       * curlOps                 curl Aufgaben, zusammengefasst
       * geoOps                  alles rund um Plätze auf der Erde und im Weltall
@@ -1944,7 +1944,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
     *
     */
 
-    function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+    function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false, $debug=false)
         {
         //echo "Position steht auf $position.\n";
         //echo "CreateVariableByName: $id $name $type $profile $ident $position $action\n";
@@ -1953,7 +1953,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
         $VariableId = @IPS_GetVariableIDByName($name, $parentID);
         if ($VariableId === false)
             {
-            echo "CreateVariableByName : $name Type $type in $parentID:\n";
+            if ($debug) echo "CreateVariableByName : $name Type $type in $parentID:\n";
             $VariableId = @IPS_CreateVariable($type);
             if ($VariableId === false ) throw new Exception("Cannot CreateVariable with Type $type");
             IPS_SetParent($VariableId, $parentID);
@@ -1978,7 +1978,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
             if ($profile && ($VariableData['VariableCustomProfile'] <> $profile) )
                 {
                 //Debug ("Set VariableProfile='$Profile' for Variable='$name' ");
-                echo "Set VariableProfile='$profile' for Variable='$name' \n";
+                if ($debug) echo "Set VariableProfile='$profile' for Variable='$name' \n";
                 $result=@IPS_SetVariableCustomProfile($VariableId, $profile);
                 if ($result==false) 
                     {
@@ -1989,13 +1989,13 @@ function send_status($aktuell, $startexec=0, $debug=false)
             if ($action && ($VariableData['VariableCustomAction'] <> $action) )
                 {
                 //Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
-                echo "Set VariableCustomAction='$action' for Variable='$name' \n";
+                if ($debug) echo "Set VariableCustomAction='$action' for Variable='$name' \n";
                 IPS_SetVariableCustomAction($VariableId, $action);
                 }
             if ($ident && ($objectInfo['ObjectIdent'] <> $ident) )
                 {
                 //Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
-                echo "Set VariableIdent='$ident' for Variable='$name' \n";
+                if ($debug) echo "Set VariableIdent='$ident' for Variable='$name' \n";
                 IPS_SetIdent($VariableId, $ident);
                 }
     
@@ -2237,12 +2237,12 @@ function send_status($aktuell, $startexec=0, $debug=false)
             }
         }
 
-    /*****************************************************************
+    /* RemoteAccessServerTable, benötigt das Module RemoteAccess
     *
-    * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabelle ein
+    * wandelt die Liste der remoteAccess server in RemoteAccess_GetServerConfig in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabelle ein
     * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
-    * vergleiche Funktion in RemoreAccess Library
-    * benötigt das Module RemoteAccess
+    * vergleiche Funktion in RemoteAccess Library
+    * 
     * wenn Modul OperationCenter vorhanden gibt es auch eine Uptime
     *
     * nur hier wird auch Alexa berücksichtigt
@@ -2276,7 +2276,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
                 {
                 if (isset($Server["LOGGING"])===false) $Server["LOGGING"]="DISABED";                // wenns nicht definiert ist, default is disabled
                 $UrlAddress=$Server["ADRESSE"];                                                         // das ist die RPC Adresse
-                if ($debug) echo "   Server Name ".str_pad($Name,20)." : ".str_pad($UrlAddress,70);
+                if ($debug) echo "   Server Name ".str_pad($Name,20)." : ".str_pad($UrlAddress,100);
                 if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )                         // beides muss definiert sein
                     {                    
                     if ( ( ($mode==1) && (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") ) ||
@@ -12008,6 +12008,42 @@ class dosOps
         else return (true);
         }
 
+    /* compare function from github copilot
+     * the two input files need to exist
+     * the compare ignore the line endings and the white spaces
+     *
+     */
+    public function fileCompare($file1,$file2,$diffFile, $debug=false) 
+        {
+        if (!file_exists($file1) || !file_exists($file2)) {
+            throw new Exception("One or both files do not exist.");
+        }
+
+        $content1 = file($file1);
+        $content2 = file($file2);
+
+        if ($content1 === false || $content2 === false) {
+            throw new Exception("Error reading one or both files.");
+        }
+        
+        // Normalize line endings and trim whitespace
+        $content1 = array_map('trim', str_replace(array("\r\n", "\r", "\n"), "\n", $content1));
+        $content2 = array_map('trim', str_replace(array("\r\n", "\r", "\n"), "\n", $content2));
+
+        $diff = array_diff($content1, $content2);
+        //echo "fileCompare $file1 ".sizeof($content1)." $file2 ".sizeof($content2)." $diffFile ".sizeof($diff)."\n";
+        if ($debug) echo "fileCompare ".sizeof($content1)." --> ".sizeof($content2)." : ".sizeof($diff)."\n";
+
+        /*
+        if (empty($diff)) {
+            return "Files are identical.";
+        } else {
+            file_put_contents($diffFile, implode("", $diff));
+            return "Differences written to " . $diffFile;
+            }  */
+        return $diff;
+        }
+
     /* dosOps::findfiles, wie fileavailable, aber hier aus einem array die Dateien herausfiltern
      * kann Wildcards *, *.
      * files ist ein array, index=>filename
@@ -12729,6 +12765,104 @@ class dosOps
             }    
 		return ($verzeichnis);
 		}
+
+    /*  
+     * 
+     *     automatische Erkennung Dos oder Linux am Verzeichnisbaum
+     *     Vereinheitlihung der / oder \ Zeichen
+     */
+
+	function correctFileName($verzeichnis,$debug=false)
+		{
+		$len=strlen($verzeichnis); 
+        $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");          // letzte Position bekommen
+        $pos3=strpos($verzeichnis,"\\"); $pos4=strpos($verzeichnis,"/");          // erste Position bekommen
+        $pos5=strpos($verzeichnis,":");
+
+        $dos=false; $linux=false;
+        if ($pos1 && $pos2)                                 // es gibt sowohl \ als auch /
+            {
+            if (($pos3===0) || ($pos5==1) ) $dos=true;      // backslash oder Doppelpunkt
+            if ($pos4===0) $linux=true;
+            }            
+        if ($pos5==1) $dos=true;                        //  Doppelpunkt als zweites Zeichen, ebenfall eindeutig DOS
+
+		if ($debug) 
+            {
+            echo "correctFileName Auswertungen: Len:$len pos1:$pos1 pos2:$pos2 pos3:$pos3 pos4:$pos4 pos5:$pos5\n";			// am Schluss muss ein Backslash oder Slash sein !
+            if ($pos1 && $pos2) echo "   mixed usage of / und \\ , Positions of \\ $pos3 and of / $pos4.\n";
+            if ($dos) echo "DOS System.\n";
+            if ($linux) echo "LINUX System.\n";                
+            }
+
+        if ($pos3) $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // wenn ein Doppelzeichen ausser am Anfang ist dieses vereinfachen
+        if ($pos4 !== false) $verzeichnis = str_replace("//","/",$verzeichnis);     // bei Unix kann es auch 0 sein, da slash an erster Position
+        
+        // finish to correct dir seperator according to Operating System dos/linux
+        if ($dos) 
+            {
+            $verzeichnis = str_replace("/","\\",$verzeichnis);          // Backslash wins
+            $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // aus den Kombis \/ und /\ wird ein Doppel \ dieses auch vereinfachen
+            }
+        if ($linux) 
+            {
+            $verzeichnis = str_replace("\\","/",$verzeichnis);              // Slash wins
+            $verzeichnis = str_replace("//","/",$verzeichnis);
+            }    
+		return ($verzeichnis);
+		}
+
+
+    /*  
+     * 
+     *     automatische Erkennung Dos oder Linux am Verzeichnisbaum
+     *     Vereinheitlihung der / oder \ Zeichen
+     */
+
+	function getFileName($verzeichnis,$debug=false)
+		{
+		$len=strlen($verzeichnis); 
+        $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");          // letzte Position bekommen
+        $pos3=strpos($verzeichnis,"\\"); $pos4=strpos($verzeichnis,"/");          // erste Position bekommen
+        $pos5=strpos($verzeichnis,":");
+
+        $dos=false; $linux=false;
+        if ($pos1 && $pos2)                                 // es gibt sowohl \ als auch /
+            {
+            if (($pos3===0) || ($pos5==1) ) $dos=true;      // backslash oder Doppelpunkt
+            if ($pos4===0) $linux=true;
+            }            
+        if ($pos5==1) $dos=true;                        //  Doppelpunkt als zweites Zeichen, ebenfalls eindeutig DOS
+
+		if ($debug) 
+            {
+            echo "correctFileName Auswertungen: Len:$len pos1:$pos1 pos2:$pos2 pos3:$pos3 pos4:$pos4 pos5:$pos5\n";			// am Schluss muss ein Backslash oder Slash sein !
+            if ($pos1 && $pos2) echo "   mixed usage of / und \\ , Positions of \\ $pos3 and of / $pos4.\n";
+            if ($dos) echo "DOS System.\n";
+            if ($linux) echo "LINUX System.\n";                
+            }
+
+        if ($pos3) $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // wenn ein Doppelzeichen ausser am Anfang ist dieses vereinfachen
+        if ($pos4 !== false) $verzeichnis = str_replace("//","/",$verzeichnis);     // bei Unix kann es auch 0 sein, da slash an erster Position
+        
+        // finish to correct dir seperator according to Operating System dos/linux
+        if ($dos) 
+            {
+            $verzeichnis = str_replace("/","\\",$verzeichnis);          // Backslash wins
+            $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // aus den Kombis \/ und /\ wird ein Doppel \ dieses auch vereinfachen
+            $pos1=strrpos($verzeichnis,"\\");
+            if ($pos1) $verzeichnis=substr($verzeichnis,$pos1+1);
+            }
+        if ($linux) 
+            {
+            $verzeichnis = str_replace("\\","/",$verzeichnis);              // Slash wins
+            $verzeichnis = str_replace("//","/",$verzeichnis);
+            $pos1=strrpos($verzeichnis,"/");
+            if ($pos1) $verzeichnis=substr($verzeichnis,$pos1+1);
+            }    
+		return ($verzeichnis);
+		}
+
 
     /* einen Verzeichnisbaum auf Backslash oder Slash ändern */
 
@@ -15867,8 +16001,12 @@ class WfcHandling
      * die ID des Default Webfront Konfigurators
      * und als Tabelle alle Webfronts mit dem Namen als ID, kann mit get_WebfrontConfigID abgefragt werden
      *
-     * abhängig von configId werden die Standard Interfaces (false) oder die eigenen Interfaces verwendet, gilt für:
-     *      GetItems
+     * abhängig von configId werden die in dieser class implementierten Standard Interfaces (false) oder die eigenen Interfaces (ID) verwendet, gilt für:
+     *      GetItems                return(WFC_GetItems($this->configID))
+     *      CreateWFCItem           return(CreateWFCItem ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon, $ClassName, $Configuration));
+     *      CreateWFCItemTabPane    return(CreateWFCItemTabPane ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon));
+     *      CreateWFCItemSplitPane  return(CreateWFCItemSplitPane ($this->configID, $ItemId, $ParentId, $Position, $Title, $Icon, $Alignment, $Ratio, $RatioTarget, $RatioType, $ShowBorder));
+     *
      *
      */
 	public function __construct($configID=false,$debug=false)
@@ -18231,7 +18369,8 @@ class ModuleHandling
         return ($this->getInstancesByType(5,false,$debug));
         }
 
-    /* Alle Module die einer bestimmten Library, Auswahl nach ID oder Name, zugeordnet sind ausgeben 
+    /* ModuleHandling::getModules
+     * Alle Module die einer bestimmten Library, Auswahl nach ID oder Name, zugeordnet sind ausgeben 
      */
 	public function getModules($input, $debug=false)
 		{
@@ -18255,7 +18394,8 @@ class ModuleHandling
         return($modules);
         }
 
-    /* add Discovery Instanzen zu einem array aus einem Array mit Libraries
+    /* ModuleHandling::addDiscovery
+     * add Discovery Instanzen zu einem array aus einem Array mit Libraries
      */
     public function addDiscovery(&$discovery,$libraries,$debug=false)
         {
@@ -18280,7 +18420,12 @@ class ModuleHandling
         return ($discovery);
         }
 
-    /* add Configurator Instanzen zu einem array aus einem Array mit bestimmten Libraries
+    /* ModuleHandling::addConfigurator
+     * add Configurator Instanzen zu einem array aus einem Array mit bestimmten Libraries
+     * discovery ist der Ausgabewert als array, es werden discovery und Konfigurator Instanzen ermittelt
+     * die Libraries für die Konfiguratoren gesucht werden sollen, werden als parameter übergeben
+     * in units werden die Ergebnisse gesammelt
+     *
      */
     public function addConfigurator(&$discovery,$libraries,$debug=false)
         {
@@ -18293,7 +18438,7 @@ class ModuleHandling
             }
         foreach ($libraries as $library)
             {
-            $instances=$this->getInstancesByType(4,["Library"=>$library]);          //mit Debug, Discovery aus library
+            $instances=$this->getInstancesByType(4,["Library"=>$library]);          //mit Debug, Discovery (5) und Konfigurator (4) aus library ermitteln
             if ($debug>1) print_r($instances);
             $modules=array(); 
             foreach($instances as $instance)
@@ -18327,6 +18472,9 @@ class ModuleHandling
      *      HUE Configurator
      *      FS20EX Instanzen, FS20 Instanzen, FHT Instanzen         deprecated
      *      CAM Instanzen
+     *      SwitchBot
+     *      MQTT Client
+     *      MQTT Server
      */
 	public function addNonDiscovery(&$discovery,$debug=false)
 		{
@@ -18337,22 +18485,62 @@ class ModuleHandling
         * {DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8} = NetatmoWeatherConfig
         *
         */
-        //if (false)
+        if (false)
             {
-            $input["ModuleID"]   = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
-            $input["ModuleName"] = "AmazonEchoConfigurator";
-            $discovery[]=$input;
-            $input["ModuleID"]   = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
-            $input["ModuleName"] = "NetatmoWeatherConfig";
-            $discovery[]=$input;
-            $input["ModuleID"]   = "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}";        // add HUE
+            $input["ModuleID"]   = "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}";        // add HUE, nicht mehr benötigt, es gibt Philips Hue V2
             $input["ModuleName"] = "HUE Configurator";
             $discovery[]=$input;
-            }                
+            }
+        
+        // vgl addConfigurator
+        // AmazonEchoConfigurator, NetatmoWeatherConfig, 
+        //$guids=["{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}","{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}","{91624C6F-E67E-47DA-ADFE-9A5A1A89AAC3}",'{0D86E724-D3DB-5685-03CE-DDD6B981F39B}','{2408C0E0-E672-7FE5-414B-F78C9B9244E4}','{CC4F15B1-81C2-4F45-8D53-972F0C9C8103}'];
+        $guids=[        "EchoConfigurator"                      => "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}",
+                        "NetatmoWeatherConfig"                  => "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}",
+                        "HomeMatic RF Interface Configurator"   => "{91624C6F-E67E-47DA-ADFE-9A5A1A89AAC3}",
+                        "SwitchBot Konfigurator"                => '{0D86E724-D3DB-5685-03CE-DDD6B981F39B}',
+                        "MQTT Client Configurator"              => '{2408C0E0-E672-7FE5-414B-F78C9B9244E4}',
+                        "MQTT Server Configurator"              => '{CC4F15B1-81C2-4F45-8D53-972F0C9C8103}'
+            ];        
+        foreach ($guids as $name=>$guid)
+            {
+            $instances=$this->getInstances($guid);
+            if (sizeof($instances)==0) 
+                {
+                $lib=@IPS_GetLibrary($guid)["Name"];
+                if ($lib===false) $lib=@IPS_GetModule ($guid)["ModuleName"];
+                echo "   Warning, addNonDiscovery, no Configurators available for ";
+                if ($lib == false) echo "Library/Module $name ";
+                else echo "Library/Module $lib ";
+                echo " $guid.\n";
+                }
+            else
+                {
+                $input["ModuleID"]   = $guid;        // add Switchbot
+                $instanceInfo=IPS_GetInstance($instances[0]);
+                $input["ModuleName"] = $instanceInfo["ModuleInfo"]["ModuleName"];
+                $discovery[]=$input;
+                }
+            }
+        /*
+        $input["ModuleID"]   = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
+        $input["ModuleName"] = "AmazonEchoConfigurator";
+        $discovery[]=$input;
+        $input["ModuleID"]   = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
+        $input["ModuleName"] = "NetatmoWeatherConfig";
+        $discovery[]=$input;
+        $input["ModuleID"]   = "{0D86E724-D3DB-5685-03CE-DDD6B981F39B}";        // add Switchbot
+        $input["ModuleName"] = "Switchbot Konfigurator";
+        $discovery[]=$input;
         $input["ModuleID"]   = "{91624C6F-E67E-47DA-ADFE-9A5A1A89AAC3}";
         $input["ModuleName"] = "HomeMatic RF Interface Configurator";
         $discovery[]=$input;
-
+        $input["ModuleID"]   = "{2408C0E0-E672-7FE5-414B-F78C9B9244E4}";
+        $input["ModuleName"] = "MQTT Client Konfigurator";
+        $discovery[]=$input;
+        $input["ModuleID"]   = "{CC4F15B1-81C2-4F45-8D53-972F0C9C8103}";
+        $input["ModuleName"] = "MQTT Server Konfigurator";
+        $discovery[]=$input;*/
 
         /* wenn keine Konfiguratoren verfügbar dann die GUIDs der Instanzen eingeben
         *
@@ -18369,10 +18557,13 @@ class ModuleHandling
         $discovery[]=$input;     
         $input["ModuleID"] =    "{D26101C0-BE49-7655-87D3-D721064D4E40}";           // OperationCenter Cam Instanzen, kein Konfigurator, kein Discovery, haendische Installation
         $input["ModuleName"] = "CAM Instanzen";
-        $discovery[]=$input;          
+        $discovery[]=$input; 
+          
+        /*    IPSHeat nur indirekt einbringen, als Parameter für Actuators       
         $input["ModuleID"] =    "{81F09287-FDDF-204E-98CB-30B27D106ECE}";           // IPSHeat Instanzen, kein Konfigurator, kein Discovery, haendische Installation
         $input["ModuleName"] = "IPSHeat Instanzen";
         $discovery[]=$input;     
+        */
 
         return ($discovery);
         }

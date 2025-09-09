@@ -21,8 +21,13 @@
 /*
  * Auf den Logging Server alle Objekte wie bei einer Generalabfrage setzen
  * passiert jeden Tag um 5:10
- *
- *
+ * Eventliste wird vom messageHandler extrahiert
+ * Zusatzfunktionen wenn als Script und nicht vom Timer gestartet
+ *      Darstellung der Events und Überprüfung ob es die referenzierte OID noch gibt und Ausgabe Pfad und aktueller Wert
+ *      Wenn es die OID nicht mehr gibt, aus der Eventliste des MessageHanlder löschen
+ * Regelmaessige Funktion, einmal am Tag um 5:10
+ *      Jetzt andersrum, die ScriptId des messageHandler raussuchen, 
+ *      die Childrens des Script ermitteln, also die Events
  *
  */
 
@@ -35,6 +40,7 @@
     $excludeModules=["Guthabensteuerung","DetectMovement"];
 
 	IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+    IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
@@ -44,6 +50,7 @@
 	IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
 
     $ipsOps = new ipsOps();
+    $remoteAccess = new RemoteAccess();    
     
 	//$messageHandler = new IPSMessageHandler();
 	$messageHandler = new IPSMessageHandlerExtended();          // kann auch register loeschen
@@ -59,6 +66,7 @@ if ( ($_IPS['SENDER']=="Execute") )
 	{
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	echo "========================================================================================\n";	
+    $result = $remoteAccess->processXConfig(IPS_GetName(0),$debug);
 	echo "Overview of registered Events, ".sizeof($eventlist)." Eintraege : \n";
     $i=0; 
 	foreach ($eventlist as $oid => $data)
@@ -80,7 +88,13 @@ if ( ($_IPS['SENDER']=="Execute") )
                         }
                     }
                 }
+            $status=$remoteAccess->checkServerOIDData($result,$data);
             echo "\n";
+            if ($status===false)                 
+                {
+                echo "    Warning, RemotAccess failed, wrong Data, Object will be deleted from messagehandler. Install again \n";
+                $delete[$oid]=true;
+                }
 			}
 		else
 			{
@@ -95,9 +109,18 @@ if ( ($_IPS['SENDER']=="Execute") )
     print_r($delete);
 	foreach ($delete as $oid => $data)
 		{
-		echo "$i Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+        //print_r($data);
+        if (isset($data[2])) echo "$i Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+        else if (isset($data[1])) echo "$i Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+        else echo "$i Oid: ".$oid." | ".$data[0]." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
         $i++;  		
 		}
+    // Delete erfolgt in der nächsten Routine, Überwachung dass nicht zuviele Events gelöscht werden
+    if (sizeof($delete)>3) 
+        {
+        echo "Delete registered Events, we found more than 3 Events. Before deleting check again if desccision ´to delete is valid. We Found ".sizeof($delete)." entries subject to be deleted.\n";
+        $delete=array();
+        }
     echo "\n\n================================================================================================\n";  
 	}
 	
@@ -124,66 +147,70 @@ if ( ($_IPS['SENDER']=="TimerEvent") ||  ($_IPS['SENDER']=="Execute") )
 	$components=array();
 	$i=0;
 	//print_r($children);
-	foreach ($children as $childrenID)
+	foreach ($children as $childrenID)          // sind bereits children, als gehen wir davon aus das es sie gibt
 		{
-		$name=IPS_GetName($childrenID);
-		$eventID_str=substr($name,Strpos($name,"_")+1,10);
-		$eventID=(integer)$eventID_str;
-		if (substr($name,0,1)=="O")
-			{
-            if ($debug) echo "$i/$maxCount Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." | ";
-            if (isset($eventlist[$eventID_str]))
+        $type = IPS_GetObject($childrenID)["ObjectType"];
+        if ($type==4)                       // nur Events berücksichtigen
+            {            
+            $name=IPS_GetName($childrenID);
+            $eventID_str=substr($name,Strpos($name,"_")+1,10);
+            $eventID=(integer)$eventID_str;
+            if (substr($name,0,1)=="O")
                 {
-                $componentconfig=explode(",",$eventlist[$eventID_str][1]);
-                //print_r($componentconfig);					
-                $parent=@IPS_GetParent($eventID);
-                if ($parent===false)
-                    {		
-                    if ($debug) echo "  ---> Objekt ".$eventID." existiert nicht für Event ".$childrenID.". Wird als ".$name." gelöscht. Unregister und Delete Event.\n";
-                    if ($dodelete)
-                        {
-                        $messageHandler->UnRegisterEvent($eventID);
-                        IPS_DeleteEvent($childrenID);
-                        }
-                    }
-                else
+                if ($debug) echo "$i/$maxCount Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." | ";
+                if (isset($eventlist[$eventID_str]))
                     {
-                    $component[$componentconfig[0]][$eventID]["EventName"]=IPS_GetName($childrenID);
-                    $component[$componentconfig[0]][$eventID]["Config"]=$eventlist[$eventID_str][1];
-                    $object=IPS_GetObject($parent);
-                    if ( $object["ObjectType"] == 1)
-                        {
-                        if ($debug) echo $eventID." | Instanz  : ".str_pad(IPS_GetName($parent),36)." | ".str_pad($eventlist[$eventID_str][1],55);
-                        $component[$componentconfig[0]][$eventID]["VarName"]=IPS_GetName($parent);
-                        }
-                    else
-                        {
-                        if ($debug) echo $eventID." | Register : ".str_pad(IPS_GetName($eventID),36)." | ".str_pad($eventlist[$eventID_str][1],55);
-                        $component[$componentconfig[0]][$eventID]["VarName"]=IPS_GetName($eventID);
-                        }	
-                    if (isset($delete[$eventID])) 
-                        { 
-                        if ($debug) echo "  ---> delete \n"; 
+                    $componentconfig=explode(",",$eventlist[$eventID_str][1]);
+                    //print_r($componentconfig);					
+                    $parent=@IPS_GetParent($eventID);
+                    if ($parent===false)
+                        {		
+                        if ($debug) echo "  ---> Objekt ".$eventID." existiert nicht für Event ".$childrenID.". Wird als ".$name." gelöscht. Unregister und Delete Event.\n";
                         if ($dodelete)
                             {
                             $messageHandler->UnRegisterEvent($eventID);
                             IPS_DeleteEvent($childrenID);
                             }
                         }
-                    else { if ($debug) echo "\n";	 	 }                        	
-                    //print_r($eventlist[$eventID_str]);
+                    else
+                        {
+                        $component[$componentconfig[0]][$eventID]["EventName"]=IPS_GetName($childrenID);
+                        $component[$componentconfig[0]][$eventID]["Config"]=$eventlist[$eventID_str][1];
+                        $object=IPS_GetObject($parent);
+                        if ( $object["ObjectType"] == 1)
+                            {
+                            if ($debug) echo $eventID." | Instanz  : ".str_pad(IPS_GetName($parent),36)." | ".str_pad($eventlist[$eventID_str][1],55);
+                            $component[$componentconfig[0]][$eventID]["VarName"]=IPS_GetName($parent);
+                            }
+                        else
+                            {
+                            if ($debug) echo $eventID." | Register : ".str_pad(IPS_GetName($eventID),36)." | ".str_pad($eventlist[$eventID_str][1],55);
+                            $component[$componentconfig[0]][$eventID]["VarName"]=IPS_GetName($eventID);
+                            }	
+                        if (isset($delete[$eventID])) 
+                            { 
+                            if ($debug) echo "  ---> delete \n"; 
+                            if ($dodelete)
+                                {
+                                $messageHandler->UnRegisterEvent($eventID);
+                                IPS_DeleteEvent($childrenID);
+                                }
+                            }
+                        else { if ($debug) echo "\n";	 	 }                        	
+                        //print_r($eventlist[$eventID_str]);
+                        }
                     }
-                }
-            else
-                {
-                if ($debug) echo " ----> Objekt ".$eventID." ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)." existiert nicht in IPSMessageHandler_GetEventConfiguration(), Event wird geloescht.\n";
-                if ($dodelete)
+                else
                     {
-                    $messageHandler->UnRegisterEvent($eventID);
-                    IPS_DeleteEvent($childrenID);
+                    if ($debug) echo " ----> Objekt ".$eventID." ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)." existiert nicht in IPSMessageHandler_GetEventConfiguration(), Event wird geloescht.\n";
+                    if ($dodelete)
+                        {
+                        $messageHandler->UnRegisterEvent($eventID);
+                        IPS_DeleteEvent($childrenID);
+                        }
                     }
                 }
-			}
+            }
 		$i++;
 		//IPS_SetPosition($childrenID,$eventID);
 		}

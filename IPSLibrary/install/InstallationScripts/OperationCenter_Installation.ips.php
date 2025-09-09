@@ -211,6 +211,39 @@
 
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
+    /*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * SwitchBot Funktionen vorbereiten
+     *
+     * dazu ein Register mit allen OIDs beschreiben die regelmaessig einen Stubbs brauchen um die Daten aus dem Internet zu laden
+     * ähnlicher Mechanismus wie bei netatmo, dort aber automatisch implementiert
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+
+    echo "SwitchBot Update Install: \n";
+    $categoryId_PullFunction	= CreateCategory('Pull',   $CategoryIdData, 700);
+    $ConfigPullId				= CreateVariableByName($categoryId_PullFunction, "ConfigPull"          ,3,  "",         "",   20); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+    $LastTimePullId				= CreateVariableByName($categoryId_PullFunction, "LastTimePull"        ,1,  "",         "",   30); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+
+    //  SwitchBot Instanzen finden
+	
+    $discovery=array();
+    $modulhandling->addConfigurator($discovery,["Switchbot"]);
+    $hardware = $topologyLibrary->get_HardwareList($discovery);
+
+    //$modulhandling->printLibraries();         // alle Bibliotheken anzeigen, neu sind MQTT Client, MQTT Server, SwitchBot   Configurator
+    //print_R($discovery);
+    //print_r($hardware);
+
+    // Switchbot Instanzen updaten aus der Cloud
+    $config=array();
+    foreach ($hardware["SwitchBot"] as $name => $entry)
+        {
+        SWB_DeviceStatus($entry["OID"]);
+        $config[$entry["OID"]]=$name;
+        }
+    SetValue($ConfigPullId,json_encode($config));
+
 	/******************************************************
 	 *
 	 * Webfront Config einlesen
@@ -336,13 +369,10 @@
 	 *
 	 ********************************/
 
-	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
-
     $eventControl=$modulhandling->getInstances('Event Control')[0];         // mit Zuversicht ausgehen dass es nur eine gibt
     $config=json_decode(IPS_GetConfiguration($eventControl));
     //print_R($config);
 
-    $modulhandling = new ModuleHandling();
     $HMIs=$modulhandling->getInstances('HM Inventory Report Creator');
     //print_r($HMIs);
     $HmiInstanz=sizeof($HMIs);
@@ -948,7 +978,9 @@
                         {
                         echo "Schreib Batchfile zum automatischen Start der VMware.\n";
                         $handle2=fopen($verzeichnis.$unterverzeichnis."start_VMware.bat","w");
-                        fwrite($handle2,'"'.$configWatchdog["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWatchdog["Software"]["VMware"]["DirFiles"].$configWatchdog["Software"]["VMware"]["FileName"].'"'."\r\n");
+                        // VMWare vmplayer wird nicht mehr unterstützt. Daher vmware.exe verwenden. Dazu noch irgendwo automatic Power On konfigurieren 
+                        //fwrite($handle2,'"'.$configWatchdog["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWatchdog["Software"]["VMware"]["DirFiles"].$configWatchdog["Software"]["VMware"]["FileName"].'"'."\r\n");
+                        fwrite($handle2,'"'.$configWatchdog["Software"]["VMware"]["Directory"].'vmware.exe" "'.$configWatchdog["Software"]["VMware"]["DirFiles"].$configWatchdog["Software"]["VMware"]["FileName"].'"'."\r\n");
                         fclose($handle2);
                         }
                     echo "\n-----------------------------\nWatchdog Installation beendet.\n";

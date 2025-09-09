@@ -372,6 +372,23 @@
             return $this->configuration;      
             }
 
+        /* die schönste Zusammenfassung
+         * wenn DetectMovement und es ist ein Boolean
+         *      wie unten und zusätzlich
+         *      Ereignisspeicher    EreignisID
+         *      Gesamt_Ereignisspeicher   GesamtID
+         *      Gesamt_Ereigniszaehler    GesamtCountID
+         *
+         * wenn nicht und es ist ein Bolean
+         *      wie unten und zusätzlich
+         *      variableDelayLogID  variableDelayLogID      
+         *
+         * sonst
+         *      variableID          variable
+         *      profile             variableProfile
+         *      type                variableTye
+         *      variableLogID       variableLogID
+         */
         public function getVariableOIDLogging()
             {
             if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->variableType==0) )        // boolean, nicht für Kontakte, da gibt es kein Delay

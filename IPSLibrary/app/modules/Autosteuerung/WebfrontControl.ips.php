@@ -19,6 +19,8 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
 IPSUtils_Include ("Autosteuerung_AlexaClass.inc.php","IPSLibrary::app::modules::Autosteuerung");
 IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 
+IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
     $installedModules 	= $moduleManager->GetInstalledModules();
@@ -225,6 +227,8 @@ if ($_IPS['SENDER']=="WebFront")
             if ( isset($installedModules["DetectMovement"]) === true )
                 {            
                 $detectMovement = new TestMovement($debug);
+                $detectMovement->syncEventList($debug);       // speichert eventList und eventListDelete, früher Teil des constructs
+
                 $autosteuerung_config=Autosteuerung_GetEventConfiguration();
                 $eventlist=$detectMovement->getAutoEventListTable($autosteuerung_config,$debug);		// no Debug
                 switch ($_IPS['VALUE'])
@@ -371,6 +375,8 @@ if ($_IPS['SENDER']=="Execute")
         echo "\n";
         echo "========================================DetectMovement\n";
         $detectMovement = new TestMovement($debug);
+        $detectMovement->syncEventList($debug);       // speichert eventList und eventListDelete, früher Teil des constructs
+
         $autosteuerung_config=Autosteuerung_GetEventConfiguration();
         $eventlist=$detectMovement->getAutoEventListTable($autosteuerung_config);
         echo "Ergebnis der Analyse der Autosteuerungs Events wird in der Tabelle gespeichert.\n";

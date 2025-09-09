@@ -111,7 +111,8 @@
 
 		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-			echo "IPSComponentSensor_Counter: Construct Counter Sensor with ($instanceId,$remoteOID,$tempValue).\n";		
+            $debug=false;
+			if ($debug) echo "IPSComponentSensor_Counter: Construct Counter Sensor with ($instanceId,$remoteOID,$tempValue).\n";		
             //$this->RemoteOID    = instanceID;                // par1 manchmal auch par2		
 			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1
 			$this->tempValue    = $tempValue;           // par3                
@@ -154,7 +155,8 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			echo "IPSComponentSensor_Counter:HandleEvent, Counter Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+            $debug=false;
+			if ($debug) echo "IPSComponentSensor_Counter:HandleEvent, Counter Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			//IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
 			$debug=true;

@@ -116,23 +116,24 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			echo "IPSComponentSensor_Feuchtigkeit:HandleEvent, Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+            $debug=false;                
+			if ($debug) echo "IPSComponentSensor_Feuchtigkeit:HandleEvent, Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
             $startexec=microtime(true);
             $log=new Feuchtigkeit_Logging($variable);        // es wird kein Variablenname übergeben
             $mirrorValue=$log->updateMirorVariableValue($value);
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // nur durch Vergleich GetValue kann es nicht festgestellt werden, da der Wert in value bereits die Änderung auslöst. Dazu Spiegelvariable verwenden
                 {            
                 IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
-			    echo "  IPSComponentSensor_Feuchtigkeit:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
+			    if ($debug) echo "  IPSComponentSensor_Feuchtigkeit:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                             
-                echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
+                if ($debug) echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
                 $result=$log->Feuchtigkeit_LogValue();
 			    $this->SetValueROID($value);
                 }
             else 
                 {
                 IPSLogger_Dbg(__file__, 'HandleEvent: Unchanged -> Feuchtigkeit Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
-			    echo "  IPSComponentSensor_Feuchtigkeit:HandleEvent: Unchanged -> für VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
+			    if ($debug) echo "  IPSComponentSensor_Feuchtigkeit:HandleEvent: Unchanged -> für VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                 }
 			}
 
@@ -224,11 +225,11 @@
          *
          */
 
-		function __construct($variable,$variablename=Null,$variableTypeReg="unknown",$debug=false)
+		function __construct($variable,$variablename=Null,$value=null,$variableTypeReg="unknown",$debug=false)
 			{
             if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
             else $this->debug=$debug;
-            if ($this->debug) echo "   Feuchtigkeit_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
+            if ($this->debug) echo "   Feuchtigkeit_Logging, construct : ($variable,$variablename,$value,$variableTypeReg,$debug).\n";
 
             $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 

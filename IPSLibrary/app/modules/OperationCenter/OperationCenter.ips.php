@@ -1163,6 +1163,26 @@ if ($_IPS['SENDER']=="TimerEvent")
             $homematicOperation->ccuSocketStatus($log_OperationCenter);         // called every hour, internal controled by variable in count5mins
             $homematicOperation->ccuSocketDutyCycle($log_OperationCenter);      // called every hour, internal controled by variable in count5mins
             $pingOperation->SysPingAllDevices($log_OperationCenter);            // called every 5mins, hour and 4 hour,  internal controled by variable in count5mins
+
+            //echo "SwitchBot Update per Instance: \n";
+            $categoryId_PullFunction	= IPS_GetObjectIDByName('Pull',   $CategoryIdData);
+            $ConfigPullId				= IPS_GetObjectIDByName("ConfigPull", $categoryId_PullFunction); 
+            $LastTimePullId				= IPS_GetObjectIDByName("LastTimePull", $categoryId_PullFunction); 
+            //echo "Pull ID           :  $ConfigPullId   \n";
+            //echo "LastTime Pull ID  :  $LastTimePullId \n";
+            if ($LastTimePullId && $ConfigPullId)
+                {
+                $switchBotIDs=json_decode(GetValue($ConfigPullId),true);
+                //print_R($switchBotIDs);
+                $i=0;
+                foreach ($switchBotIDs as $id => $name)
+                    {
+                    SWB_DeviceStatus($id);
+                    $i++;
+                    }
+                //echo "SwitchBot Device ($i) Values updated. \n";
+                SetValue($LastTimePullId,time());                       
+                }
 			break;
 		case $tim5ID:       // CyclicUpdate
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CyclicUpdate");

@@ -99,7 +99,7 @@
 
 		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-            $this->debug=true;
+            //$this->debug=true;
 			if ($this->debug) echo "IPSComponentSensor_Remote: Construct Sensor with ($instanceId,$remoteOID,$tempValue).\n";	
             if (strpos($instanceId,":") !== false)                // par1 manchmal auch par2, rausfinden
                 {
@@ -166,7 +166,7 @@
             //$debug=false;
 			if ($debug) echo "HandleEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
             //$startexec=microtime(true);    
-            $log=new Sensor_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
+            $log=new Sensor_Logging($variable,null,$this->tempValue,null,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
             $mirrorValue=$log->updateMirorVariableValue($value);
     	    //IPSLogger_Not(__file__,"IPSComponentSensor_Remote:HandleEvent mit VariableID $variable (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") mit neuem Wert $value und altem Wert $mirrorValue (".$log->getMirorNameID().") bzw. ".GetValue($variable).".");
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) || $debug)     // gleiche Werte unterdrücken, dazu Spiegelvariable verwenden.
@@ -202,7 +202,7 @@
 		public function UpdateEvent($variable, $value, IPSModuleSensor $module,$debug)
 			{
 			if ($debug) echo "IPSComponentSensor_Remote::UpdateEvent, Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value."   (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") \"".$this->tempValue."\"\n";
-            $log=new Sensor_Logging($variable,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
+            $log=new Sensor_Logging($variable,null,$this->tempValue,null,$debug);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt, mirrorNameID und variableLogID wird berechnet
             $mirrorValue=$log->updateMirorVariableValue($value);
             $result=$log->Sensor_LogValue($value,$debug);                  // SetValue($this->variableLogID,GetValue($this->variable));
             if ($debug) echo "log::RemoteLogValue($value, ".json_encode($this->remServer).", $this->RemoteOID \n";
@@ -284,14 +284,15 @@
          * $variableProfile
          * $variableType; 
          *
+         * Motion_Logging($variable,$variablename=Null, $value=Null, $typedev="unknown", $debug=false)
          */
 
-		function __construct($variable,$variablename=null,$variableTypeReg="unknown",$debug=false)
+		function __construct($variable,$variablename=null,$value=null,$variableTypeReg="unknown",$debug=false)
 			{
             if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
             else $this->debug=$debug;
-            $this->debug=true;              // manual override
-            if ($this->debug) echo "Sensor_Logging::construct für Variable ID ($variable,$variablename,$variableTypeReg) : jetzt do_init aufrufen:\n";      // bei Motion mit \"$typedev\" aufrufen und value
+            //$this->debug=true;              // manual override
+            if ($this->debug) echo "Sensor_Logging::construct für Variable ID ($variable,$variablename,$value,$variableTypeReg,$debug) : jetzt do_init aufrufen:\n";      // bei Motion mit \"$typedev\" aufrufen und value
  
             $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
@@ -367,7 +368,7 @@
 
 		function Sensor_LogValue($value,$debug=false)
 			{
-            echo "Sensor_Logging::Sensor_LogValue mit $value aufgerufen. ".$this->variableLogID."   (".IPS_GetName($this->variableLogID)."/".IPS_GetName(IPS_GetParent($this->variableLogID)).") = ".GetValue($this->variable)."\n";    
+            if ($debug) echo "Sensor_Logging::Sensor_LogValue mit $value aufgerufen. ".$this->variableLogID."   (".IPS_GetName($this->variableLogID)."/".IPS_GetName(IPS_GetParent($this->variableLogID)).") = ".GetValue($this->variable)."\n";    
 			// result formatieren für Ausgabe in den LogNachrichten, dieser Component wird für verschiedene Datenobjekte verwendet, keine extra Formattierungen hier
 			$variabletyp=IPS_GetVariable($this->variable);
     		$result=GetValueIfFormatted($this->variable);
@@ -387,18 +388,21 @@
                 else SetValue($this->variableLogID,GetValue($this->variable));
                 }
             
-            echo "     Sensor_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValueIfFormatted($this->variableLogID).". Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
+            if ($debug) echo "     Sensor_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValueIfFormatted($this->variableLogID).". Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
 			if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Sensor_LogValue: Variable OID : '.$this->variable.' ('.IPS_GetName($this->variable).'/'.IPS_GetName(IPS_GetParent($this->variable)).'Name : '.$this->variablename.'  TypeReg : '.$this->variableTypeReg);
 
 			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
-                echo "     DetectMovement ist installiert. Aggregation abarbeiten:\n";
-                echo "            Infos aus dem construct ".$this->variablename."   ".$this->variableTypeReg."  ".$this->variableProfile."   ".$this->variableType." \n";
+                if ($debug) 
+                    {
+                    echo "     DetectMovement ist installiert. Aggregation abarbeiten:\n";
+                    echo "            Infos aus dem construct ".$this->variablename."   ".$this->variableTypeReg."  ".$this->variableProfile."   ".$this->variableType." \n";
+                    }
 				$groups=$this->DetectHandler->ListGroups("Sensor",$this->variable);      // nur die Gruppen für dieses Event updaten
 				foreach($groups as $group=>$name)
 					{
-					echo "      --> Gruppe ".$group." behandeln.\n";
+					if ($debug) echo "      --> Gruppe ".$group." behandeln.\n";
 					$config=$this->DetectHandler->ListEvents($group);
 					$status=(float)0;
 					$count=0;
@@ -416,7 +420,7 @@
                     $oldstatus=GetValue($statusID);
 					if ($oldstatus != $status) 
                         {
-    					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID." Änderung Wert von $oldstatus auf $status.\n";
+    					if ($debug) echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID." Änderung Wert von $oldstatus auf $status.\n";
                         SetValue($statusID,$status);     // Vermeidung von Update oder Change Events
                         }
 			   		}
@@ -425,7 +429,7 @@
 			
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
-			echo "   Aktuelle Laufzeit nach File Logging in ".$this->variablename." mit Wert ".$result." : ".exectime($this->startexecute)." Sekunden.\n";
+			if ($debug) echo "   Aktuelle Laufzeit nach File Logging in ".$this->variablename." mit Wert ".$result." : ".exectime($this->startexecute)." Sekunden.\n";
 			}
 
 		public function GetComponent() {
