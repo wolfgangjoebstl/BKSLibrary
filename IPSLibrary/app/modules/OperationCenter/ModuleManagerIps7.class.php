@@ -569,7 +569,9 @@
 						$fullScriptName   = $baseDirectory.'::'.$namespace.'::'.$script;
 						break;
 					case 'WebFront':
-						if ($baseDirectory==$dosOps->correctDirName(IPS_GetKernelDir().'scripts/')) {
+                        //echo $dosOps->correctDirName($baseDirectory)." == ".$dosOps->correctDirName(IPS_GetKernelDir().'scripts/')."\n";
+						if ($dosOps->correctDirName($baseDirectory)==$dosOps->correctDirName(IPS_GetKernelDir().'scripts/')) 
+                            {
                             $ipsOps=new ipsOps();
                             if ($ipsOps->ipsVersion7check()) $fullScriptName   = IPS_GetKernelDir().'user/'.$this->moduleName.'/'.$script;				// jw, change 
 							else $fullScriptName   = IPS_GetKernelDir().'webfront/user/'.$this->moduleName.'/'.$script;
@@ -1051,8 +1053,7 @@
             //print_R($repositoryList);
 		}
 
-		/**
-		 * @public
+		/* ModuleManagerIPS7::DeployModule
 		 *
 		 * Exportiert einkomplettes Module zu einem Ziel Verzeichnis
          * verwendet logHandler
@@ -1065,11 +1066,13 @@
 		 * @param string $changeText Text der für die ChangeList verwendet werden soll
 		 * @param boolean $installationRequired Installation durch Änderung notwendig
 		 */
-		public function DeployModule($sourceRepository='', $changeText='', $installationRequired=false) {
+		public function DeployModule($sourceRepository='', $changeText='', $installationRequired=false) 
+            {
 			if ($sourceRepository=='') {
 				$sourceRepository = $this->sourceRepository;
 			}
 			$sourceRepository = IPSFileHandler::AddTrailingPathDelimiter($sourceRepository);
+            echo "ModuleManagerIPS7::DeployModule $sourceRepository with $changeText : $installationRequired   \n";
 
 			$this->logHandler->Log('Start IPS7 Deploy of Module "'.$this->moduleName.'"');
 			if ($changeText<>'') {
@@ -1090,6 +1093,7 @@
 			$this->DeployModuleFiles('DefaultFiles', 'Install',  $sourceRepository);
 			$this->DeployModuleFiles('ExampleFiles', 'Install',  $sourceRepository);
 
+            echo "DeployModulFiles for Webfront:\n";
 			$this->DeployModuleFiles('ScriptFiles',  'WebFront', $sourceRepository);
 			$this->DeployModuleFiles('ExampleFiles', 'WebFront', $sourceRepository);
 
