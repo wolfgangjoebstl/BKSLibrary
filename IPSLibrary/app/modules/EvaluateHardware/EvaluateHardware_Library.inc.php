@@ -34,9 +34,16 @@
  */ 
 
 /* class DeviceListManagement
- * neuer Programmierstil, ein Versuch für mehr Übersichtlichkeit
+ * neuer Programmierstil, ein Versuch für mehr Übersichtlichkeit, alle Methoden verändern das array devicelist
  *
- *
+ *      __construct
+ *      creatDeviceListfromHardware         get_DeviceList($hardware, $config, $debug) andersrum
+ *      analyse                             erstelt oids,coids,uuids
+ *      getalloids                          alle oids für ein device
+ *      addTopology
+ *      get_oids, get_coids, get_uuids
+ *      read_devicelist
+ *      findUUID
  */
 class DeviceListManagement extends TopologyLibraryManagement
     {
@@ -182,7 +189,7 @@ class DeviceListManagement extends TopologyLibraryManagement
 
         }
 
-    /* DeviceListManagement::addTopology
+    /* DeviceListManagement::addTopology                        DEPRICATED, siehe DetectDeviceHandler
      * Topology in devicelist anlegen
      *      es kommt dazu
      *          UUID, von der Topology Device Konfiguration mit gleichem Namen
@@ -319,6 +326,11 @@ class DeviceListManagement extends TopologyLibraryManagement
         return $this->devicelist;
         }
 
+    public function write_devicelist($devicelist)           // get ist schon belegt
+        {
+        if (sizeof($devicelist)>0) $this->devicelist=$devicelist;
+        }
+
     /* DeviceListManagement::findUUID
      * es sollte auch der Name der devicelist und des TopologyLibrary Device gleich sein
      * wir haben eine ObjectId eines TopologyLibrary Device als Parameter
@@ -424,6 +436,8 @@ class DeviceListManagement extends TopologyLibraryManagement
  *      get_GatewayList
  *      get_HardwareList                        erstellt eine Liste der Hardware basierend auf Instanzen die zu einem Konfigurator oder einer Instanz gehören
  *      get_DeviceList                          erstellt ein Inventory nach einem für alle Geräte gemeinsamen Datenmodell 
+ *      createUnifiedTopology
+ *      updateData
  *
  *      createTopologyInstances                 TOPD Instanzen erzeugen und im zweiten Schritt einsortieren
  *      createTopologyInstance
@@ -743,7 +757,7 @@ class TopologyLibraryManagement
         return($deviceList);
         }
 
-    /* TopologyLibraryManagement::createUnifiedTopology
+    /* TopologyLibraryManagement::createUnifiedTopology         DEPRICATED, see topology
      * bedeutet dass der Name des Topology Devices ein unique Name sein muss 
      */
     public function createUnifiedTopology(&$topology,$debug=false)

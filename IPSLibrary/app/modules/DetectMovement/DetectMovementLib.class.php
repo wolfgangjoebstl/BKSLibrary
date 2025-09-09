@@ -1234,6 +1234,50 @@
             return ($statusID);	
 			}  
 
+        /* Werte ergänzen, beim überschreiben gibt es ein false
+        * der Wert wird überschrieben
+        */
+        public function updateData(&$target,$update,$uniquename="",$debug=false)
+            {
+            $status=true;
+            $suppress=["False","none"];
+            if (is_array($uniquename)) 
+                {
+                $config=$uniquename;
+                if (isset($uniquename["suppress"])) $suppress = $uniquename["suppress"];
+                if (isset($uniquename["name"])) $uniquename = $uniquename["name"];
+                else $uniquename="";
+                }
+            if ($uniquename!="") $uniquename .= ",";
+            foreach ($update as $index => $value)
+                {
+                if ($value != "")
+                    {
+                    if (isset($target[$index])===false) 
+                        { 
+                        $target[$index]=$value;    
+                        if ($debug) echo "    $uniquename new Value at $index with ".json_encode($value)." \n";
+                        }
+                    elseif ($target=="")
+                        {
+                        $target[$index]=$value;    
+                        if ($debug) echo "    $uniquename update empty Value at $index with ".json_encode($value)." \n";
+                        }
+                    else    
+                        {
+                        $oldValue=$target[$index];
+                        $known = array_search($oldValue, $suppress); 
+                        if ($oldValue != $value)
+                            {
+                            $target[$index]=$value;    
+                            if ($known===false) echo "      $uniquename overwrite Value at $index with ".json_encode($value)." . Old Value was ".json_encode($oldValue)." \n";
+                            $status=false;
+                            }
+                        }
+                    }
+                }
+            return ($status);
+            }
 
         }
 
@@ -4037,9 +4081,9 @@
     		}           // ende evalTopology
 
         /* DetectHandlerTopology::analyseTopology
-        * $topologyhierarchy ist das Ergebnis, dazu vor Aufruf ein array anlegen. Topology die unified topology.
-        * ohne Hierarchie und index im Ergebnis array
-        */
+         * $topologyhierarchy ist das Ergebnis, dazu vor Aufruf ein array anlegen. Topology die unified topology.
+         * ohne Hierarchie und index im Ergebnis array
+         */
         public function analyseTopology(&$topologyhierarchy,$topology,$entryplace)
             {
             foreach ($topology as $place=>$entry)
@@ -4106,6 +4150,90 @@
             return ($result);
             }
 
+       public function writeAsTree($entryplace)
+            {
+            $result=$this->writeAsHierarchy($entryplace);
+            $this->writeleaf($result,"");
+            }
+        
+        function writeleaf($result,$indent)
+            {
+            foreach ($result as $name => $entry)
+                {
+                $data=$this->unifiedTopology[$name];
+                unset($data["Config"]);
+                unset($data["Children"]);
+                unset($data["TopologyConfig"]);
+                unset($data["Parent"]);
+                unset($data["Path"]);
+                echo str_pad("$indent $name",55).json_encode($data)."  \n";
+                if ( (is_array($entry)) && (sizeof($entry)>0) ) $this->writeleaf($entry,$indent."  ");
+                }
+            }
+
+        /* TopologyManagement::createUnifiedTopology
+        * copy from TopologyLibraryManagement, besser hier
+        * input ist topology und output ist unifiedTopology (inklusive Overwrite Warning)
+        * 
+        */
+        public function createUnifiedTopology($debug=false)
+            {
+            if ($debug) echo "createUnifiedTopology aufgerufen:\n";
+            $status=true;
+
+            $modulhandling = new ModuleHandling(); 
+            $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
+            $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+            $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+            $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+
+            foreach($this->topology as $uniqueName => $entry)
+                {
+                if (isset($entry["Type"]))
+                    {
+                    switch ($entry["Type"])
+                        {
+                        case "Place":
+                            $InstanzID = $placeInstances[$uniqueName];
+                            break;
+                        case "Room":
+                            $InstanzID = $roomInstances[$uniqueName];
+                            break;
+                        case "Device":
+                            $InstanzID = $deviceInstances[$uniqueName];
+                            break;
+                        case "DeviceGroup":
+                            $InstanzID = $devicegroupInstances[$uniqueName];
+                            break;
+                        default:
+                            //$InstanzID = @IPS_GetInstanceIDByName($name, $parent);
+                            break;
+                        }
+                    if ($InstanzID) 
+                        {
+                        $configTopologyDevice=json_decode(IPS_GetConfiguration($InstanzID),true);
+                        unset($configTopologyDevice["ImportCategoryID"]);
+                        unset($configTopologyDevice["Open"]);
+                        unset($configTopologyDevice["UpdateInterval"]);                        
+                        if ($debug>1) echo "   ".str_pad($uniqueName,25).json_encode($configTopologyDevice)." \n";
+                        $inputdata=array();
+                        $inputdata[$uniqueName]["TopologyInstance"]=$InstanzID;
+                        $inputdata[$uniqueName]["OID"]=IPS_GetParent($InstanzID);
+                        $inputdata[$uniqueName]["UUID"]=$configTopologyDevice["UUID"];
+                        $inputdata[$uniqueName]["TopologyConfig"]=$configTopologyDevice;
+                        $status=$this->updateData($this->unifiedTopology[$uniqueName],$inputdata[$uniqueName],$uniqueName,$debug);
+                        }
+                    }
+                else echo "createUnifiedTopology, warning, $uniqueName without Type definition.\n";
+                }
+            return($status);
+            }
+
+        public function write_EventList($debug=false)
+            {
+            $this->create_UnifiedTopologyConfigurationFile($this->unifiedTopology,$debug);
+            }
+
         /* TopologyManagement::Get_Topology
          * überschreibt Methode von DetectDeviceHandler
          *
@@ -4115,6 +4243,11 @@
 			{
             if ($this->type=="unified") return($this->unifiedTopology);
 			return($this->topology);
+			}
+
+		public function Get_unifiedTopology()
+			{
+			return($this->unifiedTopology);
 			}
 
         public function Update($input)
@@ -4166,6 +4299,8 @@
 
 	class DetectDeviceHandler extends DetectHandlerTopology
 		{
+
+        public $channelEventList=array();
 
 		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
@@ -4535,6 +4670,134 @@
                 }       // ende foreach
             }
 
+        /* DetectDeviceHandler::addTopology   same method in DeviceListManagement
+         * Topology in devicelist anlegen
+         *      es kommt dazu
+         *          UUID, von der Topology Device Konfiguration mit gleichem Namen
+         *          Name, der Raumname
+         *          Uniquename
+         *          Path
+         *           
+         * devicelist muss ein Instances item haben, die einzelne Instance items haben eine OID von einer Instanz
+         * input $deviceEventList, doublecheck $channelEventList
+         * in der DeviceList sollte es auch schon unique Elemente geben und den Pfad, hier aber noch einmal auf gleichem Weg erzeugen
+         * je nach übergebenen Daten, unterschiedliche Funktionen aufrufen
+         *      keine Parameter, alle Topology Devices einlesen, liste mit Namen machen, Konfigurationsdaten auslesen   -> noch nicht unterstützt
+         *      nur topology, es muss kann die unified topology sein
+         *      
+         */
+        public function addTopology($devicelist,$deviceEventList,$debug=false)
+            {
+            if ( (($devicelist instanceof DeviceListManagement) && ($deviceEventList instanceof DetectDeviceListHandler))===false) return (false);
+            echo "addTopology to channeleventlist from ".get_class($devicelist)." and ".get_class($deviceEventList)."    \n";           //Fehlermeldung wenn keine class
+            $status=true;
+            $modulhandling = new ModuleHandling();
+            $deviceEventList = $deviceEventList->get_Eventlist();
+            $channelEventList =  $this->Get_EventConfigurationAuto();
+
+            $devicelistdata = $devicelist->read_devicelist();
+            $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");      // Liste von Topolog Devices, Name Ident mit Eintrag Devicelist
+
+            foreach ($devicelistdata as $name => $entry)            // name is unique in devicelist
+                {
+                $oids=$devicelist->getalloids($entry);
+                if ( (isset($deviceInstances[$name])) === false ) echo "Warning, Topology Device with name $name not created.\n"; 
+                else    
+                    { 
+                    $room="";                            // mit einem leeren Raum anfangen und nach Indizien suchen
+                    // für alle oids die ich finde die channel events befragen
+                    foreach ($oids as $oid)                 
+                        {
+                        if (isset($channelEventList[$oid])) 
+                            {
+                            $config=json_encode($channelEventList[$oid]);
+                            if ($channelEventList[$oid][1] !="")
+                                {
+                                if ($room == "") 
+                                    {
+                                    $room=$channelEventList[$oid][1];
+                                    }
+                                else
+                                    {
+                                    if ($room != $channelEventList[$oid][1]) echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$instance["OID"]][1]."\n";
+                                    }
+                                }
+                            }
+                        }
+
+                    // dann erst die Instanzen vergleichen
+                    $InstanzID = $deviceInstances[$name];   
+                    if (isset($deviceEventList[$InstanzID]))        // device mit Rauminformation abgleichen, pro Gerät gibt es basierend auf dem Topology Device eine Rauminformation
+                        {
+                        //print_r($deviceEventList[$InstanzID]);
+                        if ($room == "")                            // immer noch nichts gefunden, wo ist die Instanz eigentlich
+                            {
+                            if ($deviceEventList[$InstanzID][1] != "")
+                                {
+                                $room = $deviceEventList[$InstanzID][1];
+                                }
+                            else
+                                {
+                                $parentName=IPS_GetName(IPS_GetParent($InstanzID));
+                                if ($debug) echo "   addTopology, deviceeventlist no room data. Topology Instanz $name ($InstanzID) Parent : $parentName \n";
+                                }
+                            }
+                        elseif ($room != $deviceEventList[$InstanzID][1]) 
+                            {
+                            echo "Topology Device ".str_pad($name,55)." in room    $room   or here ".$deviceEventList[$InstanzID][1]."\n";
+                            }
+                        elseif ($debug) echo "Topology Device ".str_pad($name,55)." in room    $room \n";
+                        }
+                    else echo " Warning, da lauft was schief, $name $deviceEventList kein Eintrag für Topology Device $InstanzID. \n";
+                    //$configUpdated = $topologyLibrary->initInstanceConfiguration($InstanzID,$newentry,$debug);          //true für debug
+                    $configTopologyDevice=IPS_GetConfiguration($InstanzID);  
+                    $configUpdated=json_decode($configTopologyDevice,true);                   
+                    unset($configUpdated['ImportCategoryID']);
+                    unset($configUpdated['Open']);
+                    unset($configUpdated['UpdateInterval']);
+                    $configUpdated["Name"]=$room;           // das ist der aus der Config
+                    // auslesen weil eh schon richtig
+                    $configUpdated["UniqueName"]=$deviceEventList[$InstanzID][4];
+                    $configUpdated["UniquePath"]=$deviceEventList[$InstanzID][5];
+
+                    foreach ($oids as $oid)                 
+                        {
+                        if (isset($channelEventList[$oid])) 
+                            {
+                            if ($debug) echo "update channelEventList $oid from ".$channelEventList[$oid][1]." with $room\n";
+                            $config=json_encode($channelEventList[$oid]);
+                            if ($channelEventList[$oid][1] == "") 
+                                {
+                                $channelEventList[$oid][1]=$room;
+                                }
+                            else
+                                {
+                                if ($room != $channelEventList[$oid][1]) 
+                                    {
+                                    echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$instance["OID"]][1]."\n";
+                                    $channelEventList[$oid][1]=$room;
+                                    }
+                                }                            
+                            }
+                        }
+                    $status = $this->updateData($devicelistdata[$name]["Topology"],$configUpdated,$name);
+                    }
+                }           // ende foreach
+            $devicelist->write_devicelist($devicelistdata);
+            $this->channelEventList = $channelEventList;
+            return ($status);
+            }
+            
+        public function get_Eventlist()
+            {
+            return ($this->channelEventList);
+            }
+
+        public function write_EventList()
+            {
+            if (sizeof($this->channelEventList)>0) $this->StoreEventConfiguration($this->channelEventList,"full update from todo");
+            else echo "warning, write_EventList, channelevents, data has not been created.\n";
+            }
 
 		}  /* ende class */
 
@@ -4706,36 +4969,24 @@
                 else    
                     {
                     if ($this->deviceEventList[$topodeviceId][4] == "") $this->deviceEventList[$topodeviceId][4]=$uniqueroom;
-                    else if ($this->deviceEventList[$topodeviceId][4] != $uniqueroom)   { echo "Overwrite"; $status=false; }
+                    else if ($this->deviceEventList[$topodeviceId][4] != $uniqueroom)   
+                        { 
+                        echo "    Warning, analyseTopologData, Overwrite par4, $name : ".$this->deviceEventList[$topodeviceId][4]." != $uniqueroom , clear data from config.\n"; 
+                        $status=false; 
+                        }
                     }
                 if (isset($this->deviceEventList[$topodeviceId][5])===false) $this->deviceEventList[$topodeviceId][5]=$path;
                 else    
                     {
                     if ($this->deviceEventList[$topodeviceId][5] == "") $this->deviceEventList[$topodeviceId][4]=$path;
-                    else if ($this->deviceEventList[$topodeviceId][5] != $path)    { echo "Overwrite";  $status=false; }
-                    }
-                /*
-                if (isset($deviceList[$name])) 
-                    {
-                    $device="found";
-                    $entry=$deviceList[$name];
-                    // check Werte Topology
-                    if ( (isset($entry["Topology"]["UniqueName"])) && ($entry["Topology"]["UniqueName"] != "False") )
-                        {
-                        $device .= " ".$entry["Topology"]["UniqueName"];
+                    else if ($this->deviceEventList[$topodeviceId][5] != $path)    
+                        { 
+                        echo "     Warning, analyseTopologData, Overwrite par5, $name : ".$this->deviceEventList[$topodeviceId][5]." != $path , clear data from config.\n";  
+                        $status=false; 
                         }
-                    elseif (isset($entry["Topology"]["Name"])) $device .= "!".$entry["Topology"]["Name"];
-
-                    // alle OIDS und COIDS ergründen, für alle OIDs Channeleventlist einlesen , vergleichen und Räume mit roomconf überarbeiten
-                    // gleich wie bei, look for Tilde Evaluierung
-
                     }
-                else $device="    ";    
-                echo "  ".str_pad($topodeviceId,8).str_pad($name,60).str_pad($uniqueroom.".$path",75).$device."   ".json_encode($configuration)."     $pathecho\n"; */
                 }
-
-
-
+            return ($status);
             }
 
         public function get_Eventlist()
