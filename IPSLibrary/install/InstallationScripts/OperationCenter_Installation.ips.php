@@ -186,6 +186,7 @@
         echo "Die EvaluateHardware Scripts sind in App auf               ".$CategoryIdAppEH."\n";
         echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." und wird jetzt gestartet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
         IPS_RunScriptWait($scriptIdEvaluateHardware);
+
         echo "Script Evaluate Hardware gestartet wurde mittlerweile abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
         }
 
@@ -229,6 +230,8 @@
 	
     $discovery=array();
     $modulhandling->addConfigurator($discovery,["Switchbot"]);
+
+    $topologyLibrary = new TopologyLibraryManagement(true);                     // in EvaluateHardware Library, neue Form des Topology Managements, true für Debug
     $hardware = $topologyLibrary->get_HardwareList($discovery);
 
     //$modulhandling->printLibraries();         // alle Bibliotheken anzeigen, neu sind MQTT Client, MQTT Server, SwitchBot   Configurator
@@ -1670,7 +1673,6 @@
         $modulhandling = new ModuleHandling();              // neu initialisiseren, filter entfernen
         $discovery = $modulhandling->getDiscovery();
         $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Module hinzufügen
-        $topologyLibrary = new TopologyLibraryManagement(true);                     // in EvaluateHardware Library, neue Form des Topology Managements, true für Debug
         print_R($discovery);
         echo "Auswertung der SocketList (I/O Instanzen).\n";
         $socket=array();

@@ -158,12 +158,12 @@
 				
 		abstract function Get_EventConfigurationAuto();
 		abstract function Set_EventConfigurationAuto($configuration);
-		
+		abstract function is_groupconfig();                                     // es gibt aiuch andere die die Funktionen nützen
 		abstract function CreateMirrorRegister($variableId);
 
 		protected $installedModules, $log_OperationCenter;
 
-  		protected $Detect_DataID;												/* Speicherort der Mirrorregister, von getMirrorRegisterName verwendet */ 
+  		protected $Detect_DataID;												// Speicherort der Mirrorregister, von getMirrorRegisterName verwendet 
         protected $debug;
         protected $archiveHandlerID;
 		
@@ -232,7 +232,7 @@
 		 * die Konfiguration ist einfach formattiert configuration as variableId=>params
          * VariableID ist die Variable, dann der Typ, die möglichen gruppen und verschiedene Parameter wie zB mirror
 		 */
-		function StoreEventConfiguration($configuration, $comment="")
+		function StoreEventConfiguration($configuration, $comment="",$debug=false)
 			{
 			//$configurationSort=$this->sortEventList($configuration);			
             //print_r($configuration);
@@ -244,8 +244,9 @@
                 {
                 if (IPS_ObjectExists($variableId))
                     {                    
-                    $configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-                    $update=""; 
+                    $configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => ';
+                    $configString .= $this->convertParams($params).'),';
+                    /* $update=""; 
                     //echo "  $variableId  ".count($params)."\n";
                     for ($i=0; $i<count($params); $i=$i+3)          // schreibt in Dreierreihe, Infos sollten nicht verlorengehen
                         {
@@ -257,7 +258,7 @@
                             }
                         else $update .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
                         }
-                    $configString .= $update.'),';
+                    $configString .= $update.'),'; */
                     $configString .= '   //'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId));
                     }
 			    }
@@ -274,34 +275,6 @@
 
 			if ($pos1 === false or $pos2 === false) 
 				{
-				/* echo "================================================\n";
-				echo "Function not inserted in config file. Insert now.\n";
-				$comment=0; $posn=false;	// letzte Klammer finden und danach einsetzen 
-				for ($i=0;$i<strlen($fileContent);$i++)
-					{
-					switch ($fileContent[$i])
-						{
-						// comment : 0 ok 1 / erkannt 2 / * erkannt 3 // erkannt 
-						case '/':
-							if ( ($comment==2) && ($star==1) ) $comment=0;
-							elseif ($comment==1) $comment=3;
-							else $comment=1;
-							$star=0;
-						case '*':
-							if ($comment==1) $comment=2;
-							$star=1;	
-							break;
-						case '}':
-						if ($comment <2 ) $posn=$i;	
-						case chr(10):
-						case chr(13):
-							if ($comment==3) $comment=0;		
-						default:
-							$star=0;
-							break;
-						}		
-					}
-				// $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren   */
 				$posn = $this->insertNewFunction($fileContent);
 
 				if ( $posn === false )
@@ -309,8 +282,9 @@
 					throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
 					}
 				//echo $fileContent."\n  Position last } : ".$posn."   ".substr($fileContent, $posn,5)."\n";	
-				$configString="\n	 function IPS".get_class($this)."_GetEventConfiguration() {\n                          ".$configString."\n".'		return '.$this->Get_Configtype().";\n	}\n";
-				$fileContentNew = substr($fileContent, 0, $posn+1).$configString.substr($fileContent, $posn+1);
+                $fullString  = "\n\n	 /*".get_class($this)."\n	  *\n	  *\n	  */\n";
+				$fullString .= "	 function IPS".get_class($this)."_GetEventConfiguration() {\n                          ".$configString."\n".'		return '.$this->Get_Configtype().";\n	}\n";
+				$fileContentNew = substr($fileContent, 0, $posn+1).$fullString.substr($fileContent, $posn+1);
 				//echo $fileContentNew;	
 				//echo "\n\n class name : ".get_class($this)."\n";						
 				//throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
@@ -319,7 +293,9 @@
 				{	
 				$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
 				}
-			file_put_contents($fileNameFull, $fileContentNew);
+			if ($debug) echo $configString;
+            else file_put_contents($fileNameFull, $fileContentNew);
+
 			$this->Set_EventConfigurationAuto($configuration);
 			}
 
@@ -335,45 +311,86 @@
 				echo "================================================\n";
 				echo "Function not inserted in config file. Insert now.\n";
                 }
-            $comment=0; $posn=false;	// letzte Klammer finden und danach einsetzen, den ganzen String durchgehen
-            for ($i=0;$i<strlen($fileContent);$i++)
-                {
-                switch ($fileContent[$i])           // der reihe nach auswerten // zeilenkommentar und /* kommentar erkennen
+            $comment=0; 
+            $posn=false;	// letzte Klammer finden und danach einsetzen, den ganzen String durchgehen
+            $star = 0;
+            $inString = false;
+            $stringChar = '';
+            $len = strlen($fileContent);            
+            for ($i = 0; $i < $len; $i++)  {
+                $char = $fileContent[$i];
+
+                // Handle string literals to avoid false positives on braces inside strings
+                if ($inString) {
+                    if ($char === $stringChar) {
+                        $inString = false;
+                    } elseif ($char === '\\') {
+                        $i++; // Skip escaped character
+                    }
+                    continue;
+                }
+                if ($char === '"' || $char === "'") {
+                    $inString = true;
+                    $stringChar = $char;
+                    continue;
+                }  
+                
+                // Handle comments
+                switch ($char)           
                     {
                     /* comment : 0 ok 1 / erkannt 2 /* erkannt 3 // erkannt */
                     case '/':
-                        if ( ($comment==2) && ($star==1) ) $comment=0;
-                        elseif ($comment==1) $comment=3;
-                        else $comment=1;
+                        if ( ($comment==2) && ($star==1) ) $comment=0;          // End of /* */
+                        elseif ($comment==1) $comment=3;                    // //   erkannt
+                        else $comment=1;                                // / erkannt
                         $star=0;
                     case '*':
-                        if ($comment==1) $comment=2;
+                        if ($comment==1) $comment=2;            // /*
                         $star=1;	
                         break;
                     case '}':
                     if ($comment <2 ) $posn=$i;	
                     case chr(10):
                     case chr(13):
-                        if ($comment==3) $comment=0;		
+                        if ($comment==3) $comment=0;		// End of //
                     default:
                         $star=0;
                         break;
                     }		
                 }
-            // $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren
             
+            // Fallback: try to find closing PHP tag if no brace found
             if ( $posn === false )
                 {
-                if (strlen($fileContent) > 6 )
+                $phpClose = strrpos($fileContent, '?>');
+                if ($phpClose !== false) {
+                    $posn = $phpClose - 1;
+                    if ($debug) echo "No closing brace found. Using PHP close tag at $posn.\n";
+                } elseif ($len > 6 )
                     {
-                    $posn = strrpos($fileContent, '?>')-1;
-                    echo "Weit und breit keine Klammer. Auf Pos $posn function einfügen.\n";
+                    $posn = $len - 1;
+                    echo "No closing brace or PHP tag found. Using end of file at $posn.\n";
                     }
                 else throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
                 }
             //echo $fileContent."\n  Position last } : ".$posn."   ".substr($fileContent, $posn,5)."\n";	
 
             return ($posn);
+            }
+
+        function convertParams($params)
+            {
+                    $update="array("; 
+                    for ($i=0; $i<count($params); $i=$i+3)          // schreibt in Dreierreihe, Infos sollten nicht verlorengehen
+                        {
+                        if ($i>0)                                                                                   // nach den ersten 3 Parametern keine Limitierung, aber weiterhin Abarbeitung in Dreiergruppen
+                            {
+                            for ($j=0;(isset($params[$i+$j])&&($j<3));$j++) $update .= "'".$params[$i+$j]."',";             // Abbruch wenn Parameter nicht in einer Reihe
+                            }
+                        else $update .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+                        }
+
+            return ($update);
             }
 
 		/** DetectHandler::CreateEvents
@@ -1006,7 +1023,7 @@
                     $configurationAuto[$variableId][] = $moduleParams;      // 2
                     if ($targetcount>3)
                         {
-                        for ($i=3;$i<$tragetcount;$i=$i+3)          // Input Werte von der nächsten Zeile $eventType[1],$componentParams[1],$moduleParams[1] usw.
+                        for ($i=3;$i<$targetcount;$i=$i+3)          // Input Werte von der nächsten Zeile $eventType[1],$componentParams[1],$moduleParams[1] usw.
                             {
                             $index=intval($i/3);
                             $configurationAuto[$variableId][$i]   = $eventType[$index];
@@ -1172,7 +1189,7 @@
                 print_r($groups); 
                 foreach ($groups as $group => $entry)
                     {
-                    $soid=$this->InitGroup($group,$debug);          // Handler spezifische function, ruft aber wieder DetectHandler::InitGroupPerName auf
+                    $soid=$this->InitGroupPerName($group,$debug);          // Handler spezifische function, ruft aber wieder DetectHandler::InitGroupPerName auf
                     if ($debug) echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
                     $result=$DetectDeviceHandler->RegisterEvent($soid,'Topology','',$type2);		
                     if ($result) { if ($debug) echo "   *** register Event $soid\n"; }
@@ -1323,6 +1340,14 @@
 						
 			parent::__construct();
 			}
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
 
 		/* DetectSensorHandler::Get_Configtype
          * Customization Part 
@@ -1481,6 +1506,14 @@
 						
 			parent::__construct();
 			}
+        
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
 
 		/* Customization Part */
 		
@@ -1564,9 +1597,9 @@
 		 * Die DetectCounterHandler Sensor Gesamtauswertung_ Variablen erstellen 
 		 *
 		 */
-		function InitGroup($group)
+		function InitGroup($group,$debug=false)
 			{
-			echo "\nDetect Counter Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			if ($debug) echo "\nDetect Counter Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$statusID=$this->InitGroupPerName($group,$debug);
 			return ($statusID);			
 			}  
@@ -1624,6 +1657,14 @@
 						
 			parent::__construct($debug);
 			}
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
 
 		/* Customization Part */
 		
@@ -1812,7 +1853,7 @@
                 // <- hier anpasen
                 $this->RegisterEvent($oid,"Climate",'','mirror->'.$mirror);     // par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig
 
-                if ($result) { if ($debug) echo "   *** register Event $moid: $typ\n"; }
+                if ($result) { if ($debug) echo "   *** register Event $moid\n"; }
                 }
             }                 
 
@@ -1872,6 +1913,15 @@
 						
 			parent::__construct();
 			}
+
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
 
 		/* Customization Part */
 		
@@ -1952,9 +2002,9 @@
 		 * Die Humidity Gesamtauswertung_ Variablen erstellen 
 		 *
 		 */
-		function InitGroup($group)
+		function InitGroup($group,$debug=false)
 			{
-			echo "\nDetect Feuchtigkeit Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			if ($debug) echo "\nDetect Feuchtigkeit Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$statusID=$this->InitGroupPerName($group,$debug);
 			return ($statusID);			
 			}
@@ -1996,7 +2046,7 @@
                 // das Mirror Register in die Konfiguration schreiben
                 $this->RegisterEvent($oid,"Feuchtigkeit",'','mirror->'.$mirror);     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig*/
 
-                if ($result) { if ($debug) echo "   *** register Event $moid: $typ\n"; }
+                if ($result) { if ($debug) echo "   *** register Event $moid\n"; }
                 }
             }
 
@@ -2078,6 +2128,14 @@
 			$this->Detect_DataID=$mdID;			
 			parent::__construct();
 			}
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
 
 		/* Customization Part */
 		
@@ -2316,6 +2374,14 @@
 			parent::__construct();			
 			}
 
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
+
 		/* Customization Part */
 		
 		function Get_Configtype()
@@ -2492,6 +2558,14 @@
 			if ($debug) echo "DetectContactHandler construct set Detect_DataID=$mdID.\n";
 			parent::__construct();
 			}
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
 
 		/* Customization Part */
 		
@@ -2671,6 +2745,14 @@
 			if ($debug) echo "DetectTemperatureHandler construct set Detect_DataID=$mdID.\n";
 			parent::__construct();			
 			}
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
 
 		/* Customization Part */
 		
@@ -2875,7 +2957,7 @@
                 // das Mirror Register in die Konfiguration schreiben
                 $this->RegisterEvent($oid,"Temperatur",'','mirror->'.$mirror);     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig*/
 
-                if ($result) { if ($debug) echo "   *** register Event $moid: $typ\n"; }
+                if ($result) { if ($debug) echo "   *** register Event $moid\n"; }
                 }
             }                 
 
@@ -2931,6 +3013,14 @@
 			
 			parent::__construct();			
 			}
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
 
 		/* Customization Part */
 		
@@ -3130,6 +3220,14 @@
 			parent::__construct();			
 			}
 
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (true);
+            }
+
 		/* Customization Part */
 		
 		function Get_Configtype()
@@ -3248,6 +3346,91 @@
 			
 		}
 
+    /******************************************************************************************************************/
+
+	class DetectEventHandler extends DetectHandler
+		{
+
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $configtype;
+		private static $configFileName;				
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des DetectEventHandler Objektes
+		 *
+		 */
+		public function __construct()
+			{
+			/* Customization of Classes */
+			self::$configtype = '$eventConfiguration';                                          /* <-------- change here */
+			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+			parent::__construct();			
+			}
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (false);
+            }
+
+		/* Customization Part */
+		
+		function Get_Configtype()
+			{
+			return self::$configtype;
+			}
+		function Get_ConfigFileName()
+			{
+			return self::$configFileName;
+			}				
+
+		/* DetectEventHandler, obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+
+		function Get_EventConfigurationAuto($debug=false)
+			{
+            if ($debug) echo "DetectEventHandler::Get_EventConfigurationAuto \n";
+			if (self::$eventConfigurationAuto == null)
+				{
+                if ( function_exists('IPS'.get_class($this).'_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectEventHandler_GetEventConfiguration();       /* <-------- change here */
+				else self::$eventConfigurationAuto = array();					
+                //echo "GetEventConf\n"; print_R(self::$eventConfigurationAuto);
+				}
+			return self::$eventConfigurationAuto;
+			}
+
+		/**
+		 *
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 */
+		function Set_EventConfigurationAuto($configuration)
+			{
+			self::$eventConfigurationAuto = $configuration;
+			}
+			
+		public function CreateMirrorRegister($variableId,$debug=false)          // because of abstract class
+			{
+            }
+
+        /* fuer StoreEventConfiguration
+         */
+        function convertParams($params,$debug=false)
+            {
+            //print_r($params);
+            $ipsOps = new ipsOps();
+            $update = "array(";
+            $config["ident"]=20;$config["start"]=false;
+            $ipsOps->serializeArrayAsPhp($params,$update,0,$config,$debug);           // debug is true, depth muss 0 sein
+            //$update .= "),";
+            return ($update);
+            }            
+
+		}
+
 	/*******************************************************************************
 	 *
 	 * Class Definitionen DetectDeviceHandler und DetectDeviceListHandler
@@ -3293,6 +3476,15 @@
 		{
 		protected $topology;            // topologie ist auch in der Children class verfügbar
         protected $ID,$Config;
+
+
+        /* is_groupconfig
+         *
+         */
+        public function is_groupconfig()
+            {
+            return (false);
+            }
 
 	    public function Get_Configtype()
 			{
@@ -3673,8 +3865,11 @@
          *
          *
          */
-        function mergeTopologyObjects($topology, $objectsConfig, $debug=false)
+        function mergeTopologyObjects($topology, $channelEventListObject, $debug=false)
             {
+            if ($channelEventListObject instanceof DetectDeviceHandler) $objectsConfig = $channelEventListObject->get_Eventlist();
+            else $objectsConfig = $channelEventListObject;
+
             if ($debug) echo "mergeTopologyObjects mit Informationen aus einer DetectDeviceHandler Configuration aufgerufen, in die Topologie einsortieren:\n";
             if (isset($this->installedModules["Stromheizung"])) 
                 {                                                
@@ -3690,6 +3885,7 @@
             $text="";                
             $topologyPlusLinks=$topology;               // Topologie ins Ergebnis Array übernehmen
             //echo "Beispiel Waschkueche in topology ausgeben:"; print_r($topology["Waschkueche"]);
+            $topoCount=0;
             if ($debug) echo "Register aus objectsConfig der Reihe nach durchgehen:\n";
             foreach ($objectsConfig as $index => $entry)                    // Register der Reihe nach durchgehen, Informationen über den Raum analysieren
                 {
@@ -3706,6 +3902,7 @@
 
                 if ( ($entry[1]!="") && (sizeof($entry1)>0) )           // es wurden ein oder mehrere Räume definiert
                     {
+                    $topoCount++;
                     foreach ($entry1 as $entryplace)         // alle Räume durchgehen, es können auch Raumangaben mit einer tilde und einem übergeordneten Ort
                         {
                         $place=$this->uniqueNameReference($entryplace,$references);         // für eine Raumangabe Wohzimmer~LBG70 den uniquename Wohnzimmer__1 finden
@@ -3863,6 +4060,7 @@
                         }
                     }
                 }  // ende foreach
+            if ($debug) echo "   Insgesamt $topoCount Register in die Topologie einsortiert.\n";
             return ($topologyPlusLinks);
             }
 
@@ -4300,7 +4498,7 @@
 	class DetectDeviceHandler extends DetectHandlerTopology
 		{
 
-        public $channelEventList=array();
+        protected $channelEventList=array();
 
 		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
@@ -4327,6 +4525,15 @@
 	        parent::__construct($debug);
 			}
 
+        /* setEventListFromConfigFile
+        * get Eventlist from config file and store it in class
+        * es fehlt die Angabe des include files
+        */
+        public function setEventListFromConfigFile($debug=false)
+            {
+            if ($debug) echo "DetectDeviceHandler::setEventListFromConfigFile:\n";
+            $this->channelEventList = $this->Get_EventConfigurationAuto();
+            }
 
 		public function Get_Configtype()
 			{
@@ -4670,7 +4877,10 @@
                 }       // ende foreach
             }
 
-        /* DetectDeviceHandler::addTopology   same method in DeviceListManagement
+        /* DetectDeviceHandler::addTopologyByDeviceList   same method in DeviceListManagement
+         * channelEventlist update based on devicelist data and aligned with deviceEventList and eventList
+         * Data that is not in the devicelist is not changed
+         * 
          * Topology in devicelist anlegen
          *      es kommt dazu
          *          UUID, von der Topology Device Konfiguration mit gleichem Namen
@@ -4684,19 +4894,44 @@
          * je nach übergebenen Daten, unterschiedliche Funktionen aufrufen
          *      keine Parameter, alle Topology Devices einlesen, liste mit Namen machen, Konfigurationsdaten auslesen   -> noch nicht unterstützt
          *      nur topology, es muss kann die unified topology sein
-         *      
+         *
+         * Todo, nachdem die falsche Datei behalten wurde:
+         * hinzunehmen von eventlist, Abgleich der DeviceListe mit allen anderen Files und am Ende speichern
+         * direkter Zugriff auf die Liste
+         *     
          */
-        public function addTopology($devicelist,$deviceEventList,$debug=false)
+        /**
+         * Adds topology information based on the provided device list.
+         *
+         * @param DeviceListManagement $devicelist         The device list management instance containing devices to be added to the topology.
+         * @param DetectDeviceListHandler $deviceEventList The handler for device events used in topology detection.
+         * @param DetectEventListHandler $eventList        The handler for general event management in topology detection.
+         * @param bool $debug                             Optional. If true, enables debug output. Default is false.
+         *
+         * @return void
+         */
+        public function addTopologyByDeviceList(DeviceListManagement $devicelist,DetectDeviceListHandler $deviceEventList, DetectEventListHandler $eventList, $debug=false)
             {
-            if ( (($devicelist instanceof DeviceListManagement) && ($deviceEventList instanceof DetectDeviceListHandler))===false) return (false);
-            echo "addTopology to channeleventlist from ".get_class($devicelist)." and ".get_class($deviceEventList)."    \n";           //Fehlermeldung wenn keine class
+            //if ( (($devicelist instanceof DeviceListManagement) && ($deviceEventList instanceof DetectDeviceListHandler))===false) return (false);
             $status=true;
             $modulhandling = new ModuleHandling();
-            $deviceEventList = $deviceEventList->get_Eventlist();
-            $channelEventList =  $this->Get_EventConfigurationAuto();
-
-            $devicelistdata = $devicelist->read_devicelist();
             $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");      // Liste von Topolog Devices, Name Ident mit Eintrag Devicelist
+
+            //deviceEventListData
+            $deviceEventListData = $deviceEventList->get_Eventlist();
+
+            //channelEventListData
+            $this->setEventListFromConfigFile($debug);
+            $channelEventListData =  $this->Get_EventConfigurationAuto();
+
+            //devicelistdata
+            $devicelistdata = $devicelist->read_devicelist();
+            //if ($debug) $devicelist->printDevicelist();          // Liste von Geräten mit Topology Eintrag
+
+            //eventListData
+            $eventListData = $eventList->getEventList();
+
+            echo "addTopologyByDeviceList to channeleventlist (".sizeof($channelEventListData).") from devicelist (".sizeof($devicelistdata).") and deviceEventList (".sizeof($deviceEventListData)." and EventList (".sizeof($eventListData).")) \n";           
 
             foreach ($devicelistdata as $name => $entry)            // name is unique in devicelist
                 {
@@ -4705,21 +4940,21 @@
                 else    
                     { 
                     $room="";                            // mit einem leeren Raum anfangen und nach Indizien suchen
-                    // für alle oids die ich finde die channel events befragen
+                    // für alle oids die ich finde die channelEventList befragen, was ist vorhanden
                     foreach ($oids as $oid)                 
                         {
-                        if (isset($channelEventList[$oid])) 
+                        if (isset($channelEventListData[$oid])) 
                             {
-                            $config=json_encode($channelEventList[$oid]);
-                            if ($channelEventList[$oid][1] !="")
+                            $config=json_encode($channelEventListData[$oid]);
+                            if ($channelEventListData[$oid][1] !="")
                                 {
                                 if ($room == "") 
                                     {
-                                    $room=$channelEventList[$oid][1];
+                                    $room=$channelEventListData[$oid][1];
                                     }
                                 else
                                     {
-                                    if ($room != $channelEventList[$oid][1]) echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$instance["OID"]][1]."\n";
+                                    if ($room != $channelEventListData[$oid][1]) echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$instance["OID"]][1]."\n";
                                     }
                                 }
                             }
@@ -4727,28 +4962,28 @@
 
                     // dann erst die Instanzen vergleichen
                     $InstanzID = $deviceInstances[$name];   
-                    if (isset($deviceEventList[$InstanzID]))        // device mit Rauminformation abgleichen, pro Gerät gibt es basierend auf dem Topology Device eine Rauminformation
+                    if (isset($deviceEventListData[$InstanzID]))        // device mit Rauminformation abgleichen, pro Gerät gibt es basierend auf dem Topology Device eine Rauminformation
                         {
                         //print_r($deviceEventList[$InstanzID]);
                         if ($room == "")                            // immer noch nichts gefunden, wo ist die Instanz eigentlich
                             {
-                            if ($deviceEventList[$InstanzID][1] != "")
+                            if ($deviceEventListData[$InstanzID][1] != "")
                                 {
-                                $room = $deviceEventList[$InstanzID][1];
+                                $room = $deviceEventListData[$InstanzID][1];
                                 }
                             else
                                 {
                                 $parentName=IPS_GetName(IPS_GetParent($InstanzID));
-                                if ($debug) echo "   addTopology, deviceeventlist no room data. Topology Instanz $name ($InstanzID) Parent : $parentName \n";
+                                if ($debug>1) echo "   addTopology, deviceEventList no room data. Topology Instanz $name ($InstanzID) Parent : $parentName \n";
                                 }
                             }
-                        elseif ($room != $deviceEventList[$InstanzID][1]) 
+                        elseif ($room != $deviceEventListData[$InstanzID][1]) 
                             {
-                            echo "Topology Device ".str_pad($name,55)." in room    $room   or here ".$deviceEventList[$InstanzID][1]."\n";
+                            echo "Topology Device ".str_pad($name,55)." in room    $room   or here ".$deviceEventListData[$InstanzID][1]."\n";
                             }
-                        elseif ($debug) echo "Topology Device ".str_pad($name,55)." in room    $room \n";
+                        elseif ($debug>1) echo "Topology Device ".str_pad($name,55)." in room    $room \n";
                         }
-                    else echo " Warning, da lauft was schief, $name $deviceEventList kein Eintrag für Topology Device $InstanzID. \n";
+                    else echo " Warning, da lauft was schief, $name $deviceEventListData kein Eintrag für Topology Device $InstanzID. \n";
                     //$configUpdated = $topologyLibrary->initInstanceConfiguration($InstanzID,$newentry,$debug);          //true für debug
                     $configTopologyDevice=IPS_GetConfiguration($InstanzID);  
                     $configUpdated=json_decode($configTopologyDevice,true);                   
@@ -4757,34 +4992,39 @@
                     unset($configUpdated['UpdateInterval']);
                     $configUpdated["Name"]=$room;           // das ist der aus der Config
                     // auslesen weil eh schon richtig
-                    $configUpdated["UniqueName"]=$deviceEventList[$InstanzID][4];
-                    $configUpdated["UniquePath"]=$deviceEventList[$InstanzID][5];
-
-                    foreach ($oids as $oid)                 
+                    $configUpdated["UniqueName"]=$deviceEventListData[$InstanzID][4];
+                    $configUpdated["UniquePath"]=$deviceEventListData[$InstanzID][5];
+                    
+                    // update room in channelEventList if needed
+                    if ($room != "") 
                         {
-                        if (isset($channelEventList[$oid])) 
+                        foreach ($oids as $oid)    
                             {
-                            if ($debug) echo "update channelEventList $oid from ".$channelEventList[$oid][1]." with $room\n";
-                            $config=json_encode($channelEventList[$oid]);
-                            if ($channelEventList[$oid][1] == "") 
+                            if (isset($channelEventListData[$oid])) 
                                 {
-                                $channelEventList[$oid][1]=$room;
-                                }
-                            else
-                                {
-                                if ($room != $channelEventList[$oid][1]) 
+                                $config=json_encode($channelEventListData[$oid]);
+
+                                if ($channelEventListData[$oid][1] == "") 
                                     {
-                                    echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$instance["OID"]][1]."\n";
-                                    $channelEventList[$oid][1]=$room;
+                                    $channelEventListData[$oid][1]=$room;
+                                    if ($debug) echo "$name, update channelEventList $oid from ".$channelEventListData[$oid][1]." with $room.  $config\n";
                                     }
-                                }                            
+                                else
+                                    {
+                                    if ($room != $channelEventListData[$oid][1]) 
+                                        {
+                                        echo "$name, Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventListData[$oid][1]."\n";
+                                        $channelEventListData[$oid][1]=$room;
+                                        }
+                                    }                            
+                                }
                             }
                         }
                     $status = $this->updateData($devicelistdata[$name]["Topology"],$configUpdated,$name);
                     }
                 }           // ende foreach
             $devicelist->write_devicelist($devicelistdata);
-            $this->channelEventList = $channelEventList;
+            $this->channelEventList = $channelEventListData;
             return ($status);
             }
             
@@ -4797,6 +5037,87 @@
             {
             if (sizeof($this->channelEventList)>0) $this->StoreEventConfiguration($this->channelEventList,"full update from todo");
             else echo "warning, write_EventList, channelevents, data has not been created.\n";
+            }
+
+        public function addTopologyByEventList(DetectEventListHandler $eventList, $debug=false)
+            {
+            $status=true;
+            $eventListData = $eventList->getEventList();
+            if ($debug) echo "addTopologyByEventList to channeleventlist (".sizeof($this->channelEventList).") from eventList (".sizeof($eventListData).") \n";           
+            foreach ($eventListData as $oid => $entry)
+                {
+                }
+            }
+        
+        public function alignByCoidsList($coids,$style="summary")
+            {
+            if ($style=="summary") 
+                {
+                $coidCount=0;
+                foreach ($this->channelEventList as $variableId=>$params)
+                    {
+                    if (isset($coids[$variableId])) $coidCount++;
+                    }
+                echo "DetectDeviceHandler::alignByCoidsList ".sizeof($this->channelEventList)." coid found $coidCount.\n";
+                }
+            else
+                {
+                $coidCount=0;                    
+                foreach ($this->channelEventList as $variableId=>$params)
+                    {
+                    if (isset($coids[$variableId]))
+                        {
+                        echo "* ";
+                        $coidCount++;
+                        }
+                    else
+                        {
+                        echo "  ";
+                        }
+                    echo $variableId."   ";
+                    if (IPS_ObjectExists($variableId)) 
+                        {
+                        echo str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",90);
+                        foreach ($params as $index=>$param) { echo " \"$param\","; }
+                        }
+                    else echo "******* Delete Entry from IPSDetectDeviceHandler_GetEventConfiguration() in EvaluateHardware_Configuration.";
+                    echo "\n";
+                    }
+                echo "DetectDeviceHandler::alignByCoidsList ".sizeof($this->channelEventList).", thereof coid found $coidCount.\n";
+                }
+            }
+
+        public function addTopologyByCoidsList($coids,$style="summary")
+            {
+            $coidCount=0;                    
+            foreach ($this->channelEventList as $variableId=>$params)
+                {
+                if (isset($coids[$variableId]))
+                    {
+                    echo "* ";
+                    $coidCount++;
+                    }
+                else
+                    {
+                    echo "  ";
+                    }
+                echo $variableId."   ";
+                if (IPS_ObjectExists($variableId)) 
+                    {
+                    echo str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",90);
+                    foreach ($params as $index=>$param) { echo " \"$param\","; }
+                    }
+                else echo "******* Delete Entry from IPSDetectDeviceHandler_GetEventConfiguration() in EvaluateHardware_Configuration.";
+                if (isset($coids[$variableId]["TOPO"]["SIMPLE"]))
+                    {
+                    $path=$coids[$variableId]["TOPO"]["SIMPLE"];
+                    $pathInfo=explode(".",$path);
+                    if (isset($pathInfo[0])) $this->channelEventList[$variableId][1]=$pathInfo[0];
+                    echo "   found in coidslist.".json_encode($coids[$variableId]["TOPO"]["SIMPLE"]);
+                    }
+                echo "\n";
+                }
+            echo "DetectDeviceHandler::addTopologyByCoidsList ".sizeof($this->channelEventList).", thereof coid found $coidCount.\n";
             }
 
 		}  /* ende class */
@@ -4826,12 +5147,14 @@
 	class DetectDeviceListHandler extends DetectHandlerTopology
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+        protected $deviceEventList;
+       	
+        private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
 		private static $configFileName;		
 
         protected $topology;
-        protected $deviceEventList;
+ 
 
 		/**
 		 * @public
@@ -4850,6 +5173,15 @@
 	        parent::__construct();
 			}
 
+        /* DetectDeviceListHandler::setEventListFromConfigFile
+         * get Eventlist from config file and store it in class
+         * es fehlt die Angabe des include files
+         */
+        public function setEventListFromConfigFile($debug=false)
+            {
+            if ($debug) echo "DetectDeviceListHandler::setEventListFromConfigFile:\n";
+            $this->deviceEventList = $this->Get_EventConfigurationAuto($debug);
+            }
 
 		public function Get_Configtype()
 			{
@@ -4911,17 +5243,17 @@
             {
             $status=true;
             $objectway=false;
-            if ($topology instanceof TopologyManagement)
+            if ($topology instanceof TopologyManagement)            // überprüfung zur Runtime nicht Compile Time ?
                 {
                 $objectway=true;
                 $topologydata=$topology->Get_Topology();
                 }
             else $topologydata=$topology;
 
-            echo "analyseTopologData based on topology (".sizeof($topologydata)." Data elements)\n";
-            $references = $this->topologyReferences($topologydata);
+            if ($debug) echo "analyseTopologData based on topology (".sizeof($topologydata)." Data elements)\n";
+            $references = $this->topologyReferences($topologydata);         // ist in der falschen class, move to TopologyManagement
             //print_r($references);
-            $this->deviceEventList = $this->Get_EventConfigurationAuto();
+            //$this->deviceEventList = $this->Get_EventConfigurationAuto();
             foreach ($this->deviceEventList as $topodeviceId => $configuration)               // $DetectDeviceListHandler Methode
                 {
                 $roomconf=$configuration[1];            // da gabs noch mehr Parameter
@@ -4964,7 +5296,9 @@
                 else $pathecho="Room unknown in references";
 
                 // Pfad zum Raum definieren und uniquename
+                // par3
                 if (isset($this->deviceEventList[$topodeviceId][3])===false) $this->deviceEventList[$topodeviceId][3]="";
+                // par4, $uniqueroom
                 if (isset($this->deviceEventList[$topodeviceId][4])===false) $this->deviceEventList[$topodeviceId][4]=$uniqueroom;
                 else    
                     {
@@ -4975,10 +5309,11 @@
                         $status=false; 
                         }
                     }
+                // par5, $path    
                 if (isset($this->deviceEventList[$topodeviceId][5])===false) $this->deviceEventList[$topodeviceId][5]=$path;
                 else    
                     {
-                    if ($this->deviceEventList[$topodeviceId][5] == "") $this->deviceEventList[$topodeviceId][4]=$path;
+                    if ($this->deviceEventList[$topodeviceId][5] == "") $this->deviceEventList[$topodeviceId][5]=$path;
                     else if ($this->deviceEventList[$topodeviceId][5] != $path)    
                         { 
                         echo "     Warning, analyseTopologData, Overwrite par5, $name : ".$this->deviceEventList[$topodeviceId][5]." != $path , clear data from config.\n";  
@@ -4997,6 +5332,64 @@
         public function write_Eventlist()
             {
             $this->StoreEventConfiguration($this->deviceEventList,"Full update of List");
+            }
+
+        public function printEventlist($style="table")  
+            {
+            if ($style=="table")
+                {
+                echo "   ".str_pad("TOPOID",10)." ".str_pad("Name",30)." ".str_pad("RoomConf",30)." ".str_pad("UniqueRoom",30)." ".str_pad("Path",50)."\n";
+                echo "   ".str_repeat("=",150)."\n";
+                foreach ($this->deviceEventList as $topoid => $entry)
+                    {
+                    $name=IPS_GetName($topoid);
+                    $roomconf=$entry[1];
+                    $uniqueroom=$entry[4];
+                    $path=$entry[5];
+                    echo "   ".str_pad($topoid,10)." ".str_pad($name,30)." ".str_pad($roomconf,30)." ".str_pad($uniqueroom,30)." ".str_pad($path,50)."\n";
+                    }   
+                }
+            if ($style=="summary")
+                {
+                $topoCount=0;
+                foreach ($this->deviceEventList as $topoid => $entry)
+                    {
+                    $name=IPS_GetName($topoid);
+                    $roomconf=$entry[1];
+                    $uniqueroom=$entry[4];
+                    $path=$entry[5];
+                    if ($path != "") $topoCount++;
+                    }   
+                echo "   DetectDeviceListHandler::printEventlist Summary of Device Topology ".sizeof($this->deviceEventList)." Entries, $topoCount with Topology.\n";
+                }
+            }     
+
+        public function compareEventlist($deviceEventListDataOld, $debug=false)
+            {
+            // compare deviceEventListData and deviceEventListDataOld
+            $newEntries=0;
+            foreach ($this->deviceEventList as $objectId => $params)
+                {
+                if (!isset($deviceEventListDataOld[$objectId]))
+                    {
+                    echo "     New Entry for $objectId ".IPS_GetName($objectId)."  ";
+                    foreach ($params as $index=>$param) { echo " \"$param\","; }
+                    echo "\n";
+                    $newEntries++;
+                    }
+                else
+                    {
+                    $oldParams=$deviceEventListDataOld[$objectId];
+                    foreach ($params as $index=>$param)
+                        {
+                        if (!isset($oldParams[$index]) || ($oldParams[$index] != $param))
+                            {
+                            echo "     Changed Entry for $objectId ".IPS_GetName($objectId)."  ";
+                            echo "     \"$index\" was \"".$oldParams[$index]."\" now \"$param\" \n";
+                            }
+                        }
+                    }   
+                }            
             }
 
 		}  /* ende class */
@@ -5031,277 +5424,42 @@
  *
  **************************************/
 
-class TestMovement
-	{
-	
-	private $debug;
-	public $eventlist;
-	public $eventlistDelete;
-	
-	public $motionDevice, $switchDevice;	/* erkannte Homematic Geräte */
-
-	
-	/**********************************
+class TestMovement extends DetectEventListHandler
+    {
+	/* TestMovement::__construct
 	 *
-	 * der Reihe nach die Events die unter dem Handler haengen durchgehen und plausibilisieren 
-	 *
-	 * dabei die Erfassung, Speicherung, Bearbeitung von der Visualisiserung trennen
-	 *
-	 *******************************/
-	
+	 */
 	public function __construct($debug=false) 
 		{	
 		$this->debug=$debug;
 		if ($debug) echo "TestMovement Construct, Debug Mode, zusätzliche Checks bei der Eventbearbeitung:\n";
         //$this->syncEventList($debug);       // speichert eventList und eventListDelete
-		}	
+        parent::__construct($debug);
+		}
 
-    /* die Script ID auslesen von dem Script an dem die Events hängen
-     */
-    public function getScriptIdMessageHandler()
-        {
-        return IPS_GetScriptIDByName('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));    
-        }
-
-    /* eventliste erzeugen aus Liste aller Events die einem Script zugeordnet sind
-     * check ob Name event stimmt
-     * check ob der Parent des Events das Script ist 
-     * check ob der Name des Events mit der Triggervariable zusammenpasst
-     * check ob es die Triggervariable noch gibt, sonst nicht übernehmen
-     */
-    public function getEventListByScriptId($scriptId)
-        {
-        echo "Script $scriptId EventListe ausgeben:  \n";
-        $eventlist=array();
-        $events=IPS_GetScriptEventList($scriptId);
-        //print_R($events);
-        $i=0;
-        foreach ($events as $eventOid)
-            {
-			$name=IPS_GetName($eventOid);
-			$eventID_str=substr($name,Strpos($name,"_")+1,10);
-			$eventID=(integer)$eventID_str;
-			if (substr($name,0,1)=="O")	;								// sollte mit O anfangen
-            else echo "   Fehler getEventListByScriptId $eventOid, Name falsch.\n";
-            
-            if (IPS_ObjectExists($eventID)==false) echo "   Fehler getEventListByScriptId $eventOid, Event Trigger Variable existiert nicht.\n"; 
-            else
-                {
-                $eventlist[$i]["OID"]=$eventOid;	            //die OID des Events			
-                $eventlist[$i]["Name"]=$name;
-                $eventlist[$i]["EventID"]=$eventID;             // die Variable die das Event auslöst
-
-                $event = IPS_GetEvent($eventOid);
-                if ($event["TriggerVariableID"] != $eventID) 
-                    {
-                    echo "   Fehler getEventListByScriptId $eventOid, Event Trigger Variable stimmt nicht mit dem Namen zusammen \n";
-                    $eventlist[$i]["EventID"]=$event["TriggerVariableID"]; 
-                    }
-                if (IPS_GetParent($eventOid) !== $scriptId) echo "    Fehler getEventListByScriptId $eventOid, Ort falsch, Parent nicht $scriptId \n";	
-                $i++;
-                }
-            }
-        $this->eventlist=$eventlist;
-        return $eventlist;
-        }
-
-
-    /* eventList gibt es, die ist nach Einträgen sortiert, mit Config aus MessageHandler abgleichen
-     * Fehler 1, es gibt mehr Events als Config Einträge
-     * Fehler 2 es gibt mehr Config Einträge als Events
-     * Fehler 3 das TriggerObjekt für das Event gibt es nicht, eine DeleteListe erstellen
-     * dazu die Eventlist auf den selben Index wie die Config bringen, das ist die EventID
+    /* EventList erzeugen
+     *  ScriptID von IPSMessageHandler_Event rausfinden und die darunter angelegten Children, Events rausfinden
+     *  sortiert dabei auch gleich die Events nach Ihrer EventID
      *
+     *  Abgleich mit vorhandenen Konfigurationen und Darstellung in der Eventlist
+     *
+     * Folgende tabelleneintraege gibt es bereits in der Grundausstattung 
+     *   OID Objekt OID vom IP Symcon Event
+     *   Name des IP Symcon Events
+     *   OID des auslösendes Registers, eigentlichem Event
+     *   Fehler eventueller Eintrag wenn etwas nicht stimmt
+     *   Pfad des auslösenden Registers
+     *   NameEvent Name des auslösenden Registers 
+     *   Instanz sollte der Parent des auslösenden registers eine Instanz sein, diese hier anführen. ZB Homematic Device
+     *   Typ, wird in der Tabelle als Funktion ausgegeben, Wenn das auslösende Register in einer der detectMovement Konfigurationen steht, hier einen entsprechenden Eintrag machen
+     *
+     * Bearbeitet folgende class Variablen
+     *  eventlist
+     *  eventlistDelete
      *
      */
-    public function checkEventsConfig($eventlistConfig)
-        {
-        $debug=true;
-		$i=0;
-		$delete=0;			// mitzaehlen wieviele events geloescht werden muessen 
-
-		$eventlistDelete=array();		// Sammlung der Events für die es kein Objekt mehr dazu gibt
-
-        $eventlistordered=array();            
-        foreach ($this->eventlist as $entry) $eventlistordered[$entry["EventID"]]=$entry;
-        //print_R($eventlistordered);
-        foreach ($eventlistConfig as $eventID => $entry)
-            {
-            if (IPS_ObjectExists($eventID)==false)
-                { 
-                // Objekt für das Event existiert nicht mehr
-                $delete++;
-                $eventlistDelete[$eventID]["Fehler"]=1;
-                $eventlistDelete[$eventID]["OID"]=$eventID;
-                echo "    Fehler 3, alignEvents, ".$eventID." in Configuration existiert nicht, aus der Config Datei \"IPSMessageHandler_GetEventConfiguration\" loeschen: ".$eventlistConfig[$eventID][1].$eventlistConfig[$eventID][2]."\n";
-                }	                
-            if (isset($eventlistordered[$eventID])===false) 
-                {
-                echo "   Fehler 2, alignEvents, ".$eventID." not found in Eventlist \n";
-                }
-            }
-        $events=array();
-        foreach ($eventlistordered as $oid => $entry)               // das ist die gefundene Liste aller Events mit dem Script als Target
-            {
-            if (isset($eventlistConfig[$oid])===false) 
-                {
-                echo "    Fehler 1, alignEvents, not found $oid in Configuration, add to Configuration, RegisterEvent with installComponent. \n";
-                }
-            else
-                {
-                $events[$eventID]=$entry["OID"];                          // eventID die auslösende Variable, OID das Event das unterhalb des Scripts gespeichert ist  
-                }           
-            }
-        $this->eventlistDelete = $eventlistDelete;
-        return $events;
-        }
-
-    /* die Events so einsortieren, damit sie leichter zu erkennen sind
-     */
-    public function sortEvents($events)
-        {
-		foreach ($events as $eventId => $oid)
-            {
-    		IPS_SetPosition($oid,$eventId);		            // einsortieren	
-            }
-        }
-
-     /* $eventlistConfig aus MessageHandler in eventlist einbinden und weiter überprüfen
-      * wenn Parent von EventId eine Instanz ist den ModuleName auslesen 
-      */
-    public function alignEventsConfig($eventlistConfig,$debug=false)
-        {
-        foreach ($this->eventlist as $index => $entry)
-            {
-            $eventID=$entry["EventID"];             // die TargetVariable, das TriggerEvent
-            $instanzID=IPS_GetParent($eventID);         // den Pfad ermitteln, was ist der Parent
-            if ($debug) echo "   ".$eventID."  ".str_pad(IPS_GetName($instanzID)."/".IPS_GetName($eventID),75)." ";
-            $instanz="";
-            switch (IPS_GetObject($instanzID)["ObjectType"])
-                {
-                /* 0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link */
-                case 0:
-                    if ($debug) echo "Kategorie  ";
-                    break;
-                case 1:
-                    $instanz=IPS_GetInstance($instanzID)["ModuleInfo"]["ModuleName"];
-                    if ($debug) echo "Instanz    ";
-                    break;
-                case 2:
-                    if ($debug) echo "Variable   ";
-                    break;
-                case 3:	
-                    if ($debug) echo "Skript     ";
-                    break;
-                case 4:
-                    if ($debug) echo "Ereignis   ";
-                    break;
-                case 5:
-                    if ($debug) echo "Media      ";
-                    break;
-                case 6:
-                    if ($debug) echo "Link       ";
-                    break;
-                default:
-                    echo "**** Fehler unknown Type";
-                    break;
-                }
-            if (IPS_GetObject($eventID)["ObjectType"]==2)    // Wenn Event vom Typ Variable auch Wert Instanz ID ausgeben 	
-                {
-                if ($debug) echo $instanzID;
-                }
-            else 	
-                {
-                echo "**** Fehler, referenzierte EventID ist vom Typ keine Variable.   ";
-                echo "Objekt : ".$eventID." Instanz : ".IPS_GetName($instanzID)." \n ";
-                }
-            $this->eventlist[$index]["Pfad"]=IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($eventID))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($eventID)))."/".IPS_GetName(IPS_GetParent($eventID));
-            $this->eventlist[$index]["NameEvent"]=IPS_GetName($eventID);
-            $this->eventlist[$index]["Instanz"]=$instanz;
-            if (isset($eventlistConfig[$eventID][1])) $this->eventlist[$index]["Component"]=$eventlistConfig[$eventID][1];           // Component Config
-            if (isset($eventlistConfig[$eventID][2])) $this->eventlist[$index]["Module"]=$eventlistConfig[$eventID][2];           // Component 
-            if (isset($eventlistConfig[$eventID][3])) $this->eventlist[$index]["Parameter"]=$eventlistConfig[$eventID][3];
-            if (isset($eventlistConfig[$eventID][4])) echo "   There is more I do not know\n";
-            }
-        }
-
-    public function alignOtherEvents($eventlistConfig,$identifier)
-        {
-        foreach ($this->eventlist as $index => $entry)
-            {
-            $eventID=$entry["EventID"];             // die TargetVariable, das TriggerEvent                
-            if (isset($eventlistConfig[$eventID][1])) $this->eventlist[$index][$identifier]  = $eventlistConfig[$eventID][1];
-            if (isset($eventlistConfig[$eventID][2])) $this->eventlist[$index][$identifier] .= "|".$eventlistConfig[$eventID][2];
-            // keine Leermeldungen, der Übersicht halber
-            }
-        }
-
-    public function extendComponent()
-        {
-        foreach ($this->eventlist as $index => $entry)
-            {
-
-            }
-        }
-
-    /* die devicelist vorher umwandeln und aus allen Channeln die eine zugeordneten Type haben die Coid herausfiltern und ein array daraus zusammenstellen
-     *
-     */
-    public function alignDeviceList($coids)
-        {
-        foreach ($this->eventlist as $index => $entry)
-            {
-            $eventID=$entry["EventID"];             // die TargetVariable, das TriggerEvent     
-            if (isset($coids[$eventID]) === false)  
-                { 
-                echo "do not find $eventID ".$entry["NameEvent"]." from eventList in devicelist. Nicht alle Events sind in der DeviceList erfasst.\n";
-                //echo json_encode($entry)."\n";
-                }
-            else    
-                {
-                $this->eventlist[$index]["DeviceList"]=$coids[$eventID];
-                }
-            }
-        $eventlistordered=array();            
-        foreach ($this->eventlist as $index => $entry) 
-            {
-            //echo json_encode($entry)."\n"; 
-            $eventlistordered[$entry["EventID"]]=$entry;
-            }
-        foreach ($coids as $eventID => $entry)
-            {
-            if (isset($eventlistordered[$eventID])===false)
-                {
-                echo "Devicelist Variable ".IPS_GetName($eventID)." von ".$entry["OID"]." ".IPS_GetName($entry["OID"])." mit Typ ".$entry["Type"]." mit OID $eventID nicht in eventlist eingetragen. ".json_encode($entry)."\n";
-                }
-            }
-        }
-
-		/* EventList erzeugen
-         *  ScriptID von IPSMessageHandler_Event rausfinden und die darunter angelegten Children, Events rausfinden
-         *  sortiert dabei auch gleich die Events nach Ihrer EventID
-         *
-         *  Abgleich mit vorhandenen Konfigurationen und Darstellung in der Eventlist
-         *
-         * Folgende tabelleneintraege gibt es bereits in der Grundausstattung 
-		 *   OID Objekt OID vom IP Symcon Event
-		 *   Name des IP Symcon Events
-		 *   OID des auslösendes Registers, eigentlichem Event
-		 *   Fehler eventueller Eintrag wenn etwas nicht stimmt
-		 *   Pfad des auslösenden Registers
-		 *   NameEvent Name des auslösenden Registers 
-		 *   Instanz sollte der Parent des auslösenden registers eine Instanz sein, diese hier anführen. ZB Homematic Device
-		 *   Typ, wird in der Tabelle als Funktion ausgegeben, Wenn das auslösende Register in einer der detectMovement Konfigurationen steht, hier einen entsprechenden Eintrag machen
-		 *
-		 * Bearbeitet folgende class Variablen
-         *  eventlist
-         *  eventlistDelete
-         *
-		 */
-
     function syncEventList($debug=false)
         {
-
 		/* Autosteuerung */
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
 		$autosteuerung_config=Autosteuerung_GetEventConfiguration();
@@ -5314,7 +5472,7 @@ class TestMovement
         $eventlistMerged = $eventlistConfig + $eventlistConfigCust;
         if ($debug) echo "Overview of registered Events ".sizeof($eventlistConfig)." + ".sizeof($eventlistConfigCust)." = ".sizeof($eventlistMerged)." Eintraege : \n";
 
-		$this->motionDevice=$this->findMotionDetection();							
+		$this->motionDevice=$this->findMotionDetection();		        // aus der EvaluateHardware_Include List aus den Homematic Devices und wenn IPCams auch aus den Kameras die Bewgungserkennungen rausfiltern					
 		$this->switchDevice=$this->findSwitches();
 		$this->buttonDevice=$this->findButtons();	
 		$motionDevice=$this->motionDevice;
@@ -5396,6 +5554,7 @@ class TestMovement
 		$this->eventlistDelete=array();		// Sammlung der Events für die es kein Objekt mehr dazu gibt
 
 		if ($debug) echo " EventID  ".str_pad("Name",75)." Type       Parent Instanz   \n";          // Ueberschrift tabelle
+        $scriptId  = $this->getScriptIdMessageHandler();                // suche scriptId von 'IPSMessageHandler_Event'
 
         $events=array();
 		$children=IPS_GetChildrenIDs($scriptId);		// alle Events des IPSMessageHandler erfassen
@@ -5415,7 +5574,6 @@ class TestMovement
             }
 
 		//$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
-        $scriptId  = $this->getScriptIdMessageHandler();                // suche scriptId von 'IPSMessageHandler_Event'
         $eventlist = $this->getEventListByScriptId($scriptId);                    // alle Events die diesem Script zugeordnet sind
 
         foreach ($eventlist as $i => $event)
@@ -5570,6 +5728,889 @@ class TestMovement
         // return ($this->eventlistDelete);      // kein return von einem construct
         }
 
+    /* getComponentEventListTable
+     * Ausgabe als html Tabelle, ermittelt löschbare Items und (!!!) löscht sie auch gleich, deaktiviert
+     * verwendet die eventlist 
+     * sie kann unterschiedliche Formate annehmen 
+     * es gibt für die Darstellung mögliche Filter
+     *      IPSDetectEventListHandler_Event
+     *
+     *      Standard
+     *
+     * das Ergebnis der Events in resultEventList auswerten 
+     * erwartetes Format, Tabelle indexiert
+     *      OID
+     *      Name
+     *      LastRun
+     *      Pfad
+     *      Type
+     *      Script
+     */
+    public function getComponentEventListTable($resultEventList,$filter="",$htmlOutput=false,$debug=false)
+        {
+        $messageHandler = new IPSMessageHandlerExtended();          // kann auch register loeschen
+
+		$html="";
+		$html.="<style>";
+		$html.='#customers { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; font-size: 12px; color:black; border-collapse: collapse; width: 100%; }';
+		$html.='#customers td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+		$html.='#customers tr:nth-child(even){background-color: #f2f2f2;}';
+		$html.='#customers tr:nth-child(odd){background-color: #e2e2e2;}';
+		$html.='#customers tr:hover {background-color: #ddd;}';
+		$html.='#customers th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; }';
+		$html.="</style>";
+	
+		$html.='<table id="customers" >';
+        $result=array();
+        if ($htmlOutput) $echo=false;
+        else $echo=true;
+
+        if ($filter == "IPSMessageHandler_Event")
+            {
+            if ($echo) echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
+		    $html.="<tr><th>#</th><th>OID</th><th>Name</th><th>ObjektID</th><th>Objektpfad/Fehler</th><th>Component Config</th><th>Module Config</th><th>LastRun</th><th>Pfad</th><th>Type</th><th>Script</th></tr>";
+            }
+        elseif ($filter == "IPSDetectEventListHandler_Event")  // IPSDetectEventListHandler_GetEventConfiguration
+            {           // #  OID  Pfad/Name  Trigger Path Component Module LastRun Pfad Type Script
+            if ($echo) echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
+		    $html.='<tr><th>#</th><th>OID</th><th>Pfad/Name</th><th>ObjektID</th><th>Objektpfad/Fehler</th><th>Component Config</th><th>Module Config</th><th>LastRun</th><th>Group</th><th>Config</th><th>Topologie</th><th style="width:10%">Autosteuerung</th></tr>';
+            }  
+        else            // #  OID  Name LastRun
+            {
+            if ($echo) echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
+		    $html.="<tr><th>#</th><th>OID</th><th>Name</th><th>Funktion</th><th>Konfiguration</th><th>Homematic</th><th>Detect Movement</th><th>Autosteuerung</th></tr>";
+            }
+
+        $delete=array(); $i=0;
+        foreach ($resultEventList as $index => $entry)
+            {
+            $continue=true;
+            if (isset($entry["TriggerVariableID"])) $trigger=$entry["TriggerVariableID"];
+            elseif (isset($entry["EventID"])) $trigger=$entry["EventID"];
+            else
+                {
+                $continue=false;
+                echo "Delete Line $i for $index, format wrong: "; Print_r($entry);
+                }
+            if ($continue)
+                {
+                $path=$entry["Pfad"]."/".IPS_GetName($trigger);
+                if (IPS_EventExists($entry["OID"])===false) echo "Event ".$entry["OID"]."does not exists.\n";
+                $entry["LastRun"]=@IPS_GetEvent($entry["OID"])["LastRun"];
+                if ($entry["LastRun"]==0) 
+                    {
+                    $lastrun="nie";
+                    }
+                else 
+                    {
+                    $timePassed=time()-$entry["LastRun"];
+                    }
+
+                if ($filter == "IPSDetectEventListHandler_Event") 
+                    {
+                    if ($echo) echo str_pad($i,3);
+                    $html .= "<tr><td>".$i."</td>";
+                    $info=@IPS_GetVariable($trigger);
+                    if ($info === false) $html .= '<td colspan="2">==> Variable nicht mehr vorhanden.</td>';
+                    else $html .= "<td>$trigger</td><td>$path</td>";
+                    
+                    $varLogId=false; $varlocation="";
+                    //if (isset($entry["LoggingInfo"]["variableLogID"])) echo json_encode($entry)."\n";
+                    if (isset($entry["LoggingInfo"]["variableLogID"])) $varLogId=$entry["LoggingInfo"]["variableLogID"];
+                    if (isset($entry["LoggingInfo"]["LocationLog"])) $varlocation=$entry["LoggingInfo"]["LocationLog"];   
+                    $needle='Program\IPSLibrary\data\core\IPSComponent\\';
+                    $np = strpos($varlocation,$needle);
+                    if ($np===0) 
+                        {
+                        //echo ".";
+                        $varlocation = substr($varlocation,strlen($needle));
+                        }
+                    //else echo "not found $needle in $path.\n";
+ 
+                    if ($varLogId) $html .= "<td>$varLogId</td><td>$varlocation</td>";
+                    else $html .= '<td colspan="2">==> Variable nicht mehr vorhanden.</td>';
+                    if (isset($entry["Component"])) 
+                        {
+                        if ($echo) echo str_pad($entry["Component"],50);
+                        $html.="<td>".$entry["Component"]."</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("-----",50);
+                        $html.="<td>------</td>";
+                        }
+                    if (isset($entry["Module"])) 
+                        {
+                        if ($echo) echo str_pad($entry["Module"],50);
+                        $html.="<td>".$entry["Module"]."</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("-----",50);
+                        $html.="<td>------</td>";
+                        }
+                    if ($entry["LastRun"]==0) 
+                        {
+                        if ($echo) echo str_pad("nie",20);
+                        $html.="<td>nie</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("vor ".nf($timePassed,"s"),20);
+                        $html.="<td>vor ".nf($timePassed,"s")."</td>";
+                        }   
+                    if (isset($entry["Group"])) 
+                        {
+                        if ($echo) echo str_pad(json_encode($entry["Group"]),50);
+                        $group=""; $handlerconfig="";
+                        foreach ($entry["Group"] as $handler => $configHandler)
+                            {
+                            if ($group != "") $group .= " , ";
+                            if ($handlerconfig != "") $handlerconfig .= " , ";
+                            $group .= $handler;
+                            $handlerconfig .= $configHandler;
+                            }
+                        $html.="<td>".$group."</td><td>".$handlerconfig."</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("-----",50);
+                        $html.='<td colspan="2"> </td>';
+                        } 
+                    if (isset($entry["TOPO"]["SIMPLE"]))                                         // dann auch ein Devicelist Eintrag
+                        {
+                        if ($echo) echo str_pad($entry["TOPO"]["SIMPLE"],50);
+                        $html.="<td>".$entry["TOPO"]["SIMPLE"]."</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("-----",50);
+                        $html.="<td> </td>";
+                        }                         
+                    if (isset($entry["Autosteuerung"])) 
+                        {
+                        if ($echo) echo str_pad($entry["Autosteuerung"],50);
+                        $html.='<td style="width:10%">'.$entry["Autosteuerung"]."</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("-----",50);
+                        $html.="<td> </td>";
+                        } 
+                    }
+                elseif ($filter == "IPSMessageHandler_Event") 
+                    {
+                    if ($echo) echo str_pad($index,3)." ".str_pad($entry["OID"],6);
+                    $html.="<tr><td>".$index."</td><td>".$entry["OID"]."</td>";
+                    $result[$index]["OID"]=$entry["OID"];
+                    if ($echo) echo str_pad($entry["Name"],15)." ";
+                    $html.="<td>".$entry["Name"]."</td>";
+                    $result[$index]["Name"]=$entry["Name"];
+                    $info=@IPS_GetVariable($trigger);
+                    if ($info !== false) 
+                        {
+                        $path=IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger));
+                        if ($echo) echo str_pad($path,40)."  ";
+                        $html.="<td>$trigger</td>";
+                        $html.="<td>$path</td>";
+                        $result[$index]["Pfad"]=$path;
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
+                        $html.='<td colspan="2">==> Variable nicht mehr vorhanden.</td>';
+                        $delete[$entry["OID"]]=true;
+                        }
+                    if (isset($entry["Component"])) 
+                        {
+                        if ($echo) echo str_pad($entry["Component"],50);
+                        $html.="<td>".$entry["Component"]."</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("-----",50);
+                        $html.="<td>------</td>";
+                        }
+                    if (isset($entry["Module"])) 
+                        {
+                        if ($echo) echo str_pad($entry["Module"],50);
+                        $html.="<td>".$entry["Module"]."</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("-----",50);
+                        $html.="<td>------</td>";
+                        }
+                    if ($entry["LastRun"]==0) 
+                        {
+                        if ($echo) echo str_pad("nie",20);
+                        $html.="<td>nie</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("vor ".nf($timePassed,"s"),20);
+                        $html.="<td>vor ".nf($timePassed,"s")."</td>";
+                        }                    
+                    }
+                else        // filter nicht bekannt
+                    {
+                    if ($echo) echo str_pad($index,3)." ".str_pad($entry["OID"],6);
+                    $html.="<tr><td>".$index."</td><td>".$entry["OID"]."</td>";
+                    $result[$index]["OID"]=$entry["OID"];
+
+                    if ($echo) echo str_pad($entry["Name"],40)." ";
+                    $html.="<td>".$entry["Name"]."</td>";
+            
+                    if ($entry["LastRun"]==0) 
+                        {
+                        if ($echo) echo str_pad("nie",20);
+                        $html.="<td>nie</td>";
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("vor ".nf($timePassed,"s"),20);
+                        $html.="<td>vor ".nf($timePassed,"s")."</td>";
+                        //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
+                        }
+                    if ($echo) echo "  ".str_pad($entry["Pfad"],80)."  ";
+                    $html .= "<td>".$entry["Pfad"]."</td><td>";
+                    if (isset($entry["Type"])) 
+                        {
+                        if ($echo) echo str_pad($entry["Type"],14)."   ";
+                        $html .= $entry["Type"]."</td><td>";                    
+                        }
+                    else 
+                        {
+                        if ($echo) echo str_pad("unknown",14)."   ";
+                        $html .= "unknown</td><td>";                    
+                        }
+                    if (isset($entry["Script"])) 
+                        {
+                        if ($echo) echo str_pad($entry["Script"],44)."   "."\n";
+                        $html .= $entry["Script"]."</td></tr>";                      
+                        }
+                    else
+                        {
+                        if ($echo) echo str_pad("unknown",44)."   ";
+                        $html.="unknown</td><td>unknown</td>";
+                        }
+                    }
+                if ($echo) echo "\n";;
+                $html .= "</tr>";                
+                $i++;
+                }
+            }
+
+        /* eventuell veraltete unbenutzte Events loeschen , aber nicht hier !!! */
+        if ((sizeof($delete)>0) && false)
+            {
+            echo "Folgende Events loeschen:\n";
+            //print_r($delete);
+            foreach ($delete as $oid => $state)
+                {
+                $eventName=IPS_GetName($oid);
+                $event=explode("_",$eventName)[1];
+                //echo "   $oid $eventName $event ".IPS_GetName($event)."\n";
+                echo "   $oid $eventName $event \n";
+                $messageHandler->UnRegisterEvent($event);
+                IPS_DeleteEvent($oid);
+                }
+            }
+		$html.="</table>";
+		if ($htmlOutput) return($html);
+        else return($result);
+        }
+    }
+
+/****************************************************************************************
+ *
+ * Class DetectEventListHandler, erstellen eines Arrays eventList mit allen CustomEvents des IPSMessageHandlers
+ * eventlist ist die zentrale Variable
+ *
+ *  __contruct
+ *  setEventListFromConfigFile              eventlist ist die zentrale Variable, diese aus dem Config File setzen
+ *  setEventList                            get Eventlist from config variable and store it in class
+ *  Get_EventConfigurationAuto              organisatorisches, methode muss in der richtigen class sitzen, sonst ist die function falsch
+ *  getScriptIdMessageHandler               script ID von IPSMessage Handler rausfinden und als Input für nächste Routine verwenden
+ *
+ *  getEventListByScriptId                  IPS_GetScriptEventList($scriptId)
+ *  checkEventsConfig
+ *  sortEvents
+ *  alignEventsConfig
+ *  alignOtherEvents
+ *  extendComponent
+ *  alignDeviceList
+ *
+ *  syncEventList                   
+ *  getEventListforDeletion
+ *  getEventListfromIPS                     IPS_GetEventList
+ *  getComponentEventListTable
+ *  getAutoEventListTable
+ *  writeEventListTable
+ *  findMotionDetection
+ *  findSwitches
+ *  findButtons
+ *  sortEventList
+ *
+ **************************************/
+
+class DetectEventListHandler extends DetectEventHandler
+	{
+	
+	protected $debug;
+	public $eventlist;
+	public $eventlistDelete;
+    public static $eventConfigurationAuto=array();
+	
+	public $motionDevice, $switchDevice;	/* erkannte Homematic Geräte */
+
+	
+	/* DetectEventListHandler::__construct
+	 *
+	 */
+	public function __construct($debug=false) 
+		{	
+		$this->debug=$debug;
+		if ($debug) echo "DetectEventListHandler Construct, Debug Mode, zusätzliche Checks bei der Eventbearbeitung:\n";
+        //$this->syncEventList($debug);       // speichert eventList und eventListDelete
+        parent::__construct($debug);
+		}	
+
+    /* setEventListFromConfigFile
+     * get Eventlist from config file and store it in class
+     * es fehlt die Angabe des include files
+     */
+    public function setEventListFromConfigFile($debug=false)
+        {
+        if ($debug) echo "DetectEventListHandler::setEventListFromConfigFile:\n";
+        $this->eventlist = $this->Get_EventConfigurationAuto($debug);
+        }
+
+    /* setEventList
+     * get Eventlist from config variable and store it in class
+     */
+    public function setEventList($configuration)
+        {
+        $this->eventlist = $configuration;
+        }
+
+    /* DetectEventHandler, obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
+     */
+    function Get_EventConfigurationAuto($debug=false)
+        {
+        if ($debug) echo "DetectEventListHandler::Get_EventConfigurationAuto ".get_class($this)."\n";
+        if (self::$eventConfigurationAuto == null)
+            {
+            $functionName = 'IPS'.get_class($this).'_GetEventConfiguration';
+            if ( function_exists($functionName) ) self::$eventConfigurationAuto = $functionName();       /* <-------- change here */
+            else self::$eventConfigurationAuto = array();					
+            //echo "GetEventConf\n"; print_R(self::$eventConfigurationAuto);
+            }
+        return self::$eventConfigurationAuto;
+        }        
+    /* DetectEventListHandler::getScriptIdMessageHandler
+     * die Script ID auslesen von dem Script an dem die Events hängen
+     */
+    public function getScriptIdMessageHandler()
+        {
+        return IPS_GetScriptIDByName('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));    
+        }
+
+    /* DetectEventListHandler::getEventListByScriptId
+     * eventliste erzeugen aus Liste aller Events die einem Script zugeordnet sind
+     * check ob Name event stimmt
+     * check ob der Parent des Events das Script ist 
+     * check ob der Name des Events mit der Triggervariable zusammenpasst
+     * check ob es die Triggervariable noch gibt, sonst nicht übernehmen
+     */
+    public function getEventListByScriptId($scriptId)
+        {
+        if ($this->debug) echo "Script $scriptId EventListe ausgeben:  \n";
+        $eventlist=array(); $eventlistordered=array();
+        $events=IPS_GetScriptEventList($scriptId);          // Variablenveränderungen die einem Script zugeordnet sind
+        //print_R($events);
+        $i=0;
+        foreach ($events as $eventOid)
+            {
+			$name=IPS_GetName($eventOid);
+			$eventID_str=substr($name,Strpos($name,"_")+1,10);
+			$eventID=(integer)$eventID_str;
+			if (substr($name,0,1)=="O")	;								// sollte mit O anfangen
+            else echo "   Fehler getEventListByScriptId $eventOid, Name falsch.\n";
+            
+            if (IPS_ObjectExists($eventID)==false) echo "   Fehler getEventListByScriptId $eventOid, Event Trigger Variable existiert nicht.\n"; 
+            else
+                {
+                $eventlist[$i]["OID"]=$eventOid;	            //die OID des Events			
+                $eventlist[$i]["Name"]=$name;
+                $eventlist[$i]["EventID"]=$eventID;             // die Variable die das Event auslöst
+
+                $event = IPS_GetEvent($eventOid);
+                $eventlist[$i]["LastRun"]=$event["LastRun"];
+                switch ($event["EventType"])
+                    {
+                    case 0:
+                        $eventlist[$i]["Type"]="Auslöser";
+                        break;
+                    case 1:
+                        $eventlist[$i]["Type"]="Zyklisch";
+                        break;
+                    case 2:
+                        $eventlist[$i]["Type"]="Wochenplan";
+                        break;
+                    }
+                $script=str_replace("\n","",$event["EventScript"]);
+                $eventlist[$i]["Script"]=$script;
+
+                if ($event["TriggerVariableID"] != $eventID) 
+                    {
+                    echo "   Fehler getEventListByScriptId $eventOid, Event Trigger Variable stimmt nicht mit dem Namen zusammen \n";
+                    $eventlist[$i]["EventID"]=$event["TriggerVariableID"]; 
+                    }
+                if (IPS_GetParent($eventOid) !== $scriptId) echo "    Fehler getEventListByScriptId $eventOid, Ort falsch, Parent nicht $scriptId \n";	
+                $i++;
+                }
+            }
+        foreach ($eventlist as $entry) $eventlistordered[$entry["EventID"]]=$entry;
+
+        $this->eventlist=$eventlistordered;
+        return $eventlist;
+        }
+
+
+    /* DetectEventListHandler::checkEventsConfig
+     * eventList gibt es, die ist nach Einträgen sortiert, mit Config aus MessageHandler abgleichen
+     * Fehler 1, es gibt mehr Events als Config Einträge
+     * Fehler 2 es gibt mehr Config Einträge als Events
+     * Fehler 3 das TriggerObjekt für das Event gibt es nicht, eine DeleteListe erstellen
+     * dazu die Eventlist auf den selben Index wie die Config bringen, das ist die EventID
+     *
+     *
+     */
+    public function checkEventsConfig($eventlistConfig)
+        {
+        $debug=true;
+		$i=0;
+		$delete=0;			// mitzaehlen wieviele events geloescht werden muessen 
+
+		$eventlistDelete=array();		// Sammlung der Events für die es kein Objekt mehr dazu gibt
+
+        foreach ($eventlistConfig as $eventID => $entry)
+            {
+            if (IPS_ObjectExists($eventID)==false)
+                { 
+                // Objekt für das Event existiert nicht mehr
+                $delete++;
+                $eventlistDelete[$eventID]["Fehler"]=1;
+                $eventlistDelete[$eventID]["OID"]=$eventID;
+                echo "    Fehler 3, alignEvents, ".$eventID." in Configuration existiert nicht, aus der Config Datei \"IPSMessageHandler_GetEventConfiguration\" loeschen: ".$eventlistConfig[$eventID][1].$eventlistConfig[$eventID][2]."\n";
+                }	                
+            if (isset($this->eventlist[$eventID])===false) 
+                {
+                echo "   Fehler 2, alignEvents, ".$eventID." not found in Eventlist \n";
+                }
+            }
+        $events=array();
+        foreach ($this->eventlist as $oid => $entry)               // das ist die gefundene Liste aller Events mit dem Script als Target
+            {
+            if (isset($eventlistConfig[$oid])===false) 
+                {
+                echo "    Fehler 1, alignEvents, not found $oid in Configuration, add to Configuration, RegisterEvent with installComponent. \n";
+                }
+            else
+                {
+                $events[$oid]=$entry["OID"];                          // eventID die auslösende Variable, OID das Event das unterhalb des Scripts gespeichert ist  
+                }           
+            }
+        $this->eventlistDelete = $eventlistDelete;
+        return $events;
+        }
+
+    /* DetectEventListHandler::sortEvents
+     * die Events so einsortieren, damit sie leichter zu erkennen sind
+     */
+    public function sortEvents($events)
+        {
+		foreach ($events as $eventId => $oid)
+            {
+    		IPS_SetPosition($oid,$eventId);		            // einsortieren	
+            }
+        }
+
+    /* DetectEventListHandler::alignEventsConfig
+     * $eventlistConfig aus MessageHandler in eventlist einbinden und weiter überprüfen
+     * wenn Parent von EventId eine Instanz ist den ModuleName auslesen 
+     */
+    public function alignEventsConfig($eventlistConfig,$debug=false)
+        {
+        foreach ($this->eventlist as $index => $entry)
+            {
+            $eventID=$entry["EventID"];             // die TargetVariable, das TriggerEvent
+            $instanzID=IPS_GetParent($eventID);         // den Pfad ermitteln, was ist der Parent
+            if ($debug) echo "   ".$eventID."  ".str_pad(IPS_GetName($instanzID)."/".IPS_GetName($eventID),75)." ";
+            $instanz="";
+            switch (IPS_GetObject($instanzID)["ObjectType"])
+                {
+                /* 0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link */
+                case 0:
+                    if ($debug) echo "Kategorie  ";
+                    break;
+                case 1:
+                    $instanz=IPS_GetInstance($instanzID)["ModuleInfo"]["ModuleName"];
+                    if ($debug) echo "Instanz    ";
+                    break;
+                case 2:
+                    if ($debug) echo "Variable   ";
+                    break;
+                case 3:	
+                    if ($debug) echo "Skript     ";
+                    break;
+                case 4:
+                    if ($debug) echo "Ereignis   ";
+                    break;
+                case 5:
+                    if ($debug) echo "Media      ";
+                    break;
+                case 6:
+                    if ($debug) echo "Link       ";
+                    break;
+                default:
+                    echo "**** Fehler unknown Type";
+                    break;
+                }
+            if (IPS_GetObject($eventID)["ObjectType"]==2)    // Wenn Event vom Typ Variable auch Wert Instanz ID ausgeben 	
+                {
+                if ($debug) echo $instanzID;
+                }
+            else 	
+                {
+                echo "**** Fehler, referenzierte EventID ist vom Typ keine Variable.   ";
+                echo "Objekt : ".$eventID." Instanz : ".IPS_GetName($instanzID)." \n ";
+                }
+            $this->eventlist[$index]["Pfad"]=IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($eventID))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($eventID)))."/".IPS_GetName(IPS_GetParent($eventID));
+            $this->eventlist[$index]["NameEvent"]=IPS_GetName($eventID);
+            $this->eventlist[$index]["Instanz"]=$instanz;
+            if (isset($eventlistConfig[$eventID][1])) $this->eventlist[$index]["Component"]=$eventlistConfig[$eventID][1];           // Component Config
+            if (isset($eventlistConfig[$eventID][2])) $this->eventlist[$index]["Module"]=$eventlistConfig[$eventID][2];           // Component 
+            if (isset($eventlistConfig[$eventID][3])) $this->eventlist[$index]["Parameter"]=$eventlistConfig[$eventID][3];
+            if (isset($eventlistConfig[$eventID][4])) echo "   There is more I do not know\n";
+            }
+        }
+
+    /* DetectEventListHandler::alignOtherEvents
+     *
+     */
+    public function alignOtherEvents($eventlistConfig,$identifier)
+        {
+        foreach ($this->eventlist as $index => $entry)
+            {
+            $eventID=$entry["EventID"];             // die TargetVariable, das TriggerEvent                
+            if (isset($eventlistConfig[$eventID][1])) $this->eventlist[$index][$identifier]  = $eventlistConfig[$eventID][1];
+            if (isset($eventlistConfig[$eventID][2])) $this->eventlist[$index][$identifier] .= "|".$eventlistConfig[$eventID][2];
+            // keine Leermeldungen, der Übersicht halber
+            }
+        }
+
+    /* DetectEventListHandler::alignByCoidsList
+     * die eventlist mit der coids Liste abgleichen, ob die Variablen noch existieren
+     * wenn in der EventList LoggingInfo angelegt ist, auch diese Variable mit der coids Liste abgleichen
+     * die coids Liste wird dabei erweitert, wenn eine Variable in der EventList ist, aber nicht in der coids Liste
+     * die Variable wird dann mit dem selben Wert wie die EventList Variable angelegt
+     * Ausgabe auf der Konsole, mit * markiert wenn die Variable in der coids Liste ist
+     * die EventList wird nicht verändert
+     */
+    public function alignByCoidsList(&$coids, $style="summary" ,$debug=false)
+        {
+        if ($debug) echo "DetectEventListHandler::alignByCoidsList  ".sizeof($this->eventlist)." Entries. Use Table to get details\n";
+        if ($style=="table") $doTable=true;
+        else $doTable=false;
+
+        foreach ($this->eventlist as $variableId=>$params)
+            {
+            if ($doTable)
+                {
+                if (isset($coids[$variableId]))
+                    {
+                    echo "* ";
+                    }
+                else
+                    {
+                    echo "  ";
+                    }
+                echo "  ".$variableId."   ";
+                }
+            if (IPS_ObjectExists($variableId)) 
+                {
+                if ($doTable) 
+                    {
+                    echo str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",90);
+                    foreach ($params as $index=>$param) 
+                        { 
+                        if (is_array($param)) echo "$index,";
+                        else echo " \"$param\","; 
+                        }
+                    }
+                }
+            else echo "******* Delete Entry from IPSDetectEventListHandler_GetEventConfiguration() in EvaluateHardware_Configuration.\n";
+            if ($doTable) echo "\n";
+            if (isset($params["LoggingInfo"])) 
+                {
+                $loggingInfo = $params["LoggingInfo"];
+                if (isset($loggingInfo["variableLogID"])) 
+                    {
+                    $varLogId = $loggingInfo["variableLogID"];
+                    if (isset($coids[$varLogId]))
+                        {
+                        if ($doTable) echo "* ";
+                        }
+                    else
+                        {
+                        if ($doTable) echo "  ";
+                        if (isset($coids[$variableId])) $coids[$varLogId]=$coids[$variableId];        
+                        }
+                    if (IPS_ObjectExists($varLogId)) 
+                        {
+                        if ($doTable) echo "      ".str_pad($varLogId,10).str_pad("    (".IPS_GetName($varLogId)."/".IPS_GetName(IPS_GetParent($varLogId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($varLogId))).")",90);
+                        }
+                    else echo str_pad("    ******* Delete Entry from LoggingInfo variableLogID ".$varLogId." in EvaluateHardware_Configuration.",90)."\n";;
+                    }
+                /*else echo str_pad("    No variableLogID in LoggingInfo, error in EvaluateHardware_Configuration.",90);  
+                if (is_array($loggingInfo))
+                    {
+                    echo "      LoggingInfo: ";
+                    foreach ($loggingInfo as $index=>$param) 
+                        { 
+                        if (is_array($param)) echo "$index,";
+                        else echo " $index => \"$param\","; 
+                        }
+                    }
+                else echo " LoggingInfo not an array, error in EvaluateHardware_Configuration.";  */
+                if ($doTable) echo "\n";  
+                }        
+            }
+        }
+
+    /* DetectEventListHandler::extendComponent
+     *
+     */
+    public function extendComponent($countmax=20)
+        {
+        echo "Component Info abgleichen: verarbeite $countmax Zeilen\n";                    // max Zeilen Begrenzung
+        $startexec=microtime(true);
+        $first=true; $count=0;             
+        foreach ($this->eventlist as $index => $event)
+            {
+            if ($count++>$countmax) break;
+            echo "  ".str_pad($event["EventID"],10).str_pad($event["NameEvent"],30);
+            $componentName = false;
+            $loggerName    = false;
+            $config=explode(",",$event["Component"]);
+            // Component raussuchen, aus dem className IPSComponentSensor_Motion das IncludeFile ableiten, componentType bis zum Underscore aber mit IPModule statt IPSComponent
+            if (isset($config[0]))
+                { 
+                $className=$config[0];
+			    $pos = strpos($className, '_');
+			    if ($pos===false) echo "Fehler, Class Name entspricht nicht der Naming Convention : \n";
+				else    
+                    {
+                    $componentType = substr($className, 0, $pos);
+                    $componentType = str_replace('IPSModule','IPSComponent', $componentType);
+                    IPSUtils_Include ($className.'.class.php', 'IPSLibrary::app::core::IPSComponent::'.$componentType);
+                    if (class_exists($className)) 
+                        {
+                        // nach dem include muss die class existieren, die Parameter rausfinden, nicht vorhanden ist null
+                        $componentName=$config[0];
+                        if (isset($config[1])) $instanceId=$config[1];
+                        else $instanceId=null;
+                        if (isset($config[2])) $remoteOID=$config[2];
+                        else $remoteOID=null;
+                        if (isset($config[3])) $typeDef=$config[3];
+                        else $typeDef=null;
+                        echo str_pad("$componentName($instanceId,$remoteOID,$typeDef)",80);
+                        $component = new $componentName($instanceId,$remoteOID,$typeDef);       // Parameter haben keine Auswirkung, Logging wird direkt aufgerufen
+                        /* zwei class Methoden, eine für den class Namen, eh der gerade verwendete, und spannender der für den Logger, damit kann er direkt aufgerufen werden, und nicht über den 
+                         * Umweg des Components, wie zB bei HandleEvent und UpdateEvent
+                         * wichtig ist getVariableOIDLogging, diese liefert eine brauchbare Zusammenfassung, wenn sie implementiert ist
+                         */
+                        if (method_exists($component,"GetComponentParams")) 
+                            {
+                            $class=$component->GetComponentParams($event["EventID"]);                // da kommt wieder der componentName raus
+                            //print_R($class);
+                            }
+                        if (method_exists($component,"GetComponentLogger")) 
+                            {
+                            $loggerName=$component->GetComponentLogger();                // da kommt jetzt der Logger raus
+                            if ($loggerName && ($loggerName !== ""))
+                                {
+                                //echo "     $loggerName(".$event["EventID"].",null,null,$typeDef) ";
+                                $logger = new $loggerName($event["EventID"],null,null,$typeDef);
+                                $variableInfo=$logger->getVariableOIDLogging();
+                                if (isset($variableInfo["variableLogID"]))
+                                    {
+                                    $variableLogID = $variableInfo["variableLogID"];
+                                    echo str_pad($variableLogID,8).str_pad(GetValueIfFormatted($variableLogID),20).IPS_GetLocation($variableLogID);
+                                    $variableInfo["LocationLog"]=IPS_GetLocation($variableLogID);   
+                                    }
+                                else echo " ".json_encode($variableInfo);
+                                }
+                        /* Motion_Logging($variable,$variablename=Null, $value=Null, $typedev="unknown", $debug=false) 
+                         *
+                         */
+
+
+
+                            }
+                        else $logger=false;
+                        }
+                    }
+                }
+            if ($componentName && $loggerName) 
+                {
+                echo "     ".exectime($startexec)." Sekunden\n";
+                //echo "  $componentName $loggerName\n";
+                // Component
+
+                // Logger
+
+                // MirrorID
+
+                // Instance
+
+                // RemoteIDs
+
+                // TypeDev
+
+                $this->eventlist[$index]["LoggingInfo"]=$variableInfo;
+                }
+            elseif ($componentName) echo "  $componentName , LoggerName missing\n";
+            else echo "     ".$event["Config"]."\n";
+            if ($first)
+                {
+                echo "First Event for $index : ";
+                print_r($this->eventlist[$index]);
+                $first=false;
+                }
+            }
+        }
+
+    /* DetectEventListHandler::extendGroups
+     * aus alle Components mit Parent DetectHandler die Group Config rausnehmen und den Events zuordnen
+     * die class muss eine methode mit Get_EventConfigurationAuto und als Abfrage auf Aufruf der Methode is_groupconfig true liefern (!)
+     * eventlist um Group erweitern und alle Configfiles mit dem Class Identifier darunter hängen
+     */
+    public function extendGroups($parentclass="DetectHandler",$debug=false)
+        {
+        $status=false;
+        if ($debug) echo "add group Configurations from:\n";
+        $classes = new phpOps();
+        $classes->load_classes();                       // alle Klassen
+        $classes->filter_classes($parentclass);         // Klassen mit Parent
+        $output = $classes->get_classes();              // Ergebnis für foreach übergeben
+
+        //print_r($output);
+        $result=array();
+        foreach ($output as $className => $items)
+            {
+            $config=false;
+            if ($className != ".")
+                {
+                if ($debug) echo "  ".str_pad($className,30);
+                if ( (class_exists($className)) && (method_exists($className,"Get_EventConfigurationAuto")) )
+                    {
+                    $groupConfig = new $className();
+                    if ($groupConfig->is_groupconfig())
+                        {
+                        if ($debug) echo "available ";
+                        $config = $groupConfig->Get_EventConfigurationAuto();
+                        }
+                    }
+                if ($debug) echo "\n";
+                }
+            if ($config) 
+                {
+                //print_R($config);
+                foreach ($config as $event => $params)
+                    {
+                    $result[$event][$className]=$params;
+                    }
+                }
+            }
+        //print_r($result);
+        foreach ($this->eventlist as $event => $item)
+            {
+            //echo $event."\n";
+            if (isset($result[$event])) 
+                {
+                foreach ($result[$event] as $groupName => $group)
+                    {
+                    $status=true;
+                    $this->eventlist[$event]["Group"][$groupName]=json_encode($group);
+                    }
+                }
+            }
+        return ($status);            
+        }
+
+    /* DetectEventListHandler::alignByDeviceList
+     * die devicelist vorher umwandeln und aus allen Channeln die eine zugeordneten Type haben die Coid herausfiltern und ein array daraus zusammenstellen
+     * dieses mit der eventliste abgleichen und erweitern
+     * eventlist vs coid list from devicelist
+     * array: output left and right, the intersection is the aligned eventlist
+     * summary: one echo with left, aligned, right
+     */
+    public function alignByDeviceList(DeviceListManagement $devicelist,$output="array")
+        {
+        $coids=$devicelist->get_coids();          // die Coid Liste aus der Devicelist holen
+        //print_r($coids);
+        if ($output=="summary") echo "DetectEventListHandler::alignByDeviceList: compare eventlist with devicelist:\n";
+        //print_r($this->eventlist);    
+        $echos=true; $left=0;$aligned=0; $right=0;
+        if (($output=="array") || ($output="summary")) $echos=false;
+        $result=array();
+        foreach ($this->eventlist as $index => $entry)
+            {
+            $eventID=$entry["EventID"];             // die TargetVariable, das TriggerEvent     
+            if (isset($coids[$eventID]) === false)  
+                { 
+                if ($echos) echo "do not find $eventID ".$entry["NameEvent"]." from eventList in devicelist. Nicht alle Events sind in der DeviceList erfasst.\n";
+                else $result["Left"][$eventID]=$entry;
+                $left++;
+                //echo json_encode($entry)."\n";
+                }
+            else    
+                {
+                $this->eventlist[$index]["DeviceList"]=$coids[$eventID];
+                if (isset($coids[$eventID]["TOPO"])) 
+                    {
+                    $topo=$coids[$eventID]["TOPO"];
+                    unset($this->eventlist[$index]["DeviceList"]["TOPO"]);
+                    $this->eventlist[$index]["TOPO"]=$topo;
+                    }
+                $aligned++;
+                }
+            }
+        $eventlistordered=array();                          // ist scho passiert, aber sicherheitshalber        
+        foreach ($this->eventlist as $index => $entry) 
+            {
+            //echo json_encode($entry)."\n"; 
+            $eventlistordered[$entry["EventID"]]=$entry;
+            }
+        foreach ($coids as $eventID => $entry)
+            {
+            if (isset($eventlistordered[$eventID])===false)
+                {
+                if ($echos) echo "Devicelist Variable ".IPS_GetName($eventID)." von ".$entry["OID"]." ".IPS_GetName($entry["OID"])." mit Typ ".$entry["Type"]." mit OID $eventID nicht in eventlist eingetragen. ".json_encode($entry)."\n";
+                else $result["Right"][$eventID]=$entry;
+                $right++;
+                }
+            }
+        if ($output=="summary") echo "    result alignByDeviceList : eventlist $left aligned $aligned devicelist channels $right.\n"; 
+        if ($echos===false) return ($result);
+
+        }
+
+
+
 	/**********************************
 	 * TestMovement, getEventListforDeletion Werte ausgeben die beim construct bereits erstellt wurden
 	 * es gibt Events in der IPS_MessageHandler Konfigurationsdatei/function denen keine eigene Konfiguration zugeordnet ist
@@ -5590,7 +6631,7 @@ class TestMovement
 	/* TestMovement::getEventListfromIPS
      * erst einmal alle Events von IP Symcon auslesen und in einem neuen Format ausgeben
      * Es gibt filter als Parameter, das ist der Name des Parents des Events
-     * Alternative Funktion vorhanden w´beid em die Events die einer ScriptId zugeordnet ausgelesen werden, diese Variante ist sicherer
+     * Alternative Funktion vorhanden bei dem die Events die einer ScriptId zugeordnet ausgelesen werden, diese Variante ist sicherer
      * da nicht ausgeschlossen werden kann, dass die Event snicht dem richtigen Script als Parent zugeordnet sind
 	 *
 	 */
@@ -5634,133 +6675,7 @@ class TestMovement
         return ($resultEventList);
         }
 
-    /* Ausgabe als html Tabelle, ermittelt löschbare Items und löscht sie auch gleich
-     *
-     * das Ergebnis der Events in resultEventList auswerten 
-     * erwartetes Format, Tabelle indexiert
-     *      OID
-     *      Name
-     *      LastRun
-     *      Pfad
-     *      Type
-     *      Script
-     */
-    public function getComponentEventListTable($resultEventList,$filter="",$htmlOutput=false,$debug=false)
-        {
-        $messageHandler = new IPSMessageHandlerExtended();          // kann auch register loeschen
 
-		$html="";
-		$html.="<style>";
-		$html.='#customers { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; font-size: 12px; color:black; border-collapse: collapse; width: 100%; }';
-		$html.='#customers td, #customers th { border: 1px solid #ddd; padding: 8px; }';
-		$html.='#customers tr:nth-child(even){background-color: #f2f2f2;}';
-		$html.='#customers tr:nth-child(odd){background-color: #e2e2e2;}';
-		$html.='#customers tr:hover {background-color: #ddd;}';
-		$html.='#customers th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; }';
-		$html.="</style>";
-	
-		$html.='<table id="customers" >';
-        if ($filter == "IPSMessageHandler_Event")
-            {
-		    $html.="<tr><th>#</th><th>OID</th><th>Name</th><th>ObjektID</th><th>Objektpfad/Fehler</th><th>Component</th><th>Module</th><th>LastRun</th><th>Pfad</th><th>Type</th><th>Script</th></tr>";
-            }
-        else
-            {
-		    $html.="<tr><th>#</th><th>OID</th><th>Name</th><th>Funktion</th><th>Konfiguration</th><th>Homematic</th><th>Detect Movement</th><th>Autosteuerung</th></tr>";
-            }
-        $result=array();
-        if ($htmlOutput) $echo=false;
-        else $echo=true;
-
-        if ($echo) echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
-        $delete=array();
-        foreach ($resultEventList as $index => $entry)
-            {
-            if ($echo) echo str_pad($index,3)." ".str_pad($entry["OID"],6);
-			$html.="<tr><td>".$index."</td><td>".$entry["OID"]."</td>";
-            $result[$index]["OID"]=$entry["OID"];
-            if ($filter == "IPSMessageHandler_Event")
-                {
-                $trigger=$entry["TriggerVariableID"];
-                if ($echo) echo str_pad($entry["Name"],15)." ";
-                $html.="<td>".$entry["Name"]."</td>";
-                $result[$index]["Name"]=$entry["Name"];
-                $info=@IPS_GetVariable($trigger);
-                if ($info !== false) 
-                    {
-                    $path=IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger));
-                    if ($echo) echo str_pad($path,40)."  ";
-                    $html.="<td>$trigger</td>";
-                    $html.="<td>$path</td>";
-                    $result[$index]["Pfad"]=$path;
-                    }
-                else 
-                    {
-                    if ($echo) echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
-                    $html.='<td colspan="2">==> Variable nicht mehr vorhanden.</td>';
-                    $delete[$entry["OID"]]=true;
-                    }
-                if (isset($entry["Component"])) 
-                    {
-                    if ($echo) echo str_pad($entry["Component"],50);
-                    $html.="<td>".$entry["Component"]."</td>";
-                    }
-                else 
-                    {
-                    if ($echo) echo str_pad("-----",50);
-                    $html.="<td>------</td>";
-                    }
-                if (isset($entry["Module"])) 
-                    {
-                    if ($echo) echo str_pad($entry["Module"],50);
-                    $html.="<td>".$entry["Module"]."</td>";
-                    }
-                else 
-                    {
-                    if ($echo) echo str_pad("-----",50);
-                    $html.="<td>------</td>";
-                    }
-                }
-            else        // filter nicht bekannt
-                {
-                if ($echo) echo str_pad($entry["Name"],40)." ";
-                $html.="<td>".$entry["Name"]."</td>";
-                }
-            if ($entry["LastRun"]==0) 
-                {
-                if ($echo) echo str_pad("nie",20);
-                $html.="<td>nie</td>";
-                }
-            else 
-                {
-                $timePassed=time()-$entry["LastRun"];
-                if ($echo) echo str_pad("vor ".nf($timePassed,"s"),20);
-                $html.="<td>vor ".nf($timePassed,"s")."</td>";
-                //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
-                }
-            if ($echo) echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
-            $html.="<td>".$entry["Pfad"]."</td><td>".$entry["Type"]."</td><td>".$entry["Script"]."</td></tr>";
-            }
-
-        /* eventuell veraltete unbenutzte Events loeschen */
-        if (sizeof($delete)>0)
-            {
-            echo "Folgende Events loeschen:\n";
-            //print_r($delete);
-            foreach ($delete as $oid => $state)
-                {
-                $eventName=IPS_GetName($oid);
-                $event=explode("_",$eventName)[1];
-                //echo "   $oid $eventName $event ".IPS_GetName($event)."\n";
-                echo "   $oid $eventName $event \n";
-                $messageHandler->UnRegisterEvent($event);
-                IPS_DeleteEvent($oid);
-                }
-            }
-		$html.="</table>";
-		if ($htmlOutput) return($html);
-        else return($result);
-        }
 
 	/**************************************************
 	 *
@@ -5982,13 +6897,12 @@ class TestMovement
 		return($html);
 		}	// ende function
 
-    /*******************************
+    /* findMotionDetection
      *
      * Geräte mit Bewegungserkennung finden
      * nutzt dazu die in EvaluateHardware_Include Datei gespeicherten HomematicList und FS20List
      *
-     **************************************************************/
-
+     */
 	public function findMotionDetection()
 		{
 		//$alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";

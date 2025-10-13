@@ -114,6 +114,10 @@
 			/* Vorbereitung für ein Sync zwischen IPSHeat und IPSLight, aber nicht zurück */
 		}
 
+        public function getSwitchCategoryId()
+            {
+            return ($this->switchCategoryId);
+            }
         /* Configuration Handling einführen
          *
          */

@@ -124,7 +124,7 @@
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 
     $dosOps = new dosOps();
-
+    $debug=true;                    // Ausgabe welche Routine bei einem Webfront Control Request verwendet wird
 
     /* gleiche Funktion wie Evaluate_Overview */
 
@@ -146,9 +146,13 @@
         IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
         IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 
-    	$debug=false;
-		$testMovement = new TestMovement($debug);
-        $testMovement->syncEventList($debug);       // speichert eventList und eventListDelete, vorher Teil des Constructs
+    	$debug2=false;
+		$testMovement = new TestMovement($debug2);
+        $testMovement->syncEventList($debug2);       // speichert eventList und eventListDelete, vorher Teil des Constructs, mittlerweile gibt es zwei Varianten, eine genauere
+
+        /* verwendet für actionSortMessageTableID : getEventListfromIPS, getComponentEventListTable auch in Execute
+         * schöne Tabelle mit Spalten #, OID, NAme, ObjektID, Objektpfad, Component, Module, LastRun, Pfad, Type, Script 
+         */
         }
 
     if (isset($installedModules["OperationCenter"])) 
@@ -176,6 +180,8 @@
         switch ($_IPS['VARIABLE'])
             {
             case $actionSortMessageTableID:
+                if ($debug) echo "ImproveDeviceDetection getComponentEventListTable ".$_IPS['VARIABLE']."=".$_IPS['VALUE'];
+                $select=$_IPS['VALUE'];
                 if ($_IPS['VALUE'] == GetValue($_IPS['VARIABLE'])) 
                     {
                     $sort=SORT_DESC;
@@ -183,10 +189,11 @@
                     }
                 else $sort=SORT_ASC;
             	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+                
                 if ($messageTableID)
                     {
-                    $filter="IPSMessageHandler_Event";          // alle EventIDs die als Parent dieses Script haben
-                    $resultEventList = $testMovement->getEventListfromIPS($filter,false);                           // false no Debug, erst einmal alle Events von IP Symcon auslesen und in einem neuen Format ausgeben
+                    $filter1="IPSMessageHandler_Event"; // alle EventIDs die als Parent dieses Script haben
+                    $resultEventList = $testMovement->getEventListfromIPS($filter1,false);                           // false no Debug, erst einmal alle Events von IP Symcon auslesen und in einem neuen Format ausgeben
                     foreach ($resultEventList as $index => $entry)
                         {
                         $trigger = $entry["TriggerVariableID"];
@@ -196,7 +203,8 @@
                             $resultEventList[$index]["Module"]=$eventlist[$trigger][2];
                             }
                         }
-                    switch ($_IPS['VALUE'])
+                    $filter2="IPSMessageHandler_Event";
+                    switch ($select)
                         {
                         case 0:
                             $ipsOps->intelliSort($resultEventList,"Module",$sort);
@@ -204,6 +212,41 @@
                         case 1:
                             $ipsOps->intelliSort($resultEventList,"LastRun",$sort);
                             break;
+                        case 2:
+                        case 3:
+                            break;
+                        case 4:     // Sort3
+                            $debug=false;
+                            $filter2="IPSDetectEventListHandler_Event";
+                            $eventList = new DetectEventListHandler($debug);
+                            if ($debug) echo "EventList vom DetectEventListHandler laden:\n";           // Create, copied to DiagnoseCenter
+                            $eventList->setEventListFromConfigFile();           // aus dem DetectMovement_Config File
+                            $eventList->extendGroups("DetectHandler");
+                            // devicelist
+                            if ($debug) echo "Deviceliste aus File laden. Wird in EvaluateHardware erzeugt. Gleich auf function deviceList() referenzieren.\n";
+                            $devicelist = new DeviceListManagement(deviceList());           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
+
+                            $topology = new TopologyManagement();       // TopologyManagement extends DetectDeviceHandler, topology information als class 
+                            $status2 = $topology->createUnifiedTopology($debug);            // add Information from Topology Instances
+
+                            $deviceEventList = new DetectDeviceListHandler();                            // $deviceEventList mit topology updaten    
+                            $status1 = $deviceEventList->analyseTopologyData($topology,$debug);        // DetectMovement, deviceeventlist data ok, extension parameter 4 und 5
+
+                            $devicelist->addTopology($topology,$deviceEventList);           // di ebeiden classes übergeben, deviclist wird angereichert
+                            $devicelistData = $devicelist->read_devicelist();
+                            //print_R($devicelistData);
+
+                            // devicelist hat Name, Type, Instances, Channels, Topology
+
+                            if ($debug) echo "Sync Topology Data from devicelist, result is new arrays structured as UUIDs with list of Topology Devices, oids and coids :\n";
+                            $devicelist->analyse();                                         // coids, oids und uuids als unterschiedliche Indexe herausarbeiten
+                            $coids=$devicelist->get_coids();
+                            //print_R($coids);                              // Index ist die COID    // evntlist vs devicelist
+                            if ($debug) echo "Align DeviceList, channels versus Eventlist - and then the other way round - always focused on the real hardware device:\n";
+                            if ($debug) $eventList->alignDeviceList($coids,"summary");          // reduce echos, show summary report
+                            else $eventList->alignDeviceList($coids);
+                            $resultEventList = $eventList->getEventList();                            
+                            break;                            
                         default:
                             break;
                         }
@@ -216,12 +259,13 @@
                      *      Type
                      *      Script 
                      */                       
-                    $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,false);             // false no Debug, wenn file IPSMessage_Handler ist gibt es detailliertere Informationen
+                    $html=$testMovement->getComponentEventListTable($resultEventList,$filter2,true,false);             // false no Debug, wenn file IPSMessage_Handler ist gibt es detailliertere Informationen
                     setValue($messageTableID,$html);
                     }
                 else echo "Table not found.\n";
                 break;
             case $actionDeviceTableID:
+                if ($debug) echo "ImproveDeviceDetection showHardwareStatus ".$_IPS['VARIABLE'];
             	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
                 if (isset($DeviceManager))
                     {
@@ -262,9 +306,9 @@
                     $output.="</div>";
                     SetValue($valuesDeviceTableID,$output);
                     }
-
                 break;
             case $actionViewWebbrowserTableID:                      // Cookies Table
+                if ($debug) echo "ImproveDeviceDetection getTable_webfrontAccess ".$_IPS['VARIABLE'];
                 SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
                 $webBrowserLibrary = new webBrowserLibrary();               // Teil der Startpage_Library
                 $tableAccess = $webBrowserLibrary->getTable_webfrontAccess();
@@ -287,6 +331,7 @@
                 SetValue($webbrowserCookiesTableID,$html);                        
                 break;
             case $actionViewMessageTableID:
+                if ($debug) echo "ImproveDeviceDetection actionViewMessageTableID ".$_IPS['VARIABLE'];
                 SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
                 switch ($_IPS['VALUE'])
                     {
@@ -298,7 +343,7 @@
                     }                    
                 break;
             case $actionUpdateID:
-                echo "Update Tables";
+                if ($debug) echo "ImproveDeviceDetection Update Hom,ematic Error Tables ".$_IPS['VARIABLE'];
                 $debug2=false;
                 // $logEvaluateHardwareID, $statusDeviceID, $statusEvaluateHardwareID
                 $verzeichnis=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
@@ -333,11 +378,11 @@
      */
     if ( ($_IPS['SENDER']=="Execute") && $executeExecute)
         {
-
+        echo "Local Execution requested:\n";
         if (isset($installedModules["OperationCenter"])) 
             {
             IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
-            echo "OperationCenter ist installiert.\n"; 
+            echo "   OperationCenter ist installiert.\n"; 
             //echo "HMI_CreateReport updaten, wenn in den letzten 24h nicht erfolgt.\n";
             $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library, getHomematicAddressList wird auch im construct aufgerufen
             //$HomematicAddressesList = $DeviceManager->getHomematicAddressList(true);        // noch einmal aufrufen mit Debug
@@ -347,18 +392,18 @@
 
         if (isset($testMovement)) 
             {
-            echo "DetectMovement Module installiert. Class TestMovement für Auswertungen verwenden:\n";
+            echo "   DetectMovement Module installiert. Class TestMovement für Auswertungen verwenden:\n";
             //echo "--------\n";
             $eventListforDeletion = $testMovement->getEventListforDeletion();
             if (count($eventListforDeletion)>0) 
                 {
-                echo "Ergebnis TestMovement construct: Es müssen ".count($eventListforDeletion)." Events in der Config Datei \"IPSMessageHandler_GetEventConfiguration\" gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
+                echo "      Ergebnis TestMovement construct: Es müssen ".count($eventListforDeletion)." Events in der Config Datei \"IPSMessageHandler_GetEventConfiguration\" gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
                 echo "                                 und es müssen auch diese Events hinterlegt beim IPSMessageHandler_Event geloescht werden \"Bei Änderung Event Ungültig\".\n";
                 print_R($eventListforDeletion);
                 }
             else 
                 {
-                echo "Events von IPS_MessageHandler mit Konfiguration abgeglichen. TestMovement sagt alles ist in Ordnung.\n";
+                echo "      Events von IPS_MessageHandler mit Konfiguration abgeglichen. TestMovement sagt alles ist in Ordnung.\n";
                 echo "\n";
                 }
             $filter="IPSMessageHandler_Event";
@@ -592,303 +637,303 @@
             echo "--------------------\n";   
 
             }
-    echo "\n";
-            
-
-    /*
-    $name="Arbeitslicht3"; $parent=17297;
-    echo "Eine Device Instanz mit dem Namen $name unter $parent erstellen, wenn sie nicht bereits erstellt wurde:\n";
-    $InstanzID = @IPS_GetInstanceIDByName($name, $parent);
-
-    if ($InstanzID === false)
-        {
-        echo "Instanz nicht gefunden, neu anlegen.";
-        $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen mit dem Namen "Stehlampe"
-        if ($InsID !== false)
-            {
-            IPS_SetName($InsID, $name); // Instanz benennen
-            IPS_SetParent($InsID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
-            
-            //Konfiguration
-            //IPS_SetProperty($InsID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
-            IPS_ApplyChanges($InsID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
-            }
-        else echo "Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n";
-        }
-    else
-        {
-        echo "Die Instanz-ID gibt es bereits und lautet: ". $InstanzID."   \n";
-		$configTopologyDevice=IPS_GetConfiguration($InstanzID);
-        echo "  Hier ist die abgespeicherte Konfiguration:\n";
-        echo "  $configTopologyDevice  \n";
-        }
-
-    $config=array();
-    if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
-
-    */
-
-
-
-
-    /* komplette Datei aus dem HM Inventory auslesen 
-    * 
-    *
-    */
-
-    $HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
-    $countHMI = sizeof($HMIs);
-    echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
-    if ($countHMI>0)
-        {		
-        foreach ($HMIs as $HMI)
-            {
-            echo "   HMI Inventory, Update Report: ".$HMI."\n";
-            //HMI_CreateReport($HMI);
-            $config = IPS_GetConfiguration($HMI);
-            echo $config;
-            $childrens=IPS_GetChildrenIDs($HMI);
-            if (isset($childrens[0]))
-                {
-                $objects = IPS_GetVariable($childrens[0]);
-                echo "Report last Update: ".date("d.m.y H:i:s",$objects["VariableUpdated"])."\n";
-                //print_r($objects);
-                $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);  
-                echo "\nTesteintrag #0 aus dem HomeMaticInventory:\n";          
-                print_R($HomeMaticEntries[0]);         // IPS_name ist die Referenz auf den Instanznamen von IPS
-                /* DetectDevicec wertet diese Information auch aus DeviceManagement->($this->HomematicAddressesList=$this->getHomematicAddressList();)*/
-                }
-            }
-        }
-
-
-
-	$modulhandling = new ModuleHandling();	
-
-    echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
-    $discovery = $modulhandling->getDiscovery();
-    echo "\n";
-
-    if ( (isset($installedModules["DetectMovement"]) )             )
-        {    
-        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-
-        echo "Auflistung aller DetectDeviceHandler Instanzen:\n";
-        $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
-        $eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();        
-        if ($debug) $DetectDeviceHandler->Print_EventConfigurationAuto(false);
         echo "\n";
+                
 
-        echo "Bewegungsregister Auflistung der Events:\n";
-        $DetectMovementHandler = new DetectMovementHandler();
-        if ($debug) $DetectMovementHandler->Print_EventConfigurationAuto(true);         // true extended display
-        echo "\n";
-
-        $eventListonOID=array();
-        //print_r($resultEventList);
-        foreach ($resultEventList as $index => $entry ) 
-            {
-            $eventListonOID[$entry["TriggerVariableID"]]=$entry;
-            }
-        //print_r($eventListonOID); 
-
-    	$events=$DetectMovementHandler->ListEvents();               /* Alle Events für DetectMovement */
-        $eventMoveConfig=$DetectMovementHandler->Get_EventConfigurationAuto();    
-        
-        /*  foreach ($events as $oid => $typ)
-            {
-            if (isset($eventListonOID[$oid])) print_r($eventListonOID[$oid]);   
-            }  */ 
-
-        //$detectMoveConfig=$DetectMovementHandler->ListConfigurations();  print_r($detectMoveConfig);
-        
-        echo "Array mit Spiegelregistern anlegen.\n";
-        $mirrorsMoveFound=array();
-        foreach ($events as $oid => $typ)
-            {
-            $moid=$DetectMovementHandler->getMirrorRegister($oid);
-            if (IPS_GetObject($oid) === false) 
-                {
-                echo "   --> Fehler, Register $oid nicht bekannt.\n";
-                }
-            else
-                {
-                if ($moid === false) echo "  --> Fehler, Spiegelregister nicht bekannt.\n";
-                else
-                    {
-                    if (isset($eventListonOID[$oid])) 
-                        {
-                        $eventListonOID[$oid]["MirrorRegisterID"]=$moid;
-                        $eventListonOID[$oid]["MirrorRegister"]=IPS_GetName($moid);
-                        }    
-                    $mirrorsMoveFound[$moid] = IPS_GetName($moid);                
-                    echo "     ".IPS_GetName($moid);
-                    }
-                echo "\n";
-                }
-            }
-        print_R($mirrorsMoveFound);
-
-        echo "Temperaturregister Auflistung der Events:\n";
-        $DetectTemperatureHandler = new DetectTemperatureHandler();
-        if ($debug) $DetectTemperatureHandler->Print_EventConfigurationAuto(true);         // true extended display
-
-    	$events=$DetectTemperatureHandler->ListEvents();
-        $eventTempConfig=$DetectTemperatureHandler->Get_EventConfigurationAuto();    
-
-        echo "Array mit Spiegelregistern anlegen.\n";
-        $mirrorsTempFound=array();
-        echo "      OID    Pfad                                                                              Config aus EvaluateHardware                                             TemperatureConfig aus DetectMovement            \n";
-        foreach ($events as $oid => $typ)
-            {
-            $moid=$DetectTemperatureHandler->getMirrorRegister($oid);
-            if (IPS_GetObject($oid) === false) echo "     Fehler, Register nicht bekannt.\n";
-            else
-                {
-                if ($moid === false) echo "  --> Fehler, Spiegelregister nicht bekannt.\n";
-                else
-                    {
-                    if (isset($eventListonOID[$oid])) 
-                        {
-                        $eventListonOID[$oid]["MirrorRegisterID"]=$moid;
-                        $eventListonOID[$oid]["MirrorRegister"]=IPS_GetName($moid);
-                        }    
-                    $mirrorsTempFound[$moid] = IPS_GetName($moid);                
-                    echo "     ".IPS_GetName($oid)."\n";
-                    }
-                }
-            }
-
-        echo "\n";
-        }
-    else 
-        {
-        $mirrorsMoveFound=array();             
-        $mirrorsTempFound=array();   
-        }
-
-
-    if ( (isset($installedModules["CustomComponent"]) )   && $debug                ) 
-        {    
-
-        $moduleManagerCC = new IPSModuleManager('CustomComponent',$repository);
-
-        IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
-        IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
-        IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
-
-        $CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
-        $CategoryIdAppCC      = $moduleManagerCC->GetModuleCategoryID('app');
-
-        echo "\n";
-        echo "Modul CustomComponents Category OIDs for data : ".$CategoryIdDataCC."  (".IPS_GetName($CategoryIdDataCC).") for App : ".$CategoryIdAppCC."\n";
-        echo "Ausgabe aller Bewegung Spiegelregister:\n";
-        $name="Bewegung-Auswertung";
-        $MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdDataCC);
-        checkMirrorRegisters($MoveAuswertungID,$mirrorsMoveFound);
-
-        echo "---------\n";
-        echo "Ausgabe aller Temperatur Spiegelregister:\n";
-    	$events=$DetectTemperatureHandler->ListEvents();
-        $mirrorsFound = $DetectTemperatureHandler->getMirrorRegisters($events);
-        /* Get Category to store the Temperature-Spiegelregister */	
-        $name="Temperatur-Auswertung";
-        $TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdDataCC);
-        $DetectTemperatureHandler->checkMirrorRegisters($TempAuswertungID,$mirrorsFound);
-        }
-
-    if ( (isset($installedModules["DetectMovement"]) )  && $debug           )
-        {    
-
-        echo "\n";
-        echo "=======================================================================\n";
-        echo "Detect Movement Modul Summenregister suchen und evaluieren :\n";
-        echo "---------\n";
-        echo "Die Configurationen der Bewegungsregisterregister auf Konsistenz prüfen:\n";
-        $events=$DetectMovementHandler->ListEvents();
-        foreach ($events as $oid => $typ)
-            {
-            $moid=$DetectMovementHandler->getMirrorRegister($oid);
-            if ( (isset($detectDeviceConfig[$oid]["Config"]["Mirror"])) && ($detectDeviceConfig[$oid]["Config"]["Mirror"] != "") ) 
-                {
-                if ($detectDeviceConfig[$oid]["Config"]["Mirror"] != IPS_GetName($moid)) 
-                    {
-                    $mirror1=$detectDeviceConfig[$oid]["Config"]["Mirror"];
-                    echo "     ---> Mirror register in detectDeviceConfig cannot be overwritten. Clear manually to $mirror1!\n";
-                    //print_r($detectDeviceConfig[$oid]);
-                    }
-                }
-            //echo "\ndetectTemperatureConfig:\n"; print_r($detectTemperatureConfig[$oid]);
-            if ( (isset($detectTemperatureConfig[$oid]["Config"]["Mirror"])) && ($detectTemperatureConfig[$oid]["Config"]["Mirror"] != "") ) 
-                {
-                if ($detectTemperatureConfig[$oid]["Config"]["Mirror"] != IPS_GetName($moid)) 
-                    {
-                    $mirror2=$detectTemperatureConfig[$oid]["Config"]["Mirror"];
-                    echo "     ---> Mirror register in detectMovementConfig cannot be overwritten. Clear manually to $mirror2 !\n";
-                    //print_R($detectTemperatureConfig[$oid]);
-                    }
-                }            
-            }        
-        //print_r($events);
         /*
-        foreach ($events as $oid => $typ)
-            {
-            echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
-            $moid=$DetectMovementHandler->getMirrorRegister($oid);
-            $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Movement');		
-            }
-        */
-        $groups=$DetectMovementHandler->ListGroups("Motion");       // Type angeben damit mehrere Gruppen aufgelöst werden können
-        //print_r($groups)
-        foreach ($groups as $group => $entry)
-            {
-            $soid=$DetectMovementHandler->InitGroup($group);
-            echo "     ".$soid."  ".str_pad(IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid))),70)."  ".(integer)GetValue($soid)."\n";
-            //$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Movement');		
-            }	
+        $name="Arbeitslicht3"; $parent=17297;
+        echo "Eine Device Instanz mit dem Namen $name unter $parent erstellen, wenn sie nicht bereits erstellt wurde:\n";
+        $InstanzID = @IPS_GetInstanceIDByName($name, $parent);
 
-        echo "---------\n";
-        echo "Die Configurationen der Temperaturregister auf Konsistenz prüfen:\n";
-        $events=$DetectTemperatureHandler->ListEvents();
-        foreach ($events as $oid => $typ)
+        if ($InstanzID === false)
             {
-            $moid=$DetectTemperatureHandler->getMirrorRegister($oid);
-            if ( (isset($detectDeviceConfig[$oid]["Config"]["Mirror"])) && ($detectDeviceConfig[$oid]["Config"]["Mirror"] != "") ) 
+            echo "Instanz nicht gefunden, neu anlegen.";
+            $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen mit dem Namen "Stehlampe"
+            if ($InsID !== false)
                 {
-                if ($detectDeviceConfig[$oid]["Config"]["Mirror"] != IPS_GetName($moid)) 
+                IPS_SetName($InsID, $name); // Instanz benennen
+                IPS_SetParent($InsID, $parent); // Instanz einsortieren unter dem angeführten Objekt 
+                
+                //Konfiguration
+                //IPS_SetProperty($InsID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
+                IPS_ApplyChanges($InsID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
+                }
+            else echo "Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n";
+            }
+        else
+            {
+            echo "Die Instanz-ID gibt es bereits und lautet: ". $InstanzID."   \n";
+            $configTopologyDevice=IPS_GetConfiguration($InstanzID);
+            echo "  Hier ist die abgespeicherte Konfiguration:\n";
+            echo "  $configTopologyDevice  \n";
+            }
+
+        $config=array();
+        if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
+
+        */
+
+
+
+
+        /* komplette Datei aus dem HM Inventory auslesen 
+        * 
+        *
+        */
+
+        $HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
+        $countHMI = sizeof($HMIs);
+        echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
+        if ($countHMI>0)
+            {		
+            foreach ($HMIs as $HMI)
+                {
+                echo "   HMI Inventory, Update Report: ".$HMI."\n";
+                //HMI_CreateReport($HMI);
+                $config = IPS_GetConfiguration($HMI);
+                echo $config;
+                $childrens=IPS_GetChildrenIDs($HMI);
+                if (isset($childrens[0]))
                     {
-                    $mirror1=$detectDeviceConfig[$oid]["Config"]["Mirror"];
-                    echo "     ---> Mirror register in detectDeviceConfig cannot be overwritten. Clear manually to $mirror1!\n";
-                    //print_r($detectDeviceConfig[$oid]);
+                    $objects = IPS_GetVariable($childrens[0]);
+                    echo "Report last Update: ".date("d.m.y H:i:s",$objects["VariableUpdated"])."\n";
+                    //print_r($objects);
+                    $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);  
+                    echo "\nTesteintrag #0 aus dem HomeMaticInventory:\n";          
+                    print_R($HomeMaticEntries[0]);         // IPS_name ist die Referenz auf den Instanznamen von IPS
+                    /* DetectDevicec wertet diese Information auch aus DeviceManagement->($this->HomematicAddressesList=$this->getHomematicAddressList();)*/
                     }
                 }
-            //echo "\ndetectTemperatureConfig:\n"; print_r($detectTemperatureConfig[$oid]);
-            if ( (isset($detectTemperatureConfig[$oid]["Config"]["Mirror"])) && ($detectTemperatureConfig[$oid]["Config"]["Mirror"] != "") ) 
-                {
-                if ($detectTemperatureConfig[$oid]["Config"]["Mirror"] != IPS_GetName($moid)) 
-                    {
-                    $mirror2=$detectTemperatureConfig[$oid]["Config"]["Mirror"];
-                    echo "     ---> Mirror register in detectTemperatureConfig cannot be overwritten. Clear manually to $mirror2 !\n";
-                    //print_R($detectTemperatureConfig[$oid]);
-                    }
-                }            
-            }        
-        echo "Alle Temperatur Gruppen durchgehen und wenn erforderlich neu registrieren :\n";
-        $groups=$DetectTemperatureHandler->ListGroups("Temperatur");        /* Type angeben damit mehrere Gruppen aufgelöst werden können */
-        //print_r($groups);
-        foreach ($groups as $group => $entry)
-            {
-            $soid=$DetectTemperatureHandler->InitGroup($group);
-            echo "     ".$soid."  ".str_pad(IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid))),70)."  ".GetValue($soid)." °C\n";
-            //$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');		
             }
-        }	
-        echo "Aktuelle Laufzeit ".exectime($startexec)." Sekunden\n";
 
 
-    }       // nur wenn Script Execute
-//else echo "kein Execute";             // Test ob das das Ende von Execute ist
+
+        $modulhandling = new ModuleHandling();	
+
+        echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
+        $discovery = $modulhandling->getDiscovery();
+        echo "\n";
+
+        if ( (isset($installedModules["DetectMovement"]) )             )
+            {    
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+
+            echo "Auflistung aller DetectDeviceHandler Instanzen:\n";
+            $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
+            $eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();        
+            if ($debug) $DetectDeviceHandler->Print_EventConfigurationAuto(false);
+            echo "\n";
+
+            echo "Bewegungsregister Auflistung der Events:\n";
+            $DetectMovementHandler = new DetectMovementHandler();
+            if ($debug) $DetectMovementHandler->Print_EventConfigurationAuto(true);         // true extended display
+            echo "\n";
+
+            $eventListonOID=array();
+            //print_r($resultEventList);
+            foreach ($resultEventList as $index => $entry ) 
+                {
+                $eventListonOID[$entry["TriggerVariableID"]]=$entry;
+                }
+            //print_r($eventListonOID); 
+
+            $events=$DetectMovementHandler->ListEvents();               /* Alle Events für DetectMovement */
+            $eventMoveConfig=$DetectMovementHandler->Get_EventConfigurationAuto();    
+            
+            /*  foreach ($events as $oid => $typ)
+                {
+                if (isset($eventListonOID[$oid])) print_r($eventListonOID[$oid]);   
+                }  */ 
+
+            //$detectMoveConfig=$DetectMovementHandler->ListConfigurations();  print_r($detectMoveConfig);
+            
+            echo "Array mit Spiegelregistern anlegen.\n";
+            $mirrorsMoveFound=array();
+            foreach ($events as $oid => $typ)
+                {
+                $moid=$DetectMovementHandler->getMirrorRegister($oid);
+                if (IPS_GetObject($oid) === false) 
+                    {
+                    echo "   --> Fehler, Register $oid nicht bekannt.\n";
+                    }
+                else
+                    {
+                    if ($moid === false) echo "  --> Fehler, Spiegelregister nicht bekannt.\n";
+                    else
+                        {
+                        if (isset($eventListonOID[$oid])) 
+                            {
+                            $eventListonOID[$oid]["MirrorRegisterID"]=$moid;
+                            $eventListonOID[$oid]["MirrorRegister"]=IPS_GetName($moid);
+                            }    
+                        $mirrorsMoveFound[$moid] = IPS_GetName($moid);                
+                        echo "     ".IPS_GetName($moid);
+                        }
+                    echo "\n";
+                    }
+                }
+            print_R($mirrorsMoveFound);
+
+            echo "Temperaturregister Auflistung der Events:\n";
+            $DetectTemperatureHandler = new DetectTemperatureHandler();
+            if ($debug) $DetectTemperatureHandler->Print_EventConfigurationAuto(true);         // true extended display
+
+            $events=$DetectTemperatureHandler->ListEvents();
+            $eventTempConfig=$DetectTemperatureHandler->Get_EventConfigurationAuto();    
+
+            echo "Array mit Spiegelregistern anlegen.\n";
+            $mirrorsTempFound=array();
+            echo "      OID    Pfad                                                                              Config aus EvaluateHardware                                             TemperatureConfig aus DetectMovement            \n";
+            foreach ($events as $oid => $typ)
+                {
+                $moid=$DetectTemperatureHandler->getMirrorRegister($oid);
+                if (IPS_GetObject($oid) === false) echo "     Fehler, Register nicht bekannt.\n";
+                else
+                    {
+                    if ($moid === false) echo "  --> Fehler, Spiegelregister nicht bekannt.\n";
+                    else
+                        {
+                        if (isset($eventListonOID[$oid])) 
+                            {
+                            $eventListonOID[$oid]["MirrorRegisterID"]=$moid;
+                            $eventListonOID[$oid]["MirrorRegister"]=IPS_GetName($moid);
+                            }    
+                        $mirrorsTempFound[$moid] = IPS_GetName($moid);                
+                        echo "     ".IPS_GetName($oid)."\n";
+                        }
+                    }
+                }
+
+            echo "\n";
+            }
+        else 
+            {
+            $mirrorsMoveFound=array();             
+            $mirrorsTempFound=array();   
+            }
+
+
+        if ( (isset($installedModules["CustomComponent"]) )   && $debug                ) 
+            {    
+
+            $moduleManagerCC = new IPSModuleManager('CustomComponent',$repository);
+
+            IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
+            IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
+            IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+
+            $CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
+            $CategoryIdAppCC      = $moduleManagerCC->GetModuleCategoryID('app');
+
+            echo "\n";
+            echo "Modul CustomComponents Category OIDs for data : ".$CategoryIdDataCC."  (".IPS_GetName($CategoryIdDataCC).") for App : ".$CategoryIdAppCC."\n";
+            echo "Ausgabe aller Bewegung Spiegelregister:\n";
+            $name="Bewegung-Auswertung";
+            $MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdDataCC);
+            checkMirrorRegisters($MoveAuswertungID,$mirrorsMoveFound);
+
+            echo "---------\n";
+            echo "Ausgabe aller Temperatur Spiegelregister:\n";
+            $events=$DetectTemperatureHandler->ListEvents();
+            $mirrorsFound = $DetectTemperatureHandler->getMirrorRegisters($events);
+            /* Get Category to store the Temperature-Spiegelregister */	
+            $name="Temperatur-Auswertung";
+            $TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdDataCC);
+            $DetectTemperatureHandler->checkMirrorRegisters($TempAuswertungID,$mirrorsFound);
+            }
+
+        if ( (isset($installedModules["DetectMovement"]) )  && $debug           )
+            {    
+
+            echo "\n";
+            echo "=======================================================================\n";
+            echo "Detect Movement Modul Summenregister suchen und evaluieren :\n";
+            echo "---------\n";
+            echo "Die Configurationen der Bewegungsregisterregister auf Konsistenz prüfen:\n";
+            $events=$DetectMovementHandler->ListEvents();
+            foreach ($events as $oid => $typ)
+                {
+                $moid=$DetectMovementHandler->getMirrorRegister($oid);
+                if ( (isset($detectDeviceConfig[$oid]["Config"]["Mirror"])) && ($detectDeviceConfig[$oid]["Config"]["Mirror"] != "") ) 
+                    {
+                    if ($detectDeviceConfig[$oid]["Config"]["Mirror"] != IPS_GetName($moid)) 
+                        {
+                        $mirror1=$detectDeviceConfig[$oid]["Config"]["Mirror"];
+                        echo "     ---> Mirror register in detectDeviceConfig cannot be overwritten. Clear manually to $mirror1!\n";
+                        //print_r($detectDeviceConfig[$oid]);
+                        }
+                    }
+                //echo "\ndetectTemperatureConfig:\n"; print_r($detectTemperatureConfig[$oid]);
+                if ( (isset($detectTemperatureConfig[$oid]["Config"]["Mirror"])) && ($detectTemperatureConfig[$oid]["Config"]["Mirror"] != "") ) 
+                    {
+                    if ($detectTemperatureConfig[$oid]["Config"]["Mirror"] != IPS_GetName($moid)) 
+                        {
+                        $mirror2=$detectTemperatureConfig[$oid]["Config"]["Mirror"];
+                        echo "     ---> Mirror register in detectMovementConfig cannot be overwritten. Clear manually to $mirror2 !\n";
+                        //print_R($detectTemperatureConfig[$oid]);
+                        }
+                    }            
+                }        
+            //print_r($events);
+            /*
+            foreach ($events as $oid => $typ)
+                {
+                echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+                $moid=$DetectMovementHandler->getMirrorRegister($oid);
+                $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Movement');		
+                }
+            */
+            $groups=$DetectMovementHandler->ListGroups("Motion");       // Type angeben damit mehrere Gruppen aufgelöst werden können
+            //print_r($groups)
+            foreach ($groups as $group => $entry)
+                {
+                $soid=$DetectMovementHandler->InitGroup($group);
+                echo "     ".$soid."  ".str_pad(IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid))),70)."  ".(integer)GetValue($soid)."\n";
+                //$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Movement');		
+                }	
+
+            echo "---------\n";
+            echo "Die Configurationen der Temperaturregister auf Konsistenz prüfen:\n";
+            $events=$DetectTemperatureHandler->ListEvents();
+            foreach ($events as $oid => $typ)
+                {
+                $moid=$DetectTemperatureHandler->getMirrorRegister($oid);
+                if ( (isset($detectDeviceConfig[$oid]["Config"]["Mirror"])) && ($detectDeviceConfig[$oid]["Config"]["Mirror"] != "") ) 
+                    {
+                    if ($detectDeviceConfig[$oid]["Config"]["Mirror"] != IPS_GetName($moid)) 
+                        {
+                        $mirror1=$detectDeviceConfig[$oid]["Config"]["Mirror"];
+                        echo "     ---> Mirror register in detectDeviceConfig cannot be overwritten. Clear manually to $mirror1!\n";
+                        //print_r($detectDeviceConfig[$oid]);
+                        }
+                    }
+                //echo "\ndetectTemperatureConfig:\n"; print_r($detectTemperatureConfig[$oid]);
+                if ( (isset($detectTemperatureConfig[$oid]["Config"]["Mirror"])) && ($detectTemperatureConfig[$oid]["Config"]["Mirror"] != "") ) 
+                    {
+                    if ($detectTemperatureConfig[$oid]["Config"]["Mirror"] != IPS_GetName($moid)) 
+                        {
+                        $mirror2=$detectTemperatureConfig[$oid]["Config"]["Mirror"];
+                        echo "     ---> Mirror register in detectTemperatureConfig cannot be overwritten. Clear manually to $mirror2 !\n";
+                        //print_R($detectTemperatureConfig[$oid]);
+                        }
+                    }            
+                }        
+            echo "Alle Temperatur Gruppen durchgehen und wenn erforderlich neu registrieren :\n";
+            $groups=$DetectTemperatureHandler->ListGroups("Temperatur");        /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+            //print_r($groups);
+            foreach ($groups as $group => $entry)
+                {
+                $soid=$DetectTemperatureHandler->InitGroup($group);
+                echo "     ".$soid."  ".str_pad(IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid))),70)."  ".GetValue($soid)." °C\n";
+                //$DetectDeviceHandler->RegisterEvent($soid,'Topology','','Temperature');		
+                }
+            }	
+            echo "Aktuelle Laufzeit ".exectime($startexec)." Sekunden\n";
+
+
+        }       // nur wenn Script Execute
+    //else echo "kein Execute";             // Test ob das das Ende von Execute ist
 
 /**********************************************************************************************/
 

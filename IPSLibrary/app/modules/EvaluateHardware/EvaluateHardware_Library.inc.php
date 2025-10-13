@@ -76,18 +76,48 @@ class DeviceListManagement extends TopologyLibraryManagement
      *          das Instance Item muss eine OID haben und das Channels Item einen TYPECHAN
      *          das TYPECHAN item in die einzelnen Channel TYPES aufteilen, durchgehen
      */
-    function analyse()
+    
+    /**
+     * Analyse the devicelist and build lookup arrays for devices, channels, and topology UUIDs.
+     *
+     * This method processes the internal devicelist and generates three associative arrays for efficient access:
+     * - $oids: Indexed by device OID and channel type, mapping to channel OID.
+     * - $coids: Indexed by channel OID, containing metadata such as type, device name, UUID, and topology information.
+     * - $uuids: Indexed by topology UUID, containing device name, OIDs, COIDs, and topology details.
+     *
+     * The function is intended to restructure the devicelist for faster and more efficient searching and lookup operations.
+     *
+     * @return void
+     */
+    function analyse(IPSHeat_Manager $ipsheatManager,$debug=false)
         {
+        if ($debug) echo "Analyse DeviceList with ".sizeof($this->devicelist)." entries:\n";
+        // einzelne IPSHeat Aktuatoren
+        $IPSLightObjects=IPSHeat_GetHeatConfiguration();                // Switches
+        $IPSGroupObjecs = IPSHeat_GetGroupConfiguration();              // Groups
+        $IPSProgramObjecs = IPSHeat_GetProgramConfiguration();          // Programs
+
         $oids=array();
         $coids=array();
         $uuids=array();
-        $debug=false;
+
         foreach ($this->devicelist as $name => $entry)
             {
+            // prepare standard info    
+            $value=array();
+            $topoName=""; $topoUniqueName="";
             if (isset($entry["Topology"]["UUID"])) 
                 {
                 $topo=$entry["Topology"]["UUID"];
-                $uuids[$topo]["NAME"]=$name; 
+                $uuids[$topo]["NAME"]=$name;
+                if ((isset($entry["Topology"]["Name"]))) $topoName=$entry["Topology"]["Name"];
+                if ((isset($entry["Topology"]["UniqueName"]))) $topoUniqueName=$entry["Topology"]["UniqueName"];
+                if ((isset($entry["Topology"]["Path"]))) $topoName .= ".".$entry["Topology"]["Path"];
+                if ((isset($entry["Topology"]["UniquePath"]))) $topoUniqueName .= ".".$entry["Topology"]["UniquePath"];
+                
+                $value["UUID"]=$topo;           // UUID statt ObjectID, nur die UUID ist Server übergreifend
+                $value["TOPO"]["SIMPLE"]=$topoName;
+                $value["TOPO"]["UNIQUE"]=$topoUniqueName;
                 }
             else $topo=false;   
             if ( (isset($entry["Instances"])) && (isset($entry["Channels"])) )
@@ -100,7 +130,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                         if ( (isset($inst["OID"])) && (isset($chan["TYPECHAN"])) )
                             {
                             $oid=$inst["OID"];
-                            if ($debug) echo "   Found $name in devicelist pointing to real device $oid ".IPS_GetLocation($oid)."\n";
+                            if ($debug) echo "   Found $name in devicelist pointing to real device $oid ".IPS_GetLocation($oid)." in $topoName.\n";
                             $typechan=explode(",",$chan["TYPECHAN"]);
                             foreach ($typechan as $id=>$ctype)
                                 {
@@ -110,7 +140,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                                         {
                                         $coid=@IPS_GetObjectIDByName($varname,$oid);    
                                         //echo "      Channel $type found $varname $coid in $oid \n";
-                                        if ($debug) echo "      Channel $type with $coid \n";
+                                        if ($debug) echo "      Channel ".str_pad($type,15)." with $coid \n";
                                         if ($coid) 
                                             {
                                             if ( (isset($oids[$oid][$type])) && ($oids[$oid][$type] != $coid) ) echo "Fehler, da ist etwas doppelt definiert, Channel $type with $coid overwrites ".$oids[$oid][$type]."\n";
@@ -118,8 +148,9 @@ class DeviceListManagement extends TopologyLibraryManagement
                                             $value["Type"]=$type;
                                             $value["OID"]=$oid;
                                             $value["NAME"]=$name;
-                                            if ($topo) $value["UUID"]=$topo;           // UUID statt ObjectID, nur die UUID ist Server übergreifend
+                                            $value["VARNAME"]=$varname;
                                             $coids[$coid]=$value;
+
                                             $uuids[$topo]["OIDS"][$oid][$type]=$coid;
                                             $uuids[$topo]["COIDS"][$coid]=$value;
                                             }
@@ -129,6 +160,46 @@ class DeviceListManagement extends TopologyLibraryManagement
                             //print_R($devicelist[$name]);                            
                             }
                         }
+                    }
+                }
+            if (isset($entry["Actuators"]))
+                {
+                if ($debug>1) echo "   ".str_pad($name,50).json_encode($entry["Actuators"])."   ";
+                foreach ($entry["Actuators"] as $actuator)
+                    {
+                    $heatname=$actuator["Name"];
+                    switch ($actuator["Category"])
+                        {
+                        case "Switches":
+                            if (array_key_exists($heatname,$IPSLightObjects)) 
+                                {
+                                $coid=false;
+                                $value["Type"]="Switch";    
+                                $value["Name"]=$name; 
+                                switch ($actuator["Type"])
+                                    {
+                                    case "Switch":
+                                        $switchId = $ipsheatManager->GetSwitchIdByName($heatname);
+                                        if ($debug>1) echo "check  $switchId";  
+                                        if ($switchId) $coids[$switchId]=$value;                       
+                                        break;
+                                    case "Thermostat":
+                                        $switchId    = IPS_GetVariableIDByName($heatname, $ipsheatManager->getSwitchCategoryId());
+                                        $levelId     = IPS_GetVariableIDByName($heatname.IPSHEAT_DEVICE_MODE, $ipsheatManager->getSwitchCategoryId());
+                                        if ($debug>1) echo "check  $switchId $levelId ";              
+                                        if ($switchId) $coids[$switchId]=$value;  
+                                        if ($levelId)  $coids[$levelId]=$value;            
+                                        break;
+                                    }
+                                }
+                            break;
+                        case "Groups":
+                            break;
+                        case "Programs":
+                            break;
+                        }
+                    if ($debug>1) echo "\n";
+                    if ($debug && $switchId)  echo "   Found $name in devicelist as IPSHeat Actuator pointing to $switchId ".IPS_GetLocation($switchId)." in $topoName.\n";
                     }
                 }
             }           // ende foreach deviceList
@@ -156,7 +227,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                         {
                         $oid=$inst["OID"];
                         $oids[$oid]=$oid;
-                        if ($debug) echo "   Found $name in devicelist pointing to real device $oid ".IPS_GetLocation($oid)."\n";
+                        //if ($debug) echo "   Found $name in devicelist pointing to real device $oid ".IPS_GetLocation($oid)."\n";
                         $typechan=explode(",",$chan["TYPECHAN"]);
                         foreach ($typechan as $id=>$ctype)
                             {
@@ -205,9 +276,9 @@ class DeviceListManagement extends TopologyLibraryManagement
      *      nur topology, es muss kann die unified topology sein
      *      
      */
-    public function addTopology($topology=false,$deviceEventListHandler=false)
+    public function addTopology(TopologyManagement $topology,DetectDeviceListHandler $deviceEventListHandler,$debug=false)
         {
-        echo "addTopology ".get_class($topology)."  ".get_class($deviceEventListHandler)."   \n";           //Fehlermeldung wenn keine class
+        //if ($debug) echo "addTopology ".get_class($topology)."  ".get_class($deviceEventListHandler)."   \n";           //Fehlermeldung wenn keine class
         //if ($topology===false) addTopologyfromInstances();
         $deviceEventList = $deviceEventListHandler->get_Eventlist();
         //$channelEventList = $topology->channelEventList;
@@ -235,7 +306,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                                 }
                             else
                                 {
-                                if ($room != $channelEventList[$oid][1]) echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$instance["OID"]][1]."\n";
+                                if ($room != $channelEventList[$oid][1]) echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$oid][1]."\n";
                                 }
                             }
                         }
@@ -255,14 +326,14 @@ class DeviceListManagement extends TopologyLibraryManagement
                         else
                             {
                             $parentName=IPS_GetName(IPS_GetParent($InstanzID));
-                            echo "   Topology Instanz $name ($InstanzID) Parent : $parentName \n";
+                            if ($debug) echo "   Topology Instanz $name ($InstanzID) Parent : $parentName \n";
                             }
                         }
                     elseif ($room != $deviceEventList[$InstanzID][1]) 
                         {
-                        echo "Topology Device ".str_pad($name,55)." in room    $room   or here ".$deviceEventList[$InstanzID][1]."\n";
+                        if ($debug) echo "Topology Device ".str_pad($name,55)." in room    $room   or here ".$deviceEventList[$InstanzID][1]."\n";
                         }
-                    else echo "Topology Device ".str_pad($name,55)." in room    $room \n";
+                    elseif ($debug)  echo "Topology Device ".str_pad($name,55)." in room    $room \n";
                     }
                 else echo " Warning, da lauft was schief, $name $deviceEventList kein Eintrag für Topology Device $InstanzID. \n";
                 //$configUpdated = $topologyLibrary->initInstanceConfiguration($InstanzID,$newentry,$debug);          //true für debug
@@ -280,7 +351,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                     {
                     if (isset($channelEventList[$oid])) 
                         {
-                        echo "update channelEventList $oid from ".$channelEventList[$oid][1]." with $room\n";
+                        if ($debug) echo "update channelEventList $oid from ".$channelEventList[$oid][1]." with $room\n";
                         $config=json_encode($channelEventList[$oid]);
                         if ($channelEventList[$oid][1] == "") 
                             {
@@ -290,7 +361,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                             {
                             if ($room != $channelEventList[$oid][1]) 
                                 {
-                                echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$instance["OID"]][1]."\n";
+                                echo "    Fehler channelEventList, die Channels sind in unterschiedlichen Räumen. $oid  $room != ".$channelEventList[$oid][1]."\n";
                                 $channelEventList[$oid][1]=$room;
                                 }
                             }                            
@@ -329,6 +400,66 @@ class DeviceListManagement extends TopologyLibraryManagement
     public function write_devicelist($devicelist)           // get ist schon belegt
         {
         if (sizeof($devicelist)>0) $this->devicelist=$devicelist;
+        }
+
+    /* echo the data in devicelist as table for debugging
+     */
+    public function printDevicelist($style="table")  
+        {
+        if ($style=="table") 
+            {
+            echo "DeviceListManagement::printDeviceList \n";
+            foreach ($this->devicelist as $name => $entry)
+                {
+                $oids=$this->getalloids($entry);
+                echo "  ".str_pad($name,50)."  ";
+                if ( (isset($entry["Topology"]["UniqueName"])) && (isset($entry["Topology"]["UniquePath"])) ) echo str_pad($entry["Topology"]["UniqueName"].".".$entry["Topology"]["UniquePath"],50)."  ".json_encode($oids);
+                if (isset($entry["Instances"]))
+                    {
+                    foreach ($entry["Instances"] as $index => $inst)
+                        {
+                        if (isset($entry["Channels"][$index]))
+                            {
+                            $chan=$entry["Channels"][$index];
+                            if (isset($chan["TYPECHAN"])) 
+                                {
+                                echo "\n         Component $index: ".str_pad($inst["OID"],8).str_pad($chan["Name"],50)."  TYPECHAN: ".$chan["TYPECHAN"]."  ";
+                                $typechan=explode(",",$chan["TYPECHAN"]);
+                                foreach ($typechan as $id=>$ctype)
+                                    {
+                                    if (isset($chan[$ctype]))   
+                                        {
+                                        foreach ($chan[$ctype] as $type=>$varname) 
+                                            {
+                                            $coid=@IPS_GetObjectIDByName($varname,$inst["OID"]);    
+                                            echo "\n               Channel ".str_pad($type,15)." with ".str_pad($varname,50)." $coid ";
+                                            }   
+                                        } 
+                                    }
+                                }
+                            }
+                        else echo $index.":".$inst["OID"]."  ";
+                        }
+                    }
+                if (isset($entry["Actuators"]))
+                    {
+                    foreach ($entry["Actuators"] as $actuator)
+                        {
+                        echo "\n          Actuator: ".str_pad($actuator["Name"],50)." Category: ".$actuator["Category"]." Type: ".$actuator["Type"];
+                        }
+                    }
+                echo "\n";
+                }
+            }
+        if ($style=="summary")
+            {
+            $topologyCount=0; 
+            foreach ($this->devicelist as $name => $entry)
+                {
+                if ( (isset($entry["Topology"]["UniqueName"])) && (isset($entry["Topology"]["UniquePath"])) ) $topologyCount++;
+                }
+            echo "   DeviceListManagement::printDeviceList summary ".sizeof($this->devicelist)." entries, $topologyCount with Unique Topology\n";    
+            }
         }
 
     /* DeviceListManagement::findUUID
@@ -1209,26 +1340,43 @@ class TopologyLibraryManagement
      * Devices mit Order Position mit 900 eimsortieren
      */
 
-    public function sortTopologyInstances(&$deviceList, &$topology, $channelEventList, $deviceEventList, $config=false, $debug=false)
+    public function sortTopologyInstances(&$deviceListObject, &$topologyObject, $channelEventListObject, $deviceEventListObject, $config=false, $debug=false)
         {
+        // check whether input parameters are objects or arrays, for compatibility only
+        // DeviceListManagement, .... , DetectDeviceHandler, DetectDeviceListHandler, 
+        $loadModules=false;
+        if ($deviceListObject instanceof DeviceListManagement) $deviceList = $deviceListObject->read_devicelist();
+        else $deviceList = $deviceListObject;
+        if ($topologyObject instanceof TopologyManagement) $topology = $topologyObject->Get_Topology();     // not used at the moment
+        else $topology = $topologyObject;
+        if ($channelEventListObject instanceof DetectDeviceHandler) $channelEventList = $channelEventListObject->get_Eventlist();
+        else { $channelEventList = $channelEventListObject; $loadModules=true; }    // wenn kein Objekt, dann muss DetectDeviceHandler geladen werden
+        if ($deviceEventListObject instanceof DetectDeviceListHandler) $deviceEventList = $deviceEventListObject->get_Eventlist();
+        else { $deviceEventList = $deviceEventListObject; $loadModules=true; }    // wenn kein Objekt, dann muss DetectDeviceListHandler geladen werden
+
         // DetectMovement Module muss vorhanden sein
-        if (isset($this->installedModules["DetectMovement"]))   // benötige topologyReferences
+        if ($loadModules)
             {
-            $DetectDeviceListHandler = new DetectDeviceListHandler();
-            $DetectDeviceHandler = new DetectDeviceHandler();
+            if (isset($this->installedModules["DetectMovement"]))    // benötige topologyReferences
+                {
+                $deviceEventListObject = new DetectDeviceListHandler();
+                $channelEventListObject = new DetectDeviceHandler();
+                }
+            else
+                {
+                echo "sortTopologyInstances called, Modul DetectMovement not installed, return as false.\n"; 
+                return(false);
+                } 
             }
-        else
-            {
-            echo "sortTopologyInstances called, Modul DetectMovement not installed, return as false.\n"; 
-            return(false);
-            } 
+
         // Optionale Configuration bearbeiten, sortCateg  
-        if (isset($config["Sort"]))
-            {
-            if (strtoupper($config["Sort"])=="KATEGORIE") $sortCateg=true;
-            else $sortCateg=false;
-            }
-        else $sortCateg=false;
+        $sortCateg=false;
+        if ($config===false) $config=array();
+        if ( (isset($config["Sort"])) && (strtoupper($config["Sort"])=="KATEGORIE") ) $sortCateg=true;
+        // Use Device Information
+        $useDevice=false;   
+        if ( (isset($config["Use"]["Device"])) && (strtoupper($config["Use"]["Device"])=="ACTUATORS") ) $useDevice="ACTUATORS";
+        elseif ( (isset($config["Use"]["Device"])) && ($config["Use"]["Device"]) ) $useDevice=true;
 
         $i=0;
         $onlyOne=true;
@@ -1242,7 +1390,7 @@ class TopologyLibraryManagement
             if ( (isset($config["Use"]["Device"])) && ($config["Use"]["Device"]) ) echo " Create new Devices if ".$config["Use"]["Device"]."\n";
             }
         if ($debug>1) echo "Topology References vom DetectDeviceHandler laden.\n";
-        $references = $DetectDeviceHandler->topologyReferences($topology,($debug>1));
+        $references = $channelEventListObject->topologyReferences($topology,($debug>1));
         if ($debug>1) echo "Die devicelist durchgehen, Gerät für Gerät:\n";
         foreach ($deviceList as $name => $entry)            // name is unique in devicelist
             {
@@ -1256,16 +1404,16 @@ class TopologyLibraryManagement
                 //if ($onlyOne)
                     {
                     $gocreate=false;
-                    if ( (isset($this->deviceInstances[$name])) === false )         // neue Device Instanz erzeugen, einordnen im Root       
+                    if ( (isset($this->deviceInstances[$name])) === false )         // neue Topology Device Instanz erzeugen, einordnen im Root       
                         {
                         if ($debug>1) echo "new $name | ";
-                        if ( (isset($config["Use"]["Device"])) && ($config["Use"]["Device"]) ) 
+                        if ($useDevice)             // für alle Devices oder nur die mit Actuators eine Topology Device Instanz anlegen
                             {
-                            if (strtoupper($config["Use"]["Device"])=="ACTUATORS") 
+                            if ($useDevice=="ACTUATORS") 
                                 {
-                                if (isset($entry["Actuators"])) $gocreate=true;     // wenn Actuators muss in der Instamz ein Actuator definiert sein
+                                if (isset($entry["Actuators"])) $gocreate=true;     // wenn Actuators muss in der Instanz ein Actuator definiert sein
                                 }
-                            else $gocreate=true;            // sonst immer wenn es ein Ger#ät gibt eine Instanz erzeugen
+                            else $gocreate=true;            // sonst immer wenn es ein Gerät gibt eine Instanz erzeugen
                             if ($gocreate)
                                 {
                                 $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen 
@@ -1308,7 +1456,7 @@ class TopologyLibraryManagement
                             }
                         IPS_SetPosition($InstanzID,900);
                         // Abgleich Topology DeviceInstance mit channelEventList, deviceEventList und topology ob der room stimmt
-                        $room=$DetectDeviceHandler->findRoom($instances,$channelEventList,$topology);                   // alle Instanzen aus einem deviceList Eintrag durchgehen und mit $channelEventList abgleichen, eine Rauminformation daraus ableiten, Plausicheck inklusive
+                        $room=$channelEventListObject->findRoom($instances,$channelEventList,$topology);                   // alle Instanzen aus einem deviceList Eintrag durchgehen und mit $channelEventList abgleichen, eine Rauminformation daraus ableiten, Plausicheck inklusive
                         //if ($name=="ArbeitszimmerHue") { echo "***************\n"; }
 
                         if (isset($deviceEventList[$InstanzID]))        // device mit Rauminformation abgleichen
@@ -1320,7 +1468,7 @@ class TopologyLibraryManagement
                                 else echo "      >>>Warnung 112, Erster Raum ist leer in Topology, bitte einen Eintrag durchführen.\n";
                                 if ($deviceEventList[$InstanzID][1] == "") echo "      >>>Warnung, Zweiter Raum ist leer für ".IPS_GetName($InstanzID)." ($InstanzID): ".json_encode($deviceEventList[$InstanzID])."\n";
                                 $room = $deviceEventList[$InstanzID][1];
-                                $entryplace=$DetectDeviceHandler->uniqueNameReference($room,$references);
+                                $entryplace=$channelEventListObject->uniqueNameReference($room,$references);
                                 }
                             }
                         else echo "      >>>Warnung, Instanz $InstanzID nicht in der deviceEventList (Array). Eigentlich unmöglich ?\n";
@@ -1338,10 +1486,10 @@ class TopologyLibraryManagement
                         if ($sortCateg)         // in eine Kategorie einsortieren
                             {
                             $expectedParent = false;                    // default nix machen
-                            if ( (isset($config["Use"]["Device"])) && ($config["Use"]["Device"]) )              // Was machen wir mit Devices, in die Kategorie einsortiern
+                            if ($useDevice)              // Was machen wir mit Devices, in die Kategorie einsortiern
                                 {
                                 $expectedParent = $parent;                  // wenn use Device in den parent schicken                                
-                                if (strtoupper($config["Use"]["Device"])=="ACTUATORS")
+                                if ($useDevice=="ACTUATORS")
                                     {
                                     if (isset($entry["Actuators"]))                        // neue Betriebsart, Schalter, RGB und Ambient Lampen einbauen
                                         {
@@ -1352,7 +1500,15 @@ class TopologyLibraryManagement
                                         // more Information out of devicelist for updateLinks
                                         }
                                     }
-                                elseif (isset($topology[$room]["OID"])) $expectedParent=$topology[$room]["OID"];
+                                else
+                                    {
+                                    if (isset($topology[$room]["OID"])) $expectedParent=$topology[$room]["OID"];
+                                    if (isset($entry["Actuators"]))                        // neue Betriebsart, Schalter, RGB und Ambient Lampen einbauen
+                                        {
+                                        $topology[$room]["Actuators"][$name]=$entry["Actuators"];
+                                        $topology[$room]["Actuators"][$name]["TopologyInstance"]=$InstanzID;
+                                        }
+                                    }
                                 }
                             if ( ($expectedParent) && (is_numeric($expectedParent)) && ($expectedParent>0))
                                 {
@@ -1410,7 +1566,7 @@ class TopologyLibraryManagement
                             
                             TOPD_SetDeviceList($InstanzID,$instances);      */
                             }
-                        if (isset($this->installedModules["DetectMovement"]))  $DetectDeviceListHandler->RegisterEvent($InstanzID,'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
+                        if (isset($this->installedModules["DetectMovement"]))  $deviceEventListObject->RegisterEvent($InstanzID,'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
                         }
                     //$onlyOne=false;
                     /* Ein Eintrag wurde erstellt oder ist vorhanden, devicelist erweitern mit den zusätzlichen Informationen */

@@ -10,10 +10,13 @@
  *
  ***********************************************************/
 
-//Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
-IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+    IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+
+    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
 /******************************************************
 
@@ -26,52 +29,60 @@ IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules:
     $dosOps->setMaxScriptTime(900);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
     $startexec=microtime(true);
 
-$dir655=false;
+    $debug=false;
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager))
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+    $dir655=false;
 
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-	$moduleManager = new IPSModuleManager('OperationCenter',$repository);
-	}
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    if (!isset($moduleManager))
+        {
+        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
-$installedModules = $moduleManager->GetInstalledModules();
-$inst_modules="\nInstallierte Module:\n";
-foreach ($installedModules as $name=>$modules)
-	{
-	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	}
-echo $inst_modules."\n\n";
+        //echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+        $moduleManager = new IPSModuleManager('OperationCenter',$repository);
+        }
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-$scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
-echo "Category App ID:".$CategoryIdApp."\n";
-echo "Category Script ID:".$scriptId."\n\n";
+    $installedModules = $moduleManager->GetInstalledModules();
+    $inst_modules="\nInstallierte Module:\n";
+    foreach ($installedModules as $name=>$modules)
+        {
+        $inst_modules.=str_pad($name,30)." ".$modules."\n";
+        }
+    if ($debug) echo $inst_modules."\n\n";
 
-$scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
+    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
 
-echo "Folgende Module werden von OperationCenter bearbeitet:\n";
-if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
-if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n"; }
-if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
-if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
-echo "\n";
+    $scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
 
-/* PC Daten wie zB Trace regelmaessig auslesen */
+    if ($debug) 
+        {
+        echo "Category App ID:".$CategoryIdApp."\n";
+        echo "Category Script ID:".$scriptId."\n\n";
+        echo "Folgende Module werden von OperationCenter bearbeitet:\n";
+        if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
+        if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n"; }
+        if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+        if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
+        echo "\n";
+        }
 
-$tim1ID = @IPS_GetEventIDByName("DiagnoseAufruftimer", $_IPS['SELF']);
-if ($tim1ID==false)
-	{
-	$tim1ID = IPS_CreateEvent(1);
-	IPS_SetParent($tim1ID, $_IPS['SELF']);
-	IPS_SetName($tim1ID, "DiagnoseAufruftimer");
-	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
-	IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  /* immer um 1:40 */
-	}
-IPS_SetEventActive($tim1ID,true);
+    /* PC Daten wie zB Trace regelmaessig auslesen */
+    $timerOps = new timerOps();     // functional call
+
+    $tim1ID = @IPS_GetEventIDByName("DiagnoseAufruftimer", $_IPS['SELF']);
+    if ($tim1ID==false)
+        {
+        $tim1ID = IPS_CreateEvent(1);
+        IPS_SetParent($tim1ID, $_IPS['SELF']);
+        IPS_SetName($tim1ID, "DiagnoseAufruftimer");
+        IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
+        IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  /* immer um 1:40 */
+        }
+    IPS_SetEventActive($tim1ID,true);
+
+    $tim2ID = $timerOps->CreateTimerHour("CreateEventList",0,15,$_IPS['SELF']);            // $name,$stunde,$minute,$scriptID , set to active
 
 /*********************************************************************************************/
 
@@ -104,8 +115,46 @@ if ($_IPS['SENDER']=="Execute")
 
 	*/
 	
-	evaluate_trace($CategoryIdData);
+	//evaluate_trace($CategoryIdData);
 
+    // eventliste, Filter noch nicht perfekt, Zuordnung zu einem Script geht nicht mehr da die Actions nun aufgteilt wurden auf Scripts, Logikplan etc
+    // alle events die einem Script zugeordnet sind geht auch nicht, immer nur für ein besonderes möglich
+
+    // jetzt sind zwar daily events dabei, die aber zyklisch mehrmals an einem Tag aufgerufen werden
+    echo "Wir suchen Daily Events die ein Script aufrufen für die bessere Planung:\n";
+    $eventlist = new timerOps();
+    $eventlist->getAllEvents(1);             // 0 Auslöser, 1 Zyklisch, 2 Wochenplan
+    $eventlist->filter_eventlist(["status"=>true,"DateType"=>2]);           // DateType 2 und implizit 0 sind Tägliche Aufrufe
+    $eventlist->write_eventlist();
+    $resultEventList = $eventlist->get_eventlist();
+
+    $debug=true;            // alle zyklisch
+            $eventList = new DetectEventListHandler($debug);
+            $scriptId  = $eventList->getScriptIdMessageHandler();                // suche scriptId von 'IPSMessageHandler_Event'
+            echo "Alle Events die dem Script $scriptId zugeordnet sind speichern:\n";
+            $eventList->getEventListByScriptId($scriptId);                    // alle Events die diesem Script zugeordnet sind speichern
+            echo "IPSMessagehandler Configuration durchgehen. Für jedes Event rausfinden wo die Daten gespeichert sind.\n";
+            $eventConf = IPSMessageHandler_GetEventConfiguration();
+            $eventCust = IPSMessageHandler_GetEventConfigurationCust();
+            $eventlistConf = $eventConf + $eventCust;
+            $events=$eventList->checkEventsConfig($eventlistConf);                       // eventlist aus dem Config File durchgehen, einfache  Überprüfungen, Ausgabe der events
+            echo "Die Events in der Darstellung sortieren:\n";
+            $eventList->sortEvents($events);                                         // mit den Events die Childrens unter script nach dem TriggerEvent sortieren OnChange_TriggerEvent
+            echo "Datenbereinigung für folgende Elemente erforderlich:\n";
+            $eventListDelete = $eventList->getEventListforDeletion();
+            print_R($eventListDelete);
+            echo "align IPSMessagehandler Configuration:\n";
+            $eventList->alignEventsConfig($eventlistConf);                               // die events mit der Config abgleichen
+            echo "Autosteuerung Events abgleichen:\n"; 
+            IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+            $autosteuerung_config=Autosteuerung_GetEventConfiguration();
+            $eventList->alignOtherEvents($autosteuerung_config,"Autosteuerung");
+            
+            $eventList->extendComponent(1000);                  // max 1000 Events bearbeiten
+            $eventListData = $eventList->getEventList();
+            $comment = "Created from DiagnoseCenter on ".date("d.m.Y H:i:s");
+            $eventList->StoreEventConfiguration($eventListData, $comment, false);
+        
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	
 	} /* ende Execute */
@@ -126,10 +175,33 @@ if ($_IPS['SENDER']=="TimerEvent")
 	{
 	switch ($_IPS['EVENT'])
 	   {
-	   case $tim1ID:        /* einmal am Tag */
-  			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Evaluate Trace Route");
-		   evaluate_trace($CategoryIdData);
-	      break;
+	   case $tim1ID:        /* einmal am Tag 01:40*/
+  		    IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Evaluate Trace Route");
+		    evaluate_trace($CategoryIdData);
+	        break;
+	   case $tim2ID:        /* einmal am Tag 00:20*/
+  			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Create Event List");
+            $eventList = new DetectEventListHandler();
+            $scriptId  = $eventList->getScriptIdMessageHandler();                // suche scriptId von 'IPSMessageHandler_Event'
+            $eventList->getEventListByScriptId($scriptId);                    // alle Events die diesem Script zugeordnet sind speichern
+
+            $eventConf = IPSMessageHandler_GetEventConfiguration();
+            $eventCust = IPSMessageHandler_GetEventConfigurationCust();
+            $eventlistConf = $eventConf + $eventCust;
+            $events=$eventList->checkEventsConfig($eventlistConf);                       // eventlist aus dem Config File durchgehen, einfache  Überprüfungen, Ausgabe der events
+
+            $eventList->sortEvents($events);                                         // mit den Events die Childrens unter script nach dem TriggerEvent sortieren OnChange_TriggerEvent
+            $eventListDelete = $eventList->getEventListforDeletion();
+            
+            $eventList->alignEventsConfig($eventlistConf);                               // die events mit der Config abgleichen
+            IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+            $autosteuerung_config=Autosteuerung_GetEventConfiguration();
+            $eventList->alignOtherEvents($autosteuerung_config,"Autosteuerung");
+            $eventList->extendComponent(1000);                  // max 1000 Events bearbeiten
+            $eventListData = $eventList->getEventList();
+            $comment = "Initial write";
+            $eventList->StoreEventConfiguration($eventListData, $comment, false);
+	        break;          
 		default:
 		   break;
 		}

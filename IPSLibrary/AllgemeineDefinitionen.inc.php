@@ -10643,23 +10643,44 @@ class ipsOps
      * depth        gibt die Anzahl der bereits erfolgten rekursiven Aufrufe wieder
      *
      */
-    function serializeArrayAsPhp(&$arrayInput, &$text, $depth = 0, $ident=0, $debug=false)
+    function serializeArrayAsPhp(&$arrayInput, &$text, $depth = 0, $configInput=0, $debug=false)
         {
-        $arrayStart=false;
+        if ($debug && ($depth==0)) echo "\nserializeArrayAsPhp aufgerufen:\n";
+        $arrayStart=true;
+        $config=array();
+        if (is_array($configInput))
+            {
+            if (isset($configInput["ident"])) $ident=$configInput["ident"];
+            else 
+                {
+                $ident=$depth*10;
+                $configInput["ident"]=$ident;
+                }
+            if (isset($configInput["start"])) $arrayStart=$configInput["start"];          // wenn root mit array(       ); einschliessen
+            $config=$configInput;
+            }
+        else 
+            {
+            $ident=$configInput;        // ident als str_pad("",$ident)
+            $config["ident"]=$ident;
+            }
         $items = array();       // Zwischenspeicher
 
-        if ($debug) echo "array("; 
-        $text .= "array("; 
-
+        if ($arrayStart)
+            {
+            if ($debug) echo "array("; 
+            $text .= "array("; 
+            }
         /* alle Eintraeg des Array durchgehen, sind immer key value Pärchen, zuerst die sub array abarbeiten und dann die einzelnen Pärchen drucken */
         foreach($arrayInput as $key => &$value)             // foreach mit referenz, der Eintrag wird verändert
             {
             if(is_array($value))
                 {
-                if ($debug) echo "\n".str_pad(" ",$ident+5)."\"$key\" => ";
-                $text .= "\n".str_pad(" ",$ident+5)."\"$key\" => ";
-
-                $this->serializeArrayAsPhp($value, $text, $depth+1, $ident+10, $debug);
+                if ($debug) echo "\n".str_pad(" ",$ident)."\"$key\" => ";
+                $text .= "\n".str_pad(" ",$ident)."\"$key\" => ";
+                $configInput=$config;
+                $configInput["ident"] += 10; $configInput["start"]=true;
+                $this->serializeArrayAsPhp($value, $text, $depth+1, $configInput, $debug);
 
                 //if ($debug) echo str_pad(" ",$ident+5)."),\n"; 
                 //$text .= str_pad(" ",$ident+5)."),\n"; 
@@ -10670,7 +10691,7 @@ class ipsOps
                 }
             }
 
-        if(count($items) > 0)
+        if(count($items) > 0)           // wenn es Werte gibt  'key' => 'value'
             {
             $prefix = "";
             foreach($items as $key => &$value)
@@ -10681,17 +10702,27 @@ class ipsOps
                 }
             }
 
-        if ($debug) echo "\n".str_pad(" ",$ident+10).')';
-        $text .= "\n".str_pad(" ",$ident+10).')';
         if ($depth>0) 
             {
+            if ($debug) echo "\n".str_pad(" ",$ident+10).')';
+            $text .= "\n".str_pad(" ",$ident+10).')';    
             if ($debug) echo ",";
             $text .= ",";
             }
-        else 
+        else            // root
             {
-            if ($debug) echo ";\n";
-            $text .= ";\n";
+            if ($arrayStart)
+                {
+                if ($debug) echo "\n".str_pad(" ",$ident+10).')';
+                $text .= "\n".str_pad(" ",$ident+10).')';
+                if ($debug) echo ";\n";
+                $text .= ";\n";
+                }
+            else 
+                {
+                if ($debug) echo "\n".str_pad(" ",$ident+10);                    
+                $text .= "\n".str_pad(" ",$ident+10);
+                }
             }
 
         return $text;
@@ -10705,28 +10736,27 @@ class ipsOps
 
         foreach($array as $key => &$value)
             {
-                if(is_array($value))
+            if(is_array($value))
                 {
-                        serialize_array($value, $root . '[\'' . $key . '\']', $depth + 1);
+                serialize_array($value, $root . '[\'' . $key . '\']', $depth + 1);
                 }
-                else
+            else
                 {
-                        $items[$key] = $value;
+                $items[$key] = $value;
                 }
             }
 
         if(count($items) > 0)
             {
-                echo $root . ' = array(';
+            echo $root . ' = array(';
 
-                $prefix = '';
-                foreach($items as $key => &$value)
+            $prefix = '';
+            foreach($items as $key => &$value)
                 {
-                        echo $prefix . '\'' . $key . '\' => \'' . addslashes($value) . '\'';
-                        $prefix = ', ';
+                echo $prefix . '\'' . $key . '\' => \'' . addslashes($value) . '\'';
+                $prefix = ', ';
                 }
-
-                echo ');' . "\n";
+            echo ');' . "\n";
             }
         }
 
@@ -11789,6 +11819,84 @@ class sysOps
 
 
     } // ende class sysOps
+
+/*****************************************************************
+ *
+ */
+
+class phpOps
+    {
+
+    public $classes=array();
+
+    public function load_classes()    // get class hierarchy
+        {
+        $childrens = array();
+        foreach(get_declared_classes() as $class)
+            {  
+            $childrens[$class]["Parent"]=get_parent_class($class);
+            }
+        ksort($childrens);
+        foreach ($childrens as $child => $data)
+            {
+            if ( (isset($data["Parent"])) && ($data["Parent"] != "") )
+                {
+                $parent = $data["Parent"];
+                $childrens[$parent]["Childrens"][]=$child;    
+                }   
+            }
+        $this->classes=$childrens;
+        }    
+    
+    /* nicht optimal dass sich das Format ändert
+     */
+    public function filter_classes($filter="DetectHandler",$debug=false)
+        {
+        $indent=""; $output=array();               // filter geht nur auf root items
+        foreach ($this->classes as $child => $data)
+            {
+            if ($child==$filter)
+                {
+                if ( (isset($data["Parent"])) && ($data["Parent"] == "") )          // es ist ein root parent, weitermachen
+                    {
+                    if ($debug) echo $indent.str_pad($child,55)."  \n";
+                    $output["."]=$child;
+                    if (isset($data["Childrens"]))                                  // der children hat
+                        {
+                        foreach ($data["Childrens"] as $index => $nextchild)
+                            { 
+                            $output[$nextchild] = $this->treeform($this->classes,$nextchild,$indent."  ");
+                            }
+                        }
+                    }
+                }
+            }
+        $this->classes=$output;
+        }
+
+    function treeform($childrens,$nextchild,$indent)
+        {
+        $output=array();
+        $data=$childrens[$nextchild];
+        $output["."]=$nextchild;
+        //echo $indent.str_pad($nextchild,55)."  \n";
+        if (isset($data["Childrens"]))                                  // der children hat
+            {
+            foreach ($data["Childrens"] as $index => $nextchild)
+                { 
+                $output[$nextchild] = $this->treeform($childrens,$nextchild,$indent."  ");
+                }
+            }
+        return ($output);
+        }
+
+    public function get_classes()
+        {
+        return ($this->classes);
+        }
+
+    }
+
 
 /*****************************************************************
  *
@@ -14268,28 +14376,147 @@ class fileOps
  * Timer Routinen von class timerHandling OperationCenter übernommen
  * ohne fixe Zuordnung der scriptIDs
  * 
- * CreateTimerHour
- * CreateTimerSync
- * setTimerPerMinute
- * getEventData             echo aktiv und zuletzt aufgerufen
+ *  getAllEvents
+ *  get_eventlist
+ *  write_eventlist
+ *  filter_eventlist
  *
- * getEventTimerID          eine TimerID holen oder rudimentär anlegen
+ *  CreateTimerHour
+ *  CreateTimerSync
+ *  setTimerPerMinute
+ *  getEventData             echo aktiv und zuletzt aufgerufen
+ *  setDelayedEvent
+ *  setEventTimer
+ *  setDimTimer
+ *  getEventTimerStatus
+ *  getEventTimerID          eine TimerID holen oder rudimentär anlegen
+ *  write
+ *
+ *
  *
  ******************************************************/
 
 class timerOps
     {
 
+    protected $eventlist=array();
+
     function __construct()
         {
 
         }
+    
+    public function getAllEvents($filter=false, $debug=false)
+        {
+        $resultEventList=array(); $result=array();
+        $alleEreignisse = IPS_GetEventList();
+        echo "timerOps::getAllEvents, insgesamt gibt es ".sizeof($alleEreignisse)." Events. ";
+        if ($filter===false) echo "No Filter.";
+        else if ($filter==0) echo "Filter Events.";
+        else if ($filter==1) echo "Filter Cyclic Timers.";
+        else if ($filter==2) echo "Filter Week Plans.";
+        echo "\n";
+        //print_R($alleEreignisse);           // das sind schon mehr als 500 Events !!!
+        foreach ($alleEreignisse as $index => $ereignisId)
+            {
+            if ($debug) echo str_pad($index,8).str_pad($ereignisId,8);
+            $result["OID"]=$ereignisId;
+            $result["Name"]=IPS_GetName($ereignisId);
+            $result["Pfad"]=IPS_GetName(IPS_GetParent($ereignisId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($ereignisId)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignisId))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignisId)))));
+                        
+            $details=IPS_GetEvent($ereignisId);
+            //print_r($details);
+            switch ($details["EventType"])
+                {
+                case 0:
+                    if ($debug)  "Auslöser   ";
+                    $result["Type"]="Auslöser";
+                    break;
+                case 1:
+                    if ($debug)  "Zyklisch   ";
+                    $result["Type"]="Zyklisch";
+                    break;
+                case 2:
+                    if ($debug)  "Wochenplan ";
+                    $result["Type"]="Wochenplan";
+                    break;
+                default:
+                    if ($debug)  $details["EventType"];
+                }
+            if ( ($filter && ($details["EventType"]==$filter)) || ($filter===false) ) $resultEventList[$index]=$result;
+            if ($debug) echo str_pad(IPS_GetName($ereignisId),30)."\n";            
+            }
+        $this->eventlist=$resultEventList;
+        }
 
-	/* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
+    public function get_eventlist()
+        {
+        return ($this->eventlist);    
+        }
+
+    public function write_eventlist()
+        {
+        foreach ($this->eventlist as $index => $item)
+            {
+            echo str_pad($index,8);
+            $this->getEventData($item["OID"]);
+            }
+        }
+
+    public function filter_eventlist($config=array())
+        {
+        if (is_array($config))
+            {
+            configfileParser($config,$action,["Status","status","State","state"],"Status",null);
+            configfileParser($config,$action,["DateType","datetype"],"DateType",null);
+            foreach ($this->eventlist as $index => $item)
+                {
+                $EreignisInfo = @IPS_GetEvent($item["OID"]);
+                if ($EreignisInfo===false)
+                    {
+                    unset($this->eventlist[$index]);
+                    echo "delete index $index , no event.\n";
+                    }
+                else
+                    {
+                    if (isset($action["Status"]))
+                        {
+                        if ($EreignisInfo["EventActive"]===$action["Status"])
+                            {
+                            if (isset($action["DateType"]))
+                                {
+                                if (($action["DateType"]==2) && ( ($EreignisInfo["CyclicDateType"]===$action["DateType"]) || ($EreignisInfo["CyclicDateType"]===0) ) )
+                                    {
+                                    // daily
+                                    }
+                                elseif ($EreignisInfo["CyclicDateType"]===$action["DateType"])
+                                    {
+
+                                    }  
+                                else
+                                    {
+                                    unset($this->eventlist[$index]);
+                                    }                                    
+                                }
+                            else echo str_pad($item["Name"],30).json_encode($EreignisInfo)."\n";   
+                            }
+                        else 
+                            {
+                            unset($this->eventlist[$index]);
+                            }
+                        }    
+                    else echo json_encode($EreignisInfo)."\n";
+                    }
+                }
+            }
+        }
+
+
+	/* CreateTimerHour
+     * automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
      * hier die Variante mit Angabe von Stunde und Minute pro Tag
      * Timer wird automatisch gestartet
      */
-
 	public function CreateTimerHour($name,$stunde,$minute,$scriptID,$debug=false)
 		{
 		/* EventHandler Config regelmaessig bearbeiten */
@@ -14300,7 +14527,7 @@ class timerOps
 			$timID = IPS_CreateEvent(1);
 			IPS_SetParent($timID, $scriptID);
 			IPS_SetName($timID, $name);
-			IPS_SetEventCyclic($timID,0,0,0,0,0,0);
+			IPS_SetEventCyclic($timID,0,0,0,0,0,0);             //  IPS_SetEventCyclic (int $EventID, int $DateType, int $DateInterval, int $DateDay, int $DateDayInterval, int $TimeType, int $TimeInterval)
 			IPS_SetEventCyclicTimeFrom($timID,$stunde,$minute,0);  /* immer um ss:xx */
 			IPS_SetEventActive($timID,true);
 			if ($debug) echo "   Timer Event ".$name." neu angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";

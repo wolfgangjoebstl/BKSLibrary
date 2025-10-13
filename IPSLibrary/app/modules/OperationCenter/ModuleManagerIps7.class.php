@@ -1582,11 +1582,11 @@
 		public function GetValue($key, $section=null) {
             //echo "GetValue $key from \n";
             //print_R($this->configData);
-			if (!$this->ExistsValue($key, $section)) {
+            if ($section==null) {
+				return $this->configData[$key];
+			} elseif (!$this->ExistsValue($key, $section)) {
 				throw new ConfigurationExceptionIPS7('Configuration Value with Key='.$key.' could NOT be found (Section="'.$section.'")',
 				                                    E_USER_ERROR);
-			} elseif ($section==null) {
-				return $this->configData[$key];
 			} else {
 				return $this->configData[$section][$key];
 			}

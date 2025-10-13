@@ -74,7 +74,7 @@ if ($_IPS['SENDER']=="Execute") $debug=true;
         IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
         $moduleManager = new IPSModuleManager('OperationCenter',$repository);
         }
-
+	$installedModules = array();
     $installedModules = $moduleManager->GetInstalledModules();
 
     $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
@@ -1193,7 +1193,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *************************************************************************************/
 			CyclicUpdate();
 			break;
-		case $tim6ID:       // CopyScriptsTimer
+		case $tim6ID:       // CopyScriptsTimer um 2:20
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CopyScriptsTimer");
 			/************************************************************************************
 	   		 *

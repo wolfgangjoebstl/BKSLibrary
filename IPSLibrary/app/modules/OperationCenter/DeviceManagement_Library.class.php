@@ -2563,7 +2563,7 @@ class DeviceManagement_Homematic extends DeviceManagement
 		    {
 		    //die("Keine HomeMatic Socket Instanz gefunden!");
 		    $alleHM_Errors.="  ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
-            //return (false);     // nicht so wichtig nehmen, es müssen nicht unbedingt Homematic Geräte installiert sein   , leeres Array als Rückgabewert ausreichend         
+            if ($mode===false) return (false);     // nicht so wichtig nehmen, es müssen nicht unbedingt Homematic Geräte installiert sein   , leeres Array als Rückgabewert ausreichend , wenn mode nicht false        
 		    }
 		else
 		    {
@@ -2800,10 +2800,10 @@ class DeviceManagement_Homematic extends DeviceManagement
         return ($html);
         }
 
-    /*
-    *
-    * $filename ist eiugentlich immer auf 'EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware'
-    */
+    /* DeviceManagement_Homematic::updateHomematicErrorLog
+     *
+     * $filename ist eiugentlich immer auf 'EvaluateHardware_DeviceErrorLog.inc.php', 'IPSLibrary::config::modules::EvaluateHardware'
+     */
 
     public function updateHomematicErrorLog($filename,$arrHM_Errors,$debug=false)
         {
@@ -2882,7 +2882,7 @@ class DeviceManagement_Homematic extends DeviceManagement
         $statusDevices     .= " *  \n";
         $statusDevices     .= " */    \n\n";
         $statusDevices .= "function get_DeviceErrorStatus() { return ";
-        $ipsOps->serializeArrayAsPhp($arrHM_Errors, $statusDevices);        // gateway array in das include File schreiben
+        $ipsOps->serializeArrayAsPhp($arrHM_Errors, $statusDevices,0,0,true);        // gateway array in das include File schreiben
         $statusDevices .= ';}'."\n\n";        
         $statusDevices .= "function get_DeviceErrorLog() { return ";
         $ipsOps->serializeArrayAsPhp($storedError_Log, $statusDevices);        // gateway array in das include File schreiben

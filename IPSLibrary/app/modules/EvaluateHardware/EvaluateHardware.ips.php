@@ -62,6 +62,7 @@
     $ExecuteExecute=false;          // false: Execute routine gesperrt, es wird eh immer die Timer Routine aufgerufen. Ist das selbe !
     $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
     $instTopologyDevices=true;      // jede menge Topology Devices erstellen, werden vielleicht zur Anzeige verwendet
+    $debug=false;
 
 /******************************************************
  *
@@ -76,11 +77,14 @@
 
     IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
+    IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+    IPSUtils_Include ('ModuleManagerIPS7.class.php', 'IPSLibrary::app::modules::OperationCenter');
+        
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     if (!isset($moduleManager))
         {
-        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-        $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+        //$moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+        $moduleManager = new ModuleManagerIPS7('EvaluateHardware',$repository);
         }
     $installedModules = $moduleManager->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
@@ -130,38 +134,41 @@
         $DeviceManager = new DeviceManagement_Homematic();            // class aus der OperationCenter_Library
         //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
         $homematicErrors = $DeviceManager->HomematicFehlermeldungen();
-        echo "$homematicErrors\n";
+        if ($homematicErrors)           // nur wenn Homematic Geräte vorhanden
+            { 
+            echo "$homematicErrors\n";
 
-        $arrHM_Errors = $DeviceManager->HomematicFehlermeldungen(true);         // true Ausgabe als MariaDB freundliches Array
-        echo "Aktuelle Homematic Fehlermeldungen, insgesamt ".sizeof($arrHM_Errors).":\n";
-        //print_r($arrHM_Errors);
-        $arrHM_ErrorsDetailed = $DeviceManager->HomematicFehlermeldungen("Array");    
-        //print_r($arrHM_ErrorsDetailed);
-        $html=$DeviceManager->showHomematicFehlermeldungen($arrHM_ErrorsDetailed);
-        SetValue($statusEvaluateHardwareID,$html);
+            $arrHM_Errors = $DeviceManager->HomematicFehlermeldungen(true);         // true Ausgabe als MariaDB freundliches Array
+            echo "Aktuelle Homematic Fehlermeldungen, insgesamt ".sizeof($arrHM_Errors).":\n";
+            //print_r($arrHM_Errors);
+            $arrHM_ErrorsDetailed = $DeviceManager->HomematicFehlermeldungen("Array");    
+            //print_r($arrHM_ErrorsDetailed);
+            $html=$DeviceManager->showHomematicFehlermeldungen($arrHM_ErrorsDetailed);
+            SetValue($statusEvaluateHardwareID,$html);
 
-        /* für eine OID die DeviceID herausfinden. es gibt wie bei AuditTrail einen Eintrag, mit EventId, Datum/Zeitstempel, NameOfIndex, IndexId, Event Description, EventShort 
-         *
-         */
-        $verzeichnis=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
-        $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
-        $filename=$verzeichnis.'EvaluateHardware_DeviceErrorLog.inc.php';  
-        $storedError_Log=$DeviceManager->updateHomematicErrorLog($filename,$arrHM_Errors,false);        //true für Debug
-        //print_R($storedError_Log);
-        krsort($storedError_Log);
-        $shortError_Log = array_slice($storedError_Log, 0, 40, true);
-        //print_R($shortError_Log);
+            /* für eine OID die DeviceID herausfinden. es gibt wie bei AuditTrail einen Eintrag, mit EventId, Datum/Zeitstempel, NameOfIndex, IndexId, Event Description, EventShort 
+            *
+            */
+            $verzeichnis=IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
+            $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug
+            $filename=$verzeichnis.'EvaluateHardware_DeviceErrorLog.inc.php';  
+            $storedError_Log=$DeviceManager->updateHomematicErrorLog($filename,$arrHM_Errors,false);        //true für Debug
+            //print_R($storedError_Log);
+            krsort($storedError_Log);
+            $shortError_Log = array_slice($storedError_Log, 0, 40, true);
+            //print_R($shortError_Log);
 
-        echo "Ausgabe showHomematicFehlermeldungenLog ".count($shortError_Log)."/".count($storedError_Log)." :\n";
-        $html = $DeviceManager->showHomematicFehlermeldungenLog($shortError_Log,true);             //true für Debug
-        SetValue($logEvaluateHardwareID,$html);
+            echo "Ausgabe showHomematicFehlermeldungenLog ".count($shortError_Log)."/".count($storedError_Log)." :\n";
+            $html = $DeviceManager->showHomematicFehlermeldungenLog($shortError_Log,true);             //true für Debug
+            SetValue($logEvaluateHardwareID,$html);
 
-        $hwStatus = $DeviceManager->HardwareStatus("array",true);           // Ausgabe als Array, true für Debug
-        $output = $DeviceManager->showHardwareStatus($hwStatus,["Reach"=>false,]);           // Ausgabe als html
-        SetValue($statusDeviceID,$output);
+            $hwStatus = $DeviceManager->HardwareStatus("array",true);           // Ausgabe als Array, true für Debug
+            $output = $DeviceManager->showHardwareStatus($hwStatus,["Reach"=>false,]);           // Ausgabe als html
+            SetValue($statusDeviceID,$output);
 
-        echo "  Homematic Serialnummern erfassen:\n";
-        $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
+            echo "  Homematic Serialnummern erfassen:\n";
+            $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
+            }
         }
 
 	$modulhandling = new ModuleHandling();	                	            // in AllgemeineDefinitionen, alles rund um Bibliotheken, Module und Librariestrue bedeutet mit Debug
@@ -312,7 +319,6 @@ IPS_SetEventActive($tim1ID,true);
                 if ($topID)
                     {
                     echo "----------------------------------------DeviceList mit Informationen zur Topologie anreichern\n";
-                    $debug=false;
                     $topConfig["ID"]=$topID;
                     $topConfig["Use"]=["Place","Room","Device"];        // keine Kategorie für DeviceGroup erstellen
                     echo "TopologyID gefunden : $topID, eine Topologie mit Kategorien erstellen.\n";

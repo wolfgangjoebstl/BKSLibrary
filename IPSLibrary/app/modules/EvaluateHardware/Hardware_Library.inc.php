@@ -558,6 +558,7 @@ class Hardware
                     {
                     if ( (isset($instance["OID"])) && (isset($actuators[$instance["OID"]])) ) 
                         {
+                        echo "Eintrag $name einfügen : ".json_encode($actuators[$instance["OID"]])."\n";
                         $deviceList[$name]["Actuators"][$port]=$actuators[$instance["OID"]];
                         $actuators[$instance["OID"]]["result"]="copied";
                         }
