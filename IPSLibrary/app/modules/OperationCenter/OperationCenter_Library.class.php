@@ -2421,11 +2421,12 @@ class OperationCenter extends OperationCenterConfig
      *          LogAlles_Manufacturers
      * anhand des macTables (arp Befehl im lokalen netzwerk) wird ein texttabelle erstellt und ausgegeben
 	 */
-	function find_HostNames()
+	function find_HostNames($debug=false)
 		{
 		$ergebnis="";
 		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
 		$manufacturers=LogAlles_Manufacturers();   /* lange Liste in Config */
+        if ($debug) $file = file_get_contents("https://gist.githubusercontent.com/aallan/b4bb86db86079509e6159810ae9bd3e4/raw/846ae1b646ab0f4d646af9115e47365f4118e5f6/mac-vendor.txt");
 		foreach ($this->mactable as $mac => $ip )
 		   {
 		   $result="unknown"; $result2="";
@@ -2439,13 +2440,38 @@ class OperationCenter extends OperationCenterConfig
 					}
     	      }
     	   $manuID=substr($mac,0,8);
+           if ($debug)
+                { 
+                $vendor = $this->get_mac_vendor_simple($mac);
+                echo "The vendor for MAC address $mac is: " . $vendor;
+                $manufactorID=strtoupper(str_replace("-", "", $manuID));
+                $pos=strpos($file,$manufactorID);
+                echo "  $manuID   \"$manufactorID\"  $pos\n";
+                }
     	   if (isset ($manufacturers[$manuID])==true) { $manuID=$manufacturers[$manuID]; }
-		   echo "   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".str_pad($result2,20)."  ".$manuID."\n";
+		   if ($debug) echo "   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".str_pad($result2,20)."  ".$manuID."\n";
 		   $ergebnis.="   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".str_pad($result2,20)."  ".$manuID."\n";
 		   }
-		echo "\n\n";
+		if ($debug) echo "\n\n";
 		return ($ergebnis);
 	   }
+
+    function get_mac_vendor_simple($mac_address) {
+        // Construct the API URL
+        $url = "https://api.macvendors.com/" . urlencode($mac_address);
+
+        // Use file_get_contents to make the request
+        $vendor_info = @file_get_contents($url);
+
+        // Check for success or failure
+        if ($vendor_info === FALSE) {
+            // Handle API call failure (e.g., vendor not found)
+            return "Vendor not found or API error";
+        } else {
+            return $vendor_info;
+        }
+    }
+
 
     /****************************************************************************************************************/
 
@@ -3714,12 +3740,18 @@ class OperationCenter extends OperationCenterConfig
      */
 	function FileStatus($filename="", $debug=false)
 		{
-		$DIR_copystatusdropbox = $this->oc_Setup['Cloud']['StatusDirectory'].IPS_GetName(0).'/';
+        if ($this->oc_Setup['Cloud']['StatusDirectory']=="") $statusdir=$this->oc_Setup['Cloud']["CloudDirectory"];
+        else $statusdir=$this->oc_Setup['Cloud']["StatusDirectory"];
+        $statusdir=$this->dosOps->correctDirName($statusdir);
+		$DIR_copystatusdropbox = $statusdir.IPS_GetName(0).'/';
+        $DIR_copystatusdropbox=$this->dosOps->correctDirName($DIR_copystatusdropbox);
+
+        $sendStatus = new SendStatus();
         if ($debug)
             {
-            echo "CopyScripts, relevante Configuration mit Cloud Verzeichnis:\n";
-            print_r($this->oc_Setup["Cloud"]);
+            echo "FileStatus, CopyScripts, relevante Configuration mit Cloud Verzeichnis:\n";
             echo "Zielverzeichnis für Ergebnisse von send_status ist $DIR_copystatusdropbox.\n";
+            if ($debug>1) print_r($this->oc_Setup["Cloud"]);
             }        
 		/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
 		$this->dosOps->mkdirtree($DIR_copystatusdropbox);
@@ -3729,14 +3761,14 @@ class OperationCenter extends OperationCenterConfig
             echo "Send_status aktuelle Werte berechnen:\n\n";
             }
         /* Aufruf send_status aktuell/historisch, Zeit für execute time Berechnung, Debug */ 
-		$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true, 0, $debug).
+		$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".$sendStatus->send_status(true, 0, $debug).
 			"\n\n************************************************************************************************************************\n";
         if ($debug) 
             {
             echo "===================================\n";
             echo "Send_status historische Werte berechnen:\n";
             }
-		$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false, 0, $debug).
+		$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".$sendStatus->send_status(false, 0, $debug).
 			"\n\n************************************************************************************************************************\n";
 		
 		if ($filename=="")		/* sonst filename übernehmen */

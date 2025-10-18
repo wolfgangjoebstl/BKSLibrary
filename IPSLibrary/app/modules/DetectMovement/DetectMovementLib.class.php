@@ -483,6 +483,7 @@
                         case 'Feuchtigkeit':
                         case 'Humidity':
                         case 'HeatControl':
+                        case "HeatSet":
                         case "Climate":
                         case "Sensor":
                         case "Brightness":										
@@ -1298,12 +1299,12 @@
 
         }
 
-/***********************************************************
- *
- * DetectSensorHandler, einfache Erweiterung ohne involvierung von besonderen DetectMovement Funktionen
- *  Detect_DataID   die Kategorie für die Spiegelregister
- +
- ********************************************************/
+    /***********************************************************
+     *
+     * DetectSensorHandler, einfache Erweiterung ohne involvierung von besonderen DetectMovement Funktionen
+     *  Detect_DataID   die Kategorie für die Spiegelregister
+     *
+     ********************************************************/
 
 	class DetectSensorHandler extends DetectHandler
 		{
@@ -1347,6 +1348,11 @@
         public function is_groupconfig()
             {
             return (true);
+            }
+
+        public function getGroupIdentifier()
+            {
+            return ("Sensor");
             }
 
 		/* DetectSensorHandler::Get_Configtype
@@ -1463,12 +1469,12 @@
 		}
 
 
-/***********************************************************
- *
- * DetectCounterHandler, einfache Erweiterung ohne involvierung von besonderen DetectMovement Funktionen
- *  Detect_DataID   die Kategorie für die Spiegelregister
- *
- ********************************************************/
+    /***********************************************************
+     *
+     * DetectCounterHandler, einfache Erweiterung ohne involvierung von besonderen DetectMovement Funktionen
+     *  Detect_DataID   die Kategorie für die Spiegelregister
+     *
+     ********************************************************/
 
 	class DetectCounterHandler extends DetectHandler
 		{
@@ -1513,6 +1519,11 @@
         public function is_groupconfig()
             {
             return (true);
+            }
+
+        public function getGroupIdentifier()
+            {
+            return ("Counter");
             }
 
 		/* Customization Part */
@@ -1606,23 +1617,22 @@
 			
 		}
 
-/*****************************************************************************************************************
- *
- * DetectClimateHandler für die Netatmo register
- *      __construct
- *      Get_Configtype
- *      Get_ConfigFileName
- *      Get_EventConfigurationAuto
- *      Set_EventConfigurationAuto
- *      getMirrorRegister
- *      getVariableName
- *      CreateMirrorRegister
- *      InitGroup
- *      CalcGroup
- *
- *
- */
-
+    /*****************************************************************************************************************
+     *
+     * DetectClimateHandler für die Netatmo register
+     *      __construct
+     *      Get_Configtype
+     *      Get_ConfigFileName
+     *      Get_EventConfigurationAuto
+     *      Set_EventConfigurationAuto
+     *      getMirrorRegister
+     *      getVariableName
+     *      CreateMirrorRegister
+     *      InitGroup
+     *      CalcGroup
+     *
+     *
+     */
 	class DetectClimateHandler extends DetectHandler
 		{
 
@@ -1664,6 +1674,11 @@
         public function is_groupconfig()
             {
             return (true);
+            }
+
+        public function getGroupIdentifier()
+            {
+            return ("Climate");
             }
 
 		/* Customization Part */
@@ -1860,7 +1875,7 @@
 
 		}
 
-/******************************************************************************************************************/
+    /******************************************************************************************************************/
 
     /* DetectHumidityHandler
      * neue Funktionen
@@ -1921,6 +1936,11 @@
         public function is_groupconfig()
             {
             return (true);
+            }
+
+        public function getGroupIdentifier()
+            {
+            return ("Feuchtigkeit");
             }
 
 		/* Customization Part */
@@ -2052,26 +2072,25 @@
 
 		}
 
-/*****************************************************************************************************************
- *
- *  DetectMovementHandler
- *  mit neuen Funktionen
- *      __construct
- *      Get_Configtype
- *      Get_ConfigFileName
- *      Get_CategoryData
- *      Get_MoveAuswertungID
- *      Set_MoveAuswertungID
- *      getCustomComponentsDataGroup
- *      getDetectMovementDataGroup
- *      Get_EventConfigurationAuto
- *      Set_EventConfigurationAuto
- *      getMirrorRegister
- *      CreateMirrorRegister
- *      InitGroup
- *
- */
-
+    /*****************************************************************************************************************
+     *
+     *  DetectMovementHandler
+     *  mit neuen Funktionen
+     *      __construct
+     *      Get_Configtype
+     *      Get_ConfigFileName
+     *      Get_CategoryData
+     *      Get_MoveAuswertungID
+     *      Set_MoveAuswertungID
+     *      getCustomComponentsDataGroup
+     *      getDetectMovementDataGroup
+     *      Get_EventConfigurationAuto
+     *      Set_EventConfigurationAuto
+     *      getMirrorRegister
+     *      CreateMirrorRegister
+     *      InitGroup
+     *
+     */
 	class DetectMovementHandler extends DetectHandler
 		{
 
@@ -2135,6 +2154,11 @@
         public function is_groupconfig()
             {
             return (true);
+            }
+
+        public function getGroupIdentifier()
+            {
+            return ("Motion");
             }
 
 		/* Customization Part */
@@ -2382,6 +2406,11 @@
             return (true);
             }
 
+        public function getGroupIdentifier()
+            {
+            return ("Brightness");
+            }
+
 		/* Customization Part */
 		
 		function Get_Configtype()
@@ -2565,6 +2594,11 @@
         public function is_groupconfig()
             {
             return (true);
+            }
+
+        public function getGroupIdentifier()
+            {
+            return ("Contact");
             }
 
 		/* Customization Part */
@@ -2752,6 +2786,11 @@
         public function is_groupconfig()
             {
             return (true);
+            }
+
+        public function getGroupIdentifier()
+            {
+            return ("Temperatur");
             }
 
 		/* Customization Part */
@@ -3022,6 +3061,11 @@
             return (true);
             }
 
+        public function getGroupIdentifier()
+            {
+            return ("HeatControl");
+            }
+
 		/* Customization Part */
 		
 		function Get_Configtype()
@@ -3228,6 +3272,11 @@
             return (true);
             }
 
+        public function getGroupIdentifier()
+            {
+            return ("HeatSet");                     // but no group management
+            }
+
 		/* Customization Part */
 		
 		function Get_Configtype()
@@ -3346,8 +3395,25 @@
 			
 		}
 
-    /******************************************************************************************************************/
-
+    /*****************************************************************************************************************
+     *
+     * TestMovement -> DetectEventListHandler -> DetectEventHandler -> DetectHandler
+     *
+     * DetectHandler ist abstract, DetectEventHandler ist prozedural, $eventlist ist der objektorientierte Teil von DetectEventListHandler
+     * TestMovement ist die Darstellung 
+     *
+     * Vorliegende Funktionen:
+     *      __construct
+     *      is_groupconfig
+     *      Get_Configtype
+     *      Get_ConfigFileName
+     *      Get_EventConfigurationAuto
+     *      Set_EventConfigurationAuto
+     *      CreateMirrorRegister
+     *      convertParams
+     *      getAllGroups
+     *
+     */
 	class DetectEventHandler extends DetectHandler
 		{
 
@@ -3428,6 +3494,84 @@
             //$update .= "),";
             return ($update);
             }            
+
+        /*
+         * return array of classnames
+         */
+        public function getGroupClasses($parentclass="DetectHandler",$debug=false)
+            {
+            if ($debug) echo "add group Configurations from:\n";
+            $classes = new phpOps();
+            $classes->load_classes();                       // alle Klassen
+            $classes->filter_classes($parentclass);         // Klassen mit Parent
+            $output = $classes->get_classes();              // Ergebnis für foreach übergeben
+
+            //print_r($output);
+            $result=array();
+            foreach ($output as $className => $items)
+                {
+                $config=false;
+                if ($className != ".")
+                    {
+                    if ($debug) echo "  ".str_pad($className,30);
+                    if ( (class_exists($className)) && (method_exists($className,"Get_EventConfigurationAuto")) )
+                        {
+                        $groupConfig = new $className();
+                        if ($groupConfig->is_groupconfig())
+                            {
+                            if ($debug) echo "available ";
+                            $result[]=$className;
+                            }
+                        }
+                    if ($debug) echo "\n";
+                    }
+                }
+            return $result;
+            }
+
+
+        /* DetectEventHandler::getAllGroups
+         * php Funktionen nutzen, alle Klassen auslesen, die Klassen die parentclass als parent haben rausfiltern
+         * von denen bleiben dann nur die auch eine Eventkonfiguration haben
+         */
+        public function getAllGroups($parentclass="DetectHandler",$debug=false)
+            {
+            if ($debug) echo "add group Configurations from:\n";
+            $classes = new phpOps();
+            $classes->load_classes();                       // alle Klassen
+            $classes->filter_classes($parentclass);         // Klassen mit Parent
+            $output = $classes->get_classes();              // Ergebnis für foreach übergeben
+
+            //print_r($output);
+            $result=array();
+            foreach ($output as $className => $items)
+                {
+                $config=false;
+                if ($className != ".")
+                    {
+                    if ($debug) echo "  ".str_pad($className,30);
+                    if ( (class_exists($className)) && (method_exists($className,"Get_EventConfigurationAuto")) )
+                        {
+                        $groupConfig = new $className();
+                        if ($groupConfig->is_groupconfig())
+                            {
+                            if ($debug) echo "available ";
+                            $config = $groupConfig->Get_EventConfigurationAuto();
+                            }
+                        }
+                    if ($debug) echo "\n";
+                    }
+                if ($config) 
+                    {
+                    //print_R($config);
+                    foreach ($config as $event => $params)
+                        {
+                        $result[$event][$className]=$params;
+                        }
+                    }
+                }
+            return $result;
+            }
 
 		}
 
@@ -6493,6 +6637,7 @@ class DetectEventListHandler extends DetectEventHandler
             }
         }
 
+
     /* DetectEventListHandler::extendGroups
      * aus alle Components mit Parent DetectHandler die Group Config rausnehmen und den Events zuordnen
      * die class muss eine methode mit Get_EventConfigurationAuto und als Abfrage auf Aufruf der Methode is_groupconfig true liefern (!)
@@ -6501,6 +6646,8 @@ class DetectEventListHandler extends DetectEventHandler
     public function extendGroups($parentclass="DetectHandler",$debug=false)
         {
         $status=false;
+
+        // von function im parent übernehmen, prozedural, nicht oop, 
         if ($debug) echo "add group Configurations from:\n";
         $classes = new phpOps();
         $classes->load_classes();                       // alle Klassen

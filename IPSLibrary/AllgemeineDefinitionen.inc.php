@@ -668,7 +668,7 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
  *
  ****************************************************************************************/
 
-function send_status($aktuell, $startexec=0, $debug=false)
+function send_status($aktuell, $startexec=0, $debug=false)              // DEPRICATED
 	{
 	if ($startexec==0) { $startexec=microtime(true); }
 	$sommerzeit=false;
@@ -5119,13 +5119,36 @@ class archiveOps
      *
      * Über die $logs kann eine Konfiguration mitgegeben werden, die Überprüfung der Konfig gehört zur Statistik Klasse
      *
+     *  StartTime, EndTime
+     *  maxLogsperInterval      1 bedeutet alle Werte bearbeiten
+     *  DataType                Archive , Array, Counter
+     *  Aggregated              true, hourly, daily, weekly, monthly  nutzt eingebaute Funktion von IP Symcon, liefert Array Min, Max, Avg und Timestamp/Duration dazu
+     *  manAggregate            wenn Aggregated false werden die geloggten Werte ausgelesen und dann manuell Aggregiert, siehe getArchivedValues
+     *  returnResult            wenn Wert ist DESCRIPTION dann nur den Index Description ausgeben
      *
-     *  DataType            Archive , Array
-     *  Aggregated          true, hourly, daily, weekly, monthly  nutzt eingebaute Funktion von IP Symcon, liefert Array Min, Max, Avg und Timestamp/Duration dazu
-     *  manAggregate        wenn Aggregated false werden die geloggten Werte ausgelesen und dann manuell Aggregiert, siehe getArchivedValues
-     *  returnResult        wenn Wert ist DESCRIPTION dann nur den Index Description ausgeben
-     *
-     *
+     *        
+     *       EventLog            true
+        *       DataType            Archive, Aggregated, Logged
+        *           Aggregated      true if dataType is Aggregated, werte false,0,1,2,
+        *       manAggregate        Aggregate, 
+        *                          Format
+        *       KIfeature           none, besondere Auswertungen machen
+        *       Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
+        *       OIdtoStore          eine ander OID verwenden als die echte OID
+        *
+        *       processondata       eigene Unterkonfigurationsgruppe
+        *       cleanupdata         eigene Unterkonfigurationsgruppe
+        * 
+        *       returnResult
+        *
+        *       meansRoll            ein Wert, diese Anzahl werden als vorwerte für den rollierenden Mittelwert verwendet
+        *
+        *       suppresszero
+        *       maxDistance
+        *
+        *       StartTime 
+        *       EndTime
+        *       LogChange
      *
      */
     function getValues($oid,$logs,$debug=false)
@@ -5155,6 +5178,7 @@ class archiveOps
 
         /****************************** Verarbeitung und Vorbereitung Konfiguration, Einlesen der Werte, quick Check ob Ergebnis vorhanden
          */
+        if ($config["MemoryLimit"]) ini_set('memory_limit', '128M');                        // können grosse Dateien werden 
         $maxLogsperInterval = $config["maxLogsperInterval"];                // $maxLogsperInterval==1 bedeutet alle Werte bearbeiten
 
         // Wertebereich festlegen, Vorwerte einlesen, Fehler erkennen und bearbeiten 
@@ -6746,26 +6770,37 @@ class statistics
     /* einheitliche Konfiguration mit Variablen für die Nutzung in den Statistikfunktionen
         *       EventLog            true
         *       DataType            Archive, Aggregated, Logged
-        *           Aggregated      true if dataType is Aggregated, werte false,0,1,2,
-        *       manAggregate        Aggregate, 
-        *                          Format
+        *           Aggregated      value if dataType is Aggregated, false if it is Logged or Counter, werte false,0,1,2,
+        *           AggregatedValue Avg, 
+        *       manAggregate        [Aggregate=>dialy, Format=>standard
+        *
         *       KIfeature           none, besondere Auswertungen machen
         *       Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
         *       OIdtoStore          eine ander OID verwenden als die echte OID
         *
         *       processondata       eigene Unterkonfigurationsgruppe
         *       cleanupdata         eigene Unterkonfigurationsgruppe
+        *       meansRoll           fasle oder eigene Unterkonfigurationsgruppe, diese Anzahl werden als vorwerte für den rollierenden Mittelwert verwendet
         * 
         *       returnResult
         *
-        *       meansRoll            ein Wert, diese Anzahl werden als vorwerte für den rollierenden Mittelwert verwendet
-        *
         *       suppresszero
         *       maxDistance
+        *       DoCheck             [suppresszero,maxDistance,isnumeric]
+        *
+        *       interpolate
+        *       integrate
+        *       deleteSourceOnError
         *
         *       StartTime 
         *       EndTime
         *       LogChange
+        *
+        *       Debug
+        *       Warning             switch off Warning messages
+        *
+        *       Logs
+        *       maxLogsperInterval    
         *
         */
 
@@ -6777,6 +6812,8 @@ class statistics
 
         if (is_array($logs)) { $logInput = $logs; $logs=0; }
         else $logInput=array();
+
+        configfileParser($logInput, $config, ["MEMORY","Memory","memory" ],"MemoryLimit" ,false);       // if true increase memory limit
 
         // parse configuration, logInput ist der Input und config der angepasste Output
         configfileParser($logInput, $config, ["EVENTLOG","EventLog","eventLog" ],"EventLog" ,true); 

@@ -1633,7 +1633,7 @@
          * aus der Funktion writeEnergyRegistertoArray, Formatierung ist weird, aber es steht alles drin was man braucht
          */
 
-		function writeEnergyRegisterValuestoString($Werte,$html=true)			/* alle Werte als String ausgeben, Input ist das Array der Werte */
+		function writeEnergyRegisterValuestoString($Werte,$html=true, $debug=false)			/* alle Werte als String ausgeben, Input ist das Array der Werte */
 			{
 			if ($html==true) 
 				{
@@ -1669,7 +1669,7 @@
 			$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
 			$metercount=sizeof($Werte);
 			$tabwidth0=24;
-			echo "Gesamte aktuelle Registerwerte Tabelle aufbauen. Groesse ist ".$metercount." Eintraege.\n";
+			if ($debug) echo "Gesamte aktuelle Registerwerte Tabelle aufbauen. Groesse ist ".$metercount." Eintraege.\n";
 			for ($line=0;$line<($metercount);$line++)			
 				{
 				if (isset($Werte[$line]["Energie"][1])==true)
@@ -1839,7 +1839,7 @@
          *
          */
 
-		function writeEnergyPeriodesTabletoString($Werte,$config=true,$kwh=true)			/* alle Werte als String ausgeben */
+		function writeEnergyPeriodesTabletoString($Werte,$config=true,$kwh=true, $debug=false)			/* alle Werte als String ausgeben */
 			{
 			/* Werte zwar uebernehmen, aber für Periodenwerte nicht wirklich notwendig */ 
 
@@ -1853,14 +1853,14 @@
                 else $kwh=false;
                 if (isset($config["Sort"]))  $sort=$config["Sort"];
                 if (isset($config["Extend"])) $extend=true;
-                echo "writeEnergyPeriodesTabletoString mit Config ".json_encode($config)." aufgerufen.\n";
+                if ($debug) echo "writeEnergyPeriodesTabletoString mit Config ".json_encode($config)." aufgerufen.\n";
                 }
 			else 
                 {
                 $html=$config;
                 $sort      = "lastWeek";            // es gibt keinen Defaultparameter, für intellisort der Tabellendaten benötigt
 
-                echo "writeEnergyPeriodesTabletoString mit Config \"".($config?"html":"line")."\" aufgerufen.\n";
+                if ($debug) echo "writeEnergyPeriodesTabletoString mit Config \"".($config?"html":"line")."\" aufgerufen.\n";
                 }
 
 			if ($html==true) 
@@ -1919,7 +1919,7 @@
 				$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch als Periodenwerte aggregiert in EUR:".$endcellheader.$endparagraph;
 				}	
 			$outputTabelle.=$startparagraph.$zeile0.$endparagraph;
-			echo "  Gesamte Tabelle aufbauen, eine Zeile pro Zähler\n";
+			if ($debug) echo "  Gesamte Tabelle aufbauen, eine Zeile pro Zähler\n";
 
             $display=array();
 			for ($line=0;$line<($metercount);$line++)
@@ -2079,6 +2079,7 @@
 		 * Übergabe	der Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr erfolgt als Array.
          * Das Array wird aus der MeterConfig erzeugt:  $MeterConfig = get_MeterConfiguration();
          * die Parameter daraus werden genutzt: TYPE, OID,          
+         * function nutzt archiveOps
          *
          * die Ausgabe wird Zeilenweise mit index metercount geschrieben
          *
@@ -2092,7 +2093,13 @@
 		
 		function writeEnergyRegistertoArray($MConfig,$debug=false)
 			{
-            if ($debug) echo "writeEnergyRegistertoArray wurde aufgerufen. MeterConfig einzeln durchgehen und Messwerte für Tabelle ermitteln.\n";
+            $endtime=time(); 
+            $starttime=$endtime-60*60*24*10;
+            if ($debug) 
+                {
+                echo "writeEnergyRegistertoArray wurde aufgerufen. MeterConfig einzeln durchgehen und Messwerte für Tabelle ermitteln.\n";
+                echo "    Starttime für Auswertung ist ".date("d.m.Y H:i:s",$starttime)." Endtime ist ".date("d.m.Y H:i:s",$endtime)."\n";
+                }
             $archiveOps = new archiveOps(); 
 			$zeile=array();
 			$metercount=0;
@@ -2110,7 +2117,11 @@
                 else
                     {
                     /* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
-                    $jetzt=time();                        
+                    $jetzt=time();  
+                    $config["EndTime"]=$jetzt;                // das ist nur ein Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst, default, change if necessary        
+                    $config["Warning"]=false;
+                    $config["Memory"]=true;                     // more Memory
+                    // sets DataType = Counter/              
                     switch ( strtoupper($meter["TYPE"]) )                   
                         {	
                         case "HOMEMATIC":                                       // Spezialbehandlung für Homematic register, RegID bestimmen
@@ -2141,13 +2152,11 @@
                                 }
                             //$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
                             $config["DataType"]  = "Counter";           // eine Auswertung von Zählerständen ist sinnlos, vorher umrechnen
-                            $config["EndTime"]=$jetzt;                            // die aktuelle Uhrzeit sollte ausreichen
                             $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
                             $vorschub=false;                                   
                             break;
                         case "DAILYLPREAD":	
                             $RegID=$EnergieID;	
-                            $config["EndTime"]=$jetzt;                // das ist nur ein Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst
                             //$vorigertag=0;
                             //$vorschub=2; 
                             $vorigertag=date("d.m.Y",$jetzt);                                       
@@ -2155,23 +2164,20 @@
                             break;
                         case "DAILYREAD":	
                             $RegID=$EnergieID;	
-                            $config["EndTime"]=$jetzt;                // das ist nur ein Wert pro Tag, die Werte von heute wurden eh noch nicht erfasst
                             $vorigertag=0;
                             $vorschub=true;                                        
                             break;
                         default:
                             $RegID=$EnergieID;
                             //$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-                            $config["EndTime"]=$jetzt;                            // die aktuelle Uhrzeit sollte ausreichen
                             $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
                             $vorschub=false;                            
                             break;
                         }					
                     $config["StartTime"]=$config["EndTime"]-60*60*24*10;
-                    if ($debug)
+                    if ($debug>1)
                         {
                         echo "      Type ".$meter["TYPE"]." : Energy register with Energychange is here $RegID , there is no counter.\n";
-                        echo "      Starttime für Auswertung ist ".date("d.m.Y H:i:s",$config["StartTime"])." Endtime ist ".date("d.m.Y H:i:s",$config["EndTime"])."\n";
                         }
                     //$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $config["EndTime"], 0);
 
@@ -2179,8 +2185,10 @@
                      * entweder Counter für Auswertung 15min Vorschuebe oder manAggregate
                      */
                     //$config["manAggregate"]  = "daily";
-                    $valuesInterval = $archiveOps->getValues($EnergieID,$config,$debug);     // Analyse der Archivdaten, debug von default
-
+                    $valuesInterval = $archiveOps->getValues($EnergieID,$config,($debug>1));     // Analyse der Archivdaten, debug von default
+                    if ($valuesInterval===false) continue;
+                    $count=sizeof($valuesInterval);
+                    if ($count==0) echo "something wrong \n";
                     // Alternative Auswertung
                     unset($config["DataType"]);
                     $valuesAnalysed = $archiveOps->getValues($EnergieID,$config,$debug);     // Analyse der Archivdaten, debug von default
@@ -2188,6 +2196,7 @@
                     $debug1=false;
                     if (isset($valuesAnalysed["Values"]))
                         {
+                        $count=sizeof($valuesAnalysed["Values"]);
                         if (isset($valuesAnalysed["Description"]["MaxMin"]["Span"])) { if ($debug1) echo "Span ".nf($valuesAnalysed["Description"]["MaxMin"]["Span"],"s")."\n"; }
                         $werte=$valuesAnalysed["Values"];
                         $result=$archiveOps->countperIntervalValues($werte,$debug1);                // zusätzliche Debugmöglichkeit
