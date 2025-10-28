@@ -132,12 +132,12 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
             $debug=false;
-			if ($debug) echo "IPSComponentSensor_Temperatur:HandleEvent, Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			if ($debug) echo "IPSComponentSensor_Temperatur:HandleEvent, Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." (".$this->RemoteOID.",".$this->tempValue.")\n";
 			/* aussuchen ob IPSLogger_Dbg oder IPSLogger_Inf der richtige Level für die Analyse, produziert viele Daten ! */
             //IPSLogger_Dbg(__file__, 'HandleEvent: Counter Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
             $startexec=microtime(true);            
-            $log=new Temperature_Logging($variable,null,$this->tempValue);        // es wird kein Variablenname übergeben
+            $log=new Temperature_Logging($variable,null,null,$this->tempValue);        // es wird kein Variablenname übergeben
             $mirrorValue=$log->updateMirorVariableValue($value);
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // kann so nicht festgetsellt werden, da der Wert in value bereits die Änderung auslöst. Dazu Spiegelvariable verwenden.
                 {
@@ -155,6 +155,32 @@
                 //IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			    if ($debug) echo "  IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> für VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                 }
+			}
+
+		/**
+		 * @public
+		 *
+		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
+		 * an das entsprechende Module zu leiten.
+		 *
+		 * @param integer $variable ID der auslösenden Variable
+		 * @param string $value Wert der Variable
+		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
+		 */
+		public function UpdateEvent($variable, $value, IPSModuleSensor $module,$debug=false)
+			{
+			if ($debug) echo "IPSComponentSensor_Temperatur:UpdateEvent, Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." (".$this->RemoteOID.",".$this->tempValue.")\n";
+
+            $startexec=microtime(true);            
+            $log=new Temperature_Logging($variable,null,null,$this->tempValue,$debug);        // es wird kein Variablenname übergeben
+            $mirrorValue=$log->updateMirorVariableValue($value);
+            if ($debug) echo "  IPSComponentSensor_Temperatur:UpdateEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
+            //echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
+            $result=$log->Temperature_LogValue($debug);
+            //echo "Aktuelle Laufzeit nach Logging ".exectime($startexec)." Sekunden.\n"; 
+            //$log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );            // neue Variante noch anschauen
+            $this->SetValueROID($value);
+            //echo "Aktuelle Laufzeit nach Remote Server Update ".exectime($startexec)." Sekunden.\n"; 
 			}
 
 		/**
@@ -354,11 +380,12 @@
          *
          */
 
-		function Temperature_LogValue()
+		function Temperature_LogValue($debug=false)
 			{
 			// result formatieren für Ausgabe in den LogNachrichten
             $result = "Error, variableTypeReg ".$this->variableTypeReg." unknown.";
 			$variabletyp=IPS_GetVariable($this->variable);
+            if ($debug) echo "  Temperature_LogValue ".$this->variable." Expected TEMPERATUR(E) : ".$this->variableTypeReg."\n";
             if ( ($this->variableTypeReg =="TEMPERATURE") || ($this->variableTypeReg =="TEMPERATUR") )
                 {
                 if ($variabletyp["VariableProfile"]!="")

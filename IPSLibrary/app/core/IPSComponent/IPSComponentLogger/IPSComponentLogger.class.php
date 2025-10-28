@@ -750,8 +750,11 @@ class Logging
          switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
             case "BRIGHTNESS":          // für Brightness gibt es standardisierte Helligkeits Profile
+                // Target Profile ~Brightness.HM
                 //$this->variableProfile="~Window.HM";         // 3 Werte, allgemein für Alle
-                //$this->variableType=1;                      // Integer
+                //if ($value<2) $value=$value*20+30;          // keine Ahnung ob das passt, noch herausfinden
+                $this->variableProfile="Helligkeit";
+                $this->variableType=1;                      // Integer
                 break;                
             default:
                 IPSLogger_Wrn(__file__, "do_init_brightness, do not know Type ".$this->variableTypeReg." : Type ".$this->variableType." with Profile ".$this->variableProfile.".");
@@ -768,7 +771,7 @@ class Logging
         if ($debug) echo "         done ".$this->NachrichtenID. "(".IPS_GetName($this->NachrichtenID).") und ".$this->AuswertungID." (".IPS_GetName($this->AuswertungID).").\n";
         
         if ($debug) echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen, es wird für create entsprechend variableType,variableProfile genutzt:\n";
-        $this->do_setVariableLogID($variable,$debug);
+        $this->do_setVariableLogID($variable,$debug);       // Create VariableLog with Profile
 
         $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();

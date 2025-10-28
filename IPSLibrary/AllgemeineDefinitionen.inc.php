@@ -815,14 +815,7 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
 					if ( isset($Key["COID"]["BRIGHTNESS"]["OID"]) ) {$oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"]; }
 					else { $oid=(integer)$Key["COID"]["ILLUMINATION"]["OID"]; }
    					$variabletyp=IPS_GetVariable($oid);
-					if ($variabletyp["VariableProfile"]!="")
-						{
-						$alleHelligkeitsWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-						}
-					else
-						{
-						$alleHelligkeitsWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-						}
+                    $alleHelligkeitsWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueIfFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				}
             if ($debug) echo "$alleHelligkeitsWerte \n";
@@ -867,14 +860,7 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
 
 				      	$oid=(integer)$Key["COID"]["MOTION"]["OID"];
    		   				$variabletyp=IPS_GetVariable($oid);
-						if ($variabletyp["VariableProfile"]!="")
-					   		{
-							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-							}
-						else
-						   	{
-							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-							}
+						$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueIfFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei in Remote Access verknüpfen */
 					if ((isset($Key["COID"]["StatusVariable"])==true))
@@ -886,14 +872,7 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
    								$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
 								$variabletyp=IPS_GetVariable($oid);
 								IPS_SetName($oid,"MOTION");
-								if ($variabletyp["VariableProfile"]!="")
-									{
-									$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-									}
-								else
-									{
-									$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-									}
+								$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueIfFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 								}
 							}
 						}
@@ -911,14 +890,7 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
 
 					$oid=(integer)$Key["COID"]["ENERGY_COUNTER"]["OID"];
 					$variabletyp=IPS_GetVariable($oid);
-					if ($variabletyp["VariableProfile"]!="")
-						{
-						$alleStromWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-						}
-					else
-						{
-						$alleStromWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-						}
+					$alleStromWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueIfFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				}
             //if ($debug) echo "$alleStromWerte \n";                //wird weiter unten noch erweitert
@@ -938,14 +910,7 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
 					$regenmelder++;
 					$oid=(integer)$Key["COID"]["RAIN_COUNTER"]["OID"];
 					$variabletyp=IPS_GetVariable($oid);
-					if ($variabletyp["VariableProfile"]!="")
-						{
-						$ergebnisRegen.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-						}
-					else
-						{
-						$ergebnisRegen.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-						}
+					$ergebnisRegen.=str_pad($Key["Name"],30)." = ".str_pad(GetValueIfFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				}
 			if ($regenmelder==0) $ergebnisRegen="";	/* Ausgabe rückgängig machen, es gibt keine Regenmelder. */	
@@ -15116,7 +15081,7 @@ class ComponentHandling
     *
     * ComponentHandling::getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
     * Die Liste kann entweder die HardwareListe oder die DeviceListe aus EvaluateHardware sein, wird automatisch erkannt. Zusätzlich funktioniert jetzt auch eine MySQL Anbindung
-    * 
+    * Teil von installComponentFull
     * Es wird aufgerufen wenn Elements ein Array ist entweder
     *       workOnDeviceList
     *       workOnHomematicList
@@ -15500,7 +15465,8 @@ class ComponentHandling
         return $keyName;
         }
 
-    /* ComponentHandling, Zuweisung von Orientierungshilfen für das Anlegen der Variablen. addOnKeyName wird von folgenden Routinen aufgerufen:   getComponent
+    /* ComponentHandling, Zuweisung von Orientierungshilfen für das Anlegen der Variablen. 
+     * addOnKeyName wird von folgenden Routinen aufgerufen:   getComponent
      *
      *  Index           DetectMovement
      *  HeatSet 
@@ -15539,6 +15505,7 @@ class ComponentHandling
         //if ($debug) echo "addOnKeyName  based on ".$keyName["KEY"]."  \n";
 	    $detectmovement=false; 
         $profile=""; 
+        $index="";
         $indexNameExt="";
         $update="OnChange";
         
@@ -15788,14 +15755,7 @@ class ComponentHandling
 				$variabletyp=IPS_GetVariable($oid);
                 if ($this->debug)
                     {
-    				if ($variabletyp["VariableProfile"]!="")
-	    				{
-		    			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-			    		}
-				    else
-					    {
-    					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-	    				}
+                    echo str_pad($Key["Name"],30)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
                     }    
 				if ( isset ($parameter[$oid]) )
 					{

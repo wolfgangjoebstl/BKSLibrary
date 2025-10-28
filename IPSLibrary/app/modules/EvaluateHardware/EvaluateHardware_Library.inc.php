@@ -37,12 +37,16 @@
  * neuer Programmierstil, ein Versuch für mehr Übersichtlichkeit, alle Methoden verändern das array devicelist
  *
  *      __construct
+ *      setEventListFromConfigFile          reads function deviceList from Config File
  *      creatDeviceListfromHardware         get_DeviceList($hardware, $config, $debug) andersrum
  *      analyse                             erstelt oids,coids,uuids
  *      getalloids                          alle oids für ein device
  *      addTopology
+ *      addDeviceQuality
  *      get_oids, get_coids, get_uuids
  *      read_devicelist
+ *      write_devicelist
+ *      printDevicelist
  *      findUUID
  */
 class DeviceListManagement extends TopologyLibraryManagement
@@ -57,6 +61,21 @@ class DeviceListManagement extends TopologyLibraryManagement
         {
         if ($devicelist) $this->devicelist=$devicelist;
         parent::__construct($debug);
+        }
+
+    /* setEventListFromConfigFile
+    * get Eventlist from config file and store it in class
+    * es fehlt die Angabe des include files
+    */
+    public function setEventListFromConfigFile($debug=false)
+        {
+        if ($debug) echo "DeviceListManagement::setEventListFromConfigFile:\n";
+        if ( function_exists("DeviceList") == true ) $this->devicelist = deviceList();
+        else 
+            {
+            echo "FEHLER: function DeviceList nicht vorhanden.\n";
+            $this->devicelist = array();
+            }
         }
 
     /*
@@ -149,6 +168,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                                             $value["OID"]=$oid;
                                             $value["NAME"]=$name;
                                             $value["VARNAME"]=$varname;
+                                            if (isset($entry["Quality"]["Index"])) $value["QUALITY"]=$entry["Quality"]["Index"];
                                             $coids[$coid]=$value;
 
                                             $uuids[$topo]["OIDS"][$oid][$type]=$coid;
@@ -372,8 +392,55 @@ class DeviceListManagement extends TopologyLibraryManagement
             }           // ende foreach
         return ($channelEventList);
         }
-    
-
+        
+    /**
+     * add device quality, for each channel calculate a quality identifier. 
+     */
+    public function addDeviceQuality()
+        {
+        foreach ($this->devicelist as $name => $entry)
+            {
+            $lastUpdated=100000000; $quality=0; $countChannels=0;
+            $oids=$this->getalloids($entry);
+            if (isset($entry["Instances"])) {
+                foreach ($entry["Instances"] as $index => $inst)  {
+                    if (isset($entry["Channels"][$index])) {
+                        $chan=$entry["Channels"][$index];
+                        if (isset($chan["TYPECHAN"])) {
+                            $typechan=explode(",",$chan["TYPECHAN"]);
+                            foreach ($typechan as $id=>$ctype)  {
+                                if (isset($chan[$ctype]))  {
+                                    foreach ($chan[$ctype] as $type=>$varname)   {
+                                        $coid=@IPS_GetObjectIDByName($varname,$inst["OID"]);    
+                                        $objects = @IPS_GetVariable($coid);
+                                        if ($objects !== false) {
+                                            //echo "  Objects: ".json_encode($objects);
+                                            //echo "last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                                            $lastUpdatedChannel=time()-$objects["VariableUpdated"];
+                                            if ($lastUpdatedChannel<$lastUpdated) $lastUpdated=$lastUpdatedChannel;
+                                            if ($lastUpdatedChannel<3600) $quality+=3;               // weniger als eine Stunde
+                                            elseif ($lastUpdatedChannel<86400) $quality+=2;          // weniger als ein Tag
+                                            elseif ($lastUpdatedChannel<604800) $quality+=1;         // weniger als eine Woche
+                                            $countChannels++;
+                                        }
+                                    }       // foreach $chan[$ctype]
+                                }   // if (isset($chan[$ctype]))
+                            }     // foreach $typechan
+                        }   // if (isset($entry["Channels"][$index]))
+                    }
+                }       // foreach ($entry["Instances"] as $index => $inst)
+                if ($countChannels)  {
+                    $this->devicelist[$name]["Quality"]["Index"]=$quality/$countChannels;
+                    $this->devicelist[$name]["Quality"]["LastUpdated"]=$lastUpdated;
+                }
+            }
+            if (isset($entry["Actuators"])) {
+                foreach ($entry["Actuators"] as $actuator) {
+                    //echo "\n          Actuator: ".str_pad($actuator["Name"],50)." Category: ".$actuator["Category"]." Type: ".$actuator["Type"];
+                    }
+                }
+            }  
+        }
 
     public function get_oids()
         {
@@ -381,10 +448,23 @@ class DeviceListManagement extends TopologyLibraryManagement
         }
 
 
-    public function get_coids()
-        {
-        return $this->coids;
+    public function get_coids($style=false)   {
+        if ($style===false) return $this->coids;
+        elseif ($style=="Quality")    {
+            $filtered=array();
+            foreach ($this->coids as $coid => $entry)    {
+                if (isset($entry["QUALITY"])) $filtered[$coid]=$entry["QUALITY"];
+            }
+            return $filtered;
         }
+        else {
+            $filtered=array();
+            foreach ($this->coids as $coid => $entry)    {
+                if ($entry["Type"]==$style) $filtered[$coid]=$entry;
+            }
+            return $filtered;
+        }       
+    }
 
 
     public function get_uuids()
@@ -404,52 +484,17 @@ class DeviceListManagement extends TopologyLibraryManagement
 
     /* echo the data in devicelist as table for debugging
      */
-    public function printDevicelist($style="table")  
+    public function printDevicelist($style="table",$extend=false)  
         {
         if ($style=="table") 
             {
             echo "DeviceListManagement::printDeviceList \n";
-            foreach ($this->devicelist as $name => $entry)
-                {
-                $oids=$this->getalloids($entry);
-                echo "  ".str_pad($name,50)."  ";
-                if ( (isset($entry["Topology"]["UniqueName"])) && (isset($entry["Topology"]["UniquePath"])) ) echo str_pad($entry["Topology"]["UniqueName"].".".$entry["Topology"]["UniquePath"],50)."  ".json_encode($oids);
-                if (isset($entry["Instances"]))
-                    {
-                    foreach ($entry["Instances"] as $index => $inst)
-                        {
-                        if (isset($entry["Channels"][$index]))
-                            {
-                            $chan=$entry["Channels"][$index];
-                            if (isset($chan["TYPECHAN"])) 
-                                {
-                                echo "\n         Component $index: ".str_pad($inst["OID"],8).str_pad($chan["Name"],50)."  TYPECHAN: ".$chan["TYPECHAN"]."  ";
-                                $typechan=explode(",",$chan["TYPECHAN"]);
-                                foreach ($typechan as $id=>$ctype)
-                                    {
-                                    if (isset($chan[$ctype]))   
-                                        {
-                                        foreach ($chan[$ctype] as $type=>$varname) 
-                                            {
-                                            $coid=@IPS_GetObjectIDByName($varname,$inst["OID"]);    
-                                            echo "\n               Channel ".str_pad($type,15)." with ".str_pad($varname,50)." $coid ";
-                                            }   
-                                        } 
-                                    }
-                                }
-                            }
-                        else echo $index.":".$inst["OID"]."  ";
-                        }
-                    }
-                if (isset($entry["Actuators"]))
-                    {
-                    foreach ($entry["Actuators"] as $actuator)
-                        {
-                        echo "\n          Actuator: ".str_pad($actuator["Name"],50)." Category: ".$actuator["Category"]." Type: ".$actuator["Type"];
-                        }
-                    }
-                echo "\n";
-                }
+            $this->printDevicelistTable($extend);
+            }
+        if ($style=="quality") 
+            {
+            echo "DeviceListManagement::printDeviceList \n";
+            $this->printDevicelistTable("quality");
             }
         if ($style=="summary")
             {
@@ -461,6 +506,142 @@ class DeviceListManagement extends TopologyLibraryManagement
             echo "   DeviceListManagement::printDeviceList summary ".sizeof($this->devicelist)." entries, $topologyCount with Unique Topology\n";    
             }
         }
+
+    public function printDevicelistTable($extend=false)
+        {
+        $filter=false;
+        if ($extend=="quality") $filter=true;
+        foreach ($this->devicelist as $name => $entry)
+            {
+            $oids=$this->getalloids($entry);
+            if ($filter) {  
+                if ( (isset($entry["Quality"]["Index"])) && ($entry["Quality"]["Index"]<0.5) ) {
+                    echo "  ".str_pad($name,50)."  ";
+                    $this->printDevicelistTableLine($entry,$extend);
+                    echo "\n";
+                    continue;
+                }
+                else continue;
+            }
+            echo "  ".str_pad($name,50)."  ";
+            $this->printDevicelistTableLine($entry,$extend);
+            echo "\n";
+            }  
+        }
+
+    public function printDevicelistTableLine($entry,$extend=false)
+        {
+        if ( (isset($entry["Topology"]["UniqueName"])) && (isset($entry["Topology"]["UniquePath"])) ) echo str_pad($entry["Topology"]["UniqueName"].".".$entry["Topology"]["UniquePath"],50)."  ".json_encode($oids);
+        if (isset($entry["Instances"])) {
+            foreach ($entry["Instances"] as $index => $inst)  {
+                if (isset($entry["Channels"][$index])) {
+                    $chan=$entry["Channels"][$index];
+                    if (isset($chan["TYPECHAN"])) {
+                        echo "\n         Component $index: ".str_pad($inst["OID"],8).str_pad($chan["Name"],50)."  TYPECHAN: ".$chan["TYPECHAN"]."  ";
+                        $typechan=explode(",",$chan["TYPECHAN"]);
+                        foreach ($typechan as $id=>$ctype)  {
+                            if (isset($chan[$ctype]))  {
+                                foreach ($chan[$ctype] as $type=>$varname)   {
+                                    $coid=@IPS_GetObjectIDByName($varname,$inst["OID"]);    
+                                    echo "\n               Channel ".str_pad($type,15)." with ".str_pad($varname,50)." $coid ";
+                                    if ($extend)  {
+                                        $objects = @IPS_GetVariable($coid);
+                                        if ($objects !== false) {
+                                            //echo "  Objects: ".json_encode($objects);
+                                            //echo "last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                                            $lastUpdated=time()-$objects["VariableUpdated"];
+                                            echo "last Update ".nf($lastUpdated,$unit="s");
+                                        }
+                                    }       // extend
+                                }       // foreach $chan[$ctype]
+                            }   // if (isset($chan[$ctype]))
+                        }     // foreach $typechan
+                    }   // if (isset($entry["Channels"][$index]))
+                }
+                else echo $index.":".$inst["OID"]."  ";
+            }       // foreach ($entry["Instances"] as $index => $inst)
+        }
+        if (isset($entry["Actuators"])) {
+            foreach ($entry["Actuators"] as $actuator) {
+                echo "\n          Actuator: ".str_pad($actuator["Name"],50)." Category: ".$actuator["Category"]." Type: ".$actuator["Type"];
+                }
+            }
+        if (isset($entry["Quality"])) {
+            echo "\n          Quality: ".nf($entry["Quality"]["Index"],1);
+            echo " Last updated ".nf($entry["Quality"]["LastUpdated"],$unit="s")." ago";
+            }                
+
+        }
+
+    public function normalizeDeviceList()
+        {
+        $writedata=array(); $line=0;            
+        foreach ($this->devicelist as $devicename => $entry)
+            {
+            $writedata[$line]["DeviceName"]=$devicename;
+            //echo str_pad($line,4).str_pad($devicename,40);
+            foreach ($entry as $key => $subentry)
+                {
+                $newkey=$key;
+                switch ($key)
+                    {
+                    case "Instances":
+                        $size=0;
+                        if (is_array($subentry)) $size=sizeof($subentry);
+                        $writedata[$line][$key]=$size;
+                        $newkey="Instance-Items";
+                        //if (isset($subentry["OID"])) $writedata[$line]["OID"]=$subentry["OID"];
+                        break;
+                    case "Channels":
+                        $size=0;
+                        if (is_array($subentry)) $size=sizeof($subentry);
+                        $writedata[$line][$key]=$size;
+                        $newkey="Channel-Items";                
+                        break;
+                    case "Device":
+                        break;
+                    case "Actuators":
+                        $size=0;
+                        if (is_array($subentry)) $size=sizeof($subentry);
+                        $writedata[$line][$key]=$size;
+                        $newkey="Actuator-Items";                
+                        break;
+                    case "Topology":
+                        if (isset($subentry["UUID"])) $writedata[$line]["UUID"]=$subentry["UUID"];
+                        if ( (isset($subentry["Path"])) && (isset($subentry["Name"])) ) $writedata[$line]["Room"]=$subentry["Name"].".".$subentry["Path"];
+                        break;
+                    case "Name":
+                    case "Type":
+                        break;
+                    default:
+                        echo "unknown key $key \n";
+                    }
+                $array=false;
+                if (is_array($subentry)) 
+                    {
+                    $writedata[$line][$newkey]=json_encode($subentry);
+                    $array=true;
+                    }
+                else $writedata[$line][$newkey]=$subentry;
+                //echo  str_pad($key.($array?"(a)":""),15);
+                }
+            //echo json_encode($entry);
+            //echo "\n";
+            $line++;
+            }
+        return($writedata);
+        }
+
+    public function getQuality()
+        {
+        $quality=array();
+        foreach ($this->devicelist as $devicename => $entry)
+            {
+            if (isset($entry["Quality"])) $quality[$devicename]=$entry["Quality"]["Index"];
+            else $quality[$devicename]=false;
+            }
+        return($quality);
+        }   
 
     /* DeviceListManagement::findUUID
      * es sollte auch der Name der devicelist und des TopologyLibrary Device gleich sein
@@ -648,7 +829,7 @@ class TopologyLibraryManagement
 
     public function getDeviceGroupInstances()
         {
-        return($this->deviceGroupInstances);
+        return($this->devicegroupInstances);
         }
 
     /* TopologyLibraryManagement::get_SocketList
@@ -1240,8 +1421,8 @@ class TopologyLibraryManagement
         $expectedParentID=false;                // das geht besser zu programmieren
         if (isset($ParentList[$expectedParent]["OID"])) $expectedParentID = $ParentList[$expectedParent]["OID"];  
         elseif (isset($ParentList[$expectedParent]))  $expectedParentID = $ParentList[$expectedParent]; 
-        else echo "Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." vorerst unter ".IPS_GetParent($InstanzID)." lassen. ".$expectedParent." nicht gefunden.\n";
-
+        //else echo "Die Topology ".$entry["Type"]." Instanz mit dem Namen ".$entry["UniqueName"]." vorerst unter ".IPS_GetParent($InstanzID)." lassen. ".$expectedParent." nicht gefunden.\n";
+        else echo "Die Topology Instanz vorerst dort lassen. ".$expectedParent." nicht gefunden.\n";
         if ( ($expectedParentID) && (is_numeric($expectedParentID)) && ($expectedParentID>0)) return ($expectedParentID) ;
         else return (false);
         }
@@ -2864,7 +3045,44 @@ class EvaluateHardware
 
     }
 
+/*********************************************************************************************************************
+ * class to read and write excel files
+ * excel files are used to store the data of the hardware evaluation
+ ********************************************************************************************************************/
+class ExcelHandler
+    {
+    public function __construct()
+        {
+        }
 
+    /* use sheet class to write array to excel sheet */
+    public function writeArrayToSheet($writedata, $columns, $sheet)
+        {
+
+        // 2. Daten eintragen, Überschriften
+        for ($column=1; $column <= sizeof($columns); $column++)
+            {
+            $colletter=$columns[array_keys($columns)[$column-1]];
+            $sheet->setCellValue($colletter.'1', array_keys($columns)[$column-1]);
+            }   
+
+        foreach ($writedata as $index => $item)
+            {
+            $row = $index + 2;          // ab Zeile 2
+            $sheet->setCellValue("A".$row, $index);
+            foreach ($columns as $key => $colletter)
+                {
+                if (isset($item[$key]))
+                    {
+                    $sheet->setCellValue($colletter . $row, $item[$key]);
+                    }
+                }
+            }
+
+        }
+
+
+    }
 
 
 

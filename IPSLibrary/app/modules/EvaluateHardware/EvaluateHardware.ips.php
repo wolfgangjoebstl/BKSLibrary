@@ -279,6 +279,63 @@ IPS_SetEventActive($tim1ID,true);
         $configDeviceList["uniqueNames"]="Create";
         $deviceList = $topologyLibrary->get_DeviceList($hardware,$configDeviceList, false);        // class is in EvaluateHardware_Library, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
         echo "\n";
+        // we switch from deviceList as Array to devicelist as class
+        echo "-------------------------------------------------------------\n";
+        echo "Find all OIDs, COIDs in devicelist and deviceeventlist and align with channeleventlist, fillin Topology for all items:\n";
+        $instTopologyDevices=true;      // jede menge Topology Devices erstellen, werden vielleicht zur Anzeige verwendet
+        $createExcel=false;           // Excel Datei erstellen
+
+        echo "Align deviceeventlist with topology:\n";
+        $deviceEventList = new DetectDeviceListHandler();                            
+        $deviceEventList->setEventListFromConfigFile();             // setDeviceEventListFromConfigFile
+        $deviceEventList->printEventlist("summary");
+        $deviceEventListDataOld = $deviceEventList->get_Eventlist();       // here is the room information
+        //print_R($deviceEventListData);                            
+
+        // topology
+        $topology = new TopologyManagement();       // TopologyManagement extends DetectDeviceHandler, topology information als class 
+        $status2 = $topology->createUnifiedTopology($debug);            // add Information from Topology Instances, works for rooms, places and group from config
+
+        echo "Add topology to deviceeventlist and check again:\n";
+        $status1 = $deviceEventList->analyseTopologyData($topology,$debug);        // DetectMovement, deviceeventlist data ok, extension parameter 4 und 5
+        $deviceEventList->printEventlist("summary");
+        $deviceEventListData = $deviceEventList->get_Eventlist();       // here is the room information
+
+        // compare deviceEventListData and deviceEventListDataOld
+        $deviceEventList->compareEventlist($deviceEventListDataOld,$debug);
+
+        echo "Find all OIDs in devicelist and align with topology:\n";
+        $devicelist = new DeviceListManagement($deviceList);           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
+        //$devicelist->setEventListFromConfigFile();
+        $devicelist->addDeviceQuality();                    // Quality Index added
+        $devicelist->printDeviceList("summary");
+        if ($debug) $devicelist->printDeviceList("table");
+        
+        echo "Add Topology and check again:\n";
+        $devicelist->addTopology($topology,$deviceEventList);           // die beiden classes übergeben, devicelist wird angereichert
+        $devicelist->printDeviceList("summary");
+
+        $status=$topology->addTopologyInfoByDeviceList($devicelist);        // und jetzt Topology mit devices anreichern, true debug
+        
+        // devicelist hat Name, Type, Instances, Channels, Topology
+        if ( isset($installedModules["Stromheizung"]) )
+            {
+            //echo " Stromheizung ist installiert. Configuration auslesen. Devicelist Aktuatoren anreichern:\n";
+            IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
+            IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");		
+            IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");		
+            IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");
+            
+            $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
+            echo "Sync IPSHeat Devices with devicelist:\n";
+            $devicelist->analyse($ipsheatManager);              // calc coids, oids and uuids
+            }
+        echo "Result is new arrays structured as UUIDs with list of Topology Devices, oids and coids :\n";
+        $oids=$devicelist->get_oids();
+        echo "   Number of OIDs detected : ".sizeof($oids)."\n";
+        $coids=$devicelist->get_coids();
+        echo "   Number of COIDs detected : ".sizeof($coids)."\n";
+
 
         $includefileDevices     = '<?php'."\n";             // für die php Devices and Gateways, neu
         $includefileDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
@@ -340,7 +397,7 @@ IPS_SetEventActive($tim1ID,true);
                     if ($instTopologyDevices) ;                                                     // alle Geräte hinzufügen
                     else $topinstconfig["Use"]["Device"]="Actuators";                               // nur die Actuators hinzufügen
                     $debug=true;
-                    $topologyLibrary->sortTopologyInstances($deviceList,$topology, $channelEventList,$deviceEventList,$topinstconfig,$debug);           // neu abgeänderte Routine in Arbeit
+                    $topologyLibrary->sortTopologyInstances($devicelist,$topology, $channelEventList,$deviceEventList,$topinstconfig,$debug);           // neu abgeänderte Routine in Arbeit
                     echo "----------------------------------------\n";
                     // check ImproveDeviceDetection for additonal Features
 
@@ -354,8 +411,9 @@ IPS_SetEventActive($tim1ID,true);
                 }           // end isset DetectMovement
             }               // end TopologyMappingLibrary
 
+        $devicelistData = $devicelist->read_devicelist();
         $includefileDevices .= 'function deviceList() { return ';
-        $ipsOps->serializeArrayAsPhp($deviceList, $includefileDevices, 0, 0, false);          // true mit Debug
+        $ipsOps->serializeArrayAsPhp($devicelistData, $includefileDevices, 0, 0, false);          // true mit Debug
         $includefileDevices .= ';}'."\n\n";        
         
         $includefileDevices .= "\n".'?>';

@@ -2882,7 +2882,7 @@ class DeviceManagement_Homematic extends DeviceManagement
         $statusDevices     .= " *  \n";
         $statusDevices     .= " */    \n\n";
         $statusDevices .= "function get_DeviceErrorStatus() { return ";
-        $ipsOps->serializeArrayAsPhp($arrHM_Errors, $statusDevices,0,0,true);        // gateway array in das include File schreiben
+        $ipsOps->serializeArrayAsPhp($arrHM_Errors, $statusDevices,0,0,$debug);        // gateway array in das include File schreiben
         $statusDevices .= ';}'."\n\n";        
         $statusDevices .= "function get_DeviceErrorLog() { return ";
         $ipsOps->serializeArrayAsPhp($storedError_Log, $statusDevices);        // gateway array in das include File schreiben
@@ -3783,15 +3783,18 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
             switch ($item["Type"])
                 {
                 case "Hue lightstrip plus":
+                case "Hue lightstrip outdoor":
                 case "Hue bloom":
                 case "Hue Play":
                 case "Extended color light":
                 case "Hue color lamp":
+                case "Hue color spot":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_RGB";
                     break;
                 case "Hue ambiance lamp":
                 case "Hue ambiance spot":
                 case "Hue filament bulb":               // die grosse Lampe, kann dimmen und ambient, TypeChild Light
+                case "Hue ambiance ceiling":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_AMBIENT";
                     break;
                 case "Hue white lamp":              // wenn typeChild definiert und nicht light aufpassen   
@@ -3809,6 +3812,9 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                 case "Dimmable light":                  // Ikea Actuator Driver
                     $this->itemslist[$oid]["TypeDev"]="TYPE_DIMMER";
                     break;
+                case "Hue smart plug":
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_SWITCH";
+                    break;                    
                 case "room":
                 case "zone":            // eine Gruppierung, aber wahrscheinlich örtlich abgegrenzt
                     // damit kann die Topologie abgeglichen werden
@@ -3841,7 +3847,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                     $this->itemslist[$oid]["TypeDev"]="TYPE_BUTTON";            // am Register ButtonEvent kann man erahnen welche Taste wie gedrückt wurde
                     break;
                 default:
-                    echo "createItemlist, warning, do not know key \"".$item["Type"]."\"\n";
+                    echo "DeviceManagement_HueV2::createItemlist, warning, do not know key \"".$item["Type"]."\"\n";
                     print_r($item);
                     break;
                 }    

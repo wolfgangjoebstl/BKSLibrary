@@ -1,5 +1,5 @@
 <?php
-/*erstellt von RemoteAccess::add_Guthabensteuerung() am 13.10.2025 05:05
+/*erstellt von RemoteAccess::add_Guthabensteuerung() am 28.10.2025 05:05
  */
 function GuthabensteuerungList() { return array(
     "Phone_Cost" => array(
@@ -8,28 +8,28 @@ function GuthabensteuerungList() { return array(
          "Typ" => 2, 
          "Order" => "500", 
              	),
+    "Phone_CL_Change" => array(
+         "OID" => 22337, 
+         "Name" => "Phone_CL_Change", 
+         "Typ" => 2, 
+         "Order" => "501", 
+             	),
     "StartImacro" => array(
          "OID" => 14828, 
          "Name" => "StartImacro", 
          "Typ" => 1, 
-         "Order" => "501", 
+         "Order" => "502", 
              	),
     "Phone_Load" => array(
          "OID" => 15501, 
          "Name" => "Phone_Load", 
          "Typ" => 2, 
-         "Order" => "502", 
+         "Order" => "503", 
              	),
     "ScriptTimer" => array(
          "OID" => 28552, 
          "Name" => "ScriptTimer", 
          "Typ" => 3, 
-         "Order" => "503", 
-             	),
-    "Phone_CL_Change" => array(
-         "OID" => 22337, 
-         "Name" => "Phone_CL_Change", 
-         "Typ" => 2, 
          "Order" => "504", 
              	),
     "checkScriptCounter" => array(
@@ -53,7 +53,7 @@ function GuthabensteuerungList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_Amis() am 13.10.2025 05:05
+/*erstellt von RemoteAccess::add_Amis() am 28.10.2025 05:05
  */
 function AmisStromverbrauchList() { return array(
     "Wohnung-LBG70_Wirkenergie" => array(
@@ -241,7 +241,7 @@ function AmisStromverbrauchList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_SysInfo() am 13.10.2025 05:05
+/*erstellt von RemoteAccess::add_SysInfo() am 28.10.2025 05:05
  */
 function SysInfoList() { return array(
     "Hostname" => array(
@@ -296,7 +296,7 @@ function SysInfoList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_RemoteServer() am 13.10.2025 05:05
+/*erstellt von RemoteAccess::add_RemoteServer() am 28.10.2025 05:05
  */
 function ROID_List() { return array(
       );}

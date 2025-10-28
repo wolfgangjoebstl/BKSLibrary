@@ -38,6 +38,57 @@
      *
      */
 
+class XConfigurator extends RemoteAccess
+    {
+
+    protected $xconfiguration=array();
+
+    public function createXConfiguration()
+        {
+        $this->xconfiguration=$this->processXConfig(IPS_GetName(0));
+        return ($this->xconfiguration);
+        }
+
+    public function checkRemoteOIDData($data,$debug=false)
+        {
+        $result=true; $info=""; $output=array();
+        $remotedata=array();
+
+        $componentdata=explode(",",$data);
+        //print_R($componentdata);
+        if (isset($componentdata[2])) $remotedata=explode(";",$componentdata[2]);
+        if ( (sizeof($remotedata)==0) && (isset($componentdata[1])) ) $remotedata=explode(";",$componentdata[1]);
+        if (sizeof($remotedata)>0)
+            {
+            //print_r($remotedata);
+            foreach ($remotedata as $id => $serverinfo)
+                {
+                if (strlen($serverinfo)>4)          // immer ein leerer Parameter am Ende durch zusätzlichen ;
+                    {
+                    $serverdata = explode(":",$serverinfo);
+                    if ($debug) echo " ".str_pad($serverinfo,30);   
+                    if (isset($this->xconfiguration[$serverdata[0]][$serverdata[1]]))
+                        {
+                        if ($debug) echo " ok  ";
+                        $output[$serverdata[0]][$serverdata[1]]=true;
+                        } 
+                    else 
+                        {
+                        if ($debug) echo " fail";
+                        $info .= $serverdata[0].":".$serverdata[1]." failed";
+                        $result=false;
+                        }
+                    }
+                }
+            }
+        //if ($info != "") echo $info;
+        return $output;
+        //return $result;
+        }
+
+
+    }
+
 	/*********************
 	 *
 	 * RemoteAccess Class
@@ -245,7 +296,7 @@ class RemoteAccess
     public function processXConfig($source="BKS01-2",$debug=false)
         {
         $xconfig=array();
-        $result = $this->server_ping(true);
+        $result = $this->server_ping($debug);
         foreach ($result as $server => $entry)
             {
             if ($entry["Status"])
@@ -254,35 +305,35 @@ class RemoteAccess
                 }    
             }
         if ($debug>1) print_r($xconfig);
-        echo "-----------------------------------------------------------------\n";
+        if ($debug) echo "-----------------------------------------------------------------\n";
         $result=array();
         foreach ($xconfig as $server => $entry)
             {            
-            echo $server."   \n";   
+            if ($debug) echo $server."   \n";   
             foreach ($entry as $client => $xconfig) 
                 {
                 $rootid=$xconfig["OID"];
-                echo "      ".str_pad($client,22)."   $rootid \n";
+                if ($debug) echo "      ".str_pad($client,22)."   $rootid \n";
                 if ($client==$source) 
                     {
                     //print_r($xconfig);
                     $oids=array();
                     foreach ($xconfig as $id => $xentry)                // client ist richtig, wir lesen OID, . und Childs
                         {
-                        echo "            $id    \n";
+                        if ($debug) echo "            $id    \n";
                         if ($id == "Childs") $childs=$xentry;
                         if (is_array($xentry))                          // das wäre dann nur mehr Childs und .
                             {   
                             foreach ($xentry as $sid => $sentry)
                                 {
-                                echo "                   $sid     \n"; 
+                                if ($debug) echo "                   $sid     \n"; 
                                 if (is_array($sentry))
                                     {
                                     foreach ($sentry as $ssid => $ssentry)
                                         {
                                         if (is_array($ssentry)) $json = json_encode($ssentry);
                                         else $json = "";
-                                        echo "                     ".str_pad($ssid,40)."     $json \n";
+                                        if ($debug) echo "                     ".str_pad($ssid,40)."     $json \n";
                                         if (isset($ssentry["OID"])) $oids[$ssentry["OID"]]=$ssid;
 
                                         }    
@@ -502,7 +553,8 @@ class RemoteAccess
 	 * sys ping IP Adresse von bekannten IP Symcon Servern
 	 *
 	 * Verwendet selbes Config File wie für die Remote Log Server, es wurden zusätzliche Parameter zur Unterscheidung eingeführt
-	 *
+	 * verwendet daraus Server ADRESSE und STATUS
+     *
 	 */
 	function server_ping($debug=false)
 		{
@@ -604,41 +656,42 @@ class RemoteAccess
 							$context  = stream_context_create($options);
 							$urlen = urlencode($url);	
                             try {
-    							$response = file_get_contents($url, false, $context);							
+    							$response = @file_get_contents($url, false, $context);							
                                 } 
                             catch (Exception $e) {
-                                echo 'Caught exception: ',  $e->getMessage(), "\n";
+                                if ($debug) echo 'Caught exception: ',  $e->getMessage(), "\n";
                                 $response=false;
                                 }
-                            echo " done $response \n";                            						
+                            if ($debug) echo " done $response \n";                            						
 							}
 						}
 					}		
 				if ($response===false)
 					{
-					echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
+					echo "   Server : ".$url." mit Name: ".$Name." nicht erreicht. Fehler Context: ".$context." \n";
 					$RemoteServer[$Name]["Status"]=false;
 					}
 				else
 					{
                     try {
+                        echo $response."\n";
 				        $rpc = new JSONRPC($UrlAddress);                        
                         $ServerName=$rpc->IPS_GetName(0);
                         $ServerUptime=$rpc->IPS_GetKernelStartTime();
                         $ServerVersion=$rpc->IPS_GetKernelVersion();
                         } 
                     catch (Exception $e) {
-                        echo 'Caught exception: ',  $e->getMessage(), "\n";
+                        if ($debug) echo 'Caught exception: ',  $e->getMessage(), "\n";
                         $response=false;
                         }
                 if ($response===false)
 					{
-					echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
+					echo "   Server : ".$url." mit Name: ".$Name." nicht erreicht. Fehler Context: ".$context." \n";
 					$RemoteServer[$Name]["Status"]=false;
 					}
                 else
                     {
-					echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
+					if ($debug) echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
 					$RemoteServer[$Name]["Status"]=true;
 					}
 					}

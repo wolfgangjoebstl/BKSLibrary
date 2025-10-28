@@ -438,6 +438,7 @@ class Hardware
         }
 
     /* Hardware::getDeviceActuatorsFromIpsHeat
+     * wird von TopologyLibraryManagement::get_DeviceList aufgerufen
      * die Device Liste (Geräteliste) um die Actuators erweitern, gemeinsam für alle, da mehr von Stromheizung IPS_HEAT abhängig als von der Harwdare
      * direkter Aufruf dieser class, modul Stromheizung muss installiert sein, die ganze Config einlesen und mit der ganzen deviceList abgleichen
      * aus der Stromheizung Config von IPSHEAT_COMPONENT die einzige OID rausziehen die es gibt
@@ -451,7 +452,7 @@ class Hardware
         $channels  = array();
         if ( isset($this->installedModules["Stromheizung"]) )
             {
-            echo "\nStromheizung ist installiert. Configuration auslesen. Devicelist mit Aktuatoren anreichern:\n";
+            echo "\ngetDeviceActuatorsFromIpsHeat, Stromheizung ist installiert. Configuration auslesen. Devicelist mit Aktuatoren anreichern:\n";
             IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
             IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");		
             IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");		
@@ -459,7 +460,7 @@ class Hardware
             
             $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
 
-            // einzelne IPSHeat Aktuatoren
+            // einzelne IPSHeat Aktuatoren, Ausgabe als text: name, IPSHEAT_TYPE, components[0], 
             $IPSLightObjects=IPSHeat_GetHeatConfiguration();
             foreach ($IPSLightObjects as $name => $object)
                 {
@@ -470,6 +471,7 @@ class Hardware
                     case "IPSCOMPONENTSWITCH_HOMEMATIC":
                     case "IPSCOMPONENTDIMMER_HOMEMATIC":                
                     case "IPSCOMPONENTRGB_PHUE":
+                    case "IPSCOMPONENTRGB_PHUE2":
                     case "IPSCOMPONENTRGB_LW12":
                     case "IPSCOMPONENTHEATSET_HOMEMATIC":
                     case "IPSCOMPONENTHEATSET_HOMEMATICIP":                

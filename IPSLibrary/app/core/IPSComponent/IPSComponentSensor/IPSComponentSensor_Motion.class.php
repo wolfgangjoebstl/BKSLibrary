@@ -216,6 +216,7 @@
         /* init at do_init */
 		protected   $installedmodules;                          /* installierte Module */
 		protected   $variable, $variableProfile, $variableType;
+        protected   $variableSourceProfile, $variableSourceType;                // manchmal ist die Source nicht gleich dem target
         protected   $variableTypeReg;                               // Untergruppen, hier MOTION oder BRIGHTNESS 
         protected   $Type;                                      // Eigenschaften der input Variable auf die anderen Register clonen        
 
@@ -291,6 +292,7 @@
                 $this->$variable=$variable;
                 $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
                 if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
+                //$presentation = IPS_GetVariablePresentation($variable); print_R($presentation);
                 $this->variableType=IPS_GetVariable($variable)["VariableType"];
                 //echo "do_init machen und getfromDatabase aufrufen.\n";                                
                 $rows=getfromDatabase("COID",$variable,false,$debugSql);                // Bestandteil der MySQL_Library, false Alternative
@@ -314,6 +316,7 @@
                             case "BRIGHTNESS":
                             case "CONTACT":
                                 $this->variableTypeReg = strtoupper($typedev);
+                                echo "Variable Profile expected ??? and ".$this->variableProfile."\n";
                                 break;   
                             default: 
                                 //$NachrichtenID = $this->do_init_sensor($variable, $variablename);                            
@@ -460,10 +463,11 @@
 	   
 		function Motion_LogValue($value,$debug=false)
 			{
-            if ($debug) 
+            if ($this->debug || $debug) 
                 {
-                echo "Motion_logValue aufgerufen. Typ $this->variableTypeReg. Wert ist $value. \n";
+                echo "Motion_logValue aufgerufen. Typ $this->variableTypeReg. Wert ist $value / ".GetValue($this->variable)." Profile : ".$this->variableProfile." Typ ".$this->variableType."\n";
                 $result=$value;         // mit simuliertem Wert arbeiten
+                $debug=true;
                 }
 			else $result=GetValue($this->variable);
             switch ($this->variableTypeReg)
@@ -818,10 +822,20 @@
          * in variableLogID wird der übergebene Wert result geschrieben, ausser bei Test der selbe Wert
          * variableLogID wird in do_init_brightness mit do_setVariableLogId entsprechend variableType,variableProfile definiert.
          * in resultlog wird der formattierte Wert von variable geschrieben, klar result weisst keine Formattierung auf
+         *
+         * es kann unterschiedliche Formattierung von Input, Mirror und Logging geben, es muss eventuell auch der Wert umgerechnet werden
+         * hier wird einfach result geschrieben und als return der formatierte wert als string
          */
 
         private function doLogBrightness($result)
             {
+            $variableProfile=IPS_GetVariable($this->variable)["VariableProfile"];
+            if ($variableProfile=="") $variableProfile=IPS_GetVariable($this->variable)["VariableCustomProfile"];
+            //$presentation = IPS_GetVariablePresentation($variable); print_R($presentation);
+            $variableType=IPS_GetVariable($this->variable)["VariableType"];                
+            echo "doLogBrightness($result) , $variableType , $variableProfile\n";
+            //if ($variableType==2) $result=$result*20+30;
+            if ($result<10) $result=$result*20+30;
             $resultLog=GetValueIfFormatted($this->variable);
             echo "CustomComponent Motion_LogValue Log Brightness Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
             if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Brightness '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
