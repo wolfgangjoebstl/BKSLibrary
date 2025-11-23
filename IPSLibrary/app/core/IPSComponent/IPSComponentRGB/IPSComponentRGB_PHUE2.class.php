@@ -140,7 +140,7 @@
          * @param integer $color RGB Farben (Hex Codierung)
          * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
          */
-		public function SetState($power, $color, $level=512, $ambience=false) 
+		public function SetState($power, $color=false, $level=512, $ambience=false) 
 			{
             $debug=false;
 			if (!$power) 
@@ -171,7 +171,13 @@
                 //PHUE_DimSet($this->lampOID, $level);
 				//echo "Level:".$level."\n";				
 				}
-			elseif ($level==512)	                // als Dimmer aufgerufen, color wird als level verwendet
+			elseif ($color===false)                 // als Switch aufgerufen
+                {
+    			if ($debug) echo "IPSComponentRGB_HUE2 SetState mit Power ".($power?"Ein":"Aus")."  \n";
+                RequestAction($this->statusId, $power);
+
+                }
+            elseif ($level==512)	                // als Dimmer aufgerufen, color wird als level verwendet
                 {
                 //$level = round($color * 2.54);
     			if ($debug) echo "IPSComponentRGB_HUE2 SetState mit Power ".($power?"Ein":"Aus")."  Level $color ($level)   \n";

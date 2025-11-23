@@ -77,6 +77,7 @@ class XConfigurator extends RemoteAccess
                         if ($debug) echo " fail";
                         $info .= $serverdata[0].":".$serverdata[1]." failed";
                         $result=false;
+                        $output[$serverdata[0]][$serverdata[1]]=false;
                         }
                     }
                 }
@@ -566,9 +567,13 @@ class RemoteAccess
 
 		foreach ($remServer as $Name => $Server)
 			{
+            if (isset($Server["STATUS"])===false) $Server["STATUS"]="Active";
+            if (isset($Server["LOGGING"])===false) $Server["LOGGING"]="Enabled";
+            echo $Name." : ".$Server["STATUS"]."  ".$Server["LOGGING"]."\n";
 			//print_r($Server);
 			$UrlAddress=$Server["ADRESSE"];
-			if ($Server["STATUS"]=="Active")
+            $url=$UrlAddress;
+			if ( ($Server["STATUS"]=="Active") && ($Server["LOGGING"]=="Enabled") )
 				{
                 if ($debug) echo "Ping active Server $UrlAddress :\n"; 
 				$RemoteServer[$Name]["Name"]=$UrlAddress;

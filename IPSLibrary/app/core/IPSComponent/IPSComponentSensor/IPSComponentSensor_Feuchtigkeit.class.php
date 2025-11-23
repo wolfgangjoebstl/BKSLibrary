@@ -119,7 +119,7 @@
             $debug=false;                
 			if ($debug) echo "IPSComponentSensor_Feuchtigkeit:HandleEvent, Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
             $startexec=microtime(true);
-            $log=new Feuchtigkeit_Logging($variable);        // es wird kein Variablenname übergeben
+            $log=new Feuchtigkeit_Logging($variable,null,null,$this->tempValue);        // es wird kein Variablenname und kein Wert übergeben : __construct($variable,$variablename=Null,$value=null,$variableTypeReg="unknown",$debug=false
             $mirrorValue=$log->updateMirorVariableValue($value);
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // nur durch Vergleich GetValue kann es nicht festgestellt werden, da der Wert in value bereits die Änderung auslöst. Dazu Spiegelvariable verwenden
                 {            
@@ -247,8 +247,21 @@
 
             $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
 
-            if (IPS_GetVariable($variable)["VariableType"]==2) $variableTypeReg = "TEMPERATURE";            // kann STATE auch sein, tut aber nichts zur Sache
-            else $variableTypeReg = "HUMIDITY";
+            if ($variableTypeReg != "unknown") 
+                {
+                //echo "Feuchtigkeit_Logging  $variableTypeReg\n";
+                $component = new ComponentHandling();
+                $keyName=array();
+                $keyName["KEY"]=$variableTypeReg;
+                $component->addOnKeyName($keyName,$this->debug); 
+                print_R($keyName);
+                }
+            else    
+                {
+                if (IPS_GetVariable($variable)["VariableType"]==2) $variableTypeReg = "TEMPERATURE";            // kann STATE auch sein, tut aber nichts zur Sache
+                else $variableTypeReg = "HUMIDITY";
+                }
+
             $NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
 
             /* abgelöst durch do_init und do_init_humidity 
@@ -331,10 +344,11 @@
 
 
         /* do_setVariableLogID, nutzt setVariableLogId aus der Logging class 
-        * kannnicht diesselbe class sein, da this verwendet wird
-        */
+         * kannnicht diesselbe class sein, da this verwendet wird
+         * in der logging class schaut eh ähnlich aus
+         */
 
-        private function do_setVariableLogID($variable)
+        private function do_setVariableLogID_test($variable)
             {
             if ($variable<>Null)
                 {
@@ -389,7 +403,7 @@
 
         /* wird von HandleEvent aus obigem CustomComponent aufgerufen.
          * Speichert den Wert von ID $this->variable im Spiegelregister mit ID $this->variableLogID
-         *
+         * Das profil sollte vorgegeben sein
          */
 
 		function Feuchtigkeit_LogValue()

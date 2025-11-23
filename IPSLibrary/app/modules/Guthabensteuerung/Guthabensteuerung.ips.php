@@ -1,6 +1,5 @@
 <?php
 
-
  	/*
 	 * This file is part of the IPSLibrary.
 	 *
@@ -19,6 +18,9 @@
 	 */ 
 
     /* Guthabensteuerung
+     *
+     * erfolgreicher Betrieb abhängig wie der User angemeldet ist
+     *
      *
      * soll das verbleibende Guthaben von SIM Karten von einer Webseite herausfinden
      * unterschiedliche Strategien, Betriebsarten: Aufruf mit
@@ -94,6 +96,8 @@
     $ipsOps = new ipsOps();    
     $timerOps = new timerOps();
     $webOps = new webOps();                                     // Webfront Operationen
+    $sysOps = new sysOps();
+
 
     $systemDir     = $dosOps->getWorkDirectory();     
 
@@ -598,69 +602,98 @@
                             $seleniumChromedriverUpdate->startSelenium(); 
                             break;
                         case "Check":
-                            //echo "Requested Action $action <br>";   
-                            $statusRequestedAction=$seleniumChromedriverUpdate->activeSelenium(); 
-                            $content = str_replace(array("\r\n", "\n\r", "\r"), "\n", $statusRequestedAction);                     // Zeilenumbruch vereinheitlichen
-                            $content = explode("\n", $content);                                         // und in Array umrechnen
-                            $firstline=false;
-                            $fileOps=new fileOps();
+                            //echo "Requested Action $action <br>"; 
+                            // Beispiel: Major-Version für Chromedriver
+                            $chromeVersion = $sysOps->getChromeVersionWindows_IPS();
+                            if ($chromeVersion) {
+                                //echo "Chrome-Version: $chromeVersion\n";
+                                $major = explode('.', $chromeVersion)[0];
+                                //echo "Chromedriver-Channel: LATEST_RELEASE_$major\n";
+                            } else {
+                                //echo "Chrome-Version konnte nicht ermittelt werden.\n";
+                            }
+                            $seleniumChromedriver=new SeleniumChromedriver();         // SeleniumChromedriver.OperationCenter Child
+                            $selDirContent = $seleniumChromedriverUpdate->getSeleniumDirectoryContent();            // erforderlich für version
+                            $versions    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
 
-                            $userName=$fileOps->analyseContent($content, "BENUTZERNAME");
-                            $process=$fileOps->analyseContent($content, "CommandLine",2);
+                            //print_R($versionOnShare);          // Version Nummer, Filename, Size in Bytes
+                            $chromedriverVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$versions);           // aus der Watchdog Library, issues with detection
+                            $OperationCenter=new OperationCenter();
+                            $user = $OperationCenter->getUser();            // Administrator is always wolfg
+                            $administrator = $OperationCenter->updateAdministrator($user);
+                            if ($administrator)
+                                {
+                                //echo "Administrator $administrator ";
+                                $statusRequestedAction=$seleniumChromedriverUpdate->activeSelenium($administrator); 
+                                $content = str_replace(array("\r\n", "\n\r", "\r"), "\n", $statusRequestedAction);                     // Zeilenumbruch vereinheitlichen
+                                $content = explode("\n", $content);                                         // und in Array umrechnen
+                                $firstline=false;
+                                $fileOps=new fileOps();
 
-                            $id="a1234"; $class="maindiv1";
-                            $text = "<style>";
-                            $text.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
-                            $text.='font-size:12px; max-width: 900px ';        // responsive font size
-                            $text.='color:black; border-collapse: collapse;  }';
-                            $text.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
-                            $text.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
-                            $text.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
-                            $text.='#'.$id.' tr:hover {background-color: #ddd;}';
-                            $text.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
+                                $userName=$fileOps->analyseContent($content, "BENUTZERNAME");
+                                $process=$fileOps->analyseContent($content, "CommandLine",2);
+                                $id="a1234"; $class="maindiv1";
+                                $text = "<style>";
+                                $text.='#'.$id.' table { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; ';
+                                $text.='font-size:12px; max-width: 900px ';        // responsive font size
+                                $text.='color:black; border-collapse: collapse;  }';
+                                $text.='#'.$id.' td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+                                $text.='#'.$id.' tr:nth-child(even){background-color: #f2f2f2;color:black;}';
+                                $text.='#'.$id.' tr:nth-child(odd){background-color: #e2e2e2;color:black;}';
+                                $text.='#'.$id.' tr:hover {background-color: #ddd;}';
+                                $text.='#'.$id.' th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; word-wrap: break-word; white-space: normal;}';
 
-                            // div darunter übereinander rechtsbündig darstellen
-                            $text.=".".$class." { width: 100%; height: 100%;          
-                                display: flex;  flex-direction: column; flex-wrap: wrap;        
-                                justify-content: space-between;
-                                align-items: flex-start; align-content: flex-start;
-                                box-sizing: border-box; padding: 1px 1px 1px 1px;		}";
-                            // zusaetzliche Formatierung für die divs unter maindiv1 :
-                            $text.=".".$class."1>* { position: relative;	z-index: 1; }"; 
-                            // div darunter für left-aligned, center-aligned und right aligned
-                            $text.=".".$class."2 { width: 100%; height: 90%;           
-                                display: flex; position: relative; 
-                                justify-content: space-between;
-                                align-items: center;
-                                box-sizing: border-box;	padding: 0px 0px 5px 0px;	}";
-                            $text.="</style>";
-                            
-                            $html=$text;
-                            $html .= "<div class=".$class."1 id=$id>";
-                            /* html ohne html block aber mit style und unterschiedlicher id
-                            */
-                            $html .= "<div class=".$class."2 >";
+                                // div darunter übereinander rechtsbündig darstellen
+                                $text.=".".$class." { width: 100%; height: 100%;          
+                                    display: flex;  flex-direction: column; flex-wrap: wrap;        
+                                    justify-content: space-between;
+                                    align-items: flex-start; align-content: flex-start;
+                                    box-sizing: border-box; padding: 1px 1px 1px 1px;		}";
+                                // zusaetzliche Formatierung für die divs unter maindiv1 :
+                                $text.=".".$class."1>* { position: relative;	z-index: 1; }"; 
+                                // div darunter für left-aligned, center-aligned und right aligned
+                                $text.=".".$class."2 { width: 100%; height: 90%;           
+                                    display: flex; position: relative; 
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    box-sizing: border-box;	padding: 0px 0px 5px 0px;	}";
+                                $text.="</style>";
+                                
+                                $html=$text;
+                                $html .= "<div class=".$class."1 id=$id>";
+                                /* html ohne html block aber mit style und unterschiedlicher id
+                                */
+                                $html .= "<div class=".$class."2 >";
 
-                            $ipsTables = new ipsTables();             // create classes used in this class, standard creation of tables
-                            $config=array();
-                            $config["html"]    = 'html'; 
-                            $config["insert"]["Header"]    = true;
-                            $config["format"]["class-id"]=false;                // ein div ohne Formatierungen
-                            $html.=$ipsTables->showTable($userName,false,$config);
-                            //print_r($config);                   // die config wird erweitert, sozusagen als Ergebnis
-                            $html .= "</div>";
+                                $ipsTables = new ipsTables();             // create classes used in this class, standard creation of tables
+                                $config=array();
+                                $config["html"]    = 'html'; 
+                                $config["insert"]["Header"]    = true;
+                                $config["format"]["class-id"]=false;                // ein div ohne Formatierungen
+                                $html.=$ipsTables->showTable($userName,false,$config);
+                                //echo ".";
+                                //print_r($config);                   // die config wird erweitert, sozusagen als Ergebnis
+                                $html .= "</div>";
 
-                            $html .= "<div class=".$class."2 >";
+                                $html .= "<div class=".$class."2 >";
 
-                            $config=array();
-                            $config["html"]    = 'html'; 
-                            $config["insert"]["Header"]    = true;
-                            $config["format"]["class-id"]=false;
-                            $html.=$ipsTables->showTable($process,false,$config);
+                                $config=array();
+                                $config["html"]    = 'html'; 
+                                $config["insert"]["Header"]    = true;
+                                $config["format"]["class-id"]=false;
+                                $html.=$ipsTables->showTable($process,false,$config);
 
-                            $html .= "</div>";
-                            $html .= "</div>";
-
+                                $html .= "</div>";
+                                $html .= "</div>";
+                                $html .= "<div>Chrome-Version: $chromeVersion</div>";
+                                $html .= "<div>ChromeDriver-Version: $chromedriverVersion</div>";
+                                }
+                            else    
+                                {   // no Administrator logged in
+                                $html  = "<div>Selenium not available, no Administrator logged in</div>";
+                                $html .= "<div>Chrome-Version: $chromeVersion</div>";
+                                $html .= "<div>ChromeDriver-Version: $chromedriverVersion</div>";
+                                }
                             $SeleniumActiveID = IPS_GetObjectIdByName("SeleniumActive", $CategoryId_Mode);          
                             if ($SeleniumActiveID) SetValue($SeleniumActiveID,$html);
                             break;
@@ -1220,7 +1253,6 @@
             // neue Chromedriver Versionen finden, wenn neue version gefunden wird diese zum Download anmerken, wird in config gespeichert                                
             $log_Guthabensteuerung->LogNachrichten("Get Chromedriver Versionen von Webpage gestartet");
             $configChromedriverID       = IPS_GetObjectIdByName("ConfigChromeDriver",$CategoryId_Mode); 
-            $sysOps = new sysOps();
             $curlOps = new curlOps();    
 
             $html="";
@@ -1248,7 +1280,8 @@
                 if (isset($result[$version]["url"]))
                     {
                     $log_Guthabensteuerung->LogNachrichten("Url ".$result[$version]["url"]." laden");
-                    $curlOps->downloadFile($result[$version]["url"],$dir);
+                    $fp=$curlOps->downloadFile($result[$version]["url"],$dir);
+                    if ($fp===false) continue;
                     $files = $dosOps->writeDirToArray($dir);        // bessere Funktion
                     $file = $dosOps->findfiles($files,$filename,true);       //Debug
                     if ($file) 

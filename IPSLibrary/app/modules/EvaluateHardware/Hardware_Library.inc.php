@@ -168,6 +168,11 @@ class Hardware
         return ($this->deviceID);
         }
 
+    public function getListofDevices()
+        {
+        return ($this->ListofDevices);
+        }
+
     /* etwas variablere Verarbeitung und Nutzung von ModulIDs, es müssen keine instanzen sein, kann auch was anderes zurückgegeben werden */
     
     public function getDeviceIDInstances()
@@ -2155,6 +2160,7 @@ class HardwareHUEV2 extends Hardware
     protected $socketID, $bridgeID, $deviceID;
 	
     /* wir können devices zusammenlegen wenn gewünscht, Vorverarbeitung beginnt bereits im construct 
+     * calls parents construct to analyse config and set combineDevices createuniquenames
      * in configuration.combineDevices sind alle Geräte gespeichert, eine ListofDevices erstellen
      *      Index ist die DeviceID, also die einzigartige, unique Adresse des Gerätes, das mehrere Instanzen haben kann
      *      Subindex ist die OID, also die IDs der Instanzen mit gleicher Adresse/DeviceID
@@ -2183,6 +2189,8 @@ class HardwareHUEV2 extends Hardware
                 {
                 if (isset($entry["NAME"])) $name=$entry["NAME"];
                 else $name=$idx;
+                $subnames=explode(":",$name);
+                if (sizeof($subnames)>1) $name=$subnames[0];     // das wäre Namen mit Doppelpunkt zusammenfassen, siehe Homematic
                 if ($entry["DeviceID"] != "") 
                     {
                     $this->ListofDevices[$entry["DeviceID"]][$entry["OID"]]=$entry["CONFIG"];

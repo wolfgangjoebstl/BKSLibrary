@@ -36,8 +36,8 @@
     $debug=true;
 
     // active deletion of objects from not needed module, if categorie is in object path it will be removed
-    $dodelete=true;
-    $excludeModules=["Guthabensteuerung","DetectMovement"];
+    $dodelete=false;
+    
 
 	IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
     IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
@@ -48,6 +48,9 @@
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
+
+    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
     $ipsOps = new ipsOps();
     $remoteAccess = new RemoteAccess();    
@@ -62,19 +65,43 @@
     $maxCount=sizeof($eventlist);
     $delete=array();                                                              // delete some objects, ie because they are not needed for Guthaben
 
+    $eventList = new DetectEventListHandler($debug);
+    $eventList->setEventListFromConfigFile(); 
+    $eventListData = $eventList->getEventlist();
+
 if ( ($_IPS['SENDER']=="Execute") )
 	{
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	echo "========================================================================================\n";	
-    $result = $remoteAccess->processXConfig(IPS_GetName(0),$debug);
-	echo "Overview of registered Events, ".sizeof($eventlist)." Eintraege : \n";
+
+    $xconfig = new XConfigurator();           
+    $result=$xconfig->createXConfiguration();
+
+    echo "EventList loaded from DetectEventListHandler (MessageHandler):\n";           // Create, copied to DiagnoseCenter
+    //$result = $remoteAccess->processXConfig(IPS_GetName(0),$debug);
+    $eventList->extendRemoteAccess($xconfig,false);                                  // eventlist erweitern
+    $eventListData = $eventList->getEventlist();
+
+	echo "Overview of registered Events, ".sizeof($eventListData)." Eintraege : \n";
     $i=0; 
-	foreach ($eventlist as $oid => $data)
+
+
+    $excludeModules=["Guthabensteuerung","DetectMovement"];
+	foreach ($eventListData as $oid => $data)
 		{
+        if (isset($data[0])===false) 
+            {
+            //echo str_pad($i,3," ",STR_PAD_LEFT)." Oid: ".$oid." | ".json_encode($data)."\n";
+            $typeUpdateChange=explode("_",$data["Name"])[0];
+            $data[0]=$typeUpdateChange;
+            $data[1]=$data["Component"];
+            $data[2]=$data["Module"];
+            }
         echo str_pad($i,3," ",STR_PAD_LEFT)." Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],90)." | ".str_pad($data[2],40);
 		if (IPS_ObjectExists($oid))
 			{
-			echo " | ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),65)."    | ".str_pad(GetValue($oid),25);
+            if ($oid != $data["EventID"]) echo "Wrong configuration ";
+            //echo str_pad($i,3," ",STR_PAD_LEFT)." | ".$data["EventID"]." | ".str_pad($typeUpdateChange,8)." | ".str_pad($data["Component"],80)." | ".str_pad($data["Module"],30);
             if (isset($excludeModules))
                 {
                 foreach ($excludeModules as $module)
@@ -82,31 +109,32 @@ if ( ($_IPS['SENDER']=="Execute") )
                     if ($ipsOps->isMemberOfCategoryName($oid,$module)) 
                         {
                         echo " | $module";
-                        $delete[$oid]=true;
+                        $delete[$oid]=$data;
                         //$messageHandler->UnRegisterEvent($eventID);
                         //IPS_DeleteEvent($childrenID);
                         }
                     }
                 }
+            $data[1]=$data["Component"];
             $status=$remoteAccess->checkServerOIDData($result,$data);
             echo "\n";
             if ($status===false)                 
                 {
                 echo "    Warning, RemotAccess failed, wrong Data, Object will be deleted from messagehandler. Install again \n";
-                $delete[$oid]=true;
+                $delete[$oid]=$data;
                 }
 			}
 		else
 			{
 			echo "  ---> OID nicht verfügbar !\n";
-            $delete[$oid]=true;
+            $delete[$oid]=$data;
 			}
         $i++;
 		}
 	echo "===================================================================\n";	
 	echo "Delete registered Events ".sizeof($delete)." Eintraege : \n";
     $i=1;
-    print_r($delete);
+    //print_r($delete);
 	foreach ($delete as $oid => $data)
 		{
         //print_r($data);
@@ -229,12 +257,22 @@ if ( ($_IPS['SENDER']=="TimerEvent") ||  ($_IPS['SENDER']=="Execute") )
     if ($debug)
         {
         echo "===================================================================\n";
-        echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
+        echo "Overview of registered Events ".sizeof($eventlist)." / ".sizeof($eventListData)." Eintraege : \n";
         if ($executeObjects)  echo "   Flag executeObjects activated, try function UpdateEvent , needs time \n";
         }
     $i=1;
-    foreach ($eventlist as $oid => $data)
+    //$target=["BUTTON","TEMPERATURE"];
+    $target=[];
+    foreach ($eventListData as $oid => $data)
         {
+        if (isset($data[0])===false) 
+            {
+            //echo str_pad($i,3," ",STR_PAD_LEFT)." Oid: ".$oid." | ".json_encode($data)."\n";
+            $typeUpdateChange=explode("_",$data["Name"])[0];
+            $data[0]=$typeUpdateChange;
+            $data[1]=$data["Component"];
+            $data[2]=$data["Module"];
+            }            
         if (IPS_ObjectExists($oid))
             {
             if ($debug)
@@ -244,7 +282,13 @@ if ( ($_IPS['SENDER']=="TimerEvent") ||  ($_IPS['SENDER']=="Execute") )
                 //echo "$i/$maxCount  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
                 echo "$i/$maxCount  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
                 }
-            if ($executeObjects) $messageHandler->UpdateEvent($oid, GetValue($oid),$debug);
+            //print_r($data);
+            $component=explode(",",$data["Component"]);
+            if ( (isset($component[3])) && (in_array($component[3],$target)) )
+                {
+                //echo "----------------------- ".$component[3].json_encode($component)."\n";
+                if ($executeObjects)  $messageHandler->UpdateEvent($oid, GetValue($oid),false);
+                }
             }
         else
             {

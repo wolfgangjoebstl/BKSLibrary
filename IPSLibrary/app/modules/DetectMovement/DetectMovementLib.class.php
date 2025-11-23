@@ -3428,9 +3428,10 @@
      *      Set_EventConfigurationAuto
      *      CreateMirrorRegister
      *      convertParams
+     *
      *      getGroupClasses
      *      getAllGroups
-     *
+     *      showGroupClasses
      */
 	class DetectEventHandler extends DetectHandler
 		{
@@ -3592,7 +3593,8 @@
             return $result;
             }
 
-        /*
+        /* DetectEventHandler::showGroupClasses
+         * auf eventList von DetectEventListHandler aufbauen
          * DetectHandler has children classes for Temperature, Humidity, Movement aso
          * go through all classes that are childrens to DetectHandler and have group attributes
          * first get all groups of one class and then all events of one group
@@ -3614,6 +3616,9 @@
         public function showGroupClasses(DetectEventListHandler $eventList, $eventDeviceConfig, $coids)
             {
             $eventListData = $eventList->getEventlist();
+            //$qualitylist   = $eventList->getEventlist("Quality");         / in Coids enthalten
+            $showGroup=false;           // true too much output
+
             $varlogData=array();
             foreach ($eventListData as $oid => $entries)
                 {
@@ -3632,7 +3637,7 @@
                 //print_r($groups);
                 foreach ($groups as $group => $entry)           // die einzelnen Gruppen durchgehen
                     {
-                    echo "Gruppe $group :\n";
+                    echo "Gruppe \"$group\" :\n";
                     $config=$sensorHandler->ListEvents($group);
                     //print_R($config);                     // Register die zu dieser Gruppe gehören ausgeben, sollten dem selben Variablentyp angehören   
                     foreach ($config as $coid=>$subentry)
@@ -3657,10 +3662,13 @@
                         elseif (isset($coids[$coid]["TOPO"]["SIMPLE"])) echo $coids[$coid]["TOPO"]["SIMPLE"]." *";                      // special check
                         echo "\n";
                         if (isset($eventlistData[$coid])) print_r($eventlistData[$coid]);
-                        }             
-                    $soid=$sensorHandler->InitGroup($group);
-                    if (isset($eventDeviceConfig[$soid])) echo "   ".str_pad($soid,10).str_pad(IPS_GetName($soid),55).json_encode($eventDeviceConfig[$soid])."\n";
-                    else echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
+                        }
+                    if ($showGroup) // Init Group macht anhand group name eine Berechnung             
+                        {
+                        $soid=$sensorHandler->InitGroup($group);
+                        if (isset($eventDeviceConfig[$soid])) echo "   ".str_pad($soid,10).str_pad(IPS_GetName($soid),55).json_encode($eventDeviceConfig[$soid])."\n";
+                        else echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
+                        }
                     }
                 }
             }
@@ -4177,19 +4185,20 @@
                 * ausser es wird die Baseline mit ~ angegben, name~baseline bedeutet wir suchen einen index dessen Pfad name und baseline enthält
                 * reference ist der key der 
                 */
-            $references = $this->topologyReferences($topology,$debug>1);              // aus einer Topology eine Reference machen welche uniqueNames einem mehrdeutigen Name zugeordnet sind, unter index Path abspeichern
+            $references = $this->topologyReferences($topology,$debug>2);              // aus einer Topology eine Reference machen welche uniqueNames einem mehrdeutigen Name zugeordnet sind, unter index Path abspeichern
             $text="";                
             $topologyPlusLinks=$topology;               // Topologie ins Ergebnis Array übernehmen
             //echo "Beispiel Waschkueche in topology ausgeben:"; print_r($topology["Waschkueche"]);
             $topoCount=0;
-            if ($debug) echo "Register aus objectsConfig der Reihe nach durchgehen:\n";
+            if ($debug) echo "Register aus objectsConfig der Reihe nach durchgehen:\n";     // channeleventlist
             foreach ($objectsConfig as $index => $entry)                    // Register der Reihe nach durchgehen, Informationen über den Raum analysieren
                 {
                 if ($debug) 
                     {
                     $newText=$entry[0]; 
                     for ($i=1;$i<count($entry);$i++) $newText.="|".$entry[$i];                 //entry 0 ist immer Topology, gar nicht erst einmal kontrollieren, für alle Elemente machen, können mehr als 3 sein
-                    if ($newText != $text) echo str_pad($index,10).str_pad(IPS_GetName($index),40)." \"$newText\"\n";          // nur die geänderten Zeilen ausgeben
+                    if ($newText != $text) ;
+                    echo str_pad($index,10).str_pad(IPS_GetName($index),40)." \"$newText\"\n";          // nur die geänderten Zeilen ausgeben
                     $text=$newText;
                     }
                 $name=IPS_GetName($index);
@@ -4279,7 +4288,7 @@
                                             if ($debug) echo " \n";
                                             }                       // end ifset
                                         else $plusLink[$index]=$newname;
-                                        $topologyPlusLinks[$place]["TOPO"][$entry3][$newname]=$plusLink;          // TOPO -> ROOM -> oid of source -> link name
+                                        $topologyPlusLinks[$place]["TOPO"]["$entry3"][$newname]=$plusLink;          // TOPO -> ROOM -> oid of source -> link name
                                         break;
                                     default:
                                         break;    
@@ -4296,6 +4305,7 @@
                                     //$topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
                                     if (isset($topologyPlusLinks[$place]["OBJECT"][$entry2[0]])) $plusLink = $topologyPlusLinks[$place]["OBJECT"][$entry2[0]];          // Wert wird ergänzt
                                     else $plusLink=array();
+                                    //echo "      check if there is Actuators at $place \n";
                                     if (isset($topology[$place]["Actuators"][IPS_GetName($index)]))
                                         {
                                         if ($debug) echo "      DEVICE,Actuator given as ".IPS_GetName($index).": ";
@@ -4355,6 +4365,37 @@
                             break;
                         }
                     }
+                if (isset($topology[$name]))                // einen Eintrag für ein Device gefunden, Device darf nicht wie Raum heissen
+                    {
+                    if (isset($topology[$name]["Actuators"])) 
+                        {
+                        $plusLink=array();
+                        if (isset($topology[$place]["Actuators"][$name]))
+                            {
+                            if ($debug) echo "           DEVICE,Actuator given as ".IPS_GetName($index).": ";
+                            $configActuators = $topology[$place]["Actuators"][IPS_GetName($index)];         // das Objekt aus der devicelist
+                            foreach ($configActuators as $subindex => $subconfigActuator)                // there is also a port
+                                {
+                                //print_R($subconfigActuator);
+                                //echo "$subindex ";
+                                if ($subindex=="TopologyInstance")
+                                    {
+
+                                    }
+                                else    
+                                    {
+                                    $identifier = strtoupper($subconfigActuator["Category"]).strtoupper($subconfigActuator["Type"]);
+                                    echo "$subindex $identifier ";
+                                    $plusLink=$ipsheatManager->checkActuators($subconfigActuator["Name"],$identifier,$debug>2);
+                                    $topologyPlusLinks[$name]["TOPO"]["DEVICE"][$subconfigActuator["Name"]]=$plusLink;
+                                    }
+                                }
+
+                            }
+
+                        }
+                    if ($debug) echo "\n";
+                    }                    
                 }  // ende foreach
             if ($debug) echo "   Insgesamt $topoCount Register in die Topologie einsortiert.\n";
             return ($topologyPlusLinks);
@@ -4761,15 +4802,18 @@
             return($status);
             }
 
+        /* TopologyManagement::write_EventList
+         * uses unifiedTopology to write 
+         */
         public function write_EventList($debug=false)
             {
             $this->create_UnifiedTopologyConfigurationFile($this->unifiedTopology,$debug);
             }
 
-            /* TopologyManagement::addTopologyByDeviceList
-             * fügt der unifiedTopology Einträge aus der devicelist hinzu, wenn sie noch nicht vorhanden sind
-             * input ist die devicelist
-             */
+        /* TopologyManagement::addTopologyByDeviceList
+         * fügt der unifiedTopology Einträge aus der devicelist hinzu, wenn sie noch nicht vorhanden sind
+         * input ist die devicelist
+         */
         public function addTopologyInfoByDeviceList(DeviceListManagement $deviceList,$debug=false)
             {
             $status=true;
@@ -4792,6 +4836,8 @@
                         }
                     $inputdata=array();
                     $inputdata[$uniqueName]["Type"]="Device";
+                    //$inputdata[$uniqueName]["Name"]=$entry["Name"];           // nicht mehr vorhanden
+                    $inputdata[$uniqueName]["Name"]=$uniqueName;
                     //print_R($entry);
                     //$inputdata[$uniqueName]["OID"]=$entry["CategoryID"];
                     $inputdata[$uniqueName]["UUID"]=$configTopologyDevice["UUID"];
@@ -4799,6 +4845,60 @@
                     //$inputdata[$uniqueName]["TopologyConfig"]=array();          // leer
                     $status=$this->updateData($this->unifiedTopology[$uniqueName],$inputdata[$uniqueName]);
                     }
+                }
+            return($status);
+            }   
+
+        /* TopologyManagement::addActuatorsByDeviceList         not ready, evaluate only
+         * fügt der unifiedTopology Einträge aus der devicelist hinzu, wenn sie noch nicht vorhanden sind
+         * input ist die devicelist
+         */
+        public function addActuatorsByDeviceList(DeviceListManagement $deviceList,$debug=false)
+            {
+            if ($debug) echo "TopologyManagement::addActuatorsByDeviceList, adding Actuators.\n";
+            $status=true;
+            $modulhandling = new ModuleHandling();
+            $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");            
+            $deviceListData = $deviceList->read_devicelist();
+            foreach ($deviceListData as $name => $entry)
+                {
+                if ($debug) echo str_pad($name,40); 
+                if (isset($entry["Instances"]))                 // es gibt die Kategorie Instances in der devicelist, alle Instanzen gemeinsam haben einen Room, ID=0
+                    {
+                    $instances=$entry["Instances"];
+                    if (isset( $deviceInstances[$name]))
+                        {  
+                        $InstanzID = $deviceInstances[$name]; 
+                        if ( (isset($entry["Topology"])) && (isset($entry["Topology"]["UniqueName"])) )
+                            {
+                            $room=$entry["Topology"]["UniqueName"];
+                            if ($debug) echo "Topology : $room ";
+                            //echo json_encode($entry["Topology"]);
+
+                                            
+                            if (isset($entry["Actuators"]))                        // neue Betriebsart, Schalter, RGB und Ambient Lampen einbauen
+                                {                    
+                                if ($debug) echo "Actuators : ";
+                                $inputdata=array();
+                                if (isset($this->unifiedTopology[$room])) 
+                                    {
+                                    if ($debug) echo " in topo yes";
+                                    $inputdata[$room]["Actuators"][$name]=$entry["Actuators"];
+                                    $inputdata[$room]["Actuators"][$name]["TopologyInstance"]=$InstanzID;
+                                    $status=$this->updateData($this->unifiedTopology[$room]["Actuators"][$name],$inputdata[$room]["Actuators"][$name]);
+                                    }
+                                if (isset($this->unifiedTopology[$name])) 
+                                    {
+                                    if ($debug) echo " in device yes";
+                                    $inputdata[$name]["Actuators"][$name]=$entry["Actuators"];
+                                    $inputdata[$name]["Actuators"][$name]["TopologyInstance"]=$InstanzID;
+                                    $status=$this->updateData($this->unifiedTopology[$name]["Actuators"][$name],$inputdata[$name]["Actuators"][$name]);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                if ($debug) echo "\n";
                 }
             return($status);
             }   
@@ -5095,8 +5195,8 @@
             foreach ($topologyPlusLinks as $place => $entry)            // $topologyPlusLinks Eintrag für Eintrag durchgehen, das sind alle Räume mit uniqueName
                 {
                 // input Werte aus dem array darstellen, Zusammenafssung aller TOPO, OBJECT und INSTANCE arrays, INSTANCE wird nur angezeigt wenn keine OBJECT definiert
-                if (isset($entry["Type"])) echo "$place (".$entry["Type"].") : ";
-                else echo "$place : ";
+                if (isset($entry["Type"])) echo str_pad("$place (".$entry["Type"].") ",50);
+                else echo str_pad("$place ",50);
                 $object=false; $instance=false; $topo=false;
                 if (isset($entry["TOPO"])) 
                     {
@@ -5148,6 +5248,7 @@
                                                 {
                                                 if (isset($entry["Actuators"][$devicename]["TopologyInstance"]))
                                                     {
+                                                    // so wird ein Schalter, Dimmer etc. angelegt, wenn Device und IPSHeat Objekt gleich heissen
                                                     $topologyinstance=$entry["Actuators"][$devicename]["TopologyInstance"];         // wird nur hier gebraucht
                                                     echo "              ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20);
                                                     if (isset($quality[$oid])) echo " QI: ".nf($quality[$oid],1);
@@ -5156,7 +5257,20 @@
                                                     if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
                                                     echo "\n";
                                                     $linkId=CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
-                                                    IPS_SetHidden($linkId,false);
+                                                    //IPS_SetHidden($linkId,false);                                                    
+                                                    }
+                                                elseif (isset($entry["Actuators"][$place]["TopologyInstance"]))          // IPSHeat hat eigenen Namen
+                                                    {
+                                                    // so wird ein Schalter, Dimmer etc. angelegt
+                                                    $topologyinstance=$entry["Actuators"][$place]["TopologyInstance"];         // wird nur hier gebraucht
+                                                    echo "              ".str_pad("$oid/$name",55).str_pad(GetvalueIfFormatted($oid),20);
+                                                    if (isset($quality[$oid])) echo " QI: ".nf($quality[$oid],1);
+                                                    else echo "      ";
+                                                    echo " last Update ".date("d.m.y H:i:s",$objects["VariableUpdated"]);
+                                                    if ((time()-$objects["VariableUpdated"])>(60*60*24)) echo "   ****** too long time, check !!";
+                                                    echo "\n";
+                                                    //echo "                                CreateLinkByDestination($name, $oid, $topologyinstance    \n";
+                                                    $linkId=CreateLinkByDestination($name, $oid, $topologyinstance, 1000);
                                                     }
                                                 else
                                                     {
@@ -6977,7 +7091,7 @@ class DetectEventListHandler extends DetectEventHandler
     public function extendRemoteAccess(XConfigurator $xconfig,$debug=false)
         {
         $ipsOps = new ipsOps();
-        $excludeModules=null;               // ganze Module löschen
+        $delete=array();
         $i=0; 
         foreach ($this->eventlist as $oid => $data)
             {
@@ -6987,32 +7101,19 @@ class DetectEventListHandler extends DetectEventHandler
             if (IPS_ObjectExists($oid))
                 {
                 if ($debug) echo " | ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),65)."    | ".str_pad(GetValue($oid),25);
-                if (isset($excludeModules))                 // delete full modules
-                    {
-                    foreach ($excludeModules as $module)
-                        {
-                        if ($ipsOps->isMemberOfCategoryName($oid,$module)) 
-                            {
-                            if ($debug) echo " | $module";
-                            $delete[$oid]=true;
-                            //$messageHandler->UnRegisterEvent($eventID);
-                            //IPS_DeleteEvent($childrenID);
-                            }
-                        }
-                    }
                 $remoteData=$xconfig->checkRemoteOIDData($data["Component"],$debug);
-                if ($debug) echo json_encode($remoteData)."\n";
-                if ($remoteData===false)                 
-                    {
-                    //echo "    Warning, RemotAccess failed, wrong Data, Object will be deleted from messagehandler. Install again \n";
-                    $delete[$oid]=true;
-                    }
+                //if ($debug) echo json_encode($remoteData);
+                $this->eventlist[$oid]["RemoteAccess"]=$remoteData;
+                $result=true;           // Status rausfinden
+                foreach ($remoteData as $server=>$entry) foreach ($entry as $id=>$value) $result=$value;
+                if ($result==false) $delete[$oid]=true;                
                 }
             else
                 {
                 if ($debug) echo "  ---> OID $oid nicht verfügbar !\n";
                 $delete[$oid]=true;
                 }
+            if ($debug) echo "\n";    
             $i++;
             }
         return ($delete);

@@ -1776,6 +1776,36 @@ class OperationCenter extends OperationCenterConfig
         return(json_decode(GetValue($UserID),true));
         }
 
+    /* OperationCenter::updateAdministrator 
+     * Übergabe der aktuell eingeloggten User, wer ist der Administrator, mit net user
+     *
+     */
+    function updateAdministrator($user, $debug=false)
+        {
+        $administrator=false;
+        if (dosOps::getKernelPlattform() == "WINDOWS")
+            {
+            $fileOps = new fileOps();
+                foreach ($user as $entry)
+                    {
+                    if ($debug) echo $entry["BENUTZERNAME"]."\n";
+                    $result=IPS_ExecuteEx('c:\windows\system32\net.exe', "user ".$entry["BENUTZERNAME"], false, true,-1);
+                    $content = str_replace(array("\r\n", "\n\r", "\r"), "\n", $result);                     // Zeilenumbruch vereinheitlichen
+                    $content = explode("\n", $content); 
+                    //print_r($content);
+                    $userName=$fileOps->analyseList($content, $debug);         // nur für tabellarische Anordnung mit Überschrift
+                    //print_r($userName);
+                    if (isset($userName["Lokale Gruppenmitgliedschaften"]))
+                        {
+                        if ( (strpos($userName["Lokale Gruppenmitgliedschaften"],"Administratoren")) > 0) $administrator=$entry["ID"];
+                        }
+
+                    }
+
+            }
+        return ($administrator);
+        }
+
 	/* OperationCenter::readSystemInfo
 	 *
 	 * Die von SystemInfo aus dem PC (via systeminfo) ausgelesenen und gespeicherten Daten werden für die Textausgabe formatiert und angereichert
@@ -6486,7 +6516,7 @@ class SeleniumChromedriver extends OperationCenterConfig
      */
     public function getUpdateNewVersions(&$config,&$html,$actualVersion=false,$debug=false)
         {
-        if ($debug) echo "getUpdateNewVersions \n";
+        if ($debug) echo "getUpdateNewVersions : akuell $actualVersion \n";
         if (is_array($this->listDownloadableChromeDriverVersion)) $result = $this->listDownloadableChromeDriverVersion;
         else $result = $this->getListDownloadableChromeDriverVersion($debug);                  //   get from Web
 
@@ -6496,8 +6526,9 @@ class SeleniumChromedriver extends OperationCenterConfig
 
         foreach ($result as $version => $entry)         // alle Chromedriver Versionen als Tabelle ausgeben, Spalte Versionsnummer, alte Versionsbezeichnung, neue Versionsbezeichnung
             {
-            if ($version >= ($actualVersion-2))
+            if ($version >= ($actualVersion+1))
                 {
+                if ($debug) echo "   Version $version bearbeiten : \n";
                 $html .= '<tr><td>'.$version.'</td>';
                 //print_R($entry);
                 $configNew[$version]["version"]=$entry["version"];      // aus $config wird configNew
@@ -8563,7 +8594,7 @@ class seleniumChromedriverUpdate extends OperationCenterConfig
     /* ein Script aufrufen mit dem Selenium gestartet wird. 
      * Wenn Debug 2 dann das Exe nicht aufrufen, erweiterte Fehlersuche
      */
-    function activeSelenium($debug=false)
+    function activeSelenium($session=-1,$debug=false)
         {
         $status=false;
         $processDir = $this->getprocessDir();
@@ -8577,7 +8608,7 @@ class seleniumChromedriverUpdate extends OperationCenterConfig
         if ($debug<2)       // true ist nicht kleiner zwei, muss 1 sein
             {
             if ($debug) echo "activeSelenium, execute show and wait for $command\n";
-            $status = $this->sysOps->ExecuteUserCommand($command,"",true,true,-1,$debug);                   // false do not show true wait, heoir andersrum da selenium offen bleibt  $command,$parameter="",$show=true,$wait=false,$session=-1,$debug=false
+            $status = $this->sysOps->ExecuteUserCommand($command,"",true,true,$session,$debug);                   // false do not show true wait, hier andersrum da selenium offen bleibt  $command,$parameter="",$show=true,$wait=false,$session=-1,$debug=false
             }
         return ($status);
         }

@@ -10,7 +10,7 @@
  *  ShowEvaluateHardware
  *  ImproveDeviceDetection
  *  EvaluateHardware
- *
+ *  ExcelHandler
  *
  *
  */
@@ -1037,7 +1037,7 @@ class TopologyLibraryManagement
             foreach ($deviceEntries as $name => $entry)         // die devices durchgehen, Homematic Devices müssen gruppiert werden 
                 {
                 if ($debug) echo "      Bearbeite Gerät mit Index \"$name\" vom Typ \"$hardwareType\", new class is \"Hardware$hardwareType\":\n";
-                if ($object->getDeviceCheck($deviceList, $name, $hardwareType, $entry, $debug))                 // name kann sich ebenfalls ändern wenn unqueNames erzeugt werden              
+                if ($object->getDeviceCheck($deviceList, $name, $hardwareType, $entry, $debug))                 // name kann sich ebenfalls ändern wenn uniqueNames erzeugt werden              
                     {
                     if ($debug>1) echo "          $objectClassName=>getDeviceParameter aufgerufen:\n";
                     $object->getDeviceParameter($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen

@@ -4219,7 +4219,7 @@ class archiveOps
                 if ($pullwrite && $target)                      // source für das target gefunden, dort Werte hinzufügen, dazu correct einfach als Index hochzählen
                     {
                     // mit Source oder mit Delta
-                    echo "Add Data Source \"$pullwrite\" to Target \"$target\" \n";
+                    if ($debug) echo "Add Data Source \"$pullwrite\" to Target \"$target\" \n";
                     $valuesAdd[$target][$pullwrite][$correct]["Value"]=$targetValue;            // source nicht mehr relevant, sondern nur wo werden die Wert gespeichert
                     $valuesAdd[$target][$pullwrite][$correct]["TimeStamp"]=$targetTimeStamp;
                     $correct++;
@@ -5132,6 +5132,7 @@ class archiveOps
             echo json_encode($config)."...  aufgerufen.\n";
             echo "   Memorysize from Start onwards: ".getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb\n";
             //print_R($config);
+            if ($debug>2) return false;
             }
 
         // Default Ergebnis festlegen 
@@ -5495,7 +5496,7 @@ class archiveOps
              * in Prozent wird der jeweilige Wert in Relation zum gesamten Mittelwert gezogen, das ist ein kennwert für die jeweilige Volatilität des wertes
              * Trendberechnung für aktuell und letzten jewils Tag, Woche und Monat. Sehr ungenau da nur in etwa die Anzahl der Werte nicht aber die Zeit berücksichtigt wird
              */
-            if ($indexCount>0)
+            if ( ($indexCount>0) && ($means<0) )
                 {
                 $sdev = sqrt($sdevSum/$indexCount);
                 $sdevRelPos = sqrt($sdevSumPos/$indexCount)/$means*100;
@@ -11096,6 +11097,79 @@ class ipsOps
 class sysOps
     { 
 
+    function getChromeVersionWindows_IPS($debug=false): ?string {
+        $tempDir = sys_get_temp_dir();
+        if ($debug) echo "getChromeVersionWindows_IPS, use $tempDir for starting ps scripts.\n";
+        $ps1 = $tempDir . DIRECTORY_SEPARATOR . 'get_chrome_version.ps1';
+        $out = $tempDir . DIRECTORY_SEPARATOR . 'get_chrome_version.txt';
+
+        // PowerShell-Skript: Registry prüfen, sonst Dateiversion, heredoc commandline
+        $psScript = <<<'PS'
+$ErrorActionPreference = 'SilentlyContinue'
+
+# 1) Registry-Pfade (systemweit + 32-bit auf 64-bit)
+$regPaths = @(
+'HKLM:\Software\Google\Chrome\BLBeacon',
+'HKLM:\Software\WOW6432Node\Google\Chrome\BLBeacon'
+)
+foreach ($p in $regPaths) {
+try {
+    $v = (Get-ItemProperty -Path $p -Name version -ErrorAction Stop).version
+    if ($v) { Write-Output $v; exit 0 }
+} catch {}
+}
+
+# 2) Fallback: Dateiversion von chrome.exe
+$exePaths = @(
+'C:\Program Files\Google\Chrome\Application\chrome.exe',
+'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe'
+)
+foreach ($e in $exePaths) {
+if (Test-Path $e) {
+    $v = (Get-Item $e).VersionInfo.ProductVersion
+    if ($v) { Write-Output $v; exit 0 }
+}
+}
+
+exit 1
+PS;
+
+        file_put_contents($ps1, $psScript);
+        @unlink($out);
+
+        // PowerShell ausführen: schreibt Version in Textdatei
+        // Falls shell_exec in deinem IP-Symcon-PHP blockiert ist, nutze IPS_Execute.
+        $cmd = 'powershell -NoProfile -ExecutionPolicy Bypass -File "' . $ps1 . '" > "' . $out . '"';
+        $ok = false;
+
+        // Versuch 1: shell_exec
+        $result = shell_exec($cmd);
+        $ok = file_exists($out) && filesize($out) > 0;
+
+        // Versuch 2 (IP-Symcon): IPS_Execute mit Warten auf Abschluss
+        if (!$ok && function_exists('IPS_Execute')) {
+            // Programm, Parameter, Arbeitsverzeichnis, warten
+            IPS_Execute('powershell', '-NoProfile -ExecutionPolicy Bypass -File "' . $ps1 . '" > "' . $out . '"', '', true);
+            $ok = file_exists($out) && filesize($out) > 0;
+        }
+
+        if (!$ok) {
+            return null;
+        }
+
+        $version = trim(file_get_contents($out));
+        // Cleanup
+        @unlink($ps1);
+        @unlink($out);
+
+        // Versionsformat validieren (z. B. 131.0.6778.86)
+        if (preg_match('/^\d+\.\d+\.\d+\.\d+$/', $version)) {
+            return $version;
+        }
+        return null;
+    }
+
+
     /* sysOps, IPS_ExecuteEX funktioniert nicht wenn der IP Symcon Dienst statt mit dem SystemUser bereits als Administrator angemeldet ist 
      * Parameter für den Aufruf
      *    command   Befehl gemeinsam mit absolutem Pfad
@@ -13721,15 +13795,17 @@ class fileOps
         return($resultArray);
         }
 
-    /* eigentlich zugeschnitten auf die Ausgaben die für Selenium processes benötigt werden
+    /* fileOps::analyseContent
+     * eigentlich zugeschnitten auf die Ausgaben die für Selenium processes benötigt werden
+     * Key ist die tabellarische Zuordnung über die erste Zeile
      */
     function analyseContent($content, $key, $maxempty=0, $debug=false)
         {
-        $fileOps = new fileOps();
+        //$fileOps = new fileOps();
         $i=0; $result=array(); $ignore=0;  $maxCol=1;        
         foreach ($content as $index => $line)
             {
-            //echo $line."\n";
+            if ($debug>1) echo $line."\n";
             if ($i==0) 
                 {
                 $pos=strpos($line, $key); 
@@ -13764,6 +13840,78 @@ class fileOps
         return ($better);
         }
 
+    /* fileOps::analyseList
+     * eigentlich zugeschnitten auf die Ausgaben von SystemInfo oder ähnlichen Ausgaben
+     * 
+     */
+    function analyseList($content, $debug=false)
+        {
+		$result=array();	/* fuer Zwischenberechnungen */
+		$results=array();
+		$results2=array();
+	
+		$PrintSI="";
+		$PrintLines="";	 
+        //$char=":";
+        $char="  ";           
+
+                foreach($content as $line)
+                    {
+                    if (strlen($line)>2)
+                        {
+                        $origline=$line;
+                        $line = preg_replace('/ {3,}/', '  ', $line);           // only one blank inbetween words, more blanks between parameteres    
+                        if ($debug) echo "  | ".$line."\n<br>";
+                        if (substr($line,0,1)!=" ")
+                            {
+                            /* Ueberschrift */
+                            $pos1=strpos($line,":");
+                            $VarName=trim(substr($line,0,$pos1));
+                            $VarField=trim(substr($line,$pos1+1));
+                            $result[1]="";$result[2]="";$result[3]="";          // wird überschrieben
+                            $result=explode($char,$line);
+                            if (isset($result[1]))
+                                {
+                                $results[$this->renameIndex($result[0])]=trim($result[1]);
+                                for ($i=2; $i<sizeof($result); $i++) { $results[$this->renameIndex($result[0])].=":".trim($result[$i]);  }
+                                $results2[$VarName]=$VarField;
+                                }
+                            $PrintSI.="\n".$line;
+                            }
+                        else
+                            {
+                            /* Fortsetzung der Parameter Ausgabe, zurückgegeben wird results */
+                            $PrintSI.=" ".trim($line);
+                            $results[$this->renameIndex($result[0])].=" ".trim($line);
+                            $results2[$VarName].=" ".trim($line);
+                            }
+
+                        }
+                    }
+        return $results;
+        }
+
+    /* Umrechnung der Bezeichnung in SystemInfo in einen Array Index
+     * trim, explode blank, wenn Verfügbar dann umschreiben in ue
+     */
+	 function renameIndex($origIndex)
+	 	{
+		$index=trim($origIndex);
+		//echo "    $index\n";
+		$words=explode(" ",$index);
+		if ( (isset($words[2])) && ($words[2]=="Speicher"))
+			{
+			if (strpos($words[0],"Verf")===0) 
+				{
+				$index="Verfuegbarer physischer Speicher";
+				//echo "  --> verfügbar gefunden \n";
+				}
+			//print_r($words);
+			}
+		
+		
+		return ($index);
+		}
 
     /* ein csv File einlesen und die erste Zeile als array übergeben für die Verwendung als index. 
      * die php Funktion fgetcsv macht dabei die Arbeit
@@ -14762,6 +14910,7 @@ class curlOps
         $save_file_loc = $dir . $file_name;             // Save file into file location
         if ($debug) echo "downloadFile, save Url with Filename $file_name to $save_file_loc.\n";
         $fp = fopen($save_file_loc, 'wb');              // Open file für Target
+        if ($fp===false) return (false);
         
         // It set an option for a cURL transfer
         curl_setopt($ch, CURLOPT_FILE, $fp);
@@ -15150,7 +15299,7 @@ class ComponentHandling
                     /******* devicelist als Formattierung */  
                     if ($debug && $once) echo "     ****** devicelist als Formattierung, workOnDeviceList aufrufen.\n";
                     $count++; 
-                    $keyName=$this->workOnDeviceList($Key, $keywords,$debug);
+                    $keyName=$this->workOnDeviceList($Key, $keywords,($debug>1));
                     //if ($debug) echo "       Aufruf workOnDeviceList(".json_encode($Key).", ".json_encode($keywords).",$debug).\n";                       
                     }               // ende deviceList durchsuchen
                 else    
@@ -15165,16 +15314,17 @@ class ComponentHandling
                     }           // Ende Hardware Liste durchsuchen
                 if (isset($keyName[0]))
                     {
-                    if ($debug) echo "Mehrere Ergebnisse erkannt.\n";
+                    if ($debug) echo "Mehrere Ergebnisse erkannt   (".sizeof($keyName).").\n";
                     foreach ($keyName as $index => $entry)
                         {
                         if (isset($entry["Name"]))
                             {
                             if ($debug) echo "  Gefunden ".$entry["Name"]." : ".json_encode($entry)."\n";
                             $totalfound=true;
-                            $this->addOnKeyName($entry,$debug);                      // Array entry wird ausgehend von OID,COID,KEY,Name erweitert um 
+                            $this->addOnKeyName($entry,($debug>1));                      // Array entry wird ausgehend von OID,COID,KEY,Name erweitert um 
                             $component[]=(integer)$entry["COID"];
-                            $install[$entry["Name"]]=$entry;
+                            //$install[$entry["Name"]]=$entry;
+                            $install[]=$entry;
                             if ($this->debug) $result .= "  ".str_pad($entry["Name"]."/".$keyword,50)." = ".GetValueIfFormatted($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
                             }   // ende Found
                         }
@@ -15238,10 +15388,12 @@ class ComponentHandling
             {
             case "Array":
                 if ($debug) echo $result;
+                //echo json_encode($component)."\n";
                 return ($component);
                 break;
             case "Install":         // InstallComponentFull ruft mit keyword "install" auf, zurück kommt $install[Name] => keyname
                 //if ($debug) echo $result;
+                //echo json_encode($install)."\n";
                 return ($install);
                 break;
             default:
@@ -15268,6 +15420,9 @@ class ComponentHandling
      *               $install[$keyName]["PROFILE"]=$profile;					 
      *               $install[$keyName]["DETECTMOVEMENT"]=$detectmovement;
      *               $install[$keyName]["INDEXNAMEEXT"]=$indexNameExt;
+     *
+     * es wird ein Eintrag von devicelist übergeben, es muss Channels definiert sein, pro Instanz schauen ob der TYPECHAN => TYPE_xxx als Key vorhanden ist, sich für diese Instanz dann eben die OID holen
+     * wenn auch ein Registereintrag da ist, diesen nehmen, sonst jeden Wert überschreiben, damit wirds halt der letzte Eintrag
      */
 
     function workOnDeviceList($Key, $keywords, $debug=false)
@@ -15296,7 +15451,7 @@ class ComponentHandling
             foreach ($Key["Channels"] as $index => $instance)       // es gibt mehrere channels, alle channels durchgehen, index
                 {
                 //print_r($instance);
-                if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
+                if (isset($instance[$typeChanKey]))         // gibt es denn eine TYPECHAN Eintrag im Array 
                     {
                     //if ($debug) echo "    workOnDeviceList, first success \"$typeChanKey\" found ".json_encode($instance[$typeChanKey]).". Check now register \"$typeRegKey\" as well.\n";         // Register may still be wrong, then return empty array 
                     $keyName["OID"] = $Key["Instances"][$index]["OID"];
@@ -15307,7 +15462,7 @@ class ComponentHandling
                     if (array_search($typeChanKey,$types) !== false)            // ungleich false, da tatsächliche Position zurückgemeldet wird, also auch 0
                         {
                         $channelRegister = $Key["Channels"][$index][$typeChanKey];    
-                        foreach ($channelRegister as $IDkey => $varName)
+                        foreach ($channelRegister as $IDkey => $varName)                    // alle Register auslesen
                             {
                             if ($IDkey == $typeRegKey)
                                 {
@@ -15319,6 +15474,8 @@ class ComponentHandling
                                     if (isset($keyName["Name"])) echo "        DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
                                     else  echo "        DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["OID"]."  $channelTypes \n";
                                     }
+                                $keyName["Name"]=$instance["Name"];
+                                $keyNames[]=$keyName;
                                 }
                             elseif ($typeRegKey=="?") 
                                 {
@@ -15329,14 +15486,14 @@ class ComponentHandling
                                     if (isset($keyName["Name"])) echo "        DeviceList für TYPECHAN => $typeChanKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";                                
                                     else echo "        DeviceList für TYPECHAN => $typeChanKey gefunden : ".$keyName["OID"]."(".IPS_GetName($keyName["OID"]).")  $channelTypes \n";
                                     }
+                                $keyName["Name"]=$instance["Name"];
+                                $keyNames[]=$keyName;
                                 }
                             }
                         }
                     //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
                     //print_r($Key["Channels"][$index]);
                     //if ($keyName["COID"]==false) echo "COID in $oid (".IPS_GetName($oid).") nicht gefunden, IPS_GetObjectIDByName($varName,$oid)\n";
-                    $keyName["Name"]=$instance["Name"];
-                    $keyNames[]=$keyName;
                     //if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
                     } 
                 }                                
@@ -15653,7 +15810,18 @@ class ComponentHandling
                 $variabletyp=1; 		/* Integer */	
                 $index="System";
                 $profile="";                    // kein Profil
-                break;                   
+                break;
+            case "BUTTON":  
+            case "PRESS_SHORT":
+            case "PRESS_LONG":
+            case "LETZTES EREIGNIS":
+                // kein detectmovement, false ist default
+                $keyName["KEY"]="BUTTON";                        // Eigenen Index Key definieren
+                $variabletyp=3; 		                        // Button umrechnen Short, Long etc. 	eigentlich eine Variable mit allen Arten des Drückens				
+                //$index="Bewegung";
+                $index="Taster";                              // Kategorie in Webfront/Administrator/RemoteAccess
+                $profile="";                             // abgeleitet von Window.HM, ist ein Integer Profil oder Boolean Contact
+                break;                 
             default:	
                 $variabletyp=0; 		/* Boolean */	
                 echo "************AllgemeineDefinitionen::addOnKeyName, kenne ".strtoupper($keyName["KEY"])." nicht.\n";
@@ -15704,7 +15872,7 @@ class ComponentHandling
 			if ($keyword=="") $keyword = $entry["INDEX"];
 			else
 				{
-				if ($keyword!=$entry["INDEX"]) echo "Fehler, unterschiedliche index erkannt, nicht eindeutig.\n";
+				if ($keyword!=$entry["INDEX"]) echo "Fehler, unterschiedliche index erkannt, nicht eindeutig für ".json_encode($entry).": \"$keyword\" vs \"".$entry["INDEX"]."\"\n";
 				}
 			}
 		return ($keyword);
@@ -15841,6 +16009,7 @@ class ComponentHandling
          */   
 		//echo "Passende Geraeteregister suchen:\n"; 
 		$result=$this->getComponent($Elements,$keywords,"Install",$debug);        /* passende Geräte aus Elements anhand keywords suchen*/
+        //print_R($result);
         $count=(sizeof($result));				
         if ($debug) echo "installComponentfull , insgesamt $count Register für die Component Installation gefunden.\n";
 		if  ($count>0) 											/* gibts ueberhaupt etwas zu tun */
@@ -15863,6 +16032,7 @@ class ComponentHandling
                 }
         	foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen, Steuergroessen alle in getComponent
       	    	{
+                if (is_numeric($IndexName)) $IndexName=$entry["Name"];
 	            if ($debug) 
                     { 
                     echo "----> $IndexName:\n"; print_r($entry); 

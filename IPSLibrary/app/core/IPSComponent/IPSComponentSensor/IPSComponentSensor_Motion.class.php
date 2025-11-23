@@ -633,7 +633,7 @@
             return ($resultLog);
             }
 
-        /* eigentliches Logging durchführen, speziell für Direction 
+        /* eigentliches Logging durchführen, speziell für Direction, aufgerufen von Motion_Logging 
          * unterstützt variable ID basierendes Debugging mit CheckDebugInstance 
          * verwendet aus der class : variable, variablename, variableLogID
          * wenn DelayedLog auch die delayed Variable nach dem Ablauf der konfigurierten Zeit zurücksetzen
@@ -655,7 +655,7 @@
             {
             // die Events zusammenfassen
             $parent=IPS_GetParent($this->variable);
-            $config = json_decode(IPS_GetConfiguration($parent),true);          // decode to array
+            $config = json_decode(IPS_GetConfiguration($parent),true);          // decode to array, das ist die Homematic Adresse
             $address=explode(":",$config["Address"]);
             if ( (isset($address[1])) && ($address[1]=="2") ) $direction = "hinaus";
             else $direction = "hinein";

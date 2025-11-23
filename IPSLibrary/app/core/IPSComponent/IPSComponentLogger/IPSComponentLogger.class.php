@@ -995,7 +995,6 @@ class Logging
         $name="SensorMirror_".$this->variablename;
         //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float */
         //$this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,$this->variableProfile);       /* 2 float */
-        if ($this->debug) echo "Sensor_Logging:do_init_sensor construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
         switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
             case "POWER":           /* Power Wirkleistung und Wirkenergie von AMIS, oder aus einem Homematic Register direkt */
@@ -1029,6 +1028,7 @@ class Logging
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Sensor",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Sensor",$this->CategoryIdData);
         $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+        if ($this->debug) echo "Sensor_Logging::do_init_sensor construct Kategorien im Datenverzeichnis:".$this->AuswertungID."   (".IPS_GetLocation($this->AuswertungID).")\n";
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         //echo "Uebergeordnete Variable : ".$this->variablename."\n";
@@ -1039,8 +1039,61 @@ class Logging
         return($this->NachrichtenID);               // nur als Private deklariert
         }
 
+    /* Initialisierung für Button 
+     * das ist die allgemeine Funktion für viele Buttons aller Art
+     *
+     * vorher wird constructfirst, do_init aufgerufen. Hier wird weiters noch angelegt:
+     *  DetectHandler       wenn installiert
+     *  variablename        abgeleitet aus dem Variablennamen oder aus der Config
+     *
+     *
+     */
 
-    /* Initialisierung für Sensor 
+    public function do_init_button($variable, $variablename)
+        {
+        //$debug=$this->debug;      // detaillierteres Debugging
+        $debug=false;
+
+        /**************** installierte Module und verfügbare Konfigurationen herausfinden 
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $this->installedmodules=$moduleManager->GetInstalledModules();  */
+
+        if (isset ($this->installedmodules["DetectMovement"]))
+            {
+            /* Detect Movement kann auch Sensorwerte agreggieren */
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            $this->DetectHandler = new DetectSensorHandler();                            // zum Beispiel für die Evaluierung der Mirror Register
+            }
+
+        $this->variablename = $this->getVariableName($variable,$variablename,$debug);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+
+        $name="SensorMirror_".$this->variablename;
+        switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
+            {
+            default:
+                break;
+            }        
+        if ($debug) echo "   Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile.", Type is ".$this->variableTypeReg.".\n";
+
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->mirrorType,$this->mirrorProfile);             /* Selbe Werte wie geloggte Variable als Default übernehmen*/
+
+        /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Sensor",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Sensor",$this->CategoryIdData);
+        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+        if ($this->debug) echo "Sensor_Logging::do_init_button construct Kategorien im Datenverzeichnis:".$this->AuswertungID."   (".IPS_GetLocation($this->AuswertungID).")\n";
+
+        /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+        //echo "Uebergeordnete Variable : ".$this->variablename."\n";
+        $directory = $this->configuration["LogDirectories"]["SensorLog"];
+        $dosOps= new dosOps(); 
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Sensor.csv";
+        return($this->NachrichtenID);               // nur als Private deklariert
+        }
+
+    /* Initialisierung für Switch 
      * das ist die allgemeine Funktion für viele Sensoren aller Art
      *
      * vorher wird constructfirst, do_init aufgerufen. Hier wird weiters noch angelegt:
@@ -1305,8 +1358,9 @@ class Logging
                 {
                 if ($debug) 
                     {
-                    echo "-------------------------------------------------------------------------\n";
+                    if ($debug>1) echo "-------------------------------------------------------------------------\n";
                     if ($typedev==Null) echo "Sensor_Logging::do_init für Variable $variable ohne Type aufgerufen.\n";
+                    elseif (is_array($typedev)) echo "Sensor_Logging::do_init für Variable $variable mit Type ".json_encode($typedev)." aufgerufen.\n";
                     else echo "Sensor_Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
                     }
                 $this->$variable=$variable;
@@ -1327,6 +1381,13 @@ class Logging
                         IPSLogger_Inf(__file__, "Logging::do_init,getfromDatabase für ".IPS_GetName($variable)." ohne Ergebnis, selber bestimmen aufgrund des Typs $vartype geht nicht mehr. Annahme:".$this->variableTypeReg);
                         if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs : $vartype => ".$this->variableTypeReg."\n";    
                         }
+                    elseif (is_array($typedev))
+                        {
+                        // wird nachher nicht mehr überschrieben, set eigentlich schon zum Install
+                        $this->variableTypeReg = strtoupper($typedev["KEY"]);  
+                        $this->variableProfile=$typedev["PROFILE"];
+                        $this->variableType=$typedev["TYP"];  
+                        }                        
                     else
                         {
                         if ($debug) echo "    do_init,getfromDatabase ohne Ergebnis, dann übergebenes typedev ($typedev) nehmen.\n";    
@@ -1400,6 +1461,11 @@ class Logging
                     case "ENERGY":    
                         $NachrichtenID = $this->do_init_sensor($variable, $variablename);
                         break;
+                    case "BUTTON":
+                    case "PRESS_SHORT":         // Taster eigentlich ganz anders bearbeiten
+                    case "PRESS_LONG":
+                        $NachrichtenID = $this->do_init_button($variable, $variablename);
+                        break;
                     case "RAIN_COUNTER":    
                         $NachrichtenID = $this->do_init_counter($variable, $variablename);
                         break;
@@ -1410,14 +1476,15 @@ class Logging
                         $NachrichtenID = $this->do_init_sensor($variable, $variablename);                    
                         if ($this->variableTypeReg != "") 
                             {
-                            echo "Fehler, do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,$typedev,...)\n";
-                            IPSLogger_Wrn(__file__, "Logging::do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,$typedev,...)");
+                            echo "Fehler, do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,...)\n";
+                            IPSLogger_Wrn(__file__, "Logging::do_init, kenne den Variable Typ (".$this->variableTypeReg.") nicht. Typ in die Function übernehmen. Aufgerufen mit ($variable, $variablename,$value,...)");
                             //$NachrichtenID=false;
                             }
                         break;
                     }
                 }
-            else $NachrichtenID=$this->do_init_statistics($debug);  
+            else $NachrichtenID=$this->do_init_statistics($debug); 
+            //if ($this->debug) echo "Individual Debug still activated.\n"; 
             if ($debug) 
                 {
                 echo "---------do_init abgeschlossen. Nachrichten werden hier gelogged: $NachrichtenID (";

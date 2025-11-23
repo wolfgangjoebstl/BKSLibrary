@@ -292,6 +292,9 @@ IPS_SetEventActive($tim1ID,true);
         $deviceEventListDataOld = $deviceEventList->get_Eventlist();       // here is the room information
         //print_R($deviceEventListData);                            
 
+        $channelEventList = new DetectDeviceHandler(); 
+        $channelEventList->setEventListFromConfigFile(); 
+
         // topology
         $topology = new TopologyManagement();       // TopologyManagement extends DetectDeviceHandler, topology information als class 
         $status2 = $topology->createUnifiedTopology($debug);            // add Information from Topology Instances, works for rooms, places and group from config
@@ -335,7 +338,13 @@ IPS_SetEventActive($tim1ID,true);
         echo "   Number of OIDs detected : ".sizeof($oids)."\n";
         $coids=$devicelist->get_coids();
         echo "   Number of COIDs detected : ".sizeof($coids)."\n";
-
+    
+        $eventList = new DetectEventListHandler($debug);
+        $eventList->setEventListFromConfigFile();           // aus dem DetectMovement_Config File, vorverarbeitet, welches ConfigFile, welche function
+        $status4=$eventList->extendGroups("DetectHandler");             // von parent class die Gruppenhandling unterstützt
+        $eventList->alignByDeviceList($devicelist,"summary");          // reduce echos, show summary report
+        $eventList->alignByCoidsList($coids,"summary");              // it is more extending coids by loggingInfo
+        echo "Number of COIDs detected after EventList align: ".sizeof($coids)."\n";
 
         $includefileDevices     = '<?php'."\n";             // für die php Devices and Gateways, neu
         $includefileDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
@@ -380,9 +389,6 @@ IPS_SetEventActive($tim1ID,true);
                     $topConfig["Use"]=["Place","Room","Device"];        // keine Kategorie für DeviceGroup erstellen
                     echo "TopologyID gefunden : $topID, eine Topologie mit Kategorien erstellen.\n";
                     $DetectDeviceHandler->create_Topology($topConfig, $debug);            // true für init, true für Debug, bei init löscht sich die ganze Kategorie und baut sie neu auf, macht auch schon _construct
-                    $topology=$DetectDeviceHandler->Get_Topology();
-                    $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();              // alle Events
-                    $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();          // alle Geräte
                     
                     echo "CreateTopologyInstances wird aufgerufen, je nach Konfig Place, Room und DeviceGroup einordnen:\n";
                     $topinstconfig = array();
@@ -390,7 +396,11 @@ IPS_SetEventActive($tim1ID,true);
                     $topinstconfig["Use"]["Room"]=true;
                     $topinstconfig["Use"]["Place"]=true;
                     $topinstconfig["Use"]["DeviceGroup"]=true;
-                    if ($instTopologyDevices) $topinstconfig["Use"]["Device"]=true;                                       // Topology Device nicht erstellen
+                    if ($instTopologyDevices) 
+                        {
+                        $topinstconfig["Use"]["Device"]=true;                                       // Topology Device nicht erstellen
+                        $topology->addActuatorsByDeviceList($devicelist);               // true Debug, das macht normalerweise die sortTopology
+                        }
                     $topologyLibrary->createTopologyInstances($topology,$topinstconfig);           // wenn so konfiguriert :  Topologie TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup in Kategorie Topologie erstellen
                     echo "----------------------------------------\n";
                     echo "SortTopologyInstances wird aufgerufen um die einzelnen Geräte in die Topologie einzusortieren:\n";
@@ -405,6 +415,7 @@ IPS_SetEventActive($tim1ID,true);
                     $topologyPlusLinks=$DetectDeviceHandler->mergeTopologyObjects($topology,$channelEventList,false);        // true,2 for Debug, 1 für Warnings  Verwendet ~ in den Ortsangaben, dadurch werden die Orte wieder eindeutig ohne den Pfad zu wissen
                     $topinstconfig["Show"]["Instances"]=true;
                     $topinstconfig["Show"]["LinkFromParent"]=true;
+                    $topinstconfig["Show"]["QualityIndex"]=$eventList->getEventlist("Quality");
                     $DetectDeviceHandler->updateLinks($topologyPlusLinks,$topinstconfig,true);                  // In den Topology Category tree einsortieren, true debug                    
                     $DetectDeviceHandler->create_UnifiedTopologyConfigurationFile($topology,false);            //true für Debug, speichert topology mit neuen erweiterten Indexen in EvaluateHardware_Configuration ab
                     }

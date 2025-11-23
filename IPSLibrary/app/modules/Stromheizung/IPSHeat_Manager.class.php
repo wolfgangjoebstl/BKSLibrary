@@ -37,11 +37,17 @@
      * class IPSHeat_Manager
      * private vars $switchCategoryId, $groupCategoryId, $programCategoryId
      *  __construct
+     *  getSwitchCategoryId
      *  setConfiguration
+     *  getConfigSwitches
      *  getConfigGroups
+     *  getConfigPrograms
      *  convertConfigToArray
      *
+     *  checkActuators
+     *
      *  getGroupIDs
+     *  getProgramIDs
      *
      *  GetSwitchIdByName, GetLevelIdByName, GetColorIdByName, GetAmbienceIdByName
      *  GetGroupIdByName
@@ -227,6 +233,11 @@
             }
         
         /* generates a summary with link according to the type
+         * used in mergeTopologyOpjects
+         * the idea ist to combine Category and Type as uppercase, used as identifier:
+         * $identifier = strtoupper($actuator["Category"]).strtoupper($actuator["Type"]);
+         *
+         *
          */
         public function checkActuators($name, $identifier,$debug=false)
             {
@@ -250,6 +261,16 @@
                     $soid = $this->GetProgramIdByName($name);
                     $plusLink[$soid]=$name;
                     break;
+                case "SWITCHESSWITCH":
+                    $soid = $this->GetSwitchIdByName($name);
+                    $plusLink[$soid]=$name;                
+                    break;
+                case "SWITCHESDIMMER":
+                    $soid = $this->GetSwitchIdByName($name);
+                    $plusLink[$soid]=$name; 
+                    $soid = $this->GetLevelIdByName($name);
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_LEVEL;                                   
+                    break;
                 case "SWITCHESAMBIENT":
                     $soid = $this->GetSwitchIdByName($name);
                     $plusLink[$soid]=$name;
@@ -266,6 +287,14 @@
                     $plusLink[$soid]=$name.IPSHEAT_DEVICE_LEVEL;
                     $soid = $this->GetColorIdByName($name); 
                     $plusLink[$soid]=$name.IPSHEAT_DEVICE_COLOR;
+                    break;
+                case "SWITCHESTHERMOSTAT":
+                    $soid = $this->GetSwitchIdByName($name);
+                    $plusLink[$soid]=$name;
+                    $soid      = IPS_GetVariableIDByName($name.IPSHEAT_DEVICE_TEMPERATURE, $this->switchCategoryId);
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_TEMPERATURE;
+                    $soid      = IPS_GetVariableIDByName($name.IPSHEAT_DEVICE_MODE, $this->switchCategoryId);
+                    $plusLink[$soid]=$name.IPSHEAT_DEVICE_MODE;
                     break;
                 case "GROUPSTHERMOSTAT":
                     $soid = $this->GetGroupIdByName($name);
