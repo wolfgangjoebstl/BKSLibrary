@@ -63,6 +63,7 @@
 	echo "\nModul Stromheizung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 
     $startexec=microtime(true);
+    $doRegister=false;                  // keine zusätzliche Registrierung von MessageHandler Events, alles erfolgt in RemoteAccess 
 
 /*******************************
  *
@@ -93,6 +94,19 @@
 	IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
 	IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
 	IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");	
+
+    if (isset ($installedModules["RemoteAccess"]))              // wann immer geht IPSMessageHandlerExtended verwenden
+		{
+        IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+        IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
+        $messageHandler = new IPSMessageHandlerExtended();              // RemoteAccess Class
+        }
+    else
+        {
+        IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+        $messageHandler = new IPSMessageHandler();
+        }
 
     $ipsOps = new ipsOps();    
     $webOps = new webOps();                     // Buttons anlegen
@@ -374,12 +388,43 @@ Path=Visualization.Mobile.Stromheizung
 	 * noch fertig machen, synchronisiert noch nicht die Temperaturwerte wenn am Thermostat geaendert wurde !
 	 * check final dann auch fuer IPSLight, da hier auch nicht mehr vollstaendig implementiert 
 	 *
+     *  IPSComponentSwitch_LCNa         Intensity
+     *  IPSComponentSwitch_LCN          Status
+     *  IPSComponentSwitch_EIB          Value
+     *  IPSComponentSwitch_Homematic    STATE               auch IPSComponentSwitch_RHomematic
+     *  IPSComponentHeatSet_Homematic   SET_TEMPERATURE     auch IPSComponentHeatSet_HomematicIP, IPSComponentHeatSet_FS20
+     *
+     * für den Fall dass der Wert von jemandem anderen geändert wird auch hier nachziehen
+     * deshalb sicher stellen dass die Werte auch bei Änderung angepasst werden
+     *
 	 ***************************************************************************/
 	 
 	echo "\nRegister Events für Device Synchronization.\n";
+    /* this is when devicelist comes in, we know its an ACTUATOR, but not the real varname of the register
+        * how is devcielist built. We have Actuators that were brought to the config
+        */
+    IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+    IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+    IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');   
+
+    $devicelist = new DeviceListManagement();           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
+    $devicelist->setEventListFromConfigFile();
+    $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
+    $devicelist->analyse($ipsheatManager);              // calc coids, oids and uuids
+    echo "Result is new arrays structured as UUIDs with list of Topology Devices, oids and coids :\n";
+    $oids=$devicelist->get_oids();
+    echo "   Number of OIDs detected : ".sizeof($oids)."\n";
+
+
+	IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+	IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+
+    // Eventlist aus dem MessageHandler
+    $eventList = new DetectEventListHandler();
+    $eventList->setEventListFromConfigFile();
+    $eventListData = $eventList->getEventList();
 	 
-	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
-	$messageHandler = new IPSMessageHandler();
 	$lightConfig = IPSHeat_GetHeatConfiguration();
 	foreach ($lightConfig as $deviceName=>$deviceData) 
 		{
@@ -387,6 +432,7 @@ Path=Visualization.Mobile.Stromheizung
 		$component = $deviceData[IPSHEAT_COMPONENT];
 		$componentParams = explode(',', $component);
 		$componentClass = $componentParams[0];
+
 		echo "   Bearbeite ".$deviceName." mit ComponentClass : ".$componentClass."\n";				
 		switch ($componentClass)
 			{
@@ -397,7 +443,7 @@ Path=Visualization.Mobile.Stromheizung
 					{
 					$moduleManager->LogHandler()->Log('Variable with Ident Intensity could NOT be found for LCN Instance='.$instanceId);
 					} 
-				else 
+				elseif ($doRegister) 
 					{
 					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
 					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
@@ -410,7 +456,7 @@ Path=Visualization.Mobile.Stromheizung
 					{
 					$moduleManager->LogHandler()->Log('Variable with Ident Status could NOT be found for LCN Instance='.$instanceId);
 					} 
-				else 
+				elseif ($doRegister) 
 					{
 					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
 					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
@@ -423,7 +469,7 @@ Path=Visualization.Mobile.Stromheizung
 					{
 					$moduleManager->LogHandler()->Log('Variable with Ident Value could NOT be found for EIB Instance='.$instanceId);
 					} 
-				else 
+				elseif ($doRegister) 
 					{
 					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor EIB Instance='.$instanceId);
 					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
@@ -437,7 +483,7 @@ Path=Visualization.Mobile.Stromheizung
 					{
 					$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
 					} 
-				else 
+				elseif ($doRegister) 
 					{
 					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
 					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSHeat,');
@@ -461,7 +507,7 @@ Path=Visualization.Mobile.Stromheizung
 					{
 					$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
 					} 
-				else 
+				elseif ($doRegister) 
 					{
 					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
 					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleHeatSet_All,');

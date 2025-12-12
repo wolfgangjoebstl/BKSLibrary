@@ -26,6 +26,8 @@
      * @class IPSComponentSensor_remote
      *
      * Definiert ein IPSComponentSensor_Remote Object, das ein IPSComponentSensor Object für einen beliebigen Sensor implementiert.
+     * es wurde Wert auf eine mögliche allgemeine Implementierung gelegt
+     * construct erkennt Anordnung der Variablen, die mit dem : ist der RemoteServer und die ohne der Variableidentifier
      *
      * kann Climate und Sensor, es werden auch allgemeine Variablen wie SystemInfo synchronisiert
      * Generalabfrage mit UpdateEvent hinzugefügt
@@ -301,7 +303,7 @@
  
             $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
-          if ($variableTypeReg != "unknown") 
+            if ($variableTypeReg != "unknown") 
                 {
                 //echo "Feuchtigkeit_Logging  $variableTypeReg\n";      // KEY, PROFIL, TYP wird übernommen
                 $component = new ComponentHandling();

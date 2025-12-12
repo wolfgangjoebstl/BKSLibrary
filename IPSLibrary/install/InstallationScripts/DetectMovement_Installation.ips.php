@@ -586,7 +586,7 @@
 			echo "   Summenvariable Gesamtauswertung_".$group." mit ".$statusID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
    			//$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			$messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion',$debug);
+			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Motion,'.$parameter.',SUMMOTION','IPSModuleSensor_Motion',$debug);
 			/* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
 			echo "      Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
 			}
@@ -611,7 +611,7 @@
 			echo "   Summenvariable Gesamtauswertung_".$group." mit ".$statusID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
    			//$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			$messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Temperatur,,'.$parameter.',TEMPERATUR','IPSModuleSensor_Temperatur',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
+			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Temperatur,,'.$parameter.',SUMTEMPERATURE','IPSModuleSensor_Temperatur',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
 			/* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
 			echo "      Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
 			}
@@ -640,7 +640,7 @@
                 echo "   Summenvariable Gesamtauswertung_".$group."_Wirkenergie mit ".$EnergieID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
                 //$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
                 $messageHandler->CreateEvent($EnergieID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-                $messageHandler->RegisterEvent($EnergieID,"OnChange",'IPSComponentSensor_Remote,,'.$parameter.',ENERGY','IPSModuleSensor_Remote',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
+                $messageHandler->RegisterEvent($EnergieID,"OnChange",'IPSComponentSensor_Remote,,'.$parameter.',SUMENERGY','IPSModuleSensor_Remote',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
                 /* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
                 echo "      Event ".$EnergieID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group."_Wirkenergie registriert.\n";
 
@@ -659,7 +659,7 @@
                 echo "   Summenvariable Gesamtauswertung_".$group."_Wirkleistung mit ".$LeistungID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
                 //$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
                 $messageHandler->CreateEvent($LeistungID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-                $messageHandler->RegisterEvent($LeistungID,"OnChange",'IPSComponentSensor_Remote,,'.$parameter.',POWER','IPSModuleSensor_Remote',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
+                $messageHandler->RegisterEvent($LeistungID,"OnChange",'IPSComponentSensor_Remote,,'.$parameter.',SUMPOWER','IPSModuleSensor_Remote',$debug);           //ROID Angaben immer bei par2, par1 ist für die Instanz reserviert - ausser Aktoren
                 /* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
                 echo "      Event ".$LeistungID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group."_Wirkleistung registriert.\n";
 

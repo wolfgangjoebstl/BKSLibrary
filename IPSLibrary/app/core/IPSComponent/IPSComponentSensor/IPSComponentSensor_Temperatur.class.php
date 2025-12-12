@@ -21,7 +21,11 @@
     *
     * Definiert ein IPSComponentSensor_Temperatur Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
     *
-    * macht bereits Temperatur und Humidity
+    * macht bereits Temperatur, Humidity wieder eigenständig da unterschiedliche Kategorien
+    * Gesamtauswertung ist auch ein Register, Mirror macht Sinn aber nur für RemoteOID, kein weiteres Logging da selber Logging
+    * im construct werden die verfügbaren Remote Server erfasst, im Aufruf werden die RemoteServer samt OID und der VariableIdentifier tempValue übergeben 
+    * HandleEvent und UpdateEvent unterstützen die Eventbearbeitung
+    * log wird mit dem VariableIdentifier aufgerufen
     *
 	 * Events werden im Event Handler des IPSMEssageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
 	 * In der IPSMessageHandler Config steht wie die Daten Variable ID und Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
@@ -293,6 +297,18 @@
 
             $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
+            if ($variableTypeReg != "unknown")          // einheitliche Parameterierung
+                {
+                //echo "Feuchtigkeit_Logging  $variableTypeReg\n";      // KEY, PROFIL, TYP wird übernommen
+                $component = new ComponentHandling();
+                $keyName=array();
+                $keyName["KEY"]=$variableTypeReg;
+                $status=$component->addOnKeyName($keyName,$this->debug); 
+                if ($status===false) $keyName="unknown";                        // Fehler abfangen, Component kennt keinen Abbruch
+                //print_R($keyName);
+                $variableTypeReg=$keyName;
+                }
+
             $NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
 
             /*$this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
@@ -407,7 +423,7 @@
                 $this->do_gesamtauswertung("Temperatur");
                 //echo "Aktuelle Laufzeit nach Aggregation ".exectime($this->startexecute)." Sekunden.\n";
                 }
-            if ($this->variableTypeReg =="HUMIDITY")
+            elseif ($this->variableTypeReg =="HUMIDITY")
                 {
                 if ($variabletyp["VariableProfile"]!="")
                     {
@@ -463,6 +479,7 @@
                         }
                     }  */
                 }
+            else echo "Temperature_LogValue ".$this->variableTypeReg.", no action.\n";
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			echo "Aktuelle Laufzeit nach File Logging in ".$this->variablename." mit Wert ".$result." : ".exectime($this->startexecute)." Sekunden.\n";

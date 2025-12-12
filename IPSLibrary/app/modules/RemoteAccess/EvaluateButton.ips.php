@@ -93,7 +93,7 @@ $debug=false;
         {
         echo "Taster von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
         $componentHandling=new ComponentHandling();
-        $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateMotion um ".date("h:i am d.m.Y ").".";
+        $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateButton um ".date("h:i am d.m.Y ").".";
 
         //$result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, true);				/* true ist Debug, Bewegungsensoren */
         //print_r($result);

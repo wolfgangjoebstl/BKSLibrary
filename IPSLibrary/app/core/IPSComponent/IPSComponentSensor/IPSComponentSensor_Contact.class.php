@@ -18,7 +18,7 @@
 	 */
 
    /**
-    * @class IPSComponentSensor_Contact
+    * @class IPSComponentSensor_Contact, abgelöst von IPSComponentSensor_Motion
     *
     * Definiert ein IPSComponentSensor_Contact Object, das ein IPSComponentSensor Object für einen Kontaktgeber implementiert.
 	*

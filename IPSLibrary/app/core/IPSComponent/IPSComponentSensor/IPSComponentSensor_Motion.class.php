@@ -26,11 +26,15 @@
     *
 	* Eine Veränderung der Variable im Gerät löst ein Event aus und ruft den MessageHandler auf:  IPSMessageHandler::HandleEvent($variable, $value);
 	* HandleEvent im IPSMessageHandler sucht sich die passende Konfiguration und ermittelt den richtigen Component und das übergeordnet Modul für mehrere Components
+    * mit new wird __construct aufgerufen, tempObject ist die Instanz/Register, RemoteOIDist der Input für Remote Logging, tempValue der Classifier für typedev
 	* für den Component aus der Config wird wieder HandleEvent aufgerufen component::HandleEvent, hier IPSComponentSensor_Motion::HandleEvent
 	*
 	* wenn es eine Remote OID gibt wird der Wert dort auch hin geschrieben, gespiegelt
 	*
 	* sonst wird vorher Motion_LogValue aufgerufen Motion_Logging::Motion_LogValue
+    * dazu mit new das Logging construct aufrufen, input ist der Classifier für typedef (tempValue)
+    *   es wird constructfirst, die Erweiterung addonkeyname und do_init aufgerufen
+    *
 	* Motion_LogValue liefert entweder ein 1zu1 Spiegelregister oder das Ausschalten wird mittels Timer verzoegert
 	* Funktion abhängig von der Einstellung in 
     *
@@ -251,20 +255,32 @@
 		 *
 		 *************************************************************************/
 		 	
-		function __construct($variable,$variablename=Null, $value=Null, $typedev="unknown", $debug=false)          // construct ohne variable nicht mehr akzeptieren
+		function __construct($variable,$variablename=Null, $value=Null, $variableTypeReg="unknown", $debug=false)          // construct ohne variable nicht mehr akzeptieren
 			{
             if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
             else $this->debug=$debug;
-            if ($this->debug) echo "Motion_Logging::construct mit \"$typedev\" aufrufen für $variable, jetzt do_init aufrufen:\n";
+            if ($this->debug) echo "Motion_Logging::construct mit \"$variableTypeReg\" aufrufen für $variable, jetzt do_init aufrufen:\n";
 
             $this->constructFirst();            // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
-            $NachrichtenID=$this->do_init($variable,$variablename,$value, $typedev, $this->debug);              // $variable kann auch false sein
+            if ($variableTypeReg != "unknown") 
+                {
+                //echo "Feuchtigkeit_Logging  $variableTypeReg\n";      // KEY, PROFIL, TYP wird übernommen
+                $component = new ComponentHandling();
+                $keyName=array();
+                $keyName["KEY"]=$variableTypeReg;
+                $status=$component->addOnKeyName($keyName,$this->debug); 
+                if ($status===false) $keyName="unknown";                        // Fehler abfangen, Component kennt keinen Abbruch
+                //print_R($keyName);
+                $variableTypeReg=$keyName;
+                }
+
+            $NachrichtenID=$this->do_init($variable,$variablename,$value, $variableTypeReg, $this->debug);              // $variable kann auch false sein
 			parent::__construct($this->filename,$NachrichtenID);                                       // this->filename wird von do_init_xxx geschrieben
 			}
 
         /* allgemeine Initialisierung, überschreibt do_init von Logging
-         * Routinen sind gleich, bis auf ....
+         * Routinen sind gleich, bis auf .... jetzt DEPRICATED, kein addonkeyname Support
          * Es wird bereits ein typedev sozusagen als zweitletze Instanz übergeben, trotzdem Datenbank befragen
          * es gibt auch die Variante dass variable false ist, dann das spezielle Initialisieren ueberspringen und für do_init_statistics verwenden
          *
@@ -274,18 +290,19 @@
          *
          */
 
-        protected function do_init($variable,$variablename=NULL,$value, $typedev, $debug=false)
+        protected function do_init2($variable,$variablename=NULL,$value, $typedev, $debug=false)
             {
             $debugSql=false;
+
             /**************** installierte Module und verfügbare Konfigurationen herausfinden 
             $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);                        // wird bereits in constructFirst gemacht 
-            $this->installedmodules=$moduleManager->GetInstalledModules();     */
+            $this->installedmodules=$moduleManager->GetInstalledModules();     
             if (isset ($this->installedmodules["DetectMovement"]))
                 {
-                /* Detect Movement agreggiert die Bewegungs Ereignisse (oder Verknüpfung) */
+                // Detect Movement agreggiert die Bewegungs Ereignisse (oder Verknüpfung) 
                 IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
                 IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-                }             
+                }     */        
             if ($variable!==false)
                 {
                 if ($debug) echo "Logging::do_init@Motion_Logging für Variable $variable mit Type $typedev aufgerufen.\n";                    
@@ -479,7 +496,7 @@
                     $resultLog=$this->doLogDirection($result);
                     break;
                 case "CONTACT":
-                    $resultLog=$this->doLogContact($result);
+                    $resultLog=$this->doLogContact($result,$debug);
                     break;
                 case "BRIGHTNESS":
                     $resultLog=$this->doLogBrightness($result);
@@ -827,13 +844,15 @@
          * hier wird einfach result geschrieben und als return der formatierte wert als string
          */
 
-        private function doLogBrightness($result)
+        private function doLogBrightness($result,$debug=false)
             {
+            // profil, Presentation und Type der Source Variable rausfinden
             $variableProfile=IPS_GetVariable($this->variable)["VariableProfile"];
             if ($variableProfile=="") $variableProfile=IPS_GetVariable($this->variable)["VariableCustomProfile"];
             //$presentation = IPS_GetVariablePresentation($variable); print_R($presentation);
             $variableType=IPS_GetVariable($this->variable)["VariableType"];                
-            echo "doLogBrightness($result) , $variableType , $variableProfile\n";
+            if ($debug) echo "doLogBrightness($result) , Source Variable Type is $variableType , Profile $variableProfile\n";
+
             //if ($variableType==2) $result=$result*20+30;
             if ($result<10) $result=$result*20+30;
             $resultLog=GetValueIfFormatted($this->variable);
@@ -846,13 +865,27 @@
         /* eigentliches Logging durchführen, speziell für Kontakte 
          *
          * Funktion gleich wie Helligkeit, nur andere Debug Ausgabe
+         * ebenfalls eine umwandlung der Werte durchführen
          */
         
-        private function doLogContact($result)
+        private function doLogContact($result,$debug=false)
             {
+            // profil, Presentation und Type der Source Variable rausfinden
+            $variableProfile=IPS_GetVariable($this->variable)["VariableProfile"];
+            if ($variableProfile=="") $variableProfile=IPS_GetVariable($this->variable)["VariableCustomProfile"];
+            //$presentation = IPS_GetVariablePresentation($variable); print_R($presentation);
+            $variableType=IPS_GetVariable($this->variable)["VariableType"];                
+            if ($debug) echo "doLogContact($result), Source Variable Type is $variableType , Profile $variableProfile\n";
+
+            if (($variableType==0) && ($result>0)) 
+                {
+                $result=2;
+                if ($debug) echo "    Adapted Boolean to Integer, and true to 2.\n";
+                }
+
             $resultLog=GetValueIfFormatted($this->variable);
             echo "CustomComponent Motion_LogValue Log Contact Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
-            if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Brightness Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
+            if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Contact '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
             SetValue($this->variableLogID,$result);		
             return ($resultLog);
             }

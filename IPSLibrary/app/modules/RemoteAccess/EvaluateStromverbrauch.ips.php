@@ -20,6 +20,9 @@
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
  * Stromverbrauch Variablen am Remote Server anlegen, kommen vom AMIS Modul
+ * input ist die AmisStromverbrauchList() in EvaluateVariables_ROID  erstellt von RemoteAccess::add_Amis() am 04.12.2025 05:05
+ * add_Amis ist Teil von RemoteAcess_Lib, nutzt als Input : $Amis->getMeterConfig();
+ * holt sich get_MeterConfiguration"))===false) IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis')
  *
  *  data.modules.Amis.BKS01.AMIS.Zählervariablen
  *

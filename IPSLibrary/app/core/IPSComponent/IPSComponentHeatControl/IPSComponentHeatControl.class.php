@@ -125,17 +125,19 @@
 
 	class HeatControl_Logging extends Logging
 		{
-		private $variable;
-		public $variableLogID;					/* ID der entsprechenden lokalen Spiegelvariable */
-		
-		public $variableEnergyLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert */
-		public $variablePowerLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den leistungswert */
-		public $variableTimeLogID;				/* ID der entsprechenden lokalen Spiegelvariable für den Zeitpunkt der letzten Änderung */
-				
-		private $HeatControlAuswertungID;
-		private $HeatControlNachrichtenID;
+		private     $variable;
+		public      $variableLogID;					/* ID der entsprechenden lokalen Spiegelvariable */
+        protected   $variableProfile, $variableTypeReg, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen
 
-		private $powerConfig;					/* Powerwerte der einzelnen Heizkoerper, Null wenn Configfile nicht vorhanden */
+		public      $variableEnergyLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert */
+		public      $variablePowerLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den leistungswert */
+		public      $variableTimeLogID;				/* ID der entsprechenden lokalen Spiegelvariable für den Zeitpunkt der letzten Änderung */
+				
+		private     $HeatControlAuswertungID;
+		private     $HeatControlNachrichtenID;
+
+		private     $powerConfig;					/* Powerwerte der einzelnen Heizkoerper, Null wenn Configfile nicht vorhanden */
+        protected   $debug;
 
 		//protected $configuration, $variablename,$CategoryIdData;           // in der parent class definiert
 		//protected $mirrorCatID, $mirrorNameID;                            // in der parent class definiert, Spiegelregister in CustomComponent um eine Änderung zu erkennen
@@ -151,18 +153,36 @@
          * die wichtigsten Variablen initialisieren und anlegen
          * Parameter value, typedev und debug für Kompatibilität hinzugefügt
          */   
-		function __construct($variable,$variablename=Null, $value=Null, $typedev="unknown", $debug=false)
+		function __construct($variable,$variablename=Null, $value=Null, $variableTypeReg="unknown", $debug=false)
 			{
-            $this->startexecute=microtime(true);                 
-			if ($debug) echo "HeatControl_Logging:construct for Variable ID : ".$variable."\n";
+            $this->startexecute=microtime(true);    
+            if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
+            else $this->debug=$debug;
+
+			if ($this->debug) echo "HeatControl_Logging:construct for Variable ID ".$variable." with Type $variableTypeReg .\n";
+
+            $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
+
+            if ($variableTypeReg != "unknown")          // einheitliche Parameterierung
+                {
+                //echo "Feuchtigkeit_Logging  $variableTypeReg\n";      // KEY, PROFIL, TYP wird übernommen
+                $component = new ComponentHandling();
+                $keyName=array();
+                $keyName["KEY"]=$variableTypeReg;
+                $status=$component->addOnKeyName($keyName,$this->debug); 
+                if ($status===false) $keyName="unknown";                        // Fehler abfangen, Component kennt keinen Abbruch
+                //print_R($keyName);
+                $variableTypeReg=$keyName;
+                }
 
             /************** INIT */
-            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            //$this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
             $this->powerConfig=array();             // vom DetectHandler beschrieben
 
 			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
+			//$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			//$this->installedmodules=$moduleManager->GetInstalledModules();
             if (isset ($this->installedmodules["DetectMovement"]))
                 {
                 /* Detect Movement agreggiert die Bewegungs Ereignisse (oder Verknüpfung) */
@@ -172,22 +192,24 @@
                 IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
                 $this->DetectHandler = new DetectHeatControlHandler();
 				$this->powerConfig=$this->DetectHandler->get_PowerConfig();                
+                if ($this->debug) echo "DetectMovement installed.\n";
                 } 
 
             $dosOps= new dosOps();
 
             $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
-			if ($debug) echo "  Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$this->variable." mit dem Namen ".$this->variablename."\n";
+			if ($this->debug) echo "  Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$this->variable." mit dem Namen ".$this->variablename."\n";
 
 			/* Find Data category of IPSComponent Module to store the Data */				
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			if ($debug) echo "  Kategorie Data im CustomComponents Datenverzeichnis: ".$this->CategoryIdData."  (".IPS_GetName($this->CategoryIdData).")\n";
+			if ($this->debug) echo "  Kategorie Data im CustomComponents Datenverzeichnis: ".$this->CategoryIdData."  (".IPS_GetName($this->CategoryIdData).")\n";
 
 			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
 			$this->HeatControlNachrichtenID=$this->CreateCategoryNachrichten("HeatControl",$this->CategoryIdData);
 			$this->HeatControlAuswertungID=$this->CreateCategoryAuswertung("HeatControl",$this->CategoryIdData);;
-						
+            if ($this->debug) echo "  NachrichtenID : ".$this->HeatControlNachrichtenID."    AuswertungID:  ".$this->HeatControlAuswertungID."  \n";
+            	
 			/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
 			if ($variable<>null)
 				{       // Daten aus der Input Variable nehmen, es erfolgt keine vereinheitlichung
@@ -196,14 +218,25 @@
                 if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
                 $this->variableType=IPS_GetVariable($variable)["VariableType"];
 
-				if ($debug) echo "  Lokales Spiegelregister als Integer auf ".$this->variablename." unter Kategorie ".$this->HeatControlAuswertungID." ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
-                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->HeatControlAuswertungID,1,'~Intensity.100');                   // $this->variableLogID schreiben
+				if ($this->debug) echo "  Lokales Spiegelregister als Integer auf ".$this->variablename." unter Kategorie ".$this->HeatControlAuswertungID." ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
+
+
+                if (is_array($variableTypeReg))
+                    {
+                    // wird nachher nicht mehr überschrieben, set eigentlich schon zum Install
+                    $this->variableTypeReg = strtoupper($variableTypeReg["KEY"]);  
+                    $this->variableProfile=$variableTypeReg["PROFILE"];
+                    $this->variableType=$variableTypeReg["TYP"];  
+                    }
+                // setVariableLogId($variable, $variablename, $AuswertungID,$type,$profile,$debug=false)
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->HeatControlAuswertungID,$this->variableType,$this->variableProfile,true);                   // $this->variableLogID schreiben
+                if ($this->debug) echo "    VariableLog Register angelegt als ".$this->variableLogID."\n";
                 IPS_SetHidden($this->variableLogID,false);
 				
                 if ( isset($this->powerConfig[$variable]) )
                     {
                     $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-                    if ($debug) echo "   Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
+                    if ($this->debug) echo "   Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
                     /* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
                     //$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, 2 für Float, alle benötigten Angaben machen, sonst Fehler */
                     //$this->variablePowerLogID=CreateVariable($this->variablename."_Power",2,$this->variableLogID, 10, "~Power", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */

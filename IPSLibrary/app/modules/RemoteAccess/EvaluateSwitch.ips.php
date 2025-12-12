@@ -29,6 +29,8 @@
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+    IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
     $componentHandling=new ComponentHandling();
@@ -39,26 +41,39 @@
 	/******************************************** Schalter  *****************************************/
 
 	echo "***********************************************************************************************\n";
-	echo "Switch Handler wird ausgeführt. Macht bereits install CustomCompnents, DetectMovement und RemoteAccess mit !\n";
+	echo "Switch Handler wird ausgeführt. Macht bereits install CustomComponents, DetectMovement und RemoteAccess mit !\n";
 	echo "\n";
-	if (function_exists('HomematicList'))
-		{
-        /* die Homematic Switche werden installiert, Routine übernimmt install CustomComponents, DetectMovement und RemoteAccess */
-		echo "Homematic Switche werden registriert.\n";
-		$struktur1=$componentHandling->installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField, $debug);				/* Homematic Switche */
-	    echo "***********************************************************************************************\n";
-		echo "HomematicIP Switche werden registriert.\n";
-		$struktur2=$componentHandling->installComponentFull(HomematicList(),["STATE","SECTION","PROCESS"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField, $debug);			    /* HomemeaticIP Switche */
-        //print_r($struktur1);
-        //print_r($struktur2);
+	
+    if ( (function_exists('deviceList')) )
+        {
+        echo "Taster von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
+        $componentHandling=new ComponentHandling();
+        $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateSwitch um ".date("h:i am d.m.Y ").".";
+
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_SWITCH"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField, true);				/* true ist Debug, Bewegungsensoren */
+        print_r($result);
         }
-	if (function_exists('FS20List'))
-		{
-	    echo "***********************************************************************************************\n";
-		echo "FS20 Switche werden registriert.\n";
-        $struktur3=$componentHandling->installComponentFull(FS20List(),"StatusVariable",'IPSComponentSwitch_RFS20','IPSModuleSwitch_IPSHeat,',$commentField, $debug);			// Variable heisst Status, es wird übergeordnet nach StatusVariable gesucht
-        //print_r($struktur3);
-		}
+    else
+        {
+        if (function_exists('HomematicList'))
+            {
+            /* die Homematic Switche werden installiert, Routine übernimmt install CustomComponents, DetectMovement und RemoteAccess */
+            echo "Homematic Switche werden registriert.\n";
+            $struktur1=$componentHandling->installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField, $debug);				/* Homematic Switche */
+            echo "***********************************************************************************************\n";
+            echo "HomematicIP Switche werden registriert.\n";
+            $struktur2=$componentHandling->installComponentFull(HomematicList(),["STATE","SECTION","PROCESS"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField, $debug);			    /* HomemeaticIP Switche */
+            //print_r($struktur1);
+            //print_r($struktur2);
+            }
+        if (function_exists('FS20List'))
+            {
+            echo "***********************************************************************************************\n";
+            echo "FS20 Switche werden registriert.\n";
+            $struktur3=$componentHandling->installComponentFull(FS20List(),"StatusVariable",'IPSComponentSwitch_RFS20','IPSModuleSwitch_IPSHeat,',$commentField, $debug);			// Variable heisst Status, es wird übergeordnet nach StatusVariable gesucht
+            //print_r($struktur3);
+            }
+        }
 	echo "***********************************************************************************************\n";
 
     

@@ -14,10 +14,12 @@
     *
     * Definiert ein IPSComponentHeatControl_Homematic Object, das ein IPSComponentShutter Object für Homematic implementiert.
     * IPSComponentHeatControl_Homematic mit Module IPSModule, Speicherort ist die Kategorie IPSComponentHeatControl, Wert vor dem Underscore, immer mit IPSComponent
-    *
+    * im construct wird die Instanz, die Remote OIDs und der Typedev als tempValue übergeben
     * wir haben
-    *       __construct         Abspeicherung der Inputvariablen in der class udn um die RemoteServer kümmern
+    *       __construct         Abspeicherung der Inputvariablen in der class und um die RemoteServer kümmern
     *       HandleEvent         ruft HeatControl_Logging($variable)->HeatControl_LogValue($value)
+    *
+    * in HandleEvent wird HeatControl_Logging initialisiert. HeatControl_Logging class sind in IPSComponentHeatControl
     *
     * fehlende Methoden siehe abstract IPSComponentHeatControl
     *
@@ -36,7 +38,7 @@
 		protected 	$tempValue;
 		protected 	$installedmodules;
 		protected	$instanceId;			/* Instanz des Homematic Gerätes, wird mitgeliefert vom Event Handler */
-		
+
 		protected 	$RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
 		protected 	$remServer;		/* Liste der Urls und der Kurznamen */
 		private 		$rpcADR;			/* mit der Parametrierung übergegebene Server Shortnames und OIDs, getrennt durch : und für jeden Eintrag durch ;
@@ -96,7 +98,8 @@
 			//echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			
-			$log=new HeatControl_Logging($variable);
+            // construct($variable,$variablename=Null, $value=Null, $typedev="unknown", $debug=false)
+			$log=new HeatControl_Logging($variable, null, null, $this->tempValue);
 			$result=$log->HeatControl_LogValue($value);
 			
 			$this->WriteValueRemote($value);

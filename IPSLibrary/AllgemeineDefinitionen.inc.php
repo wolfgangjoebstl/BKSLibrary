@@ -1918,7 +1918,7 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
         $VariableId = @IPS_GetVariableIDByName($name, $parentID);
         if ($VariableId === false)
             {
-            if ($debug) echo "CreateVariableByName : $name Type $type in $parentID:\n";
+            if ($debug) echo "CreateVariableByName : $name Type $type in $parentID:  new\n";
             $VariableId = @IPS_CreateVariable($type);
             if ($VariableId === false ) throw new Exception("Cannot CreateVariable with Type $type");
             IPS_SetParent($VariableId, $parentID);
@@ -1933,12 +1933,22 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
             {
             $VariableData = IPS_GetVariable($VariableId);
             $objectInfo   = IPS_GetObject($VariableId); 
-            if ($VariableData['VariableType'] <> $type)
+            $oldType=$VariableData['VariableType'];
+            if ($debug) echo "CreateVariableByName : $name new Type $type old Type $oldType in $parentID results into update $VariableId\n";
+            if ($oldType <> $type)
                 {
-                IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." <> \"$type\". Delete and create new.");
-                IPS_DeleteVariable($VariableId); 
+                if ($debug) echo "    $VariableId ($name) Type \"$oldType\" <> \"$type\". Delete and create new.\n";
+                //IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type \"$oldType\" <> \"$type\". Delete and create new.");
+                $VariableIdOld=$VariableId;
+                IPS_SetName($VariableId, $name."DELETE");
+                if ($debug) echo "     have to delete $VariableIdOld because of Type change \n";
                 $VariableId=CreateVariableByName($parentID, $name, $type, $profile, $ident, $position, $action);  
                 $VariableData = IPS_GetVariable ($VariableId);            
+                $childs=IPS_GetChildrenIDs($VariableIdOld);
+                $count=sizeof($childs);
+                if ($debug) echo "     new  $VariableId  old $VariableIdOld childs: $count \n";
+                foreach ($childs as $child) IPS_SetParent($child, $VariableId);
+                IPS_DeleteVariable($VariableIdOld); 
                 }
             if ($profile && ($VariableData['VariableCustomProfile'] <> $profile) )
                 {
@@ -15124,8 +15134,13 @@ class ComponentHandling
 			IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");			
 			$this->remote=new RemoteAccess();
+            $this->messageHandler = new IPSMessageHandlerExtended();              // RemoteAccess Class
             }
-	    $this->messageHandler = new IPSMessageHandler();
+        else
+            {
+            IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+            $this->messageHandler = new IPSMessageHandler();
+            }
         $this->configMessage=IPSMessageHandler_GetEventConfiguration();
         
         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
@@ -15321,7 +15336,8 @@ class ComponentHandling
                             {
                             if ($debug) echo "  Gefunden ".$entry["Name"]." : ".json_encode($entry)."\n";
                             $totalfound=true;
-                            $this->addOnKeyName($entry,($debug>1));                      // Array entry wird ausgehend von OID,COID,KEY,Name erweitert um 
+                            $status=$this->addOnKeyName($entry,($debug>1));                      // Array entry wird ausgehend von OID,COID,KEY,Name erweitert um 
+                            if ($status===false) return (false);
                             $component[]=(integer)$entry["COID"];
                             //$install[$entry["Name"]]=$entry;
                             $install[]=$entry;
@@ -15333,7 +15349,8 @@ class ComponentHandling
                     {
                     if ($debug) echo "Gefunden ".$keyName["Name"]." : ".json_encode($keyName)."\n";
                     $totalfound=true;
-                    $this->addOnKeyName($keyName,$debug);                      // Array keyname wird ausgehend von OID,COID,KEY,Name erweitert um 
+                    $status=$this->addOnKeyName($keyName,$debug);                      // Array keyname wird ausgehend von OID,COID,KEY,Name erweitert um 
+                    if ($status===false) return (false);
                     $component[]=(integer)$keyName["COID"];
                     $install[$keyName["Name"]]=$keyName;
                     if ($this->debug) $result .= "  ".str_pad($keyName["Name"]."/".$keyword,50)." = ".GetValueIfFormatted($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
@@ -15375,8 +15392,8 @@ class ComponentHandling
                     $keyName["KEY"]=$oid["TypeRegKey"];
                     $keyName["COMPONENT"]=$oid["componentName"];
                     $keyName["MODULE"]=$oid["moduleName"];
-                    $this->addOnKeyName($keyName,$debug);                          // hier alle Zusatzinformationen dazupacken
-                    
+                    $status=$this->addOnKeyName($keyName,$debug);                          // hier alle Zusatzinformationen dazupacken
+                    if ($status===false) return (false);
                     $component[]=(integer)$keyName["COID"];
                     $install[$keyName["Name"]]=$keyName;
                     }
@@ -15687,6 +15704,7 @@ class ComponentHandling
                 break;                    			
             case "TEMERATUREVAR";			/* Temperatur auslesen */
             case "TEMPERATURE":             // auch von devicelist normaler Temperatursensor
+            case "SUMTEMPERATURE":
             case "ACTUAL_TEMPERATURE":
                 $detectmovement="Temperatur";				
                 $variabletyp=2; 		/* Float */
@@ -15726,6 +15744,7 @@ class ComponentHandling
             case "TYPE_ACTUATOR":
                 break;
             case "MOTION":
+            case "SUMMOTION":
                 $detectmovement="Motion";
                 $variabletyp=0; 		/* Boolean */					
                 $index="Bewegung";
@@ -15744,12 +15763,14 @@ class ComponentHandling
                 $index="Helligkeit";
                 $profile="Helligkeit";                  // Variablen Profil
                 break;
-            case "ENERGY":                             
+            case "ENERGY":    
+            case "SUMENERGY":                                     
                 $variabletyp=2; 		            // Float 
                 $index="Stromverbrauch";
                 $profile="~Electricity";                  // Variablen Profil
                 break;
-            case "POWER":                             
+            case "POWER":  
+            case "SUMPOWER":
                 //$detectmovement="Helligkeit";
                 $variabletyp=2; 		            // Float 
                 $index="Stromverbrauch";
@@ -15821,10 +15842,11 @@ class ComponentHandling
                 //$index="Bewegung";
                 $index="Taster";                              // Kategorie in Webfront/Administrator/RemoteAccess
                 $profile="";                             // abgeleitet von Window.HM, ist ein Integer Profil oder Boolean Contact
-                break;                 
+                break;  
             default:	
                 $variabletyp=0; 		/* Boolean */	
                 echo "************AllgemeineDefinitionen::addOnKeyName, kenne ".strtoupper($keyName["KEY"])." nicht.\n";
+                return (false);                 // testweise probieren, Fehler muss abgefangen werden
                 break;
             }
 
@@ -15853,6 +15875,7 @@ class ComponentHandling
             //print_r($variableType);
             //print_R($keyName);   
             }
+        return (true);
         }
 
     /***********************************************************************************

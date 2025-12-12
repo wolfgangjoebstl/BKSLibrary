@@ -35,7 +35,7 @@
     $executeObjects=true;              // false   nicht alle Register updaten, produziert weniger Fehler :-) aktuell auch zu viel Ausgabetext
     $debug=true;
 
-    // active deletion of objects from not needed module, if categorie is in object path it will be removed
+    // active deletion of objects from not needed module, if category is in object path it will be removed
     $dodelete=false;
     
 
@@ -79,7 +79,7 @@ if ( ($_IPS['SENDER']=="Execute") )
 
     echo "EventList loaded from DetectEventListHandler (MessageHandler):\n";           // Create, copied to DiagnoseCenter
     //$result = $remoteAccess->processXConfig(IPS_GetName(0),$debug);
-    $eventList->extendRemoteAccess($xconfig,false);                                  // eventlist erweitern
+    $eventList->extendRemoteAccess($xconfig,$debug);                                  // eventlist erweitern
     $eventListData = $eventList->getEventlist();
 
 	echo "Overview of registered Events, ".sizeof($eventListData)." Eintraege : \n";

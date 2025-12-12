@@ -3617,7 +3617,7 @@
             {
             $eventListData = $eventList->getEventlist();
             //$qualitylist   = $eventList->getEventlist("Quality");         / in Coids enthalten
-            $showGroup=false;           // true too much output
+            $showGroup=true;           // true too much output
 
             $varlogData=array();
             foreach ($eventListData as $oid => $entries)
@@ -6846,6 +6846,7 @@ class DetectEventListHandler extends DetectEventHandler
         }
 
     /* DetectEventListHandler::alignByCoidsList, object oriented
+     *
      * die eventlist mit der coids Liste abgleichen, ob die Variablen noch existieren
      * wenn in der EventList LoggingInfo angelegt ist, auch diese Variable mit der coids Liste abgleichen
      * die coids Liste wird dabei erweitert, wenn eine Variable in der EventList ist, aber nicht in der coids Liste
@@ -6885,7 +6886,7 @@ class DetectEventListHandler extends DetectEventHandler
                         }
                     }
                 }
-            else echo "******* Delete Entry from IPSDetectEventListHandler_GetEventConfiguration() in EvaluateHardware_Configuration.\n";
+            else echo "******* DetectEventListHandler::alignByCoidsList, delete Entry from IPSDetectEventListHandler_GetEventConfiguration() in EvaluateHardware_Configuration.\n";
             if ($doTable) echo "\n";
             if (isset($params["LoggingInfo"])) 
                 {
@@ -6906,7 +6907,7 @@ class DetectEventListHandler extends DetectEventHandler
                         {
                         if ($doTable) echo "      ".str_pad($varLogId,10).str_pad("    (".IPS_GetName($varLogId)."/".IPS_GetName(IPS_GetParent($varLogId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($varLogId))).")",90);
                         }
-                    else echo str_pad("    ******* Delete Entry from LoggingInfo variableLogID ".$varLogId." in EvaluateHardware_Configuration.",90)."\n";;
+                    else echo str_pad("    ******* DetectEventListHandler::alignByCoidsList, delete Entry from LoggingInfo variableLogID ".$varLogId." does not exist for $variableId in EvaluateHardware_Configuration.",90)."\n";;
                     }
                 /*else echo str_pad("    No variableLogID in LoggingInfo, error in EvaluateHardware_Configuration.",90);  
                 if (is_array($loggingInfo))
@@ -7501,12 +7502,13 @@ class DetectEventListHandler extends DetectEventHandler
 
                             if (isset($keyName["KEY"]))
                                 {
-                                $componentHandling->addOnKeyName($keyName,$debug);
+                                $status=$componentHandling->addOnKeyName($keyName,$debug);
+                                if ($status===false) return (false);
                                 if ($debug) echo str_pad($eventId,8).str_pad($entry["NameEvent"],40).str_pad($className,35)." Variable Profile: ".json_encode($keyName)."\n";
                                 $expectedProfile=$keyName["PROFILE"];
                                 if ( ($expectedProfile != "") && ($profileName != $expectedProfile) )
                                     {
-                                    echo "  ***** Warnung, VariableProfile stimmt nicht überein, erwartet $expectedProfile, ist $profileName \n";
+                                    echo "  ***** Warnung, getUsedComponents, $variableLogID VariableProfile stimmt nicht überein, erwartet $expectedProfile, ist $profileName \n";
                                     }
                                 }
                             }

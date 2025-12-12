@@ -108,7 +108,7 @@ class XConfigurator extends RemoteAccess
      *
      * Die Struktur der Remote Server wird vorab erfasst und gespeichert um Zeit zu sparen
 	 * abgespeichert wird als Includefile das regelmaessig erzeugt wird
-	 * Routinen um Ihre Daten im Incliudefile zu speichern
+	 * Routinen um Ihre Daten im Includefile zu speichern
 	 *      add_Guthabensteuerung()
 	 *      add_Amis()
 	 *      add_Sysinfo()
@@ -1777,6 +1777,20 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 	private static $eventConfigurationAuto = array();
 	private static $eventConfigurationCust = array();
 
+
+        public function readEventConfiguration($auto=true)
+            {
+			$configurationAuto = self::Get_EventConfigurationAuto();
+			$configurationCust = self::Get_EventConfigurationCust();
+            if ($auto) return $configurationAuto;
+            else return $configurationCust;
+            }
+
+        public function writeEventConfiguration($configuration, $comment=true) 
+            {
+            self::StoreEventConfiguration($configuration, $comment);
+            }
+
 		/**
 		 * @private
 		 *
@@ -1809,20 +1823,23 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 		 * @private
 		 *
 		 * Speichert die aktuelle Event Konfiguration
+         * aufgerufen nach registerEvent und unRegisterEvent
 		 *
 		 * @param string[] $configuration Konfigurations Array
 		 */
-	    private static function StoreEventConfiguration($configuration) 
-            {
+	    private static function StoreEventConfiguration($configuration, $comment=true) 
+            {            
 			// Build Configuration String
 			$configString = '$eventConfiguration = array(';
 			foreach ($configuration as $variableId=>$params) {
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
+				$myString = PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
 				for ($i=0; $i<count($params); $i=$i+3) {
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+					if ($i>0) $myString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+					$myString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
 				}
-				$configString .= '),';
+				$myString .= '),';
+                if ($comment) $configString .= str_pad($myString,120).'   //'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId));
+                else $configString .= $myString;
 			}
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 
@@ -1839,9 +1856,9 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
 			}
 			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
-			//echo  $fileContentNew;
-			file_put_contents($fileNameFull, $fileContentNew);
-			self::$eventConfigurationAuto = $configuration;
+			//if ($comment) echo  $fileContentNew;
+            file_put_contents($fileNameFull, $fileContentNew);
+            self::$eventConfigurationAuto = $configuration;
 		    }
 				
                                     

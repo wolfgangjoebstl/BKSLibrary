@@ -233,19 +233,7 @@
 
             $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
 
-            /* bereits in constructFirst
-            $this->startexecute=microtime(true);                   
-            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
-			//**************** installierte Module und verfügbare Konfigurationen herausfinden 
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
-			$moduleManager_CC = new IPSModuleManager('CustomComponent');     //   <--- change here 
-			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			//echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
-            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);                
-            */
-
-            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+            //$this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
 
             if ($variableTypeReg != "unknown") 
                 {
@@ -253,90 +241,18 @@
                 $component = new ComponentHandling();
                 $keyName=array();
                 $keyName["KEY"]=$variableTypeReg;
-                $component->addOnKeyName($keyName,$this->debug); 
-                print_R($keyName);
+                $status=$component->addOnKeyName($keyName,$this->debug);
+                if ($status===false) $keyName="unknown";                        // Fehler abfangen, Component kennt keinen Abbruch
+                $variableTypeReg=$keyName; 
+                //print_R($keyName);
                 }
-            else    
+            else                // DEPRICATED
                 {
                 if (IPS_GetVariable($variable)["VariableType"]==2) $variableTypeReg = "TEMPERATURE";            // kann STATE auch sein, tut aber nichts zur Sache
                 else $variableTypeReg = "HUMIDITY";
                 }
 
             $NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
-
-            /* abgelöst durch do_init und do_init_humidity 
-            $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
-            if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
-            $this->variableType=IPS_GetVariable($variable)["VariableType"];
-
-            $rows=getfromDatabase("COID",$variable);
-            if ( ($rows === false) || (sizeof($rows) != 1) )
-                {
-                $this->variableTypeReg=$variableTypeReg;
-                }
-            else    // getfromDatabase
-                {
-                print_r($rows);   
-                $this->variableTypeReg = $rows[0]["TypeRegKey"];    
-                }
-			//***************** Variablennamen für Spiegelregister von DetectMovement übernehmen oder selbst berechnen 
-			if (isset ($this->installedmodules["DetectMovement"]))
-				{
-				// Detect Movement kann auch Temperaturen agreggieren 
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				$this->DetectHandler = new DetectHumidityHandler();
-                }
-            $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovemet Config oder selber bestimmen
-
-
-
-            $dosOps = new dosOps();
-		
-            $name="HumidityMirror_".$this->variablename;
-            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       // 2 float ~Temperature
-
-            // Create Category to store the Feuchtigkeit-LogNachrichten 
-			$name="Feuchtigkeit-Nachrichten";
-			$vid=@IPS_GetObjectIDByName($name,$this->CategoryIdData);
-			if ($vid==false)
-				{
-				$vid = IPS_CreateCategory();
-				IPS_SetParent($vid, $this->CategoryIdData);
-				IPS_SetName($vid, $name);
-				IPS_SetInfo($vid, "this category was created by script. ");
-				}
-			$this->HumidityNachrichtenID=$vid;
-
-			// Create Category to store the Temperature-Spiegelregister 	
-			$name="Feuchtigkeit-Auswertung";
-			$TempAuswertungID=@IPS_GetObjectIDByName($name,$this->CategoryIdData);
-			if ($TempAuswertungID==false)
-				{
-				$TempAuswertungID = IPS_CreateCategory();
-				IPS_SetParent($TempAuswertungID, $this->CategoryIdData);
-				IPS_SetName($TempAuswertungID, $name);
-				IPS_SetInfo($TempAuswertungID, "this category was created by script. ");
-				}
-			$this->HumidityAuswertungID=$TempAuswertungID;
-
-    		// lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
-			if ($variable<>null)
-				{
-                $this->variable=$variable; 
-                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->HumidityAuswertungID,1,"~Humidity");                   // $this->variableLogID schreiben
-                IPS_SetHidden($this->variableLogID,false);                
-				echo "      Lokales Spiegelregister \"".$this->variablename."\" (".$this->variableLogID.") mit Typ Integer unter Kategorie ".$this->HumidityAuswertungID." ".IPS_GetName($this->HumidityAuswertungID)." anlegen.\n";
-				}
-
-            print_r($this->getVariableOIDLogging());    // Debug, Übersicht der angelegten Variablen 
-
-			// Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden 
-			//echo "Uebergeordnete Variable : ".$this->variablename."\n";   
-
-		    $directory = $this->configuration["LogDirectories"]["HumidityLog"];
-		    $dosOps->mkdirtree($directory);
-		    $filename=$directory.$this->variablename."_Feuchtigkeit.csv";   */
 
             if ($this->debug) echo "    ermittelt wurden  Variablename \"".$this->variablename."\" MirrorNameID ".$this->mirrorNameID." (".IPS_GetName($this->mirrorNameID).") und Log Filename \"".$this->filename."\" mit NachrichtenID  ".$NachrichtenID." (".IPS_GetName($NachrichtenID)."/".IPS_GetName(IPS_GetParent($NachrichtenID)).")\n";
     	    parent::__construct($this->filename,$NachrichtenID);

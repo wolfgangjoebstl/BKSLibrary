@@ -804,7 +804,7 @@ class Logging
         switch ($this->variableTypeReg)                 // alternativ vom Inputregister abhängig machen
             {
             case "CONTACT":
-                $this->variableProfile="~Window.HM";         // 3 Werte, allgemein für Alle
+                //$this->variableProfile="~Window.HM";         // 3 Werte, allgemein für Alle
                 $this->variableType=1;                      // Integer
                 if ($debug) echo "do_init_contact, Create Variable Log Register $name as ".$this->variableType." with Profile ".$this->variableProfile.", Type is ".$this->variableTypeReg.".\n";
                 //IPSLogger_Wrn(__file__, "do_init_contact, Create Mirror Register $name as ".$this->variableType." with Profile ".$this->variableProfile.", Type is ".$this->variableTypeReg.".");
@@ -883,7 +883,7 @@ class Logging
         /* Create Category to store the LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Temperatur",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Temperatur",$this->CategoryIdData);
-        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+        $this->do_setVariableLogID($variable,$this->debug);            // Temperature, lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         if ($this->debug) echo "   Uebergeordnete Variable : ".$this->variablename."\n";
@@ -948,7 +948,7 @@ class Logging
         /* Create Category to store the LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Feuchtigkeit",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Feuchtigkeit",$this->CategoryIdData);
-        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+        $this->do_setVariableLogID($variable);            // Feuchtigkeit, lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         //echo "Uebergeordnete Variable : ".$variablename."\n";
@@ -1027,7 +1027,7 @@ class Logging
         /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Sensor",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Sensor",$this->CategoryIdData);
-        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+        $this->do_setVariableLogID($variable);            // Sensor, lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
         if ($this->debug) echo "Sensor_Logging::do_init_sensor construct Kategorien im Datenverzeichnis:".$this->AuswertungID."   (".IPS_GetLocation($this->AuswertungID).")\n";
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
@@ -1081,7 +1081,7 @@ class Logging
         /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Sensor",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Sensor",$this->CategoryIdData);
-        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+        $this->do_setVariableLogID($variable);            // Button, lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
         if ($this->debug) echo "Sensor_Logging::do_init_button construct Kategorien im Datenverzeichnis:".$this->AuswertungID."   (".IPS_GetLocation($this->AuswertungID).")\n";
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
@@ -1122,7 +1122,7 @@ class Logging
         /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Switch",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Switch",$this->CategoryIdData);
-        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+        $this->do_setVariableLogID($variable);            // Switch, lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         //echo "Uebergeordnete Variable : ".$this->variablename."\n";
@@ -1172,7 +1172,7 @@ class Logging
             echo "    Create Mirror Register $name as ".$this->mirrorType." with Profile ".$this->mirrorProfile." \n";
             echo "    Create Logging Register ".$this->variablename." as ".$this->variableType." with Profile ".$this->variableProfile." \n";
             }
-        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+        $this->do_setVariableLogID($variable);            // Counter, lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         //echo "Uebergeordnete Variable : ".$this->variablename."\n";
@@ -1254,7 +1254,7 @@ class Logging
         /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Climate",$this->CategoryIdData);
         $this->AuswertungID=$this->CreateCategoryAuswertung("Climate",$this->CategoryIdData);
-        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, mit class register Variablenname, AuswertungID, variableType, variableProfile  
+        $this->do_setVariableLogID($variable);            // Climate, lokale Spiegelregister mit Archivierung aufsetzen, mit class register Variablenname, AuswertungID, variableType, variableProfile  
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         //echo "Uebergeordnete Variable : ".$this->variablename."\n";
@@ -1343,24 +1343,15 @@ class Logging
     protected function do_init($variable=false,$variablename=NULL,$value, $typedev, $debug=false)
             {
             $debugSql=false;
-            $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-            $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
-
-            /**************** installierte Module und verfügbare Konfigurationen herausfinden 
-             if (isset ($this->installedmodules["DetectMovement"]))
-                {
-                // Detect Movement agreggiert die Bewegungs Ereignisse (oder Verknüpfung) 
-                IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-                IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');              
-                }      */       
+            // CategoryIdData, mirrorCatIDmalready in constructfirst
+            // include Detect Movement in detailled init
             if ($variable!==false)
                 {
                 if ($debug) 
                     {
                     if ($debug>1) echo "-------------------------------------------------------------------------\n";
                     if ($typedev==Null) echo "Sensor_Logging::do_init für Variable $variable ohne Type aufgerufen.\n";
-                    elseif (is_array($typedev)) echo "Sensor_Logging::do_init für Variable $variable mit Type ".json_encode($typedev)." aufgerufen.\n";
+                    elseif (is_array($typedev)) echo "Sensor_Logging::do_init für Variable $variable mit Array Type ".json_encode($typedev)." aufgerufen.\n";
                     else echo "Sensor_Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
                     }
                 $this->$variable=$variable;
@@ -1372,8 +1363,9 @@ class Logging
                 $rows=getfromDatabase("COID",$variable,false,$debugSql);                // Bestandteil der MySQL_Library, false Alternative
                 if ( ($rows === false) || (sizeof($rows) != 1) )
                     {
-                    if ($typedev==Null)
+                    if ($typedev==Null)         // dont go there, guessing on variabletype is no longer possible
                         {
+                        echo "WARNING, DEPRICATED CODE PASSED.\n";
                         $vartype=IPS_GetVariable($variable)["VariableType"];
                         if ($vartype==0) $this->variableTypeReg = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache, Boolean = MOTION
                         elseif ($vartype==1) $this->variableTypeReg = "BRIGHTNESS";     // Integer ist Brightness
@@ -1387,6 +1379,7 @@ class Logging
                         $this->variableTypeReg = strtoupper($typedev["KEY"]);  
                         $this->variableProfile=$typedev["PROFILE"];
                         $this->variableType=$typedev["TYP"];  
+                        if ($debug) echo "        addonkeyname effect: Profile ".$this->variableProfile." was set here\n";
                         }                        
                     else
                         {
@@ -1406,6 +1399,10 @@ class Logging
                             case "ENERGY":
                             case "RAIN_COUNTER":
                             case "SWITCH":
+                            case "SUMTEMPERATURE":
+                            case "SUMMOTION":
+                            case "SUMENERGY":
+                            case "SUMPOWER":                            
                                 $this->variableTypeReg = strtoupper($typedev);
                                 break;                                 
                             default: 
@@ -1423,8 +1420,13 @@ class Logging
                     }
                 else    // getfromDatabase
                     {
-                    //print_r($rows);   
-                    $this->variableTypeReg = $rows[0]["TypeRegKey"];
+                    print_r($rows);   
+                    $this->variableTypeReg = $rows[0]["TypeRegKey"];            // aus der Datenbank
+                    if (is_array($typedev))
+                        {
+                        $this->variableProfile=$typedev["PROFILE"];             // die beiden stehen nicht im Eintrag
+                        $this->variableType=$typedev["TYP"];                          
+                        }
                     if ($debug) echo "------\nAus der Datenbank ausgelesen: Register Typ ist \"".$this->variableTypeReg."\". Variable Typ unverändert \"".$this->variableType."\". Jetzt unterschiedliche Initialisierungen machen.\n";    
                     }
                 switch (strtoupper($this->variableTypeReg))
@@ -1450,7 +1452,8 @@ class Logging
                         $NachrichtenID=$this->do_init_brightness($variable, $variablename,$value,$debug);
                         break;
                     case "TEMPERATURE":
-                    case "TEMPERATUR":                    
+                    case "TEMPERATUR":
+                    case "SUMTEMPERATURE":                    
                         $NachrichtenID = $this->do_init_temperature($variable, $variablename);
                         break;
                     case "HUMIDITY":
@@ -1471,7 +1474,10 @@ class Logging
                         break;
                     case "SWITCH":    
                         $NachrichtenID = $this->do_init_switch($variable, $variablename);
-                        break;                        
+                        break; 
+                    case "SUMMARY":
+                        $NachrichtenID = $this->do_init_sensor($variable, $variablename);                   //Gesamtauswertung          
+                        break;
                     default:
                         $NachrichtenID = $this->do_init_sensor($variable, $variablename);                    
                         if ($this->variableTypeReg != "") 
@@ -1596,7 +1602,7 @@ class Logging
             {
             $this->variable=$variable;
             $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->variableType,$this->variableProfile,$debug);                   // $this->variableLogID schreiben
-            if ($debug) echo "Aufruf setVariableLogId(".$this->variable.",".$this->variablename.",".$this->AuswertungID.") mit Ergebnis ".$this->variableLogID."\n";
+            if ($debug) echo "Aufruf setVariableLogId(".$this->variable.",".$this->variablename.",".$this->AuswertungID.",".$this->variableType.",".$this->variableProfile.") mit Ergebnis ".$this->variableLogID."\n";
             IPS_SetHidden($this->variableLogID,false);
             }
         else 
@@ -1633,7 +1639,10 @@ class Logging
         {
         if ($debug) echo '    Logging:setVariableId Spiegelregister erstellen mit Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile.\n";
         /* lokale Spiegelregister aufsetzen */  
-        $variableLogID=CreateVariableByName($AuswertungID,$variablename,$type,$profile,null, 10,null );
+        if ($debug) echo "    Double checking ".$this->archiveHandlerID." and  CreateVariableByName($AuswertungID,$variablename,$type,$profile, false, 10,false, false ) \n";
+        //CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false, $debug=false)
+        $variableLogID=CreateVariableByName($AuswertungID,$variablename,$type,$profile,false, 10,false,false,$debug);
+        //echo "?\n";
         if ( (AC_GetLoggingStatus($this->archiveHandlerID,$variableLogID)==false) || (AC_GetAggregationType($this->archiveHandlerID,$variableLogID) != 0) )
             {                                  			
             AC_SetLoggingStatus($this->archiveHandlerID,$variableLogID,true);

@@ -1,5 +1,5 @@
 <?php
-/*erstellt von RemoteAccess::add_Guthabensteuerung() am 23.11.2025 05:05
+/*erstellt von RemoteAccess::add_Guthabensteuerung() am 12.12.2025 05:05
  */
 function GuthabensteuerungList() { return array(
     "Phone_Cost" => array(
@@ -14,16 +14,16 @@ function GuthabensteuerungList() { return array(
          "Typ" => 2, 
          "Order" => "501", 
              	),
-    "StartImacro" => array(
-         "OID" => 14828, 
-         "Name" => "StartImacro", 
-         "Typ" => 1, 
-         "Order" => "502", 
-             	),
     "Phone_Load" => array(
          "OID" => 15501, 
          "Name" => "Phone_Load", 
          "Typ" => 2, 
+         "Order" => "502", 
+             	),
+    "StartImacro" => array(
+         "OID" => 14828, 
+         "Name" => "StartImacro", 
+         "Typ" => 1, 
          "Order" => "503", 
              	),
     "ScriptTimer" => array(
@@ -53,7 +53,7 @@ function GuthabensteuerungList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_Amis() am 23.11.2025 05:05
+/*erstellt von RemoteAccess::add_Amis() am 12.12.2025 05:05
  */
 function AmisStromverbrauchList() { return array(
     "Wohnung-LBG70_Wirkenergie" => array(
@@ -168,80 +168,94 @@ function AmisStromverbrauchList() { return array(
          "Profile"  => "~Power", 
          "Order"    => "115", 
              	),
+    "Geschirrspueler_Wirkenergie" => array(
+         "OID" => 40297, 
+         "Name" => "Geschirrspueler_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "116", 
+             	),
+    "Geschirrspueler_Wirkleistung" => array(
+         "OID" => 38801, 
+         "Name" => "Geschirrspueler_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "117", 
+             	),
     "Kueche_Wirkenergie" => array(
          "OID" => 14873, 
          "Name" => "Kueche_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
-         "Order"    => "116", 
+         "Order"    => "118", 
              	),
     "Kueche_Wirkleistung" => array(
          "OID" => 31087, 
          "Name" => "Kueche_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
-         "Order"    => "117", 
+         "Order"    => "119", 
              	),
     "Weinkuehler_Wirkenergie" => array(
          "OID" => 40334, 
          "Name" => "Weinkuehler_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
-         "Order"    => "118", 
+         "Order"    => "120", 
              	),
     "Weinkuehler_Wirkleistung" => array(
          "OID" => 21004, 
          "Name" => "Weinkuehler_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
-         "Order"    => "119", 
+         "Order"    => "121", 
              	),
     "Wohnzimmer_Wirkenergie" => array(
          "OID" => 20807, 
          "Name" => "Wohnzimmer_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
-         "Order"    => "120", 
+         "Order"    => "122", 
              	),
     "Wohnzimmer_Wirkleistung" => array(
          "OID" => 56504, 
          "Name" => "Wohnzimmer_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
-         "Order"    => "121", 
+         "Order"    => "123", 
              	),
     "Wohnzimmer-MeshedRouter_Wirkenergie" => array(
          "OID" => 57417, 
          "Name" => "Wohnzimmer-MeshedRouter_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
-         "Order"    => "122", 
+         "Order"    => "124", 
              	),
     "Wohnzimmer-MeshedRouter_Wirkleistung" => array(
          "OID" => 30415, 
          "Name" => "Wohnzimmer-MeshedRouter_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
-         "Order"    => "123", 
+         "Order"    => "125", 
              	),
     "Statusanzeige_Wirkenergie" => array(
          "OID" => 22647, 
          "Name" => "Statusanzeige_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
-         "Order"    => "124", 
+         "Order"    => "126", 
              	),
     "Statusanzeige_Wirkleistung" => array(
          "OID" => 47717, 
          "Name" => "Statusanzeige_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
-         "Order"    => "125", 
+         "Order"    => "127", 
              	),
 
       );}
 
-/*erstellt von RemoteAccess::add_SysInfo() am 23.11.2025 05:05
+/*erstellt von RemoteAccess::add_SysInfo() am 12.12.2025 05:05
  */
 function SysInfoList() { return array(
     "Hostname" => array(
@@ -296,7 +310,7 @@ function SysInfoList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_RemoteServer() am 23.11.2025 05:05
+/*erstellt von RemoteAccess::add_RemoteServer() am 12.12.2025 05:05
  */
 function ROID_List() { return array(
       );}
