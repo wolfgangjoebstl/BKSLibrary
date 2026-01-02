@@ -6325,6 +6325,8 @@ class TestMovement extends DetectEventListHandler
                 $continue=false;
                 echo "Delete Line $i for $index, format wrong: "; Print_r($entry);
                 }
+            if (isset($entry["Pfad"]) === false) { echo "Do not know Pfad in $filter : ".json_encode($entry)."\n"; $continue = false; }
+            if (IPS_ObjectExists($trigger) === false) { echo "Do not know $trigger : [TriggerVariableID,EventID] ".json_encode($entry)."\n"; $continue = false; }
             if ($continue)
                 {
                 $path=$entry["Pfad"]."/".IPS_GetName($trigger);
@@ -7271,7 +7273,7 @@ class DetectEventListHandler extends DetectEventHandler
 	/**************************************************
 	 *
 	 * nicht nur die CustomComponents Events bearbeiten, sondern auch Autosteuerungs Events anschauen, hier die Liste erstellen
-	 *
+	 * benötigt motionDevice, switchDevice, buttonDevice aufrufen von syncEventList
 	 * mit der CustomComponents Eventliste auch vergleichen
 	 *
 	 *
@@ -7298,7 +7300,9 @@ class DetectEventListHandler extends DetectEventHandler
 	public function getAutoEventListTable($autosteuerung_config, $debug=true)
 		{
 		//print_r($autosteuerung_config);
+        if ($debug) echo "getAutoEventListTable(".sizeof($autosteuerung_config)." autosteuerung_config entries)\n";
 		$i=0; $delete=0;
+        if (isset($this->motionDevice)===false) echo "Warning, getAutoEventListTable, run syncEventList first \n";
 		$motionDevice=$this->motionDevice;		/* kopieren, da zusaetzliche Eintraege dazu gemacht werden */
 		$switchDevice=$this->switchDevice;
 		$buttonDevice=$this->buttonDevice;

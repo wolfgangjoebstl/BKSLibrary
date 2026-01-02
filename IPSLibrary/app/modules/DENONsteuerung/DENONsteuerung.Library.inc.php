@@ -1,4 +1,4 @@
-<?
+<?php
 //--------- DENON AVR 3311 Anbindung V0.95 18.06.11 15:08.53 by Raketenschnecke ---------
 
 /*****

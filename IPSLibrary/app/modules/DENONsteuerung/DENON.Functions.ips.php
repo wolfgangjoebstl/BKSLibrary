@@ -1,4 +1,4 @@
-<?
+<?php
 //--------- DENON AVR 3311 Anbindung V0.95 18.06.11 15:08.53 by Raketenschnecke ---------
 
 /*
@@ -6,7 +6,7 @@ Inital-Autor: philipp, Quelle: http://www.ip-symcon.de/forum/f53/denon-avr-3808-
 
 Funktionen:
 	*Funktionssammlung aller implementierten DENON-Status und Befehle
-	*empängt die Steuerbefehle aus dem DENON.Actionscript,
+	*empÃ¤ngt die Steuerbefehle aus dem DENON.Actionscript,
 		formatiert diese und sendt sie an den "DENON Client Socket"
 */
 

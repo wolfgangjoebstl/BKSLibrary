@@ -3972,10 +3972,11 @@ class archiveOps
      *
      * Config Parameter (mit statistics->setConfiguration bereinigt)
      *      ShowTable
-     *          output          [realTable,all]  entweder doecho oder ausgabe als arra mit allen Daten oder nur realTable
-     *          align           den Zeitstempel auf Tages, Stunden, Minutenwerte runterrechnen um leichter Übereinstimmungen zu finden
-     *          adjust
-     *          calculate
+     *          output          [realTable,all]  entweder doecho oder ausgabe als array mit allen Daten oder nur realTable
+     *          doecho          [false,true] doecho
+     *          align           [monthly,daily,hourly,minutely] den Zeitstempel auf Tages, Stunden, Minutenwerte runterrechnen um leichter Übereinstimmungen zu finden
+     *          adjust          den Zeitstempel verschieben
+     *          calculate       [delta]
      *          double          [mean,sum]  beim alignment, was passiert mit den doppelten Werten, default ist aufsummieren
      *
      *
@@ -4229,7 +4230,7 @@ class archiveOps
                 if ($pullwrite && $target)                      // source für das target gefunden, dort Werte hinzufügen, dazu correct einfach als Index hochzählen
                     {
                     // mit Source oder mit Delta
-                    if ($debug) echo "Add Data Source \"$pullwrite\" to Target \"$target\" \n";
+                    if ($debug>1) echo "Add Data Source \"$pullwrite\" to Target \"$target\" \n";
                     $valuesAdd[$target][$pullwrite][$correct]["Value"]=$targetValue;            // source nicht mehr relevant, sondern nur wo werden die Wert gespeichert
                     $valuesAdd[$target][$pullwrite][$correct]["TimeStamp"]=$targetTimeStamp;
                     $correct++;
@@ -5103,16 +5104,16 @@ class archiveOps
      *
      *        
      *       EventLog            true
-        *       DataType            Archive, Aggregated, Logged
-        *           Aggregated      true if dataType is Aggregated, werte false,0,1,2,
-        *       manAggregate        Aggregate, 
-        *                          Format
-        *       KIfeature           none, besondere Auswertungen machen
-        *       Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
-        *       OIdtoStore          eine ander OID verwenden als die echte OID
-        *
-        *       processondata       eigene Unterkonfigurationsgruppe
-        *       cleanupdata         eigene Unterkonfigurationsgruppe
+     *       DataType            Archive, Aggregated, Logged
+     *           Aggregated      true if dataType is Aggregated, werte false,0,1,2,
+     *       manAggregate        Aggregate, 
+     *                          Format
+     *       KIfeature           none, besondere Auswertungen machen
+     *       Split               Split, Änderungen der Skalierung zu einem bestimmten zeitpunkt
+     *       OIdtoStore          eine ander OID verwenden als die echte OID
+     *
+     *       processondata       eigene Unterkonfigurationsgruppe
+     *       cleanupdata         eigene Unterkonfigurationsgruppe
         * 
         *       returnResult
         *
@@ -10561,10 +10562,10 @@ class ipsOps
         return ($result);
         }
 
-    /*  input ist das outcome von configWebfront
-    *
-    *
-    */
+    /* input ist das outcome von configWebfront
+     * nur Ausgabe der Config wenn enabled, es wird nichts konfiguriert
+     *
+     */
     function writeConfigWebfrontAll($config)
         {
         echo "Überblick Konfiguration Webfront:\n";
@@ -16684,7 +16685,7 @@ class WfcHandling
         // $this->WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
         foreach ($this->WebfrontConfigID as $name => $entry)    
             {
-            echo "     Webfront Konfigurator Name : ".str_pad($name,20)." ID : ".$entry."\n";
+            echo "     Webfront Konfigurator Name : ".str_pad($name,30)." ID : ".$entry."\n";
             }
         echo "\n";
         }
@@ -17671,10 +17672,10 @@ class WfcHandling
         /* check nach weiteren Webfront Konfiguratoren */
 
         echo "Security and Configuration check.\n";
-        foreach ($WebfrontConfigID as $Key=>$Item)
+        foreach ($WebfrontConfigID as $key=>$item)
             {
-            $config=json_decode(IPS_GetConfiguration($Item));
-            switch ($Key)
+            $config=json_decode(IPS_GetConfiguration($item));
+            switch ($key)
                 {
                 case "User":	
                     if ($config->MobileID < 0) 
@@ -17685,16 +17686,26 @@ class WfcHandling
                 case "Kachel Visualisierung":
                     if ($config->Password == "") 
                         {
-                        echo "  ".$Key.": Remote Access Webfront Password not set.   --> setzen\n";
+                        echo "  ".$key.": Remote Access Webfront Password not set.   --> setzen\n";
                         }
                     else	
                         {
-                        echo "  OK ".$Key.": Remote Access Webfront Password set : (".$config->Password.")\n";
+                        echo "  OK ".$key.": Remote Access Webfront Password set : (".$config->Password.")\n";
                         }					
                     break;
                 default:
-                    echo "    $Key : Zusaetzlichen Webfront Configurator gefunden.  --> loeschen\n";
-                    print_r($config);
+                    $instance=IPS_GetInstance($item); 
+                    if (isset($instance["ModuleInfo"]["ModuleName"]))
+                        {
+                        echo "    $key : Zusaetzlichen ".$instance["ModuleInfo"]["ModuleName"]." Configurator gefunden.  ";
+                        $moduleId=$instance["ModuleInfo"]["ModuleID"];
+                        if ($moduleId=="{B5B875BB-9B76-45FD-4E67-2607E45B3AC4}") echo "\n";
+                        else echo "--> loeschen\n";
+                        //print_R($instance); 
+                        //print_r($config);
+                        }
+                    else echo "    $key : Zusaetzlichen Configurator gefunden.  --> loeschen\n";
+
                 }
             }	
 

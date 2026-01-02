@@ -67,7 +67,9 @@
 	 *************************************************************/
 
 	$debug=false;
-    $startexec=microtime(true);     /* Laufzeitmessung */
+    $execscript=true;               // Run Evaluate Hardware
+
+    $startexec=microtime(true);     // Laufzeitmessung 
 
 
 
@@ -90,6 +92,7 @@
         {
         echo "Script Execute, Darstellung automatisch mit Debug aktiviert. \n";
         $debug=false;
+        $execscript=false;
         }
     else $debug=false;
 
@@ -184,10 +187,13 @@
         $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
         echo "\n";
         echo "Die EvaluateHardware Scripts sind in App auf               ".$CategoryIdAppEH."\n";
-        echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." und wird jetzt gestartet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-        IPS_RunScriptWait($scriptIdEvaluateHardware);
-
-        echo "Script Evaluate Hardware gestartet wurde mittlerweile abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
+        if ($execscript)            // save runtime, false when exec as script
+            {
+            echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." und wird jetzt gestartet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+            IPS_RunScriptWait($scriptIdEvaluateHardware);
+            echo "Script Evaluate Hardware gestartet wurde mittlerweile abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
+            }
+        else echo "Warning, EvalauateHarwdare Script not started.\n";
         }
 
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
@@ -202,6 +208,7 @@
     $scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
 	$scriptIdStartSymcon    = IPS_GetScriptIDByName('StartSymcon', $CategoryIdApp);
 	$scriptIdStoppSymcon    = IPS_GetScriptIDByName('StoppSymcon', $CategoryIdApp);
+    $scriptIdEventControl   = IPS_GetScriptIDByName('EventControl', $CategoryIdApp);
 
     if ($debug)
         {
@@ -231,7 +238,7 @@
     $discovery=array();
     $modulhandling->addConfigurator($discovery,["Switchbot"]);
 
-    $topologyLibrary = new TopologyLibraryManagement(true);                     // in EvaluateHardware Library, neue Form des Topology Managements, true für Debug
+    $topologyLibrary = new TopologyLibraryManagement($debug);                     // in EvaluateHardware Library, neue Form des Topology Managements, true für Debug
     $hardware = $topologyLibrary->get_HardwareList($discovery);
 
     //$modulhandling->printLibraries();         // alle Bibliotheken anzeigen, neu sind MQTT Client, MQTT Server, SwitchBot   Configurator
@@ -240,11 +247,14 @@
 
     // Switchbot Instanzen updaten aus der Cloud
     $config=array();
-    foreach ($hardware["SwitchBot"] as $name => $entry)
+    if (isset($hardware["SwitchBot"]))          // es müssen Geräte angelegt worden sein, sonst empty config
         {
-        SWB_DeviceStatus($entry["OID"]);
-        $config[$entry["OID"]]=$name;
-        }
+        foreach ($hardware["SwitchBot"] as $name => $entry)
+            {
+            SWB_DeviceStatus($entry["OID"]);
+            $config[$entry["OID"]]=$name;
+            }
+        }    
     SetValue($ConfigPullId,json_encode($config));
 
 	/******************************************************
@@ -330,8 +340,10 @@
 	$tim8ID  = $timerOps->CreateTimerHour("SystemInfo",02,30, $scriptIdOperationCenter);
 	$tim9ID  = $timerOps->CreateTimerHour("Homematic",02,40, $scriptIdOperationCenter);	
 	$tim14ID = $timerOps->CreateTimerHour("UpdateStatus",03,40, $scriptIdOperationCenter);
-	$tim7ID  = $timerOps->CreateTimerHour("FileStatus",03,50, $scriptIdOperationCenter);
+	
+    $tim7ID  = $timerOps->CreateTimerHour("FileStatus",03,50, $scriptIdOperationCenter);
 	$tim13ID = $timerOps->CreateTimerHour("CleanUpEndofDay",22,40, $scriptIdOperationCenter);	
+	$tim16ID = $timerOps->CreateTimerHour("UpdatesomeTables",23,10, $scriptIdOperationCenter);	
 		
 	$tim11ID = $timerOps->CreateTimerSync("MoveLogFiles",150, $scriptIdOperationCenter);						/* Maintanenance Funktion: Move Log Files, Backup Funktion */	
 	$tim2ID  = $timerOps->CreateTimerSync("MoveCamFiles",150, $scriptIdOperationCenter);
@@ -983,13 +995,18 @@
                         $handle2=fopen($verzeichnis.$unterverzeichnis."start_VMware.bat","w");
                         // VMWare vmplayer wird nicht mehr unterstützt. Daher vmware.exe verwenden. Dazu noch irgendwo automatic Power On konfigurieren 
                         //fwrite($handle2,'"'.$configWatchdog["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWatchdog["Software"]["VMware"]["DirFiles"].$configWatchdog["Software"]["VMware"]["FileName"].'"'."\r\n");
-                        fwrite($handle2,'"'.$configWatchdog["Software"]["VMware"]["Directory"].'vmware.exe" "'.$configWatchdog["Software"]["VMware"]["DirFiles"].$configWatchdog["Software"]["VMware"]["FileName"].'"'."\r\n");
+                        // vmware opens wmware application and powers the machine on
+                        fwrite($handle2,'"'.$configWatchdog["Software"]["VMware"]["Directory"].'vmware.exe" -x "'.$configWatchdog["Software"]["VMware"]["DirFiles"].$configWatchdog["Software"]["VMware"]["FileName"].'"'."\r\n");
                         fclose($handle2);
                         }
-                    echo "\n-----------------------------\nWatchdog Installation beendet.\n";
+                    echo "Watchdog Installation beendet.\n";
                     }
                 }
-            print_r($configWatchdog);
+            if ($debug)
+                {
+                print_r($configWatchdog);
+                echo "-----------------------------\n";
+                }
             }
         else
             {           // Batch Datei read_Systeminfo.bat schreiben für Windows Betriebssystem, wenn Watchdog Modul installiert ist
@@ -1673,11 +1690,11 @@
         $modulhandling = new ModuleHandling();              // neu initialisiseren, filter entfernen
         $discovery = $modulhandling->getDiscovery();
         $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Module hinzufügen
-        print_R($discovery);
+        if ($debug) print_R($discovery);
         echo "Auswertung der SocketList (I/O Instanzen).\n";
         $socket=array();
         $socket = $topologyLibrary->get_SocketList($discovery);
-        print_r($socket);
+        if ($debug) print_r($socket);
         $countSocket=0;
         foreach ($socket as $modul => $module) 
             {
@@ -2362,7 +2379,7 @@
 	if (isset ($installedModules["OperationCenter"])) 
 		{
 		$log_Install->LogMessage("Install Module OperationCenter abgeschlossen.");
-        echo "Install Module OperationCenter abgeschlossen.\n";
+        echo "Install Module OperationCenter abgeschlossen. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 		}
 
 	// ----------------------------------------------------------------------------------------------------------------------------

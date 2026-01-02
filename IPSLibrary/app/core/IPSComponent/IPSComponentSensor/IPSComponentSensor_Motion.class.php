@@ -90,11 +90,20 @@
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
          *
          * Andere Reihenfolge bei Remote und Temperatur: $instanceId=null, $remoteOID=null, $tempValue=null     hier        $remoteOID=null, $instanceId=null, $tempValue=null 
+         *      Var1            instance        tempObject
+         *      lightObject     ROID            RemoteOID
+         *      lightValue      typedev         tempValue
+         *
+         * automatische Zuordnung, weil immer etwas falsch ist, auch unterstützt
+         *      ROID,instance,typedev
+         *      ROID,typedev
+         *
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null)
 			{
+			$debug=true;
 		    //echo "Build Motion Sensor with OID ".$var1.", RemoteOIds $lightObject und Type Definitionen: $lightValue.\n";
-            if (strpos($var1,":") !== false)                // par1 manchmal auch par2, rausfinden
+            if (strpos($var1,":") !== false)                // ROID ist par1 da ein : gefunden wurde
                 {
                 $this->tempObject   = $lightObject;         // alte Parametrierung, var1 ist die Server:remoteOID Parametrierung
                 $this->RemoteOID    = $var1;                    
@@ -104,8 +113,10 @@
                 $this->tempObject   = $var1;
                 $this->RemoteOID    = $lightObject;                    
                 }
-			$this->tempValue    = $lightValue;
 			
+			if (isset($lightValue)===false) $this->tempValue    = $lightObject;         // immer der letzte Parameter muss typedev sein
+            else $this->tempValue    = $lightValue;
+
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			if (isset ($this->installedmodules["RemoteAccess"]))
@@ -117,6 +128,7 @@
 				{								
 				$this->remServer	  = array();
 				}
+            if ($debug) echo "IPSComponentSensor_Motion: Construct Motion Sensor with ($this->tempObject,$this->RemoteOID,$this->tempValue).\n";	                
 			}
 
 		/*
@@ -488,7 +500,8 @@
                 }
 			else $result=GetValue($this->variable);
             switch ($this->variableTypeReg)
-                {            
+                {
+                case "SUMMOTION":            
                 case "MOTION":
                     $resultLog=$this->doLogMotion($result);
                     break;                

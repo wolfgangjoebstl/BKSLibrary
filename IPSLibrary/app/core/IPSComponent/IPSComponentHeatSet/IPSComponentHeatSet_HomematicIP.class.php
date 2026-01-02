@@ -158,7 +158,34 @@
             return "";
             }
 
-
+        /* zweistufig, rausfinden welcher deviveType
+         */
+        public function GetDeviceType($instanceId=false)
+            {
+            if ($instanceId===false) $instanceId = $this->instanceId;                
+            /* alle Homematic Instanzen suchen, verfügen über Index OID und HMDevice, benötigen abhängig vom Typ unterschiedliche Variablen zum Setzen */
+			$instances=array();
+			foreach (HomematicList() as $instanceHM)
+				{
+                if ( (isset($instanceHM["OID"])) && (isset($instanceHM["HMDevice"])) )
+                    {
+				    //echo $instanceHM["OID"]."  ".$instanceHM["HMDevice"]."\n";
+				    $instances[$instanceHM["OID"]]=$instanceHM["HMDevice"];
+                    }
+				}
+            //if ($this->debug) print_r($instances);    
+            if (isset($instances[$instanceId]) ) 
+				{
+                if ($this->debug)
+                    {
+                    echo "    IPSComponentHeatSet_HomematicIP:construct with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." (".IPS_GetName($this->instanceId).") ROIDs:  \"".$this->RemoteOID."\" Remote Server : \"".$this->rpcADR."\" Zusatzparameter :  ".$this->tempValue."  ";
+                    echo "---> gefunden, Typ ist ".$instances[$this->instanceId]."\n"; 	
+                    }
+				$this->deviceHM = $instances[$instanceId];		
+				}
+            else echo "          IPSComponentHeatSet_HomematicIP:construct, Fehler keine Instanz $instanceId in HomematicList(), run EvaluateHardware.\n";                
+            return ($this->deviceHM);
+            }
 
 		/**
 		 * @public
@@ -249,7 +276,7 @@
 		 * @return boolean aktueller Schaltzustand  
 		 */
 		public function GetState() {
-			GetValue(IPS_GetVariableIDByIdent('STATE', $this->instanceId));
+			GetValue(IPS_GetVariableIDByName('STATE', $this->instanceId));
 		}
 
 		/**
@@ -259,8 +286,11 @@
 		 *
 		 * @return boolean aktueller Schaltzustand  
 		 */
-		public function GetLevel() {
-			GetValue(IPS_GetVariableIDByIdent('STATE', $this->instanceId));
+		public function GetLevel($instanceId=false) {
+            if ($instanceId===false) $instanceId = $this->instanceId;
+            $oid=IPS_GetVariableIDByName("SET_POINT_TEMPERATURE", $instanceId);
+			$value=GetValue($oid);
+            return ($value);
 		}
 
 		/**

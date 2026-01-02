@@ -42,11 +42,11 @@
  *
  ********************************/
 
-    $debug=true;
+    $debug=false;
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
     
-    IPSUtils_Include ("iTunes.Configuration.inc.php","IPSLibrary::config::modules::iTunesSteuerung");
+    //IPSUtils_Include ("iTunes.Configuration.inc.php","IPSLibrary::config::modules::iTunesSteuerung");
     IPSUtils_Include ("iTunes.Library.ips.php","IPSLibrary::app::modules::iTunesSteuerung");
 	
     IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
@@ -61,22 +61,23 @@
     $moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
     $moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
     $moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
-
-	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPS ModulManager Version   : ".$ergebnis;                              
-	$ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('iTunesSteuerung');
-	echo "\nModul iTunesSteuerung Version : ".$ergebnisVersion."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";     /* wird auch für das Logging der Installation verwendet */
-
+    $ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('iTunesSteuerung');
 	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	echo $inst_modules."\n";
 
-    if (isset($installedModules["Startpage"]))  echo "Modul Startpage available.\n";
+    if ($debug)
+        {
+        echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
+        $ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+        echo "\nIPS ModulManager Version   : ".$ergebnis;                              
+        echo "\nModul iTunesSteuerung Version : ".$ergebnisVersion."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";     /* wird auch für das Logging der Installation verwendet */
+        echo $inst_modules."\n";
+        if (isset($installedModules["Startpage"]))  echo "Modul Startpage available.\n";
+        }
 
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
@@ -94,12 +95,16 @@
         $subnet="10.255.255.255";
 
         $systemDir     = $dosOps->getWorkDirectory(); 
-        echo "systemDir : $systemDir \n";           // systemDir : C:/Scripts/ 
-        echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
 
         $Heute=time();
         $HeuteString=date("dmY",$Heute);
-        echo "Heute  Datum ".$HeuteString." für das Logging der iTunesSteuerung Installation.\n";
+
+        if ($debug)
+            {
+            echo "systemDir : $systemDir \n";           // systemDir : C:/Scripts/ 
+            echo "Operating System : ".$dosOps->getOperatingSystem()."\n";
+            echo "Heute  Datum ".$HeuteString." für das Logging der iTunesSteuerung Installation.\n";
+            }
 
         $LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
         $log_Install=new Logging($systemDir."Install/Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
@@ -108,7 +113,7 @@
 
 	$modulhandling = new ModuleHandling();	                    // aus AllgemeineDefinitionen
 
-    if (false)
+    if (false)          // Discovery Module suchen für Media Objekte
         {
         echo "Check Target Libraries:\n";
         $targetLibrary=["Denon/Marantz AV Receiver","Built-In","Philips HUE V2","Sonos Module"];
@@ -117,21 +122,30 @@
         echo "Alle Discovery Instanzen (Homematic, HUE, Echo, Denon, Harmony) :\n";
         $discovery = $modulhandling->getDiscovery();            // Nach Discovery im Namen
         print_R($discovery);
-        echo "alle verfügbaren Module vom Typ Discovery: \n";           // Abgleich mit Target Library
-        $discoveryModules=IPS_GetModuleListByType(5);
-        //print_r($discoveryModules);
-        foreach ($discoveryModules as $discoveryModule)
+        if ($debug>1) 
             {
-            //print_r(IPS_GetModule("{BAEA5454-4256-48AA-982B-538201A374D4}"));
-            echo "    $discoveryModule = ".IPS_GetModule($discoveryModule)["ModuleName"];
-            //if (IPS_ModuleExists($discoveryModule)) echo "   bereits installiert.";
-            echo "\n";
+            $discoveryModules=IPS_GetModuleListByType(5);
+            //print_r($discoveryModules);
+            echo "alle verfügbaren Module vom Typ Discovery: \n";           // Abgleich mit Target Library
+            foreach ($discoveryModules as $discoveryModule)
+                {
+                //print_r(IPS_GetModule("{BAEA5454-4256-48AA-982B-538201A374D4}"));
+                echo "    $discoveryModule = ".IPS_GetModule($discoveryModule)["ModuleName"];
+                //if (IPS_ModuleExists($discoveryModule)) echo "   bereits installiert.";
+                echo "\n";
+                }
             }
         echo "\n";
 
-        $modulhandling->printrModules("Sonos Module");
+        //$modulhandling->printrModules("Sonos Module");
         }
 
+    //echo "doInstall\n";
+    $iTunes = new iTunes($debug);
+    //echo "GetConfig\n";
+    $config = $iTunes->getiTunesConfig();
+
+    $instances=false;
     $libraries=$modulhandling->getLibrary("Sonos Module");
     if ($libraries != false) 
         {
@@ -139,13 +153,10 @@
 
         $modules=$modulhandling->getModules($libraries);
         //print_R($modules);
-        $modulhandling->printModules($libraries);
+        if ($debug) $modulhandling->printModules($libraries);
         $instances = $modulhandling->getInstances("Sonos Player");
-        print_R($instances);
+        //print_R($instances);
         }
-
-    $iTunes = new iTunes();
-    $config = $iTunes-> getiTunesConfig();
     if (is_array($instances))
         {
         if (isset($config["SonosPlayer"])===false)
@@ -154,15 +165,39 @@
             $config["SonosPlayer"]["OID"]=$instances[0];
             }
         }
+    $instances=false;        
+    $libraries=$modulhandling->getLibrary("Spotify");
+    //print_r($libraries);
+    if ($libraries != false) 
+        {
+        echo "Library available : $libraries \n";                                              
+
+        $modules=$modulhandling->getModules($libraries);
+        //print_R($modules);
+        if ($debug) $modulhandling->printModules($libraries);
+        $instances = $modulhandling->getInstances("Spotify");
+        //print_R($instances);
+        }
+    if (is_array($instances))
+        {
+        if (isset($config["SpotifyPlayer"])===false)
+            {
+            $config["SpotifyPlayer"]=array();
+            $player=["NAME"=>"Player","PROFILE"=>'~HTMLBox',"TYPE"=>'PLAY',"SIDE"=>"LEFT","OID"=>$instances[0]];
+            $config["SpotifyPlayer"]["Player"]=$player;
+            }
+        }
+
     if ($debug) { echo "Konfiguration:\n";    print_R($config); }
 
     //if (false)          // an einer bestimmten Stelle einfügen
         {
+        echo "function iTunes_Configuration() einfügen.\n";
         $eventConfiguration = '$iTunesConfig';
         $commentarea = "/* this is the comment line showing initial creation, not updated afterwards\n*/\n";
         $prestore = 'function iTunes_Configuration() {'."\n   ";
         $includefileDevices = "$eventConfiguration = ";                 // sonst wird die Zeile immer länger
-        $ipsOps->serializeArrayAsPhp($config, $includefileDevices, 0, 0, false);          // depth, ident, true mit Debug
+        $ipsOps->serializeArrayAsPhp($config, $includefileDevices, 0, 10, false);          // depth, ident, true mit Debug
         $poststore = "return $eventConfiguration ;\n";
         $poststore .= "}\n\n";        
 

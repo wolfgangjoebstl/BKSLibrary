@@ -199,6 +199,8 @@ class AutosteuerungHandler
             configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["setTemp","settemp","Settemp","SETTEMP","SetTemp" ],"setTemp" ,22);          //Default bedeutet Heizung Aus nach einem Update, ReInstall
             //print_r($config);
 
+            configfileParser($configInput, $config, ["ElectricHeating",'Stromheizung',"Electricheating",'StromHeizung' ],"ElectricHeating" ,array());  
+
             configfileParser($configInput, $configFloorplan, ["FloorPlan","floorplan","FLOORPLAN" ],"FloorPlan" ,array());       // wenn keine Angaben fangen wir mit der Welt an 
             configfileParser($configFloorplan["FloorPlan"], $config["FloorPlan"], ["PlaceToStart","placetostart","PLACETOSTART" ],"PlaceToStart" ,"World");       // wenn keine Angaben fangen wir mit der Welt an 
 
@@ -5481,7 +5483,7 @@ class Autosteuerung
 			}
 		else
 			{
-			echo "Keine Regelfunktion, Setpoint nicht gesetzt.\n";
+			echo "Keine Regelfunktion, Index SETPOINT nicht gesetzt.".json_encode($result)."\n";
 			}		
 			
 		//echo $ergebnis."\n";
@@ -6395,7 +6397,8 @@ class Autosteuerung
      *  IPSLIGHT==None          SetValue OID
      *  Rest abhängig vom MODULE
      *
-	 *
+	 * verwendet zum Beispiel IPSHeat_SetSwitchByName
+     *
 	 */
 	
 	private function switchObjectNow($result,$state,$debug=false)
@@ -6510,7 +6513,11 @@ class Autosteuerung
      * DELAY#CHECK ist eine Sonderfunktion, nach Ablauf der Zeit prüfen ob Bedingung noch gültig, wenn nicht mehr gültig, Switch und Timer ausschalten. 
      *
 	 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
-     *
+     * Erster Parameter ist der decompilierte Befehl:
+     *      nur wenn SWITCH true
+     *          Befehl DIM
+     *          Befehl DELAY
+     *          sonst nichts tun, return Ergebnis, Leerzeile wenn nix passiert ist
      */
 
 	public function timerCommand($result,$simulate=false,$ipslogger='IPSLogger_Dbg')
@@ -6596,7 +6603,7 @@ class Autosteuerung
 					}	
 				}
 			}
-        echo $ergebnis."\n";	
+        echo "timerCommand: $ergebnis.\n";	
         return($ergebnis);
         }
 
@@ -6940,7 +6947,7 @@ class Autosteuerung
  *       AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung 
  *       AutosteuerungAlarmanlage
  *
- * mit den Stadard Funktionen, abstract
+ * mit den Standard Funktionen, abstract
  *      set_Configuration
  *      get_Configuration
  *      Init
@@ -6987,6 +6994,11 @@ abstract class AutosteuerungFunktionen
     public function get_Configuration()
         {
         return ($this->configuration);
+        }
+
+    public function getConfig()
+        {
+        return ($this->config);
         }
 
 	function Init()     //class AutosteuerungFunktionen
@@ -7098,8 +7110,13 @@ abstract class AutosteuerungFunktionen
                 {
                 if ($this->config["storeTableID"])
                     {
-                    $messages = json_decode(GetValue($this->config["storeTableID"]),true);
-                    $messages[time()]=$message;
+                    $table=GetValue($this->config["storeTableID"]);
+                    if ($table=="") $messages=array();                      // empty at start, detect and clear array
+                    else $messages = json_decode($table,true);
+                    $latestTime=time();
+                    foreach ($messages as $timeStamp => $entry) if ($timeStamp>$latestTime) $latestTime=$timeStamp; 
+                    if (isset($messages[$latestTime])) $messages[($latestTime+1)]=$message;                                                 //nur eine Nachricht pro Sekunde, kleiner Workaround
+                    else $messages[$latestTime]=$message;                                                 
                     krsort($messages);
                     if (count($messages)>50)
                         {
@@ -7203,12 +7220,18 @@ abstract class AutosteuerungFunktionen
 
 /*****************************************************************************************************
  *
- * Temperaturregelung in der Autosteuerung
+ * Temperaturregelung in der Autosteuerung extends AutosteuerungFunktionen
  *
  * Routinen zur Temperaturregelung. Construktor wird nun üblicherweise ohne Parameter aufgerufen.
  * d.h. construct muss sich selbst helfen und Annahmen treffen:
  *
  * Default: kein Logging in einem File, Verzeichnis
+ *
+ *  __construct
+ *  WriteLink
+ *  InitMesagePuffer
+ *
+ *
  *
  **************************************************************************************************************/
 
@@ -8706,6 +8729,17 @@ function SwitchFunction($params,$status,$variableID,$simulate=false,$wertOpt="")
  *
  * xxxxxx => array('OnChange','HeatControl','if:Arbeitszimmer,name:ArbeitszimmerHeizung,control:18,threshold:1,exceed:false',)
  *
+ * Ablauf der Funktionen
+ *      AutosteuerungRegler     nur für Logging ???
+ *      Autosteuerung
+ *          setNewValue         Werte wegspeichern und Änderung erfassen
+ *          ParseCommand        Befehle herausarbeiten
+ *          Befehle der Reihe nach abarbeiten, getrennt durch Strichpunkt
+ *              EvaluateCommand         die einzelnen kommandos bearbeiten, getrennt durch Komma   
+ *              ControlSwitchLevel 
+ *              ExecuteCommand
+ *              timerCommand
+ *
  *************************************************************************************************/
 
 function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
@@ -8768,11 +8802,12 @@ function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
             if ($simulate) echo $command[$entry]["COMMENT"]."\n";
             else 
                 {
+                $nachricht=str_replace(['"',"\n","\r"], "",$command[$entry]["COMMENT"]);
+                $nachrichtenVent->LogNachrichten($nachricht);
+                /*
                 if (strlen($command[$entry]["COMMENT"])>4) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
-                if (strlen($command[$entry]["COMMENT"])>104) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],100));
+                if (strlen($command[$entry]["COMMENT"])>104) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],100));  */
                 }
-            //if (strlen($command[$entry]["COMMENT"])>4) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
-            //if (strlen($command[$entry]["COMMENT"])>140) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],140));	
             }
 
 		//$log_Autosteuerung->LogNachrichten('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').'.$result);

@@ -1,16 +1,16 @@
-<?
+<?php
 //--------- DENON AVR 3311 Anbindung V0.95 18.06.11 15:08.53 by Raketenschnecke ---------
 
 ############################ Info ##############################################
 /*
 
 Funktionen:
-	*dient zur manuellen Löschung ALLER DENON.XXX-Variablenprofile
-	*sollte nur ausgeführt werden wenn auf eine neue Version des DENON-Pakets
-		umgestiegen werden soll (und diese neue Version Änderungen in den Variablen-Profilen enthält)
-	*wenn mit diesem Script bestehende Variablenprofile gelöscht werden sollen so
-		sollte dies unbedingt VOR Ausführung des DENON.Installers erfolgen
-		(der >DENON.Installer überschreibt keine bestehenden Profile)
+	*dient zur manuellen LÃ¶schung ALLER DENON.XXX-Variablenprofile
+	*sollte nur ausgefÃ¼hrt werden wenn auf eine neue Version des DENON-Pakets
+		umgestiegen werden soll (und diese neue Version Ã„nderungen in den Variablen-Profilen enthÃ¤lt)
+	*wenn mit diesem Script bestehende Variablenprofile gelÃ¶scht werden sollen so
+		sollte dies unbedingt VOR AusfÃ¼hrung des DENON.Installers erfolgen
+		(der >DENON.Installer Ã¼berschreibt keine bestehenden Profile)
 */
 
 ############################ Info Ende #########################################
@@ -24,8 +24,8 @@ foreach ($profile_array as $profile)
    if (strpos ($profile, $profile_praefix) !== false)
 	{
       IPS_DeleteVariableProfile($profile);
-      echo "DENON.ProfileCleaner: Variablenprofil $profile gelöscht\n";
+      echo "DENON.ProfileCleaner: Variablenprofil $profile gelÃ¶scht\n";
    }
 }
-echo "DENON.ProfileCleaner: alle DENON.XXX Variablenprofile gelöscht!\n";
+echo "DENON.ProfileCleaner: alle DENON.XXX Variablenprofile gelÃ¶scht!\n";
 ?>

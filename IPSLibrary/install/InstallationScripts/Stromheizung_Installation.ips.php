@@ -45,7 +45,11 @@
 
 	IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');    
 
-	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    $startexec=microtime(true);
+    $doRegister=false;                  // keine zusätzliche Registrierung von MessageHandler Events, alles erfolgt in RemoteAccess 
+    $debug=false;
+    
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
@@ -56,14 +60,11 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
+	if ($debug) echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPS ModulManager Version   : ".$ergebnis;
+	if ($debug) echo "\nIPS ModulManager Version   : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Stromheizung');
-	echo "\nModul Stromheizung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
-
-    $startexec=microtime(true);
-    $doRegister=false;                  // keine zusätzliche Registrierung von MessageHandler Events, alles erfolgt in RemoteAccess 
+	if ($debug) echo "\nModul Stromheizung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 
 /*******************************
  *
@@ -77,7 +78,7 @@
 		{
 		$inst_modules.="  ".str_pad($name,20)." ".$modules."\n";
 		}
-	echo $inst_modules."\n";
+	if ($debug) echo $inst_modules."\n";
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -145,11 +146,12 @@
  *
  ********************************/
 
-	
+	echo "Webfront Konfiguration ueberpruefen:\n";
     $wfcHandling =  new WfcHandling();
     $wfcHandling->get_WfcStatus();
+
     $WebfrontConfigID = $wfcHandling->installWebfront();            // Webfront Administrator, User und Kachel Visulaisiserung anlegen
-	
+
 /*******************************
  *
  * Webfront Konfiguration einlesen
@@ -205,7 +207,7 @@ Path=Visualization.Mobile.Stromheizung
 	$Mobile_Enabled       = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
 	$Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
 
-    $ipsOps->writeConfigWebfrontAll($configWFront);
+    if ($debug) $ipsOps->writeConfigWebfrontAll($configWFront);             // Ausgabe der Konfiguration
 
 	$WFC10_Regenerate     = false;			// true, das Webfront im Konfigurator neu aufbauen
 	$mobile_Regenerate    = true;			// das mobile Webfront nicht neu aufbauen
@@ -367,18 +369,23 @@ Path=Visualization.Mobile.Stromheizung
 	// ===================================================================================================
 	// Add Programs
 	// ===================================================================================================
+    echo "\n";
+    echo "Create Mirror Variables for Programs in $categoryIdPrograms.\n";                  // Integer mit einem Profil
 	$idx = 10;
 	$programConfig = IPSHeat_GetProgramConfiguration();
 	foreach ($programConfig as $programName=>$programData) 
 		{
+        echo "   $programName ";            
 		$itemIdx = 0;
 		$programAssociations = array();
 		foreach ($programData as $programItemName=>$programItemData) 
 			{
 			$programAssociations[]=$programItemName;
 			}
+        echo json_encode($programAssociations)."\n";
+
 		CreateProfile_Associations ('IPSHeat_'.$programName, $programAssociations, "ArrowRight");
-		$programId = CreateVariable($programName, 1 /*Integer*/, $categoryIdPrograms,  $idx,  'IPSLight_'.$programName, $scriptIdActionScript, 0);
+		$programId = CreateVariable($programName, 1 /*Integer*/, $categoryIdPrograms,  $idx,  'IPSHeat_'.$programName, $scriptIdActionScript, 0);
 		$idx = $idx + 1;
 		}
 
@@ -398,140 +405,146 @@ Path=Visualization.Mobile.Stromheizung
      * deshalb sicher stellen dass die Werte auch bei Änderung angepasst werden
      *
 	 ***************************************************************************/
-	 
-	echo "\nRegister Events für Device Synchronization.\n";
-    /* this is when devicelist comes in, we know its an ACTUATOR, but not the real varname of the register
-        * how is devcielist built. We have Actuators that were brought to the config
-        */
-    IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-    IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
-    IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
-    IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');   
 
-    $devicelist = new DeviceListManagement();           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
-    $devicelist->setEventListFromConfigFile();
-    $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
-    $devicelist->analyse($ipsheatManager);              // calc coids, oids and uuids
-    echo "Result is new arrays structured as UUIDs with list of Topology Devices, oids and coids :\n";
-    $oids=$devicelist->get_oids();
-    echo "   Number of OIDs detected : ".sizeof($oids)."\n";
+    if ($doRegister)
+        { 
+        echo "\nRegister Events für Device Synchronization.\n";
+        /* this is when devicelist comes in, we know its an ACTUATOR, but not the real varname of the register
+            * how is devcielist built. We have Actuators that were brought to the config
+            */
+        IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+        IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+        IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+        IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');   
+        IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+
+        // moderne Implementierung
+        $devicelist = new DeviceListManagement();           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
+        $devicelist->setEventListFromConfigFile();
+        $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
+        $devicelist->analyse($ipsheatManager);              // calc coids, oids and uuids
+        echo "Result is new arrays structured as UUIDs with list of Topology Devices, oids and coids :\n";
+        $oids=$devicelist->get_oids();
+        echo "   Number of OIDs detected : ".sizeof($oids)."\n";
 
 
-	IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-	IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
-    // Eventlist aus dem MessageHandler
-    $eventList = new DetectEventListHandler();
-    $eventList->setEventListFromConfigFile();
-    $eventListData = $eventList->getEventList();
-	 
-	$lightConfig = IPSHeat_GetHeatConfiguration();
-	foreach ($lightConfig as $deviceName=>$deviceData) 
-		{
-		//echo "   Bearbeite ".$deviceName."\n";
-		$component = $deviceData[IPSHEAT_COMPONENT];
-		$componentParams = explode(',', $component);
-		$componentClass = $componentParams[0];
+        // Eventlist aus dem MessageHandler
+        $eventList = new DetectEventListHandler();
+        $eventList->setEventListFromConfigFile();
+        $eventListData = $eventList->getEventList();
+        
+        $lightConfig = IPSHeat_GetHeatConfiguration();
+        foreach ($lightConfig as $deviceName=>$deviceData) 
+            {
+            //echo "   Bearbeite ".$deviceName."\n";
+            $component = $deviceData[IPSHEAT_COMPONENT];
+            $componentParams = explode(',', $component);
+            $componentClass = $componentParams[0];
 
-		echo "   Bearbeite ".$deviceName." mit ComponentClass : ".$componentClass."\n";				
-		switch ($componentClass)
-			{
-			case 'IPSComponentSwitch_LCNa':
-				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-				$variableId = @IPS_GetObjectIDByIdent('Intensity', $instanceId);
-				if ($variableId===false) 
-					{
-					$moduleManager->LogHandler()->Log('Variable with Ident Intensity could NOT be found for LCN Instance='.$instanceId);
-					} 
-				elseif ($doRegister) 
-					{
-					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
-					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
-					}
-				break;	
-			case 'IPSComponentSwitch_LCN':
-				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-				$variableId = @IPS_GetObjectIDByIdent('Status', $instanceId);
-				if ($variableId===false) 
-					{
-					$moduleManager->LogHandler()->Log('Variable with Ident Status could NOT be found for LCN Instance='.$instanceId);
-					} 
-				elseif ($doRegister) 
-					{
-					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
-					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
-					}
-				break;			
-			case 'IPSComponentSwitch_EIB':
-				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-				$variableId = @IPS_GetObjectIDByIdent('Value', $instanceId);
-				if ($variableId===false) 
-					{
-					$moduleManager->LogHandler()->Log('Variable with Ident Value could NOT be found for EIB Instance='.$instanceId);
-					} 
-				elseif ($doRegister) 
-					{
-					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor EIB Instance='.$instanceId);
-					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
-					}			
-				break;	
-			case 'IPSComponentSwitch_Homematic';
-			case 'IPSComponentSwitch_RHomematic';
-				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-				$variableId = @IPS_GetObjectIDByIdent('STATE', $instanceId);
-				if ($variableId===false) 
-					{
-					$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
-					} 
-				elseif ($doRegister) 
-					{
-					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
-					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSHeat,');
-					}
-				break;	
-			case 'IPSComponentHeatSet_Homematic':
-			case 'IPSComponentHeatSet_HomematicIP':
-			case 'IPSComponentHeatSet_FS20':	
-				//print_r($componentParams);								
-				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-				$variableId = @IPS_GetObjectIDByIdent('SET_TEMPERATURE', $instanceId);
-				if ( isset($componentParams[2]) )
-					{
-					echo "Register IPSComponentHeatSet_Homematic : ".$instanceId."     ".$variableId."       ".$componentParams[2]."\n";
-					}
-				else
-					{	
-					echo "Register IPSComponentHeatSet_Homematic : ".$instanceId."   (".IPS_GetName($instanceId).")     ".$variableId."\n";
-					}
-				if ($variableId===false) 
-					{
-					$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
-					} 
-				elseif ($doRegister) 
-					{
-					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
-					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleHeatSet_All,');
-					}
-				break;
-			case 'IPSComponentHeatSet_Data':
-			case 'IPSComponentTuner_Denon':
-			case 'IPSComponentSwitch_RFS20':
-			case 'IPSComponentSwitch_Value':
-			case 'IPSComponentRGB_PhilipsHUE':		// alte Component mit Direktansteuerung von HUE
-			case 'IPSComponentRGB_HUE':			    // neuere Variante
-			case 'IPSComponentRGB_PHUE':	        // finale V1 Variante Philips HUE mit Discovery Funktion
-            case 'IPSComponentRGB_PHUE2':               // neues V2 Modul mit besserer Kommunikation
-			case 'IPSComponentDimmer_Homematic':
-			case 'IPSComponentShutter_XHomematic':			
-			case 'IPSComponentSwitch_RMonitor':
-			case 'IPSComponentRGB_LW12':
-				break;					
-			default:
-				trigger_error('Unknown ComponentType '.$componentClass.' found for Heat or Light '.$deviceName.' cannot register.');			
-				break;
-			}
-		}
-
+            echo "   Bearbeite ".$deviceName." mit ComponentClass : ".$componentClass."\n";				
+            switch ($componentClass)
+                {
+                case 'IPSComponentSwitch_LCNa':         //  für einen LCN analog Ausgang implementiert., immer noch original Brauneis
+                    $instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+                    $variableId = @IPS_GetObjectIDByIdent('Intensity', $instanceId);
+                    if ($variableId===false) 
+                        {
+                        $moduleManager->LogHandler()->Log('Variable with Ident Intensity could NOT be found for LCN Instance='.$instanceId);
+                        } 
+                    elseif ($doRegister) 
+                        {
+                        $moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
+                        $messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+                        }
+                    break;	
+                case 'IPSComponentSwitch_LCN':          //  für einen LCN Ausgang implementiert, immer noch original Brauneis
+                    $instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+                    $variableId = @IPS_GetObjectIDByIdent('Status', $instanceId);
+                    if ($variableId===false) 
+                        {
+                        $moduleManager->LogHandler()->Log('Variable with Ident Status could NOT be found for LCN Instance='.$instanceId);
+                        } 
+                    elseif ($doRegister) 
+                        {
+                        $moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
+                        $messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+                        }
+                    break;			
+                case 'IPSComponentSwitch_EIB':              // für einen EIP Switch, immer noch original Brauneis
+                    $instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+                    $variableId = @IPS_GetObjectIDByIdent('Value', $instanceId);
+                    if ($variableId===false) 
+                        {
+                        $moduleManager->LogHandler()->Log('Variable with Ident Value could NOT be found for EIB Instance='.$instanceId);
+                        } 
+                    elseif ($doRegister) 
+                        {
+                        $moduleManager->LogHandler()->Log('Register OnChangeEvent vor EIB Instance='.$instanceId);
+                        $messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+                        }			
+                    break;	
+                case 'IPSComponentSwitch_Homematic';                    // ab hier bekannt
+                case 'IPSComponentSwitch_RHomematic';
+                    $instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+                    $variableId = @IPS_GetObjectIDByIdent('STATE', $instanceId);
+                    if ($variableId===false) 
+                        {
+                        $moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
+                        } 
+                    elseif ($doRegister) 
+                        {
+                        $moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
+                        $messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSHeat,');
+                        }
+                    break;	
+                case 'IPSComponentHeatSet_Homematic':
+                case 'IPSComponentHeatSet_HomematicIP':
+                case 'IPSComponentHeatSet_FS20':
+                    // wir suchen den zweiten Parameter nach Component und Instanz, wenn doregister im messagehandler das register registrieren	soll
+                    //print_r($componentParams);								
+                    $instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+                    $variableId = @IPS_GetObjectIDByIdent('SET_TEMPERATURE', $instanceId);
+                    if ( isset($componentParams[2]) )
+                        {
+                        echo "      Register IPSComponentHeatSet_Homematic : ".$instanceId."     ".$variableId."       ".$componentParams[2]."\n";
+                        }
+                    else
+                        {	
+                        echo "      Register IPSComponentHeatSet_Homematic : ".$instanceId."   (".IPS_GetName($instanceId).")     ".$variableId."\n";
+                        }
+                    if ($variableId===false) 
+                        {
+                        $moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
+                        } 
+                    elseif ($doRegister) 
+                        {
+                        $moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
+                        $messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleHeatSet_All,');
+                        }
+                    break;
+                case 'IPSComponentHeatSet_Data':
+                case 'IPSComponentTuner_Denon':
+                case 'IPSComponentSwitch_RFS20':
+                case 'IPSComponentSwitch_Value':
+                case 'IPSComponentRGB_PhilipsHUE':		// alte Component mit Direktansteuerung von HUE
+                case 'IPSComponentRGB_HUE':			    // neuere Variante
+                case 'IPSComponentRGB_PHUE':	        // finale V1 Variante Philips HUE mit Discovery Funktion
+                case 'IPSComponentRGB_PHUE2':               // neues V2 Modul mit besserer Kommunikation
+                case 'IPSComponentDimmer_Homematic':
+                case 'IPSComponentShutter_XHomematic':			
+                case 'IPSComponentSwitch_RMonitor':
+                case 'IPSComponentRGB_LW12':
+                    break;					
+                default:
+                    trigger_error('Unknown ComponentType '.$componentClass.' found for Heat or Light '.$deviceName.' cannot register.');			
+                    break;
+                }
+            }
+        }
+    else echo "Do not Register Variables to be updated when changed locally. Maybe done somewhere else.\n";
 	/***********************************************************************************************
 	 * Register Data area for Thermostat Configuration Handling 
 	 *

@@ -36,6 +36,7 @@
      *
      * class IPSHeat_Manager
      * private vars $switchCategoryId, $groupCategoryId, $programCategoryId
+     *
      *  __construct
      *  getSwitchCategoryId
      *  setConfiguration
@@ -622,21 +623,31 @@
 			/* Sync mit IPSLight */
 
 			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
-			$component       = IPSComponent::CreateObjectByParams($componentParams);
-
-			SetValue($variableId, $value);
-			if (!$switchValue and ($variableId==$levelId or $variableId==$colorId)) {
-				SetValue($switchId, true);
-			}
-			$switchValue  = GetValue($switchId);
-			IPSLogger_Inf(__file__, 'Turn Heat/Light SetRGB '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId).', Color='.GetValue($colorId):'Off')."  RGB Wert : ".dechex(GetValue($colorId))."   ".$componentParams);
-
-			if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 
+            
+            SetValue($variableId, $value);
+            if (!$switchValue and ($variableId==$levelId or $variableId==$colorId)) 
                 {
-                if ($debug) echo "    SetState(".GetValue($switchId).",".dechex(GetValue($colorId)).",".GetValue($levelId).")\n";  
-				$component->SetState(GetValue($switchId), GetValue($colorId), GetValue($levelId));
-			    }
-			IPSHeat_AfterSwitch($switchId, $switchValue);
+                SetValue($switchId, true);
+                }
+            $switchValue  = GetValue($switchId);
+            IPSLogger_Inf(__file__, 'Turn Heat/Light SetRGB '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId).', Color='.GetValue($colorId):'Off')."  RGB Wert : ".dechex(GetValue($colorId))."   ".$componentParams);
+
+            if (trim($componentParams)=="") 
+                {
+                if ($debug) echo "SetRGB component params empty \"$componentParams\" \n";                             // können auch leer sein, oder ein Dummy Component
+                }
+            else    
+                {
+                $component       = IPSComponent::CreateObjectByParams($componentParams);
+
+
+                if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 
+                    {
+                    if ($debug) echo "    SetState(".GetValue($switchId).",".dechex(GetValue($colorId)).",".GetValue($levelId).")\n";  
+                    $component->SetState(GetValue($switchId), GetValue($colorId), GetValue($levelId));
+                    }
+                IPSHeat_AfterSwitch($switchId, $switchValue);
+                }
 
 			//IPSLogger_Inf(__file__, "Turn Heat/Light SetRGB Synchronize Groups for $switchId if ".($syncGroups?"Ein":"Aus"));
 			if ($syncGroups) {

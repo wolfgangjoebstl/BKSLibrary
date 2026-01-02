@@ -68,6 +68,7 @@
 		 */
 		public function __construct($debug=false) 
 			{
+            if ($debug) "construct iTunes \n";                
             $this->debug=$debug;
             $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	        $moduleManager = new IPSModuleManager('iTunesSteuerung',$repository);     /*   <--- change here */
@@ -82,7 +83,7 @@
             $this->dosOps = new dosOps();
             $this->systemDir     = $this->dosOps->getWorkDirectory();
 
-			$this->iTunesConfig = $this->setiTunesConfig();
+			$this->iTunesConfig = $this->setiTunesConfig($debug);
 			}
 
         /* Konfiguration analysieren und vereinheitlichen

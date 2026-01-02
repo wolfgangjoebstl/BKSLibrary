@@ -3334,76 +3334,6 @@ class OperationCenter extends OperationCenterConfig
             }
 		return ($time);
 		}			
-			
-																											
-	/*
-	 *  Die oft umfangreichen Files die erstellt werden in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
-	 *	 werden kann.
-	 *
-	 */
-
-	function DirLogs($verzeichnis="")
-		{
-		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';
-		$verzeichnis = $this->dosOps->correctDirName($verzeichnis);			// sicherstellen das ein Slash oder Backslah am Ende ist
-
-		echo "DirLogs: Verzeichnis der Logfiles von ".$verzeichnis.".\n";
-		$print=0;
-		$dir=0; $totalsize=0; $warning=false;
-
-		// Test, ob ein Verzeichnis angegeben wurde
-		if ( is_dir ( $verzeichnis ) )
-			{
-			//echo "Konfiguration:\n";
-			//print_r($this->oc_Setup);
-			$logdir=$this->readdirToArray($verzeichnis);	// es gibt zweiten Parameter für rekursiv wenn true
-			//print_r($logdir); // zu gross
-			foreach ($logdir as $index => $entry)
-				{
-				if (is_dir($verzeichnis.$entry)==true) 
-					{
-					echo "  ".$index."  Directory  ".$entry."\n";
-					$entries=$this->readdirToArray($verzeichnis.$entry);
-					$size=sizeof($entries);	
-					$dir++;
-					$totalsize+=$size;							
-					}
-				else
-					{	
-					if (($print++)<1000) 
-						{
-						echo "  ".$index."  Datei     ".$entry."\n"; // aufpassen damit nicht zu gross
-						}
-					else
-						{	
-						if ($warning==false)
-							{
-							echo "**** es sind mehr Dateien als 1000 vorhanden- Ausgabe gestoppt.\n";
-							$warning=true;
-							}
-						}	
-					$totalsize++;
-					}	
-				}
-			echo "Insgesamt wurden ".$totalsize. " Dateien und Verzeichnisse gefunden.\n";	
-			}
-		else
-			{
-			echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
-			}
-		return($dir);		
-		}
-
-    /*
-	function correctDirName($verzeichnis)
-		{
-		$len=strlen($verzeichnis); $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");
-		if ( ($pos1) && ($pos1<($len-1)) ) $verzeichnis .= "\\";
-		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		
-		return ($verzeichnis);
-		}
-    */
-
 
     function purgeCamFiles($cam_config,$debug=false)
         {
@@ -6143,6 +6073,7 @@ class BackupIpsymcon extends OperationCenter
  * extends OperationCenter because it is using same config file
  * works with the generated logfiles and backups them and deletes them after some time
  *
+ *      DirLogs
  *      MoveFiles
  *      MoveCamFiles
  *      flattenYearMonthDayDirectory
@@ -6151,6 +6082,184 @@ class BackupIpsymcon extends OperationCenter
 
 class LogFileHandler extends OperationCenter
 	{
+
+    function readxmllogfile($filename)
+        {
+        //=;
+        $debug=false;
+        $content = utf8_encode(file_get_contents($filename));
+        //$content = utf8_encode(file_get_contents($Verzeichnis.$lognametoday));
+        $xml = simplexml_load_string($content);
+        if ($xml !== false)
+            {
+            echo "full read of $file successful\n";
+            }
+        else    
+            {
+            echo "full read of $file NOT successful\n";            
+            $content = utf8_encode(file_get_contents($filename));
+            $input = explode("\n", $content);
+            $lines=sizeof($input);
+            echo "Read $lines Lines of File $logname. Switch off Html filtern in log display.\n";
+            //$startatline=$lines-500; 
+            $startatline=0;
+            $printonce=true; $oldentry="";
+            If ($startatline<0) $startatline=0;
+            foreach ($input as $line => $entry)
+                {
+                if ($line>$startatline) 
+                    {
+                    $newentry=$oldentry.$entry;
+                    $len = strlen($newentry);
+                    //echo str_pad($line,10).$entry;
+                    if ($pos1=strpos($newentry,"<") !== 0) 
+                        {
+                        if ($debug)
+                            {
+                            if ($len>3) echo str_pad($line,10)."Warning, No Opening < in line : $entry\n";
+                            else echo str_pad($line,10)."Warning, Empty line : $entry\n";
+                            }
+                        }
+                    else    
+                        {
+                        $pos2=strrpos($newentry,">");
+                        if (($len-$pos2)>2)
+                            {
+                            if ($debug) echo str_pad($line,10)."Multiline Pos < is 0, Len is $len, Pos > is $pos2  $entry \n";
+                            $oldentry=$newentry."\n";
+                            }
+                        else 
+                            {
+                            $oldentry="";
+                            //echo "\n";
+                            $api = @simplexml_load_string($newentry);
+                            if ($api !== false)
+                                {
+                                $read = xmlToArray($api);
+                                if ($printonce) 
+                                    {
+                                    echo str_pad($line,10).$newentry."\n"; 
+                                    print_r($read); $printonce=false; 
+                                    }
+                                if ($read["event"]["attributes"]["level"]=="ERROR")         // filter
+                                    {
+                                    echo str_pad($line,10).$read["event"]["attributes"]["timestamp"]."  ";
+                                    echo $read["event"]["attributes"]["logger"]."  \n";
+                                    echo " ".$read["event"]["message"]["value"]."\n";
+                                    }
+                                }
+                            else 
+                                {
+                                echo "Array not decoded ***************\n";
+                                $errors = libxml_get_errors();
+
+                                foreach ($errors as $error) {
+                                    echo display_xml_error($error, $newentry);
+                                    }                
+                                }
+                            }
+                        }
+                    //print_r($api->@attributes);            
+                    }
+                }
+            }
+
+
+        }
+
+    /* standard dir read of verzeichnis
+     * wenn ext false dann ganzes dir
+     * wenn xml oder log dann wird gesucht
+     */
+
+	function readLogDir($Verzeichnis=false, $ext=false, $debug=false)
+        {
+        if ($Verzeichnis===false) $Verzeichnis = IPS_GetKernelDir()."logs/";
+        $today = date("Ymd");
+        $yesterday = date("Ymd",time() - (1 * 24 * 60 * 60));
+        $file=array();
+        $handle=opendir ($Verzeichnis);
+        $i=0;
+        while ( false !== ($datei = readdir ($handle)) )
+            {
+            if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($Verzeichnis.$datei) == false) )  
+                {
+                $filename=explode(".",$datei);
+                if ($filename[1] == $ext)
+                    {
+                    $filedate=explode("_",$filename[0]);
+                    if (isset($filedate[1]))
+                        {
+                        if ($filedate[1] == $today) { $file["lognametoday"]=$datei; }
+                        if ($filedate[1] == $yesterday) { $file["logname"]=$datei; }
+                        if ($debug) echo " $ext file found : ".$filename[0].".".$filename[1]." with log date ".$filedate[1]."\n";
+                        }                    
+                    }
+                $i++;
+                if ($ext===false) $file[$i]=$datei;
+                }
+            }
+        closedir($handle);            
+        return ($file);
+        }	
+        																								
+	/*
+	 *  Die oft umfangreichen Files die erstellt werden in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
+	 *	 werden kann.
+	 *
+	 */
+
+	function DirLogs($verzeichnis="")
+		{
+		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';
+		$verzeichnis = $this->dosOps->correctDirName($verzeichnis);			// sicherstellen das ein Slash oder Backslah am Ende ist
+
+		echo "DirLogs: Verzeichnis der Logfiles von ".$verzeichnis.".\n";
+		$print=0;
+		$dir=0; $totalsize=0; $warning=false;
+
+		// Test, ob ein Verzeichnis angegeben wurde
+		if ( is_dir ( $verzeichnis ) )
+			{
+			//echo "Konfiguration:\n";
+			//print_r($this->oc_Setup);
+			$logdir=$this->readdirToArray($verzeichnis);	// es gibt zweiten Parameter für rekursiv wenn true
+			//print_r($logdir); // zu gross
+			foreach ($logdir as $index => $entry)
+				{
+				if (is_dir($verzeichnis.$entry)==true) 
+					{
+					echo "  ".$index."  Directory  ".$entry."\n";
+					$entries=$this->readdirToArray($verzeichnis.$entry);
+					$size=sizeof($entries);	
+					$dir++;
+					$totalsize+=$size;							
+					}
+				else
+					{	
+					if (($print++)<1000) 
+						{
+						echo "  ".$index."  Datei     ".$entry."\n"; // aufpassen damit nicht zu gross
+						}
+					else
+						{	
+						if ($warning==false)
+							{
+							echo "**** es sind mehr Dateien als 1000 vorhanden- Ausgabe gestoppt.\n";
+							$warning=true;
+							}
+						}	
+					$totalsize++;
+					}	
+				}
+			echo "Insgesamt wurden ".$totalsize. " Dateien und Verzeichnisse gefunden.\n";	
+			}
+		else
+			{
+			echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+			}
+		return($dir);		
+		}
 
 	/*
 	 *  Die oft umfangreichen Log-Files oder Captured Pics bei Alarmierung in einem gemeinsamen Ordner pro Tag zusammenfassen, 
@@ -6599,6 +6708,8 @@ class HomematicOperation extends OperationCenter
         }
 
     /* HomematicOperation::ccuSocketStatus 
+     * called every hour
+     * creates a html table with connection status and last changed of each CCU Socket, additional status and renboot ctr is introduced
      */
     public function ccuSocketStatus($log_OperationCenter=false, $debug=false)
         {
@@ -6617,6 +6728,7 @@ class HomematicOperation extends OperationCenter
         }
 
     /* HomematicOperation::ccuSocketDutyCycle 
+     * needs more memory
      */
     public function ccuSocketDutyCycle($log_OperationCenter=false, $debug=false)
         {
@@ -6639,7 +6751,8 @@ class HomematicOperation extends OperationCenter
             $configCleanUpData = array();
             $configCleanUpData["deleteSourceOnError"]=false;
             $configCleanUpData["maxLogsperInterval"]=false;           //unbegrenzt übernehmen
-            $config["CleanUpData"] = $configCleanUpData;    
+            $config["CleanUpData"] = $configCleanUpData; 
+            $config["ShowTable"]["align"]="hourly";                  
             
             $result=$this->get_CCUDevices();
             foreach ($result as $name => $entry)
@@ -6647,8 +6760,9 @@ class HomematicOperation extends OperationCenter
                 $oid = $entry["COID"];
                 $this->componentHandling->setLogging($oid);          // eigentlich Teil des Installs
 
-                echo str_pad($name,45)."$oid   ".GetValueFormatted($oid)."\n";
+                echo str_pad($name,45)."$oid   ".GetValueFormatted($oid)."     ".IPS_GetParent($oid)."\n";
                 echo $archiveOps->getStatus($oid)."\n";
+                $config["OIdtoStore"]=$name;
                 $ergebnis = $archiveOps->getValues($oid,$config,false);          // true Debug
                 $description[$oid] = $ergebnis["Description"];
                 //foreach ($ergebnis["Description"] as $index=>$eintrag) echo "$index    \n";
@@ -6686,7 +6800,7 @@ class HomematicOperation extends OperationCenter
      */
     public function sysStatusSockets($log_OperationCenter, $debug=false)
         {
-        if ($debug) echo "sysStatusSockets aufgerufen, alle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
+        if ($debug) echo "   sysStatusSockets aufgerufen, alle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
         $socketHtml="";
         $categoryId_Sockets = @IPS_GetObjectIDByName("SocketStatus",$this->categoryId_SysPing);
         if ($categoryId_Sockets)
@@ -6704,18 +6818,98 @@ class HomematicOperation extends OperationCenter
                 switch ($modul)
                     {
                     case "Homematic":
-                        $socketHtml .=  '<tr><th>'.$modul." CCU Status".'</th><th>OID</th><th>Status</th><th>last changed</th></tr>';
+                        $socketHtml .=  '<tr><th>'.$modul." CCU Status".'</th><th>OID</th><th>Open</th><th>Status</th><th>last changed</th></tr>';
                         // Homematic CCU I/O Sockets, die gehen auf fail=false wenn es Probleme gibt
                         foreach ($module as $name => $entry) 
                             {
-                            $status=(IPS_GetProperty($entry["OID"], "Open")?"active":"failure");
+                            // verwendet $variableId, $instanceStatusId, $instanceNumStatusId, $StatusID, $RebootID
+                            $SocketOpen=IPS_GetProperty($entry["OID"], "Open");         // eigentlich die falsche Information
+                            $SocketStatus=($SocketOpen?"open":"closed");
                             $variableId=CreateVariableByName($categoryId_Sockets,$name."_"."Connected",3);      // als String, leichter lesbar
-                            SetValue($variableId,$status);
-                            $changed = date("H:i:s d.m.Y",IPS_GetVariable($variableId)["VariableChanged"]);
+                            SetValue($variableId,$SocketStatus);
+                            // instance Status
+                            $instanceStatusId=CreateVariableByName($categoryId_Sockets,$name."_"."InstanceStatus",3);      // als String, leichter lesbar
+                            $instanceNumStatusId=CreateVariableByName($categoryId_Sockets,$name."_"."InstanceStatusNum",1);      // als String, leichter lesbar
+                            $config=json_decode(IPS_GetConfigurationForm($entry["OID"]),true);
+                            $status=IPS_GetInstance($entry["OID"])["InstanceStatus"];
+                            switch ($status)    
+                                {
+                                case 102:
+                                    $statusinfo="Instanz ist aktiv";
+                                    break;
+                                case 101: 
+                                    $statusinfo="Instanz wird erstellt";
+                                    break;
+                                case 103:
+                                    $statusinfo="Instanz wird gelöscht";
+                                    break;
+                                case 104:
+                                    $statusinfo="Instanz ist inaktiv";
+                                    break;
+                                case 105:
+                                    $statusinfo="Instanz wurde nicht erstellt";
+                                    break;
+                                case 106:
+                                    $statusinfo="Instanz ist im Standby";
+                                    break;
+                                default:                    // irgendetwas größer gleich 200
+                                    $statusinfo="Instanz ist fehlerhaft, $status";
+                                    break;
+                                }
+                            SetValue($instanceStatusId,$statusinfo);
+                            // htmlinfo
+                            $oldstatus=GetValue($instanceNumStatusId);
+                            $changed = date("H:i:s d.m.Y",IPS_GetVariable($instanceNumStatusId)["VariableChanged"]);
                             $socketHtml .=  '<tr><td>'.$name.'</td><td>'.$entry["OID"].'</td><td>';
-                            $socketHtml .=  $status.'</td><td>'.$changed.'</td></tr>'; //Ist die I/O Instanz aktiv?
+                            $socketHtml .=  $SocketStatus.'</td><td>'.$statusinfo.'</td><td>'.$changed.'</td></tr>'; //Ist die I/O Instanz aktiv?
 
-                            }
+                            SetValue($instanceNumStatusId,$status);
+                            // logging und rebootCtr
+                            $StatusID = @IPS_GetObjectIDByName($name."_"."Connected",$this->categoryId_SysPing);
+                            $RebootID = @IPS_GetObjectIDByName($name."_"."Connected",$this->categoryId_RebootCtr);
+                            if ($StatusID===false) 
+                                {
+                                $StatusID = CreateVariableByName($this->categoryId_SysPing,   $name."_"."Connected", 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+                                SetValue($StatusID,true);           // default value
+                                }
+                            if ($RebootID===false) 
+                                {
+                                $RebootID = CreateVariableByName($this->categoryId_RebootCtr, $name."_"."Connected", 1); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+                                SetValue($RebootID,0);
+                                }
+                            if (AC_GetLoggingStatus($this->archiveHandlerID,$StatusID) === false)           // stündliche Eintraege, Open als Instance parameter
+                                { // nachtraeglich Loggingstatus setzen
+                                AC_SetLoggingStatus($this->archiveHandlerID,$StatusID,true);
+                                AC_SetAggregationType($this->archiveHandlerID,$StatusID,0);
+                                IPS_ApplyChanges($this->archiveHandlerID);
+                                }
+                            if (AC_GetLoggingStatus($this->archiveHandlerID,$instanceNumStatusId) === false)           // stündliche Eintraege, Status/Error als Instance parameter
+                                { // nachtraeglich Loggingstatus setzen
+                                AC_SetLoggingStatus($this->archiveHandlerID,$instanceNumStatusId,true);
+                                AC_SetAggregationType($this->archiveHandlerID,$instanceNumStatusId,0);
+                                IPS_ApplyChanges($this->archiveHandlerID);
+                                }                                
+                            if ($status<200)            // true alles gut
+                                {
+                                if ($oldstatus != $status)      // Status Change
+                                    {
+                                    $log_OperationCenter->LogMessage('CCU Socket Statusaenderung von $oldstatus auf $instanceNumStatusId ');
+                                    }
+                                SetValue($StatusID,true);
+                                SetValue($RebootID,0);
+                                if ($debug) echo "      ".str_pad($name,30)."  Status ".(GetValue($StatusID)?"Active":"Failure").". Status Number : $status \n";                           
+
+                                }
+                            else                        // nicht gut, state machine, reboot ctr increase, by 60 Minutes
+                                {
+                                if ($oldstatus != $status)      // aha Fehler ist neu
+                                    {
+                                    $log_OperationCenter->LogMessage('CCU Socket Statusaenderung von $oldstatus auf Fehler $instanceNumStatusId ');                                    
+                                    }
+                                SetValue($RebootID,(GetValue($RebootID)+60));
+                                SetValue($StatusID,false);
+                                if ($debug) echo "      ".str_pad($name,30)."  Status ".(GetValue($StatusID)?"Active":"Failure")."  since ".GetValue($RebootID)."  Minutes. Failure Number : $status \n";                            }
+                                }
                         break;
                     }
                 }
@@ -7359,7 +7553,7 @@ class PingOperation extends OperationCenter
 
 /********************************************************************************************************
  *
- * PingOperation of OperationCenter
+ * CamOperation of OperationCenter
  *
  * extends OperationCenter because it is using same config file
  * provides information of Sysping devices

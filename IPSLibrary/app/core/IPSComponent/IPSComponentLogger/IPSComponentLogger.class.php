@@ -1412,7 +1412,7 @@ class Logging
                                     echo "*****************\n";
                                     echo "do_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben -> Fehler.\n"; 
                                     }   
-                                IPSLogger_Err(__file__, "Logging::do_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben. Annahme:".$this->variableTypeReg);
+                                IPSLogger_Err(__file__, "Logging::do_init,$variable, getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ ($typedev) übergeben. Annahme:".$this->variableTypeReg);
 
                                 break;
                             }    
@@ -1436,7 +1436,8 @@ class Logging
                         $this->Type=2;      // Float für Alle
                         $NachrichtenID = $this->do_init_climate($variable, $variablename);
                         break;
-                    case "MOTION":
+                    case "SUMMOTION":               // Gesamtauswertung
+                    case "MOTION":                  // Bewegungssensoren
                     case "DIRECTION":                       // Durchgangssensoren                    
                         $this->Type=0;      // Motion und DIRECTION ist boolean
                         $NachrichtenID=$this->do_init_motion($variable, $variablename, $value, $debug);
@@ -1447,7 +1448,7 @@ class Logging
                         $NachrichtenID=$this->do_init_contact($variable, $variablename,$value,$debug);
                         break;
                     case "BRIGHTNESS":
-                        IPSLogger_Not(__file__, "Logging::do_init_brightness,getfromDatabase ".$this->variableTypeReg);
+                        //IPSLogger_Not(__file__, "Logging::do_init_brightness,getfromDatabase ".$this->variableTypeReg.", OID $variable Value $value");
                         $this->Type=1;  // Brightness ist Integer
                         $NachrichtenID=$this->do_init_brightness($variable, $variablename,$value,$debug);
                         break;

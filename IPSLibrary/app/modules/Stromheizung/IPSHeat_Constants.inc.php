@@ -39,8 +39,9 @@
 	define ('IPSHEAT_PROGRAMOFF',			8);
 	define ('IPSHEAT_PROGRAMLEVEL',			9);
 	define ('IPSHEAT_PROGRAMRGB',			10);
-    define ('IPSHEAT_MEMBERS',			    20);
-	define ('IPSHEAT_DESCRIPTION',			99);
+    define ('IPSHEAT_MEMBERS',			    20);            // neu
+	define ('IPSHEAT_ROOM',					30);            // neu
+	define ('IPSHEAT_DESCRIPTION',			99);            // neu
 		
 	define ('IPSHEAT_WFCSPLITPANEL',		'WFCSplitPanel');
 	define ('IPSHEAT_WFCCATEGORY',			'WFCCategory');
