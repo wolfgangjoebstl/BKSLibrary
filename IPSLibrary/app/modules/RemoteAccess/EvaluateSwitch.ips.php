@@ -1,8 +1,10 @@
 <?php
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+ * Eine Veränderung des Schaltzustandes kann auch durch direktre Bedienung erfolgen, muss auch im Webinterface und der TSromheizung generell nachgezogen werden
  *
- *	hier für HomematicIP, Homematic und FS20 Schalten
+ * hier für Shelly, Hue, HomematicIP, Homematic,FS20 Schalten
+ * Reihenfolge nach Fortschritt, die WIFI Powerplugs von Shelly erscheinen am fortschrittlichsten
  *
  */
 
@@ -50,7 +52,7 @@
         $componentHandling=new ComponentHandling();
         $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateSwitch um ".date("h:i am d.m.Y ").".";
 
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_SWITCH"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField, true);				/* true ist Debug, Bewegungsensoren */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_SWITCH"],'IPSComponentSwitch_Remote','IPSModuleSwitch_IPSHeat,',$commentField, $debug);				/* true ist Debug, Bewegungsensoren */
         print_r($result);
         }
     else

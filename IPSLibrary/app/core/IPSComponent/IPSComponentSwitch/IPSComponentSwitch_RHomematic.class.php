@@ -83,10 +83,12 @@
 
 		private $instanceId;
 		private $supportsOnTime;
+
 		private $remServer;	                /* Erweiterung zur Homematic Switch Class */
-		private $ErrorHandlerAltID	;       /* ErrorHandler alt für Abfangen des Duty Cycle Events */
 		private $remoteOID;
-	
+
+		private $ErrorHandlerAltID=false	;       // ErrorHandler alt für Abfangen des Duty Cycle Events 	
+        
 		/**
 		 * @public
 		 *
@@ -98,7 +100,7 @@
 		 */
 		public function __construct($var1, $instanceId=false, $supportsOnTime=true) 
 			{
-			//echo "Construct IPSComponentSwitch_RHomematic mit \"".$var1."\"   \"".$instanceId."\"   \"".$supportsOnTime."\"\n";
+			echo "Construct IPSComponentSwitch_RHomematic mit \"".$var1."\"   \"".$instanceId."\"   \"".$supportsOnTime."\"\n";
 			if (($instanceId===false) || ($instanceId==""))  
 				{
 				$this->instanceId   = IPSUtil_ObjectIDByPath($var1);
@@ -139,6 +141,11 @@
 		 *
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
+         *
+         *
+         *
+         * ruft SyncState mit $module auf, module ist IPSModuleSwitch_IPSHeat
+         *
 		 *
 		 * @param integer $variable ID der auslösenden Variable
 		 * @param string $value Wert der Variable
@@ -147,9 +154,10 @@
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
       	    {
 			echo "IPSComponentSwitch_RHomematic:HandleEvent für VariableID : ".$variable." (".IPS_GetName($variable).") mit Wert : ".($value?"Ein":"Aus")." \n";
+            //print_r($module);
 	   	    //IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic: HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.($value?"Ein":"Aus"));			
             $startexec=microtime(true);
-			$module->SyncState($value, $this);
+			$module->SyncState($value, $this, true);                // true für Debug
             echo "Aktuelle Laufzeit nach SyncState ".exectime($startexec)." Sekunden.\n";        
 			$log=new Switch_Logging($variable);         		//echo "Logging.\n";
 			$result=$log->Switch_LogValue();        			//echo "Logging Done !\n";
@@ -193,6 +201,7 @@
             //echo "Aufruf SetState fuer ".$this->instanceId." (".IPS_GetName($this->instanceId).") mit Wert ".($value ? "true":"false")." und Ontime Wert ".($onTime ?:"false")."   \n";
    			if ($onTime!==false and $value and $this->supportsOnTime===true) HM_WriteValueFloat($this->instanceId, "ON_TIME", $onTime);  
 			$state=@HM_WriteValueBoolean($this->instanceId, "STATE", $value);
+            // Fehlerbehandlung
             if ($state==false)
                 {
 				echo "Aufruf SetState fuer ".$this->instanceId." (".IPS_GetName($this->instanceId).") mit Wert ".($value ? "true":"false")." und Ontime Wert ".($onTime ?:"false")."   \n";

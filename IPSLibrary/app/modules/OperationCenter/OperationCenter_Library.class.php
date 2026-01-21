@@ -296,6 +296,8 @@ class OperationCenterConfig
             
             configfileParser($configInput, $config, ["DENON" ],"DENON" ,[]);
 
+            configfileParser($configInput, $config, ["CCU" ],"CCU" ,[]);                        // minimum damit CCU fail Erkennung umgesetzt wird
+
             }
         //$this->oc_Configuration = $config;
         return ($config);
@@ -1164,22 +1166,36 @@ class OperationCenter extends OperationCenterConfig
                     else
                         {
                         $status = sys_ping($data["host"],1000); 
-                        if ($status===false) echo "   Seltsam, ICMP Ping für ".$data["host"]." funktioniert nicht.\n";
-                        $ServerName=$rpc->IPS_GetName(0);
-                        sleep(1);
-                        $ServerUptime=$rpc->IPS_GetKernelStartTime();
-                        sleep(1);
-                        $IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
-                        $ServerVersion=$rpc->IPS_GetKernelVersion();
-                        echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
-                        SetValue($IPS_UpTimeID,$ServerUptime);
-                        SetValue($IPS_VersionID,$ServerVersion);
-                        $RemoteServer[$Name]["Status"]=true;
-                        if (GetValue($ServerStatusID)==false)
-                            {  /* Statusänderung */
-                            $this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
-                            $this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
-                            SetValue($ServerStatusID,true);
+                        if ($status===false) 
+                            {
+                            echo "   Seltsam, ICMP Ping für ".$data["host"]." funktioniert nicht.\n";
+                            SetValue($IPS_UpTimeID,0);
+                            $RemoteServer[$Name]["Status"]=false;
+                            if (GetValue($ServerStatusID)==true)
+                                {  /* Statusänderung */
+                                $this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar, ICMP Ping failed');
+                                $this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar, ICMP Ping failed');
+                                SetValue($ServerStatusID,false);
+                                }
+                            }
+                        else
+                            {
+                            $ServerName=$rpc->IPS_GetName(0);
+                            sleep(1);
+                            $ServerUptime=$rpc->IPS_GetKernelStartTime();
+                            sleep(1);
+                            $IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
+                            $ServerVersion=$rpc->IPS_GetKernelVersion();
+                            echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
+                            SetValue($IPS_UpTimeID,$ServerUptime);
+                            SetValue($IPS_VersionID,$ServerVersion);
+                            $RemoteServer[$Name]["Status"]=true;
+                            if (GetValue($ServerStatusID)==false)
+                                {  /* Statusänderung */
+                                $this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
+                                $this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
+                                SetValue($ServerStatusID,true);
+                                }
                             }
                         }
                     }
@@ -1923,7 +1939,7 @@ class OperationCenter extends OperationCenterConfig
         else return ($PrintLn);
 		}
 
-    /* Application installed
+    /* Application installed by checking Directory
      * Check if Directory is available
      */
     public function appInstalledWin($app,$debug=false) 
@@ -1937,6 +1953,25 @@ class OperationCenter extends OperationCenterConfig
             return ($appdir);               
             }
         else return (false);
+        }
+
+    /* CLI Command installed
+     * Check if Directory is available and file is in there
+     */
+    public function cmdInstalledWin($app,$debug=false) 
+        {
+        $dirs = ['c:/windows/system32/'];
+        if ($debug) echo "Look for $app:\n";
+        foreach ($dirs as $verzeichnis)
+            {        
+            $found = $this->dosOps->fileAvailable($app,$verzeichnis,false);         // true mit Debug
+            if ($found)
+                {
+                $appdir=$verzeichnis.$app; 
+                return ($appdir);               
+                }
+            }
+        return (false);
         }
 
     /* get Java version primarily by reading dirs 
@@ -6209,12 +6244,12 @@ class LogFileHandler extends OperationCenter
 	 *
 	 */
 
-	function DirLogs($verzeichnis="")
+	function DirLogs($verzeichnis="",$debug=false)
 		{
 		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';
 		$verzeichnis = $this->dosOps->correctDirName($verzeichnis);			// sicherstellen das ein Slash oder Backslah am Ende ist
 
-		echo "DirLogs: Verzeichnis der Logfiles von ".$verzeichnis.".\n";
+		if ($debug) echo "DirLogs: Verzeichnis der Logfiles von ".$verzeichnis.".\n";
 		$print=0;
 		$dir=0; $totalsize=0; $warning=false;
 
@@ -6229,7 +6264,7 @@ class LogFileHandler extends OperationCenter
 				{
 				if (is_dir($verzeichnis.$entry)==true) 
 					{
-					echo "  ".$index."  Directory  ".$entry."\n";
+					if ($debug) echo "  ".$index."  Directory  ".$entry."\n";
 					$entries=$this->readdirToArray($verzeichnis.$entry);
 					$size=sizeof($entries);	
 					$dir++;
@@ -6239,13 +6274,13 @@ class LogFileHandler extends OperationCenter
 					{	
 					if (($print++)<1000) 
 						{
-						echo "  ".$index."  Datei     ".$entry."\n"; // aufpassen damit nicht zu gross
+						if ($debug) echo "  ".$index."  Datei     ".$entry."\n"; // aufpassen damit nicht zu gross
 						}
 					else
 						{	
 						if ($warning==false)
 							{
-							echo "**** es sind mehr Dateien als 1000 vorhanden- Ausgabe gestoppt.\n";
+							if ($debug) echo "**** es sind mehr Dateien als 1000 vorhanden- Ausgabe gestoppt.\n";
 							$warning=true;
 							}
 						}	

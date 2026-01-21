@@ -94,6 +94,7 @@
 		 */
 		private $programCategoryId,$lightProgramCategoryId;
         private $configuration;                                         // configuration
+        protected $debug=false;
 
 		/**
 		 * @public
@@ -103,7 +104,8 @@
 		 */
 		public function __construct($debug=false) 
 			{
-			//echo "Construct IPS_HeatManager.\n";
+            $this->debug=$debug;
+			if ($this->debug) echo "Construct IPS_HeatManager.\n";
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
 			$this->switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 			$this->groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
@@ -450,6 +452,7 @@
 		 */
 		public function SetValue($variableId, $value, $debug=false, $exectime=false) 
 			{
+            if ($this->debug) $debug=$this->debug;
 			$parentId = IPS_GetParent($variableId);
 			if ($debug) echo "IPS class HeatManager SetValue von ".$parentId."/".$variableId." (".IPS_GetName($parentId)."/".IPS_GetName($variableId).") mit Wert ".$value."\n";
 			//IPSLogger_Inf(__file__, "IPS class HeatManager SetValue von ".$parentId."/".$variableId." (".IPS_GetName($parentId)."/".IPS_GetName($variableId).") mit Wert ".$value." Alter Wert ".GetValue($variableId));
@@ -507,7 +510,7 @@
 		 */
 		public function SetSwitch($switchId, $value, $syncGroups=true, $syncPrograms=true, $debug=false) 
 			{
-			//if ($debug) echo "Aufruf SetSwitch mit ".$switchId." setzen auf ".$value." : Wert vorher ist ".GetValue($switchId)."\n";
+			if ($debug) echo "Aufruf IPSHeat::SetSwitch mit ".$switchId." setzen auf ".$value." : Wert vorher ist ".GetValue($switchId)."\n";
 			if (GetValue($switchId)==$value) {
 				return;
 			}
@@ -515,20 +518,22 @@
 			$configLights = IPSHeat_GetHeatConfiguration();
 			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
 			$component       = IPSComponent::CreateObjectByParams($componentParams);
-            if ($debug) echo "Aufruf SetSwitch mit ".$switchId." ".$value." Component Params $componentParams\n";
+            if ($debug) echo "    Aufruf Component::SetState mit ".$switchId." ".$value.", Component Params in Stromheizung Config : $componentParams\n";
 
 			SetValue($switchId, $value);
 			IPSLogger_Inf(__file__, 'Turn Heat/Light SetSwitch '.$configName.' '.($value?'On':'Off'));
 
 			if (IPSHeat_BeforeSwitch($switchId, $value)) {
-				$component->SetState($value);
+				$component->SetState($value,false,true);                           // immer IPSComponentSwitch_Remote, true debug
 			}
 			IPSHeat_AfterSwitch($switchId, $value);
 
 			if ($syncGroups) {
+                if ($debug) echo "Sync Groups now\n";
 				$this->SynchronizeGroupsBySwitch($switchId);
 			}
 			if ($syncPrograms) {
+                if ($debug) echo "Sync Programs now\n";
 				$this->SynchronizeProgramsBySwitch ($switchId);
 			}
 		}

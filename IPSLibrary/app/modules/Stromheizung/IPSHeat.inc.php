@@ -160,8 +160,8 @@
 	 * @param string $lightName Name des Schalters
 	 * @param bool $value Neuer Wert des Schalters
 	 */
-	function IPSHeat_SetSwitchByName($lightName, $value) {
-		$lightManager = new IPSHeat_Manager();
+	function IPSHeat_SetSwitchByName($lightName, $value, $debug=false) {
+		$lightManager = new IPSHeat_Manager($debug);
 		$switchId = $lightManager->GetSwitchIdByName($lightName);
 		$lightManager->SetValue($switchId, $value);
 	}

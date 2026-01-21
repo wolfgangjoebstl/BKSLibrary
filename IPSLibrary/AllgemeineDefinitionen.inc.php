@@ -12432,11 +12432,9 @@ class dosOps
                         if ($detExt == false)
                             {
                             /* Wir suchen einen Filenamen */
-                            if ($file == $filename)
-                                {
-                                $status=true;
-                                }
-                            //echo $file."\n";
+                            if ($debug) echo "     $file   \n";                            
+                            if ($file == $filename)  $status=true;
+                            else if(strtoupper($file) == strtoupper($filename)) $status=true;
                             }
                         else
                             {
@@ -15737,6 +15735,10 @@ class ComponentHandling
                 break;
             case "STATE":
             case "STATUSVARIABLE":
+            case "STATUS": 
+            case "STATUS 1":                                     // von Shelly, mehrfachswitch, Steckdosenleiste
+            case "STATUS 2":                                     // von Shelly
+            case "STATUS 3":                                     // von Shelly
                 $variabletyp=0; 		/* Boolean */	
                 $index="Schalter";
                 $profile="Switch";
@@ -18928,7 +18930,8 @@ class ModuleHandling
                         "HomeMatic RF Interface Configurator"   => "{91624C6F-E67E-47DA-ADFE-9A5A1A89AAC3}",
                         "SwitchBot Konfigurator"                => '{0D86E724-D3DB-5685-03CE-DDD6B981F39B}',
                         "MQTT Client Configurator"              => '{2408C0E0-E672-7FE5-414B-F78C9B9244E4}',
-                        "MQTT Server Configurator"              => '{CC4F15B1-81C2-4F45-8D53-972F0C9C8103}'
+                        "MQTT Server Configurator"              => '{CC4F15B1-81C2-4F45-8D53-972F0C9C8103}',
+                        "ShellyConfigurator"                    => '{1B79809A-2CB4-73E6-B94F-39BAE9E627DB}'
             ];        
         foreach ($guids as $name=>$guid)
             {
@@ -19212,7 +19215,7 @@ class ModuleHandling
         return ($result);    
 		} /* ende function */
 
-    /* lookforkeyinarray
+    /* ModuleHandling::lookforkeyinarray
      * einen besonderen key finden, liese sich auch recursive anstellen
      * für das Untersuchen von ConfigurationForms
      */

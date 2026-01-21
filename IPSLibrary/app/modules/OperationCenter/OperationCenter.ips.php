@@ -83,8 +83,8 @@ if ($_IPS['SENDER']=="Execute") $debug=true;
     $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
     $scriptIdFastPollShort     = IPS_GetScriptIDByName('FastPollShortExecution', $CategoryIdApp);
 
-    $scriptId           = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
-    $backupScriptId     = @IPS_GetObjectIDByIdent('UpdateBackupLogs', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+    $scriptId           = IPS_GetObjectIDByName('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+    $backupScriptId     = @IPS_GetObjectIDByName('UpdateBackupLogs', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
     if ($backupScriptId !== false) 
         {
         //echo "Die Backups werden in einem eigenem Script ($backupScriptId) mit höherem Speicherbedarf finalisiert.\n";
@@ -1012,9 +1012,9 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
     //print_r($buttonlist);
     //echo "=========================================================\n";
     $html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Pfad",$buttonlist));
-    $categoryId_AutosteuerungButton 		= @IPS_GetObjectIDByIdent('ButtonTasks',   $CategoryIdData);
-    $TableEventsButton_ID                   = @IPS_GetObjectIDByIdent("TableEvents", $categoryId_AutosteuerungButton);
-    echo "Table für Button Anzeige gefunden : $TableEventsButton_ID\n";
+    $categoryId_AutosteuerungButton 		= @IPS_GetObjectIDByName('ButtonTasks',   $CategoryIdData);
+    $TableEventsButton_ID                   = @IPS_GetObjectIDByName("TableEvents", $categoryId_AutosteuerungButton);
+    echo "Table für Button Anzeige gefunden : $CategoryIdData.$categoryId_AutosteuerungButton.$TableEventsButton_ID\n";
     echo $html;
     if ($TableEventsButton_ID) SetValue($TableEventsButton_ID,$html);    
 
@@ -1564,8 +1564,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Update Status");    // Dbg is less than inf
             break;
         case $tim16ID:          // Update some Tables
-            $categoryId_AutosteuerungButton 		= @IPS_GetObjectIDByIdent('ButtonTasks',   $CategoryIdData);
-            $TableEventsButton_ID                   = @IPS_GetObjectIDByIdent("TableEvents", $categoryId_AutosteuerungButton);
+            $categoryId_AutosteuerungButton 		= @IPS_GetObjectIDByName('ButtonTasks',   $CategoryIdData);
+            $TableEventsButton_ID                   = @IPS_GetObjectIDByName("TableEvents", $categoryId_AutosteuerungButton);
             //echo "Table für Button Anzeige gefunden : $TableEventsButton_ID\n";
             if ($TableEventsButton_ID)
                 {

@@ -494,7 +494,7 @@
 			{
             if ($this->debug || $debug) 
                 {
-                echo "Motion_logValue aufgerufen. Typ $this->variableTypeReg. Wert ist $value / ".GetValue($this->variable)." Profile : ".$this->variableProfile." Typ ".$this->variableType."\n";
+                echo "Motion_logValue aufgerufen. Typ $this->variableTypeReg. Wert ist new/old : $value/".GetValue($this->variable)." Profile : ".$this->variableProfile." Typ ".$this->variableType."\n";
                 $result=$value;         // mit simuliertem Wert arbeiten
                 $debug=true;
                 }
@@ -503,16 +503,16 @@
                 {
                 case "SUMMOTION":            
                 case "MOTION":
-                    $resultLog=$this->doLogMotion($result);
+                    $resultLog=$this->doLogMotion($result,$debug);
                     break;                
                 case "DIRECTION":
-                    $resultLog=$this->doLogDirection($result);
+                    $resultLog=$this->doLogDirection($result,$debug);
                     break;
                 case "CONTACT":
                     $resultLog=$this->doLogContact($result,$debug);
                     break;
                 case "BRIGHTNESS":
-                    $resultLog=$this->doLogBrightness($result);
+                    $resultLog=$this->doLogBrightness($result,$debug);
                     break;
                 default:
                     echo "Fehler Motion_LogValue, do not know Type\n";
@@ -539,6 +539,7 @@
                 //echo "NUR FUER TESTZWECKE WERT UEBERMITTELN.\n";
                 }
             $resultLog=GetValueIfFormatted($this->variable);
+            //echo "doLogMotion($result) , Source Variable Type is $variableType , Profile $variableProfile\n";
             echo "CustomComponent Motion_LogValue Log Motion ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
             if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Motion '.$this->variable." (".IPS_GetName($this->variable)."/".IPS_GetName(IPS_GetParent($this->variable)).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
             if ( (isset($this->configuration["LogConfigs"]["DelayMotion"])) == true)
@@ -697,6 +698,7 @@
                 {
                 //$resultLog=GetValueIfFormatted($this->variable);
                 $resultLog=$direction;      // ruhig, hinaus, hinein
+                //echo "doLogDirection($result) , Source Variable Type is $variableType , Profile $variableProfile\n";
                 echo "CustomComponent Motion_LogValue Log Direction ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
                 if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Direction '.$this->variable." (".IPS_GetName($this->variable)."/".IPS_GetName(IPS_GetParent($this->variable)).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
                 $timerOps = new timerOps();                        
@@ -864,13 +866,14 @@
             if ($variableProfile=="") $variableProfile=IPS_GetVariable($this->variable)["VariableCustomProfile"];
             //$presentation = IPS_GetVariablePresentation($variable); print_R($presentation);
             $variableType=IPS_GetVariable($this->variable)["VariableType"];                
-            if ($debug) echo "doLogBrightness($result) , Source Variable Type is $variableType , Profile $variableProfile\n";
+            if ($debug) echo "   doLogBrightness($result) , Source Variable Type is $variableType , Profile $variableProfile\n";
 
             //if ($variableType==2) $result=$result*20+30;
             if ($result<10) $result=$result*20+30;
             $resultLog=GetValueIfFormatted($this->variable);
-            echo "CustomComponent Motion_LogValue Log Brightness Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
+            echo "  CustomComponent Motion_LogValue Log Brightness Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
             if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Brightness '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
+            echo "  doLogBrightness write  (".$this->variableLogID.") to $result   \n";
             SetValue($this->variableLogID,$result);		
             return ($resultLog);
             }

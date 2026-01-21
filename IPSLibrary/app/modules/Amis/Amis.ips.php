@@ -21,6 +21,8 @@
      * AMIS, Auslesung von Energie und Leistungsregistern, Auswertung im 15 Minutenraster
      * 
      * In Amis_Configuration eine Config erstellen : Rückgabewert von  get_MeterConfiguration
+     * Es werden nicht automatisch alle Geräte mit TYPE_METER_POWER angelegt
+     *
      * Berechnung der Energiewerte schwierig. DetectMovementLib zählt Gruppen zusammen. 
      * Die Config listet alle Energieregister aus denen 15 Min Werte gebildet werden sollen auf. Muss nicht automatisch alle Energieregister sein.
      * In der Config wird angeführt welche register Sub sidn, diese werden unter ihrem Parent dargestellt.
@@ -169,8 +171,8 @@ else            // script called
 	$AmisConfig = $amis->getAmisConfig();
 
     $statusSmartMeterID = IPS_GetObjectIDByName("SmartMeterStatus",$categoryId_SmartMeter);
-    echo "SmartMeterStatus     $statusSmartMeterID \n";
-    echo GetValue($statusSmartMeterID);
+    echo "SmartMeterStatus     $statusSmartMeterID   Status ";
+    echo (GetValue($statusSmartMeterID)?"on":"off")."\n";
     if (isset($installedModules["RemoteAccess"]))
         {
         echo "RemoteAccess ist installiert.\n";
@@ -232,8 +234,10 @@ else            // script called
             $hardwareTypeDetect->writeRegisterStatistics($statistic);        
             }
         $deviceListFiltered = $hardwareTypeDetect->getDeviceListFiltered(deviceList(),["TYPECHAN" => "TYPE_METER_POWER"],"Install");     // true with Debug, Install hat keinen Einfluss mehr, gibt nur mehr das
-        //echo "Doublecheck Energy Registers:\n";
-        $amis->doublecheckEnergyRegisters($deviceListFiltered,$debug);
+        //print_r($deviceListFiltered["shellypstripg4-d885acea878c"]);
+        //echo "Doublecheck Energy Registers:\n"
+        $debug1=2;
+        $amis->doublecheckEnergyRegisters($deviceListFiltered,$debug1);
         /*print_r($deviceListFiltered);
         $powerMeter=array();
         $energyMeter=array();

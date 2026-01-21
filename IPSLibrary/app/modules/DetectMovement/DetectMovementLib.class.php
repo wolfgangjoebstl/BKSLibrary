@@ -117,6 +117,7 @@
      *
      *
      *      __construct
+     *      Get_EventConfigurationAuto          expects preconfiguration with static variables
      *      getDetectDataID                     Detect_DataID, das ist die Component Category aus CustomCoponent für die jeweilige Class
      *      cloneProfileandType                 clone profile and type from original variable Identifier variableID
      *      StoreEventConfiguration             Speichert die aktuelle Event Konfiguration im File, immer noch zumindest drei Parameter, können aber ach mehr als drei sein 
@@ -156,8 +157,6 @@
 		abstract function Get_Configtype();
 		abstract function Get_ConfigFileName();		
 				
-		abstract function Get_EventConfigurationAuto();
-		abstract function Set_EventConfigurationAuto($configuration);
 		abstract function is_groupconfig();                                     // es gibt aiuch andere die die Funktionen nützen
 		abstract function CreateMirrorRegister($variableId);
 
@@ -187,6 +186,42 @@
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
             $this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+			}
+
+		/* DetectHandler::Get_EventConfigurationAuto
+         *  
+         * variables to configure correct operation
+         *      $configFunctionName
+         *      $eventConfigurationAuto
+         * 
+         */
+
+		function Get_EventConfigurationAuto()
+			{
+            $functionName=$this->configFunctionName;
+			if ($this->eventConfigurationAuto == null)
+				{
+                if ( function_exists($functionName) ) $this->eventConfigurationAuto = $functionName();       /* <-------- change here */
+    			else 
+                    {
+                    echo "DetectHandler::Get_EventConfigurationAuto() function $functionName does not exists, try to include now.\n";
+                    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+                    if ( function_exists($functionName) ) $this->eventConfigurationAuto = $functionName(); 
+                    else $this->eventConfigurationAuto = array();					
+                    }
+				}					
+            //else echo "DetectHumidityHandler::Get_EventConfigurationAuto()\n";
+			return $this->eventConfigurationAuto;
+			}
+
+		/*
+		 * DetectHumidityHandler Objektes
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 */
+		function Set_EventConfigurationAuto($configuration)
+			{
+			$this->eventConfigurationAuto = $configuration;
 			}
 
         /* DetectHandler::getDetectDataID
@@ -538,10 +573,16 @@
 		public function ListConfigurations($oid=false,$debug=false)
 			{
             $configurationAll = $this->Get_EventConfigurationAuto();
+            if ($debug) 
+                {
+                echo "ListConfigurations($oid) ".json_encode($configurationAll)."\n";
+                if (sizeof($configurationAll)==0) { echo $this->eventConfigurationAuto."\n"; print_r($this); }
+                }
             if ( ($oid !== false) && (isset($configurationAll[$oid])) ) 
                 {
                 $configuration = array();
                 $configuration[$oid] = $configurationAll[$oid];
+                if ($debug) echo "ListConfigurations($oid found in config ".json_encode($configuration)."\n";
                 }
             else $configuration = $configurationAll;
 
@@ -640,7 +681,11 @@
         public function getMirrorRegisterNamefromConfig($oid,$debug=false)
             {
             $config = $this->ListConfigurations($oid,$debug);
-            if ($debug) print_R($config);
+            if ($debug) 
+                {
+                echo "getMirrorRegisterNamefromConfig, result from ListConfigurations :\n";
+                print_R($config);
+                }
             if (isset($config[$oid]["Config"]["Mirror"])) return ($config[$oid]["Config"]["Mirror"]);
             else return (false);
             }  
@@ -730,8 +775,8 @@
 		 */
         public function getVariableName($variableId, $debug = false)
             {
-            $variablename=$this->getMirrorRegisterName($variableId);
-            // variableName witrd nicht erweitert
+            $variablename=$this->getMirrorRegisterName($variableId,$debug);
+            // variableName wird nicht erweitert
             return ($variablename);               
             }
 
@@ -1248,7 +1293,7 @@
                 IPS_ApplyChanges($archiveHandlerID);
                 }
             SetValue($statusID,$status);
-			echo "  Gruppe ".str_pad($group,22)." hat neuen Status, Wert ".str_pad($status."    $status1    ",30).GetValueIfFormatted($statusID)."\n";
+			if ($debug) echo "  Gruppe ".str_pad($group,22)." hat neuen Status, Wert ".str_pad($status."    $status1    ",30).GetValueIfFormatted($statusID)."\n";
             return ($statusID);	
 			}  
 
@@ -1326,10 +1371,11 @@
 	class DetectSensorHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;				
-
+		private static $configFileName;	
+        
+        protected $configFunctionName;			
 		protected $Detect_DataID;												/* Speicherort der Mirrorregister, private teilt sich den Speicherort nicht mit der übergeordneten Klasse */ 
 
 		/** DetectSensorHandler::construct
@@ -1342,7 +1388,8 @@
 			/* Customization of Classes */
 			self::$configtype = '$eventSensorConfiguration';
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			
+			$this->configFunctionName = 'IPSDetectSensorHandler_GetEventConfiguration';
+
 			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
 			$name="Sensor-Auswertung";
@@ -1387,30 +1434,6 @@
 			return self::$configFileName;
 			}				
 
-		/*  DetectSensorHandler::Get_EventConfigurationAuto
-         *
-         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
-         */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-                if ( function_exists('IPSDetectSensorHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectSensorHandler_GetEventConfiguration();
-				else self::$eventConfigurationAuto = array();					
-				}					
-			return self::$eventConfigurationAuto;
-			}
-
-		/** DetectSensorHandler::Set_EventConfigurationAuto
-		 *  
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
-			}
 
 		/**  DetectSensorHandler::getMirrorRegister
 		 * 
@@ -1496,10 +1519,11 @@
 	class DetectCounterHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
 		private static $configFileName;				
-
+        
+        protected $configFunctionName;	
 		protected $Detect_DataID;												/* Speicherort der Mirrorregister, private teilt sich den Speicherort nicht mit der übergeordneten Klasse */ 
 
 		/**
@@ -1513,7 +1537,8 @@
 			/* Customization of Classes */
 			self::$configtype = '$eventCounterConfiguration';
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			
+			$this->configFunctionName = 'IPSDetectCounterHandler_GetEventConfiguration';
+
 			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
 			$name="Counter-Auswertung";                                     /*   <--- change here */
@@ -1553,31 +1578,6 @@
 			{
 			return self::$configFileName;
 			}				
-
-		/* 
-         * DetectSensorHandler Objektes
-         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
-         */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-                if ( function_exists('IPSDetectCounterHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectCounterHandler_GetEventConfiguration();            /*   <--- change here */
-				else self::$eventConfigurationAuto = array();					
-				}					
-			return self::$eventConfigurationAuto;
-			}
-
-		/**
-		 * DetectSensorHandler Objektes
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
-			}
 
 		/**
 		 * getMirrorRegister für Counter
@@ -1653,10 +1653,11 @@
 	class DetectClimateHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;				
+		private static $configFileName;        
 
+        protected $configFunctionName;
 		protected $Detect_DataID;												/* Speicherort der Mirrorregister, private teilt sich den Speicherort nicht mit der übergeordneten Klasse */ 
 
 		/* Initialisierung des DetectClimateHandler Objektes
@@ -1668,7 +1669,8 @@
 			/* Customization of Classes */
 			self::$configtype = '$eventClimateConfiguration';
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			
+			$this->configFunctionName = 'IPSDetectClimateHandler_GetEventConfiguration';
+
 			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
 			$name="Climate-Auswertung";
@@ -1709,28 +1711,7 @@
 			return self::$configFileName;
 			}				
 
-		/* DetectSensorHandler Objektes
-         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
-         */
 
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-                if ( function_exists('IPSDetectClimateHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectClimateHandler_GetEventConfiguration();
-				else self::$eventConfigurationAuto = array();					
-				}					
-			return self::$eventConfigurationAuto;
-			}
-
-		/* DetectSensorHandler Objektes
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
-			}
 
 		/* DetectClimateHandler::getMirrorRegister 
 		 * Achtung, für Climate gibt es einen anderen MirrorRegisterName, Endung CO2 oder BARO
@@ -1912,10 +1893,11 @@
 	class DetectHumidityHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;				
-
+		private static $configFileName;	
+        
+        protected $configFunctionName;	
 		protected $Detect_DataID;												/* Speicherort der Mirrorregister, private teilt sich den Speicherort nicht mit der übergeordneten Klasse */ 
 
 		/**
@@ -1929,7 +1911,8 @@
 			/* Customization of Classes */
 			self::$configtype = '$eventHumidityConfiguration';
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			
+			$this->configFunctionName = 'IPSDetectHumidityHandler_GetEventConfiguration';
+
 			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
 			$name="Feuchtigkeit-Auswertung";
@@ -1971,30 +1954,6 @@
 			return self::$configFileName;
 			}				
 
-		/* 
-         * DetectHumidityHandler Objektes
-         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
-         */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-                if ( function_exists('IPSDetectHumidityHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectHumidityHandler_GetEventConfiguration();
-				else self::$eventConfigurationAuto = array();					
-				}					
-			return self::$eventConfigurationAuto;
-			}
-
-		/**
-		 * DetectHumidityHandler Objektes
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
-			}
 
 		/**
 		 * getMirrorRegister für Humidity
@@ -2111,13 +2070,14 @@
 	class DetectMovementHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
 		private static $configFileName;				
 		
         protected $CategoryIdData;                          /* Category Data Kategorie des eigenen Moduls */
 		private $MoveAuswertungID;
 
+        protected $configFunctionName;
 		protected $Detect_DataID;		                    /* ist nicht das normale Detect_DataID , zeigt auf DetectMovement */
 
 		/**
@@ -2131,6 +2091,7 @@
 			/* Customization of Classes */
 			self::$configtype = '$eventMoveConfiguration';                                          /* <-------- change here */
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+            $this->configFunctionName = 'IPSDetectMovementHandler_GetEventConfiguration';
 			
 			if ($MoveAuswertungID===false)
 				{
@@ -2225,29 +2186,6 @@
 			return($this->Detect_DataID);
 			}			
 			
-
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-                if ( function_exists('IPSDetectMovementHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectMovementHandler_GetEventConfiguration();       /* <-------- change here */
-    			else self::$eventConfigurationAuto = array();					
-				}					
-			return self::$eventConfigurationAuto;
-			}
-
-		/** DetectMovementHandler:
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-		   	self::$eventConfigurationAuto = $configuration;
-			}
-
 		/** DetectMovementHandler:getMirrorRegister
 		 * 
          *  sucht den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
@@ -2379,10 +2317,11 @@
 	class DetectBrightnessHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;				
-		
+		private static $configFileName;	
+
+        protected $configFunctionName;		
         protected $CategoryIdData;                          /* Category Data Kategorie des eigenen Moduls */
 		protected $Detect_DataID;		
 
@@ -2396,8 +2335,9 @@
 			{
 			/* Customization of Classes */
             $debug=false;
-			self::$configtype = '$eventBrightnessConfiguration';                                          /* <-------- change here */
+			self::$configtype = '$eventBrightnessConfiguration';                                          // <-------- change here 
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+            $this->configFunctionName = 'IPSDetectBrightnessHandler_GetEventConfiguration';                //   <--- change here 
 			
             $moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
             $CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
@@ -2438,28 +2378,6 @@
 			{
 			return self::$configFileName;
 			}	
-
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-                if ( function_exists('IPSDetectBrightnessHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectBrightnessHandler_GetEventConfiguration();       /* <-------- change here */
-    			else self::$eventConfigurationAuto = array();					
-				}					
-			return self::$eventConfigurationAuto;
-			}
-
-		/**
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-		   	self::$eventConfigurationAuto = $configuration;
-			}
 
 		/** getMirrorRegister für Movement
 		 * 
@@ -2508,29 +2426,30 @@
 			return ($mirrorID);			
 			}
 
-		/**
+		/** DetectBrightnessHandler::InitGroup
 		 *
 		 * Die brightness Gesamtauswertung_ Variablen erstellen 
+         * Die Inpoutvariablen haben unetrscheidliche Formate und grössenordnungen, immer mit den Logging Registern in Auswertung rechnen
 		 *
 		 */
 		function InitGroup($group,$debug=false)
 			{
-			echo "\nDetect Brightness Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			if ($debug) echo "\nDetect Brightness Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
 			$status=(float)0; $status1=(float)0; $i=0;
 			foreach ($config as $oid=>$params)
 				{
 				$status=$status + GetValue($oid);
-				if ($debug) echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),70)."Status: ".GetValue($oid)." ".$status."\n";
 				$moid=$this->getMirrorRegister($oid);
 				if ($moid !== false) $status1=$status1 + GetValue($moid);
+				if ($debug) echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($moid)."/".IPS_GetName(IPS_GetParent($moid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($moid)))),70)."Status: ".GetValue($moid)." ".$status1."\n";
                 $i++;
 				}
             $status=$status/$i;
             $status1=$status1/$i;
-			echo "  Gruppe ".$group." hat neuen Status, Wert: ".(integer)$status."  im Mirror register:  ".(integer)$status1."\n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Brightness', null,false);
-			SetValue($statusID,$status);
+			if ($debug) echo "  Gruppe ".$group." hat neuen Status,  im Log Register:  ".(integer)$status1." in Auswertung\n";
+			$statusID=CreateVariable("Gesamtauswertung_".$group,1,$this->Detect_DataID,1000, 'Helligkeit', null,false);         // Integer
+			SetValue($statusID,$status1);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
      		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
@@ -2569,10 +2488,11 @@
 	class DetectContactHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;				
-		
+		private static $configFileName;	
+
+        protected $configFunctionName;		
         protected $CategoryIdData;                          /* Category Data Kategorie des eigenen Moduls */
 		protected $Detect_DataID;		
 
@@ -2588,6 +2508,7 @@
 			/* Customization of Classes */
 			self::$configtype = '$eventContactConfiguration';                                          /* <-------- change here */
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+            $this->configFunctionName = 'IPSDetectContactHandler_GetEventConfiguration';                //   <--- change here 
 			
             $moduleManager_CC = new IPSModuleManager('CustomComponent');                                /*   <--- change here */
             $CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
@@ -2628,28 +2549,6 @@
 			{
 			return self::$configFileName;
 			}	
-
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-                if ( function_exists('IPSDetectContactHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectContactHandler_GetEventConfiguration();       /* <-------- change here */
-    			else self::$eventConfigurationAuto = array();					
-				}					
-			return self::$eventConfigurationAuto;
-			}
-
-		/**
-		 * DetectContactHandler:Set_EventConfigurationAuto
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-		   	self::$eventConfigurationAuto = $configuration;
-			}
 
 		/** DetectContactHandler:getMirrorRegister
 		 * 
@@ -2750,8 +2649,6 @@
      * Mit der Config wird in scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php die Funktion IPSDetectTemperatureHandler_GetEventConfiguration upgedatet
      *
      *  Get_Configtype, Get_ConfigFileName
-     *  Get_EventConfigurationAuto
-     *  Set_EventConfigurationAuto
      *  getMirrorRegister
      *  CreateMirrorRegister
      *  InitGroup
@@ -2761,17 +2658,19 @@
 	class DetectTemperatureHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();			/* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();			/* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
 		private static $configFileName;	
+
         protected $debug;
-		
+
+        protected $configFunctionName;		
 		protected $Detect_DataID;												/* Speicherort der Mirrorregister, kommt auch in der abstrract class zur Anwendung, daher protected */ 
 
 		/**
 		 * @public
 		 *
-		 * Initialisierung des DetectHumidityHandler Objektes
+		 * Initialisierung des DetectTemperatureHandler Objektes
 		 *
 		 */
 		public function __construct($debug=false)
@@ -2780,6 +2679,7 @@
             $this->debug=$debug;
 			self::$configtype = '$eventTempConfiguration';                                          /* <-------- change here */
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+            $this->configFunctionName = 'IPSDetectTemperatureHandler_GetEventConfiguration';                //   <--- change here             
 			
 			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
@@ -2821,34 +2721,6 @@
 			{
 			return self::$configFileName;
 			}	
-
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-				if ( function_exists('IPSDetectTemperatureHandler_GetEventConfiguration') )
-					{
-					self::$eventConfigurationAuto = IPSDetectTemperatureHandler_GetEventConfiguration();       /* <-------- change here */
-					}
-				else
-					{
-					self::$eventConfigurationAuto = array();					
-					}						
-				}
-			return self::$eventConfigurationAuto;
-			}
-
-		/**
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-		   	self::$eventConfigurationAuto = $configuration;
-			}
 
 		/**
 		 * getMirrorRegister für Temperature
@@ -3028,7 +2900,6 @@
     *
     *       _construct
     *       Get_Configtype, Get_ConfigFileName
-    *       Get_EventConfigurationAuto,Set_EventConfigurationAuto
     *       getMirrorRegister,CreateMirrorRegister
     *       InitGroup
     */
@@ -3036,10 +2907,11 @@
 	class DetectHeatControlHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;				
+		private static $configFileName;
 
+        protected $configFunctionName;
 		protected $Detect_DataID;												/* Speicherort der Miorrorregister */ 
 
 		/**
@@ -3053,7 +2925,8 @@
 			/* Customization of Classes */
 			self::$configtype = '$eventHeatConfiguration';                                          /* <-------- change here */
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			
+            $this->configFunctionName = 'IPSDetectHeatControlHandler_GetEventConfiguration';                //   <--- change here  
+
 			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
 			$name="HeatControl-Auswertung";
@@ -3094,18 +2967,6 @@
 			return self::$configFileName;
 			}				
 
-		/* DetectHeatControlHandler, obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-				if ( function_exists('IPSDetectHeatControlHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectHeatControlHandler_GetEventConfiguration();       /* <-------- change here */
-				else self::$eventConfigurationAuto = array();					
-				}
-			return self::$eventConfigurationAuto;
-			}
-
         /* die Power Konfiguration einheitlich auslesen. Für Logging relevant */
 
         function get_PowerConfig()
@@ -3134,17 +2995,6 @@
                 }
             return ($powerConfig);
             }
-
-		/**
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
-			}
-			
 
 		/**
 		 * Das DetectHeatControlHandler Spiegelregister anlegen
@@ -3191,7 +3041,7 @@
             /* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
             $statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, "~Power", null, null);
 			//$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Power', null,false);
-            echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
+            if ($debug) echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
             SetValue($statusID,$power);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -3247,10 +3097,11 @@
 	class DetectHeatSetHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;				
+		private static $configFileName;
 
+        protected $configFunctionName;
 		protected $Detect_DataID;												/* Speicherort der Miorrorregister */ 
 
 		/**
@@ -3264,7 +3115,8 @@
 			/* Customization of Classes */
 			self::$configtype = '$eventHeatSetConfiguration';                                          /* <-------- change here */
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			
+            $this->configFunctionName = 'IPSDetectHeatSetHandler_GetEventConfiguration';                //   <--- change here 
+
 			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
 			$name="HeatSet-Auswertung";
@@ -3304,30 +3156,6 @@
 			{
 			return self::$configFileName;
 			}				
-
-		/* DetectHeatSetHandler, obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-                if ( function_exists('IPSDetectHeatSetHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectHeatSetHandler_GetEventConfiguration();       /* <-------- change here */
-				else self::$eventConfigurationAuto = array();					
-                //echo "GetEventConf\n"; print_R(self::$eventConfigurationAuto);
-				}
-			return self::$eventConfigurationAuto;
-			}
-
-		/**
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
-			}
-			
 
 		/** getMirrorRegister für HetSet
 		 * 
@@ -3396,7 +3224,7 @@
 				}
             $status=$status/$i;
             $status1=$status1/$i;
-			echo "  Gruppe ".$group." hat neuen Status, Wert: ".(integer)$status."  im Mirror register:  ".(integer)$status1."\n";
+			if ($debug) echo "  Gruppe ".$group." hat neuen Status, Wert: ".(integer)$status."  im Mirror register:  ".(integer)$status1."\n";
 			$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Temperature', null,false);
 			SetValue($statusID,$status);
 			
@@ -3424,8 +3252,6 @@
      *      is_groupconfig
      *      Get_Configtype
      *      Get_ConfigFileName
-     *      Get_EventConfigurationAuto
-     *      Set_EventConfigurationAuto
      *      CreateMirrorRegister
      *      convertParams
      *
@@ -3436,9 +3262,10 @@
 	class DetectEventHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;				
+		private static $configFileName;
+        protected $configFunctionName;			
 
 		/**
 		 * @public
@@ -3473,31 +3300,21 @@
 			return self::$configFileName;
 			}				
 
-		/* DetectEventHandler, obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-
+		/* DetectEventHandler:Get_EventConfigurationAuto            overwrites standard class, not autonclude
+         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
+         */
 		function Get_EventConfigurationAuto($debug=false)
 			{
             if ($debug) echo "DetectEventHandler::Get_EventConfigurationAuto \n";
-			if (self::$eventConfigurationAuto == null)
+			if ($this->eventConfigurationAuto == null)
 				{
                 //IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-                if ( function_exists('IPS'.get_class($this).'_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectEventHandler_GetEventConfiguration();       /* <-------- change here */
-				else self::$eventConfigurationAuto = array();					
-                //echo "GetEventConf\n"; print_R(self::$eventConfigurationAuto);
+                if ( function_exists('IPS'.get_class($this).'_GetEventConfiguration') ) $this->eventConfigurationAuto = IPSDetectEventHandler_GetEventConfiguration();       /* <-------- change here */
+				else $this->eventConfigurationAuto = array();					
 				}
-			return self::$eventConfigurationAuto;
+			return $this->eventConfigurationAuto;
 			}
 
-		/**
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
-			}
-			
 		public function CreateMirrorRegister($variableId,$debug=false)          // because of abstract class
 			{
             }
@@ -3613,7 +3430,7 @@
          * check eventlistdata
          *
          */
-        public function showGroupClasses(DetectEventListHandler $eventList, $eventDeviceConfig, $coids)
+        public function showGroupClasses(DetectEventListHandler $eventList, $eventDeviceConfig, $coids, $debug=false)
             {
             $eventListData = $eventList->getEventlist();
             //$qualitylist   = $eventList->getEventlist("Quality");         / in Coids enthalten
@@ -3628,28 +3445,44 @@
             foreach ($classnames as $classname)
                 {
                 echo "\n";
-                echo "Jetzt $classname hereinholen:\n";								
+                echo "   Jetzt $classname hereinholen:\n";
                 $sensorHandler = new $classname();
-                //$eventHumidityConfig=$sensorHandler->Get_EventConfigurationAuto();          // alle feuchtigkeitsregister und ihre Zuordnung zu einer Gruppe (Parameter 2)
-                //print_R($eventHumidityConfig);
+                if ($debug)
+                    {
+                    $eventConfig=$sensorHandler->Get_EventConfigurationAuto();          // alle feuchtigkeitsregister und ihre Zuordnung zu einer Gruppe (Parameter 2)
+                    print_R($eventConfig);
+                    }
                 //$groups=$DetectHumidityHandler->ListGroups("Humidity");
                 $groups=$sensorHandler->ListGroups($sensorHandler->getGroupIdentifier());
                 //print_r($groups);
                 foreach ($groups as $group => $entry)           // die einzelnen Gruppen durchgehen
                     {
-                    echo "Gruppe \"$group\" :\n";
+                    echo "      Gruppe \"$group\" :\n";
+                    if ($showGroup) // Init Group macht anhand group name eine Berechnung             
+                        {
+                        if ($debug) echo "InitGroup:\n";
+                        $soid=$sensorHandler->InitGroup($group,$debug);
+                        if ($debug) echo "Ergebnis:\n";
+                        if (isset($eventDeviceConfig[$soid])) echo "   ".str_pad($soid,10).str_pad(IPS_GetName($soid),55).json_encode($eventDeviceConfig[$soid])."\n";
+                        else echo "         ".$soid."  ".str_pad(IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid))),75).str_pad(GetValueIfFormatted($soid),10)."\n";
+                        }
+
                     $config=$sensorHandler->ListEvents($group);
                     //print_R($config);                     // Register die zu dieser Gruppe gehören ausgeben, sollten dem selben Variablentyp angehören   
                     foreach ($config as $coid=>$subentry)
                         {       // da brauchen wir die Components Info
                         if (isset($varlogData[$coid])) $variableLogId=$varlogData[$coid];
                         else $variableLogId=$coid;
-                        $lastchanged=date("d.m.Y H:i:s",IPS_GetVariable($variableLogId)["VariableChanged"]);
+
+                        $lastchanged      = date("d.m.Y H:i:s",IPS_GetVariable($variableLogId)["VariableChanged"]);
+                        $lastchangedevent = date("d.m.Y H:i:s",IPS_GetVariable($coid)["VariableChanged"]);
+                        if ($debug) echo str_pad($coid,8).str_pad($lastchangedevent,20).str_pad($variableLogId,8).str_pad($lastchanged,20);
                         $duration = time()-IPS_GetVariable($variableLogId)["VariableChanged"];
                         if (isset($varlogData[$coid]))
                             {
-                            echo "   ".str_pad($coid."/".$varlogData[$coid],20).str_pad(IPS_GetName($varlogData[$coid]),55);
-                            echo str_pad(GetValueIfFormatted($varlogData[$coid]),10);
+                            echo "            ".str_pad($coid."/".$varlogData[$coid],20).str_pad(IPS_GetName($varlogData[$coid]),55);
+                            if ($debug) echo str_pad(GetValueIfFormatted($coid)."/".GetValueIfFormatted($varlogData[$coid]),20);
+                            else echo str_pad(GetValueIfFormatted($varlogData[$coid]),10);
                             echo nf($duration, "s",10);                 // better since time
                             }
                         else echo "   ".str_pad($coid,10).str_pad(IPS_GetName($coid),55)."$subentry";                    
@@ -3662,12 +3495,6 @@
                         elseif (isset($coids[$coid]["TOPO"]["SIMPLE"])) echo $coids[$coid]["TOPO"]["SIMPLE"]." *";                      // special check
                         echo "\n";
                         if (isset($eventlistData[$coid])) print_r($eventlistData[$coid]);
-                        }
-                    if ($showGroup) // Init Group macht anhand group name eine Berechnung             
-                        {
-                        $soid=$sensorHandler->InitGroup($group);
-                        if (isset($eventDeviceConfig[$soid])) echo "   ".str_pad($soid,10).str_pad(IPS_GetName($soid),55).json_encode($eventDeviceConfig[$soid])."\n";
-                        else echo "     ".$soid."  ".IPS_GetName($soid).".".IPS_GetName(IPS_GetParent($soid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($soid)))."\n";
                         }
                     }
                 }
@@ -3688,7 +3515,6 @@
 	 * DetectDeviceHandler extends DetectHandler with
 	 *	    __construct
 	 *	    Get_Configtyp, Get_ConfigFileName, Get_Topology		gemeinsame (self) Konfigurations Variablen
-	 * 	    Get_EventConfigurationAuto, Set_EventConfigurationAuto
 	 *	    CreateMirrorRegister                verwendet getMirrorRegisterName, liefert die OID des MirrorRegisters
 	 *	    evalTopology
      *
@@ -3722,9 +3548,10 @@
 		protected $topology;            // topologie ist auch in der Children class verfügbar
         protected $ID,$Config;
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;		
+		private static $configFileName;
+        protected $configFunctionName;	
 
         /* is_groupconfig
          *
@@ -3746,12 +3573,12 @@
 
 		public function Get_EventConfigurationAuto()
 			{
-			return self::$eventConfigurationAuto;
+			return $this->eventConfigurationAuto;
 			}
 
 		public function Set_EventConfigurationAuto($configuration)
 			{
-			self::$eventConfigurationAuto = $configuration;
+			$this->eventConfigurationAuto = $configuration;
 			}
 
 		public function CreateMirrorRegister($variableId,$debug=false)
@@ -4994,9 +4821,10 @@
 
         protected $channelEventList=array();
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
 		private static $configFileName;		
+        protected $configFunctionName;
 
 		protected $topology;
         protected $ID;
@@ -5019,10 +4847,10 @@
 	        parent::__construct($debug);
 			}
 
-        /* setEventListFromConfigFile
-        * get Eventlist from config file and store it in class
-        * es fehlt die Angabe des include files
-        */
+        /* DetectDeviceHandler::setEventListFromConfigFile
+         * get Eventlist from config file and store it in class
+         * es fehlt die Angabe des include files
+         */
         public function setEventListFromConfigFile($debug=false)
             {
             if ($debug) echo "DetectDeviceHandler::setEventListFromConfigFile:\n";
@@ -5053,26 +4881,16 @@
          */
 		public function Get_EventConfigurationAuto()
 			{
-			if (self::$eventConfigurationAuto == null)
+			if ($this->eventConfigurationAuto == null)
 				{
-				if ( function_exists("IPSDetectDeviceHandler_GetEventConfiguration") == true ) self::$eventConfigurationAuto = IPSDetectDeviceHandler_GetEventConfiguration();
+				if ( function_exists("IPSDetectDeviceHandler_GetEventConfiguration") == true ) $this->eventConfigurationAuto = IPSDetectDeviceHandler_GetEventConfiguration();
 				else 
                     {
                     echo "FEHLER: function IPSDetectDeviceHandler_GetEventConfiguration nicht vorhanden.\n";
-                    self::$eventConfigurationAuto = array();
+                    $this->eventConfigurationAuto = array();
                     }
 				}
-			return self::$eventConfigurationAuto;
-			}
-
-		/* DetectDeviceHandler::Set_EventConfigurationAuto
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		public function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
+			return $this->eventConfigurationAuto;
 			}
 
         /* DetectDeviceHandler::CreateMirrorRegister
@@ -5380,16 +5198,17 @@
                             }
                         else
                             {
-                            echo "        $oid   -> $name\n";
                             if (is_numeric($entry["OID"])) 
                                 {
                                 $linkId=CreateLinkByDestination($name, $oid, $entry["OID"], 2000);	
-                                IPS_SetHidden($linkId,false);                
+                                IPS_SetHidden($linkId,false);  
+                                echo "        $oid   -> ".str_pad($name,50)."     at OID ".$entry["OID"]."\n";
                                 }
                             elseif (isset($entry['TopologyInstance'])) 
                                 {
                                 $linkId=CreateLinkByDestination($name, $oid, $entry["TopologyInstance"], 2000);
                                 IPS_SetHidden($linkId,false);
+                                echo "        $oid   -> ".str_pad($name,30)."     at TopologyInstance ".$entry["TopologyInstance"]."\n";
                                 }
                             else echo "Entry OID is not numeric, TopologyInstance not available, probably none and no TOPD Instanz, ie DeviceGroup Entry.\n";
                             }
@@ -5677,9 +5496,10 @@
 
         protected $deviceEventList;
        	
-        private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+        protected $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
-		private static $configFileName;		
+		private static $configFileName;	
+        protected $configFunctionName;
 
         protected $topology;
  
@@ -5738,26 +5558,16 @@
 
 		public function Get_EventConfigurationAuto()
 			{
-			if (self::$eventConfigurationAuto == null)
+			if ($this->eventConfigurationAuto == null)
 				{
-				if ( function_exists("IPSDetectDeviceListHandler_GetEventConfiguration") == true ) self::$eventConfigurationAuto = IPSDetectDeviceListHandler_GetEventConfiguration();
+				if ( function_exists("IPSDetectDeviceListHandler_GetEventConfiguration") == true ) $this->eventConfigurationAuto = IPSDetectDeviceListHandler_GetEventConfiguration();
 				else 
                     {
                     echo "FEHLER: function IPSDetectDeviceListHandler_GetEventConfiguration nicht vorhanden.\n";
-                    self::$eventConfigurationAuto = array();
+                    $this->eventConfigurationAuto = array();
                     }
 				}
-			return self::$eventConfigurationAuto;
-			}
-
-		/**
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		public function Set_EventConfigurationAuto($configuration)
-			{
-			self::$eventConfigurationAuto = $configuration;
+			return $this->eventConfigurationAuto;
 			}
 
         /* DetectDeviceListHandler, nur da damit keine Fehlermeldung, eigentlich egal */
@@ -6596,7 +6406,9 @@ class DetectEventListHandler extends DetectEventHandler
 	public $eventlist;          // for object oriented part
 
 	public $eventlistDelete;
-    public static $eventConfigurationAuto=array();
+    protected $eventConfigurationAuto=array();
+    protected $configFunctionName;
+
 	protected $debug;	
 	public $motionDevice, $switchDevice, $buttonDevice;	       /* erkannte Homematic Geräte */
 
@@ -6612,7 +6424,7 @@ class DetectEventListHandler extends DetectEventHandler
         parent::__construct($debug);
 		}	
 
-    /* setEventListFromConfigFile, object oriented
+    /* DetectEventListHandler::setEventListFromConfigFile, object oriented
      * get Eventlist from config file and store it in class
      * es fehlt die Angabe des include files
      */
@@ -6630,20 +6442,22 @@ class DetectEventListHandler extends DetectEventHandler
         $this->eventlist = $configuration;
         }
 
-    /* DetectEventHandler, obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
+    /* DetectEventListHandler::Get_EventConfigurationAuto, obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
+     * DetectEventListHandler extends DetectEventHandler extends DetectHandler
      */
     function Get_EventConfigurationAuto($debug=false)
         {
         if ($debug) echo "DetectEventListHandler::Get_EventConfigurationAuto ".get_class($this)."\n";
-        if (self::$eventConfigurationAuto == null)
+        if ($this->eventConfigurationAuto == null)
             {
             $functionName = 'IPS'.get_class($this).'_GetEventConfiguration';
-            if ( function_exists($functionName) ) self::$eventConfigurationAuto = $functionName();       /* <-------- change here */
-            else self::$eventConfigurationAuto = array();					
+            if ( function_exists($functionName) ) $this->eventConfigurationAuto = $functionName();       /* <-------- change here */
+            else $this->eventConfigurationAuto = array();					
             //echo "GetEventConf\n"; print_R(self::$eventConfigurationAuto);
             }
-        return self::$eventConfigurationAuto;
-        }        
+        return $this->eventConfigurationAuto;
+        }   
+
     /* DetectEventListHandler::getScriptIdMessageHandler
      * die Script ID auslesen von dem Script an dem die Events hängen
      */
@@ -7130,11 +6944,11 @@ class DetectEventListHandler extends DetectEventHandler
      * array: output left and right, the intersection is the aligned eventlist
      * summary: one echo with left, aligned, right
      */
-    public function alignByDeviceList(DeviceListManagement $devicelist,$output="array")
+    public function alignByDeviceList(DeviceListManagement $devicelist,$output="array",$debug=false)
         {
         $coids=$devicelist->get_coids();          // die Coid Liste aus der Devicelist holen
         //print_r($coids);
-        if ($output=="summary") echo "DetectEventListHandler::alignByDeviceList: compare eventlist with devicelist:\n";
+        if (($output=="summary") && $debug) echo "DetectEventListHandler::alignByDeviceList: compare eventlist with devicelist:\n";
         //print_r($this->eventlist);    
         $echos=true; $left=0;$aligned=0; $right=0;
         if (($output=="array") || ($output="summary")) $echos=false;
@@ -7180,7 +6994,7 @@ class DetectEventListHandler extends DetectEventHandler
                 $right++;
                 }
             }
-        if ($output=="summary") echo "    result alignByDeviceList : eventlist $left aligned $aligned devicelist channels $right.\n"; 
+        if (($output=="summary") && $debug) echo "    result alignByDeviceList : eventlist $left aligned $aligned devicelist channels $right.\n"; 
         if ($echos===false) return ($result);
 
         }
@@ -7512,7 +7326,7 @@ class DetectEventListHandler extends DetectEventHandler
                                 $expectedProfile=$keyName["PROFILE"];
                                 if ( ($expectedProfile != "") && ($profileName != $expectedProfile) )
                                     {
-                                    echo "  ***** Warnung, getUsedComponents, $variableLogID VariableProfile stimmt nicht überein, erwartet $expectedProfile, ist $profileName \n";
+                                    echo "  ***** Warnung, getUsedComponents, $eventId, $variableLogID VariableProfile stimmt nicht überein, erwartet $expectedProfile, ist $profileName \n";
                                     }
                                 }
                             }

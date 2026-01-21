@@ -36,7 +36,7 @@
  *          DeviceManagement_Homematic  extends DeviceManagement
  *          DeviceManagement_Hue        extends DeviceManagement
  *          DeviceManagement_HueV2      extends DeviceManagement_Hue
- *
+ *          DeviceManagement_Shelly     extends DeviceManagement
  */
 
 
@@ -2916,7 +2916,7 @@ class DeviceManagement_Hue extends DeviceManagement
 
     protected $itemslist=array(); 
 
-    public function __construct($debug)
+    public function __construct($debug=false)
         {
         if ($debug) echo "DeviceManagement_Hue construct started.\n";
         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
@@ -3080,7 +3080,7 @@ class DeviceManagement_Hue extends DeviceManagement
     /* DeviceManagement_Hue::HueDeviceType
      * Hue Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen, gemeinsam für Hue und HueV2 
      * die Register werden wie bei Homematic übergeben, allerdings mit dem Namen in Grossbuchstaben als Key
-     * zusättlich wird die Config der Instanz mit übergeben, bei Hue gibt es mehr Informationen die ausgewertet werden können
+     * zusätzlich wird die Config der Instanz mit übergeben, bei Hue gibt es mehr Informationen die ausgewertet werden können
      * 
      * nach der Auswertung wird $resultType[0] mit dem DeviceType beschrieben.
      * 
@@ -3679,7 +3679,7 @@ class DeviceManagement_Hue extends DeviceManagement
 class DeviceManagement_HueV2 extends DeviceManagement_Hue
 	{
 
-    public function __construct($debug)
+    public function __construct($debug=false)
         {
         //$debug=2;
         if ($debug) echo "DeviceManagement_HueV2 construct started.\n";
@@ -3759,6 +3759,9 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
     /* DeviceManagement_HueV2::createItemlist
      * die itemlist erzeugen, Basis sind die values aus dem configurationForm
      * sucht nach einer instanceID, sonst ist die Instanz nicht angelegt, diese mal so komplett in der itemList abspeichern
+     * Struktur ist immer je Hardware Configurator unterschiedlich 
+     *      "instanceID"        die DeviceID die schlussendlich in Category Hardware/Shelly abgespeichert wird
+     *      unter der InstanceId wird die gesamte Konfiguration in der itemList angespeichert. Dann wird weiter analysiert
      * zusätzliche Auswertung über ganzes Array:
      *             Type     aus dem Wert den Wert für TypeDev ableiten
      * es werden immer neue Gerätetypen erkannt, kontinuierlich erweitern:
@@ -3780,6 +3783,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
         foreach ($this->itemslist as $oid => $item)
             {
             //echo "    $oid \n";
+            if (isset($item["Type"])===false) continue;
             switch ($item["Type"])
                 {
                 case "Hue lightstrip plus":
@@ -3858,8 +3862,313 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
 
     }
 
+/**************************************************
+ * Hardware spezifische Device management Class
+ * verwendet Shelly Modul und daraus die Rückmeldung aus dem ConfigurationForm, dieses etwas umständlich auswerten
+ * es gibt keine typischen DeviceID, BridgeID usw. MQTT benötigt so etwas nicht
+ *
+ * für Shelly typische Routinen rauslösen
+ *      analyse ConfigurationForm
+ *
+ * function list
+ *      __construct         decodes Modules Configurator ConfigurationForm to createItemlist
+ *      createItemlist
+ *      showItemlist        just print_R
+ *      getItemlist         return as array, filter for keys
+ *      getDeviceType
+ *      DeviceType          stabdardisiserte Weise um aus der Art der register und der Configzuration den Device Type udn den Channel Type zu extrhieren
+ *
+ */
+class DeviceManagement_Shelly extends DeviceManagement
+	{
+
+    protected $itemslist=array(); 
+
+    public function __construct($debug=false)
+        {
+        if ($debug) echo "DeviceManagement_Shelly construct started.\n";
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        $oids = $modulhandling->getInstances('ShellyConfigurator');   //   HUEDiscovery  0
+        if (isset($oids[0])) 
+            {
+            $oid=$oids[0];
+            $config=json_decode(IPS_GetConfigurationForm($oid),true);
+            if ($debug) echo "Instance of Configurator for Library Shelly Gen2+ found: $oid  ".IPS_GetName($oid)."\n";
+            //print_R($config);
+            $actions = $modulhandling->lookforkeyinarray($config,"actions",$debug>2);
+            $values  = $modulhandling->lookforkeyinarray($actions,"values",$debug>2);
+            //print_R($actions);
+            //print_R($values);
+            if ($values) $this->createItemlist($values,$debug>1);                                //erzeugt itemlist
+            }
+        parent::__construct($debug>1);                       // wenn ein eigenes construct dann auch das übergeordnete aifrufen
+        }
 
 
+    /* DeviceManagement_Shelly::createItemlist
+     * die itemlist erzeugen, Basis sind die values aus dem configurationForm
+     * sucht nach einer instanceID, sonst ist die Instanz nicht angelegt, diese mal so komplett in der itemList abspeichern
+     * Struktur ist immer je Hardware Configurator unterschiedlich 
+     *      "instanceID"        die DeviceID die schlussendlich in Category Hardware/Shelly abgespeichert wird
+     *      unter der InstanceId wird die gesamte Konfiguration in der itemList angespeichert. Dann wird weiter analysiert
+     *          "DeviceType"        Device Description, String
+     *          "InstanceName"
+     *          "name"              standardisiserter Name      Switch:0
+     *
+     * zusätzliche Auswertung über ganzes Array:
+     *             Type     aus dem Wert den Wert für TypeDev ableiten
+     * es werden immer neue Gerätetypen erkannt, kontinuierlich erweitern:
+     *          Hue filament bulb
+     *
+     */
+    private function createItemlist($values,$debug) 
+        {
+        //$debug=true;
+        if ($debug) echo "createItemlist Shelly Gen2+ for ".sizeof($values)." items called.\n";
+        foreach ($values as $itemIndex => $itemConfig)
+            {
+            if (isset($itemConfig["instanceID"]))
+                {
+                $instanceID=$itemConfig["instanceID"];
+                $this->itemslist[$instanceID] = $itemConfig;   
+                }
+            }
+        foreach ($this->itemslist as $oid => $item)
+            {
+            //echo "    $oid \n";
+            if (isset($item["DeviceType"])===false) { print_r($item); continue; }
+            if (isset($item["create"]["configuration"])) $itemconfig=$item["create"]["configuration"];
+            else { echo "Warning, no itemconfig.\n"; continue; }
+            if ($item["DeviceType"]=="") $item["DeviceType"]=$itemconfig["Component"];                                                    // mix and merge component and device
+            switch ($item["DeviceType"])
+                {
+                case "Shelly Plug S MTR Gen3": 
+                case "Shelly Power Strip 4 Gen4":                                         // Device
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_DEVICE";              // als Namensgeber der Devices mitnehmen, Eigenheit von Shelly
+                    break; 
+                case "switch":                                                                // Component
+                    if ($debug) echo "Component ".str_pad($item["instanceID"],8).str_pad($item["name"],12).str_pad($item["InstanceName"],20)."\n";
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_SWITCH";
+                    //print_r($item);
+                    break; 
+                case "cloud":                               // other component, do nothing
+                case "wifi":
+                    break;
+                default:
+                    echo "DeviceManagement_Shelly::createItemlist, warning, do not know key \"".$item["DeviceType"]."\"\n";
+                    print_r($item);
+                    break;
+                }    
+            }                    
+        }
+
+
+    /* DeviceManagement_Shelly
+     * variable ist proteced, daher hier eine nette Anzeige bauen
+     */
+    public function showItemlist()
+        {
+        print_r($this->itemslist);
+        }
+
+    public function getItemlist($filter=false)
+        {
+        if ($filter)
+            {
+            $result=array();
+            foreach ($this->itemslist as $oid => $entry)
+                {
+                if (isset($entry[$filter])) $result[$oid]=$entry[$filter];
+                }
+            return ($result);
+            }
+        else return($this->itemslist);
+        }
+
+
+    /* DeviceManagement_Shelly::getDeviceType
+     *
+     * gibt für eine Shelly Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     *
+     * Routine ermittelt alle Children eines Objektes und übergibt sie als array zur Prüfung
+     * ruft HueDeviceType auf, es gibt verschieden Ausgabeformate
+     *   0   Beispiel  "Bewegungsmelder";
+     *   1   Beispiel  "Funk-Bewegungsmelder";
+     *   2   Beispiel  TYPE_MOTION
+     *   3   { "Type"=>TYPE_MOTION,"Register"=> $resultReg[0],"RegisterAll"=>  }
+     *   4
+     *
+     *  0/false ist Default
+     *
+     *
+     *
+     */
+    function getDeviceType($instanz, $outputVersion=false, $config=array(), $debug=false)
+	    {
+        if ($debug) echo "             getDeviceType:Shelly, $instanz  \"".IPS_GetName($instanz)."\" Modus : $outputVersion\n";
+	    $homematic=array();
+    	$cids = IPS_GetChildrenIDs($instanz);
+        $register=array();
+        foreach($cids as $cid) $register[$cid]=IPS_GetName($cid);               // Standardübergabe ohne Vorverarbeitung           
+        return ($this->DeviceType($register,$outputVersion, $config, $debug));
+    	}
+
+    /* DeviceManagement_Shelly::DeviceType
+     * Shelly Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+     * die Register werden wie bei Homematic übergeben, allerdings mit dem Namen in Grossbuchstaben als Key
+     * zusätzlich wird die Config der Instanz mit übergeben, bei Hue gibt es mehr Informationen die ausgewertet werden können
+     * 
+     * nach der Auswertung wird $resultType[0] mit dem DeviceType beschrieben.
+     * 
+     * erkannte Device Typen (1fach oder 4fach Switche)
+     *      TYPE_SWITCH                 
+     *      TYPE_METER_POWER
+     *
+     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
+     *   false,0   die aktuelle Kategorisierung, also $resultType[$i]
+     *
+     * abhängig vom Gerätetyp bzw. den Instanzeigenschaften werden für die Instanz die Register jeweils mit Typ und Parameter ermittelt
+     *      $resultType[i] = "TYPE_METER_TEMPERATURE";            
+     *      $resultReg[i]["TEMPERATURE"]="TEMPERATURE";
+     *      $resultReg[i]["HUMIDITY"]="HUMIDITY";
+     *
+     * grudsätzlich kann anhand der Konstellation der Register der Typ bestimmt werden, aber zusätzlich zur besseren Einordnung die Konfiguration der Instanz übergeben
+     * und da es sich um Multi Instanzen Geräte handelt auch gleich die ganze Itemliste für ein Modul
+     *
+     */
+    private function DeviceType($register, $outputVersion=false, $entry, $debug=false)
+        {
+        $debug=2;
+        // gleiche Einträge für Register der Instanz eliminieren 
+		sort($register);
+        $registerNew=array();
+    	$oldvalue="";        
+	    foreach ($register as $index => $value)
+		    {
+	    	if ($value!=$oldvalue) {$registerNew[]=$value;}
+		    $oldvalue=$value;
+			}  
+        // vorhandene Informationen in der itemList und der Instanz Configuration abfragen        
+        $devicetype=false; $found=false; $resultType=array();
+        if (is_array($entry["OID"])) return (false);                                // es werden keine mehreren Instanzen als Übergane unterstützt
+
+        // itemslist auslesen für Ermittlung TypeDev
+        if ( (isset($entry["OID"])) && (isset($this->itemslist[$entry["OID"]])) )
+            {
+            $config=$this->itemslist[$entry["OID"]];
+            //echo "                     ".json_encode($config)."\n";
+            if ($debug>1) echo "                DeviceType, called for instance ".$entry["OID"];
+            if (isset($config["TypeDev"])) 
+                {
+                $devicetype= $config["TypeDev"];
+                if ($debug>1) echo "\n";
+                }
+            else
+                {
+                if ($debug>1) echo "  , TypeDev in Itemlist Config nicht gefunden. In Instanz Config nachschauen. In itemList nicht .".json_encode($config)."\n";
+                $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+                //print_r($result);
+                if (isset($result["Component"])) 
+                    {
+                    $devicetype=$result["Component"];
+                    if ($debug>1) echo "                 DeviceType, called for instance ".$entry["OID"]." with new devicetype $devicetype : ".$entry["CONFIG"]." \n";                
+                    //print_r($config);
+                    }
+                } 
+            }
+
+        /* result wird geschrieben, 4 Ausgabevarianten, Variante 4 wird für die devicelist verwendet, variante 0
+         *
+         * 0 Textuelle Beschreibung
+         * 1 Medium und Textuelle Beschreibung
+         * 2 Typbeschreibung wie für TYPECHAN in der DeviceList
+         * 3 Dieses Register und alle register
+         * 4 TYPECHAN Zusammenfassung und registerAll 
+         *
+         */ 
+
+        // Vereinheitlichung Devicetype
+        switch (strtoupper($devicetype))
+            {
+            case "WIFI":
+                if ($debug) echo "                     WIFI Information gefunden ($devicetype).\n";
+                $devicetype="TYPE_WIFI";                    // aber keine Channels anlegen
+                $result[0] = "Informationen";
+                $result[1] = "WIFI Informationen";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["RegisterAll"]=$registerNew;           
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                break;
+            case "CLOUD":
+                if ($debug) echo "                     CLOUD Information gefunden ($devicetype).\n";
+                $devicetype="TYPE_CLOUD";                    // aber keine Channels anlegen
+                $result[0] = "Cloud Informationen";
+                $result[1] = "WIFI Cloud Informationen";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["RegisterAll"]=$registerNew;           
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                break;                
+            case "TYPE_SWITCH":                     // es geht um die Status register, die können auch Status und eine Zahl haben
+                // passende Channels finden
+                $resultRegSwitch=array();$resultRegEnergy=array(); 
+                foreach ($registerNew as $regname)
+                    {
+                    //echo " $regname ";
+                    $pos1=strpos($regname,"Status");
+                    if ($pos1 !== false) $resultRegSwitch["STATE"]=$regname;            // beginnt mit Status
+                    $pos1=strpos($regname,"Gesamtverbrauch"); 
+                    if ($pos1 !== false) $resultRegEnergy["ENERGY"]=$regname;
+                    $pos1=strpos($regname,"Wirkleistung");
+                    if ($pos1 !== false) $resultRegEnergy["POWER"]=$regname;
+                    }
+                //echo "\n"; print_r($resultRegEnergy); print_r($resultRegSwitch);
+                /*--Schalter 1fach oder 4fach -----------------------------------*/ 
+                if ($debug) echo "                     1fach Schalter mit Powersensor gefunden.\n";
+
+                $result[0] = "Schalter mit Powersensor";
+                $result[1] = "WIFI Schalter mit Powersensor";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["Register"] = array_merge($resultRegSwitch, $resultRegEnergy);
+                $result[3]["RegisterAll"]=$registerNew;
+                $result[4]["TYPECHAN"] = "TYPE_SWITCH,TYPE_METER_POWER";              
+                $result[4]["TYPE_SWITCH"] = $resultRegSwitch;
+                $result[4]["TYPE_METER_POWER"] = $resultRegEnergy;
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                break;                
+            default:
+                print_r($register);
+                break;
+            }
+            
+        if ($found) 
+            {
+            if ($outputVersion==false) return($result[2]);
+            elseif ($outputVersion==2) return ($result[1]);
+            elseif ($outputVersion==3) return ($result[3]);
+            elseif ($outputVersion==4) return ($result[4]);
+			else return ($result[0]);
+            }
+        else 
+            {
+            if ($outputVersion>100) 
+                {
+                $result = "";
+                foreach ($registerNew as $entry) $result .= $entry." ";
+                return ($result);
+                }
+            else return (false);
+            }
+        }
+
+
+    }
 
 /****************************************************/
 

@@ -626,7 +626,7 @@ class Logging
             IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');                  
             $this->DetectHandler = new DetectMovementHandler();  // für getVariableName benötigt 
             }
-        $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+        $this->variablename = $this->getVariableName($variable, $variablename, $debug);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
 
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
         //$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
@@ -651,7 +651,7 @@ class Logging
         $this->AuswertungID=$this->CreateCategoryAuswertung("Bewegung",$this->CategoryIdData);;
 
         if ($debug) echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen:\n";
-        $this->do_setVariableLogID($variable,$debug);
+        $this->do_setVariableLogID($variable,$debug);                   // Motion uses from class variablename
         $this->variableDelayLogID = $this->variableLogID;                                                                                       // sicherheitshalber, kann später noch überschrieben werden.
         
         /* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
@@ -736,7 +736,11 @@ class Logging
         {
         if ($debug) echo "IPSComponentSensor_Motion, HandleEvent für Brightness VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert $value : ".GetValueIfFormatted($variable)." \n";
         if ($this->CheckDebugInstance($variable)) IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für Brightness VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert $value : '.GetValueIfFormatted($variable));
-        if (isset ($this->installedmodules["DetectMovement"])) $this->DetectHandler = new DetectBrightnessHandler();  // für getVariableName benötigt 
+        if (isset ($this->installedmodules["DetectMovement"])) 
+            {
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');                  
+            $this->DetectHandler = new DetectBrightnessHandler();  // für getVariableName benötigt 
+            }
         $this->variablename = $this->getVariableName($variable, $variablename, $debug);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
         if ($debug) echo "   Aufruf do_init_brightness Variablenname abgeändert von $variablename auf ".$this->variablename.":\n";
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
@@ -771,7 +775,7 @@ class Logging
         if ($debug) echo "         done ".$this->NachrichtenID. "(".IPS_GetName($this->NachrichtenID).") und ".$this->AuswertungID." (".IPS_GetName($this->AuswertungID).").\n";
         
         if ($debug) echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen, es wird für create entsprechend variableType,variableProfile genutzt:\n";
-        $this->do_setVariableLogID($variable,$debug);       // Create VariableLog with Profile
+        $this->do_setVariableLogID($variable,$debug);       // Brightness Create VariableLog with Profile
 
         $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();
@@ -788,7 +792,11 @@ class Logging
         {
         if ($debug) echo "IPSComponentSensor_Motion, do_init_contact für VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert $value: ".GetValueIfFormatted($variable)." \n";
         if ($this->CheckDebugInstance($variable)) IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für Contact VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert $value: '.GetValueIfFormatted($variable));
-        if (isset ($this->installedmodules["DetectMovement"])) $this->DetectHandler = new DetectContactHandler();  // für getVariableName benötigt   <--- change here 
+        if (isset ($this->installedmodules["DetectMovement"])) 
+            {
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');                  
+            $this->DetectHandler = new DetectContactHandler();  // für getVariableName benötigt   <--- change here 
+            }
         $this->variablename = $this->getVariableName($variable, $variablename, $debug);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
         if ($debug) echo "   Aufruf do_init_contact Variablenname abgeändert von $variablename auf ".$this->variablename.":\n";
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
@@ -1547,7 +1555,9 @@ class Logging
             if ( ($variablename==Null) && ($moid !== false) ) 
                 {
                 $variablename=IPS_GetName($moid);
-                if ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename/".IPS_GetName(IPS_GetParent($moid))."\" $moid   (from config)\n";
+                if ($debug) echo "      getVariableName: DetectMovement installiert. moid known, Spiegelregister Name : \"$variablename/".IPS_GetName(IPS_GetParent($moid))."\" $moid   (from config)\n";
+                $variablename1 = $this->DetectHandler->getVariableName($variable,$debug);
+                if ($debug) echo "           $variablename1 \n";
                 }
             else
                 {
@@ -1585,12 +1595,14 @@ class Logging
         }
 
 
-    /* do_setVariableLogID, nutzt setVariableLogId aus der Logging class und die nutzt setVariableID
+    /* Logging:do_setVariableLogID
+     * nutzt setVariableLogId aus der Logging class und die nutzt setVariableID
      * alle diesselbe class, ausser sie wird von der children class überschrieben
      *
      * wenn nicht variable NUll ist wird die LogVariablen ID rückgemeldet und angelegt, es wird auch variable übernommen, sonst wird nur variableLogID zurück gemeldet 
      * für die Rückverfolgung wird hidden auf false gesetzt
      *
+     * wandelt class variablen in lokale variablen
      * setVariableLogId legt die Variable und die Log Variable variableLogID an und benötigt dafür variable, variablename, AuswertungID, variableType, variableProfile
      *
      * Ermittelt Werden
@@ -1614,31 +1626,35 @@ class Logging
         return ($this->variableLogID);
         }
 
-    /*
+    /* Logging:setVariableLogId
      * wird in construct und Set_LogValue verwendet, von do_setVariableLogID aufgerufen
      * verändert keine class register
      *
      * variable wird nur als Referenz übergeben, ruft setVariableId mit den anderen Parametern auf
      *      $variablename wird in der Kategorie $AuswertungID mit $type und $profile angelegt  
      * wenn Logging Status falsch ist oder Variable noch nicht angelegt ist nachbessern
+     *
+     * nur von do_setVariableLogID aufgerufen, keine class variablen
      */
 
     public function setVariableLogId($variable, $variablename, $AuswertungID,$type,$profile,$debug=false)    
         {
         /* einfaches Logging, formattiert oder nicht */
-        if ($debug) echo '    Logging:setVariableLogId Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile mit Wert ".GetValueIfFormatted($variable)."\n";
-        IPSLogger_Dbg(__file__, 'CustomComponent Motion_Logging Construct: Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." mit Wert ".GetValueIfFormatted($variable));	
+        if ($debug) echo '    Logging:setVariableLogId Register erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile mit Wert ".GetValueIfFormatted($variable)."\n";
+        IPSLogger_Dbg(__file__, 'CustomComponent Motion_Logging Construct: Register erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." mit Wert ".GetValueIfFormatted($variable));	
 
         /* lokale Spiegelregister aufsetzen */  
         $variableLogID=$this->setVariableId($variablename, $AuswertungID,$type,$profile,$debug);
         return($variableLogID);                    
         }
 
-    /* wie setVariableLogId nur ohne echo Wert $variable */
-
+    /* Logging:setVariableId
+     * wie setVariableLogId nur ohne echo Wert $variable , keine class variablen
+     * aufgerufen von setVariableLogId
+     */
     public function setVariableId($variablename, $AuswertungID,$type,$profile,$debug=false)    
         {
-        if ($debug) echo '    Logging:setVariableId Spiegelregister erstellen mit Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile.\n";
+        if ($debug) echo '    Logging:setVariableId Register erstellen mit Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile.\n";
         /* lokale Spiegelregister aufsetzen */  
         if ($debug) echo "    Double checking ".$this->archiveHandlerID." and  CreateVariableByName($AuswertungID,$variablename,$type,$profile, false, 10,false, false ) \n";
         //CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false, $debug=false)

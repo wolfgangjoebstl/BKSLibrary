@@ -903,17 +903,35 @@
 			{
             if ($debug>1)
                 {
-                echo "doublecheckEnergyRegisters mit deviceList aufgerufen.\n";    
-                print_r($deviceListFiltered);
+                echo "doublecheckEnergyRegisters mit deviceList aufgerufen.\n";  
+                //foreach ($deviceListFiltered as $name => $entry) echo "   $name    \n";
+                //print_r($deviceListFiltered);
                 }
             $MeterConfig=$this->MeterConfig;    
             $powerMeter=array();
             $energyMeter=array();
             foreach ($deviceListFiltered as $name => $entry)
                 {
+                if ($debug>1) echo "   $name     \n";
                 foreach ($entry["Instances"] as $index => $instance)
                     {
+                    $found=false;
                     if ($instance["TYPEDEV"]=="TYPE_METER_POWER") 
+                        {
+                        //print_R($childrens); foreach ($childrens as $children) echo IPS_getName($children)."  "; echo "\n";
+                        $found=true;
+                        }
+                    else if ($instance["TYPEDEV"]=="TYPE_SWITCH")                                   // keine eigene Instanz für Messwerte
+                        {
+                        if ($debug>1) echo "      $index   ".json_encode($instance)."    \n";
+                        if (isset($entry["Channels"][$index]["TYPE_METER_POWER"]))
+                            {
+                            // gefunden
+                            $found=true;
+                            }
+                        }
+                    else echo "      $index  $name no TYPEDEV  ".json_encode($instance)."    \n";
+                    if ($found)
                         {
                         $powerMeter[$instance["OID"]]["NAME"]=$instance["NAME"];
                         $powerMeter[$instance["OID"]]["REGISTER_NAME"]=$entry["Channels"][$index]["TYPE_METER_POWER"]["ENERGY"];
@@ -926,7 +944,6 @@
                                 $energyMeter[$children]=$instance["NAME"];
                                 }
                             }
-                        //print_R($childrens); foreach ($childrens as $children) echo IPS_getName($children)."  "; echo "\n";
                         }
                     }
                 }

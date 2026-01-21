@@ -909,7 +909,7 @@ class TopologyLibraryManagement
                             }
                         }
                     }
-                elseif ($debug) echo "        BridgeID    unbekannt, keine Gatewayliste anlegen.\n";
+                elseif ($debug) echo "        BridgeID    für $hardwareType unbekannt, keine Gatewayliste anlegen.\n";
                 }
             }
         return($gateway);

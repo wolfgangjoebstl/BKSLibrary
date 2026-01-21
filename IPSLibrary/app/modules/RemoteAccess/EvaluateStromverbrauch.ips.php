@@ -18,6 +18,7 @@
 	 */  
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+ * verwendet mit installComponentFull und TYPE_METER_POWER
  *
  * Stromverbrauch Variablen am Remote Server anlegen, kommen vom AMIS Modul
  * input ist die AmisStromverbrauchList() in EvaluateVariables_ROID  erstellt von RemoteAccess::add_Amis() am 04.12.2025 05:05

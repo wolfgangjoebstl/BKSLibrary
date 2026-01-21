@@ -22,9 +22,10 @@
  * overview of classes
  *
  * Hardware
- *      HardwareDenonAVR extends Hardware
+ *      HardwareDenonAVR                
+ *      HardwareShelly
  *      HardwareHomematicExtended
- *      HardwareNetatmoWeather extends Hardware
+ *      HardwareNetatmoWeather 
  *      HardwareHomematic
  *      HardwareHUE
  *      HardwareHUEV2
@@ -37,6 +38,7 @@
  *      HardwareEchoControl
  *      HardwareSwitchBot
  *      HardwareMQTTClient
+ *      HardwareMQTTServer
  *
  *
  *	summary of class Hardware
@@ -47,7 +49,7 @@
  *    getBridgeID
  *    getSocketID
  *    getDeviceID
- *    getHardwareType           liefert einen Clas identifier anhand einer modulID
+ *    getHardwareType           liefert einen Class identifier anhand einer modulID
  *    getDeviceCheck
  *    getDeviceParameter
  *    getDeviceChannels
@@ -86,11 +88,12 @@
  *      getDeviceID
  *      getDeviceIDInstances
  *      getHardwareType
- *      getDeviceConfiguration
+ *      getDeviceConfiguration      für die Hardwarelist, je Component/Device einen Eintrag machen mit zumindest OID und CONFIG der Instanz
+ *                                  wir gehen davon aus das pro Gerätetyp keine gleichen Namen vorkommne, in den device functions wird um eine laufende Nummer erweitert 
  *
  *
  *      getDeviceCheck              überprüft den Namen der den Index in deviceList darstellt auf einzigartigkeit, andernfalls wird wenn aktiviert der Type drangehängt
- *      getDeviceParameter          erzeugt die Instances
+ *      getDeviceParameter          erzeugt die Instances, das Gerät erhält Name, Type (deviceType eq Shelly) und den Instance entry aus der Hardwarelist, ein Eintrag nach dem anderen nach dem auftreten in der Harwdarelist
  *      getDeviceChannels           erzeugt die Channels
  *      getDeviceTopology
  *      getDeviceInformation        erzeugt Device
@@ -180,6 +183,10 @@ class Hardware
         return ($this->modulhandling->getInstances($this->getDeviceID()));
         }
 
+    /* 
+     * returns a string identifier for a given moduleId, the string identifier xxxxx is the class name Hardwarexxxxx
+     * when known in the system, otherwise false
+     */
     public function getHardwareType($moduleID)
         {
         switch ($moduleID)
@@ -232,6 +239,9 @@ class Hardware
             case "{0D86E724-D3DB-5685-03CE-DDD6B981F39B}":          // SwitchBot
                 $hardwareType="SwitchBot";
                 break;
+            case "{1B79809A-2CB4-73E6-B94F-39BAE9E627DB}":          // Shelly Gen2+
+                $hardwareType="Shelly";
+                break;
             case "{CC4F15B1-81C2-4F45-8D53-972F0C9C8103}":          // MQTT Server
                 $hardwareType="MQTTServer";
                 break;
@@ -245,7 +255,7 @@ class Hardware
 
 
     /* Hardware::getDeviceConfiguration für class Hardware
-     * kein check im default ob der Name bereits verwendet wird, es wird in der Hardwarelist überschrieben
+     * kein check im default ob der Name bereits verwendet wird, es wird in der Hardwareliste überschrieben, alle anderen verwendet für die devicelist
      */
 
     public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
@@ -909,6 +919,345 @@ class HardwareDenonAVR extends Hardware
 
 /* Objektorientiertes class Management für Geräte (Hardware)
  * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
+ * Device, Bridge and socketID is difficult since the configurator useses standard MQTT client/server architecture at Port 1883
+ * Similar approach as for HardwareHueV2
+ *
+ * device model:
+ *   in configuration.combineDevices sind alle Geräte gespeichert, daraus eine ListofDevices erstellen
+ *      Index ist die Serialnumer des gerätes, also die einzigartige, unique Adresse aus dem MQTTTopic, das mehrere Instanzen haben kann
+ *      Subindex ist die OID, also die IDs der Instanzen mit gleicher Adresse/DeviceID
+ *      unter dem Subindex wird die Configuration gespeichert
+ *      es gibt einen Namen, die Regel ist das erste Gerät das in der Liste vorkommt bestimmt den Namen 
+ *
+ * functions
+ *      __construct                     DeviceManagement_Shelly : typedevs,   combineDevices : ListofDevices, name of device set is set by device name, not first item name
+ *      getDeviceConfiguration          modify hardwarelist for unique identifier key, unique between different hardware types, define deviceID for same name detection for multiple Components within Device
+ *      getDeviceCheck                  changes device name if necessary, error check for unique names etc.
+ *
+ */
+
+class HardwareShelly extends Hardware
+    {
+
+    protected $socketID, $bridgeID, $deviceID;
+	
+	public function __construct($config=false,$debug=false)
+		{
+        $this->socketID = "";           // I/O oder Splitter ist der Socket für das Device, MQTT Server, Allgemein, Topic related
+        $this->bridgeID = "";           // Configurator
+        $this->deviceID = ["ShellyComponent","ShellyDevice"];           // das Gerät selbst 
+        $typedevs=array(); 
+        $this->setInstalledModules();
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            //IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+            if ($debug>2) echo "class DeviceManagement aufgerufen:\n";   
+            $this->DeviceManager = new DeviceManagement_Shelly($debug>2);              // die Darstellung der ConfigurationForm ist wieder anders als bei Hue
+            $typedevs=$this->DeviceManager->getItemlist("TypeDev");
+            // für spätere Abfragen und Fehlerprüfungen benötigt
+            }              
+        parent::__construct($config, $debug); 
+        if ($this->combineDevices) 
+            {
+            if ($debug) echo "    HardwareShelly, combineDevices angefordert.\n"; 
+            foreach ($this->configuration["combineDevices"] as $idx => $entry)                // Hardwarelist, nocheinmal für alle Geräte eines Typs
+                {
+                $found=false;
+                $oid=false;
+                if (isset($entry["OID"]))
+                    {
+                    $oid=$entry["OID"];    
+                    }                
+                if (isset($entry["DeviceID"]))              // Unique Adresse des Device wird bereits in getDeviceConfiguration (unten) ermittelt
+                    {
+                    $deviceId=$entry["DeviceID"];
+                    $found=true;
+                    }
+                elseif (isset($entry["CONFIG"]))
+                    {
+                    $config=json_decode($entry["CONFIG"],true);
+                    $adressString=$config["MQTTTopic"];
+                    if (isset($config["MQTTTopic"]))
+                        {
+                        $adress=explode("-",$adressString);
+                        if (sizeof($adress)>1) $deviceId=$adress[1];
+                        else $deviceId=$adress;
+                        if ($debug>1) echo str_pad($idx,15)."  $deviceId ".json_encode($entry)."\n";
+                        $found=true;
+                        }
+                    }
+                if ($found===false)
+                    {
+                    echo "warning, do not find CONFIG and MQTTTopic for Address Resolution.\n";    
+                    print_r($entry);
+                    }
+                else
+                    {
+                    if (($oid) && (isset($typedevs[$oid])) && (isset($entry["CONFIG"])) ) 
+                        {
+                        $config=json_decode($entry["CONFIG"],true);
+                        $config["TypeDev"]=$typedevs[$oid];
+                        $config["Name"]=IPS_GetName($oid);
+                        $entry["CONFIG"]=json_encode($config);
+                        }
+                    if (isset($entry["NAME"])) $name=$entry["NAME"];
+                    else $name=$idx;
+                    $subnames=explode(":",$name);
+                    if (sizeof($subnames)>1) $name=$subnames[0];     // das wäre Namen mit Doppelpunkt zusammenfassen, siehe Homematic
+                    $this->ListofDevices[$deviceId][$entry["OID"]]=$entry["CONFIG"];
+                    if (isset($this->ListofDevices[$deviceId]["NAME"])==false) $this->ListofDevices[$deviceId]["NAME"]=$name;
+                    }
+                }
+            // naming convention, either first item defines name or device defines name, reevaluate list
+            //echo "change naming convention:\n";
+            foreach ($this->ListofDevices as $address => $item)             
+                {
+                foreach ($item as $index => $entry)    
+                    {
+                    if (is_numeric($index))    
+                        {
+                        //echo "    do $index \n";
+                        $config=json_decode($entry,true);
+                        if ( (isset($config["TypeDev"])) && ($config["TypeDev"] == "TYPE_DEVICE") ) $this->ListofDevices[$address]["NAME"] = $config["Name"];   
+                        }
+                    }
+                }
+            if ($debug>1) print_R($this->ListofDevices);          //fertige Liste   
+            }       // endofif      
+        }       // endoffunc
+
+
+    /* HardwareShelly::getDeviceConfiguration for creation of devicelist
+     * Neudefinition der function um Check auf gleiche Namen von ShellyComponent mit anderen Devices gleich hier einbauen
+     * es kann ja sein dass ein Homematic Device gleich heisst wie ein Shelly Device. zB ArbeitszimmerSchalter
+     * dann um Zahlen nach dem Namen erweitern
+     * in Homematic wurde ein Device mit mehreren Instanzen über den Doppelpunkt im Namen gelöst, könnte man hier schon richtig machen über die Device Addresse im MQTTTopic
+     * unique nameing eingeführt, DeviceID um zu erkennen welche Instanzen zusammengehören
+     */
+    public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
+        {
+        $config = @IPS_GetConfiguration($device);                   //tatsächliche Konfiguration des ShellyComponent auslesen
+        if ($config !== false) 
+            {                    
+            $devicename = IPS_GetName($device);
+            if ($debug>1) echo "             HardwareShelly::getDeviceConfiguration, $devicename $config   \n";          // wir sind auf Component Ebene, das wäre eine Instance ist gleich ein Channel
+            $oldname = $devicename;
+            if (isset($hardware[$hardwareType][$devicename]))
+                {
+                for ($num=1;($num<5);$num++) 
+                    {
+                    if (isset($hardware[$hardwareType][$devicename.$num])==false) break;
+                    }
+                $devicename = $devicename.$num;
+                echo "HardwareShelly::getDeviceConfiguration, warning instance name $oldname exists already, look for new name : $devicename.\n";
+                $hardware[$hardwareType][$devicename]["NAME"]=$oldname;
+                }
+            else $hardware[$hardwareType][$devicename]["NAME"]=$devicename;
+            $hardware[$hardwareType][$devicename]["OID"]=$device;
+            $hardware[$hardwareType][$devicename]["CONFIG"]=$config;
+            $configuration=json_decode($config,true);
+            if (isset($configuration["MQTTTopic"]))                        // vergleichbar zur DeviceID von HUEV2, könnte gleich aus der Hardwarelist übernommen werden
+                {
+                $adress=explode("-",$configuration["MQTTTopic"]);
+                if (sizeof($adress)>1) $deviceId=$adress[1];
+                else $deviceId=$adress;
+                $hardware[$hardwareType][$devicename]["DeviceID"]=$deviceId;
+                }
+            }
+        }
+
+
+    /* HardwareShelly::getDeviceCheck
+     * Neudefinition, Check um die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * wenn alles in Ordnung wird $deviceList[$name]["Name"]=$name; angelegt.
+     *
+     * es wird geprüft ob der name als Index bereits vergeben ist, Index muss ein uniqueName sein.
+     * wenn config für createUniqueName ein true ist dann bei doppelten Namen einen neuen Namen definieren
+     *
+     * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
+     *
+     *  if getDeviceCheck(....)                             // verschiedene checks, zumindest ob schon angelegt ?
+     *       {
+     *       $object->getDeviceParameter(....);             // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
+     *       $object->getDeviceChannels(....);              // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
+     *       $object->getDeviceActuators(....);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+     *       $object->getDeviceInformation(....);             // zusaetzlich Geräteinformation, auch das Gateway
+     *       $object->getDeviceTopology(....);              // zusaettlich Topolgie Informationen ablegen
+     *       }
+     *
+     * verwendet ListofDevices
+     */
+
+    public function getDeviceCheck(&$deviceList, &$name, $type, $entry, $debug=false)
+        {
+        if ($this->createUniqueName)            // mit uniqueNames arbeiten
+            {
+            // die DeviceID suchen, wir wollen einen gemeinsamen Namen
+            if (isset($entry["DeviceID"]))                                      // angenommener Device name für mehrere Components
+                {
+                $deviceID=$entry["DeviceID"];
+                if ($debug) echo "      getDeviceCheck:Shelly $name : $deviceID ".json_encode($entry)."   \n";
+                if (isset($this->ListofDevices[$deviceID]["NAME"])) 
+                    {
+                    if ($name != $this->ListofDevices[$deviceID]["NAME"])       // Namensänderung bei Shelly normal, keine Standardmeldung notwendig
+                        {
+                        if ($debug) echo "         OID ".$entry["OID"].", DeviceID: $deviceID, Name wird von $name auf ".$this->ListofDevices[$deviceID]["NAME"]." geändert !\n";
+                        //print_r($this->ListofDevices);
+                        $name = $this->ListofDevices[$deviceID]["NAME"];
+                        $deviceList[$name]["Name"]=$name;                           //realname ist Teil von instances
+                        $deviceList[$name]["Type"]=$type;
+                        return (true);
+                        }
+                    }
+                }
+            /* Fehlerprüfung, für alle die keinen gemeinsamen deviceID Eintrag haben */
+            if (isset($deviceList[$name])) 
+                {                    
+                if ($debug) echo "          ------------------------------------------------------------------------------------------------------\n";
+                echo "          getDeviceCheck:Allgemein, create unique Names aktiviert, Name wird von $name auf $name$type geändert:\n";
+                $realname=$name;
+                $name = $name.$type;            // wird zurückgegeben, nur ein Pointer
+                $deviceList[$name]["Name"]=$realname;
+                $deviceList[$name]["Type"]=$type;
+                return (true);
+                }
+            else 
+                {
+                $deviceList[$name]["Name"]=$name;
+                $deviceList[$name]["Type"]=$type;
+                return (true);
+                }
+            }
+        else                                // bei gleichen Namen abbrechen
+            {
+            /* Fehlerprüfung */
+            if (isset($deviceList[$name])) 
+                {                 
+                echo "          >>getDeviceCheck:Allgemein   Fehler, Name \"$name\" bereits definiert. Anforderung nach Type $type wird ignoriert.\n";                    
+                print_r($deviceList[$name]);
+                return(false);
+                }
+            else return (true);
+            }            
+        }
+
+    /* HardwareShelly::getDeviceParameter
+     * die Device Liste aus der Geräteliste erstellen 
+     * Antwort ist ein Geräteeintrag für Type und Instances
+     * in den Instances einen TYPEDEV Eintrag generieren, Evaluierung erfolgt durch class->getDeviceType
+     *      TYPE_SWITCH, TYPE_METER_POWER
+     *
+     * Standard wäre:         $deviceList[$name]["Type"]=$type; $entry["NAME"]=$name; $deviceList[$name]["Instances"][]=$entry;
+     *                              entry[TYPEDEV], entry[OID], entry[NAME],entry[CONFIG] bereits übernommen 
+     *                                  TYPE_SWITCH | TYPE_AMBIENT | TYPE_DIMMER
+     * Fehlerpüfung auf gleiche Namen bereits erfolgt bei checkDevice, bei doppelten Namen wird entweder ein uniqueName erstellt oder abgebrochen
+     */
+    public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        //$debug=true;    
+
+        /* Durchführung */
+        if ($debug) echo "          getDeviceParameters:Shelly    aufgerufen. Eintrag \"$name\" hinterlegt.\n";
+        //print_R($entry);      
+        //if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];               // Name wird übergeben für Debug
+        
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            if (isset($entry["OID"]))
+                {
+                $entry["NAME"]=IPS_GetName($entry["OID"]);                      // wurde für Namensfindung verwendet, jetzt wieder gerade rücken
+                $instanz=$entry["OID"];
+                $typedev    = $this->DeviceManager->getDeviceType($instanz,0,$entry,$debug>1);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus 
+                if ($debug) echo "    TYPEDEV: $typedev  \n";
+                $entry["TYPEDEV"]=$typedev;
+                }
+            }      
+
+        $deviceList[$name]["Type"]=$type;
+        $deviceList[$name]["Instances"][]=$entry;
+        return (true);
+        }
+
+    /* HardwareHUEV2::getDeviceChannels
+     * HueV2 hat pro Gerät mehrere Instanzen, die Instanzen werden erst nach jedem Aufruf von getDeviceParameter hinzugefügt, bis es alle sind
+     * die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät hat die Kategorien Instances,Channels,Actuators, es kann mehrer Einträge in Instances und Channels haben, 
+     * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
+     * alle instances durchgehen, OIDs einsammeln mit Zuordnung Port abspeichern
+     * zumindest RegisterAll schreiben
+     */
+
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)                 // class Hardware
+        {
+        if ($debug) echo "          HardwareShelly::getDeviceChannels, aufgerufen für ".$entry["OID"]." mit $name $type.\n";
+        if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];               // Name wird übergeben für Debug
+        else $entry["NAME"]=$name;
+
+        //print_r($deviceList[$name]["Instances"]);
+        //print_r($entry);
+        $oids=array();
+        foreach ($deviceList[$name]["Instances"] as $port => $register)             // wir sind bei den Channels, also kann man instances bereits analysieren
+            {
+            if ($register["OID"]==$entry["OID"]) $oids[$register["OID"]]=$port;              // für den Fall das ein Device mehrere Instances hat, den Channel der Instanz zuordnen
+            }
+        if (isset($oids[$entry["OID"]])===false) 
+            {
+            echo "  >> irgendetwas ist falsch.\n";
+            return (false);                                     // nix zum tun, Abbruch
+            }
+        // die Instanzen der Reihe nach durchgehen und für jede Instanz, Nummer nach der Reihenfolge wie angelegt bearbeiten, entry stimmt nicht weil es ist von der Instanz die als letztes aufgerufen wurde
+        foreach ($oids as $oid => $port)
+            {
+            if (isset($this->installedModules["OperationCenter"])) 
+                {
+                $typedevRegs    = $this->DeviceManager->getDeviceType($oid,4,$entry,$debug>1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                $deviceList[$name]["Channels"][$port]=$typedevRegs;
+                }
+            else                // wird eigentlich nicht verwendet
+                {
+                $typedev=false;
+                if ($debug>1) echo "             analyse result from getDeviceParameter : ".json_encode($deviceList[$name]["Instances"][$port])."\n";
+                if (isset($deviceList[$name]["Instances"][$port]["TYPEDEV"])) $typedev = $deviceList[$name]["Instances"][$port]["TYPEDEV"];
+                else echo "         TYPEDEV not found in : ".json_encode($deviceList[$name]["Instances"][$port])."  \n";
+                $typedevRegs=array();
+                $cids = IPS_GetChildrenIDs($oid);           // für jede Instanz die Children einsammeln
+                $register=array();
+                if ($debug>1) echo "                  $typedev : ";
+                foreach($cids as $cid)
+                    {
+                    $regName=IPS_GetName($cid);
+                    if ($debug>1) echo $regName.",";
+                    $register[]=$regName;
+                    switch ($typedev)
+                        {
+                        case "TYPE_SWITCH":
+                            if ($regName=="Status") $typedevRegs["STATE"]=$regName;
+                            break;
+                        }
+                    }
+                if ($debug>1) echo "\n";
+                sort($register);
+                $registerNew=array();
+                $oldvalue="";        
+                /* gleiche Einträge eliminieren */
+                foreach ($register as $index => $value)
+                    {
+                    if ($value!=$oldvalue) {$registerNew[]=$value;}
+                    $oldvalue=$value;
+                    } 
+                $deviceList[$name]["Channels"][$port]["RegisterAll"]=$registerNew;
+                $deviceList[$name]["Channels"][$port][$typedev]=$typedevRegs;
+                }
+            if (isset($deviceList[$name]["Name"])) $deviceList[$name]["Channels"][$port]["Name"]=$deviceList[$name]["Name"];
+            else $deviceList[$name]["Channels"][$port]["Name"]=$name;
+            }
+        return (true);
+        }
+
+    }       // endofclass
+
+/* Objektorientiertes class Management für Geräte (Hardware)
+ * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
  * für Library HomematicExtended, CCU Objekte für CCU2 und getrennte Objekte RF und IP auch für CCU3
  * erweitert HardwareHomematic um
  *      getDeviceCheck      vereinfacht
@@ -1154,6 +1503,11 @@ class HardwareHomematicExtended extends HardwareHomematic
  *
  * getDeviceCheck, getDeviceParameter, getDeviceChannels werden Hardware Typ spezifisch programmiert
  *
+ * functions:
+ *      __construct
+ *      getDeviceChannels
+ *      getNetatmoDeviceType        typically part of Devicemanagement_Library
+ *      NetatmoDeviceType
  */
 
 class HardwareNetatmoWeather extends Hardware
@@ -1230,7 +1584,8 @@ class HardwareNetatmoWeather extends Hardware
      * gibt für eine Netatmo Instanz/Kanal eines Gerätes den Typ aus
      * zB TYPE_METER_TEMPERATURE
      * vorher die Childrens der Instanz ermitteln und dann NetatmoDeviceType aufrufen.
-     *
+     * klassisch ohne strtoupper, alle der Instance zugeordneten childrens als array übergeben
+     *              $netatmo[$cid]=IPS_GetName($cid)
      *
      ***********************************************/
 
@@ -1249,7 +1604,7 @@ class HardwareNetatmoWeather extends Hardware
      * 
      * Netatmo Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
      *
-     * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
+     * Übergabe ist ein array aus Variablennamen/Children einer Instanz
      * übergeben wird das Array das alle auch doppelte Eintraege hat. Folgende Muster werden ausgewertet:
      *
      * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
@@ -1277,11 +1632,11 @@ class HardwareNetatmoWeather extends Hardware
             echo "\"\n";
             }
 
-        /* result wird geschrieben, 4 Ausgabevarianten, Variante 4 wird für die devicelist verwendet
+        /* result wird geschrieben, 4 Ausgabevarianten, Variante 4 wird für die devicelist Channels, Variante 0 für die devicelist instances verwendet
          *
          * 0 Textuelle Beschreibung
          * 1 Medium und Textuelle Beschreibung
-         * 2 Typbeschreibung wie TYPECHAN in der DeviceList
+         * 2 Typbeschreibung wie für TYPECHAN in der DeviceList
          * 3 Dieses Register und alle register
          * 4 TYPECHAN Zusammenfassung und registerAll 
          *
@@ -1411,6 +1766,12 @@ class HardwareNetatmoWeather extends Hardware
  *
  *      checkConfig
  *
+ * device model:
+ *   in configuration.combineDevices sind alle Geräte gespeichert, daraus eine ListofDevices erstellen
+ *      Index ist die DeviceID, also die einzigartige, unique Adresse des Homematic Gerätes, das mehrere Instanzen haben kann
+ *      Subindex ist die OID, also die IDs der Instanzen mit gleicher Adresse/DeviceID
+ *      unter dem Subindex wird die Configuration gespeichert
+ *      es gibt einen Namen, die Regel ist das erste Gerät das in der Liste vorkommt bestimmt den Namen
  *
  *
  */
@@ -2161,11 +2522,12 @@ class HardwareHUEV2 extends Hardware
 	
     /* wir können devices zusammenlegen wenn gewünscht, Vorverarbeitung beginnt bereits im construct 
      * calls parents construct to analyse config and set combineDevices createuniquenames
-     * in configuration.combineDevices sind alle Geräte gespeichert, eine ListofDevices erstellen
+     * device model:
+     *   in configuration.combineDevices sind alle Geräte gespeichert, eine ListofDevices erstellen
      *      Index ist die DeviceID, also die einzigartige, unique Adresse des Gerätes, das mehrere Instanzen haben kann
      *      Subindex ist die OID, also die IDs der Instanzen mit gleicher Adresse/DeviceID
      *      unter dem Subindex wird die Configuration gespeichert
-     *      es gibt einen Namen, die Regle ist das erste Gerät das in der Liste vorkommt bestimmt den Namen
+     *      es gibt einen Namen, die Regel ist das erste Gerät das in der Liste vorkommt bestimmt den Namen
      */
 	public function __construct($config=false,$debug=false)
 		{
@@ -2880,7 +3242,7 @@ class HardwareOpCentCam extends Hardware
             return(false);
             }            
         /* Durchführung */
-        if ($debug) echo "          HardwareOpCentCam::getDeviceParameters aufgerufen. Eintrag \"$name\" wird hinterlegt.\n";            
+        if ($debug) echo "          getDeviceParameters:OpCentCam aufgerufen. Eintrag \"$name\" wird hinterlegt.\n";            
 
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
         echo "                            entry CONFIG is  ".str_pad($name,22)." : ".json_encode($result)."\n";
@@ -3081,7 +3443,7 @@ class HardwareIpsHeat extends Hardware
                 }
             }            
         /* Durchführung */
-        if ($debug) echo "          HardwareIpsHeat::getDeviceParameters aufgerufen. Eintrag \"$name\" wird hinterlegt.\n";            
+        if ($debug) echo "          getDeviceParameters:IpsHeat aufgerufen. Eintrag \"$name\" wird hinterlegt.\n";            
 
         $result=json_decode($entry["CONFIG"],true);   // true, als array zurückgeben , Config in Instances
         if (isset($result["Type"])===false) print_r($result);
