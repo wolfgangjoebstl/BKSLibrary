@@ -866,9 +866,10 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 
     $homematicOperation  = new HomematicOperation();
 			
-    $homematicOperation->ccuSocketStatus($log_OperationCenter,true);        // true für Debug
+    $homematicOperation->ccuSocketStatus($log_OperationCenter);        // true für Debug
     $homematicOperation->ccuSocketDutyCycle($log_OperationCenter,true);      // called every hour, internal controled by variable in count5mins
     $pingOperation->SysPingAllDevices($log_OperationCenter);          
+    $pingOperation->ccu_checkReboot($OperationCenterConfig["CCU"],$debug);          // true for debug
 
 	echo "============================================================================================================\n";
 
@@ -1247,6 +1248,7 @@ if ($_IPS['SENDER']=="TimerEvent")
             $homematicOperation->ccuSocketStatus($log_OperationCenter);         // called every hour, internal controled by variable in count5mins
             $homematicOperation->ccuSocketDutyCycle($log_OperationCenter);      // called every hour, internal controled by variable in count5mins
             $pingOperation->SysPingAllDevices($log_OperationCenter);            // called every 5mins, hour and 4 hour,  internal controled by variable in count5mins
+            $pingOperation->ccu_checkReboot($OperationCenterConfig["CCU"]);          // true for debug, called every 5mins, if Socket in error > 300min set to close, ends up with closed sockets, need reatrt of IPS Server
 
             //echo "SwitchBot Update per Instance: \n";
             $categoryId_PullFunction	= IPS_GetObjectIDByName('Pull',   $CategoryIdData);

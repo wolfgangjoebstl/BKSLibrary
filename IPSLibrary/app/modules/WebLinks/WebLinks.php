@@ -1,4 +1,4 @@
-<?
+<?php
 
 /*  Weblinks Control, wenn es Buttons gibt, diese Routine als Action Script aufrufen */
 

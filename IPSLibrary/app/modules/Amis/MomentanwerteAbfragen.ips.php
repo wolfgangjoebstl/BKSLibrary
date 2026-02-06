@@ -54,6 +54,64 @@
      * eine Energiemessung unterstützen sollen übernommen werden. Der Wert kann zu klein oder Teil einer übergeordneten Messung sein.
      *          $amis=new Amis(); $MeterConfig = $amis->getMeterConfig();
      *
+     * AMIS Messdatenerfassung
+     * MomentanwerteAbfragen, aufgerufen alle Minute, 15 x in einer Viertelstunde, Messwerte unterschiedlicher Geräte sind nicht synchron
+     * BerchnePeriodenwerte immer um 1:27 morgens
+     *
+     * in Momentanwerte Abfragen
+     *      writeEnergySumme
+     *      Amis, ein paar Zeilen, könnte man zusammenfassen
+     *      sendReadCommandAmis, Befehle zur Zählerablesung schicken
+     *      writeEnergyHomematic - writeEnergyDevice  Umstellung erforderlich
+     *      writeEnergyRegister
+     *
+     * Gemeinsame Datanablage
+     *      Amis_Installation, eigene functions für Install machen
+     *      Program.IPSLibrary.data.modules.Amis
+     *          $meter["NAME"], identifier für das Datenobjekt
+     *              'Wirkenergie', 2, '~Electricity'
+     *              'Wirkleistung', 2,'~Power'
+     *              'Wirkleistung (Tag)', 2,'~Power'
+     *              "Chart", 3,'~HTMLBox'
+     *
+     *              'Offset_Wirkenergie',2
+     *              'Homematic_Wirkenergie', 2,'kWh'            Geräteregister
+     *              'ConfigReading', 3
+     *
+     * Datenerfassung
+     *      basierend auf $meter["OID"], passenderweise die Geräteinstanz, und dem Gerätetyp Homematic/Shelly die Geräteregister OID identifizieren: 
+     *          Energie, 
+     *          Leistung
+     *      ConfigReading übernimmt die Versionscontrolle und die Gerätehistorie
+     *          $configuration["OID"] ist das aktueller Energie register
+     *          $configuration["HISTORY"] ist die lesbare forma was bisher geschah
+     *          bei einer Änderung der OID passiert
+     *              ein Update von OID
+     *              eine Erweiterung von HISTORY
+     *              eine Anpassung bei der Messwerterfassung
+     *          wenn ein Energiewert historisierte Daten hat, wird getArchivePower aufgerufen: 
+     *
+     * getArchivePower
+     *      archivierte Daten von den letzten 24 Stunden und 7 Minuten holen
+     *      es sollten 96 Werte sein, aber zumindest 10 Werte um weiterzumachen
+     *      ersten und Letzten Wert holen, Wertdifferenz, es ist ja ein Counter und Zeitdifferenz festellen, Leistung = Energie/Zeit
+     *      zusaetztlich eine nette Tabelle erstellen für die Visualisiserung der Werte
+     *  verwendet in writeEnergyHomematic, writeEnergyRegistertoArray, 
+     *
+     * writeEnergyHomematic / Device
+     *      RegisterIDs identifizieren
+     *      zusätzlich Geräteinputregister raussuchen : getHomematicRegistersfromOID
+     *      check change Inputregister
+     *      Leistungsmittelwert 24Stunden ermitteln, Update 'Wirkleistung (Tag)'
+     *      Anpassung Messwerte, Vereinheitlichung in kWh und W
+     *      Energievorschub anhand des Geräteregisters bestimmen, Geräteregister ist in kWh normiert
+     *      Bearbeitung von möglichen Events: Gerätetausch, Gerätereset, unrealistischer Wert
+     *      Abspeichern der neuen Werte
+     *      !! im Debugmodus nur ausgeben und nicht speichern !!
+     *      Debug>1 einführen     
+     *
+     *
+     *
      * writeEnergyHomematic ist Teil der AMIS class
      *   Aufruf mit dem Einzeleintrag der Konfiguration ohne identifier
      *
@@ -154,6 +212,8 @@ if ($_IPS['SENDER']=="TimerEvent")          // alle 60 Sekunden
                     $amis->sendReadCommandAmis($meter,$identifier,"F009");                
                     break;                
 				case "5":  /* Auto */
+                    $amis->writeEnergyDevice($meter,"SHELLY");
+                    break;
 				case "4":  /* Auto */
 					$amis->writeEnergyRegister($meter);     // $meter["TYPE"])=="REGISTER"
 					break;					
@@ -208,27 +268,46 @@ if ($_IPS['SENDER']=="Execute")
 	echo "Konfiguration für Zaehlerauslesung: \n\n";	
 	foreach ($MeterConfig as $identifier => $meter)
 		{
-		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-		echo "Category/Variable for : ".str_pad($meter["NAME"],30)." ".$meter["TYPE"]."\n";
-		if (strtoupper($meter["TYPE"])=="AMIS")
-			{
-			$AmisID = CreateVariableByName($ID, "AMIS", 3);			
-			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */	
-			echo "  AMIS Meter Read eingeschaltet       : ".GetvalueFormatted($AmisReadMeterID)."\n";
-	
-			//Hier die COM-Port Instanz festlegen
-			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-			foreach ($serialPortID as $num => $serialPort)
-				{
-				if (IPS_GetName($serialPort) == $identifier." Serial Port")   { $com_Port = $serialPort; }
-				if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") { $com_Port = $serialPort; }
-				}
-			if (isset($com_Port) === false) { echo "  Kein AMIS Zähler Serial Port definiert\n"; break; }
-			else { echo "  AMIS Zähler Port auf OID ".$com_Port." definiert.\n"; }
-			}
-        elseif (strtoupper($meter["TYPE"])=="SUMME")
-			{
-            $amis->writeEnergySumme($meter,$debug);               // true für Debug
+		$ID = @IPS_GetObjectIDByName($meter["NAME"], $CategoryIdData);   
+        if ($ID===false) 
+            {
+            echo "Category/Variable for : ".str_pad($meter["NAME"],30)." ".$meter["TYPE"]." has no root ID.\n";
+            continue; 
+            }
+		else echo "Category/Variable for : ".str_pad($meter["NAME"],30)." ".str_pad($meter["TYPE"],12)." : $ID\n";
+		switch(strtoupper($meter["TYPE"]))
+            {
+            case "AMIS":
+                $AmisID = @IPS_GetObjectIDByName($ID, "AMIS", 3);	
+                if ($AmisID===false) break;	
+                $AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */	
+                echo "  AMIS Meter Read eingeschaltet       : ".GetvalueFormatted($AmisReadMeterID)."\n";
+        
+                //Hier die COM-Port Instanz festlegen
+                $serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
+                foreach ($serialPortID as $num => $serialPort)
+                    {
+                    if (IPS_GetName($serialPort) == $identifier." Serial Port")   { $com_Port = $serialPort; }
+                    if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") { $com_Port = $serialPort; }
+                    }
+                if (isset($com_Port) === false) { echo "  Kein AMIS Zähler Serial Port definiert\n"; break; }
+                else { echo "  AMIS Zähler Port auf OID ".$com_Port." definiert.\n"; }
+                break;
+            case "SUMME":
+                $amis->writeEnergySumme($meter,$debug);               // true für Debug
+                break;
+            case "SHELLY":
+            	$EnergieID     = IPS_GetObjectIDByName('Wirkenergie', $ID);   
+				$LeistungID    = IPS_GetObjectIDByName('Wirkleistung', $ID);   
+				$LeistungTagID = IPS_GetObjectIDByName('Wirkleistung (Tag)', $ID);   
+				
+                $OffsetID      = IPS_GetObjectIDByName('Offset_Wirkenergie', $ID);   
+				$WirkenergieID = IPS_GetObjectIDByName('Shelly_Wirkenergie', $ID);   
+            
+                /* Config und History Logging vorbereiten */
+                $ConfigID = IPS_GetObjectIDByName('ConfigReading', $ID); 
+                echo "   Wirkenergie  ".GetValueFormatted($EnergieID)."  Offset ".GetValueFormatted($OffsetID)."  Shelly Wirkenergie ($WirkenergieID) ".GetValueFormatted($WirkenergieID)."\n";
+                break;
             }
 		//print_r($meter);
 		}

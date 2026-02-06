@@ -540,7 +540,7 @@ class OperationCenter extends OperationCenterConfig
 		
     /****************************************************************************************************************/
 
-    /* OperationCenter::getSetup
+    /* OperationCenter::getSetup, getConfiguration
      * Setup Config abfragen
      */
     public function getSetup()
@@ -1939,7 +1939,9 @@ class OperationCenter extends OperationCenterConfig
         else return ($PrintLn);
 		}
 
-    /* Application installed by checking Directory
+    /* appInstalledWin
+     *
+     * Application installed by checking Directory
      * Check if Directory is available
      */
     public function appInstalledWin($app,$debug=false) 
@@ -1955,7 +1957,9 @@ class OperationCenter extends OperationCenterConfig
         else return (false);
         }
 
-    /* CLI Command installed
+    /* cmdInstalledWin
+     * 
+     * CLI Command installed
      * Check if Directory is available and file is in there
      */
     public function cmdInstalledWin($app,$debug=false) 
@@ -1974,7 +1978,9 @@ class OperationCenter extends OperationCenterConfig
         return (false);
         }
 
-    /* get Java version primarily by reading dirs 
+    /* getJavaVersion
+     *
+     * get Java version primarily by reading dirs 
      * and if debug by calling java
      *
      */
@@ -2002,7 +2008,8 @@ class OperationCenter extends OperationCenterConfig
         return($javaVersion);            
         }
 
-    /* get TailScale Status
+    /* getTailScaleStatus
+     * get TailScale Status
      *
      */
     public function getTailScaleStatus($dir,$debug=false)
@@ -2067,6 +2074,233 @@ class OperationCenter extends OperationCenterConfig
         return($tailScaleServer);
         }
 
+    /* ccu_checkReboot
+     *
+     * Reset when unavailable
+     *
+    *  INTERNET
+    *  ROUTER
+    *  LED
+    *  CCU  
+    *  CAM
+    *  DENON
+    *  TAILSCALE
+    *
+    * common parameters:       NOK_HOURS, REBOOTSWITCH 
+    *
+    * class HomematicOperation takes care on CCU Operation
+    *
+    *          OperationCenter::device_checkReboot
+    *          called from PingOperation::SysPingAllDevices
+    *          NOK_HOURS || NOK_MINUTES and optionally REBOOTSWITCH has to be defined
+    *          is self installing Registers in Categories OperationCenter.data.SysPing, OperationCenter.data.RebootCounter
+    *          stores as device_name   device is here CCU
+    *
+    *          works with OperationCenter::device_ping, uses same parameter and structure
+    *          called every 5mins when NOK_MINUTES is configured, else every hour based on optional parameter hourpassed
+    *          needs IPADDRESS produces status and reboot values
+    *
+    *          use new functions instead of device_ping, HomematicOperation::ccuSocketStatus
+    *          calls sysStatusSockets once per hour, 5 min Intervall is not implemented
+    *          updates             SetValue($StatusID,true);
+    *                              SetValue($RebootID,0);
+    *                           $StatusID = @IPS_GetObjectIDByName($name."_"."Connected",$this->categoryId_SysPing);
+    *                           $RebootID = @IPS_GetObjectIDByName($name."_"."Connected",$this->categoryId_RebootCtr);
+    *
+    *          ccuSocketStatus ist ein Aufruf aus OperationCenter
+    *          updates reboot_ctr if status >= 200 plus 60 Minutes everytime it is called
+    *          now every 5 minute on 60 Minutes, Failure due to Debug Switch set
+    *
+    */
+
+	function ccu_checkReboot($device_config, $debug=false)
+		{
+        if ($debug) echo "ccu_checkReboot  ".json_encode($device_config)."\n";
+        $categoryId_SysPing    	= @IPS_GetObjectIDByName('SysPing',       	$this->CategoryIdData);
+        $categoryId_RebootCtr  	= @IPS_GetObjectIDByName('RebootCounter', 	$this->CategoryIdData);
+        $categoryId_Sockets     = @IPS_GetObjectIDByName("SocketStatus", 	$categoryId_SysPing);
+        if ($debug>1) echo "OperationCenter RebootCounter Category  $categoryId_RebootCtr SysPing $categoryId_SysPing \n";
+        if ($categoryId_SysPing && $categoryId_RebootCtr ) 
+            {
+            if (sizeof($device_config)>0)               // eigene Auswertung 
+                {
+                //$deviceconfig = $this->getConfiguration();            // ist ein Parameter
+                if ($debug>1) print_R($deviceconfig["CCU"]);
+                $childs=IPS_GetChildrenIDs($categoryId_RebootCtr);
+                foreach ($childs as $oid)                               // other way round, see whats there and whether you can use it
+                    {
+                    $name=IPS_GetName($oid);
+                    foreach ($deviceconfig["CCU"] as $ccuname => $config) 
+                        {
+                        $pos1=strpos($name,$ccuname);           // haystack needle
+                        if ($pos1 !== false) break;             // 0 is a valid result
+                        }
+                    $statusID       = @IPS_GetObjectIDByName($name,$categoryId_SysPing);   
+                    $socketstatusID = @IPS_GetObjectIDByName($name,$categoryId_Sockets);         
+                    if ($pos1 !== false)                        // CCU Var found, its the Rebooot Counter in Minutes
+                        {
+                        $config["Name"]=$ccuname;
+                        echo "    ".str_pad($name,40);
+                        if (($ccuname."_Connected") == $name)
+                            {
+                            $rebootId = $this->setRebootVar($oid,$debug);               // $oid gibt es schon ! sonst wäre es kein child, im debug wird History des Counters ausgegeben
+                            $reboot_ctr  = GetValue($rebootId);
+                            $nokMinutes=false;
+                            if (isset ($config["NOK_HOURS"]))   $nokMinutes = $config["NOK_HOURS"]*60;
+                            if (isset ($config["NOK_MINUTES"])) $nokMinutes = $config["NOK_MINUTES"];
+
+                            if ($reboot_ctr != 0)
+                                {
+                                if ($reboot_ctr > $nokMinutes)
+                                    {
+                                    if (isset ($config["REBOOTSWITCH"]))
+                                        {
+                                        // CCU Socket close
+                                        // Switch Reset Off, Timer to Switch on after 2 Seconds, like in Autosteuerung
+                                        if (isset($config["OID"])) 
+                                            {
+                                            $SocketOpen=IPS_GetProperty($config["OID"], "Open");         // eigentlich die falsche Information
+                                            $SocketStatus=($SocketOpen?"open":"closed");
+                                            echo "Reboot Switch Operation : $ccuname $SocketStatus \n";
+                                            if ($SocketOpen)
+                                                {
+                                                // reset Counter fehlt, Log Info fehlen
+                                                echo "   set Socket Status to closed, reset Power \n";
+                                                $logMessage= "Reboot Switch Operation : $ccuname $SocketStatus set Socket Status ".$config["OID"]." to closed, reset Power ".$config["REBOOTSWITCH"];
+                                                $this->log_OperationCenter->LogMessage($logMessage);
+                                                $this->log_OperationCenter->LogNachrichten($logMessage);
+
+                                                IPS_SetProperty($config["OID"], "Open", false);
+                                                IPS_ApplyChanges($config["OID"]);
+                                                IPSUtils_Include ("IPSHeat.inc.php","IPSLibrary::app::modules::Stromheizung"); 
+                                                IPSHeat_SetSwitchDelayedByName($config["REBOOTSWITCH"], false, 4);
+                                                }
+                                            }                                    
+                                        }
+                                    else
+                                        {
+                                        $escalation=ceil($nokMinutes/$reboot_ctr);                                        
+                                        $this->escalationLogging($config, $reboot_ctr, $escalation,$debug);
+                                        }
+                                    }
+                                }
+                            if ($statusID) $status = GetValue($statusID);
+                            else $status=false;
+
+                            echo "   ";
+                            //echo "$pos1 $ccuname";
+                            echo " Status $statusID : $status     RebootCtr $rebootId : $reboot_ctr  min  max $nokMinutes \n";
+
+
+                            if ($socketstatusID)            // there is addittional information    
+                                {
+                                $instancestatusID       = @IPS_GetObjectIDByName($ccuname."_InstanceStatus"     ,$categoryId_Sockets);    
+                                $instancestatusnumID    = @IPS_GetObjectIDByName($ccuname."_InstanceStatusNum"  ,$categoryId_Sockets); 
+                                echo "                                         Socket Status $socketstatusID : ".GetValue($socketstatusID)." Instance Status $instancestatusID ".GetValue($instancestatusID)." as Num ".GetValue($instancestatusnumID)."\n";
+                                }
+                            // if RebootCtr is higher than max first close socket, then reboot
+                            }
+                        else echo "  not exactly same name, expecting \"".$ccuname."_Connected\" \n";
+                        }
+                    }
+                }               // CCU defined in Config
+            }
+        else echo "Category Sockets not defined well : $categoryId_SysPing $categoryId_RebootCtr  \n";
+        }
+
+    /*
+     * simple function, do logging, but decrease amount of logging if already a long time has passed
+     * all Time is in minutes, escalation is typically reboot_ctr/max
+     *          escalation  
+     *          <5          logging every hour   5 times max  5 Stunden = 300 Minuten , die ersten 25 Stunden
+     *          <25         logging every 4th hour, die ersten 5 Tage lang
+     *                      danach einmal am Tag
+     */
+    function escalationLogging($config, $reboot_ctr, $escalation,$debug=false)
+        {
+        $name=$config["Name"];
+        // $reboot_ctr in Minuten übergeben
+        $hours=round($reboot_ctr/60,0);         // auf ganze Stunden runden, wird für remains modulo genutzt
+        $days=round($reboot_ctr/24/60);          // auf ganze Tage runden, für die Anzeige verwendet
+
+        if ($escalation<5)
+            {   /* solange nicht 5 mal mehr überschritten, Nachricht jede Stunde/5Minuten ausgeben, dann nur mehr sechsmal am Tag/jede Stunde */
+            if ($reboot_ctr<150) $logMessage=$name." wird seit ".($reboot_ctr)." Minuten nicht erreicht.";
+            else $logMessage=$name." wird seit ".nf($reboot_ctr/60,1)." Stunden nicht erreicht.";
+            if ( (isset($config["LOGGING"])) && ($config["LOGGING"]==false) )
+                {
+                }
+            else
+                {
+                $this->log_OperationCenter->LogMessage($logMessage);
+                $this->log_OperationCenter->LogNachrichten($logMessage);
+                }
+            }
+        elseif ($escalation<25)
+            {   // die nächsten 100 Stunden, Nachricht jede vierte Stunde ausgeben, dann nur mehr einmal am Tag 
+            if (($hours%4)==0)
+                {
+                $logMessage=$name." wird seit $hours Stunden nicht erreicht.";
+                if ( (isset($config["LOGGING"])) && ($config["LOGGING"]==false) )
+                    {
+                    }
+                else
+                    {
+                    $this->log_OperationCenter->LogMessage($logMessage);
+                    $this->log_OperationCenter->LogNachrichten($logMessage);							
+                    }
+                }
+            }
+        elseif (($hours%24)==0)            // nur mehr einmal am Tag weitergeben
+            {
+            $logMessage=$name." wird seit $days Tagen nicht erreicht.";                                
+            if ( (isset($config["LOGGING"])) && ($config["LOGGING"]==false) )
+                {
+                }
+            else
+                {
+                $this->log_OperationCenter->LogMessage($logMessage);
+                $this->log_OperationCenter->LogNachrichten($logMessage);                                
+                }
+            }
+        if ($debug) echo $logMessage."\n";
+        }
+
+    /* 
+     * common function between ccu_checkReboot and device_checkReboot
+     * Set Archiving if not set before, print History for debugging function
+     */
+    function setRebootVar($RebootID,$debug=false)
+        {
+        if (AC_GetLoggingStatus($this->archiveHandlerID,$RebootID) === false)
+            { // nachtraeglich Loggingstatus setzen
+            AC_SetLoggingStatus($this->archiveHandlerID,$RebootID,true);
+            AC_SetAggregationType($this->archiveHandlerID,$RebootID,0);
+            IPS_ApplyChanges($this->archiveHandlerID);
+            }
+        else
+            {
+            $daysback=1;
+            $werte = AC_GetLoggedValues($this->archiveHandlerID, $RebootID, time()-$daysback*24*60*60, time(),1000); 
+            if ($debug) 
+                {
+                echo "Aufgezeichnete Werte für ".IPS_GetName($RebootID)." über das Verhalten des Reboot Switch Counters:\n";
+                //print_r($werte);
+                if (count($werte))
+                    {
+                    echo "       Datum/Zeit           Wert   Dauer zwischen Werten\n";
+                    foreach ($werte as $wert)
+                        {
+                        //print_r($wert);
+                        echo "        ".date("d.m.Y H:i:s",$wert["TimeStamp"]);
+                        echo  "  ".$wert["Value"]."   ".$wert["Duration"]."\n";             // nur beim ersten Wert ändert sich Dauer
+                        }
+                    }
+                }
+            }
+        return($RebootID);
+        }
+
     /****************************************************************************************************************/
 
 	/**
@@ -2086,14 +2320,17 @@ class OperationCenter extends OperationCenterConfig
 	 */
 	function device_checkReboot($device_config, $device, $identifier, $debug=false)
 		{
+        if ($debug) echo "device_checkReboot aufgerufen : ".json_encode($device_config)."\n";
 		foreach ($device_config as $name => $config)
 			{
 			//print_r($config);
 			if ( (isset ($config["NOK_HOURS"])) || (isset ($config["NOK_MINUTES"])) )
 				{
-                $RebootID = @IPS_GetObjectIDByName($device."_".$name,$this->categoryId_RebootCtr);
-                /* Auto Install, neue ping Abfragen werden automatisch angelegt, geloeschte allerdings nicht entfernt ! */
-                if ($RebootID===false) $RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */                    
+                $RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */                    
+                echo "   $name   Reboot Check is configurrred : Reboot Counter  $RebootID : ".GetValue($RebootID)."\n";
+                $this->setRebootVar($RebootID,$debug);
+                /* $RebootID = @IPS_GetObjectIDByName($device."_".$name,$this->categoryId_RebootCtr); // Auto Install, neue ping Abfragen werden automatisch angelegt, geloeschte allerdings nicht entfernt ! 
+                if ($RebootID===false) $RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1);      
 				if (AC_GetLoggingStatus($this->archiveHandlerID,$RebootID) === false)
 					{ // nachtraeglich Loggingstatus setzen
 					AC_SetLoggingStatus($this->archiveHandlerID,$RebootID,true);
@@ -2117,7 +2354,7 @@ class OperationCenter extends OperationCenterConfig
                                 }
                             }
                         }
-                    }
+                    }  */
 				$reboot_ctr = GetValue($RebootID);
 				if (isset ($config["NOK_MINUTES"])) /* der RebootCtr zählt nun in Minuten, damit wird die Funktion transparenter, maxCount entsprechend anpassen */
                     {
@@ -2130,7 +2367,7 @@ class OperationCenter extends OperationCenterConfig
 					{
 					if ($reboot_ctr > $maxCount)
 						{
-						if (isset ($config["REBOOTSWITCH"]))
+						if (isset ($config["REBOOTSWITCH"]))                // Stromheizung, IPSHeat ist installiert
 							{
                             $oidSwitch=false; $doIpsHeat=false;
 							$SwitchName = $config["REBOOTSWITCH"];
@@ -2188,9 +2425,10 @@ class OperationCenter extends OperationCenterConfig
 							}
 						else
 							{
-                            $escalation=ceil($maxCount/$reboot_ctr);
-                            if ($escalation<5)
-                                {   /* solange nicht 5 mal mehr überschritten, Nachricht jede Stunde/5Minuten ausgeben, dann nur mehr sechsmal am Tag/jede Stunde */
+                            $escalation=ceil($maxCount/$reboot_ctr);                                        
+                            $this->escalationLogging($config, $reboot_ctr, $escalation,$debug);                                
+                            /* if ($escalation<5)
+                                {   // solange nicht 5 mal mehr überschritten, Nachricht jede Stunde/5Minuten ausgeben, dann nur mehr sechsmal am Tag/jede Stunde 
                                 if (isset ($config["NOK_MINUTES"])) $logMessage=$device."_".$name." wird seit ".($reboot_ctr*5)." Minuten nicht erreicht.";
                                 else $logMessage=$device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht.";
                                 if ( (isset($config["LOGGING"])) && ($config["LOGGING"]==false) )
@@ -2203,7 +2441,7 @@ class OperationCenter extends OperationCenterConfig
                                     }
                                 }
                             elseif ($escalation<25)
-                                {   /* die nächsten 100 Stunden/500 Minuten, Nachricht jede vierte Stunde/jede Stunde ausgeben, dann nur mehr einmal am Tag/jede vierte Stunde */
+                                {   // die nächsten 100 Stunden/500 Minuten, Nachricht jede vierte Stunde/jede Stunde ausgeben, dann nur mehr einmal am Tag/jede vierte Stunde 
                                 if (($reboot_ctr%4)==0)
                                     {
                                     if (isset ($config["NOK_MINUTES"])) $logMessage=$device."_".$name." wird seit ".($reboot_ctr*5)." Minuten nicht erreicht.";
@@ -2238,7 +2476,7 @@ class OperationCenter extends OperationCenterConfig
                                     $this->log_OperationCenter->LogMessage($logMessage);
                                     $this->log_OperationCenter->LogNachrichten($logMessage);                                
                                     }
-                                }
+                                }  */
 							}	
 						}
 					else        /* maxcount Minuten noch nicht überschritten */
@@ -6841,7 +7079,6 @@ class HomematicOperation extends OperationCenter
         if ($categoryId_Sockets)
             {
             $modulhandling = new ModuleHandling();
-
             $discovery = $modulhandling->getDiscovery();
             $topologyLibrary = new TopologyLibraryManagement();                     // in EvaluateHardware Library, neue Form des Topology Managements
             $socket=array();

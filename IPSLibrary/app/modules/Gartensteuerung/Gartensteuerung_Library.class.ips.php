@@ -463,7 +463,7 @@ class Gartensteuerung
 		return($meterID); 		
 		}  */
 
-    /* immer gleiche Vereinheitlichung der Auswertung für OIDs
+    /* immer gleiche Vereinheitlichung der Auswertung für OIDs, auch in IPSHeat
      * kann ein Integerwert oder ein String sein
      * wenn String kann es ein Wert aus IPSHeat sein
      */

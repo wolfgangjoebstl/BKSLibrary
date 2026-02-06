@@ -167,6 +167,23 @@
 	}
 
 	/**
+	 * Setzt den Wert eines Schalters anhand des zugehörigen Namens, use Delay to set old inverted value
+	 *
+	 * @param string $lightName Name des Schalters
+	 * @param bool $value Neuer Wert des Schalters
+	 */
+	function IPSHeat_SetSwitchDelayedByName($lightName, $value, $delay, $debug=false) {
+		$lightManager = new IPSHeat_Manager($debug);
+		$switchId = $lightManager->GetSwitchIdByName($lightName);
+		$lightManager->SetValue($switchId, $value);
+        $timerOps = new TimerOps();
+        $command = 'include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php");'."\n";
+        If ($value)    $command .= 'IPSHeat_SetSwitchByName("'.$lightName.'", false);'."\n";
+        else            $command .= 'IPSHeat_SetSwitchByName("'.$lightName.'", true);'."\n";
+        $timerOps->setEventTimer($lightName,$delay,$command,$_IPS['SELF']);
+    }
+
+	/**
 	 * "Toogle" Schalter anhand des zugehörigen Namens
 	 *
 	 * @param string $lightName Name des Schalters

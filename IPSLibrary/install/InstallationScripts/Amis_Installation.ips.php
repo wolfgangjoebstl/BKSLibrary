@@ -234,6 +234,7 @@ if ($do>0)
 if ($do>1)
     {
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+    $archOps = new archOps();
 
 	$Amis = new Amis();
 	$MeterConfig = $Amis->getMeterConfig();
@@ -273,11 +274,23 @@ if ($do>1)
 		
 		/*****************************
 		*
+        *      Amis_Installation, eigene functions für Install machen
+        *      Program.IPSLibrary.data.modules.Amis
+        *          $meter["NAME"], identifier für das Datenobjekt
+        *              'Wirkenergie', 2, '~Electricity'
+        *              'Wirkleistung', 2,'~Power'
+        *              'Wirkleistung (Tag)', 2,'~Power'
+        *              "Chart", 3,'~HTMLBox'
+        *
+        *              'Offset_Wirkenergie',2
+        *              'Homematic_Wirkenergie', 2,'kWh'            Geräteregister
+        *              'ConfigReading', 3        
 		* Variablenstruktur sollte immer gleich sein:
 		*
 		* Kategorie=Name des Messgeraetes
 		*    Wirkenergie, Profil ~Electricity
 		*    Wirkleistung, Profil ~Power
+        *    etc.
 		*    Periodenwerte (Kategorie)
 		*
 		* bei Amis Zählern werden noch die tatsächlichen Messwerte unter Zaehlervariablen (Kategorie) abgespeichert
@@ -288,34 +301,43 @@ if ($do>1)
         switch (strtoupper($meter["TYPE"]))
             {
             case "HOMEMATIC":               		/***********************Homematic Zähler */
-                /* Variable ID selbst bestimmen */
-                $variableID = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
-                AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
-                AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
-                IPS_ApplyChanges($archiveHandlerID);
-                
-                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($LeistungID,'~Power');
-                AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
-                AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
-                IPS_ApplyChanges($archiveHandlerID);
+            case "SHELLY":
+                $type = strtoupper($meter["TYPE"]);
+                switch ($type)
+                    {
+                    case "SHELLY":              // funktioniert nur für diesen Type
+                        $identifier="Shelly";
+                        break;
+                    case "HOMEMATIC":              // funktioniert nur für diesen Type
+                        $identifier="Homematic";
+                        break;
+                    default:
+                        break;
+                    }            
+                // Variable ID selbst bestimmen 
+                $EnergieID     = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');  
+                $LeistungID    = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');  
+                $LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');  
+				$OffsetID      = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
 
-                $LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                AC_SetLoggingStatus($archiveHandlerID,$LeistungTagID,true);
-                AC_SetAggregationType($archiveHandlerID,$LeistungTagID,0);
-                IPS_ApplyChanges($archiveHandlerID);
+                $archOps->setArchiving($EnergieID,true,1);                      // ApplyChanges braucht ziemlich lange, umgehen wenn nicht nötig
+                $archOps->setArchiving($LeistungID,true,0);
+                $archOps->setArchiving($LeistungTagID,true,0);
 
-                $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2,'kWh');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
-            
+                $HM_EnergieID = CreateVariableByName($ID, $identifier.'_Wirkenergie', 2,'kWh');   /* 0 Boolean 1 Integer 2 Float 3 String */            
                 $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
 
-                SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
+                $ConfigID = CreateVariableByName($ID, 'ConfigReading', 3);
+                $configuration = json_decode(GetValue($ConfigID),true);
+                if ( ($configuration===NULL) || ($configuration==0) ) 
+                    { 
+                    $configuration = array(); echo "Configuration neu angelegt.\n"; 
+                    SetValue($ConfigID,json_encode($configuration));  
+                    }
 
                 // Homematic
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$EnergieID]["NAME"]="Wirkenergie";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$EnergieID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungTagID]["NAME"]="Wirkleistung (Tag)";
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungTagID]["PANE"]=true;		
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
@@ -326,35 +348,23 @@ if ($do>1)
 		    case "REGISTER":       /*********************** Irgendein Register Zähler, wahrscheinlich von Remote Access uebermittelt */
             case "DAILYREAD":
             case "DAILYLPREAD":
-                /* Variable ID selbst bestimmen */
-                $variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
-                AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
-                AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
-                // AC_SetAggregationType($archiveHandlerID,$variableID,0);                                            /* Registerwert aus dem Smart Meter Webportal muss in Guthaben stehen */
-                IPS_ApplyChanges($archiveHandlerID);
-                
-                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($LeistungID,'~Power');
-                AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
-                AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
-                IPS_ApplyChanges($archiveHandlerID);
-                
-                $LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                AC_SetLoggingStatus($archiveHandlerID,$LeistungTagID,true);
-                AC_SetAggregationType($archiveHandlerID,$LeistungTagID,0);
-                IPS_ApplyChanges($archiveHandlerID);
+            case "SHELLY":                                      // nicht anders behandeln, Wirkenergie, Wirkleistung
+                // Variable ID selbst bestimmen 
+                $EnergieID     = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');  
+                $LeistungID    = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');  
+                //$LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');  
+
+                $archOps->setArchiving($EnergieID,true,1);                      // ApplyChanges braucht ziemlich lange, umgehen wenn nicht nötig
+                $archOps->setArchiving($LeistungID,true,0);
+                //$archOps->setArchiving($LeistungTagID,true,0);
 
                 $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
 
-                //$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
-            
                 SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
                 
                 // Register
-                $webfront_links["Register"][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
-                $webfront_links["Register"][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
+                $webfront_links["Register"][$meter["NAME"]][$EnergieID]["NAME"]="Wirkenergie";
+                $webfront_links["Register"][$meter["NAME"]][$EnergieID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
                 $webfront_links["Register"][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
                 $webfront_links["Register"][$meter["NAME"]][$LeistungID]["PANE"]=true;	
                 $webfront_links["Register"][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
@@ -364,34 +374,22 @@ if ($do>1)
                                         * links die Werte Wirkenergie und Leistung pro Gruppe meter Name
                                         * rechts das passende chart
                                         */
-                /* Variable ID selbst bestimmen */
-                $variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
-                AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
-                AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
-                IPS_ApplyChanges($archiveHandlerID);
-                
-                $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2, '~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($LeistungID,'~Power');
-                AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
-                AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
-                IPS_ApplyChanges($archiveHandlerID);
+                // Variable ID selbst bestimmen 
+                $EnergieID     = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');  
+                $LeistungID    = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');  
+                //$LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');  
 
-                $LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
-                AC_SetLoggingStatus($archiveHandlerID,$LeistungTagID,true);
-                AC_SetAggregationType($archiveHandlerID,$LeistungTagID,0);
-                IPS_ApplyChanges($archiveHandlerID);                
+                $archOps->setArchiving($EnergieID,true,1);                      // ApplyChanges braucht ziemlich lange, umgehen wenn nicht nötig
+                $archOps->setArchiving($LeistungID,true,0);
+                //$archOps->setArchiving($LeistungTagID,true,0);
 
                 $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
-                
-                //$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-                //IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
-            
+                            
                 SetValue($MeterReadID,true);  // wenn Werte parametriert, dann auch regelmaessig auslesen 
 
                 // SUMME Gruppe Meter Name, Links Wirkenergie, Wirkleistung
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$EnergieID]["NAME"]="Wirkenergie";
+                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$EnergieID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
                 $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						

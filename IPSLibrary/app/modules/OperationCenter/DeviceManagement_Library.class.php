@@ -700,15 +700,18 @@ class DeviceManagement
     /* DeviceManagement::checkVariableChanged
      * einheitliche Überprüfung ob schon länger keine Änderung mehr war 
      */
-    private function checkVariableChanged(&$result,&$index,$Key)
+    private function checkVariableChanged(&$result,&$index,$Key,$dolog=false)
         {
         if ((time()-IPS_GetVariable($Key["COID"])["VariableUpdated"])>(60*60*24*2))         // vorher VariableChanged, zu unsicher da nicht immer Änderungen erfolgen
             {           
             $result[$index]["Name"]=$Key["Name"];
             $result[$index]["OID"]=$Key["COID"];
-            $index++;					
-            $this->log_OperationCenter->LogMessage('HardwareStatus Gerät '.$Key["Name"].' meldet sich seit 2 Tagen nicht, check '.$Key["COID"]);
-            $this->log_OperationCenter->LogNachrichten('HardwareStatus Gerät '.$Key["Name"].' meldet sich seit 2 Tagen nicht, check '.$Key["COID"]);
+            $index++;
+            if ($dolog)
+                {					
+                $this->log_OperationCenter->LogMessage('HardwareStatus Gerät '.$Key["Name"].' meldet sich seit 2 Tagen nicht, check '.$Key["COID"]);
+                $this->log_OperationCenter->LogNachrichten('HardwareStatus Gerät '.$Key["Name"].' meldet sich seit 2 Tagen nicht, check '.$Key["COID"]);
+                }
             return (false);
             }
         return (true);

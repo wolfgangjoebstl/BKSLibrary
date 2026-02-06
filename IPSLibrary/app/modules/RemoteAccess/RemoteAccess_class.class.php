@@ -20,9 +20,10 @@
 	 *
      *  Überblick zur Verfügung gestellter classes und functions
      *
-     * RemoteAccess Class
-     * RA_Autosteuerung extends RemoteAccess
-     * IPSMessageHandlerExtended extends IPSMessageHandler
+     *  XConfigurator extends RemoteAccess
+     *  RemoteAccess Class
+     *  RA_Autosteuerung extends RemoteAccess
+     *  IPSMessageHandlerExtended extends IPSMessageHandler
      *
      * function installAccess
      *
@@ -448,7 +449,7 @@ class RemoteAccess
      * diese Routine braucht richtig lange für die Erstellung wenn damit Remote register erstellt werden.
 	 *
 	 */
-	public function add_Amis()
+	public function add_Amis($debug=false)
 		{
 		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
         IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');        
@@ -457,13 +458,16 @@ class RemoteAccess
 		$this->includefile.="\n/*erstellt von RemoteAccess::add_Amis() am ".date("d.m.Y H:i")."\n */\n";
 		$this->includefile.='function AmisStromverbrauchList() { return array('."\n";
 		$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-		echo "\nAmis Stromverbrauch Data auf :".$amisdataID."\n";
-
+        if ($debug)
+            {
+            echo "\nRemoteAcccess add_Amis\n";
+            echo "   Amis Stromverbrauch Data auf :".$amisdataID."\n";
+            }
 		$count_phone=100;
 		$count_var=500;
 		foreach ($MeterConfig as $meter)
 			{
-			echo "  Meter :".$meter["NAME"]."\n";
+			if ($debug) echo "     Meter : ".str_pad($meter["NAME"],45).$meter["TYPE"]."\n";
 			$meterdataID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			/* ID von Wirkenergie bestimmen */
 			if (strtoupper($meter["TYPE"])=="AMIS")
@@ -502,6 +506,13 @@ class RemoteAccess
 				$this->add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$this->includefile,$count_phone);
 				$this->add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$this->includefile,$count_phone);
 				}
+			if (strtoupper($meter["TYPE"])=="SHELLY")               // same as Homematic
+				{
+				$energieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $meterdataID);
+				$leistungID = IPS_GetObjectIDByName ( 'Wirkleistung' , $meterdataID);
+				$this->add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$this->includefile,$count_phone);
+				$this->add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$this->includefile,$count_phone);
+				}                
 			if (strtoupper($meter["TYPE"])=="SUMME")
 				{
 				$energieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $meterdataID);

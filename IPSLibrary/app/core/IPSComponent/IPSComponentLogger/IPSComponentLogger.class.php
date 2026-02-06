@@ -44,6 +44,7 @@
  *
  *  __construct
  *  constructFirst
+ *
  *  GetComponentParams
  *  GetComponent
  *  GetNachrichtenInputID
@@ -71,15 +72,22 @@
  *  do_init_temperature
  *  do_init_humidity
  *  do_init_sensor
+ *  do_init_button
+ *  do_init_switch
  *  do_init_counter
  *  do_init_climate
  *  do_init_statistics
  *  do_init
  *
+ *  getVariableID
+ *  getVariableLogID
  *  getVariableName
+ *  do_setVariableLogID
  *  setVariableLogId
  *  setVariableId
+ *
  *  RemoteLogValue
+ *
  *  LogMessage
  *  LogNachrichten
  *  PrintNachrichten
@@ -1679,7 +1687,7 @@ class Logging
 
     public function RemoteLogValue($value, $remServer, $RemoteOID, $debug=false )
         {
-        //if ($debug) echo "RemoteLogValue aufgerufen:\n";            
+        if ($debug) echo "RemoteLogValue aufgerufen ".($this->variableTypeReg)." : Value    $value / ".GetValue($this->variableLogID)."\n";            
         if ($RemoteOID != Null)
             {
             if ($debug) echo "RemoteLogValue($value,".json_encode($remServer).",$RemoteOID) aufgerufen.\n";
@@ -1694,6 +1702,12 @@ class Logging
                     if ($remServer[$para[0]]["Status"]==true)
                         {
                         $rpc = new JSONRPC($Server);
+                        switch ($this->variableTypeReg)
+                            {
+                            case "BUTTON":
+                                $value=GetValue($this->variableLogID);
+                                break;
+                            }                        
                         $roid=(integer)$para[1];
                         //echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
                         $rpc->SetValue($roid, $value);

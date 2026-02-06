@@ -175,6 +175,11 @@
                         configfileParser($config,$result[$index],["Register","REGISTER","register"],"REGISTER",null);           // produziert einen Fehler wenn nicht vorhanden
                         }
                     // Energieregister mit Energiezähler, die in unregelmaessigen Zeitabständen aktualisiert werden, umwandeln in 15 min Energiezähler und Leistungswerte
+                    if (strtoupper($result[$index]["TYPE"])=="SHELLY") 
+                        {
+                        configfileParser($config,$result[$index],["Oid","OID","oid"],"OID",null);
+                        if (isset($result[$index]["OID"])===false) echo "Warning, OID must be provided for TYPE Shelly.\n";
+                        }
                     if (strtoupper($result[$index]["TYPE"])=="HOMEMATIC") 
                         {
                         configfileParser($config,$result[$index],["Oid","OID","oid"],"OID",null);
@@ -270,13 +275,18 @@
 
         /* getWirkenergieID aus der Config entnehmen
          *
-         * in der AMIS Data Kategorie gibt es pro meter["Name"] eine Variable, die Variable wird vorausgesetzt, false wennnicht
+         * in der AMIS Data Kategorie gibt es pro meter["Name"] eine Variable, die Variable wird vorausgesetzt, false wenn nicht
+         * praktisch in der AMIS configuration können andere Geräte den Registern zugeordnet werden, solange der Name stimmt
+         *
          * unter dieser Variable gibt es dann auch die Zusammenfassung Periodenwerte
          * die VariableID, also die Datenquelle wird durch die Configuration "WirkenergieID" festgelegt
          * wenn diese nicht vorhanden ist kann abhängig vom Meter "Type"  auch woanders gesucht werden.
          *
          * erweitert um Abfrage ohne meter=array Configuration
          * es wird nur nach dem NAME gesucht, verwende neue getRegisterID function
+         *
+         * aufgerufen von
+         *      writeEnergyRegistertoArray als array
          *
          */
         public function getWirkenergieID($meter, $debug=false)
@@ -290,6 +300,7 @@
                     {
                     if (isset($meter["WirkenergieID"]) == true )	 
                         { 
+                        if ($debug) echo "Register als Parameter WirkenergieID übergeben. Muss nicht selber suchen.\n";
                         $variableID = $meter["WirkenergieID"]; 
                         }
                     else
@@ -305,6 +316,7 @@
                                 //$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
                                 break;
                             case "HOMEMATIC":
+                            case "SHELLY":                  // alle haben unter data.modules.amis.$meter["NAME"].Wirkenergie die Daten
                             case "REGISTER":
                             case "DAILYREAD":
                             case "DAILYLPREAD":
@@ -427,7 +439,9 @@
             return ($this->getRegisterID($meter,'Wirkleistung',$debug));
             }
 
-		/* OID übergeben, schauen ob childrens enthalten sind und die richtigen register rausholen, wenn nicht eine Ebene höher gehen
+		/* 
+         * Works for Homematic
+         * OID übergeben, schauen ob childrens enthalten sind und die richtigen register rausholen, wenn nicht eine Ebene höher gehen
          * wenn die OID nicht vorhanden ist als Ergebnis false zurückgeben
 		 */
 				
@@ -452,9 +466,81 @@
                         if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $result["HM_EnergieID"]=$o['ObjectID']; }
                         }
                     }
+                // Workaround future proof
+                $result["EnergieID"] = $result["HM_EnergieID"];
+                $result["LeistungID"] = $result["HM_LeistungID"];                    
                 return ($result);
                 }
 			}	
+
+		/* 
+         * works for Shelly 
+         * OID übergeben, schauen ob childrens enthalten sind und die richtigen register rausholen, wenn nicht eine Ebene höher gehen
+         * wenn die OIDs nicht vorhanden ist als Ergebnis false zurückgeben
+         * Shellys zählen die Namen mit Zahlen von blank,1 ,2 3, hinauf, siehe DeviceManagement_Shelly::DeviceType
+         *
+           Status                                  switch_0_output == Status  
+             Stromstärke                            switch_0_current == Stromstärke  
+           Netzfrequenz                            switch_0_freq == Netzfrequenz  
+             Gesamtverbrauch                         switch_0_aenergy_total == Gesamtverbrauch  
+             Erreichbar                              Reachable == Erreichbar  
+             Leistungsfaktor                         switch_0_pf == Leistungsfaktor  
+             Spannung                                switch_0_voltage == Spannung  
+             Gesamteinspeisung                       switch_0_ret_aenergy_total == Gesamteinspeisung  
+             Wirkleistung                            switch_0_apower == Wirkleistung  
+		 */
+				
+		function getShellyRegistersfromOID($oid,$debug=false)
+			{
+            If ($debug>1) $debug=true; else $debug=false;                   // Justification 
+            if ($debug) echo "          getShellyRegistersfromOID:\n";
+			$result=false;
+			$cids = @IPS_GetChildrenIDs($oid);
+            if ($cids) 
+                {
+                if ($debug) print_R($cids);
+                }
+            else
+                {
+    			$cids = @IPS_GetChildrenIDs(IPS_GetParent($oid));
+                if ($debug) 
+                    {
+                    echo "             no parent, $oid seems to be a register from the beginning !\n";
+                    //print_R($cids);
+                    }
+                }
+            if ($cids === false)  return(false);
+            else
+                {
+                //echo "foreach ".sizeof($cids)."\n";
+                foreach($cids as $cid)
+                    {
+                    //echo "    $cid\n";
+                    $o = IPS_GetObject($cid);
+                    $regname = $o['ObjectIdent'];           // switch_0_aenergy_total == Gesamtverbrauch
+                    $name=$o['ObjectName'];
+                    $pos1=strpos($name,"Gesamtverbrauch"); 
+                    if ($pos1 !== false) $result["EnergieID"]=$cid;
+                    $pos1=strpos($name,"Wirkleistung");
+                    if ($pos1 !== false) $result["LeistungID"]=$cid;
+                    if ($debug) echo "                              ".str_pad($cid,8).str_pad(IPS_GetName($cid),40)."$regname == $name  \n";
+
+                    /*
+                    $o = IPS_GetObject($cid);
+                    if($o['ObjectIdent'] != "")
+                        {
+                        if ($debug) echo "                              ".str_pad($cid,8).str_pad(IPS_GetName($cid),40).$o['ObjectName']."\n";
+                        if ( $o['ObjectName'] == "Wirkleistung" ) { $result["LeistungID"]=$o['ObjectID']; }
+                        if ( $o['ObjectName'] == "Gesamtverbrauch" ) { $result["EnergieID"]=$o['ObjectID']; }
+                        }  */
+                    }
+                // Workaround future proof
+                $result["HM_EnergieID"] = $result["EnergieID"];
+                $result["HM_LeistungID"] = $result["LeistungID"];
+                return ($result);
+                }
+			}	
+
 
         /* allgemeine Funktion das Energieregister herauszufinden. Unabhängig von einer Hardwaretype
          * die MeterConfig oder eben nur Teile daraus kann auch als Parameter übergeben werden.
@@ -871,7 +957,7 @@
  		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert:
          *   Wirkenergie, Wirkleistung, Offset_Wirkenergie, Homemeatic_Wirkenergie -> alle Float
          *
-         * Das Homemeatic_Wirkenergie Register wird mit dem neuen gemessenen Wert verglichen und auf Plausi überprüft
+         * Das Homematic_Wirkenergie Register wird mit dem neuen gemessenen Wert verglichen und auf Plausi überprüft
          *   Subtraktion neu-alt ist der Vorschub. Wenn zu gross dann ignorieren, wenn negativ dann Offset anrechnen
 		 *
 		 *****************************************************************************************************************************/
@@ -889,6 +975,24 @@
 			return ($homematicAvailable);
 			}
 
+        /* 
+         * eigene Routine für Homematics und Shellys, da gleich wie Homematic
+         */
+		function writeEnergyDevices($MConfig,$type="SHELLY", $debug=false)			/* alle Werte aus der Config ausgeben */
+			{
+			$Available=true;
+
+			foreach ($MConfig as $identifier => $meter)
+				{
+                echo "   Aufruf von $identifier.\n";
+                $ergebnis = $this->writeEnergyDevice($meter,$type,$debug);
+                $Available = $Available && $ergebnis;
+				}       // ende foreach
+			return ($Available);
+			}
+
+
+
         /* Abgleich Energieregister mit Devicelist von EvaluateHarwdare
          * devicelist aus EvaluateHarwdare auslesen und mit meterConfig abgleichen:
                 IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
@@ -903,7 +1007,7 @@
 			{
             if ($debug>1)
                 {
-                echo "doublecheckEnergyRegisters mit deviceList aufgerufen.\n";  
+                echo "Amis::doublecheckEnergyRegisters mit deviceList aufgerufen.\n";  
                 //foreach ($deviceListFiltered as $name => $entry) echo "   $name    \n";
                 //print_r($deviceListFiltered);
                 }
@@ -954,28 +1058,30 @@
             if ($debug>1)
                 {
                 echo "-------------------------------------------------------------\n";
-                echo "Analysing the AMIS Meter Configuration:\n";                                   // Die Konfiguration durchgehen, bekannte Register löschen und schauen was am Ende noch da ist
+                echo "Analysing the AMIS Meter Configuration for Homematic, Shelly:\n";                                   // Die Konfiguration durchgehen, bekannte Register löschen und schauen was am Ende noch da ist
                 }
             foreach ($MeterConfig as $identifier => $meter)
                 {
-                if (strtoupper($meter["TYPE"])=="HOMEMATIC")
+                switch (strtoupper($meter["TYPE"]))
                     {
-                    $variableID = $this->getWirkenergieID($meter);      // kurze Ausgabe suche nach found as
-                    if ($debug>1) echo " ".str_pad($meter["NAME"],35).IPS_GetName($meter["OID"])." Konfig : ".json_encode($meter)."     $variableID ".IPS_GetName($variableID)."\n";
-                    $oid=$meter["OID"];
-                    if (isset($powerMeter[$meter["OID"]])) 
-                        {
-                        //print_r($meter);
-                        $oid=$powerMeter[$meter["OID"]]["REGISTER_OID"];
-                        unset($powerMeter[$meter["OID"]]);
-                        }
-                    if (isset($energyMeter[$oid])) 
-                        {
-                        $energyMeterName[$oid]=$meter["NAME"];
-                        unset($energyMeter[$oid]);
-                        }
-                    elseif ($debug>1) echo "   --> unknown ".$meter["OID"]." ".IPS_GetName($meter["OID"])."\n"; 
-
+                    case "HOMEMATIC":
+                    case "SHELLY":
+                        $variableID = $this->getWirkenergieID($meter);      // kurze Ausgabe suche nach found as
+                        if ($debug>1) echo " ".str_pad($meter["NAME"],35).IPS_GetName($meter["OID"])." Konfig : ".json_encode($meter)."     $variableID ".IPS_GetName($variableID)."\n";
+                        $oid=$meter["OID"];
+                        if (isset($powerMeter[$meter["OID"]])) 
+                            {
+                            //print_r($meter);
+                            $oid=$powerMeter[$meter["OID"]]["REGISTER_OID"];
+                            unset($powerMeter[$meter["OID"]]);
+                            }
+                        if (isset($energyMeter[$oid])) 
+                            {
+                            $energyMeterName[$oid]=$meter["NAME"];
+                            unset($energyMeter[$oid]);
+                            }
+                        elseif ($debug>1) echo "   --> unknown ".$meter["OID"]." ".IPS_GetName($meter["OID"])."\n"; 
+                        break;
                     }
                 }
             //echo"-------------------------------------------------------------\n";
@@ -1023,19 +1129,18 @@
 				$homematicAvailable=true;
 				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
-				$LeistungID = IPS_GetObjectIDByName('Wirkleistung', $ID);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
-				$LeistungTagID = IPS_GetObjectIDByName('Wirkleistung (Tag)', $ID);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
-				$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
-				$Homematic_WirkenergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$EnergieID          = IPS_GetObjectIDByName('Wirkenergie', $ID);
+				$LeistungID         = IPS_GetObjectIDByName('Wirkleistung', $ID);
+				$LeistungTagID      = IPS_GetObjectIDByName('Wirkleistung (Tag)', $ID); 
+				$OffsetID           = IPS_GetObjectIDByName('Offset_Wirkenergie', $ID);   
+				$Homematic_WirkenergieID = IPS_GetObjectIDByName('Homematic_Wirkenergie', $ID);   
             
                 /* Config und History Logging vorbereiten */
-                $ConfigID = CreateVariableByName($ID, 'ConfigReading', 3);
+                $ConfigID = IPS_GetObjectIDByName('ConfigReading', $ID);
                 $configuration = json_decode(GetValue($ConfigID),true);
-                if ( ($configuration===NULL) || ($configuration==0) ) { $configuration = array(); echo "Configuration neu angelegt.\n"; }
 
                 /* Meter Variablen bestimmen */
-                $error=false;
+                $error=false; $HMenergieID=false; $HMleistungID=false;
                 if ( isset($meter["OID"]) == true )
                     {
                     $result  = $this->getHomematicRegistersfromOID($meter["OID"]);
@@ -1177,6 +1282,184 @@
 			return ($homematicAvailable);
 			}
 			
+        /* Amis::writeEnergyDevice
+         *
+         * wie Homematic aber für Shelly und in Zukunft andere Geräte
+         *      RegisterIDs identifizieren : Energie, Leistung, Leistung (Tag)
+         *      zusätzlich GeräteinputregisterID raussuchen : getHomematic/ShellyRegistersfromOID : ID ist in $HMenergieID, $HMleistungID
+         *      check change Inputregister und im Fall ja abspeichern als HISTORY
+         *      Leistungsmittelwert 24Stunden ermitteln, Update 'Wirkleistung (Tag)'
+         *      GeräteinputregisterID auslesen, als lesitung und energie, Anpassung Messwerte, Vereinheitlichung in kWh und W
+         *
+         *      Energievorschub anhand des gespeicherten Geräteregisters bestimmen, beide Werte sind bereits in kWh normiert
+         *      Bearbeitung von möglichen Events: Gerätetausch, Gerätereset, unrealistischer Wert
+         *      Abspeichern der neuen Werte
+         *      !! im Debugmodus nur ausgeben und nicht speichern !!
+         *      Debug>1 einführen         *
+         *
+         */
+
+		function writeEnergyDevice($meter, $type, $debug=false)		/* nur einen Wert aus der Config ausgeben */
+			{
+			$Available=false;
+            $type = strtoupper($type);
+            switch ($type)
+                {
+                case "SHELLY":              // funktioniert nur für diesen Type
+                    $identifier="Shelly";
+                    break;
+                case "HOMEMATIC":              // funktioniert nur für diesen Type
+                    $identifier="Homematic";
+                    break;
+                default:
+                    return (false);
+                    break;
+                }
+			if (strtoupper($meter["TYPE"])==$type)
+				{
+                if ($debug>1) echo "      writeEnergyDevice for $identifier: aufgerufen mit ".json_encode($meter)." mit Werten von : ".$meter["NAME"]."\n";
+				$Available=true;
+				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+				$EnergieID          = IPS_GetObjectIDByName('Wirkenergie', $ID);
+				$LeistungID         = IPS_GetObjectIDByName('Wirkleistung', $ID);
+				$LeistungTagID      = IPS_GetObjectIDByName('Wirkleistung (Tag)', $ID); 
+				$OffsetID           = IPS_GetObjectIDByName('Offset_Wirkenergie', $ID);   
+            
+                /* Config und History Logging vorbereiten */
+                $ConfigID = IPS_GetObjectIDByName('ConfigReading', $ID);
+                $configuration = json_decode(GetValue($ConfigID),true);
+
+				$WirkenergieID = CreateVariableByName($ID, $identifier.'_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+            
+                /* Meter Variablen bestimmen */
+                $error=false; $HMenergieID=false; $HMleistungID=false;
+                if ( isset($meter["OID"]) == true )             // wenn der TYPE nicht bekannt ist wird auch OID nicht übernommen
+                    {
+                    switch ($type)
+                        {
+                        case "SHELLY":              // funktioniert nur für diesen Type
+                            $result  = $this->getShellyRegistersfromOID($meter["OID"],$debug);             
+                            break;
+                        case "HOMEMATIC":              // funktioniert nur für diesen Type
+                            $result  = $this->getHomematicRegistersfromOID($meter["OID"],$debug);
+                            break;
+                        }                        
+                    if ($result===false) $error=true;
+                    elseif (( (isset($result["EnergieID"])) && (isset($result["LeistungID"])) ) === false) $error=true;
+                    else
+                        {
+                        $HMenergieID  = $result["EnergieID"];
+                        $HMleistungID = $result["LeistungID"];							
+                        if ($debug>1) echo "     OID der Device Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+                        }
+                    }
+                else            /* es gibt die Möglichkeit statt der OID, das wäre entweder das Energy Register oder die Instanz auch die entsprechenden Homematic Register direkt anzugeben */
+                    {
+                    if (( (isset($result["EnergieID"])) && (isset($result["LeistungID"])) ) === false) $error=true;
+                    else
+                        {
+                        $HMenergieID  = $meter["EnergieID"];        // aber vobn SetConfiguration aktuell gefiltered      
+                        $HMleistungID = $meter["LeistungID"];
+                        }
+                    }                
+
+                /* Energievorschub bestimmen, plausibilisieren und schreiben */
+                if ( ($HMenergieID != 0) && ($HMleistungID != 0) && !$error)
+                    {
+
+                    /* Config und History Logging machen */
+                    $changeDone=false;
+                    $configValue=json_encode($configuration);                    
+                    if (isset($configuration["OID"])===false) 
+                        {
+                        $configuration["OID"] = $HMenergieID;           // new, erster Wert für Energieregister
+                        echo "NewDone: ".$configuration["OID"]." = $HMenergieID. \n";
+                        $configValue=json_encode($configuration);
+                        SetValue($ConfigID, $configValue);                             
+                        }
+                    else 
+                        {
+                        if ($configuration["OID"] != $HMenergieID)
+                            {
+                            echo "ChangeDone: ".$configuration["OID"]." != $HMenergieID. Old value fetched from ".GetValue($ConfigID)."\n";
+                            print_r($configuration);
+                            $changeDone=true;
+                            $change = date("d.m.y H:i:s")." change OID from ".$configuration["OID"]." to $HMenergieID;";
+                            if (isset($configuration["HISTORY"]) === false) $configuration["HISTORY"]=$change;
+                            else $configuration["HISTORY"].=$change;
+
+                            $configuration["OID"]=$HMenergieID;
+                            //print_r($configuration);
+                            $configValue=json_encode($configuration);
+                            SetValue($ConfigID, $configValue);                             
+                            }
+                        }
+
+                    /* Werte schreiben Leistung gemittelt für 24 Stunden */
+                    $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
+                    if ($logAvailable) 
+                        {
+                        $powerDay=$this->getArchivePower($EnergieID,$debug);
+                        SetValue($LeistungTagID,$powerDay);
+                        } 
+                    switch ($type)
+                        {
+                        case "SHELLY":              
+                            $energie=GetValue($HMenergieID);            
+                            $leistung=GetValue($HMleistungID);
+                            break;
+                        case "HOMEMATIC":           
+                            $energie=GetValue($HMenergieID)/1000;               // Homematic Wert ist in Wh, in kWh umrechnen 
+                            $leistung=GetValue($HMleistungID);
+                            break;
+                        } 
+
+                    // Wieviel ist in den letzten 15 Minuten weitergeganegn, es wird mit dem gespeicherten Zählerstand verglichen    
+                    $energievorschub=$energie-GetValue($WirkenergieID);
+                    //echo "$energievorschub=$energie-".GetValue($WirkenergieID)."\n";
+                    if ($changeDone)                // das Homemeatic Register hat sich geändert. Erster Wert ist Offset. Nächsten Wert erst für den Vorschub verwenden 
+                        {
+                        echo "   >>Info, das beobachtete Energieregister hat sich geändert. Ersten Wert als Basis nehmen. Vorschub bleibt 0.\n";
+                        $energievorschub=0;   
+                        }                      
+                    elseif ($energievorschub<0)       // Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt 
+                        {
+                        echo "   >>Fehler, Energievorschub kleiner 0, ist $energievorschub. Den aktuellen Wert des Spiegelregisters in Data ($Homematic_WirkergieID) auf den Offset aufaddieren : ".GetValue($Homematic_WirkergieID)."kWh.\n";
+                        $offset = GetValue($OffsetID);                        
+                        $offset+=GetValue($WirkenergieID); // als Offset alten bekannten Wert dazu addieren 
+                        $energievorschub=$energie;
+                        SetValue($OffsetID,$offset);
+                        }
+                    elseif ($energievorschub>10)       // verbrauchte Energie in einem 15 Minutenintervall ist realistisch maximal 2 kWh, 10kWh abfragen   
+                        {   // Unplausibilitaet ebenfalls behandeln 
+                        echo "   >>Fehler, Energievorschub groesser 10, ist $energievorschub. Diese Änderung ignorieren.\n";
+                        $energievorschub=0;
+                        }		
+
+                    $energie_neu=GetValue($EnergieID)+$energievorschub;
+                    if ($debug==false)
+                        {
+                        SetValue($WirkenergieID,$energie);          // Spiegelregister für Homematic Energie Register 
+                        SetValue($EnergieID,$energie_neu);
+                        SetValue($LeistungID,$energievorschub*4);
+                        }
+                    else
+                        {
+                        //$power=GetValue($HMleistungID);    
+                        $cost=$leistung*24/1000*365*0.4;
+                        echo "       Achtung Debug Mode, keine Werte speichern   \n";
+                        echo "       Werte aus dem Device    : ".nf($energie,"kWh")." ".nf($leistung,"W")."    ~".nf($cost,"€")."/year if continous (40ct/kWh)\n";
+                        echo "       Energievorschub aktuell : ".nf($energievorschub,"kWh")."  in Bezug zu ".nf(GetValue($WirkenergieID),"kWh")."\n";
+                        echo "       Energiezählerstand      : ".nf($energie_neu,"kWh")." Leistung : ".nf(GetValue($LeistungID),"kW")." \n";
+                        echo "       Offset Energie          : ".nf(GetValue($OffsetID),"kWh")." \n";                       // schwer zu erklären, die Summe aller ignorierten und bereits angesammelten Zählerstände, Energie-Offset ist der Zeitpunkt des letzten Fehlers
+                        echo "       Configuration           : $configValue \n\n";
+                        }
+                    }
+                else echo "    Fehler, IDs der Energieregister konnte nicht bestimmt werden.\n";                    
+                }   
+			return ($Available);
+			}
 
 		/************************************************************************************************************************
  		 *
@@ -1413,7 +1696,7 @@
 			return ($amisAvailable);
 			}
 			
-		/************************************************************************************************************************
+		/* Amis::writeEnergyRegistertoString
  		 *
          * die Tabelle "Stromzählerstand aktuell Energiewert in kWh:" als html schreiben
  		 * Alle Homematic Energiesensoren der letzten Woche als Wert auslesen, ignoriert andere Typen
@@ -1425,11 +1708,17 @@
          *
          * nur verwendet für die Ausgeben die hinter Execute stehen
 		 * verwendet AC_GetLoggedValues
-		 *****************************************************************************************************************************/
-
+		 *
+         */
 		function writeEnergyRegistertoString($MConfig,$html=true,$debug=false)			/* alle Werte aus der Config ausgeben */
 			{
-            if ($debug) echo "writeEnergyRegistertoString aufgerufen mit Konfig ".json_encode($MConfig)."\n";
+            if ($debug) 
+                {
+                echo "writeEnergyRegistertoString aufgerufen mit Konfig fuer ";
+                foreach ($MConfig as $name => $config) echo trim($name).",";
+                echo "\n";
+                //echo json_encode($MConfig)."\n";
+                }
 			if ($html==true) 
 				{
                 if ($debug) echo "   Ausgabe des Strings als html.\n";
@@ -1479,118 +1768,122 @@
 
 			foreach ($MConfig as $meter)
 				{
-                /* es werden nur die Homematic Zähler ausgelesen */
-				if (strtoupper($meter["TYPE"])=="HOMEMATIC")
-					{
-                    if ($debug)
-                        {
-					    echo "-----------------------------".$newline;
-					    echo "Werte von : ".$meter["NAME"].$newline;
-                        }
-					$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
-					$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-					$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-					$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-					$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-					if ( isset($meter["OID"]) == true )
-						{
-						$OID  = $meter["OID"];
-						$cids = IPS_GetChildrenIDs($OID);
-						if (sizeof($cids) == 0) 
-							{
-							$OID = IPS_GetParent($OID);
-							$cids = IPS_GetChildrenIDs($OID);
-							}
-						//echo "OID der passenden Homematic Register selbst bestimmen. Wir sind auf ".$OID." (".IPS_GetName($OID).")\n";
-						//print_r($cids);
-						foreach($cids as $cid)
-							{
-			      			$o = IPS_GetObject($cid);
-			      			if($o['ObjectIdent'] != "")
-			         			{
-			         			if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
-			         			if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
-			        			}
-			    			}
-		      			//echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
-						}
-					else
-						{
-						$HMenergieID  = $meter["HM_EnergieID"];
-						$HMleistungID = $meter["HM_LeistungID"];
-						}
-						
-					$energievorschub=GetValue($LeistungID);
-					$energie=GetValue($Homematic_WirkergieID);
-                    if ($debug)
-                        {
-                        echo "  Werte aus der Homematic : aktuelle Energie : ".number_format($energie, 2, ",", "" )." kWh  aktuelle Leistung : ".number_format(GetValue($HMleistungID), 2, ",", "" )." W".$newline;
-                        echo "  Energievorschub aktuell : ".number_format($energievorschub, 2, ",", "" )." kWh".$newline;
-                        echo "  Energiezählerstand      : Energie ".number_format(GetValue($EnergieID), 2, ",", "" )." kWh Leistung : ".number_format(GetValue($LeistungID), 2, ",", "" )." kW".$newline;
-                        }
-					$vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
-                    $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
-                    if ($logAvailable)
-                        {
-                        if ($debug) echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":".$newline;
-
-                        $werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
-                        $zeile[$metercount] = array("Wochentag" => array("Wochentag",0,1,2), "Datum" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2) );
-                        $laufend=1; $alterWert=0; 
-                        foreach($werte as $wert)
+                /* es werden nur die Homematic und Shelly Zähler ausgelesen */
+                switch (strtoupper($meter["TYPE"]))
+                    {
+                    case "SHELLY":
+                    case "HOMEMATIC":
+                        if ($debug)
                             {
-                            $zeit=$wert['TimeStamp']-60;
-                            //echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
-                            if (date("d.m.Y", $zeit)!=$vorigertag)
+                            echo "-----------------------------".$newline;
+                            echo "Werte von : ".$meter["NAME"].$newline;
+                            }
+                        $ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+                        $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        $OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        if (strtoupper($meter["TYPE"]) == "SHELLY") $Homematic_WirkergieID = CreateVariableByName($ID, 'Shelly_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        else $Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        if ( isset($meter["OID"]) == true )
+                            {
+                            $OID  = $meter["OID"];
+                            $cids = IPS_GetChildrenIDs($OID);
+                            if (sizeof($cids) == 0) 
                                 {
-                                $zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
-                                $zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
-                                if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh".$newline;
-                                $zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
-                                if ($laufend>1) 
+                                $OID = IPS_GetParent($OID);
+                                $cids = IPS_GetChildrenIDs($OID);
+                                }
+                            //echo "OID der passenden Homematic Register selbst bestimmen. Wir sind auf ".$OID." (".IPS_GetName($OID).")\n";
+                            //print_r($cids);
+                            foreach($cids as $cid)
+                                {
+                                $o = IPS_GetObject($cid);
+                                if($o['ObjectIdent'] != "")
                                     {
-                                    $zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
+                                    if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
+                                    if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
                                     }
-                                
-                                $laufend+=1;
-                                $alterWert=$wert['Value']; $altesDatum=date("d.m", $zeit);
-                                //echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
                                 }
-                            $vorigertag=date("d.m.Y",$zeit);
+                            //echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
                             }
-                        $anzahl2=$laufend-1;
-                        $ergebnis_datum=""; $ergebnis_wochentag=""; $ergebnis_tabelle="";
-                        $zeile[$metercount]["Wochentag"][0]=$meter["NAME"];
-                        $laufend=0;
-                        while ($laufend<=$anzahl2)
+                        else
                             {
-                            if ($laufend==0) 
-                                {
-                                $tabwidth=strlen($zeile[$metercount]["Wochentag"][0])+8;
-                                if ($debug) echo "Es sind ".($anzahl2+1)." Eintraege vorhanden. Breite erster Spalte ist : ".$tabwidth.$newline;
-                                $ergebnis_wochentag.=$startcell.substr(("Energie in kWh                            "),0,$tabwidth).$endcell;
-                                $ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
-                                $ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                          "),0,$tabwidth).$endcell;
-                                }
-                            else
-                                {
-                                $tabwidth=12;
-                                $ergebnis_wochentag.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                            "),0,$tabwidth).$endcell;
-                                $ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
-                                $ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Energie"][$laufend]."                          "),0,$tabwidth).$endcell;
-                                }	
-                            $laufend+=1;
-                            //echo $ergebnis_tabelle."\n";
+                            $HMenergieID  = $meter["HM_EnergieID"];
+                            $HMleistungID = $meter["HM_LeistungID"];
                             }
-                        $output.=$starttable.$startparagraph.$startcell."Stromverbrauch der letzten Tage von ".$meter["NAME"]." :".$newline.$newline;
-                        $output.="Energiewert aktuell ".$zeile[$metercount]["Energie"][1].$newline.$newline.$endcell.$endparagraph.$endtable;
-                        $output.=$starttable.$startparagraph.$ergebnis_wochentag.$newline.$endparagraph.$startparagraph.$ergebnis_datum.$newline.$endparagraph.$startparagraph.$ergebnis_tabelle.$newline.$newline.$endparagraph.$endtable;						
+                            
+                        $energievorschub=GetValue($LeistungID);
+                        $energie=GetValue($Homematic_WirkergieID);
+                        if ($debug)
+                            {
+                            echo "  Werte aus dem Gerät : aktuelle Energie : ".number_format($energie, 2, ",", "" )." kWh  aktuelle Leistung : ".number_format(GetValue($HMleistungID), 2, ",", "" )." W".$newline;
+                            echo "  Energievorschub aktuell : ".number_format($energievorschub, 2, ",", "" )." kWh".$newline;
+                            echo "  Energiezählerstand      : Energie ".number_format(GetValue($EnergieID), 2, ",", "" )." kWh Leistung : ".number_format(GetValue($LeistungID), 2, ",", "" )." kW".$newline;
+                            }
+                        $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
+                        $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
+                        if ($logAvailable)
+                            {
+                            if ($debug) echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":".$newline;
 
-                        $outputEnergiewerte.=$startparagraph.$startcell.substr($meter["NAME"]."                           ",0,$tabwidth0).$endcell.$startcell.$zeile[$metercount]["Energie"][1].$endcell.$endparagraph;
-                        $metercount+=1;
-                        }
-                    elseif ($debug)  echo "****Fehler, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." nicht verfügbar\n";
+                            $werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
+                            $zeile[$metercount] = array("Wochentag" => array("Wochentag",0,1,2), "Datum" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2) );
+                            $laufend=1; $alterWert=0; 
+                            foreach($werte as $wert)
+                                {
+                                $zeit=$wert['TimeStamp']-60;
+                                //echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
+                                if (date("d.m.Y", $zeit)!=$vorigertag)
+                                    {
+                                    $zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
+                                    $zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
+                                    if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh".$newline;
+                                    $zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
+                                    if ($laufend>1) 
+                                        {
+                                        $zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
+                                        }
+                                    
+                                    $laufend+=1;
+                                    $alterWert=$wert['Value']; $altesDatum=date("d.m", $zeit);
+                                    //echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
+                                    }
+                                $vorigertag=date("d.m.Y",$zeit);
+                                }
+                            $anzahl2=$laufend-1;
+                            $ergebnis_datum=""; $ergebnis_wochentag=""; $ergebnis_tabelle="";
+                            $zeile[$metercount]["Wochentag"][0]=$meter["NAME"];
+                            $laufend=0;
+                            while ($laufend<=$anzahl2)
+                                {
+                                if ($laufend==0) 
+                                    {
+                                    $tabwidth=strlen($zeile[$metercount]["Wochentag"][0])+8;
+                                    if ($debug) echo "Es sind ".($anzahl2+1)." Eintraege vorhanden. Breite erster Spalte ist : ".$tabwidth.$newline;
+                                    $ergebnis_wochentag.=$startcell.substr(("Energie in kWh                            "),0,$tabwidth).$endcell;
+                                    $ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
+                                    $ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                          "),0,$tabwidth).$endcell;
+                                    }
+                                else
+                                    {
+                                    $tabwidth=12;
+                                    $ergebnis_wochentag.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                            "),0,$tabwidth).$endcell;
+                                    $ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
+                                    $ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Energie"][$laufend]."                          "),0,$tabwidth).$endcell;
+                                    }	
+                                $laufend+=1;
+                                //echo $ergebnis_tabelle."\n";
+                                }
+                            $output.=$starttable.$startparagraph.$startcell."Stromverbrauch der letzten Tage von ".$meter["NAME"]." :".$newline.$newline;
+                            $output.="Energiewert aktuell ".$zeile[$metercount]["Energie"][1].$newline.$newline.$endcell.$endparagraph.$endtable;
+                            $output.=$starttable.$startparagraph.$ergebnis_wochentag.$newline.$endparagraph.$startparagraph.$ergebnis_datum.$newline.$endparagraph.$startparagraph.$ergebnis_tabelle.$newline.$newline.$endparagraph.$endtable;						
+
+                            $outputEnergiewerte.=$startparagraph.$startcell.substr($meter["NAME"]."                           ",0,$tabwidth0).$endcell.$startcell.$zeile[$metercount]["Energie"][1].$endcell.$endparagraph;
+                            $metercount+=1;
+                            }
+                        elseif ($debug)  echo "****Fehler, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." nicht verfügbar\n";
+                        break;
 					}
 				} /* ende foreach Meter Entry */
 
@@ -1646,10 +1939,10 @@
 			return ($style.$output."\n\n".$outputEnergiewerte."\n\n".$outputTabelle);
 			}
 
-        /* die Tabelle "Stromzählerstand aktuell Energiewert in kWh" schreiben, Inputparameter sind die Werte
+        /* Amis::writeEnergyRegisterValuestoString 
+         * die Tabelle "Stromzählerstand aktuell Energiewert in kWh" schreiben, Inputparameter sind die Werte
          * aus der Funktion writeEnergyRegistertoArray, Formatierung ist weird, aber es steht alles drin was man braucht
          */
-
 		function writeEnergyRegisterValuestoString($Werte,$html=true, $debug=false)			/* alle Werte als String ausgeben, Input ist das Array der Werte */
 			{
 			if ($html==true) 
@@ -1723,7 +2016,7 @@
 			return ($style.$outputEnergiewerte);
 			}
 
-		/* writeEnergyRegisterTabletoString
+		/* Amis::writeEnergyRegisterTabletoString
          *
          * fasst alle Energieregister als Vorschubwerte der letzten 9 Tage in einer uebersichtlichen Tabelle zusammen, 
 		 * Tabelle kann sowohl als html als auch als Text ausgegeben werden
@@ -1837,7 +2130,7 @@
 			return ($style.$outputTabelle);
 			}
 
-        /* writeEnergyPeriodesTabletoString
+        /* Amis::writeEnergyPeriodesTabletoString
          * 
          * die einzige Funktion zum Darstellen der 1/7/30/360 Werte
          * noch um brauchbare Funktionen erweitern, wie sortieren und zusätzliche Spalten, array als Config Item
@@ -1993,13 +2286,13 @@
 
 
 		
-		/* Analysefunktionen
+		/* Amis::Analysefunktionen
+         *
          * Parameter meter kommt von $Meter=$amis->writeEnergyRegistertoArray($MeterConfig, true);
 		 * Vergleichsfunktion, welche Hardware ist installiert 
 		 * und welche ist als Energieregister mit Archiv und Anzeige konfiguriert
 		 * Ausgabe als Text-String für AmisStromverbrauchList in EvaluateVariables_ROID
 		 */
-		 
 		function getEnergyRegister($Meter=array(),$debug=false)
 			{
 			$size=sizeof($Meter);
@@ -2089,7 +2382,7 @@
 			return(CreateVariableByName($this->CategoryIdData, "Zusammenfassung", 3)); 
 			}
 			
-		/* writeEnergyRegistertoArray
+		/* Amis::writeEnergyRegistertoArray
          *
 		 * zweiteilige Funktionalitaet, erst die Energieregister samt Einzelwerten der letzten Tage einsammeln und
 		 * dann in einer zweiten Funktion die Ausgabe als html oder text machen.
@@ -2107,7 +2400,6 @@
          * schreibt keine Register mit SetValue
          *
 		 */
-		
 		function writeEnergyRegistertoArray($MConfig,$debug=false)
 			{
             $endtime=time(); 
@@ -2128,7 +2420,7 @@
 					echo "   writeEnergyRegistertoArray, Werte von : ".$meter["NAME"]." für Typ ".$meter["TYPE"]."\n";
 					}
 				$meterdataID = IPS_GetObjectIdByName($meter["NAME"],$this->CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				$EnergieID = $this->getWirkenergieID($meter);    // ID von Wirkenergie bestimmen 
+				$EnergieID = $this->getWirkenergieID($meter,$debug);    // ID von Wirkenergie bestimmen 
                 $config=array();
                 if ($EnergieID === false) echo "Error, did not find WirkenergieID of ".json_encode($meter)." Add Type in getWirkenergieID. Ignore this Entry\n";
                 else
@@ -2303,7 +2595,7 @@
 			return($zeile);
 			}
 
-        /* getArchiveData
+        /* Amis::getArchiveData
          *
          * Messwerte aus dem Archive auslesen und gleichzeitig eine Plausicheck machen
          * weitestgehend als generische Routine geschrieben
@@ -2316,7 +2608,6 @@
          *
          * verwendet AC_GetLoggedValues
          */
-
         function getArchiveData($variableID, $starttime, $endtime, $type="",$display=false,$deleteCheck="",$debug=false)
             {
             $object = @IPS_GetObject($variableID);
@@ -2565,13 +2856,13 @@
             }
 
 		
-        /* getArchiveDataMax
+        /* Amis::getArchiveDataMax
+         *
          * aus den Archivedaten den grössten Wert finden 
          * Wert zurückmelden
          *
          * verwendet AC_GetLoggedValues
          */
-
         function getArchiveDataMax($variableID, $starttime, $endtime, $display=false)
             {
             $object = @IPS_GetObject($variableID);
@@ -2647,14 +2938,19 @@
             return ($maxwert);
             }
 
-        /* getArchivePower
+        /* Amis::getArchivePower
+         *      archivierte Daten von den letzten 24 Stunden und 7 Minuten holen
+         *      es sollten 96 Werte sein, aber zumindest 10 Werte um weiterzumachen
+         *      ersten und Letzten Wert holen, Wertdifferenz, es ist ja ein Counter und Zeitdifferenz festellen, Leistung = Energie/Zeit
+         *      zusaetztlich eine nette Tabelle erstellen für die Visualisiserung der Werte
+         *  verwendet in writeEnergyHomematic, writeEnergyRegistertoArray,         
          *
          */
-        private function getArchivePower($EnergieID,$debug=false)
+        public function getArchivePower($EnergieID,$debug=false)
             {
             $jetzt=time();
             $endtime=$jetzt; $starttime=$endtime-60*60*24-7*60;
-            if ($debug) echo "getArchivePower, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":\n";
+            if ($debug>1) echo "getArchivePower, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":\n";
 
             $werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
             if (count($werte)<10) return (0);               // wenn nichkeine Werte gespeichert sind 0 als Leistung zurückgeben
@@ -2663,7 +2959,7 @@
             $wert=$first["Value"]-$last["Value"];
             $zeit=$first["TimeStamp"]-$last["TimeStamp"];          
             $leist=$wert/$zeit*60*60;
-            if ($debug) echo "   $wert / $zeit = $leist W,   First   ".$first["Value"]."  ".date("D d.m H:i",$first["TimeStamp"])."   Last   ".$last["Value"]."  ".date("D d.m H:i",$last["TimeStamp"])."  \n";
+            if ($debug>1) echo "   $wert / $zeit = $leist W,   First   ".$first["Value"]."  ".date("D d.m H:i",$first["TimeStamp"])."   Last   ".$last["Value"]."  ".date("D d.m H:i",$last["TimeStamp"])."  \n";
             //print_R($werte);
             $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
             $laufend=1; $alterWert=0; $alteZeit=$jetzt;
@@ -2671,13 +2967,13 @@
                 {
                 $zeit=$wert['TimeStamp']-60;
                 $leistung=($alterWert-$wert['Value'])/($alteZeit-$wert['TimeStamp'])*60*60*1000;            // Umrechnung auf Stunde und W
-                if ( ($alterWert) && ($debug) )echo "    ".date("D d.m H:i", $alteZeit)."   ".nf($alterWert,"kWh")."    ".str_pad(($alteZeit-$wert['TimeStamp']),8)."   ".nf($alterWert-$wert['Value'],"kWh")."  ".nf($leistung,"W")."\n";
+                if ( ($alterWert) && ($debug>1) ) echo "    ".date("D d.m H:i", $alteZeit)."   ".nf($alterWert,"kWh")."    ".str_pad(($alteZeit-$wert['TimeStamp']),8)."   ".nf($alterWert-$wert['Value'],"kWh")."  ".nf($leistung,"W")."\n";
                 //echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
                 if (date("d.m.Y", $zeit)!=$vorigertag)
                     {
                     //$zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
                     //$zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
-                    if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh\n";
+                    if ($debug>1) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh\n";
                     //$zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
                     if ($laufend>1) 
                         {

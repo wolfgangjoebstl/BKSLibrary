@@ -60,9 +60,22 @@
      *  SetProgram
      *  GetConfigById, 
 	 *  GetConfigNameById		eliminiert bekannte Erweiterungen wie #Level und gibt den Hauptnamen zurück
+     *
      *  SynchronizeGroupsBySwitch
 	 *  SynchronizeGroupsByGroup
+     *  SetAllGroupsByGroup
+     *  SynchronizeGroup
+     *  SynchronizeProgramsBySwitch
+     *  SynchronizeProgramItemBySwitch
+     *  SetAllSwitchesByGroup
+     *  SynchronizeSwitch
+     *  SynchronizePosition
+     *  SynchronizeSetTemp
+     *  SynchronizeSetMode
+     *  SynchronizeDimmer
+     *  SynchronizeRGB
      *
+     *  GetPowerConsumption
      *
 	 * Webfront Änderung ruft SetValue auf. Abhänig vom Typ wird das spezielle SetXXX aufgerufen.
 	 *  zum Beispiel SetHeat
@@ -311,6 +324,80 @@
             return($plusLink);
             }
 
+
+    /* getConfig_xID 
+     * immer gleiche Vereinheitlichung der Auswertung für OIDs, auch in Gartensteuerung
+     * kann ein Integerwert oder ein String sein
+     * wenn String kann es ein Wert aus IPSHeat sein
+     */
+
+    public function getConfig_xID($configID,$debug=false)
+        {
+        $result=false;    
+        if ((integer)$configID==0)      // eine Konvertierung des Strings führt zu keiner Zahl, daher den Namen suchen    
+            {
+            if ($debug) echo "   Alternative Erkennung der von \"$configID\", String als OID Wert angegeben, jetzt in Stromheizung/IPLights schauen ob vorhanden.\n";
+            $result=array();
+            $lightName=$configID;
+            $switchId = @$this->GetSwitchIdByName($lightName);
+            $groupId = @$this->GetGroupIdByName($lightName);
+            $programId = @$this->GetProgramIdByName($lightName);
+            //echo "IPSHeat Switch ".$switchId." Group ".$groupId." Program ".$programId."\n";
+            if ($switchId)
+                {
+                $result["ID"]=$switchId;
+                $result["TYP"]="Switch";
+                $result["NAME"]=$lightName;
+                $result["MODULE"]="IPSHeat";
+                }
+            elseif ($groupId)
+                {	
+                $result["ID"]=$groupId;
+                $result["TYP"]="Group";
+                $result["NAME"]=$lightName;
+                $result["MODULE"]="IPSHeat";
+                }
+            elseif ($programId)
+                {	
+                $result["ID"]=$programId;
+                $result["TYP"]="Program";
+                $result["NAME"]=$lightName;
+                $result["MODULE"]="IPSHeat";
+                }
+            }
+        else        // wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!!
+            {
+            $oid=(integer)$configID;             // wenn eh eine Zahl dann check ob im Richtigen Bereich, result ausfüllen
+            if ($oid !== false) 
+                {
+                $result=array();
+                $result["ID"]=$oid;
+                $path=IPS_GetLocation($oid);
+                $pathArray=explode('\\',$path);
+                print_R($pathArray);                
+                if ($pathArray[4] == "Stromheizung")  
+                    {
+                    switch ($pathArray[5])
+                        {
+                        case "Switches":
+                            $result["TYP"]="Switch";
+                            break;
+                        default:
+                            $result["TYP"]=$pathArray[5];
+                            break;
+                        }
+                    $result["NAME"]=IPS_GetName($oid);
+                    $result["MODULE"]="IPSHeat";
+
+                    if (@IPS_VariableExists($oid)) return($result);
+                    if (@IPS_ObjectExists($oid)) return($result);                     // die Switching Instanz
+                    }
+                return (false);                                             // vielleicht eine korrekte Evaluierung der Zahl, aber die Variable gibt es nicht 
+                }		
+            }            
+        return ($result);
+        }
+
         /* Summarizes the Group Identifiers in one table
          * 
          */
@@ -524,7 +611,7 @@
 			IPSLogger_Inf(__file__, 'Turn Heat/Light SetSwitch '.$configName.' '.($value?'On':'Off'));
 
 			if (IPSHeat_BeforeSwitch($switchId, $value)) {
-				$component->SetState($value,false,true);                           // immer IPSComponentSwitch_Remote, true debug
+				$component->SetState($value,false,$debug);                           // immer IPSComponentSwitch_Remote, false onTime, true debug
 			}
 			IPSHeat_AfterSwitch($switchId, $value);
 

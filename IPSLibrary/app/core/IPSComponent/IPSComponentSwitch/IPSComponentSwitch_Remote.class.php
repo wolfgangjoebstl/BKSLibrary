@@ -126,7 +126,7 @@
 	class IPSComponentSwitch_Remote extends IPSComponentSwitch {
 
 		private $installedmodules;
-
+        protected $debug=false;
         private $instanceId=false;
 		private $supportsOnTime=false;
         private $typedev="STATE";
@@ -156,6 +156,7 @@
 		 */
 		public function __construct($par1=false,$par2=false,$par3=false) 
 			{
+            $this->debug=false;
             $pars=array();          // Zuordnung nach Typ, nicht zugeordnete bleiben false
             if ($par1) $pars[]=$par1;
             if ($par2) $pars[]=$par2;
@@ -206,16 +207,16 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
 			{
-			echo "IPSComponentSwitch_Remote:HandleEvent für VariableID : ".$variable." (".IPS_GetName($variable).") mit Wert : ".($value?"Ein":"Aus")." \n";
+			if ($this->debug) echo "IPSComponentSwitch_Remote:HandleEvent für VariableID : ".$variable." (".IPS_GetName($variable).") mit Wert : ".($value?"Ein":"Aus")." \n";
 	   	    //IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic: HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.($value?"Ein":"Aus"));			
             $startexec=microtime(true);
 			$module->SyncState($value, $this);
-            echo "Aktuelle Laufzeit nach SyncState ".exectime($startexec)." Sekunden.\n";        
+            if ($this->debug) echo "Aktuelle Laufzeit nach SyncState ".exectime($startexec)." Sekunden.\n";        
 			$log=new Switch_Logging($variable);         		//echo "Logging.\n";
 			$result=$log->Switch_LogValue();        			//echo "Logging Done !\n";
-            echo "Aktuelle Laufzeit nach LogValue ".exectime($startexec)." Sekunden.\n";        
+            if ($this->debug) echo "Aktuelle Laufzeit nach LogValue ".exectime($startexec)." Sekunden.\n";        
             $log->RemoteLogValue($value, $this->remServer, $this->remoteOID );
-            echo "Aktuelle Laufzeit nach RemoteLogValue ".exectime($startexec)." Sekunden.\n";  
+            if ($this->debug) echo "Aktuelle Laufzeit nach RemoteLogValue ".exectime($startexec)." Sekunden.\n";  
 
 			//echo "Switch Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 	   		IPSLogger_Dbg(__file__, 'HandleEvent: Switch Message Handler für VariableID '.$variable.' mit Wert '.$value);			
@@ -300,7 +301,7 @@
                             $pos1=strpos($name,"Status");
                             if ($pos1===0) 
                                 {
-                                echo "         Found $cid $name $ident , now RequestAction \n";
+                                if ($debug) echo "         Found $cid $name $ident , now RequestAction \n";
                                 RequestAction($cid,$value);
                                 break;
                                 }
@@ -349,7 +350,7 @@
 				}
 
             //print_r($lightConfig);
-            echo "updateStatusGroup, check Stromheizung ComponentConfig for $instanceID  \n";
+            if ($this->debug) echo "updateStatusGroup, check Stromheizung ComponentConfig for $instanceID  \n";
             foreach ($lightConfig as $switchName=>$deviceData) 
                 {
     			$switchId      = IPS_GetVariableIDByName($switchName, $switchCategoryId);
@@ -480,13 +481,13 @@
 			// Create Category to store the Move-LogNachrichten und Spiegelregister	
 			$this->SwitchNachrichtenID=$this->CreateCategoryNachrichten("Switch",$this->CategoryIdData);
 			$this->SwitchAuswertungID=$this->CreateCategoryAuswertung("Switch",$this->CategoryIdData);;
-			echo "  Switch_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)." anlegen : [".$this->SwitchNachrichtenID.",".$this->SwitchAuswertungID."]\n";
+			if ($this->debug) echo "  Switch_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)." anlegen : [".$this->SwitchNachrichtenID.",".$this->SwitchAuswertungID."]\n";
 
 			// lokale Spiegelregister aufsetzen 
 			if ($variable<>null)
 				{
 		        $this->variable=$variable;   
-				echo "      Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$this->SwitchAuswertungID." ".IPS_GetName($this->SwitchAuswertungID)." anlegen.\n";
+				if ($this->debug) echo "      Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$this->SwitchAuswertungID." ".IPS_GetName($this->SwitchAuswertungID)." anlegen.\n";
                 $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->SwitchAuswertungID,0,'~Switch');                   // $this->variableLogID schreiben
 				}
 

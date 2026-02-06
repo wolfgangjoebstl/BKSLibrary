@@ -32,6 +32,10 @@
      * kann Climate und Sensor, es werden auch allgemeine Variablen wie SystemInfo synchronisiert
      * Generalabfrage mit UpdateEvent hinzugefügt
      *
+     * Die Taster sind neu hier hinzugekommen. Wenn BUTTON dann rausfinden wie gedrückt wurde (unterschiedlich je nach Hersteller)
+     * Weiterleitung als String in das Mirrorregister, weiterhin als On_Update triggern.
+     * remote Server ist ebenfalls bereits String
+     *
 	 * Events werden im Event Handler des IPSMessageHandler registriert. 
      *
      * Bei Änderung oder Update der Variable wird der Event Handler aufgerufen.
@@ -44,7 +48,12 @@
 	 * Es wird zuerst der construct mit den obigen weiteren Config Parametern und dann HandleEvent mit VariableID und Wert der Variable aufgerufen.
 	 *
 	 * allgemeines Handling, macht kein lokales Logging und keine weitere Verarbeitung
-	 *
+     * hier mit Sensor_Logging, Update Mirror Register und Remote Logging
+	 *      updateMirorVariableValue
+     *      updatedNeeded
+     *          Sensor_LogValue
+     *          RemoteLogValue
+     *
 	 * Wenn RemoteAccess installiert ist:
 	 * der erste Zusatzparameter aus der obigen Konfig sind Pärchen von Remoteserver und remoteOIDs
 	 * in der RemoteAccessServerTable sind alle erreichbaren Log Remote Server aufgelistet, abgeleitet aus der Server Config und dem Status der Erreichbarkeit
@@ -83,7 +92,7 @@
 		private $tempValue;
 		private $installedmodules;
 
-        private $debug;
+        private $debug=false;
 
 		private $remServer;
 		
@@ -101,7 +110,7 @@
 
 		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-            $this->debug=false;             // entweder false oder true, sonst nicht defioniert
+            if ($instanceId==1234) $this->debug=true;             // entweder default false oder true
 			if ($this->debug) echo "IPSComponentSensor_Remote: Construct Sensor with ($instanceId,$remoteOID,$tempValue).\n";	
             if (strpos($instanceId,":") !== false)                // par1 manchmal auch par2, rausfinden
                 {

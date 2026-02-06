@@ -15078,8 +15078,38 @@ class errorAusgabe
 
     }
 
+/* Archiving made simple and flexible
+ *
+ */
+class archOps
+    {
 
+    protected $archiveHandlerID;
 
+    function __construct()
+        {
+        $this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];    
+        }
+        
+    public function setArchiving($variableID,$status,$type)
+        {
+                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
+                if (AC_GetLoggingStatus($this->archiveHandlerID,$variableID)!=$status)
+                    {
+                    echo "Set Logging for $variableID \n";
+                    AC_SetLoggingStatus($this->archiveHandlerID,$variableID,$status);
+                    AC_SetAggregationType($this->archiveHandlerID,$variableID,$type);      // Zählerwert 
+                    IPS_ApplyChanges($this->archiveHandlerID);
+                    }  
+                if (AC_GetAggregationType($this->archiveHandlerID,$variableID)!=$type)
+                    {
+                    echo "Set Aggregation Type Counter for $variableID \n";
+                    AC_SetAggregationType($this->archiveHandlerID,$variableID,$type);      // Zählerwert 
+                    IPS_ApplyChanges($this->archiveHandlerID);
+                    } 
+        }
+
+    }
 
 
 /***********************************************************************************

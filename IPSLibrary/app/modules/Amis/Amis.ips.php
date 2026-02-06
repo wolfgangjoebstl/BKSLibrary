@@ -21,6 +21,9 @@
      * AMIS, Auslesung von Energie und Leistungsregistern, Auswertung im 15 Minutenraster
      * 
      * In Amis_Configuration eine Config erstellen : Rückgabewert von  get_MeterConfiguration
+     * Zusaetzlich eine Historie erfassen, wenn sich das register ändert oder der Counter wieder auf 0 gesetzt wird.
+     * Sonst bekommt man keine verlässlichen Jahreswerte
+     *
      * Es werden nicht automatisch alle Geräte mit TYPE_METER_POWER angelegt
      *
      * Berechnung der Energiewerte schwierig. DetectMovementLib zählt Gruppen zusammen. 
@@ -71,7 +74,11 @@
     $installedModules = $moduleManager->GetInstalledModules();
     $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
-    if ($_IPS['SENDER'] == "Execute") $debug=true;
+    if ($_IPS['SENDER'] == "Execute") 
+        {
+        echo "Debug aktiviert, calling from Script. Debug Levels are 0,1 or 2\n";
+        $debug=true;
+        }
     else $debug=false;
 
     if (isset($installedModules["Guthabensteuerung"]))
@@ -165,7 +172,7 @@ if ($_IPS['SENDER']=="WebFront")
 else            // script called
 	{	
     ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
-    $debug=false;
+    $debug1=false;
     echo "Script called due to an other event than a Webfront Interaction.\n";
 	$MeterConfig = $amis->getMeterConfig();
 	$AmisConfig = $amis->getAmisConfig();
@@ -175,12 +182,12 @@ else            // script called
     echo (GetValue($statusSmartMeterID)?"on":"off")."\n";
     if (isset($installedModules["RemoteAccess"]))
         {
-        echo "RemoteAccess ist installiert.\n";
+        echo "RemoteAccess ist installiert. Erzeugen des include Files mit AMIS.\n";
         IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
         IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 	    $remote=new RemoteAccess();
         $remote->add_Amis();
-        echo "\n".($remote->show_includeFile())."\n";
+        if ($debug>1) echo "\n".($remote->show_includeFile())."\n";
         }
 
     if ($debug>1) 
@@ -195,9 +202,10 @@ else            // script called
         {
         IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');  
         IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");          
-        $DeviceManager = new DeviceManagement();
+        $DeviceManager = new DeviceManagement($debug1);
         echo "--------------------------------\n";
-        $result=$DeviceManager->updateHomematicAddressList();
+        $result=$DeviceManager->updateHomematicAddressList(false,$debug1);
+
         if ($debug) 
             {
             echo "Modul OperationCenter installiert. Qualität des Inventory evaluieren.\n";
@@ -223,7 +231,9 @@ else            // script called
 
         $hardwareTypeDetect = new Hardware();
         $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
-        if ($debug>1)
+        
+        $debug1=$debug;
+        if ($debug1>1)
             {
             echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
             $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList,false);                // false keine Warnings ausgeben
@@ -235,8 +245,8 @@ else            // script called
             }
         $deviceListFiltered = $hardwareTypeDetect->getDeviceListFiltered(deviceList(),["TYPECHAN" => "TYPE_METER_POWER"],"Install");     // true with Debug, Install hat keinen Einfluss mehr, gibt nur mehr das
         //print_r($deviceListFiltered["shellypstripg4-d885acea878c"]);
-        //echo "Doublecheck Energy Registers:\n"
-        $debug1=2;
+        //echo "Doublecheck Energy Registers:\n";
+        // nur die devices mit Energiemessung anschauen, check devicelist
         $amis->doublecheckEnergyRegisters($deviceListFiltered,$debug1);
         /*print_r($deviceListFiltered);
         $powerMeter=array();
@@ -424,16 +434,16 @@ else            // script called
 		//print_r($meter);
 		}
 
-	echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\n";
+	echo "\nGenereller Meter Read eingeschaltet    : ".GetvalueFormatted($MeterReadID)."\n";
 	if (isset($AmisReadMeterID)==true)
 		{
-		echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($AmisReadMeterID)." auf Com-Port : ".$com_Port."\n";
+		echo "   AMIS Meter Read eingeschaltet          : ".GetvalueFormatted($AmisReadMeterID)." auf Com-Port : ".$com_Port."\n";
 		}
 	else
 		{	
-		echo "AMIS Meter Read ausgeschaltet.\n";
+		echo "    AMIS Meter Read ausgeschaltet.\n";
 		}
-    if ($amisFound===false) echo "Info, kein AMIS Zähler konfiguriert.\n";
+    if ($amisFound===false) echo "   Info, kein AMIS Zähler konfiguriert.\n";
 
 	} // ende else Webfront Aufruf
 	
@@ -469,6 +479,12 @@ if ($_IPS['SENDER'] == "Execute")
 	foreach ($MeterConfig as $identifier => $meter)
 		{	
         $amis->writeEnergyHomematic($meter,$debug);           // true für Debug, macht nette Ausgabe
+        }
+    echo "===============================================================================\n";        
+    echo "\nUebersicht Shelly Registers:\n";
+	foreach ($MeterConfig as $identifier => $meter)
+		{	
+        $amis->writeEnergyDevice($meter,"SHELLY",$debug);           // true für Debug, macht nette Ausgabe
         }
 
 	echo "\nUebersicht serielle Ports:\n";
