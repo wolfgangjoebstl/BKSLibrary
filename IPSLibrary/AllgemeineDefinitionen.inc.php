@@ -11079,7 +11079,31 @@ class ipsOps
 
     }           // ende class ipsOps
 
+/* summary of commands aroud the command net.exe
+ * maybe useful to have them on the same place
+ */
+class netOps
+    {
 
+    /* several steps to mount a network drive. Use same user 
+     * this is System User not the logggedin user or administrator, usually session identifier 0
+     *
+     */
+    public function sharedDrives()
+        {
+        $resultSystemInfo=$sysOps->ExecuteUserCommand("C:/Windows/System32/net.exe","share", true, true,0);  
+        return ($resultSystemInfo);
+        }
+    /* wichtig ist System User und das Laufwerk muss geshared werden
+     *
+     */
+    public function mountDrive($server, $username, $password)
+        {
+        $resultSystemInfo=$sysOps->ExecuteUserCommand("C:/Windows/System32/net.exe","use \\\\10.0.1.8\\Symcon /user:wolfgangjoebstl Cloudg06", false, true,0);            // hat funktioniert, besser als map drive !!
+
+        }
+
+    }
 
 
 /*****************************************************************
@@ -12725,7 +12749,7 @@ class dosOps
                             {
                             $stat["files"]++;
                             $file = $dir . DIRECTORY_SEPARATOR . $value;
-                            $file=str_replace('\\\\','\\',$file);                            
+                            $file=$this->replacedoublebackslash($file);                         
                             if ((filemtime($file))>$stat["latestdate"]) $stat["latestdate"]=filemtime($file);
                             }
                         }
@@ -12737,17 +12761,28 @@ class dosOps
 		return $stat;
 		}		
 
+    /* sometimes we have too much backslash in a directory
+     * at the beginning two shall remain if there are two
+     */
+    private function replacedoublebackslash($file)
+        {
+        $pos1=strpos($file,'\\\\');
+        $file=str_replace('\\\\','\\',$file);  
+        if ($pos1===0) $file='\\'.$file;   
+        return ($file);
+        }
+
 	/* Routine fürs rekursive aufrufen in readdirtoStat */
 	private function dirToStat($dir, &$stat, $recursive)
 		{
 	   	$result = array();
-	    $dir=str_replace('\\\\','\\',$dir);     // keine doppelten Directory Seperators ...
+	    $dir = $this->replacedoublebackslash($dir);                     // keine doppelten Directory Seperators ...
 		$cdir = scandir($dir);
 		foreach ($cdir as $key => $value)
 			{
 			if (!in_array($value,array(".","..")))
 				{
-                $dirfile=str_replace('\\\\','\\',$dir . DIRECTORY_SEPARATOR . $value);     // keine doppelten Directory Seperators ...
+                $dirfile=$this->replacedoublebackslash($dir . DIRECTORY_SEPARATOR . $value);     // keine doppelten Directory Seperators ...
 				if (is_dir($dirfile))
 	         		{
                     if ($recursive)
@@ -14602,7 +14637,7 @@ class timerOps
                 default:
                     if ($debug)  $details["EventType"];
                 }
-            if ( ($filter && ($details["EventType"]==$filter)) || ($filter===false) ) $resultEventList[$index]=$result;
+            if ( (($filter !== false) && ($details["EventType"]==$filter)) || ($filter===false) ) $resultEventList[$index]=$result;
             if ($debug) echo str_pad(IPS_GetName($ereignisId),30)."\n";            
             }
         $this->eventlist=$resultEventList;
@@ -14621,13 +14656,25 @@ class timerOps
             $this->getEventData($item["OID"]);
             }
         }
-
+    /*
+     * verwendet im DiagnoseCenter, zum suchen von Daily Events die ein Script aufrufen für die bessere Planung
+     *      $eventlist->getAllEvents(1);                                            // 0 Auslöser, 1 Zyklisch, 2 Wochenplan
+     *      $eventlist->filter_eventlist(["status"=>true,"DateType"=>2]);           // DateType 2 und implizit 0 sind Tägliche Aufrufe
+     *
+     *  Status          EventActive
+     *
+     *  DateType
+     *
+     * TriggerVariableId
+     *
+     */
     public function filter_eventlist($config=array())
         {
         if (is_array($config))
             {
             configfileParser($config,$action,["Status","status","State","state"],"Status",null);
             configfileParser($config,$action,["DateType","datetype"],"DateType",null);
+            configfileParser($config,$action,["Trigger","TriggerVariableId","TriggerVariableID","variableId","TRIGGER"],"TriggerVariableId",null);
             foreach ($this->eventlist as $index => $item)
                 {
                 $EreignisInfo = @IPS_GetEvent($item["OID"]);
@@ -14664,6 +14711,16 @@ class timerOps
                             unset($this->eventlist[$index]);
                             }
                         }    
+                    elseif (isset($action["TriggerVariableId"]))
+                        {
+                        if ($EreignisInfo["TriggerVariableID"]===$action["TriggerVariableId"])
+                            {
+                            $eventID=$EreignisInfo["EventID"];
+                            echo str_pad(IPS_GetName($eventID).".".IPS_GetName(IPS_GetParent($eventID)),40);
+                            //echo str_pad($item["Name"],30)
+                            echo json_encode($EreignisInfo)."\n";     
+                            }
+                        }
                     else echo json_encode($EreignisInfo)."\n";
                     }
                 }

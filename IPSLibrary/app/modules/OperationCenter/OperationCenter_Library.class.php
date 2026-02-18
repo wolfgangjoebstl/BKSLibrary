@@ -2076,7 +2076,7 @@ class OperationCenter extends OperationCenterConfig
 
     /* ccu_checkReboot
      *
-     * Reset when unavailable
+     * Reset when unavailable, device_checkReboot
      *
     *  INTERNET
     *  ROUTER
@@ -2090,15 +2090,10 @@ class OperationCenter extends OperationCenterConfig
     *
     * class HomematicOperation takes care on CCU Operation
     *
-    *          OperationCenter::device_checkReboot
     *          called from PingOperation::SysPingAllDevices
     *          NOK_HOURS || NOK_MINUTES and optionally REBOOTSWITCH has to be defined
     *          is self installing Registers in Categories OperationCenter.data.SysPing, OperationCenter.data.RebootCounter
     *          stores as device_name   device is here CCU
-    *
-    *          works with OperationCenter::device_ping, uses same parameter and structure
-    *          called every 5mins when NOK_MINUTES is configured, else every hour based on optional parameter hourpassed
-    *          needs IPADDRESS produces status and reboot values
     *
     *          use new functions instead of device_ping, HomematicOperation::ccuSocketStatus
     *          calls sysStatusSockets once per hour, 5 min Intervall is not implemented
@@ -2124,13 +2119,11 @@ class OperationCenter extends OperationCenterConfig
             {
             if (sizeof($device_config)>0)               // eigene Auswertung 
                 {
-                //$deviceconfig = $this->getConfiguration();            // ist ein Parameter
-                if ($debug>1) print_R($deviceconfig["CCU"]);
                 $childs=IPS_GetChildrenIDs($categoryId_RebootCtr);
                 foreach ($childs as $oid)                               // other way round, see whats there and whether you can use it
                     {
                     $name=IPS_GetName($oid);
-                    foreach ($deviceconfig["CCU"] as $ccuname => $config) 
+                    foreach ($device_config as $ccuname => $config) 
                         {
                         $pos1=strpos($name,$ccuname);           // haystack needle
                         if ($pos1 !== false) break;             // 0 is a valid result
@@ -2303,8 +2296,20 @@ class OperationCenter extends OperationCenterConfig
 
     /****************************************************************************************************************/
 
-	/**
-	 * @public
+	/**        OperationCenter::device_checkReboot
+    *          called from PingOperation::SysPingAllDevices
+    *          NOK_HOURS || NOK_MINUTES and optionally REBOOTSWITCH has to be defined
+    *          is self installing Registers in Categories OperationCenter.data.SysPing, OperationCenter.data.RebootCounter
+    *          stores as device_name   device is here CCU
+    *
+    *          works with OperationCenter::device_ping, uses same parameter and structure
+    *          called every 5mins when NOK_MINUTES is configured, else every hour based on optional parameter hourpassed
+    *          needs IPADDRESS produces status and reboot values
+    *
+    *          updates             SetValue($StatusID,true);
+    *                              SetValue($RebootID,0);
+    *                           $StatusID = @IPS_GetObjectIDByName($name."_"."Connected",$this->categoryId_SysPing);
+    *                           $RebootID = @IPS_GetObjectIDByName($name."_"."Connected",$this->categoryId_RebootCtr);c
 	 *
 	 * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
 	 *

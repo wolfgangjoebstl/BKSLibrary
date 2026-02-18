@@ -118,7 +118,8 @@
             $this->result=array();                                        // init Ergebnis Variable result
 			}
 
-        /* aus der offiziellen Config die deaktivierten Zähler herausfiltern, kommen gar nicht soweit
+        /* Amis::setMeterConfig
+         * aus der offiziellen Config die deaktivierten Zähler herausfiltern, kommen gar nicht soweit
          * Umstellung auf set/get Meter Configuration, einige Regeln
          *      costkWh wird wenn nicht definiert aus get_Cost gespeist oder ist default 40ct
          *  type AMIS
@@ -229,14 +230,16 @@
             return ($result);
             }
 
-        /* und die Meter Configuration ausgeben 
+        /* Amis::getMeterConfig
+         * und die Meter Configuration ausgeben 
          */
         public function getMeterConfig()
             {
             return ($this->MeterConfig);
             }
 
-        /* aus der allgemeinen Amis Config grundsaetzliche Einstellungen über die Funktionsweise übernehmen
+        /* Amis::setAmisConfig 
+         * aus der allgemeinen Amis Config grundsaetzliche Einstellungen über die Funktionsweise übernehmen
          * verwendet set/get AmisConfiguration
          */
         public function setAmisConfig()
@@ -265,7 +268,8 @@
             return ($result);
             }
 
-        /* und die allgemeine Amis Configuration ausgeben 
+        /* Amis::getAmisConfig
+         * und die allgemeine Amis Configuration ausgeben 
          */
         public function getAmisConfig()
             {
@@ -273,7 +277,11 @@
             }
 
 
-        /* getWirkenergieID aus der Config entnehmen
+        /* Amis::getWirkenergieID
+         *
+         * getWirkenergieID aus der Config entnehmen, bezieht sich auf den Namen, nicht auf den Index
+         * allgemein gehaltenen Routine, wenn nur ein Name übergeben wird: Aufruf von getRegisterID mit Parameter Wirkenergie
+         * wenn ein array übergeben wird, mal nachschauen ob es den Parameter WirkenergieID gibt, sonst nach Wirkenergie suchen 
          *
          * in der AMIS Data Kategorie gibt es pro meter["Name"] eine Variable, die Variable wird vorausgesetzt, false wenn nicht
          * praktisch in der AMIS configuration können andere Geräte den Registern zugeordnet werden, solange der Name stimmt
@@ -344,7 +352,15 @@
 			return ($this->getRegisterIDbyConfig($meter,$identifier,$debug));
             }
 
-        /* selbe function wie oben nur anderer Name 
+        /* Amis::getRegisterIDbyConfig
+         * selbe function wie oben nur anderer Name 
+         * aufgerufen von getZaehlervariablenID, getRegisterID
+         * For Shelly we have the same function as for Homematic and others, this is internal data, and therefore the same
+         * identifier kann sein:
+         *          Wirkenergie
+         *          Wirkleistung
+         *          Wirkleitung (Tag)
+         *          Shelly_Wirkenergie, Homematic_Wirkenergie
          */
         public function getRegisterIDbyConfig($meter,$identifier,$debug=false)
             {
@@ -366,6 +382,7 @@
             $ID = @IPS_GetObjectIdByName($meter["NAME"], $this->CategoryIdData);   // ID der Kategorie  
             switch (strtoupper($meter["TYPE"]))
                 {
+                case "SHELLY":
                 case "DAILYLPREAD":
                 case "HOMEMATIC":
                     if ($ID===false)  { echo "Warnung, Kategorie noch nicht installiert.\n"; return (false); }                      
@@ -397,7 +414,10 @@
             return ($LeistungID);
             }
 
-        /* Homematic IDs ausgeben, etwas besser abstrahieren
+        /* Amis::getRegisterID 
+         * gibt weiter an getRegisterIDbyConfig, der identifier gibt an um was es uns wirklich geht
+         *
+         * Homematic IDs ausgeben, etwas besser abstrahieren
          * die gespeicherte und berechnet Wirkleistung als ID
          * übergabe ein Eintrag aus der $amis->getMeterConfig() oder den Namen "NAME"
          */

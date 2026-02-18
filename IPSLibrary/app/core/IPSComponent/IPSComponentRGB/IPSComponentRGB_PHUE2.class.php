@@ -125,7 +125,19 @@
 			return (get_class($this).','.$this->lampOID.',');
         }
 
-     
+
+        public function get_Ids($type)
+            {
+            switch (strtoupper($type))
+                {
+                case "LEVEL":
+                    return ($this->helligkeitId);
+                case "STATE":
+                    return ($this->statusIdId);
+                default:
+                    return(false);
+                }
+            }     
 
         /**
          * @public

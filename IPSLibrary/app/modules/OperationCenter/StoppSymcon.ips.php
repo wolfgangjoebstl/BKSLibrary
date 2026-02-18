@@ -38,8 +38,8 @@
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging($configSetup["LogDirectory"]."Log_Watchdog.csv",$input);    
 
-	$log_Watchdog->LogMessage(    'Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartSymcon');
-	$log_Watchdog->LogNachrichten('Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartSymcon');
+	$log_Watchdog->LogMessage(    'Lokaler Server wird im IPS Startup Prozess gestoppt, Aufruf der Routine StoppSymcon');
+	$log_Watchdog->LogNachrichten('Lokaler Server wird im IPS Startup Prozess gestoppt, Aufruf der Routine StoppSymcon');
 
 	tts_play(1,"Gute Nacht, Symcon stoppt",'',2);
 	
