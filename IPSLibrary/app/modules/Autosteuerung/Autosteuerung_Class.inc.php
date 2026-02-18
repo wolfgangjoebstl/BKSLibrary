@@ -239,7 +239,7 @@ class AutosteuerungHandler
 		}
 		
 		/**
-		 * @public
+		 * AutosteuerungHandler::CreateEvent
 		 *
 		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
 		 * aufruft.
@@ -508,7 +508,7 @@ abstract class AutosteuerungConfiguration
 		}
 		
 		/**
-		 * @public
+		 * AutosteuerungConfiguration::CreateEvent
 		 *
 		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
 		 * aufruft.
@@ -1228,16 +1228,29 @@ class AutosteuerungConfigurationSetSwitches extends AutosteuerungConfiguration
  * Autosteuerung Operator
  *
  * Routinen für den Betrieb
- *      getConfig
+ *      getConfig                   $this->logicAnwesend
  *      getConfigDelayed
+ *      
+ *      getMonitorModeConfig
  *      MonitorStatus
  *      getLogicMonitorConf
+ *
+ *      Zutritt
+ *      readEntry
+ *      loggingActivity
+ *      analyseLoggingActivity
  *      Anwesend
  *      setLogicAnwesend
  *      getLogicAnwesend
  *      colorCodeAnwesenheit
+ *
  *      writeTopologyTable
+ *
  *      getGeofencyInformation
+ *      setGeofencyAddressesToArchive
+ *      linkGeofencyAddresses
+ *
+ *      showConfigFunction
  *
  * für die Ermittleung von Delayed Werten wird das Modul DetectMovement benötigt das die Werte in Ihrer Katorie unter Detect_Movement speichert
  *
@@ -2402,6 +2415,136 @@ class AutosteuerungOperator
             }
         return(true);
         }
+    
+    /* AutosteuerungOperator::showConfigFunction
+     * show configuration
+     *
+     */
+     public function showConfigFunction($debug=false)
+        {
+        echo "Configuration Autosteuerung HeatControl:\n";
+        $text="";
+        $html="";
+        $html.="<style>";
+        $html.="#autocommand { border-collapse: collapse; border: 1px solid #ddd;   }";
+        //$html.="#anwesenheit td, #anwesenheit th { border: 1px solid #ddd; padding: 8px;  padding-right: 12px; padding-left: 12px; padding-top: 12px; padding-bottom: 12px;}";
+        $html.="#autocommand td, #autocommand th { border: 1px solid #ddd; text-align: left; height: 50px; width: 50px; }";
+        $html.="</style>";
+        $html.="<table id=autocommand>";    
+        $auto=new Autosteuerung(); 						/* um Auto Klasse auch in der Funktion verwenden zu können */
+        $configuration = Autosteuerung_GetEventConfiguration();
+        foreach ($configuration as $oid => $params) 
+            {
+            // Zusatzoptionen rausfiltern HeatControl+Bounce
+            $wert=$params[1];
+            if (strpos($wert,"+"))
+                {   // es gibt einen Zusatzparameter beim Modul
+                $wertparam=explode("+",$wert);
+                $wert = $wertparam[0];
+                $wertOpt=$wertparam[1];
+                }
+            else $wertOpt="";
+            switch ($wert)    {
+                case "Ventilator":
+                case "HeatControl":
+                case "Heizung":
+                    // Darstellung Befehle
+                    $encoding=$params;
+                    $encoding[2]=str_replace(["\r","\n"],"",$encoding[2]);
+                    $encoding[2]=preg_replace('/\s+/', ' ', $encoding[2]);
+                    $html .= "<tr><td>$oid</td><td colspan=4>".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid))."</td></tr>"; 
+                    $line = str_pad($oid,8).str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)),70);
+                    //$text .=  json_encode($encoding);
+                    $line .=  "\n"; 
+                    echo $line;
+                    $text .= $line;
+                    $commandlines=explode(";",$encoding[2]);
+                    /*
+                    $first=true;
+                    foreach ($commandlines as $cmd)
+                        {
+                        $html .= "<tr>";  
+                        if ($first)
+                            {
+                            $html .= "<td></td><td>".GetValueIfFormatted($oid)."</td>";
+                            $text .=  str_pad(" ",8);
+                            $text .=  str_pad(GetValueIfFormatted($oid),15);
+                            $first=false;
+                            }
+                        else 
+                            {
+                            $html .= "<td></td><td></td>";
+                            $text .=  str_pad(" ",22);
+                            }
+                        $html .= "<td>$cmd</td>";
+                        $text .= trim($cmd)."\n";
+                        } */         
+                    // compile to learn more on function
+                    $value=GetValue($oid); $simulate=true;
+                    $oldValue=$auto->setNewValue($oid,$value);	        // neuen Wert setzen
+                    $parges=$auto->ParseCommand($params,$value,$simulate);
+                    //print_R($parges);
+                    $command=array(); $entry=1;	$first=true;
+                    foreach ($parges as $kom => $Kommando)      // weniger DEBUG
+                        {
+                        $command[$entry]["SWITCH"]=true;	  					/* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+                        $command[$entry]["STATUS"]=$value;					/* neuer Wert der den befehl ausgelöst hat */
+                        $command[$entry]["OLDSTATUS"]=$oldValue;			/* alter Wert, vor der Änderung */	
+                        $command[$entry]["SOURCEID"]=$oid;			/* Variable ID des Wertes */	
+                            
+                        foreach ($Kommando as $num => $befehl)
+                            {
+                            $auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+                            } 
+                        $auto->ControlSwitchLevel($command[$entry],$simulate);	
+                        $result=$auto->ExecuteCommand($command[$entry],$simulate,false);          // für Ventilator2
+                        //if ($simulate) echo $result["COMMENT"]."\n";
+                        echo "Ergebnis EvaluateCommand ".$entry." : ".json_encode($command[$entry])."\n";
+                        $html .= "<tr>"; 
+                        $index=$entry-1; 
+                        if ($first)
+                            {
+                            $html .= "<td></td><td>".GetValueIfFormatted($oid)."</td>";
+                            $text .=  str_pad(" ",8);
+                            $text .=  str_pad(GetValueIfFormatted($oid),15);
+                            $first=false;
+                            }
+                        else 
+                            {
+                            $html .= "<td></td><td></td>";
+                            $text .=  str_pad(" ",22);
+                            }
+                        $html .= "<td>".$commandlines[$index]."</td>";
+                        $text .= trim($commandlines[$index]);                    
+                        if (isset($command[$entry]["SETPOINT"]))
+                            {
+                            $html .= "<td>".nf($command[$entry]["SETPOINT"],1)."°C</td>";
+                            $text .= "          ".str_pad($command[$entry]["SETPOINT"]."°C",12);
+                            if (isset($command[$entry]["VALUE"]))
+                                {
+                                $status=($command[$entry]["VALUE"]?"On":"Off");
+                                $html .= "<td>$status</td>";
+                                }
+                            }
+                        else $html .= "<td></td><td></td>";
+                        $html .= "</tr>";
+                        $text .= "\n";
+                        echo "--\n";
+                        $entry++;
+
+                        }
+                    break;
+                }
+            }
+        echo $text; 
+        echo $html; 
+        echo "--\n"; 
+
+
+
+
+
+        }
 
 	} /* ende class */
 
@@ -3309,7 +3452,7 @@ class Autosteuerung
 		}
 
 
-	public function getOldValue($variableID, $category=0)
+	public function getOldValue($variableID, $category=0,$debug=false)
 		{
         if ($category === 0) $category=$this->CategoryId_Stromheizung;
 		if ($category !== false)
@@ -3321,13 +3464,13 @@ class Autosteuerung
 				}
 			else
 				{	 
-				echo "Stromheizung Speicherort OID : ".$category." (".IPS_GetName(IPS_GetParent($category))."/".IPS_GetName($category).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+				if ($debug) echo "Stromheizung Speicherort OID : ".$category." (".IPS_GetName(IPS_GetParent($category))."/".IPS_GetName($category).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
 				$typ=IPS_GetVariable($variableID)["VariableType"];
                 $profil=IPS_GetVariable($variableID)["VariableProfile"];
                 // CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
 				// CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
                 $mirrorVariableID=CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), $typ, $profil);
-				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
+				if ($debug) echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
 				$oldValue=GetValue($mirrorVariableID);
 				return($oldValue);
 				}
@@ -3336,17 +3479,29 @@ class Autosteuerung
 		}
 
 	/***************************************
-	 * of Autosteuerung
+	 * Autosteuerung::setNewValueDim
 	 * Spezialfunktion für Ansteuerung des Dimmers, bei Angabe von Change herausfinden ob wir ADD oder SUB machen sollen
      * der alte Wert wird abgefragt und herausgefunden wie lange die Änderung zurücklag
+     *      $variableID             die Stromheizung Variable zb Arbeitszimmerlampe#Level
      * 
      * Unterschiedliche Implementierung bei den Tastern:
      *     Homematic mit INSTALL_TEST , Update relativ langsam alle 1-2 Sekunden
      *     HomematicIP mit zb PRESS_LONG, Update 
 	 *
+     * Abspeicherung der Hilfsvariablen als sdritten Parameter angeben, sonst Program.IPSLibrary.data.modules.Autosteuerung.Ansteuerung.Stromheizung
+     * Es wird für jeden Button angelegt, Name entsteht aus VariableName _ VariableName Parent
+     *      Arbeitszimmerlampe#Level_Switches                       der alte Wert oldValue
+     *      Arbeitszimmerlampe#Level_Switches_direction
+     *      Arbeitszimmerlampe#Level_Switches_hitrate
+     *
+     * rausfinden wann der letze Richtungswechsel war, Richtungswechsel erfolgt immer wenn länger als 2 Sekunden her ist
+     *
+     * 
+     * Werte bei 0 und 100 begrenzen
+     *
 	 ******************************************************************/
 
-	public function setNewValueDim($variableID,$value, $category=0)
+	public function setNewValueDim($variableID,$value, $category=0, $debug=false)
 		{
         if ($category === 0) $category=$this->CategoryId_Stromheizung;
 		if ($category !== false)
@@ -3365,19 +3520,19 @@ class Autosteuerung
                 //$noChange=time()-$varProps["VariableChanged"];
                 //$noUpdate=time()-$varProps["VariableUpdated"];
 				// CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
-                $mirrorVariableID=CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), $typ, $profil);
-                $directionAddVariableID=CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID))."_direction", 0);  // Boolean true ad false sub
-                $hitRateVariableID=CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID))."_hitrate", 0);  // Boolean true ad false sub
+                $mirrorVariableID       = CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), $typ, $profil);
+                $directionAddVariableID = CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID))."_direction", 0);  // Boolean true ad false sub
+                $hitRateVariableID      = CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID))."_hitrate", 0);  // Boolean true ad false sub
                 $result=array();
 				$result["oldValue"]=GetValue($mirrorVariableID);
-				$varDir=IPS_GetVariable($directionAddVariableID);
+				$varDir=IPS_GetVariable($directionAddVariableID);           // letzter Richtungswechsel war
                 $noChange=time()-$varDir["VariableChanged"];
                 $noUpdate=time()-$varDir["VariableUpdated"];
                 $result["noChange"]=$noChange;
                 $result["noUpdate"]=$noUpdate;
                 $direction=GetValue($directionAddVariableID);
                 $hitrate=GetValue($hitRateVariableID)+1;
-				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)." Direction steht auf ".(GetValue($directionAddVariableID)?"ADD":"TRUE")." Nochange $noChange Sekunden. Hitrate $hitrate.\n";
+				if ($debug) echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)." Direction steht auf ".(GetValue($directionAddVariableID)?"ADD":"TRUE")." Nochange $noChange Sekunden. Hitrate $hitrate.\n";
                 if ($noUpdate>2) 
                     {
                     $hitrate=0;
@@ -3408,7 +3563,7 @@ class Autosteuerung
 	 *
 	 ******************************************************************/
 
-	public function setNewValueIfDif($variableID,$value,$dif)
+	public function setNewValueIfDif($variableID,$value,$dif,$debug=false)
 		{
 		if ($this->CategoryId_Stromheizung !== false)
 			{
@@ -3419,12 +3574,12 @@ class Autosteuerung
 				}
 			else
 				{	 
-				echo "Stromheizung Speicherort OID : ".$this->CategoryId_Stromheizung." (".IPS_GetName(IPS_GetParent($this->CategoryId_Stromheizung))."/".IPS_GetName($this->CategoryId_Stromheizung).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+				if ($debug) echo "Stromheizung Speicherort OID : ".$this->CategoryId_Stromheizung." (".IPS_GetName(IPS_GetParent($this->CategoryId_Stromheizung))."/".IPS_GetName($this->CategoryId_Stromheizung).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
 				$typ=IPS_GetVariable($variableID)["VariableType"];
                 $profil=IPS_GetVariable($variableID)["VariableProfile"];
 				// CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
                 $mirrorVariableID=CreateVariableByName($this->CategoryId_Stromheizung,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID))."_Dif", $typ, $profil);
-				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID))).
+				if ($debug) echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID))).
 						"   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
 				$oldValue=GetValue($mirrorVariableID);
 				if (abs($oldValue-$value)>=$dif) SetValue($mirrorVariableID,$value);
@@ -3550,8 +3705,8 @@ class Autosteuerung
         return ($bounce);	
 		}
 
-	/**
-	 * of Autosteuerung
+	/** Autosteuerung::trimCommand
+     *
 	 * Command trimmen, damit es in einer Zeile ausgegeben werden kann, Befehl wird oft formatiert für bessere Lesbarkeit
 	 *
 	 * @return string[] Event Konfiguration
@@ -3614,7 +3769,7 @@ class Autosteuerung
 	 *
 	 *******************************************************/
 
-	public function ParseCommand($params,$status=false,$simulate=false)
+	public function ParseCommand($params,$status=false,$simulate=false,$debug=false)
 		{
 		/************************** 
 		 *
@@ -3656,7 +3811,7 @@ class Autosteuerung
 		$commands = explode(';', $params2);
         //print_r($commands);
 		$Kommando=0;
-		echo "   ParseCommand Gesamter Befehl : ".$params2."\n";
+		if ($debug) echo "   ParseCommand Gesamter Befehl : ".$params2."\n";
 		foreach ($commands as $command)
 			{
 			$Kommando++;
@@ -3665,7 +3820,7 @@ class Autosteuerung
 			$count=count($moduleParams2);
 			$Eintrag=$count;
 			$switch=false;		// marker wenn kein ON oder OFF Befehl gesetzt wurde
-			echo "        Kommando ".$Kommando." : Anzahl ".$count." Parameter erkannt in \"".$command."\" \n";
+			if ($debug) echo "        Kommando ".$Kommando." : Anzahl ".$count." Parameter erkannt in \"".$command."\" \n";
 
 			switch (strtoupper($params[1]))
 				{
@@ -4008,7 +4163,7 @@ class Autosteuerung
 			}		/* foreach alle Strichpunkt Befehle durchgehen. Leere Befehle werden uebersprungen */
 			
 		/* parges in richtige Reihenfolge bringen , NAME muss an den Anfang, es können auch Sortierinfos an den Anfang gepackt werden */
-		if ($simulate==true) 
+		if ($simulate && $debug) 
 			{
 			echo "       >>Ergebnisse : ".json_encode($parges)."\n\n";
 			//print_r($parges);
@@ -4508,9 +4663,9 @@ class Autosteuerung
 							$result["VALUE_ON"]=self::parseValue($befehl[1],$result);
 							break;
 						}		
-				    echo "   ON Befehl ".$result["SWITCH"]."   ".$result["ON"]."\n";
+				    if ($debug) echo "   ON Befehl ".$result["SWITCH"]."   ".$result["ON"]."\n";
 					}
-                else echo "     ON Befehl nicht ausgeführt. Status war ".$result["STATUS"]." Source war  ".$result["SOURCE"]."\n";
+                elseif ($debug) echo "     ON Befehl nicht ausgeführt. Status war ".$result["STATUS"]." Source war  ".$result["SOURCE"]."\n";
 				break;
 			case "OFF#COLOR":
 			case "OFF#LEVEL":
@@ -4628,7 +4783,7 @@ class Autosteuerung
 				break;			
             case "DIM#CHG":         // ADD or SUB Dimlevel, toogle between add or subtract the value
                 /* eigentlich gleiche Routine, egal ob ADD, CHG or SUB , interessant wäre der Wert Auto bei dem Tageszeitabhängig gesetzt wird */
-                echo "DIM#CHG erkannt. Weiter mit Bearbeitung:\n";
+                if ($debug) echo "DIM#CHG erkannt. Weiter mit Bearbeitung:\n";
 				$result["DIM#CHG"]=(integer)$befehl[1];
 				$result["NAME_EXT"]="#LEVEL";                                   // NAME_EXT manuell setzen, muss nicht Teil von Befehl name:  sein
 				$name_ext="#Level";
@@ -4638,7 +4793,7 @@ class Autosteuerung
 					$result["ON"]="TRUE";
                     $setNewValueDim=$this->setNewValueDim($ergebnis["ID"],$result["DIM#CHG"]);      //array oldValue,noChange,noUpdate und direction 
 					$result["VALUE_ON"]=$setNewValueDim["newValue"];	
-                    echo "Autosteuerung Befehl DIM#CHG:".$result["DIM#CHG"].". Alter Wert: ".GetValue($ergebnis["ID"])." Neuer Wert ".$result["VALUE_ON"]."  ".json_encode($setNewValueDim)."\n"; 
+                    if ($debug) echo "Autosteuerung Befehl DIM#CHG:".$result["DIM#CHG"].". Alter Wert: ".GetValue($ergebnis["ID"])." Neuer Wert ".$result["VALUE_ON"]."  ".json_encode($setNewValueDim)."\n"; 
 					//IPSLogger_Inf(__file__, 'Autosteuerung Befehl DIM#CHG:'.$result["DIM#CHG"].'. Alter Wert: '.GetValue($ergebnis["ID"]).' Neuer Wert '.$result["VALUE_ON"]."  ".json_encode($setNewValueDim)."   ");					
 					}					
                 break;    
@@ -4776,7 +4931,7 @@ class Autosteuerung
 			case "IFDIF":           /* bei Temperaturwerten ist das der Abstand, der zum alten Wert erreicht werden muss bevor der befehl ausgeführt wird */
 				$dif=(float)($befehl[1]);
 				$oldvalue=$this->setNewValueIfDif($result["SOURCEID"],$result["STATUS"],$dif);
-				echo "IFDIF Befehl erkannt : aktuelle Temperatur : ".($result["STATUS"])."    ".$dif." alter ifdif Wert : ".$oldvalue."\n";
+				if ($debug) echo "IFDIF Befehl erkannt : aktuelle Temperatur : ".($result["STATUS"])."    ".$dif." alter ifdif Wert : ".$oldvalue."\n";
 				if (abs($result["STATUS"]-$oldvalue)<$dif) $result["SWITCH"]=false;
 				//print_r($result);
 				break;	
@@ -5213,19 +5368,25 @@ class Autosteuerung
 		}
 
     /******************
-     * of Autosteuerung
+     * Autosteuerung::evalWertOpt
      * mit dem Befehl Status oder Anwesenheit kann mit + noch ein Zusatzparameter mitgegeben werden. Diese als Control auswerten.
+     * das können auch mehrere Parameter gleichzeitig sein, daher input als array oder umwandlung in ein Array mit einem Eintrag
+     *      +note
+     *      +log, +nolog                        log or no log thats the question
+     *      +bounce, +bounces :n :token         ignore following commands
+     *      +config                             no scripting, do inline
      *
      **************************************/
 
     function evalWertOpt(&$control, $wertOptInput, $variableID, $status, $debug=false)
         {
         $token=false;            
-        echo "evalWertOpt wurde aufgerufen mit Eingabewert ".json_encode($wertOptInput).".\n";
+        if ($debug) echo "      evalWertOpt wurde aufgerufen mit Eingabewert ".json_encode($wertOptInput).".\n";
         $control["note"]=false;
         $control["log"]=false;
         $control["bounce"]=false; 
-        if ((is_array($wertOptInput))===false) 
+        $control["config"]=false; 
+        if ((is_array($wertOptInput))===false)                      // Umwandlung Input in ein array, ein Wert ist ein Array mit einem Eintrag
             {
             if ($wertOptInput != "") $wertOptGo[]=$wertOptInput;
             else $wertOptGo=array();
@@ -5234,9 +5395,12 @@ class Autosteuerung
         foreach ($wertOptGo as $wertOptEntry)
             {
             $wertOpt=trim(strtoupper($wertOptEntry));
-            $wertOptArray=explode(":",$wertOpt);
+            $wertOptArray=explode(":",$wertOpt);                    // eventuelle Parameter extrahieren
             switch ($wertOptArray[0])
                 {
+                case "CONFIG":
+                    $control["config"]=true;                //inline scripte statt ontime evaluierung des Befehl, für dim chg
+                    break;
                 case "NOTE":
                     $control["note"]=true;
                     break;
@@ -5276,6 +5440,127 @@ class Autosteuerung
             }
         }
 
+	
+		/**
+		 * Autosteuerung::CreateEvent
+         *
+         * gibts in jeder class, über einen Parent vereinheitlichen
+		 *
+		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
+		 * aufruft.
+		 *
+		 * @param integer $variableId ID der auslösenden Variable
+		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
+		 */
+		function CreateEvent($variableId, $eventType, $script)
+			{
+			switch ($eventType) 
+				{
+				case 'OnChange':
+					$triggerType = 1;
+					break;
+				case 'OnUpdate':
+					$triggerType = 0;
+					break;
+				default:
+					$triggerType = 99;
+					if (is_numeric($variableId) ) throw new Exception('Found unknown EventType '.$eventType);
+					break;
+				}
+			if ($triggerType<99)
+				{	
+				$eventName = $eventType.'_'.$variableId;
+				$eventId   = @IPS_GetObjectIDByIdent($eventName, $this->scriptId_Autosteuerung);
+				if ($eventId === false) $eventId = IPS_CreateEvent(0);
+                IPS_SetName($eventId, $eventName);
+                IPS_SetIdent($eventId, $eventName);
+                IPS_SetEventTrigger($eventId, $triggerType, $variableId);
+                IPS_SetParent($eventId, $this->scriptId_Autosteuerung);
+                IPS_SetEventScript($eventId,$script);
+                IPS_SetEventActive($eventId, true);
+                IPSLogger_Dbg (__file__, 'Created Autosteuerung Event for Variable='.$variableId);
+				}
+			}
+
+
+    /* Autosteuerung::evalInlineScript
+     * fast track, create inline scripts for fast processing
+     *
+     */
+    public function evalInlineScript($command,$debug=false)
+        {
+        if ($debug) 
+            {
+            echo "      evalInlineScript wurde aufgerufen mit Eingabewert ".json_encode($command).".\n";
+            echo "         Category Status Data : ".$this->CategoryId_Status."\n";
+            }
+        if ((isset($command["SOURCEID"])) && (isset($command["OID"])) && (isset($command["DIM#CHG"])) && (isset($command["NAME"])) && (isset($command["NAME_EXT"])) )
+            {
+            Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+            if (strtoupper($command["NAME_EXT"]) == "#LEVEL") $command["NAME_EXT"]="#Level";
+            $lightManager = new IPSHeat_Manager();
+            $switchId = @$lightManager->GetSwitchIdByName($command["NAME"].$command["NAME_EXT"]);  
+            echo "DimChange: IPSHeat Level Id (".$command["NAME"].$command["NAME_EXT"].") : $switchId  \n";   
+            $configname = @$lightManager->GetConfigNameById($switchId); 
+            $componentParams     = @$lightManager->GetConfigById($switchId);  
+            echo "\nParameters:\n";    
+            print_r($componentParams);
+            $component       = IPSComponent::CreateObjectByParams($componentParams);
+            $levelId = $component->get_Ids("LEVEL");
+            echo "\nLevel $levelId   \n";
+                            
+            $variableId=$command["SOURCEID"];
+            $oid=$command["OID"];
+            $timer = new timerOps();
+            $timer->getAllEvents(0);         // als interne Variable abspeichern, 0 Filter auf Variablen als Trigger
+            //$eventList = $timer->get_eventList();
+            //$timer->write_eventList();
+            $timer->filter_eventlist(["TriggerVariableId"=>$variableId,]);
+            // set, create config
+            $configId=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Config",3);
+            $config=json_decode(GetValue($configId),true);
+            if (isset($config["Direction"])==false) $config["Direction"]=false;
+            if (isset($config["Lastupdate"])==false) $config["Lastupdate"]=microtime(true);
+            SetValue($configId,json_encode($config));
+
+            $statusId=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Status",3);
+
+            echo "evalInline Script SourceId: $variableId SwitchID: $oid  ConfigId: $configId  StatusId: $statusId\n";
+            $script  = "";
+            $script .= '$config=json_decode(GetValue('.$configId.'),true);'."\n";
+            $script .= '$time=microtime(true);'."\n";
+            $script .= 'if (($time - $config["Lastupdate"]) > 2) {'."\n";
+            $script .= '   $config["Direction"] = !$config["Direction"]; $config["Starttime"] = $time;'."\n";
+            $script .= '   $offset=$time; $doupdate=true;'."\n";                                    
+            $script .= '   $config["EventChain"] = "'.$variableId.';".round($time,3);'."\n";
+            $script .= '} else {'."\n";
+            $script .= '   $doupdate=false;  $offset = $config["Starttime"];'."\n";
+            $script .= '   if ($config["EventChain"]) $config["EventChain"] .= ":  '.$variableId.';".round($time - $offset,3);'."\n";
+            $script .= '   else $config["EventChain"] = "'.$variableId.';".round($time - $offset,3);'."\n";
+            $script .= '}'."\n";
+            $script .= '$config["Lastupdate"]=$time;'."\n";
+            $script .= 'SetValue('.$configId.',json_encode($config));'."\n";  
+
+            $script .= '$status=json_decode(GetValue('.$statusId.'),true);'."\n";
+            $script .= 'if ($doupdate) $status["Value"]=GetValue('.$levelId.');'."\n";
+            $script .= '$value=$status["Value"];'."\n";
+            $script .= '$dir="D"; if ($config["Direction"]) { $newLevel = $value + 5; $dir="U"; } else $newLevel = $value - 5;'."\n";
+            $script .= 'if ($newLevel < 0) { $newLevel=0; } elseif ($newLevel > 100) { $newLevel=100; } else RequestAction('.$levelId.',$newLevel);'."\n";
+            $script .= '$status["Value"]=$newLevel;'."\n";
+            $script .= '$time=microtime(true);'."\n";
+            $script .= 'if ($doupdate) { $status["EventChain"] = "$value;$newLevel;$dir;".round($time - $offset,3);  }'."\n";
+            $script .= 'elseif ($status["EventChain"]) { $status["EventChain"] = $status["EventChain"].": $newLevel;$dir;".round($time - $offset,3); }'."\n";
+            $script .= 'else { $status["EventChain"] = "$newLevel;$dir;".round($time-$offset,3); }'."\n";
+            $script .= 'SetValue('.$oid.',$newLevel);'."\n";
+            $script .= 'SetValue('.$statusId.',json_encode($status));'."\n";    
+            echo $script;
+            $this->CreateEvent($variableId,"OnUpdate",$script);
+
+            return ($command);
+            }
+        
+        return (false);
+        }
 
 	/***************************************
 	 * ControlSwitchLevel of Autosteuerung
@@ -5306,8 +5591,9 @@ class Autosteuerung
 	public function ControlSwitchLevel(array &$result,$simulate=false, $debug=false)
 		{
 		/* Defaultwerte bestimmen, festlegen */
-		$ergebnis=""; $ergebnisText=""; 
-        $comment=false;         // nur COMMENT setzen wenn dieser Schalter true ist, nicht alle Ausgaben im Log machen um die Übersichtlichkeit zu verbessern
+		$ergebnis=""; $ergebnisText=""; $mode="";
+        $comment=true;         // nur COMMENT setzen wenn dieser Schalter true ist, nicht alle Ausgaben im Log machen um die Übersichtlichkeit zu verbessern
+
         if (isset($result["NAME"]) ) { $ergebnis.=$result["NAME"]." ";   $ergebnisText.=$result["NAME"]." ";  }
         $ergebnisLang="ControlSwitchLevel ";
 		$ControlModeHeat=true;	/* Regler fuer Heizen ist Default */
@@ -5315,15 +5601,22 @@ class Autosteuerung
 		$nofrost=6;		
 		if (isset($result["MODE"]) == true)
 			{
- 			if ($result["MODE"]=="COOL") $ControlModeHeat=false;
+ 			if ($result["MODE"]=="COOL") 
+                {
+                $ControlModeHeat=false;
+                $mode .= "Cool ";
+                }
+            else $mode .= "Heat ";
 			}
 		if (isset($result["THRESHOLD"]) == true)
 			{
 			$treshold=(float)$result["THRESHOLD"]; 
+            $mode .= "+/- $treshold °C "; 
 			}
 		if (isset($result["NOFROST"]) == true)
 			{
  			$nofrost=(float)$result["NOFROST"];
+            $mode .= "Nofrost $nofrost °C ";
 			}					
 		if (isset($result["SETPOINT"]) == true)  
 			{
@@ -5483,12 +5776,13 @@ class Autosteuerung
 			}
 		else
 			{
-			echo "Keine Regelfunktion, Index SETPOINT nicht gesetzt.".json_encode($result)."\n";
+			if ($debug) echo "Keine Regelfunktion, Index SETPOINT nicht gesetzt.".json_encode($result)."\n";            // kommt öfter vor, kein fehler, daher unter Debug
+            return ($result);
 			}		
 			
 		//echo $ergebnis."\n";
 		//$result["COMMENT"]=$ergebnis;	
-        if ($comment) $result["COMMENT"]=$ergebnisText;
+        if ($comment) $result["COMMENT"]=$ergebnisLang.$mode.$ergebnisText." (".$ergebnis.")";
         else $result["COMMENT"]="";         // Länge größer 4 führt erst zu einer Anzeige 	
 		return ($result);	
 		}
@@ -5528,12 +5822,14 @@ class Autosteuerung
 	 *
 	 * Value für Wert nach Delay ist hier falsch !!!! wird nicht übergeben sondern geraten
 	 * false, Next oder Value ???? ist nicht richtig
+     *
+     * result wird nicht abgeändert sondern als Ergebnis übergeben
 	 *
 	 *******************************************************/
 
 	public function ExecuteCommand($result,$simulate=false, $debug=false)
 		{
-        $debug=true;
+        //$debug=true;
 		if ($debug) echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
 		$ergebnis="";  // fuer Rückmeldung dieser Funktion als COMMENT
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
@@ -5659,8 +5955,10 @@ class Autosteuerung
 					{
 					//IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
 					$result["IPSLIGHT"]="None";
-					$command.="SetValue(".$result["OID"].",false);";
+					$commandline ="SetValue(".$result["OID"].",#data#);";
+                    $command .= "SetValue(".$result["OID"].",false);";
 					$result["COMMAND"]=$command;
+                    $result["COMMANDLINE"]=$commandline;
 					//$ergebnis .= self::switchObject($result,$simulate);					
 					$ergebnis .= $this->switchObject($result,$simulate);
 					}
@@ -5692,7 +5990,7 @@ class Autosteuerung
 			          					$value=GetValue($result["OID"]);
 				    	      			if ($result["TYPE"]=="#COLOR") 	{	$command.='$lightManager->SetRGB('.$result["OID"].",".$value.");"; }	
 					    		      	if ($result["TYPE"]=="#LEVEL") 	{	$command.='$lightManager->SetValue('.$result["OID"].",".$value.");"; }	
-      					    			if ($result["TYPE"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }											
+      					    			if ($result["TYPE"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }		
 										}
                                     else 
 										{
@@ -5703,6 +6001,7 @@ class Autosteuerung
       					    			if ($result["TYPE"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }											
 										}														
 		      			    		$command.="IPSLogger_Dbg(__file__, 'Delay abgelaufen von ".$name."');";
+                                    $commandline='SetValue('.$result["OID"].",#data#);";
           							//echo "**** Aufruf Switch Ergebnis command \"".$result["IPSLIGHT"]."\"   ".str_replace("\n","",$command)."\n";										
 	    	      					}
 		    		      		else                                        // Schalter Ein/Aus
@@ -5722,6 +6021,7 @@ class Autosteuerung
     		       					}                            
 					          	$result["IPSLIGHT"]="Switch";
 		      		    	    $result["COMMAND"]=$command;
+                                $result["COMMANDLINE"]=$commandline;
                                 if ($debug) echo "      ->Hier wird ein IPSHEAT SWITCH geschaltet, Aufruf SwitchObject, erwartet sich ON: oder OFF:\n";
 								$ergebnis .= $this->switchObject($result,$simulate,$debug);									
                                 break;   
@@ -5990,7 +6290,7 @@ class Autosteuerung
                     //print_r($result);
 					if ( isset($result["LOUDSPEAKER"]) )
 						{
-						echo "   Es wird am Amazon Echo ".IPS_GetName($result["LOUDSPEAKER"])." gesprochen : ".$result["SPEAK"]."\n";
+						if ($debug) echo "   Es wird am Amazon Echo ".IPS_GetName($result["LOUDSPEAKER"])." gesprochen : ".$result["SPEAK"]."\n";
                        	IPSLogger_Inf(__file__, 'Es wird am Amazon Echo '.IPS_GetName($result["LOUDSPEAKER"]).' gesprochen : '.$result["SPEAK"]);
 						if ($simulate==false) 
                             {
@@ -6000,7 +6300,7 @@ class Autosteuerung
                         }																																																					
 					else
                         { 
-					    echo "  Es wird am Default Lautsprecher gesprochen : ".$result["SPEAK"]."\n"; 
+					    if ($debug) echo "  Es wird am Default Lautsprecher gesprochen : ".$result["SPEAK"]."\n"; 
                        	IPSLogger_Inf(__file__, 'Es wird am Default Lautsprecher gesprochen : '.$result["SPEAK"]);
                         if ($simulate==false) tts_play(1,$result["SPEAK"],'',2);
 						}
@@ -6213,40 +6513,40 @@ class Autosteuerung
         }
 
 
-    private function getSpeakWert($oid, $value)   
+    private function getSpeakWert($oid, $value, $debug=false)   
         {
 		$typObj=IPS_GetObject($oid)["ObjectType"];
 		$formWert="";
-		echo "Speak Wert ".$value." von OID ".$oid." (".IPS_GetName($oid).") vom Typ ".$typObj."   (";
+		$text = "Speak Wert ".$value." von OID ".$oid." (".IPS_GetName($oid).") vom Typ ".$typObj."   (";
 		//Objekt-Typ (0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link)
 		switch ($typObj)
 			{
-								case 0: echo "Kategorie"; break;
-								case 1: echo "Instanz"; break;
+								case 0: $text .= "Kategorie"; break;
+								case 1: $text .= "Instanz"; break;
 								case 2: 
-									echo "Variable->"; 
+									$text .= "Variable->"; 
 									$typWert=IPS_GetVariable($oid)["VariableType"];
 									switch ($typWert)
 										{
-										case 0: echo "Boolean"; break;
-										case 1: echo "Integer"; break;
-										case 2: echo "Float"; break;
-										case 3: echo "String"; break;
-										default:  echo "unknown"; break;
+										case 0: $text .= "Boolean"; break;
+										case 1: $text .= "Integer"; break;
+										case 2: $text .= "Float"; break;
+										case 3: $text .= "String"; break;
+										default:  $text .= "unknown"; break;
 										}
 									$formWert=IPS_GetVariable($oid)["VariableProfile"].IPS_GetVariable($oid)["VariableCustomProfile"];										
 									break;
-								case 3: echo "Skript"; break;
-								case 4: echo "Ereignis"; break;
-								case 5: echo "Medie"; break;
-								case 6: echo "link"; break;
-								default:  echo "unknown"; break;
+								case 3: $text .= "Skript"; break;
+								case 4: $text .= "Ereignis"; break;
+								case 5: $text .= "Media"; break;
+								case 6: $text .= "link"; break;
+								default:  $text .= "unknown"; break;
 			}
 		if ($typObj==2)
 								{
 								/* Sprachausgabe einer Variable	*/
-								if ($formWert == "") echo ")\n";	
-								else echo "   Profil ".$formWert." , formatiert \"".GetValueFormatted($oid)."\")\n";
+								if ($formWert == "") $text .= ")\n";	
+								else $text .= "   Profil ".$formWert." , formatiert \"".GetValueFormatted($oid)."\")\n";
 								if ($typWert==2)
 									{
 									/* vom Typ Float */
@@ -6267,7 +6567,7 @@ class Autosteuerung
 								//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
 								}
 		else $wert="Achtung Fehler, Wert ist keine Variable";
-            
+        if ($debug) echo $text;    
         return ($wert);
         }
 
@@ -6372,11 +6672,14 @@ class Autosteuerung
 					}
 				}
 			}
-        if ($simulate) echo "SwitchObject Ergebnis : \"$ergebnis\" \n";
+        if ($simulate) 
+            {
+            if ($debug) echo "SwitchObject Ergebnis : \"$ergebnis\" \n";
+            }
 		else 
 			{
 			$ergebnis.= "SwitchObject Undo with $undo.\n";
-			echo "Ergebnis : \"$ergebnis\"   ".($simulate?"Simulate":"")."  ".($debug?"Debug":"")."\n";
+			if ($debug) echo "Ergebnis : \"$ergebnis\"   ".($simulate?"Simulate":"")."  ".($debug?"Debug":"")."\n";
 			}
 		$result["UNDO"]=$undo;			// auch wenn Simulate ist die DIM und DELAY Funktionen austesten
    		//IPSLogger_Inf(__file__, 'Switch Object '.json_encode($result));
@@ -6742,7 +7045,7 @@ class Autosteuerung
    		IPS_SetEventScript($EreignisID,$command);  */
 		}
 
-	/* für einen Timer Namen den aktuellen Status zurückmelden 
+	/* für einen Timer Namen den aktuellen  Status zurückmelden 
      *
      */
     function getEventTimerStatus($name)
@@ -7211,6 +7514,8 @@ abstract class AutosteuerungFunktionen
 		return $result;
 		}*/
 
+    /* AutosteuerungFunktionen::status
+     */
 	function status()
 	   {
 	   return true;
@@ -8496,7 +8801,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$de
 	{
 	global $speak_config;
 
-    if ($debug) echo "Aufruf status+$wertOptInput\n";
+    if ($debug) echo "      Aufruf status+$wertOptInput, Debug Mode aktiv.\n";
     $control=array();           // hier sind die Zusatzelemente gespeichert
 
     $auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
@@ -8505,6 +8810,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$de
 
     $auto->evalWertOpt($control, $wertOptInput, $variableID, $status, $debug);
 
+    
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
    /* array('OnChange','Status',   'ArbeitszimmerLampe',),       														*/
@@ -8519,6 +8825,20 @@ function Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$de
     $oldValue=$auto->setNewStatus($variableID,$status);	                    // Category ist der dritte Parameter, hier default 0
     $command=array(); 
     $entry=1;	
+
+    if ($control["config"]) 
+        {
+        $simulate=true;
+        $wertOpt="";
+        if ($debug) echo "     Aufruf Config for Status(".json_encode($params).",$status,$variableID,true,$wertOpt,$debug);\n";        
+        $command = Status($params,$status,$variableID,$simulate,$wertOpt,false);          // recursive, ein zweites mal aber als Simulation aufgerufen
+        if (isset($command[1])) 
+            {
+            $command = $auto->evalInlineScript($command[1],$debug);
+            return ($command);              // inline script im Event
+            }
+        else return (false);
+        }
 
     if ($control["bounce"]==false)   // bei einem Bounce die ganze Befehlsabarbeitung deaktivieren
         {
@@ -8557,7 +8877,11 @@ function Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$de
                     }	
                 } /* Ende foreach Befehl */
             if ($debug) echo "        EvaluateCommand abgeschlossen, Aufruf Befehl ExecuteCommand mit : ".json_encode($command[$entry])."\n";            
-            $result=$auto->ExecuteCommand($command[$entry],$simulate,$debug);                                               // für Status
+            $result=$auto->ExecuteCommand($command[$entry],$simulate,$debug);   
+                                                        // für Status
+            if (isset($result["COMMANDLINE"])) $command[$entry]["COMMANDLINE"]=$result["COMMANDLINE"];
+            if (isset($result["OID"])) $command[$entry]["OID"]=$result["OID"];
+            
             $ergebnis=$auto->timerCommand($result,$simulate);
             //print_r($command[$entry]);
             $entry++;			
