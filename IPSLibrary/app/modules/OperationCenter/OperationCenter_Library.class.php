@@ -93,6 +93,7 @@ class OperationCenterConfig
         {
         $config=array();
         $dosOps=new dosOps();
+        $configInput=array();      // Default
         if ((function_exists("OperationCenter_SetUp"))===false) IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");				
         if (function_exists("OperationCenter_SetUp")) $configInput=OperationCenter_SetUp();
         else echo "*************Fehler, OperationCenter_Configuration.inc.php Konfig File nicht included oder Funktion OperationCenter_SetUp() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
@@ -6351,6 +6352,10 @@ class BackupIpsymcon extends OperationCenter
  * extends OperationCenter because it is using same config file
  * works with the generated logfiles and backups them and deletes them after some time
  *
+ *      readxmllogfile
+ *      readlogfile
+ *
+ *      readLogDir
  *      DirLogs
  *      MoveFiles
  *      MoveCamFiles
@@ -6361,24 +6366,32 @@ class BackupIpsymcon extends OperationCenter
 class LogFileHandler extends OperationCenter
 	{
 
+    /* LogFileHandler::readxmllogfile
+     * used in debug/readlogfile
+     *
+     * input is the filename, it gets contens, does utf8
+     * uses simplexml to get structure
+     * if xml structure is readable all okay
+     * otherwise try some best practices as
+     *
+     */
     function readxmllogfile($filename)
         {
         //=;
         $debug=false;
         $content = utf8_encode(file_get_contents($filename));
-        //$content = utf8_encode(file_get_contents($Verzeichnis.$lognametoday));
         $xml = simplexml_load_string($content);
         if ($xml !== false)
             {
-            echo "full read of $file successful\n";
+            echo " readxmllogfile, full read of $filename successful\n";
             }
         else    
             {
-            echo "full read of $file NOT successful\n";            
+            echo " readxmllogfile, full read of $filename NOT successful. Try other approach:\n";            
             $content = utf8_encode(file_get_contents($filename));
             $input = explode("\n", $content);
             $lines=sizeof($input);
-            echo "Read $lines Lines of File $logname. Switch off Html filtern in log display.\n";
+            echo "   Read $lines Lines of File. Switch off Html filtern in log display.\n";
             //$startatline=$lines-500; 
             $startatline=0;
             $printonce=true; $oldentry="";
@@ -6394,8 +6407,8 @@ class LogFileHandler extends OperationCenter
                         {
                         if ($debug)
                             {
-                            if ($len>3) echo str_pad($line,10)."Warning, No Opening < in line : $entry\n";
-                            else echo str_pad($line,10)."Warning, Empty line : $entry\n";
+                            if ($len>3) echo "      ".str_pad($line,10)."Warning, No Opening < in line : $entry\n";
+                            else echo "      ".str_pad($line,10)."Warning, Empty line : $entry\n";
                             }
                         }
                     else    
@@ -6403,7 +6416,7 @@ class LogFileHandler extends OperationCenter
                         $pos2=strrpos($newentry,">");
                         if (($len-$pos2)>2)
                             {
-                            if ($debug) echo str_pad($line,10)."Multiline Pos < is 0, Len is $len, Pos > is $pos2  $entry \n";
+                            if ($debug) echo "      ".str_pad($line,10)."Multiline Pos < is 0, Len is $len, Pos > is $pos2  $entry \n";
                             $oldentry=$newentry."\n";
                             }
                         else 
@@ -6416,12 +6429,12 @@ class LogFileHandler extends OperationCenter
                                 $read = xmlToArray($api);
                                 if ($printonce) 
                                     {
-                                    echo str_pad($line,10).$newentry."\n"; 
+                                    echo "      ".str_pad($line,10).$newentry."\n"; 
                                     print_r($read); $printonce=false; 
                                     }
                                 if ($read["event"]["attributes"]["level"]=="ERROR")         // filter
                                     {
-                                    echo str_pad($line,10).$read["event"]["attributes"]["timestamp"]."  ";
+                                    echo "      ".str_pad($line,10).$read["event"]["attributes"]["timestamp"]."  ";
                                     echo $read["event"]["attributes"]["logger"]."  \n";
                                     echo " ".$read["event"]["message"]["value"]."\n";
                                     }
@@ -6445,11 +6458,194 @@ class LogFileHandler extends OperationCenter
 
         }
 
-    /* standard dir read of verzeichnis
-     * wenn ext false dann ganzes dir
-     * wenn xml oder log dann wird gesucht
+    /* 
+     * standard logfile reading, line by line since they are quite large
      */
+    function readlogfile($serverDir)
+        {
 
+                $maxLine=3;
+                $firstrows=2; $lastrows=20; $rollingsize=40;
+                $filecontent=array(); $lastrow=false;
+                echo "IPS Unterverzeichnis auslesen : ".$serverDir."\n";            
+                    $file=array();
+                    $handle=opendir ($serverDir);
+                    $i=0; $lognametoday=false; $logname=false;
+                    while ( false !== ($datei = readdir ($handle)) )
+                        {
+                        $fullpath=$serverDir."\\".$datei;
+                        if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($fullpath) == false) )  
+                            {
+                            $filename=explode(".",$datei);
+                            if ( (isset($filename[1])) && ($filename[1]=="log") )
+                                {
+                                //print_R($filename);
+                                //echo "\n";  echo str_pad($filename[0],30);
+                                $filesize=filesize($fullpath);
+                                $datetime=filemtime($fullpath);
+                                //echo str_pad($filename[0],30)." ".nf($filesize,"Byte",12)."      ".date("d.m.Y H:i:s",$datetime)."\n";
+                                $pos1=strpos($filename[0],"IPSModuleManager_");
+                                if ($pos1===false)
+                                    {
+                                    echo str_pad($filename[0],30)." ".nf($filesize,"Byte",12)."      ".date("d.m.Y H:i:s",$datetime)."\n";
+                                    $pos2=strpos($filename[0],"logfile");
+                                    $date=substr($filename[0],7);
+                                    $timeold=time()-$datetime;
+                                    echo "    $date ".date("d.m.Y H:i",(int)$date)."  Time since last write ".nf($timeold,"s")."\n";
+                                    if ( ($pos2 !== false) && ($timeold>(10*60)) )
+                                        {
+                                        if ($targetfile)
+                                            { 
+                                            $pos3=strpos($filename[0],$targetfile);
+                                            if  ($pos3 === false) continue;
+                                            }
+                                        if ( (($filehandle = fopen($fullpath, "r")) !== false) )      // nur machen wenn filename  richtig
+                                            {
+                                            $row=1;
+                                            while (($data = fgets($filehandle)) !== false) 
+                                                {
+                                                $row++;
+                                                if ($firstrows)
+                                                    {
+                                                    if ($row < ($firstrows+2)) 
+                                                        {
+                                                        echo "    ".$data;
+                                                        }
+                                                    else 
+                                                        {
+                                                        $index=fmod($row,$rollingsize);
+                                                        $filecontent[$index]=$data;
+                                                        $lastrow=$row;
+                                                        }
+                                                    }
+                                                else
+                                                    {
+                                                    if ($row <($maxLine+1)) echo "    ".$data;
+                                                    else break;
+                                                    }
+                                                }           // end while
+                                            fclose($filehandle);
+                                            if ($lastrows)
+                                                {
+                                                echo "   $lastrow $lastrows \n";
+                                                for ($i=($lastrow-$lastrows);$i<($lastrow+1);$i++)
+                                                    {
+                                                    $index=fmod($i,$rollingsize);
+                                                    echo "     ".$filecontent[$index];
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+
+        }
+
+    function readlogfileFiltered($serverDir,$targetfile)
+        {
+        $dosOps = new dosOps();
+            $file=$dosOps->correctDirName($serverDir."\\").$targetfile.".log";                        //target file
+            echo "Filter Logfile $file and display:\n";
+            // kleine Logik davor bauen
+            
+            
+            $filter1=false;
+            $filter1="LEVEL";
+            $filter2=false;
+            $filter3=false;     
+            //$filter3=20072;
+            
+            $filter4=false;
+            //$filter4="Pong";
+
+                    $debug=false;
+                    $line=0; $lineshow=0; $linemax=80;
+                    $handle1=fopen($file,"r");
+                    if ($handle1) echo "Open $file for reading:\n";
+                    while ( !feof($handle1) ) 
+                        {
+                        $lineshow++;    
+                        if (($input=fgets($handle1)) === FALSE) 
+                            {
+                            echo "---------eof\n";
+                            break;      // the while loop
+                            }
+                        $inputline=explode("|",$input);
+                        //print_R($inputline);
+                        $date=$inputline[0];
+                        $time=strtotime($date);
+                        if ($time==false) continue;
+
+                        if ($filter1=="LEVEL")
+                            {
+                            if (isset($inputline[2]))
+                                {
+                                $level=trim($inputline[2]);
+                                if ($level=="DEBUG") continue;
+                                if ($level=="MESSAGE") continue;
+                                if ($level=="CUSTOM") continue;
+                                if ($level=="NOTIFY") continue;
+                                if ($level=="WARNING") continue;
+                                }
+                            else continue;                                  // lines without logging level
+                            }
+                        if ($filter2=="SOURCE")
+                            {
+                            //if ( (isset($inputline[3])) && (isset($inputline[5])) )
+                            if (isset($inputline[3]))
+                                {
+                                $source=trim($inputline[3]);
+                                if (strlen($source)>20) continue;
+                                if ($source=="Kernel") continue;
+                                if ($source=="ScriptEngine") continue;
+                                if ($source=="VariableManager") continue;
+                                if ($source=="IPSModuleManager") continue;   
+                                if ($source=="EventManager") continue; 
+                                if ($source=="Archive Control") continue;   
+                                if ($source=="...") continue;    
+                                if ($source=="NetatmoWeatherDevice") continue;  
+                                if ($source=="TimerPool") continue; 
+                                if ($source=="TopologyDevice") continue; 
+                                if ($source=="IPSFileHandler") continue;                    
+                                }
+                            else continue;
+                            }
+                        if ($filter3)
+                            {
+                            if (isset($inputline[1]))
+                                {
+                                $id=(int)trim($inputline[1]);
+                                if ($filter3 != $id) continue;
+                                } 
+                            else continue;  
+                            }
+                        if ($filter4)
+                            {
+                            if (isset($inputline[4]))
+                                { 
+                                $pos4=strpos($inputline[4],$filter4);                  
+                                if ($pos4===false) continue;
+                                }
+                            else continue;
+                            }    
+                        echo str_pad($lineshow-1,10).str_pad($time,12).$input;
+                        $line++;
+                        if ($line>$linemax) break; 
+                        }
+        }
+
+    /* readLogDir
+     * standard dir read of verzeichnis, default is kerneldir/logs
+     * wenn ext false dann ganzes dir, sonst ist es ein Filter zB log oder xml
+     * wenn filter dann von den Dateien das Datum ermitteln
+     *
+     * ermittelt heutiges und gestriges Datum
+     * öffnet das Verzeichnis 
+     *
+     */
 	function readLogDir($Verzeichnis=false, $ext=false, $debug=false)
         {
         if ($Verzeichnis===false) $Verzeichnis = IPS_GetKernelDir()."logs/";

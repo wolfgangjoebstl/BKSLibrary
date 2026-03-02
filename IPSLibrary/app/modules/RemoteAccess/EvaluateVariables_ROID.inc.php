@@ -1,5 +1,5 @@
 <?php
-/*erstellt von RemoteAccess::add_Guthabensteuerung() am 06.02.2026 05:05
+/*erstellt von RemoteAccess::add_Guthabensteuerung() am 02.03.2026 05:05
  */
 function GuthabensteuerungList() { return array(
     "Phone_Cost" => array(
@@ -53,7 +53,7 @@ function GuthabensteuerungList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_Amis() am 06.02.2026 05:05
+/*erstellt von RemoteAccess::add_Amis() am 02.03.2026 05:05
  */
 function AmisStromverbrauchList() { return array(
     "Wohnung-LBG70_Wirkenergie" => array(
@@ -269,7 +269,7 @@ function AmisStromverbrauchList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_SysInfo() am 06.02.2026 05:05
+/*erstellt von RemoteAccess::add_SysInfo() am 02.03.2026 05:05
  */
 function SysInfoList() { return array(
     "Hostname" => array(
@@ -324,7 +324,7 @@ function SysInfoList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_RemoteServer() am 06.02.2026 05:05
+/*erstellt von RemoteAccess::add_RemoteServer() am 02.03.2026 05:05
  */
 function ROID_List() { return array(
       );}

@@ -91,6 +91,53 @@ class XConfigurator extends RemoteAccess
 
     }
 
+    /* RemoteAcces_Configuration
+     * deal with Configuration file
+     * analyse, align configuration and store in class
+     * use as parent class to others, not storing data
+     *
+     */
+
+class RemoteAccess_Configuration
+    {
+
+
+    public function set_Configuration()
+        {
+        $configRemServer = array();     // default input, es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist
+        $RemoteServer=array();
+        if ((function_exists("RemoteAccess_GetServerConfig"))===false) IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");				
+        if (function_exists("RemoteAccess_GetServerConfig")) $configRemServer = RemoteAccess_GetServerConfig();
+        else echo "*************Fehler, RemoteAccess_Configuration.inc.php Konfig File nicht included oder Funktion RemoteAccess_GetServerConfig() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";            
+                    
+        // configfileParser(&$inputArray, &$outputArray, $synonymArray,$tag,$defaultValue,$debug=false)
+        $remServer = array(); 
+        $debug=false;
+        //print_R($configRemServer);
+        foreach ($configRemServer as $Name => $configServer)
+            {
+            $remServer[$Name]=array();
+            $remServer[$Name]["Name"]=$Name;
+            configfileParser($configRemServer[$Name],$remServer[$Name],["Adresse","adresse","ADRESSE"],"ADRESSE",null,$debug);
+            $parsedUrl=parse_url($remServer[$Name]["ADRESSE"]);
+            //print_r($parsedUrl);
+            $remServer[$Name]["SYMCON"]=$parsedUrl;
+            configfileParser($configRemServer[$Name],$remServer[$Name],["Status","status","STATUS"],"STATUS",null);
+            configfileParser($configRemServer[$Name],$remServer[$Name],["Logging","logging","LOGGING"],"LOGGING",null);
+            configfileParser($configRemServer[$Name],$windows,["Windows","windows","WINDOWS"],"WINDOWS",null);
+            //print_R($windows);
+            if (isset($windows["WINDOWS"]))
+                {
+                configfileParser($windows["WINDOWS"],$remServer[$Name]["WINDOWS"],["User","user","USER"],"USER",null);
+                configfileParser($windows["WINDOWS"],$remServer[$Name]["WINDOWS"],["Password","password","PASSWORD","Passwd"],"PASSWORD",null);
+                }
+            }
+
+        return($remServer);
+        }
+
+    }
+
 	/*********************
 	 *
 	 * RemoteAccess Class
@@ -147,7 +194,7 @@ class XConfigurator extends RemoteAccess
 
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
-class RemoteAccess
+class RemoteAccess extends RemoteAccess_Configuration
 	{
 
 	public $includefile;
@@ -159,6 +206,8 @@ class RemoteAccess
     private $ipsOps;
 
     public $profileConfig;                  // eine Art Mapping zwischen neuen Allgemeinen Profilen und vorhandenen
+
+    protected $remoteAccessConfiguration;
 	
 	/**
 	 * RemoteAccess::__construct
@@ -176,7 +225,7 @@ class RemoteAccess
 		 *		"LBG-VIS"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/',
 		 */
 		$this->remServer=RemoteAccess_GetConfigurationNew();	/* es werden nur die Server in die Liste aufgenommen die "STATUS"=="Active" und "LOGGING"=="Enabled" haben */
-
+        $this->remoteAccessConfiguration = $this->set_Configuration();
        	//$this->profileConfig=array("Temperatur"=>"new","TemperaturSet"=>"new","Humidity"=>"new","Switch"=>"new","Button"=>"new","Contact"=>"new","Motion"=>"new","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"new","Rainfall"=>"~Rainfall","Helligkeit"=>"~Brightness.HM");
 
 		}
@@ -189,6 +238,11 @@ class RemoteAccess
 		{
 		return($this->remServer);
 		}
+
+    public function getRemoteAccessConfiguration()
+        {
+        return($this->remoteAccessConfiguration);    
+        }
 		
     /* RemoteAccess::createXconfig
      * Beschleunigung des Ablaufs, Aufruf in EvaluateHardware

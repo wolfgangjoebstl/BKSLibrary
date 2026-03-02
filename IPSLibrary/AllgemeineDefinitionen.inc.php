@@ -25,23 +25,31 @@
       * ein paar altmodische Definitionen
       * Power functions (group)
       * send_status
+      * verschiedene brauchbare Funktionen
       *
       * praktische Funktionen für alle Programme und Funktionen
+      * -------------------------------------------------------
       * 
-      * nf      	    number_format abhängig von Unit oder default
-	  * send_status  Ausgabe des aktuellen Status aktuell oder historisch
+      * nf      	            number_format abhängig von Unit oder default
+      * configfileParser        Konfigurationsparsing, recht einfach und brauchbar
+	  * send_status             Ausgabe des aktuellen Status aktuell oder historisch
+      * CreateVariableByName
+      *
       *
 	  * erstellt auch einige für alle brauchbaren Klassen:
       * -------------------------------------------------
       *
-      * uebersichtlicher als die verschiedenen einzelnen Routinen
+      * Zusammenfassung in Klassen uebersichtlicher als die verschiedenen einzelnen Routinen
 	  *
       * profileOps              versammelt Operationen rund um die Bearbeitung von Profile
       * webOps
       * archiveOps              rund um die Archiv Funktion von IP Symcon
+      * archOps                 Archiving with less memory
+      *
       * statistics
       *         meansCalc           extends statistics
       *         eventLogEvaluate    extends statistics
+      *         gapsEval            extends statistics
       *         meansRollEvaluate   extends statistics
       *         maxminCalc          extends statistics
       *
@@ -53,21 +61,30 @@
       * ipsCharts               Chartdarstellung rund um die Highcharts Funktionen
       *                
       * ipsOps                  Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
-      * dosOps
       * sysOps
+      * phpOps      
+      * dosOps
+      *
       * fileOps                 Zusammenfassung von Funktionen rund um das lesen und schreiben von Datenbanken im csv Forma
+      * textOps                 Textverarbeitung
       * timerOps
       * curlOps                 curl Aufgaben, zusammengefasst
       * geoOps                  alles rund um Plätze auf der Erde und im Weltall
+      *
       * errorAusgabe
+      *
       * ComponentHandling
 	  * WfcHandling             Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen, vorerst von Modulen AMIS und Sprachsteuerung verwendet
       *                         übernimmt Funktionen zum WFC Handling, wie zB CreatePane, Create Category, SpiltPane etc
       * ModuleHandling              
+      * UUID
       *
       *
-      *
-      *
+      * functions
+      *     AD_ErrorHandler
+      *     createPortal
+      *     getNiceFileSize
+      *     getServerMemoryUsage
       *
       *
       * DEPRICATED
@@ -1754,7 +1771,6 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
  *      getVariableId
  *
  *
- * AD_ErrorHandler
  *
  **************************************************************************************************************************************/
 	
@@ -6660,6 +6676,39 @@ class archiveOps
 
     }   // ende class archiveOps
 
+
+/* Archiving made simple and flexible
+ *
+ */
+class archOps
+    {
+
+    protected $archiveHandlerID;
+
+    function __construct()
+        {
+        $this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];    
+        }
+        
+    public function setArchiving($variableID,$status,$type)
+        {
+                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
+                if (AC_GetLoggingStatus($this->archiveHandlerID,$variableID)!=$status)
+                    {
+                    echo "Set Logging for $variableID \n";
+                    AC_SetLoggingStatus($this->archiveHandlerID,$variableID,$status);
+                    AC_SetAggregationType($this->archiveHandlerID,$variableID,$type);      // Zählerwert 
+                    IPS_ApplyChanges($this->archiveHandlerID);
+                    }  
+                if (AC_GetAggregationType($this->archiveHandlerID,$variableID)!=$type)
+                    {
+                    echo "Set Aggregation Type Counter for $variableID \n";
+                    AC_SetAggregationType($this->archiveHandlerID,$variableID,$type);      // Zählerwert 
+                    IPS_ApplyChanges($this->archiveHandlerID);
+                    } 
+        }
+
+    }
 
 /* Statistikfunktionen in einer Parent class zusammen gefasst
  *
@@ -14560,8 +14609,293 @@ class fileOps
 
     }    // ende class
 
+/**************************************************************************************************************************
+ *
+ * textOps
+ *
+ * text operations
+ *
+ */
+
+class textOps
+    {
 
 
+    /**
+    * Split a text by delimiter lines that have symmetric markers at both ends.
+    *
+    * A delimiter line matches:
+    *   ^ <spaces> (marker{min,max}) <optional spaces> <any content> <optional spaces> (same marker, same length) <spaces> $
+    *
+    * Example delimiter lines:
+    *   "=== Heading ==="
+    *   "----- Title -----"
+    *
+    * @param string $text          The full text to split.
+    * @param string $allowedChars  Character class contents for the marker, e.g. "=\-*#".
+    *                              DO NOT wrap with [] — the function takes care of that.
+    * @param int    $min           Minimum repetitions of the marker character (e.g. 3).
+    * @param int    $max           Maximum repetitions of the marker character (e.g. 10).
+    * @param bool   $trimParts     Whether to trim whitespace on each resulting part.
+    * @return array                Array of non-empty parts between delimiter lines.
+    */
+    function splitBySymmetricMarkerLines(
+        string $text,
+        string $allowedChars = "=\-*#",
+        int $min = 3,
+        int $max = 10,
+        bool $trimParts = true
+    ): array {
+        // Escape chars that are special inside a character class
+        $escaped = preg_quote($allowedChars, '/');
+
+        // Build regex:
+        // ^\h*([=\-*#])\1{min-1,max-1}\h*.*?\h*\2{min,max}\h*$
+        // We need:
+        //   - Group 1: the marker character
+        //   - Group 2: the full left run (char repeated)
+        //   - Backreference to ensure right run is the same char and same length as left
+        //
+        // Simpler approach: capture the ENTIRE left run as group 1 and reuse \1 at the end,
+        // which guarantees both same char AND same length.
+        //
+        // Pattern explained:
+        //   ^\h*([<class>]{min,max})\h*.*?\h*\1\h*$
+        // Flags:
+        //   m - multiline (so ^ and $ are per line)
+        //   u - unicode
+        $pattern = '/^\h*([' . $escaped . ']{' . $min . ',' . $max . '})\h*.*?\h*\1\h*$/mu';
+
+        // Split the text wherever such a delimiter line occurs.
+        // Use PREG_SPLIT_NO_EMPTY to drop empty chunks created by consecutive delimiters or trimming.
+        $parts = preg_split($pattern, $text, -1, PREG_SPLIT_NO_EMPTY);
+
+        if (!is_array($parts)) {
+            return [];
+        }
+
+        if ($trimParts) {
+            $parts = array_map(static fn($p) => trim($p), $parts);
+        }
+
+        // Remove any residual empties
+        return array_values(array_filter($parts, static fn($p) => $p !== ''));
+    }
+
+
+
+    /**
+    * Insert line breaks based on a set of characters.
+    *
+    * @param string      $text              Input text (UTF-8).
+    * @param string[]    $chars             Array of single-character strings to break on (e.g. [';', ',', '.', '—']).
+    * @param string      $mode              'after' | 'before' | 'around'
+    * @param string      $break             Line break sequence to insert (default "\n", can use "<br>\n").
+    * @param bool        $collapseMultiple  If true, collapses consecutive breaks into one.
+    * @return string
+    */
+    function breakOnChars(
+        string $text,
+        array $chars,
+        string $mode = 'after',
+        string $break = "\n",
+        bool $collapseMultiple = true
+    ): string {
+        if (empty($chars)) {
+            return $text;
+        }
+
+        // Build a safe character class from array
+        $class = implode('', array_map(fn($c) => preg_quote($c, '/'), $chars));
+        // Match any of those characters
+        $pattern = '/([' . $class . '])/u';
+
+        switch ($mode) {
+            case 'before':
+                // Insert break BEFORE the matched char
+                $replaced = preg_replace($pattern, $break . '$1', $text);
+                break;
+
+            case 'around':
+                // Insert break BEFORE and AFTER the matched char
+                // Use callback to avoid doubling breaks if already present
+                $replaced = preg_replace_callback($pattern, function ($m) use ($break) {
+                    return $break . $m[1] . $break;
+                }, $text);
+                break;
+
+            case 'after':
+            default:
+                // Insert break AFTER the matched char
+                $replaced = preg_replace($pattern, '$1' . $break, $text);
+                break;
+        }
+
+        if ($collapseMultiple) {
+            // Collapse multiple consecutive breaks (works for plain "\n" and "<br>\n")
+            $escaped = preg_quote($break, '/');
+            $replaced = preg_replace('/(?:' . $escaped . '){2,}/', $break, $replaced);
+        }
+
+        return $replaced;
+    }
+
+
+    /**
+    * Wrap text to lines of at most $width characters, preferring breaks at $preferredBreakChars.
+    *
+    * Priority when breaking:
+    *   1) Last preferred char within the window
+    *   2) Last whitespace within the window
+    *   3) Hard cut at width
+    *
+    * @param string   $text
+    * @param int      $width                 Maximum characters per line (Unicode-aware).
+    * @param string[] $preferredBreakChars   Array of single-char strings (e.g. [',', ';', '.', '—']).
+    * @param bool     $keepBreakChar         If true, keeps the break character at the end of the line; otherwise it moves it to next line.
+    * @param string   $lineBreak             Line break sequence (default "\n").
+    * @return string
+    */
+    function wrapWithPreferredBreaks(
+        string $text,
+        int $width = 80,
+        array $preferredBreakChars = [',', ';', '.', '—', ':', ')', ']'],
+        bool $keepBreakChar = true,
+        string $lineBreak = "\n"
+    ): string {
+        if ($width < 1) {
+            return $text;
+        }
+
+        // Work line-by-line to preserve existing newlines
+        $lines = preg_split('/\R/u', $text, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+        $out   = [];
+
+        foreach ($lines as $line) {
+            // If this token is just a newline delimiter, keep it
+            if ($line === "\n" || $line === "\r" || $line === "\r\n") {
+                $out[] = $line;
+                continue;
+            }
+
+            $current = trim($line, "\r\n");
+            while (mb_strlen($current, 'UTF-8') > $width) {
+                $slice = mb_substr($current, 0, $width, 'UTF-8');
+
+                // 1) Try preferred break chars (search from end)
+                $breakPos = -1;
+                foreach ($preferredBreakChars as $ch) {
+                    $pos = mb_strrpos($slice, $ch, 0, 'UTF-8');
+                    if ($pos !== false) {
+                        $breakPos = max($breakPos, $pos);
+                    }
+                }
+
+                // 2) If not found, try whitespace
+                if ($breakPos < 0) {
+                    $posWs = max(
+                        mb_strrpos($slice, ' ', 0, 'UTF-8') ?: -1,
+                        mb_strrpos($slice, "\t", 0, 'UTF-8') ?: -1
+                    );
+                    if ($posWs >= 0) {
+                        $breakPos = $posWs;
+                    }
+                }
+
+                // 3) Fall back: hard break at width
+                if ($breakPos < 0) {
+                    $breakPos = $width - 1;
+                }
+
+                // Determine length to keep
+                $len   = $breakPos + 1; // include the break char/space if present
+                $chunk = mb_substr($current, 0, $len, 'UTF-8');
+
+                if (!$keepBreakChar) {
+                    // Move the break char to next line if it's one of the preferred chars
+                    $lastChar = mb_substr($chunk, -1, 1, 'UTF-8');
+                    if (in_array($lastChar, $preferredBreakChars, true)) {
+                        // remove it from end
+                        $chunk = mb_substr($chunk, 0, -1, 'UTF-8');
+                        // prepend to remainder
+                        $current = $lastChar . mb_substr($current, $len, null, 'UTF-8');
+                    } else {
+                        $current = mb_substr($current, $len, null, 'UTF-8');
+                    }
+                } else {
+                    $current = mb_substr($current, $len, null, 'UTF-8');
+                }
+
+                $out[] = rtrim($chunk);
+                $out[] = $lineBreak;
+                $current = ltrim($current);
+            }
+
+            $out[] = $current;
+            $out[] = $lineBreak;
+        }
+
+        // Join and trim trailing extra break
+        $result = implode('', $out);
+        // Normalize to not double-append final break
+        $result = preg_replace('/(?:' . preg_quote($lineBreak, '/') . '){2,}$/', $lineBreak, $result);
+
+        return $result;
+    }
+
+
+
+
+    /* ------------------
+    // Example usage
+    // ------------------
+    $input = <<<TXT
+    Intro paragraph that comes before any section.
+
+    === Overview ===
+    This is the overview block.
+
+    ----- Details -----
+    Here are some details.
+
+    *** Notes ***
+    Some notes here.
+
+    == Too short ==   ; won't match if min=3
+
+    ########## Big ##########
+    Large section here.
+
+    Final trailing content after last marker.
+    TXT;
+
+    $result = splitBySymmetricMarkerLines(
+        $input,
+        "=\-*#",  // allowed marker characters
+        3,        // min repeats
+        10,       // max repeats
+        true      // trim resulting parts
+    );
+
+    print_r($result);
+
+
+
+    // Example usage
+    // -----------------
+    $input  = "Intro: one; two, three. Next—dash test | pipe test.";
+    echo breakOnChars($input, [';', ',', '.', '—', '|'], 'after', "\n");
+
+
+
+    // -----------------
+    // Example usage
+    // -----------------
+    $txt = "Intro: alpha, beta and gamma—followed by more text; ensure we prefer breaks at punctuation rather than mid-word segments.";
+    echo wrapWithPreferredBreaks($txt, 30, [',', ';', '.', '—'], true, "\n");
+
+    */
+    }       // ende class
 
 /**************************************************************************************************************************
  *
@@ -15131,39 +15465,6 @@ class errorAusgabe
     function write($string)
         {
         echo $string;
-        }
-
-    }
-
-/* Archiving made simple and flexible
- *
- */
-class archOps
-    {
-
-    protected $archiveHandlerID;
-
-    function __construct()
-        {
-        $this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];    
-        }
-        
-    public function setArchiving($variableID,$status,$type)
-        {
-                //IPS_SetVariableCustomProfile($variableID,'~Electricity');
-                if (AC_GetLoggingStatus($this->archiveHandlerID,$variableID)!=$status)
-                    {
-                    echo "Set Logging for $variableID \n";
-                    AC_SetLoggingStatus($this->archiveHandlerID,$variableID,$status);
-                    AC_SetAggregationType($this->archiveHandlerID,$variableID,$type);      // Zählerwert 
-                    IPS_ApplyChanges($this->archiveHandlerID);
-                    }  
-                if (AC_GetAggregationType($this->archiveHandlerID,$variableID)!=$type)
-                    {
-                    echo "Set Aggregation Type Counter for $variableID \n";
-                    AC_SetAggregationType($this->archiveHandlerID,$variableID,$type);      // Zählerwert 
-                    IPS_ApplyChanges($this->archiveHandlerID);
-                    } 
         }
 
     }
