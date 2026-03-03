@@ -5655,6 +5655,26 @@ class Autosteuerung
     /* Autosteuerung::evalInlineScript
      * fast track, create inline scripts for fast processing
      *
+     * Variante nur wenn : $command ["SOURCEID","OID","DIM#CHG","NAME","NAME_EXT"] vorhanden
+     *              Parameter DIM#CHG übernehmen
+     *              Alternativen mit ADD und SUB#CHG
+     *          Baukastensystem, für mehr Uebersichtlichkeit
+     * weitere Varianten mit $command ["SOURCEID","OID","NAME"] und ON vorhanden  
+     *
+     * 5 1,111 Sec - 1,679 Sec 71 json {"EventChain":"18655;1772569203.676:  18655;0.267:  18655;0.501:  18655;0.773:  18655;1.111","Value":71,"Starttime":1772569203.676092,"Duration":567.759,"StatusChain":"56;61;U;0.194: 66;U;0.789: 71;U;1.679","Direction":true,"Lastupdate":1772569204.787188}
+     * 4 0,773 Sec - 1,476 Sec 76 json {"EventChain":"18655;1772569203.676:  18655;0.267:  18655;0.501:  18655;0.773","Value":76,"Starttime":1772569203.676092,"Duration":702.718,"StatusChain":"56;61;U;0.194: 76;U;1.475","Direction":true,"Lastupdate":1772569204.448656}
+     * 3 0,501 Sec - 1,134 Sec 71 json {"EventChain":"18655;1772569203.676:  18655;0.267:  18655;0.501","Value":71,"Starttime":1772569203.676092,"Duration":633.017,"StatusChain":"56;61;U;0.194: 71;U;1.134","Direction":true,"Lastupdate":1772569204.1775}
+     * 2 0,267 Sec - 0,789 Sec 66 json {"EventChain":"18655;1772569203.676:  18655;0.267","Value":66,"Starttime":1772569203.676092,"Duration":521.801,"StatusChain":"56;61;U;0.194: 66;U;0.789","Direction":true,"Lastupdate":1772569203.943056}
+     * 1 0,000 Sec - 0,194 Sec 61 json {"EventChain":"18655;1772569203.676","Value":61,"Starttime":1772569203.676092,"Duration":193.718,"StatusChain":"56;61;U;0.194","Direction":true,"Lastupdate":1772569203.676092}
+     *
+     *         0.28    0.22  0.27   0,34   0.37   0.20
+     *     0,00   0,28   0,50   0,77  1,11    1,48   1,68
+     *  1  sxxxxs                                               56;61;U;0.194                                               init
+     *  2         sxxxxxxxxxxxxxxs                              56;61;U;0.194: 66;U;0.789                                   add to 1                    
+     *  3                sxxxxxxxxxxxxxs                        56;61;U;0.194:            71;U;1.134                        add to 1 with new value
+     *  4                       sxxxxxxxxxxxxxs                 56;61;U;0.194:                        76;U;1.475
+     *  5                             sxxxxxxxxxxxxxxs          56;61;U;0.194: 66;U;0.789:                        71;U;1.679  
+     *    56-61-   66-    71-     76-   81-             
      */
     public function evalInlineScript($command,$debug=false)
         {
@@ -5693,9 +5713,12 @@ class Autosteuerung
             if (isset($config["Lastupdate"])==false) $config["Lastupdate"]=microtime(true);
             SetValue($configId,json_encode($config));
 
-            $statusId=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Status",3);
+            $status1Id=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Status1",3);
+            $status2Id=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Status2",3);
 
-            echo "evalInline Script SourceId: $variableId SwitchID: $oid  ConfigId: $configId  StatusId: $statusId\n";
+            echo "evalInline Script SourceId: $variableId SwitchID: $oid  ConfigId: $configId  StatusId: $status1Id $status2Id\n";
+
+            // init EventChain if delay>2 seconds with starttíme or log each begintime based on starttime
             $script  = "";
             $script .= '$config=json_decode(GetValue('.$configId.'),true);'."\n";
             $script .= '$time=microtime(true);'."\n";
@@ -5711,24 +5734,64 @@ class Autosteuerung
             $script .= '$config["Lastupdate"]=$time;'."\n";
             $script .= 'SetValue('.$configId.',json_encode($config));'."\n";  
 
-            $script .= '$status=json_decode(GetValue('.$statusId.'),true);'."\n";
-            $script .= 'if ($doupdate) $status["Value"]=GetValue('.$levelId.');'."\n";
-            $script .= '$value=$status["Value"];'."\n";
+            // status update of register change, read value from register to init, then from status, calc newlevel, store in value and request action
+            $script .= '$status1=json_decode(GetValue('.$status1Id.'),true);'."\n";
+            $script .= 'if ($doupdate) $status1["Value"]=GetValue('.$levelId.');'."\n";
+            $script .= '$value=$status1["Value"];'."\n";
             $script .= '$dir="D"; if ($config["Direction"]) { $newLevel = $value + 5; $dir="U"; } else $newLevel = $value - 5;'."\n";
             $script .= 'if ($newLevel < 0) { $newLevel=0; } elseif ($newLevel > 100) { $newLevel=100; }'."\n";
-            $script .= '$status["Value"]=$newLevel;'."\n";
-            $script .= 'SetValue('.$statusId.',json_encode($status));'."\n";  
+            $script .= '$status1["Value"]=$newLevel;'."\n";
+            $script .= 'SetValue('.$status1Id.',json_encode($status1));'."\n";  
+            // StatusChain und Duration wird erst nach dem RequestAction Befehl upgedatet
             $script .= 'RequestAction('.$levelId.',$newLevel);'."\n";
-            $script .= '$acttime=round(microtime(true)- $offset,3);'."\n";
-            $script .= 'if ($doupdate) { $status["StatusChain"] = "$value;$newLevel;$dir;$acttime";  }'."\n";
-            $script .= 'elseif ($status["StatusChain"]) { $status["StatusChain"] = $status["StatusChain"].": $newLevel;$dir;$acttime"; }'."\n";
-            $script .= 'else { $status["StatusChain"] = "$newLevel;$dir;$acttime"; }'."\n";
             $script .= 'SetValue('.$oid.',$newLevel);'."\n";
-            $script .= '$status["Duration"]=round((microtime(true)-$time)*1000,3);'."\n";
-            $script .= $nachrichtenVent->logNachrichtenAsScript('json_encode(array_merge($status,$config))'); 
-            $script .= 'SetValue('.$statusId.',json_encode($status));'."\n";  
+            $script .= '$acttime=round(microtime(true)- $offset,3);'."\n";
+            // StatusChain init, StatusCain Erweiterung und Statuschain ohne Init (?)
+            $script .= '$status2=json_decode(GetValue('.$status2Id.'),true);'."\n";            
+            $script .= 'if ($doupdate) { $status2["StatusChain"] = "$value;$newLevel;$dir;$acttime";  }'."\n";
+            $script .= 'else { $status2["StatusChain"] = $status2["StatusChain"].": $newLevel;$dir;$acttime"; }'."\n";
+            //$script .= 'elseif ($status["StatusChain"]) { $status["StatusChain"] = $status["StatusChain"].": $newLevel;$dir;$acttime"; }'."\n";
+            //$script .= 'else { $status["StatusChain"] = "$newLevel;$dir;$acttime"; }'."\n";
+            // zusaetzlich das Stromheizung Spiegelregister schreiben
+            $script .= '$status2["Duration"]=round((microtime(true)-$time)*1000,3);'."\n";
+            $script .= 'SetValue('.$status2Id.',json_encode($status2));'."\n";  
+            $script .= $nachrichtenVent->logNachrichtenAsScript('json_encode(array_merge($status1,$status2,$config))'); 
             $command["Script"] = $script;
             return ($command);
+            }
+        if ((isset($command["SOURCEID"])) && (isset($command["OID"])) && (isset($command["NAME"])) )
+            {
+            $variableId=$command["SOURCEID"];
+            $oid=$command["OID"];
+            $timer = new timerOps();
+            $timer->getAllEvents(0);         // als interne Variable abspeichern, 0 Filter auf Variablen als Trigger
+            $timer->filter_eventlist(["TriggerVariableId"=>$variableId,]);
+
+            $configId=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Config",3);
+            $config=json_decode(GetValue($configId),true);
+            //if (isset($config["Direction"])==false) $config["Direction"]=false;
+            if (isset($config["Lastupdate"])==false) $config["Lastupdate"]=microtime(true);
+            SetValue($configId,json_encode($config));
+
+            $script  = "";
+            $script .= '$config=json_decode(GetValue('.$configId.'),true);'."\n";
+            $script .= '$time=microtime(true);'."\n";
+            $script .= 'if (($time - $config["Lastupdate"]) > 2) {'."\n";
+            //$script .= '   $config["Direction"] = !$config["Direction"];'."\n";
+            $script .= '   $config["Starttime"] = $time;'."\n";
+            $script .= '   $offset=$time; $doupdate=true;'."\n";                                    
+            $script .= '   $config["EventChain"] = "'.$variableId.';".round($time,3);'."\n";
+            $script .= '} else {'."\n";
+            $script .= '   $doupdate=false;  $offset = $config["Starttime"];'."\n";
+            $script .= '   if ($config["EventChain"]) $config["EventChain"] .= ":  '.$variableId.';".round($time - $offset,3);'."\n";
+            $script .= '   else $config["EventChain"] = "'.$variableId.';".round($time - $offset,3);'."\n";
+            $script .= '}'."\n";
+            $script .= '$config["Lastupdate"]=$time;'."\n";
+            $script .= 'SetValue('.$configId.',json_encode($config));'."\n";  
+
+            $command["Script"] = $script;
+            return ($command);
+
             }
         
         return (false);
@@ -7608,7 +7671,7 @@ abstract class AutosteuerungFunktionen
                             {
                             $starttime=0;
                             $data=json_decode($message,true);
-                            if (isset($data["EventChain"])) 
+                            if (isset($data["EventChain"]))                         // use EventChain for Beginning
                                 {
                                 $eventchain=explode(":",$data["EventChain"]);
                                 //print_r($eventchain);
@@ -7625,17 +7688,21 @@ abstract class AutosteuerungFunktionen
                                         }
                                     }
                                 //$starttime += $duetime;
-                                $starttime = $duetime;
+                                $starttime = $duetime;                              // relative Zeit in milliseconds, sehr hilfreich
                                 $ms = round(fmod($starttime, 1),3)+date("s",$starttime);
                                 //$starttime=date("d.m.Y H:i:",$starttime).$ms;                                
-                                $starttime="Act Sec: ".nf($ms,"s");
+                                $starttime="Act Sec: ".nf($ms,"mS");
                                 }
-                            if (false && (isset($data["Starttime"])) )
+                            if (false && (isset($data["Starttime"])) )                  // use Starttime for Beginning
                                 {
                                 $ms = round(fmod($data["Starttime"], 1),3)+date("s",$data["Starttime"]);
                                 $starttime=date("d.m.Y H:i:",$data["Starttime"]).$ms;
                                 }
-                            $message = "$starttime json $message";
+                            if (isset($data["Value"])) $value=$data["Value"];
+                            else $value="";
+                            if (isset($data["Duration"])) $endtime="- ".nf($duetime+$data["Duration"]/1000,"mS");
+                            else $endtime="";
+                            $message = "$starttime $endtime $value json $message";          // proper fomatting is before
                             }
                         
                         $PrintHtml .= '<tr><td>'.date("d.m H:i:s",$timeIndex).'</td><td>'.$message.'</td></tr>';

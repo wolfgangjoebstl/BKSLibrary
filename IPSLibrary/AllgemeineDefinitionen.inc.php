@@ -246,6 +246,9 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
             {
             switch (strtoupper($unit))
                 {
+                case "MS":                                                      // miliseconds with 3 commas
+                    $result = number_format($value, 3, ",",".")." Sec";
+                    break;                    
                 case "S":
                 case "SEC":
                     if ($value <(4*60)) $result = number_format($value, 1, ",",".")." sec";
@@ -15004,6 +15007,7 @@ class timerOps
      */
     public function filter_eventlist($config=array())
         {
+        $result=array();
         if (is_array($config))
             {
             configfileParser($config,$action,["Status","status","State","state"],"Status",null);
@@ -15052,7 +15056,8 @@ class timerOps
                             $eventID=$EreignisInfo["EventID"];
                             echo str_pad(IPS_GetName($eventID).".".IPS_GetName(IPS_GetParent($eventID)),40);
                             //echo str_pad($item["Name"],30)
-                            echo json_encode($EreignisInfo)."\n";     
+                            //echo json_encode($EreignisInfo)."\n"; 
+                            return ($EreignisInfo);    
                             }
                         }
                     else echo json_encode($EreignisInfo)."\n";

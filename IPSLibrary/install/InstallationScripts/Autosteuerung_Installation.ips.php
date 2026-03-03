@@ -1000,7 +1000,9 @@
     echo "\n";
     echo "====================================================================\n";
     echo "\n";
-    if ($updateEvents)
+    //$register=new AutosteuerungHandler($scriptIdAutosteuerung);           // already initialised
+    //$auto=new Autosteuerung();                                            // already initialised
+    if ($updateEvents)                                                      // set at the beginning of script
         {
         echo "\nProgramme für Schalter registrieren nach OID des Events.  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 
@@ -1009,10 +1011,58 @@
             {
             if (IPS_ObjectExists($variableId))
                 {
-                echo "   Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
-                $register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
+                echo "   Create Event für ID : ".str_pad($variableId,10).str_pad(IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName($variableId),70).str_pad($params[0],12).str_pad($params[1],32).str_pad($params[2],52)." \n";
+                // Zusatzoptionen rausfiltern HeatControl+Bounce
+                $wert=$params[1];
+                $wertOpt=array();           // neuer typ, immer array                
+                if (strpos($wert,"+"))
+                    {   // es gibt einen Zusatzparameter beim Modul
+                    $wertparam=explode("+",$wert);
+                    $wert = $wertparam[0];
+                    $size=sizeof($wertparam);
+
+                    for ($i=1;$i<$size;$i++) 
+                        {
+                        $value=$wertparam[$i];         // mehrere und kann auch dahinter sein
+                        $command=explode(":",$value);
+                        $wertOpt[]=strtoupper($command[0]);
+                        }
+                    $count = $size-1;
+                    echo "      $wert Opt ($count) ".json_encode($wertOpt)."\n";
+                    }
+
+                // ähnlich wie bei showConfigFunction
+
+                if (in_array("CONFIG", $wertOpt)) 
+                    {
+                    $value=GetValue($variableId); $simulate=true;    
+                    if ($debug) echo "     Aufruf Config for Status(".json_encode($params).",$value,$variableId,true,".'""'.",$debug);\n";        
+                            $command = Status($params,$value,$variableId,$simulate,"",false);          // als Simulation aufgerufen
+                            //print_R($command);
+                            foreach ($command as $commandInput)             // there are more than one commands, iterate all of them
+                                {
+                                /* 
+                                 *
+                                 * evalInlineScript
+                                 * Variante nur wenn : $command ["SOURCEID","OID","DIM#CHG","NAME","NAME_EXT"] vorhanden
+                                 *              Parameter DIM#CHG übernehmen
+                                 *              Alternativen mit ADD und SUB#CHG
+                                 *          Baukastensystem, für mehr Uebersichtlichkeit
+                                 * weitere Varianten mit $command ["SOURCEID","OID","NAME"] und ON vorhanden
+                                 *
+                                 */
+
+                                $command = $auto->evalInlineScript($commandInput,$debug);
+                                if (isset($command["Script"])) $auto->CreateEvent($variableId,"OnUpdate",$command["Script"]);               // vorerst unverändert, Event config analysieren
+                                }
+                    }
+                else 
+                    {
+                    echo "   Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
+                    $register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
+                    }
                 }
-            else echo "   Delete Event für ID : ".$variableId."  does no loger exists !!! \n";
+            else echo "   Delete Event for ID : ".$variableId." manually in Autosteuerung_Configuration, does no loger exists !!! \n";
             }
         }
 
