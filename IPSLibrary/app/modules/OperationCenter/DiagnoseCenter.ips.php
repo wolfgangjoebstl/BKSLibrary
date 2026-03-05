@@ -151,6 +151,20 @@ if ($_IPS['SENDER']=="Execute")
             $eventList->alignOtherEvents($autosteuerung_config,"Autosteuerung");
             
             $eventList->extendComponent(1000);                  // max 1000 Events bearbeiten
+
+        $filename=$eventList->Set_ConfigFileName('DetectMovement_DetectEventList.inc.php');
+        $configuration=array();
+        $comment=date("d.m.Y h:i")." First store on new filename."; 
+        $debug=false;
+        if (!file_exists($filename)) 
+            {
+            $myfile = fopen($filename, "w");
+            fwrite($myfile, "<?php\n\n?>");
+            fclose($myfile);
+            $eventList->StoreEventConfiguration($configuration, $comment,$debug);       // if debug=true no file write occurs
+            }
+
+
             $eventListData = $eventList->getEventList();
             $comment = "Created from DiagnoseCenter on ".date("d.m.Y H:i:s");
             $eventList->StoreEventConfiguration($eventListData, $comment, false);

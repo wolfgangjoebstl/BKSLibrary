@@ -3780,7 +3780,7 @@ class Autosteuerung
                 $profil=IPS_GetVariable($variableID)["VariableProfile"];
 				// CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
                 $mirrorVariableID=CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), $typ, $profil);
-				echo "      setNewStatus: Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)." neuer Wert ist : $value \n";
+				if ($debug) echo "      setNewStatus: Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)." neuer Wert ist : $value \n";
 				$oldValue=GetValue($mirrorVariableID);
 				if ($value != $oldValue) SetValue($mirrorVariableID,$value);
 				return($oldValue);
@@ -5661,6 +5661,8 @@ class Autosteuerung
      *          Baukastensystem, für mehr Uebersichtlichkeit
      * weitere Varianten mit $command ["SOURCEID","OID","NAME"] und ON vorhanden  
      *
+     *mit nur einer Status Variable: Überschneidungen passieren
+     *
      * 5 1,111 Sec - 1,679 Sec 71 json {"EventChain":"18655;1772569203.676:  18655;0.267:  18655;0.501:  18655;0.773:  18655;1.111","Value":71,"Starttime":1772569203.676092,"Duration":567.759,"StatusChain":"56;61;U;0.194: 66;U;0.789: 71;U;1.679","Direction":true,"Lastupdate":1772569204.787188}
      * 4 0,773 Sec - 1,476 Sec 76 json {"EventChain":"18655;1772569203.676:  18655;0.267:  18655;0.501:  18655;0.773","Value":76,"Starttime":1772569203.676092,"Duration":702.718,"StatusChain":"56;61;U;0.194: 76;U;1.475","Direction":true,"Lastupdate":1772569204.448656}
      * 3 0,501 Sec - 1,134 Sec 71 json {"EventChain":"18655;1772569203.676:  18655;0.267:  18655;0.501","Value":71,"Starttime":1772569203.676092,"Duration":633.017,"StatusChain":"56;61;U;0.194: 71;U;1.134","Direction":true,"Lastupdate":1772569204.1775}
@@ -5675,6 +5677,31 @@ class Autosteuerung
      *  4                       sxxxxxxxxxxxxxs                 56;61;U;0.194:                        76;U;1.475
      *  5                             sxxxxxxxxxxxxxxs          56;61;U;0.194: 66;U;0.789:                        71;U;1.679  
      *    56-61-   66-    71-     76-   81-             
+     *
+     * mit Zwei Statusvariablen keine Überschneidungen, full scope possible:
+     * from Second 2,549 Sec onwards RegisterAction writing gets slower
+     *
+            4,866 Sec - 5,378 Sec 100 json {"Value":100,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313: 65;U;3.56: 70;U;3.812: 75;U;4.085: 80;U;4.337: 85;U;4.628: 90;U;4.851: 95;U;5.137: 100;U;5.378","Duration":511.571,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823:  18655;3.072:  18655;3.319:  18655;3.576:  18655;3.838:  18655;4.097:  18655;4.355:  18655;4.615:  18655;4.866","Direction":true,"Lastupdate":1772573451.237242,"Starttime":1772573446.370826}
+            4,615 Sec - 5,137 Sec 95 json {"Value":95,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313: 65;U;3.56: 70;U;3.812: 75;U;4.085: 80;U;4.337: 85;U;4.628: 90;U;4.851: 95;U;5.137","Duration":522.277,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823:  18655;3.072:  18655;3.319:  18655;3.576:  18655;3.838:  18655;4.097:  18655;4.355:  18655;4.615","Direction":true,"Lastupdate":1772573450.98576,"Starttime":1772573446.370826}
+            4,355 Sec - 4,851 Sec 90 json {"Value":90,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313: 65;U;3.56: 70;U;3.812: 75;U;4.085: 80;U;4.337: 85;U;4.628: 90;U;4.851","Duration":496.409,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823:  18655;3.072:  18655;3.319:  18655;3.576:  18655;3.838:  18655;4.097:  18655;4.355","Direction":true,"Lastupdate":1772573450.725363,"Starttime":1772573446.370826}
+            4,097 Sec - 4,628 Sec 85 json {"Value":85,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313: 65;U;3.56: 70;U;3.812: 75;U;4.085: 80;U;4.337: 85;U;4.628","Duration":531.17,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823:  18655;3.072:  18655;3.319:  18655;3.576:  18655;3.838:  18655;4.097","Direction":true,"Lastupdate":1772573450.468147,"Starttime":1772573446.370826}
+            3,838 Sec - 4,336 Sec 80 json {"Value":80,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313: 65;U;3.56: 70;U;3.812: 75;U;4.085: 80;U;4.337","Duration":498.169,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823:  18655;3.072:  18655;3.319:  18655;3.576:  18655;3.838","Direction":true,"Lastupdate":1772573450.209184,"Starttime":1772573446.370826}
+            3,576 Sec - 4,085 Sec 75 json {"Value":75,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313: 65;U;3.56: 70;U;3.812: 75;U;4.085","Duration":509.008,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823:  18655;3.072:  18655;3.319:  18655;3.576","Direction":true,"Lastupdate":1772573449.946537,"Starttime":1772573446.370826}
+            3,319 Sec - 3,812 Sec 70 json {"Value":70,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313: 65;U;3.56: 70;U;3.812","Duration":493.33,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823:  18655;3.072:  18655;3.319","Direction":true,"Lastupdate":1772573449.689472,"Starttime":1772573446.370826}
+            3,072 Sec - 3,560 Sec 65 json {"Value":65,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313: 65;U;3.56","Duration":487.991,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823:  18655;3.072","Direction":true,"Lastupdate":1772573449.443139,"Starttime":1772573446.370826}
+            2,823 Sec - 3,313 Sec 60 json {"Value":60,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057: 60;U;3.313","Duration":489.875,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549:  18655;2.823","Direction":true,"Lastupdate":1772573449.194172,"Starttime":1772573446.370826}
+            2,549 Sec - 3,057 Sec 55 json {"Value":55,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778: 55;U;3.057","Duration":508.098,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401:  18655;2.549","Direction":true,"Lastupdate":1772573448.919739,"Starttime":1772573446.370826}
+            2,401 Sec - 2,778 Sec 50 json {"Value":50,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287: 50;U;2.778","Duration":376.553,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049:  18655;2.401","Direction":true,"Lastupdate":1772573448.772009,"Starttime":1772573446.370826}
+            2,049 Sec - 2,287 Sec 45 json {"Value":45,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036: 45;U;2.287","Duration":238.102,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801:  18655;2.049","Direction":true,"Lastupdate":1772573448.41973,"Starttime":1772573446.370826}
+            1,801 Sec - 2,036 Sec 40 json {"Value":40,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765: 40;U;2.036","Duration":234.868,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535:  18655;1.801","Direction":true,"Lastupdate":1772573448.17161,"Starttime":1772573446.370826}
+            1,535 Sec - 1,765 Sec 35 json {"Value":35,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515: 35;U;1.765","Duration":230.203,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285:  18655;1.535","Direction":true,"Lastupdate":1772573447.906103,"Starttime":1772573446.370826}
+            1,285 Sec - 1,515 Sec 30 json {"Value":30,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27: 30;U;1.515","Duration":230.138,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02:  18655;1.285","Direction":true,"Lastupdate":1772573447.65542,"Starttime":1772573446.370826}
+            1,020 Sec - 1,270 Sec 25 json {"Value":25,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017: 25;U;1.27","Duration":249.922,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765:  18655;1.02","Direction":true,"Lastupdate":1772573447.390745,"Starttime":1772573446.370826}
+            0,765 Sec - 1,017 Sec 20 json {"Value":20,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744: 20;U;1.017","Duration":252.491,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514:  18655;0.765","Direction":true,"Lastupdate":1772573447.135711,"Starttime":1772573446.370826}
+            0,514 Sec - 0,744 Sec 15 json {"Value":15,"StatusChain":"0;5;U;0.152: 10;U;0.492: 15;U;0.744","Duration":229.916,"EventChain":"18655;1772573446.371:  18655;0.251:  18655;0.514","Direction":true,"Lastupdate":1772573446.884842,"Starttime":1772573446.370826}
+            0,251 Sec - 0,492 Sec 10 json {"Value":10,"StatusChain":"0;5;U;0.152: 10;U;0.492","Duration":241.161,"EventChain":"18655;1772573446.371:  18655;0.251","Direction":true,"Lastupdate":1772573446.621473,"Starttime":1772573446.370826}
+            0,000 Sec - 0,152 Sec 5 json {"Value":5,"StatusChain":"0;5;U;0.152","Duration":151.899,"EventChain":"18655;1772573446.371","Direction":true,"Lastupdate":1772573446.370826,"Starttime":1772573446.370826}     
+     *
      */
     public function evalInlineScript($command,$debug=false)
         {
@@ -5683,21 +5710,27 @@ class Autosteuerung
             echo "      evalInlineScript wurde aufgerufen mit Eingabewert ".json_encode($command).".\n";
             echo "         Category Status Data : ".$this->CategoryId_Status."\n";
             }
-        if ((isset($command["SOURCEID"])) && (isset($command["OID"])) && (isset($command["DIM#CHG"])) && (isset($command["NAME"])) && (isset($command["NAME_EXT"])) )
+        if ((isset($command["SOURCEID"])) && (isset($command["OID"]))  && (isset($command["NAME"])) && (isset($command["NAME_EXT"])) )
             {
+            $dimchg=false; $dimadd=false; $dimsub=false;
+            if (isset($command["DIM#CHG"])) $dimchg=true;
+            elseif (isset($command["DIM#ADD"])) $dimadd=true;
+            elseif (isset($command["DIM#SUB"])) $dimsub=true;
+            else return (false);
             $nachrichtenVent=new AutosteuerungRegler();
             Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
             if (strtoupper($command["NAME_EXT"]) == "#LEVEL") $command["NAME_EXT"]="#Level";
             $lightManager = new IPSHeat_Manager();
-            $switchId = @$lightManager->GetSwitchIdByName($command["NAME"].$command["NAME_EXT"]);  
-            echo "DimChange: IPSHeat Level Id (".$command["NAME"].$command["NAME_EXT"].") : $switchId  \n";   
+            $switchId = @$lightManager->GetSwitchIdByName($command["NAME"].$command["NAME_EXT"]); 
+            $dimchange=(int)$command["DIM#CHG"]; 
+            if ($dimchange<5) $dimchange=5;         // smaller value makes no sense
+            if ($debug) ; echo "DimChange $dimchange: IPSHeat Level Id (".$command["NAME"].$command["NAME_EXT"].") : $switchId  \n";   
             $configname = @$lightManager->GetConfigNameById($switchId); 
             $componentParams     = @$lightManager->GetConfigById($switchId);  
-            echo "\nParameters:\n";    
-            print_r($componentParams);
+            if ($debug) { echo "\nParameters:\n";  print_r($componentParams); }
             $component       = IPSComponent::CreateObjectByParams($componentParams);
             $levelId = $component->get_Ids("LEVEL");
-            echo "\nLevel $levelId   \n";
+            if ($debug) echo "\nLevel $levelId   \n";
                             
             $variableId=$command["SOURCEID"];
             $oid=$command["OID"];
@@ -5716,14 +5749,15 @@ class Autosteuerung
             $status1Id=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Status1",3);
             $status2Id=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Status2",3);
 
-            echo "evalInline Script SourceId: $variableId SwitchID: $oid  ConfigId: $configId  StatusId: $status1Id $status2Id\n";
+            if ($debug) echo "evalInline Script SourceId: $variableId SwitchID: $oid  ConfigId: $configId  StatusId: $status1Id $status2Id\n";
 
             // init EventChain if delay>2 seconds with starttíme or log each begintime based on starttime
             $script  = "";
             $script .= '$config=json_decode(GetValue('.$configId.'),true);'."\n";
             $script .= '$time=microtime(true);'."\n";
             $script .= 'if (($time - $config["Lastupdate"]) > 2) {'."\n";
-            $script .= '   $config["Direction"] = !$config["Direction"]; $config["Starttime"] = $time;'."\n";
+            if ($dimchg) $script .= '   $config["Direction"] = !$config["Direction"];'."\n";        // Richtungswechsel vorsehen
+            $script .= '$config["Starttime"] = $time;'."\n";
             $script .= '   $offset=$time; $doupdate=true;'."\n";                                    
             $script .= '   $config["EventChain"] = "'.$variableId.';".round($time,3);'."\n";
             $script .= '} else {'."\n";
@@ -5738,7 +5772,9 @@ class Autosteuerung
             $script .= '$status1=json_decode(GetValue('.$status1Id.'),true);'."\n";
             $script .= 'if ($doupdate) $status1["Value"]=GetValue('.$levelId.');'."\n";
             $script .= '$value=$status1["Value"];'."\n";
-            $script .= '$dir="D"; if ($config["Direction"]) { $newLevel = $value + 5; $dir="U"; } else $newLevel = $value - 5;'."\n";
+            if ($dimchg) $script .= '$dir="D"; if ($config["Direction"]) { $newLevel = $value + '.$dimchange.'; $dir="U"; } else $newLevel = $value - '.$dimchange.';'."\n";
+            if ($dimadd) $script .= '$newLevel = $value + '.$dimchange.';'."\n";
+            if ($dimsub) $script .= '$newLevel = $value - '.$dimchange.';'."\n";
             $script .= 'if ($newLevel < 0) { $newLevel=0; } elseif ($newLevel > 100) { $newLevel=100; }'."\n";
             $script .= '$status1["Value"]=$newLevel;'."\n";
             $script .= 'SetValue('.$status1Id.',json_encode($status1));'."\n";  
@@ -6993,14 +7029,14 @@ class Autosteuerung
      *          sonst nichts tun, return Ergebnis, Leerzeile wenn nix passiert ist
      */
 
-	public function timerCommand($result,$simulate=false,$ipslogger='IPSLogger_Dbg')
+	public function timerCommand($result,$simulate=false,$ipslogger='IPSLogger_Dbg',$debug=false)
 		{
         $ergebnis="";
 		if ($result["SWITCH"]===true)
 			{
 			if (isset($result["DIM"])==true)
 				{
-                echo "Aufruf timerCommand für DIM mit :".json_encode($result)."\n";
+                if ($debug) echo "Aufruf timerCommand für DIM mit :".json_encode($result)."\n";
 				$ergebnis .= "Execute Command Dim mit Level : ".$result["DIM#LEVEL"]." und Time : ".$result["DIM#TIME"]." Ausgangswert : ".$result["VALUE_ON"]." für OID ".$result["OID"];
 				$value=(integer)(($result["DIM#LEVEL"]-$result["VALUE_ON"])/10);
 				$time=(integer)($result["DIM#TIME"]/10);
@@ -7024,9 +7060,12 @@ class Autosteuerung
 				    $befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
 				    $befehl.=$ipslogger.'(__file__, "Timer Switch Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
                     }
-                echo "===================\n".$befehl."\n===================\n";
-				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
+                if ($debug) 
+                    {
+                    echo "===================\n".$befehl."\n===================\n";
+				    echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+				    echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
+                    }
 				/* Timer wird insgesamt 10 mal aufgerufen, d.h. increment ist Differenz aktueller Wert zu Zielwert. Zeit zwischen den Timeraufrufen ist delay durch 10 */		
 				if ($simulate==false)
 					{
@@ -7065,7 +7104,7 @@ class Autosteuerung
 						}
 					else
 						{
-                        echo "Aufruf timerCommand für DELAY mit :".json_encode($result)."\n";
+                        if ($debug) echo "Aufruf timerCommand für DELAY mit :".json_encode($result)."\n";
 						$ergebnis .= "Execute Command Delay, Script für Timer ".$result["NAME"]." für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"]);
 						//print_r($result);
 						if ($simulate==false)
@@ -7076,7 +7115,7 @@ class Autosteuerung
 					}	
 				}
 			}
-        echo "timerCommand: $ergebnis.\n";	
+        if ($debug) echo "timerCommand: $ergebnis.\n";	
         return($ergebnis);
         }
 

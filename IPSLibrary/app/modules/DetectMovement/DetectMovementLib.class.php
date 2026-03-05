@@ -3295,10 +3295,17 @@
 			{
 			return self::$configtype;
 			}
+
 		function Get_ConfigFileName()
 			{
 			return self::$configFileName;
 			}				
+
+		function Set_ConfigFileName($filename)
+			{
+            self::$configFileName=IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/'.$filename;
+			return self::$configFileName;
+			}	
 
 		/* DetectEventHandler:Get_EventConfigurationAuto            overwrites standard class, not autonclude
          * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
@@ -3308,8 +3315,8 @@
             if ($debug) echo "DetectEventHandler::Get_EventConfigurationAuto \n";
 			if ($this->eventConfigurationAuto == null)
 				{
-                //IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-                if ( function_exists('IPS'.get_class($this).'_GetEventConfiguration') ) $this->eventConfigurationAuto = IPSDetectEventHandler_GetEventConfiguration();       /* <-------- change here */
+                $functionname='IPS'.get_class($this).'_GetEventConfiguration';
+                if ( function_exists($functionname) ) $this->eventConfigurationAuto = $functionname();       /* <-------- change here */
 				else $this->eventConfigurationAuto = array();					
 				}
 			return $this->eventConfigurationAuto;
@@ -5379,6 +5386,11 @@
             return ($this->channelEventList);
             }
 
+        /* DetectDeviceHandler::write_Eventlist 
+         * extends DetectHandlerTopology, filename von $this->Get_ConfigFileName(), EvaluateHardware_Configuration.inc.php
+         * nutzt StoreEventConfiguration, erzeugt eine IPSDetectDeviceHandler_GetEventConfiguration Configuration function
+         * always call from same class, otherwise Configfilefunction changes
+         */
         public function write_EventList()
             {
             if (sizeof($this->channelEventList)>0) $this->StoreEventConfiguration($this->channelEventList,"full update from todo");
@@ -5672,6 +5684,10 @@
             return ($this->deviceEventList);
             }
 
+        /* DetectDeviceListHandler::write_Eventlist 
+         * extends DetectHandlerTopology, filename von $this->Get_ConfigFileName(), EvaluateHardware_Configuration.inc.php
+         * nutzt StoreEventConfiguration, erzeugt eine IPSDetectDeviceListHandler_GetEventConfiguration Configuration function
+         */
         public function write_Eventlist()
             {
             $this->StoreEventConfiguration($this->deviceEventList,"Full update of List");
@@ -6371,6 +6387,8 @@ class TestMovement extends DetectEventListHandler
  *
  * Class DetectEventListHandler, erstellen eines Arrays eventList mit allen CustomEvents des IPSMessageHandlers
  * eventlist ist die zentrale Variable
+ * DetectEventListHandler -> DetectEventHandler -> DetectHandler
+ *
  *
  *  __contruct
  *  setEventListFromConfigFile              eventlist ist die zentrale Variable, diese aus dem Config File setzen
@@ -6430,7 +6448,16 @@ class DetectEventListHandler extends DetectEventHandler
      */
     public function setEventListFromConfigFile($debug=false)
         {
-        if ($debug) echo "DetectEventListHandler::setEventListFromConfigFile:\n";
+                          // old place
+        $includefile='DetectMovement_DetectEventList.inc.php';                  //new place
+        $filename=$this->Set_ConfigFileName($includefile);
+        if (file_exists($filename)) IPSUtils_Include ($includefile, 'IPSLibrary::config::modules::DetectMovement');
+        else 
+            {       // Workaround to support both file positions
+            $includefile='DetectMovement_Configuration.inc.php';
+            $filename=$this->Set_ConfigFileName($includefile);
+            }
+        if ($debug) echo "DetectEventListHandler::setEventListFromConfigFile, include file $filename to get the function:\n";
         $this->eventlist = $this->Get_EventConfigurationAuto($debug);
         }
 

@@ -416,8 +416,9 @@ IPS_SetEventActive($tim1ID,true);
                     $topinstconfig["Show"]["Instances"]=true;
                     $topinstconfig["Show"]["LinkFromParent"]=true;
                     $topinstconfig["Show"]["QualityIndex"]=$eventList->getEventlist("Quality");
-                    $DetectDeviceHandler->updateLinks($topologyPlusLinks,$topinstconfig,true);                  // In den Topology Category tree einsortieren, true debug                    
-                    $DetectDeviceHandler->create_UnifiedTopologyConfigurationFile($topology,false);            //true für Debug, speichert topology mit neuen erweiterten Indexen in EvaluateHardware_Configuration ab
+                    $DetectDeviceHandler->updateLinks($topologyPlusLinks,$topinstconfig,true);                  // In den Topology Category tree einsortieren, true debug 
+                    $topologyData = $topology->Get_Topology();                  // kann noch keine class als Inputvariable                 
+                    $DetectDeviceHandler->create_UnifiedTopologyConfigurationFile($topologyData,false);            //true für Debug, speichert topology mit neuen erweiterten Indexen in EvaluateHardware_Configuration ab
                     }
                 }           // end isset DetectMovement
             }               // end TopologyMappingLibrary

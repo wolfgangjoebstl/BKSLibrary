@@ -1148,15 +1148,18 @@
 			SetValue($programId, $value);
 		}
 
-		public function GetConfigById($variableId)
+		public function GetConfigById($variableId, $debug=false)
             {
 			$configName   = $this->GetConfigNameById($variableId);
 			$configLights = IPSHeat_GetHeatConfiguration();
 			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
             $config = explode(',',  $componentParams);
-            echo "Params : ".$componentParams;
-			if (isset($config[1])) echo "   \"".IPS_GetName($config[1])."\"";
-            if (isset($config[2])) echo "   \"".IPS_GetName($config[2])."\"\n";
+            if ($debug) 
+                {
+                echo "Params : ".$componentParams;
+                if (isset($config[1])) echo "   \"".IPS_GetName($config[1])."\"";
+                if (isset($config[2])) echo "   \"".IPS_GetName($config[2])."\"\n";
+                }
             return ($componentParams);
             }
 

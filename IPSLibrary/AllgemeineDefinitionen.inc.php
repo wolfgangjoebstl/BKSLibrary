@@ -14941,12 +14941,15 @@ class timerOps
         {
         $resultEventList=array(); $result=array();
         $alleEreignisse = IPS_GetEventList();
-        echo "timerOps::getAllEvents, insgesamt gibt es ".sizeof($alleEreignisse)." Events. ";
-        if ($filter===false) echo "No Filter.";
-        else if ($filter==0) echo "Filter Events.";
-        else if ($filter==1) echo "Filter Cyclic Timers.";
-        else if ($filter==2) echo "Filter Week Plans.";
-        echo "\n";
+        if ($debug) 
+            {
+            echo "timerOps::getAllEvents, insgesamt gibt es ".sizeof($alleEreignisse)." Events. ";
+            if ($filter===false) echo "No Filter.";
+            else if ($filter==0) echo "Filter Events.";
+            else if ($filter==1) echo "Filter Cyclic Timers.";
+            else if ($filter==2) echo "Filter Week Plans.";
+            echo "\n";
+            }
         //print_R($alleEreignisse);           // das sind schon mehr als 500 Events !!!
         foreach ($alleEreignisse as $index => $ereignisId)
             {
@@ -15005,7 +15008,7 @@ class timerOps
      * TriggerVariableId
      *
      */
-    public function filter_eventlist($config=array())
+    public function filter_eventlist($config=array(),$debug=false)
         {
         $result=array();
         if (is_array($config))
@@ -15054,7 +15057,7 @@ class timerOps
                         if ($EreignisInfo["TriggerVariableID"]===$action["TriggerVariableId"])
                             {
                             $eventID=$EreignisInfo["EventID"];
-                            echo str_pad(IPS_GetName($eventID).".".IPS_GetName(IPS_GetParent($eventID)),40);
+                            if ($debug) echo str_pad(IPS_GetName($eventID).".".IPS_GetName(IPS_GetParent($eventID)),40);
                             //echo str_pad($item["Name"],30)
                             //echo json_encode($EreignisInfo)."\n"; 
                             return ($EreignisInfo);    
