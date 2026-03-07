@@ -5621,7 +5621,7 @@ class Autosteuerung
 		 * @param integer $variableId ID der auslösenden Variable
 		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
 		 */
-		function CreateEvent($variableId, $eventType, $script)
+		function CreateEvent($variableId, $eventType, $script, $debug=false)
 			{
 			switch ($eventType) 
 				{
@@ -5648,6 +5648,7 @@ class Autosteuerung
                 IPS_SetEventScript($eventId,$script);
                 IPS_SetEventActive($eventId, true);
                 IPSLogger_Dbg (__file__, 'Created Autosteuerung Event for Variable='.$variableId);
+                if ($debug) echo "Event ID $eventId ".IPS_GetName($eventId)." created or updated.\n";
 				}
 			}
 
@@ -5713,18 +5714,32 @@ class Autosteuerung
         if ((isset($command["SOURCEID"])) && (isset($command["OID"]))  && (isset($command["NAME"])) && (isset($command["NAME_EXT"])) )
             {
             $dimchg=false; $dimadd=false; $dimsub=false;
-            if (isset($command["DIM#CHG"])) $dimchg=true;
-            elseif (isset($command["DIM#ADD"])) $dimadd=true;
-            elseif (isset($command["DIM#SUB"])) $dimsub=true;
+            if (isset($command["DIM#CHG"])) 
+                {
+                $dimchg=true;
+                $change=(int)$command["DIM#CHG"]; 
+                }
+            elseif (isset($command["DIM#ADD"])) 
+                {
+                $dimadd=true;
+                $change=(int)$command["DIM#ADD"];
+                }
+            elseif (isset($command["DIM#SUB"])) 
+                {
+                $dimsub=true;
+                $change=(int)$command["DIM#SUB"];
+                }
             else return (false);
+            if ($change<5)  $change=5;          // smaller values makes no sense
+            if ($change>30) $change=30;         // bigger values makes no sense
+
             $nachrichtenVent=new AutosteuerungRegler();
             Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
             if (strtoupper($command["NAME_EXT"]) == "#LEVEL") $command["NAME_EXT"]="#Level";
             $lightManager = new IPSHeat_Manager();
             $switchId = @$lightManager->GetSwitchIdByName($command["NAME"].$command["NAME_EXT"]); 
-            $dimchange=(int)$command["DIM#CHG"]; 
-            if ($dimchange<5) $dimchange=5;         // smaller value makes no sense
-            if ($debug) ; echo "DimChange $dimchange: IPSHeat Level Id (".$command["NAME"].$command["NAME_EXT"].") : $switchId  \n";   
+            if ($debug) echo "Value for change $change: IPSHeat Level Id (".$command["NAME"].$command["NAME_EXT"].") : $switchId  \n";
+
             $configname = @$lightManager->GetConfigNameById($switchId); 
             $componentParams     = @$lightManager->GetConfigById($switchId);  
             if ($debug) { echo "\nParameters:\n";  print_r($componentParams); }
@@ -5738,7 +5753,8 @@ class Autosteuerung
             $timer->getAllEvents(0);         // als interne Variable abspeichern, 0 Filter auf Variablen als Trigger
             //$eventList = $timer->get_eventList();
             //$timer->write_eventList();
-            $timer->filter_eventlist(["TriggerVariableId"=>$variableId,]);
+            echo "filter_eventlist for $variableId:\n";
+            $timer->filter_eventlist(["TriggerVariableId"=>$variableId,],$debug);
             // set, create config
             $configId=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Config",3);
             $config=json_decode(GetValue($configId),true);
@@ -5772,9 +5788,9 @@ class Autosteuerung
             $script .= '$status1=json_decode(GetValue('.$status1Id.'),true);'."\n";
             $script .= 'if ($doupdate) $status1["Value"]=GetValue('.$levelId.');'."\n";
             $script .= '$value=$status1["Value"];'."\n";
-            if ($dimchg) $script .= '$dir="D"; if ($config["Direction"]) { $newLevel = $value + '.$dimchange.'; $dir="U"; } else $newLevel = $value - '.$dimchange.';'."\n";
-            if ($dimadd) $script .= '$newLevel = $value + '.$dimchange.';'."\n";
-            if ($dimsub) $script .= '$newLevel = $value - '.$dimchange.';'."\n";
+            if ($dimchg) $script .= '$dir="D"; if ($config["Direction"]) { $newLevel = $value + '.$change.'; $dir="U"; } else $newLevel = $value - '.$change.';'."\n";
+            if ($dimadd) $script .= '$newLevel = $value + '.$change.';$dir="A";'."\n";
+            if ($dimsub) $script .= '$newLevel = $value - '.$change.';$dir="S";'."\n";
             $script .= 'if ($newLevel < 0) { $newLevel=0; } elseif ($newLevel > 100) { $newLevel=100; }'."\n";
             $script .= '$status1["Value"]=$newLevel;'."\n";
             $script .= 'SetValue('.$status1Id.',json_encode($status1));'."\n";  
@@ -5801,13 +5817,16 @@ class Autosteuerung
             $oid=$command["OID"];
             $timer = new timerOps();
             $timer->getAllEvents(0);         // als interne Variable abspeichern, 0 Filter auf Variablen als Trigger
-            $timer->filter_eventlist(["TriggerVariableId"=>$variableId,]);
+            echo "filter_eventlist for $variableId:\n";
+            $timer->filter_eventlist(["TriggerVariableId"=>$variableId],$debug);
 
             $configId=CreateVariableByName($this->CategoryId_Status,IPS_GetName(IPS_GetParent($variableId))."Config",3);
             $config=json_decode(GetValue($configId),true);
             //if (isset($config["Direction"])==false) $config["Direction"]=false;
             if (isset($config["Lastupdate"])==false) $config["Lastupdate"]=microtime(true);
             SetValue($configId,json_encode($config));
+
+            echo "evalInline Switch Script SourceId: $variableId \n";
 
             $script  = "";
             $script .= '$config=json_decode(GetValue('.$configId.'),true);'."\n";

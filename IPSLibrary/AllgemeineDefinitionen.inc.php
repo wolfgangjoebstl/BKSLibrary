@@ -15010,6 +15010,7 @@ class timerOps
      */
     public function filter_eventlist($config=array(),$debug=false)
         {
+        if ($debug) echo "filter_eventlist(".json_encode($config)."\n";
         $result=array();
         if (is_array($config))
             {
@@ -15054,19 +15055,20 @@ class timerOps
                         }    
                     elseif (isset($action["TriggerVariableId"]))
                         {
-                        if ($EreignisInfo["TriggerVariableID"]===$action["TriggerVariableId"])
+                        if ($EreignisInfo["TriggerVariableID"]==$action["TriggerVariableId"])
                             {
                             $eventID=$EreignisInfo["EventID"];
-                            if ($debug) echo str_pad(IPS_GetName($eventID).".".IPS_GetName(IPS_GetParent($eventID)),40);
+                            if ($debug) echo str_pad($eventID,10).str_pad(IPS_GetName($eventID).".".IPS_GetName(IPS_GetParent($eventID)),40);
                             //echo str_pad($item["Name"],30)
-                            //echo json_encode($EreignisInfo)."\n"; 
-                            return ($EreignisInfo);    
+                            //echo json_encode($EreignisInfo)."\n";  
+                            $result[]=$EreignisInfo; 
                             }
                         }
                     else echo json_encode($EreignisInfo)."\n";
                     }
                 }
             }
+        return ($result); 
         }
 
 
