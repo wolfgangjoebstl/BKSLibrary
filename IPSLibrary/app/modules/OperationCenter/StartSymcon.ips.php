@@ -4,11 +4,10 @@
  *
  * StartSymcon
  *
- *
+ * es gab eine falsch zugeordnete class in einer Timer Routine. Daher zusaetliche Testroutinen eingeführt
  *
  ***********************************************************/
 
-//Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -26,6 +25,9 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
 
     $dosOps->setMaxScriptTime(900);                              // kein Abbruch vor dieser Zeit, nicht für linux basierte Systeme
     $startexec=microtime(true);
+    $manualstart=false;
+    $startup=false;                 // testing purposes
+    $dotimer=true;    
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     if (!isset($moduleManager))
@@ -61,12 +63,12 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
 
 	$tim3ID = @IPS_GetEventIDByName("AutoStart", $scriptIdStartSymcon);
   	$tim6ID = @IPS_GetEventIDByName("AutoStartPerDay", $scriptIdStartSymcon);         // einmal am Tag 4:12     
+    if ($dotimer) $dotimer=$tim6ID;               // debug Timer 3 for Startup
 
-	if ($_IPS['SENDER']=="Startup")
+	if ( ($_IPS['SENDER']=="Startup") || $startup)    
 		{
 		echo "IPS Server fährt hoch, im Startup gestartet, Autostart Prozess beginnen.\n";
 		IPSLogger_Dbg(__file__, "Autostart: Script durch IPS Startup prozess aufgerufen *****************  ");
-
 
         /********************************************************************
         *
@@ -101,10 +103,11 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
         IPS_SetEventCyclicTimeFrom($tim3ID,$stunde,$minute,0);  // (integer $EreignisID, integer $Stunde, integer $Minute, integer $Sekunde)        
 		}
 
-
-	if ($_IPS['SENDER']=="TimerEvent")
+	if (($_IPS['SENDER']=="TimerEvent") || $dotimer)
 		{
-		switch ($_IPS['EVENT'])
+        if ($dotimer) $event=$dotimer;
+        else $event=$_IPS['EVENT'];
+		switch ($event)
 			{
             case $tim6ID:
 				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." einmal am Tag durchführen.");
@@ -117,8 +120,8 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
                 **********************************************************************/
 
                 echo "\n";
-                $processes    = $watchDog->getActiveProcesses();
-                $processStart = $watchDog->checkAutostartProgram($processes);
+                $processes    = $autostart->getActiveProcesses();
+                $processStart = $autostart->checkAutostartProgram($processes);
                 echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
                 print_r($processStart);
                 SetValue($ProcessStartID,json_encode($processStart));
@@ -138,6 +141,7 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
                     echo "Selenium.exe muss nicht erneut gestartet werden.\n";
                     }
                 break;
+
 			case $tim3ID:
                 $processStart=json_decode(GetValue($ProcessStartID),true);            
 				$counter=GetValue($ScriptCounterID);
@@ -276,9 +280,16 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
         echo "StartSymcon hat die ScriptID       ".$scriptIdStartSymcon." \n";
         echo "StoppSymcon hat die ScriptID       ".$scriptIdStoppSymcon." \n";       
 
-        echo "Konfiguration ausgeben:\n";
+        echo "StartScmcon Watchdog Konfiguration ausgeben:\n";
         print_r($configWatchdog);
-        echo "Nachrichtenspeicher ist hier ".$input."\n";
+        //echo "Nachrichtenspeicher ist hier ".$input."\n";
+        $print = $log_Watchdog->PrintNachrichten();
+        echo "Aktueller Nachrichtenspeicher:\n";
+        echo $print;
+        $input=$log_Watchdog->GetNachrichtenInputID();
+        //echo "Nachrichtenspeicher ist hier ".$input."\n";
+        $logconfig=$log_Watchdog->LogConfig();
+        print_R($logconfig);
                 
         $autostart = new AutostartHandler();
 
@@ -304,7 +315,7 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
             * seit es keinen externen Watchdog mehr gibt hat das Hochstarten nicht mehr soviel Bedeutung
             */
 
-            if (true)
+            if ($manualstart)           // kann man händisch starten, damit gibt es mehr Zeit für Analyse
                 {
                 if ($processStart["selenium"] == "On")
                     {

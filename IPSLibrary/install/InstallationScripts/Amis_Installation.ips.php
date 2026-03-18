@@ -253,7 +253,7 @@ if ($do>1)
 	/* 	 CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
          CreateVariableByName($parentID, $name, $type, $profile=false, $ident="", $position=0, $action=0, $default=false)                           */
     echo "\nVariable Definition für AMIS Module:\n";
-	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0, "Zaehlt","",0,$scriptIdAmis,$MeterReadDefault);  /* 0 Boolean 1 Integer 2 Float 3 String */		
+	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0, "Zaehlt","",1000,$scriptIdAmis,$MeterReadDefault);  /* 0 Boolean 1 Integer 2 Float 3 String */		
 	SetValue($MeterReadID,$MeterReadDefault);
 	
 	/*************************************************************************************************************
@@ -270,7 +270,7 @@ if ($do>1)
 		echo "Create Variableset for : ".str_pad($meter["TYPE"],14)." ".str_pad($meter["NAME"],30)." mit ID : ".$identifier." \n";
 		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetPosition($ID,$pos);
-		$pos +=100;
+		$pos +=10;
 		
 		/*****************************
 		*
@@ -302,6 +302,7 @@ if ($do>1)
             {
             case "HOMEMATIC":               		/***********************Homematic Zähler */
             case "SHELLY":
+            case "SUMME": 
                 $type = strtoupper($meter["TYPE"]);
                 switch ($type)
                     {
@@ -311,6 +312,9 @@ if ($do>1)
                     case "HOMEMATIC":              // funktioniert nur für diesen Type
                         $identifier="Homematic";
                         break;
+                    case "SUMME":
+                        $identifier="Summe";
+                        break;                        
                     default:
                         break;
                     }            
@@ -318,16 +322,16 @@ if ($do>1)
                 $EnergieID     = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');  
                 $LeistungID    = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');  
                 $LeistungTagID = CreateVariableByName($ID, 'Wirkleistung (Tag)', 2,'~Power');  
-				$OffsetID      = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$OffsetID      = CreateVariableByName($ID, 'Offset_Wirkenergie', 2, false, false, 100);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
 
                 $archOps->setArchiving($EnergieID,true,1);                      // ApplyChanges braucht ziemlich lange, umgehen wenn nicht nötig
                 $archOps->setArchiving($LeistungID,true,0);
                 $archOps->setArchiving($LeistungTagID,true,0);
 
-                $HM_EnergieID = CreateVariableByName($ID, $identifier.'_Wirkenergie', 2,'kWh');   /* 0 Boolean 1 Integer 2 Float 3 String */            
+                $HM_EnergieID = CreateVariableByName($ID, $identifier.'_Wirkenergie', 2,'kWh', false, 100);   /* 0 Boolean 1 Integer 2 Float 3 String */            
                 $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
 
-                $ConfigID = CreateVariableByName($ID, 'ConfigReading', 3);
+                $ConfigID = CreateVariableByName($ID, 'ConfigReading', 3, false, false, 100);
                 $configuration = json_decode(GetValue($ConfigID),true);
                 if ( ($configuration===NULL) || ($configuration==0) ) 
                     { 
@@ -348,7 +352,7 @@ if ($do>1)
 		    case "REGISTER":       /*********************** Irgendein Register Zähler, wahrscheinlich von Remote Access uebermittelt */
             case "DAILYREAD":
             case "DAILYLPREAD":
-            case "SHELLY":                                      // nicht anders behandeln, Wirkenergie, Wirkleistung
+            //case "SHELLY":                                      // nicht anders behandeln, Wirkenergie, Wirkleistung
                 // Variable ID selbst bestimmen 
                 $EnergieID     = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');  
                 $LeistungID    = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');  
@@ -592,7 +596,7 @@ if ($do>2)
      * es werden Variablen verwendet, keine Kategorien
      */
 
-	$ID = CreateVariableByName($CategoryIdData, "Zusammenfassung", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	$ID = CreateVariableByName($CategoryIdData, "Zusammenfassung", 3,false,false,1000);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	IPS_SetPosition($ID,9990);
 	$tableID = CreateVariableByName($ID, "Historie-Energie", 3);
 	IPS_SetVariableCustomProfile($tableID,'~HTMLBox');			
@@ -607,7 +611,7 @@ if ($do>2)
 	/* Tab Kurven
      * html basierte Kurven ebenfalls anzeigen, Name Zaehlervariablen als Identifier für rechtes Tab 
      */
-	$KurvenID = CreateVariableByName($CategoryIdData, "Kurven", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	$KurvenID = CreateVariableByName($CategoryIdData, "Kurven", 3,false,false,1000);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	IPS_SetPosition($ID,9991);
 
     echo "\n";
@@ -900,7 +904,7 @@ if ($do>5)
     {
     echo "Weiteres Tab Smart Meter, wird aktuell immer installiert.\n";
     $webOps = new webOps();
-    $categoryId_SmartMeter        = CreateCategory('SmartMeter',        $CategoryIdData, 80);
+    $categoryId_SmartMeter        = CreateCategory('SmartMeter',        $CategoryIdData, 8000);
 
     //$pnames = ["Directory","Update","Calculate","Sort"];
     $buttonsId = $webOps->createSelectButtons(SMART_SELECT,$categoryId_SmartMeter, $scriptIdAmis);              // Ergebnis ist ein array aus Einzelbuttons die untereinander angeordnet werden sollen

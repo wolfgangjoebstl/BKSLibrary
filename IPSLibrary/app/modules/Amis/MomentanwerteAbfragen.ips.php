@@ -34,7 +34,7 @@
      *     2
      *     3
      *     4        writeEnergyRegister
-     *     5
+     *     5        writeEnergyDevice($meter,"SHELLY")
      *     6        sendReadCommandAmis "F009"
      *     7        writeEnergyHomematic
      *     8        sendReadCommandAmis "F001"
@@ -119,7 +119,7 @@
      *
      * writeEnergySumme
      * jeweils für jeden Zähler einmal alle 15 Minuten aufgerufen. meter[Type] muss Summe sein.
-     * im Parameter meter[Calcualte]stehen die Register die zusammengezählt werden sollen drinnen.
+     * im Parameter meter[Calculate]stehen die Register die zusammengezählt werden sollen drinnen.
      *
      *
      *

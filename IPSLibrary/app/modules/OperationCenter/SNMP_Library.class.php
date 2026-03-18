@@ -1213,4 +1213,16 @@ class SNMPObj
     }
 }
 
+
+class MQTT_OperationCenter
+    {
+
+    public function publishValue($valueId)
+        {
+        RequestAction(49077,"Alive ".date("d.m.Y H:i:s"));
+
+        }
+
+    }
+
 ?>

@@ -550,7 +550,7 @@ if ($_IPS['SENDER'] == "Execute")
     $oid=$amis->getWirkleistungID("Kueche");                // Arbeitszimmer  */
 
     $config["Aggregated"]=false;            // tägliche Werte, false geloggte Werte auslesen
-    $oid=$amis->getWirkenergieID("Weinkuehler");                // Arbeitszimmer Kueche
+    $oid=$amis->getWirkenergieID("Wohnzimmer");                // Arbeitszimmer Kueche
     if ($oid !== false)
         {
         echo "Ergebnis ist $oid (".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).") \n";

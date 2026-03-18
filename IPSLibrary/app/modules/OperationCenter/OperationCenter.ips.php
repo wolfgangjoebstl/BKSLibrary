@@ -857,6 +857,12 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 
 	echo "============================================================================================================\n";
 
+    /********************************************************
+   	Publish Client MQTT 
+	**********************************************************/
+
+    $mqtt = new MQTT_OperationCenter();
+
 	/********************************************************
    	Sys Ping the Devices
 	**********************************************************/
@@ -1269,6 +1275,8 @@ if ($_IPS['SENDER']=="TimerEvent")
                 //echo "SwitchBot Device ($i) Values updated. \n";
                 SetValue($LastTimePullId,time());                       
                 }
+            // Publish Status
+            $mqtt->publishValue(12345);
 			break;
 		case $tim5ID:       // CyclicUpdate
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CyclicUpdate");

@@ -2074,6 +2074,11 @@ class DeviceManagement
                         $matrix=[0,2,2,2,2,2,2,1];                        
                         break;
 
+                    case "HmIP-SCI":
+                        $result="Kontakt 1-fach";
+                        $matrix=[0,2,1,1,1,1,1,1];              // 1 fach Kontakterkennung mit Batterie                        
+                        break;
+
                     case "HM-PB-4Dis-WM":
                         $result="Taster 4-fach";
                         $matrix=[0,2,2,2,2,1,1,1];                        
@@ -4056,12 +4061,16 @@ class DeviceManagement_Shelly extends DeviceManagement
         $devicetype=false; $found=false; $resultType=array();
         if (is_array($entry["OID"])) return (false);                                // es werden keine mehreren Instanzen als Übergane unterstützt
 
-        // itemslist auslesen für Ermittlung TypeDev
+        /* itemslist auslesen für Ermittlung TypeDev
+         * key ist oid der Instanz, ausgelesen wird TypeDev [TYPE_SWITCH,TYPE_DEVICE   ]
+         * wenn nicht vorhanden wird die Config der Instanz angesehen
+         *
+         */
         if ( (isset($entry["OID"])) && (isset($this->itemslist[$entry["OID"]])) )
             {
             $config=$this->itemslist[$entry["OID"]];
             //echo "                     ".json_encode($config)."\n";
-            if ($debug>1) echo "                DeviceType, called for instance ".$entry["OID"];
+            if ($debug>1) echo "                Shelly DeviceType, called for instance ".$entry["OID"];
             if (isset($config["TypeDev"])) 
                 {
                 $devicetype= $config["TypeDev"];
@@ -4075,10 +4084,15 @@ class DeviceManagement_Shelly extends DeviceManagement
                 if (isset($result["Component"])) 
                     {
                     $devicetype=$result["Component"];
-                    if ($debug>1) echo "                 DeviceType, called for instance ".$entry["OID"]." with new devicetype $devicetype : ".$entry["CONFIG"]." \n";                
+                    if ($debug>1) echo "                 Shelly DeviceType, called for instance ".$entry["OID"]." with new devicetype $devicetype : ".$entry["CONFIG"]." \n";                
                     //print_r($config);
                     }
                 } 
+            }
+        else 
+            {
+            echo "          Shelly DeviceType, called for instance ".$entry["OID"]." (".IPS_GetName($entry["OID"]).") not found in itemlist, see registers:\n";
+
             }
 
         /* result wird geschrieben, 4 Ausgabevarianten, Variante 4 wird für die devicelist verwendet, variante 0
