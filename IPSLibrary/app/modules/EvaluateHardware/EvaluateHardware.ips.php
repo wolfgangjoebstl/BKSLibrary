@@ -456,11 +456,14 @@ IPS_SetEventActive($tim1ID,true);
             $evaluateHardware->getFS20EXDevices($includefile,$summary);
             $includefile            .= "\n".'/* These are the FS20 Devices: */'."\n\n";
             $evaluateHardware->getFS20Devices($includefile,$summary);
-            $includefile            .= "\n".'/* These are the Homematic Devices: */'."\n\n";
-            $homematicList = $evaluateHardware-> getHomematicInstances($includefile,$summary);
-
-            $evaluateHardware-> getHomematicDevices($includefile);
-
+            $includefile            .= "\n".'/* These are the Homematic Instances (as Components): */'."\n\n";
+            $homematicList = $evaluateHardware->getHomematicInstances($includefile,$summary);
+            $includefile            .= "\n".'/* These are the Shelly Instances (as Components): */'."\n\n";
+            $shellyList = $evaluateHardware->getShellyInstances($includefile);
+            $includefile            .= "\n".'/* These are the Shelly Devices (as Components): */'."\n\n";
+            $evaluateHardware->getShellyDevices($includefile);
+            $includefile            .= "\n".'/* These are the Homematic Devices (as Hardware Devices, per Serial number): */'."\n\n";
+            $evaluateHardware->getHomematicDevices($includefile); 
             $includefile.="\n".'?>';	
             $verzeichnis=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware';
             $verzeichnis = $dosOps->correctDirName($verzeichnis,false);          //true für Debug

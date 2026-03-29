@@ -3121,7 +3121,7 @@ class DeviceManagement_Hue extends DeviceManagement
      *
      *
      */
-    private function HueDeviceType($register, $outputVersion=false, $entry, $debug=false)
+    private function HueDeviceType($register, $outputVersion, $entry, $debug=false)
         {
         $i=0; $devicetype=false; $found=false; $resultType=array();
         if (is_array($entry["OID"])) return (false);                                // es gibt keine mehreren Instanzen
@@ -4026,7 +4026,7 @@ class DeviceManagement_Shelly extends DeviceManagement
      *
      *
      */
-    function getDeviceType($instanz, $outputVersion=false, $config=array(), $debug=false)
+    function getDeviceType($instanz, $outputVersion, $config=array(), $debug=false)
 	    {
         if ($debug) echo "             getDeviceType:Shelly, $instanz  \"".IPS_GetName($instanz)."\" Modus : $outputVersion\n";
 	    $homematic=array();

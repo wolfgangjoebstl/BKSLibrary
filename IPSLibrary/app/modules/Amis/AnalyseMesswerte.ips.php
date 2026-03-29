@@ -63,10 +63,16 @@
 	$amis=new Amis();           // Ausgabe SystemDir, erstellt MeterConfig
 
     $debug1=false;
-    echo "Script called due to an other event than a Webfront Interaction.\n";
+    echo "Script called for Analysis of Config and Data.\n";
+    echo "Name                          Type      Found Registers storing Data\n";
 	$MeterConfig = $amis->getMeterConfig();
+    $amis->analyseMeterConfig();
+
 	$AmisConfig = $amis->getAmisConfig();
 
+
+
+    $categoryId_SmartMeter      = IPS_GetObjectIDByName('SmartMeter', $CategoryIdData);
     $statusSmartMeterID = IPS_GetObjectIDByName("SmartMeterStatus",$categoryId_SmartMeter);
     echo "SmartMeterStatus     $statusSmartMeterID   Status ";
     echo (GetValue($statusSmartMeterID)?"on":"off")."\n";
@@ -75,10 +81,6 @@
 	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$configPort=array();
 
-    echo "\n";
-    echo "----------------------------------------------------\n";
-	echo "--------Execute aufgerufen -------------------------\n";
-    echo "----------------------------------------------------\n"; 
     echo "\n";   
     //echo "Data OID der AMIS Zusammenfassung : ".$amis->getAMISDataOids()."\n\n";
     //$debug=2;

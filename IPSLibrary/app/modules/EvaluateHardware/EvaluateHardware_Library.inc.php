@@ -2641,7 +2641,7 @@ class EvaluateHardware
                 //echo "    ".$config[$i]."\n";		
                 $config[$i]->Open=0;			/* warum wird true nicht richtig abgebildet und muss für set auf 0 geaendert werden ? */
                 $configString=json_encode($config[$i]);
-                $includefile.='"'.$ccu_name.'" => array('."\n         ".'"CONFIG" => \''.$configString.'\', ';
+                $includefile.='   "'.$ccu_name.'" => array('."\n         ".'"CONFIG" => \''.$configString.'\', ';
                 $includefile.="\n             ".'	),'."\n";
                 //print_r(IPS_GetInstance($instanz));
                 }
@@ -2673,7 +2673,7 @@ class EvaluateHardware
             if (isset($this->installedModules["DetectMovement"])) $DetectDeviceHandler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren */            
                 
             //echo IPS_GetName($instanz)." ".$instanz." \n";
-            $includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+            $includefile.='   "'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
             $includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
             $includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 
@@ -2734,7 +2734,7 @@ class EvaluateHardware
             //$FS20EXconfig=IPS_GetConfiguration($instanz);
             //print_r($FS20EXconfig);
 
-            $includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+            $includefile.='   "'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
             $includefile.="\n         ".'"HomeCode" => \''.IPS_GetProperty($instanz,'HomeCode').'\', ';
             $includefile.="\n         ".'"DeviceList" => \''.IPS_GetProperty($instanz,'DeviceList').'\', ';
             $includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
@@ -2793,7 +2793,7 @@ class EvaluateHardware
             if (isset($this->installedModules["DetectMovement"])) $DetectDeviceHandler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren */            
                 
             //echo IPS_GetName($instanz)." ".$instanz." \n";
-            $includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+            $includefile.='   "'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
             $includefile.="\n         ".'"HomeCode" => "'.IPS_GetProperty($instanz,'HomeCode').'", ';
             $includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
             $includefile.="\n         ".'"SubAdresse" => "'.IPS_GetProperty($instanz,'SubAddress').'", ';
@@ -2898,7 +2898,7 @@ class EvaluateHardware
                     $HomematicList[$instanzName]["Protocol"]=$protocol;
                     $HomematicList[$instanzName]["EmulateStatus"]=IPS_GetProperty($instanz,'EmulateStatus');
 
-                    $includefile.='"'.$instanzName.'" => array('."\n         ".'"OID" => '.$instanz.', ';
+                    $includefile.='   "'.$instanzName.'" => array('."\n         ".'"OID" => '.$instanz.', ';
                     $includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
                     $includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
                     $includefile.="\n         ".'"CCU" => "'.$HM_CCU_Name.'", ';
@@ -3107,7 +3107,7 @@ class EvaluateHardware
             echo "Server: ".IPS_GetName($connectionId)."  $connectionId Type: $type";
             echo "\n";
 
-            $includeshelly.='"'.$instanzName.'" => array('."\n         ".'"OID" => '.$instanz.', ';
+            $includeshelly.='   "'.$instanzName.'" => array('."\n         ".'"OID" => '.$instanz.', ';
             $includeshelly.="\n         ".'"MQTTTopic" => "'.$mqttTopic.'", ';
             $includeshelly.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
             $includeshelly.="\n         ".'"ModelID" => "'.$modelId.'", ';
@@ -3171,7 +3171,7 @@ class EvaluateHardware
                 $type=$fulltype["TYPECHAN"];
                 }
             
-            $includeshelly.='"'.$instanzName.'" => array('."\n         ".'"OID" => '.$instanz.', ';
+            $includeshelly.='   "'.$instanzName.'" => array('."\n         ".'"OID" => '.$instanz.', ';
             $includeshelly.="\n         ".'"MQTTTopic" => "'.$mqttTopic.'", ';
             $includeshelly.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
             $includeshelly.="\n         ".'"Component" => "'.$component.'", ';
@@ -3194,7 +3194,8 @@ class EvaluateHardware
                     $includeshelly.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
                     }
                 }
-
+            $includeshelly.="\n             ".'	),';
+            $includeshelly.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
             }
 	    $includeshelly.=');}'."\n";
         return ($ShellyList);             

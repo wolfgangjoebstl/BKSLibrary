@@ -3348,7 +3348,7 @@ class webOps
 	    }
 
 
-    /* webOps::
+    /* webOps::createButtonProfileByName
      * SpezialProfile für Action Aufrufe aus dem Webfront 
      * verwendet von Guthabensteuerung, für einzelne Buttons zum Draufdrücken
      *      pname ist der Name des Button, der Link auf den Button sollte dann "" sein oder der Button Teil des Webfronts
@@ -3380,7 +3380,7 @@ class webOps
         return $pname;	
         }
 
-    /* webOps::
+    /* webOps::createSelectButtons
      * eine Reihe von Buttons anlegen, die untereinander ein Auswahlfeld ergeben  
      * pnames ist ein array
      * es braucht die categoryId und scriptId, werden auch in die class gespeichert
@@ -3416,7 +3416,7 @@ class webOps
         return ($result);
         }
 
-    /* webOps::
+    /* webOps::setButtonColors
      * set color of Button
      */
 
@@ -3426,7 +3426,7 @@ class webOps
         $this->colorSelect = $colorSelect;
         }
 
-    /* webOps::
+    /* webOps::setSelectButtons
      * save Button Parameters as configuration in class for other functions
      *
      */
@@ -3436,7 +3436,7 @@ class webOps
         $this->categoryId   = $categoryId;
         }
 
-    /* webOps::
+    /* webOps::setConfigButtons
      * save other default parameters for Button in class
      */
     function setConfigButtons($order=10,$modulName="")
@@ -3447,7 +3447,7 @@ class webOps
         }
 
 
-    /* webOps::
+    /* webOps::getSelectButtons
      * get the Button Id
      * needs pnames, categoryId stored in class by setSelectButtons used by createSelectButtons
      */
@@ -3467,14 +3467,20 @@ class webOps
         $id=0;
         foreach ($this->pnames as $pname)
             {
-            $result[$id]["ID"]     = IPS_GetObjectIdByName($pname,$this->categoryId);           // button profile is Integer
+            $oid=@IPS_GetObjectIdByName($pname,$this->categoryId);           // button profile is Integer
+            if ($oid===false) 
+                {
+                echo "     $pname in ".$this->categoryId." ".IPS_GetName($this->categoryId)." not found.\n";
+                continue;
+                }
+            $result[$id]["ID"]     = $oid;           // button profile is Integer
             $result[$id]["NAME"]   = $pname; 
             $id++;
             }
         return ($result);
         }
 
-    /* webOps::
+    /* webOps::selectButton
      * select the Button Id
      * verändert in der Profildarstellung für die jeweilige Association die Farbe
      */

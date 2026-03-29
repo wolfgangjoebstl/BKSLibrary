@@ -96,7 +96,7 @@
 
     $webOps = new webOps();
 
-    $categoryId_SmartMeter      = IPS_GetObjectIDByName('SmartMeter', $CategoryIdData);
+    $categoryId_SmartMeter      = IPS_GetCategoryIDByName('SmartMeter', $CategoryIdData);
     //$pnames = ["Directory","Update","Calculate","Sort"];                                    // muss gleich sein
     $webOps->setSelectButtons(SMART_SELECT,$categoryId_SmartMeter);
     $buttonsId = $webOps->getSelectButtons();
