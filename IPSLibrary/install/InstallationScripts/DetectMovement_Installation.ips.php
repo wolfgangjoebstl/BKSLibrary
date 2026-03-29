@@ -110,6 +110,16 @@
     $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 
 	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
+	if (isset ($installedModules["OperationCenter"]))
+		{
+		echo "Modul OperationCenter ist installiert.\n";
+        IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+		}
+	else
+		{
+		echo "Modul OperationCenter ist NICHT installiert.\n";
+		}
+
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
         echo "Modul EvaluateHardware ist installiert.\n"; 
@@ -117,7 +127,8 @@
         IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
         IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
         IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
-
+        IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    
         echo "========================================================================\n";    
         echo "EvaluateHardware: Statistik der Register nach Typen aus der devicelist erheben:\n";
         $hardwareTypeDetect = new Hardware();

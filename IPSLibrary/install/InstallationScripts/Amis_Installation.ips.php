@@ -68,6 +68,9 @@ $debug=false;               // wir wollen mehr Übersichtlichkeit
 	IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 	IPSUtils_Include ('Amis_Constants.inc.php', 'IPSLibrary::app::modules::Amis');
 	
+    IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // unbedingt erforderlich
+
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
@@ -94,6 +97,15 @@ $debug=false;               // wir wollen mehr Übersichtlichkeit
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+	if (isset ($installedModules["OperationCenter"])) 
+        { 			
+        echo "  Modul OperationCenter ist installiert.\n"; 
+        IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+        }   
+    else 
+        { 
+        echo "   Modul OperationCenter ist NICHT installiert.\n"; 
+        }
     if (isset($installedModules["Stromheizung"])==true)
 	    {
 	    IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");

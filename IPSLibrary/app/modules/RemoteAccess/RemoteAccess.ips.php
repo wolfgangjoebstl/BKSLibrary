@@ -73,9 +73,26 @@
 	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; }  else { echo "  Modul Guthabensteuerung ist NICHT installiert.\n"; }
 	//if (isset ($installedModules["Gartensteuerung"])) { 	        echo "  Modul Gartensteuerung ist installiert.\n"; }    else { echo "  Modul Gartensteuerung ist NICHT installiert.\n";}
 	if (isset ($installedModules["Amis"])) { 				        echo "  Modul Amis ist installiert.\n"; }               else { echo "  Modul Amis ist NICHT installiert.\n"; }
-	if (isset ($installedModules["OperationCenter"])) { 			echo "  Modul OperationCenter ist installiert.\n"; }   else { echo "   Modul OperationCenter ist NICHT installiert.\n"; }
+	
+    if (isset ($installedModules["OperationCenter"])) 
+        { 			
+        echo "  Modul OperationCenter ist installiert.\n"; 
+        IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+        }   
+    else { echo "   Modul OperationCenter ist NICHT installiert.\n"; }
 
-	if (isset ($installedModules["DetectMovement"]))
+	if (isset ($installedModules["EvaluateHardware"])) 
+        { 			
+        echo "  Modul EvaluateHarwdare ist installiert.\n"; 
+        IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+        IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // unbedingt erforderlich
+        }   
+    else 
+        { 
+        echo "   Modul EvaluateHarwdare ist NICHT installiert.\n"; 
+        }
+	
+    if (isset ($installedModules["DetectMovement"]))
 		{
 		IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
