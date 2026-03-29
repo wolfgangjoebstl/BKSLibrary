@@ -58,6 +58,9 @@
     IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
     IPSUtils_Include ('Amis_Constants.inc.php', 'IPSLibrary::app::modules::Amis');
 
+    IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+    IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // unbedingt erforderlich
 
 	/******************************************************
      *
@@ -473,7 +476,7 @@ if ($_IPS['SENDER'] == "Execute")
     echo "\n----------------------------------------------------\n";
     echo $amis->getEnergyRegister($meterValues,$debug);
     echo "\n----------------------------------------------------\n";
-    echo $amis->writeEnergyRegistertoString($MeterConfig,true,$debug);            // output asl html (true) und mit debug (true), sehr lange Ausgabe
+    echo $amis->writeEnergyRegistertoString($MeterConfig,true,$debug);            // output as html (true) and with debug (true), sehr lange Ausgabe
 	echo "\n----------------------------------------------------\n";
     echo "\nUebersicht Homematic Registers:\n";
 	foreach ($MeterConfig as $identifier => $meter)

@@ -462,7 +462,8 @@ class OperationCenter extends OperationCenterConfig
 	private $log_OperationCenter;
 
 	protected $CategoryIdData, $categoryId_SysPing,$categoryId_RebootCtr,$categoryId_Access,$archiveHandlerID;
-	
+    protected $categoryId_SysInfo;
+    	
     var $subnet               	= "";
 
 	var $mactable             	= array();
@@ -8041,6 +8042,8 @@ class PingOperation extends OperationCenter
 
 class CamOperation extends OperationCenter
 	{
+
+    protected $debug;
 
 	public function __construct($module="IPSCam",$subnet='10.255.255.255',$debug=false)
 		{

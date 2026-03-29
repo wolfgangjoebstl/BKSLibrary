@@ -3950,10 +3950,16 @@ class DeviceManagement_Shelly extends DeviceManagement
             if ($item["DeviceType"]=="") $item["DeviceType"]=$itemconfig["Component"];                                                    // mix and merge component and device
             switch ($item["DeviceType"])
                 {
+                // Devices
                 case "Shelly Plug S MTR Gen3": 
                 case "Shelly Power Strip 4 Gen4":                                         // Device
                     $this->itemslist[$oid]["TypeDev"]="TYPE_DEVICE";              // als Namensgeber der Devices mitnehmen, Eigenheit von Shelly
-                    break; 
+                    break;
+                case "Shelly Pro 3EM":                    
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_DEVICE_MULTY_METER";              // als Namensgeber der Devices mitnehmen, wird auch als Component verwendet
+                    break;                     
+                // Components 
+                // Walldisplay ist hier nicht, da gibt es kein ShellyComponent
                 case "switch":                                                                // Component
                     if ($debug) echo "Component ".str_pad($item["instanceID"],8).str_pad($item["name"],12).str_pad($item["InstanceName"],20)."\n";
                     $this->itemslist[$oid]["TypeDev"]="TYPE_SWITCH";
@@ -3961,6 +3967,14 @@ class DeviceManagement_Shelly extends DeviceManagement
                     break; 
                 case "cloud":                               // other component, do nothing
                 case "wifi":
+                    break;
+                case "em":                                  // Energy meter phase, voltage, ampere and power
+                    if ($debug) echo "Component ".str_pad($item["instanceID"],8).str_pad($item["name"],12).str_pad($item["InstanceName"],20)."\n";
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_METER_MULTY_POWER";
+                    break;
+                case "emdata":                                  // Energy meter energy for each phase
+                    if ($debug) echo "Component ".str_pad($item["instanceID"],8).str_pad($item["name"],12).str_pad($item["InstanceName"],20)."\n";
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_METER_MULTY_ENERGY";
                     break;
                 default:
                     echo "DeviceManagement_Shelly::createItemlist, warning, do not know key \"".$item["DeviceType"]."\"\n";
@@ -4047,7 +4061,7 @@ class DeviceManagement_Shelly extends DeviceManagement
      */
     private function DeviceType($register, $outputVersion=false, $entry, $debug=false)
         {
-        $debug=2;
+        //$debug=2;
         // gleiche Einträge für Register der Instanz eliminieren 
 		sort($register);
         $registerNew=array();
@@ -4070,11 +4084,11 @@ class DeviceManagement_Shelly extends DeviceManagement
             {
             $config=$this->itemslist[$entry["OID"]];
             //echo "                     ".json_encode($config)."\n";
-            if ($debug>1) echo "                Shelly DeviceType, called for instance ".$entry["OID"];
+            if ($debug>1) echo "                      Shelly DeviceType, called for instance ".$entry["OID"];
             if (isset($config["TypeDev"])) 
                 {
                 $devicetype= $config["TypeDev"];
-                if ($debug>1) echo "\n";
+                if ($debug>1) echo " TypeDev $devicetype \n";
                 }
             else
                 {
@@ -4084,15 +4098,16 @@ class DeviceManagement_Shelly extends DeviceManagement
                 if (isset($result["Component"])) 
                     {
                     $devicetype=$result["Component"];
-                    if ($debug>1) echo "                 Shelly DeviceType, called for instance ".$entry["OID"]." with new devicetype $devicetype : ".$entry["CONFIG"]." \n";                
+                    if ($debug>1) echo "                       Shelly DeviceType, called for instance ".$entry["OID"]." with new devicetype $devicetype : ".$entry["CONFIG"]." \n";                
                     //print_r($config);
                     }
                 } 
             }
         else 
             {
-            echo "          Shelly DeviceType, called for instance ".$entry["OID"]." (".IPS_GetName($entry["OID"]).") not found in itemlist, see registers:\n";
-
+            echo "                    DeviceType::Shelly, called for instance ".$entry["OID"]." (".IPS_GetName($entry["OID"]).") not found in itemlist, see registers:\n";
+            $this->itemslist[$entry["OID"]]["TypeDev"]="TYPE_DEVICE"; 
+            $devicetype="TYPE_DEVICE";
             }
 
         /* result wird geschrieben, 4 Ausgabevarianten, Variante 4 wird für die devicelist verwendet, variante 0
@@ -4158,8 +4173,90 @@ class DeviceManagement_Shelly extends DeviceManagement
                 $result[4]["TYPE_METER_POWER"] = $resultRegEnergy;
                 $result[4]["RegisterAll"]=$registerNew;
                 $found=true;
-                break;                
+                break;   
+            case "TYPE_METER_MULTY_ENERGY":                 // 3 phase energy meter, energy values per phase
+                // passende Channels finden
+                $resultRegEnergy=array(); 
+                foreach ($registerNew as $regname)
+                    {
+                    //echo " $regname ";
+                    if ($regname == "Phase A Gesamtwirkenergie") $resultRegEnergy["ENERGY_L1"]=$regname;
+                    if ($regname == "Phase B Gesamtwirkenergie") $resultRegEnergy["ENERGY_L2"]=$regname;
+                    if ($regname == "Phase C Gesamtwirkenergie") $resultRegEnergy["ENERGY_L3"]=$regname;
+                    }
+                //echo "\n"; print_r($resultRegEnergy); 
+                if ($debug) echo "                     3Phasen Energymeter gefunden.\n";                    
+                $result[0] = "3Phasen Energymeter, Energiewerte";
+                $result[1] = "WIFI 3Phasen Energymeter, Energiewerte";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["Register"] = $resultRegEnergy;
+                $result[3]["RegisterAll"]=$registerNew;
+                $result[4]["TYPECHAN"] = "TYPE_METER_MULTY_ENERGY";              
+                $result[4]["TYPE_METER_MULTY_ENERGY"] = $resultRegEnergy;
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                     
+                //echo "\n";    print_r($register);
+                break;
+            case "TYPE_METER_MULTY_POWER":                 // 3 phase energy meter, power values per Phase
+                // passende Channels finden
+                $resultRegEnergy=array(); 
+                foreach ($registerNew as $regname)
+                    {
+                    //echo " $regname ";
+                    if ($regname == "Phase A Wirkleistung") $resultRegEnergy["POWER_L1"]=$regname;
+                    if ($regname == "Phase B Wirkleistung") $resultRegEnergy["POWER_L2"]=$regname;
+                    if ($regname == "Phase C Wirkleistung") $resultRegEnergy["POWER_L3"]=$regname;
+                    }
+                //echo "\n"; print_r($resultRegEnergy); 
+                if ($debug) echo "                     3Phasen Energymeter gefunden.\n";                    
+                $result[0] = "3Phasen Energymeter, Leistungswerte";
+                $result[1] = "WIFI 3Phasen Energymeter, Leistungswerte";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["Register"] = $resultRegEnergy;
+                $result[3]["RegisterAll"]=$registerNew;
+                $result[4]["TYPECHAN"] = "TYPE_METER_MULTY_POWER";              
+                $result[4]["TYPE_METER_MULTY_POWER"] = $resultRegEnergy;
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                //echo "\n";    print_r($register);
+                break; 
+            case "TYPE_DEVICE_MULTY_METER":
+                $resultRegEnergy=array(); 
+                foreach ($registerNew as $regname)
+                    {
+                    if ($regname == "Wirkleistung auf allen Phasen") $resultRegEnergy["POWER"]=$regname;
+                    if ($regname == "Gesamtwirkenergie") $resultRegEnergy["ENERGY"]=$regname;
+                    //echo " $regname ";
+                    }
+                //echo "\n"; print_r($resultRegEnergy); 
+                /*--Messgerät 3 Phasen -----------------------------------*/ 
+                if ($debug) echo "                     3Phasen Energymeter gefunden.\n";
+
+                $result[0] = "3Phasen Energymeter, Gesamtwerte Energie und Leistung";
+                $result[1] = "WIFI 3Phasen Energymeter, Gesamtwerte Energie und Leistung";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["Register"] = $resultRegEnergy;
+                $result[3]["RegisterAll"]=$registerNew;
+                $result[4]["TYPECHAN"] = "TYPE_METER_POWER";              
+                $result[4]["TYPE_METER_POWER"] = $resultRegEnergy;
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                break;
+            case "TYPE_DEVICE":                 // devices usually have components and are not needed but are unique for one device
+                $result[0] = "Shelly Device";
+                $result[1] = "WIFI Shelly Device";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["RegisterAll"]=$registerNew;
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                break;                                            
             default:
+                echo "      Warning, ".strtoupper($devicetype)." not found.\n";
                 print_r($register);
                 break;
             }

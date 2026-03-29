@@ -4674,8 +4674,11 @@
                     $inputdata[$uniqueName]["Name"]=$uniqueName;
                     //print_R($entry);
                     //$inputdata[$uniqueName]["OID"]=$entry["CategoryID"];
-                    $inputdata[$uniqueName]["UUID"]=$configTopologyDevice["UUID"];
-                    $inputdata[$uniqueName]["Path"]=$configTopologyDevice["Path"];
+                    if (isset($configTopologyDevice["UUID"]))           // nur wenn erstellt auch verwenden
+                        {
+                        $inputdata[$uniqueName]["UUID"]=$configTopologyDevice["UUID"];
+                        $inputdata[$uniqueName]["Path"]=$configTopologyDevice["Path"];
+                        }
                     //$inputdata[$uniqueName]["TopologyConfig"]=array();          // leer
                     $status=$this->updateData($this->unifiedTopology[$uniqueName],$inputdata[$uniqueName]);
                     }

@@ -3903,6 +3903,49 @@ class Autosteuerung
     	return ($entry3);
 	    }
 
+    /** Autosteuerung::explode_ignoring_quotes
+     *
+     */
+    function explode_ignoring_quotes(string $delimiter, string $input, string $quote = '"', string $escape = '\\'): array
+        {
+        $out = [];
+        $buf = '';
+        $inQuote = false;
+
+        $len = strlen($input);
+        $dlen = strlen($delimiter);
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $input[$i];
+
+            // Handle escaped quote: \" (or escaped escape \\)
+            if ($ch === $escape && $i + 1 < $len) {
+                $buf .= $ch . $input[$i + 1];
+                $i++;
+                continue;
+            }
+
+            // Toggle quoting
+            if ($ch === $quote) {
+                $inQuote = !$inQuote;
+                $buf .= $ch;
+                continue;
+            }
+
+            // If not in quotes and delimiter matches here -> split
+            if (!$inQuote && $dlen > 0 && substr($input, $i, $dlen) === $delimiter) {
+                $out[] = $buf;
+                $buf = '';
+                $i += $dlen - 1;
+                continue;
+            }
+
+            $buf .= $ch;
+            }
+
+        $out[] = $buf;
+        return $out;
+        }
 
 
 	/* Autosteuerung::ParseCommand
@@ -3924,6 +3967,8 @@ class Autosteuerung
 	 *      ExecuteCommand() mit switch() liefert als Ergebnis die Parameter für Dim und Delay.
 	 *......Abarbeitung von Delay Befehl
 	 *
+     * als erstes in einzelne Befehlsketten zerlegen, getrennt mit ;
+     *
 	 *******************************************************/
 
 	public function ParseCommand($params,$status=false,$simulate=false,$debug=false)
@@ -3965,7 +4010,8 @@ class Autosteuerung
 		$parges=array();
 		//$this->log->LogMessage("ParseParameter.");
 		$params2=$this->trimCommand($params[2]);
-		$commands = explode(';', $params2);
+		//$commands = explode(';', $params2);
+        $commands = $this->explode_ignoring_quotes(';',$params2,'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
         //print_r($commands);
 		$Kommando=0;
 		if ($debug) echo "   ParseCommand Gesamter Befehl : ".$params2."\n";
@@ -9086,6 +9132,10 @@ function GutenMorgenWecker($params,$status,$variableID,$simulate=false,$wertOpt=
  *            +note
  *            +bounce
  *            +config
+ *
+ * Beschreibung Parse:
+ *      ParseCommand
+ *
  *
  *
  ************************************************************************************************/

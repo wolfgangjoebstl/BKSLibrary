@@ -88,6 +88,7 @@
         private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
 
         public $result;                 // Array mit aktuellen zusätzlichen Ergebnissen
+        protected $oids;                // devicelist sorted as list of oids
 
         protected $ipsOps,$dosOps;
         protected $debug;                 // zusaetzliche hilfreiche Debugs
@@ -113,6 +114,7 @@
             $this->dosOps = new dosOps();
             $this->systemDir     = $this->dosOps->getWorkDirectory();
 
+            $this->oids = $this->analyseOIDList($debug);      // true with Debug, in setMeterConfig benötigt
 			$this->MeterConfig = $this->setMeterConfig();
 			$this->AmisConfig  = self::setAmisConfig();             // ich brauch noch einen Kurs, wenn mit parent::__construct aufgerufen nimmt das child sonst hier immer die eigene function und nicht die des parent
             $this->result=array();                                        // init Ergebnis Variable result
@@ -168,61 +170,120 @@
                     configfileParser($config,$result[$index],["Source","SOURCE","source"],"Source","default");
                     configfileParser($config,$result[$index],["VariableName","VARIABLENAME","nariablename","Variablename"],"VariableName",null);
                     configfileParser($config,$result[$index],["OIDTYPE","oidtype","OidType","oidType","OIDType"],"OIDType","kWh");                    
-                    if (strtoupper($result[$index]["TYPE"])=="AMIS") 
+
+                    /* Energieregister mit Energiezähler, die in unregelmaessigen Zeitabständen aktualisiert werden, umwandeln in 15 min Energiezähler und Leistungswerte
+                     * alle brauchen zumindest eine OID
+                     */
+                    switch (strtoupper($result[$index]["TYPE"]))
                         {
-                        configfileParser($config,$result[$index],["Port","PORT","port"],"PORT",null);                                   // default null, produziert einen Fehler wenn nicht vorhanden
-                        configfileParser($config,$result[$index],["ComPort","Comport","COMPORT","comport"],"COMPORT",null);           // produziert einen Fehler wenn nicht vorhanden
-                        configfileParser($config,$result[$index],["Calculate","CALCULATE","calculate"],"CALCULATE",null);           // produziert einen Fehler wenn nicht vorhanden
-                        configfileParser($config,$result[$index],["Register","REGISTER","register"],"REGISTER",null);           // produziert einen Fehler wenn nicht vorhanden
-                        }
-                    // Energieregister mit Energiezähler, die in unregelmaessigen Zeitabständen aktualisiert werden, umwandeln in 15 min Energiezähler und Leistungswerte
-                    if (strtoupper($result[$index]["TYPE"])=="SHELLY") 
-                        {
-                        configfileParser($config,$result[$index],["Oid","OID","oid"],"OID",null);
-                        if (isset($result[$index]["OID"])===false) echo "Warning, OID must be provided for TYPE Shelly.\n";
-                        }
-                    if (strtoupper($result[$index]["TYPE"])=="HOMEMATIC") 
-                        {
-                        configfileParser($config,$result[$index],["Oid","OID","oid"],"OID",null);
-                        if (isset($result[$index]["OID"])===false) echo "Warning, OID must be provided for TYPE Homematic.\n";
-                        }
-                    // 24h Profile, entweder mit Leistung oder mit Energie
-                    if (strtoupper($result[$index]["TYPE"])=="DAILYREAD") 
-                        {
-                        if (isset($result[$index]["WirkenergieID"])===false) 
-                            {
-                            $oid=$this->getWirkEnergieID($config,$this->debug);
-                            //echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYREAD of ".$result[$index]["NAME"].". Found one by searching: $oid\n";
-                            }                            
-                        configfileParser($config,$result[$index],["WirkenergieID","WIRKENERGIEID","WirkenergieId","Oid","OID","oid"],"WirkenergieID",$oid);
-                        if ( (isset($result[$index]["WirkenergieID"])===false) || ($result[$index]["OIDType"] !== "kWh") ) 
-                            {
-                            echo "Warning, OID of OIDType kWh must be provided for TYPE DAILYREAD.\n";
-                            print_R($result[$index]);
-                            }
-                        }
-                    // 15min Profile, entweder mit Leistung oder mit Energie
-                    if (strtoupper($result[$index]["TYPE"])=="DAILYLPREAD") 
-                        {
-                        // es braucht einen Input, so wie OID bei Homematic der umgerechnet wird
-                        configfileParser($config,$result[$index],["InputID","InputId","INPUTID","inputid"],"InputID",null);
-                        configfileParser($config,$result[$index],["InputType","INPUTTYPE","inputtype"],"InputType",null);
-                        configfileParser($config,$result[$index],["OutputID","OutputId","OUTPUTID","outputid"],"OutputID",null);
-                        // verschiedene Bezeichnungsarten
-                        $oid=null;
-                        if (isset($result[$index]["LeistungID"])===false) 
-                            {
-                            $oid=$this->getWirkleistungID($config,$this->debug);
-                            //echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYLPREAD of ".$result[$index]["NAME"].". Found one by searching: $oid\n";
-                            }
-                        if ($result[$index]["OIDType"] !== "kWh") configfileParser($config,$result[$index],["LeistungID","LEISTUNGID","LeistungId","Oid","OID","oid"],"LeistungID",$oid);
-                        else                                      configfileParser($config,$result[$index],["WirkenergieID","WIRKENERGIEID","WirkenergieId","Oid","OID","oid"],"WirkenergieID",null); 
-                        // both Types are possible
-                        }
-                    if (strtoupper($result[$index]["TYPE"])=="SUMME") 
-                        {
-                        configfileParser($config,$result[$index],["Calculate","CALCULATE","calculate"],"Calculate",null);
-                        if (isset($result[$index]["Calculate"])===false) echo "Warning, Calculate must be provided for TYPE SUMME.\n";
+                        case "AMIS":
+                            configfileParser($config,$result[$index],["Port","PORT","port"],"PORT",null);                                   // default null, produziert einen Fehler wenn nicht vorhanden
+                            configfileParser($config,$result[$index],["ComPort","Comport","COMPORT","comport"],"COMPORT",null);           // produziert einen Fehler wenn nicht vorhanden
+                            configfileParser($config,$result[$index],["Calculate","CALCULATE","calculate"],"CALCULATE",null);           // produziert einen Fehler wenn nicht vorhanden
+                            configfileParser($config,$result[$index],["Register","REGISTER","register"],"REGISTER",null);           // produziert einen Fehler wenn nicht vorhanden
+                            break;
+                        case "SHELLY":
+                            configfileParser($config,$result[$index],["Oid","OID","oid","EnergieID"],"OID",null);           // default register
+                            if (isset($result[$index]["OID"])===false) echo "Warning, OID/EnergieID must be provided for TYPE Shelly.\n";
+                            else    
+                                {
+                                if ($this->debug) echo "getShellyRegistersfromOID(".$result[$index]["OID"]." for MeterConfig $index\n";
+                                $regResult=$this->getShellyRegistersfromOID($result[$index]["OID"],$this->debug);         // 2 damit Debug
+                                //print_r($regResult);
+                                $result[$index]["EnergieID"]=$regResult["EnergieID"];
+                                $result[$index]["LeistungID"]=$regResult["LeistungID"];
+                                }
+                            break;
+                        case "HOMEMATIC":
+                            configfileParser($config,$result[$index],["Oid","OID","oid"],"OID",null);
+                            if (isset($result[$index]["OID"])===false) echo "Warning, OID must be provided for TYPE Homematic.\n";
+                            else    
+                                {
+                                if ($this->debug) echo "getShellyRegistersfromOID(".$result[$index]["OID"]." for MeterConfig $index\n";
+                                $regResult=$this->getHomematicRegistersfromOID($result[$index]["OID"],$this->debug);         // 2 damit Debug
+                                //print_r($regResult);
+                                $result[$index]["EnergieID"]=$regResult["EnergieID"];
+                                $result[$index]["LeistungID"]=$regResult["LeistungID"];
+                                }                            
+                            break;
+                        // 24h Profile, entweder mit Leistung oder mit Energie
+                        case "DAILYREAD":
+                            if (isset($result[$index]["WirkenergieID"])===false) 
+                                {
+                                $oid=$this->getWirkEnergieID($config,$this->debug);
+                                //echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYREAD of ".$result[$index]["NAME"].". Found one by searching: $oid\n";
+                                }                            
+                            configfileParser($config,$result[$index],["WirkenergieID","WIRKENERGIEID","WirkenergieId","Oid","OID","oid"],"WirkenergieID",$oid);
+                            if ( (isset($result[$index]["WirkenergieID"])===false) || ($result[$index]["OIDType"] !== "kWh") ) 
+                                {
+                                echo "Warning, OID of OIDType kWh must be provided for TYPE DAILYREAD.\n";
+                                print_R($result[$index]);
+                                }
+
+                            $energieID  = $this->getRegisterIDbyConfig($result[$index],"Wirkenergie");
+                            $leistungID = $this->getRegisterIDbyConfig($config,"Wirkleistung");
+                            if ($energieID)  
+                                {
+                                $result[$index]["EnergieID"]  = $energieID;
+                                $result[$index]["OID"]  = $energieID;
+                                }
+                            if ($leistungID) $result[$index]["LeistungID"] = $leistungID;
+                            break;                        
+                        // 15min Profile, entweder mit Leistung oder mit Energie
+                        case "DAILYLPREAD":
+                            // es braucht einen Input, so wie OID bei Homematic der umgerechnet wird
+                            configfileParser($config,$result[$index],["InputID","InputId","INPUTID","inputid"],"InputID",null);
+                            configfileParser($config,$result[$index],["InputType","INPUTTYPE","inputtype"],"InputType",null);
+                            configfileParser($config,$result[$index],["OutputID","OutputId","OUTPUTID","outputid"],"OutputID",null);
+                            // verschiedene Bezeichnungsarten
+                            $oid=null;
+                            if (isset($result[$index]["LeistungID"])===false) 
+                                {
+                                $oid=$this->getWirkleistungID($config,$this->debug);
+                                //echo "Warning, setMeterConfig, OID Identifier must be provided for TYPE DAILYLPREAD of ".$result[$index]["NAME"].". Found one by searching: $oid\n";
+                                }
+                            if ($result[$index]["OIDType"] !== "kWh") configfileParser($config,$result[$index],["LeistungID","LEISTUNGID","LeistungId","Oid","OID","oid"],"LeistungID",$oid);
+                            else                                      configfileParser($config,$result[$index],["WirkenergieID","WIRKENERGIEID","WirkenergieId","Oid","OID","oid"],"WirkenergieID",null); 
+
+                            $energieID  = $this->getRegisterIDbyConfig($config,"Wirkenergie");
+                            $leistungID = $this->getRegisterIDbyConfig($config,"Wirkleistung");
+                            if ($energieID)  
+                                {
+                                $result[$index]["EnergieID"]  = $energieID;
+                                $result[$index]["OID"]  = $energieID;
+                                }
+                            if ($leistungID) $result[$index]["LeistungID"] = $leistungID;
+                            // both Types are possible
+                            break;
+                        case "SUMME":
+                            configfileParser($config,$result[$index],["Calculate","CALCULATE","calculate"],"Calculate",null);
+                            if (isset($result[$index]["Calculate"])===false) echo "Warning, Calculate must be provided for TYPE SUMME.\n";
+                            else    
+                                {
+                                $energieID  = $this->getRegisterIDbyConfig($config,"Wirkenergie");
+                                $leistungID = $this->getRegisterIDbyConfig($config,"Wirkleistung");
+                                if ($energieID)  
+                                    {
+                                    $result[$index]["EnergieID"]  = $energieID;
+                                    $result[$index]["OID"]  = $energieID;
+                                    }
+                                if ($leistungID) $result[$index]["LeistungID"] = $leistungID;
+                                }
+                            break;
+                        case "REGISTER":   
+                            //echo "Register ".$result[$index]["NAME"]."\n";
+                            $energieID  = $this->getRegisterIDbyConfig($config,"Wirkenergie");
+                            $leistungID = $this->getRegisterIDbyConfig($config,"Wirkleistung");
+                            if ($energieID)  
+                                {
+                                $result[$index]["EnergieID"]  = $energieID;
+                                $result[$index]["OID"]  = $energieID;
+                                }
+                            if ($leistungID) $result[$index]["LeistungID"] = $leistungID;
+                            break;
+                        default:
+                            echo "Error, setMeterConfig, for $index unknown Type : ".$result[$index]["TYPE"]."\n";
+                            break;
                         }  
                     if (strtoupper($result[$index]["ORDER"])=="SUB")  configfileParser($config,$result[$index],["Parent","PARENT","parent"],"PARENT","Main");
                     }
@@ -276,6 +337,68 @@
             return ($this->AmisConfig);
             }
 
+        /* generate from devicelist, uses DeviceListManagement
+         * lots of includes just for this one
+         */
+        public function analyseOIDList($debug=false)
+            {
+            //echo "do DeviceListManagement \n";
+            $devicelist = new DeviceListManagement();           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
+            $devicelist->setEventListFromConfigFile();
+            $Elements = $devicelist->read_devicelist();
+
+            $componentHandling=new ComponentHandling();
+            if ($debug) echo "getComponent, Energieregister pro Phase:\n";
+            $keywords=["TYPECHAN" => "TYPE_METER_MULTY_ENERGY"];
+            $result1=$componentHandling->getComponent($Elements,$keywords,"Install",$debug);         // Energie Register für die einzelnen Phasen
+            //print_r($result1);    
+            if ($debug) echo "getComponent, Leistungsregister pro Phase:\n";
+            $keywords=["TYPECHAN" => "TYPE_METER_MULTY_POWER"];
+            $result2=$componentHandling->getComponent($Elements,$keywords,"Install",$debug);         // Energie Register für die einzelnen Phasen
+            //print_r($resul2t);    
+            if ($debug) echo "getComponent, einfache Energiemesung:\n";
+            $keywords=["TYPECHAN" => "TYPE_METER_POWER"];
+            $result3=$componentHandling->getComponent($Elements,$keywords,"Install",$debug);         // Energie Register für die einzelnen Phasen
+            //print_r($result3); 
+            $registers=array_merge($result1,$result2,$result3);
+            //print_r($registers); 
+            // Sortieren nach OIDs, 3 Phasenzähler braucht mehrere OIDs, sonst Fehler 
+            $oids=array();
+            foreach ($registers as $register) 
+                {
+                $oids[$register["OID"]][$register["REGISTER"]]=$register;
+                }
+            //print_R($oids);
+            return ($oids);
+            }
+
+        /* check MeterConfig for Completeness
+         * Config is completed once in the code not in all routines
+         */
+        public function analyseMeterConfig()
+            {
+            $MeterConfig=$this->getMeterConfig();
+            foreach ($MeterConfig as $index => $entry)
+                {
+                echo str_pad($entry["NAME"],30).str_pad($entry["TYPE"],10);
+                if (isset($entry["OID"]))  echo "OID ";
+                if (isset($entry["EnergieID"]))  echo "EnergieID ";
+                if (isset($entry["LeistungID"]))  echo "LeistungID ";
+                if (isset($entry["WirkenergieID"]))  echo "WirkenergieID ".$entry["WirkenergieID"]." ";         // ZB log.Wien
+                echo "\n";
+                }
+            }
+
+        public function getMeterConfigByName($name,$debug=false)
+            {
+            $config=$this->getMeterConfig();
+            foreach ($config as $index => $meterEntry)
+                {
+                if ($debug) echo "   checking \"".$meterEntry["NAME"]."\" mit Type ".$meterEntry["TYPE"]."\n";
+                if ($meterEntry["NAME"]==$name) return ($meterEntry); 
+                }                
+            return (false);
+            }
 
         /* Amis::getWirkenergieID
          *
@@ -412,6 +535,7 @@
                     //echo "variableID $variableID (".$this->ipsOps->path($variableID).")\n"; 
                     break;
                 case "SUMME":
+                case "REGISTER":
                     if ($ID===false)  { echo "Warnung, Kategorie noch nicht installiert.\n"; return (false); }
                     $LeistungID = @IPS_GetObjectIdByName($identifier,$ID);   // nur eine Wirkleistung gespeichert
                     break;
@@ -470,10 +594,13 @@
             return ($this->getRegisterID($meter,'Wirkleistung',$debug));
             }
 
-		/* 
-         * Works for Homematic
+		/* getHomematicRegistersfromOID
+         * Works for Homematic, gets Energy and Power device registers
+         *
          * OID übergeben, schauen ob childrens enthalten sind und die richtigen register rausholen, wenn nicht eine Ebene höher gehen
-         * wenn die OID nicht vorhanden ist als Ergebnis false zurückgeben
+         * wenn die OID nicht vorhanden ist oder keine Children hat als Ergebnis false zurückgeben
+         *
+         * Homematic Devices sind simple gestrickt, alle den selben Registername
 		 */
 				
 		function getHomematicRegistersfromOID($oid)
@@ -504,7 +631,7 @@
                 }
 			}	
 
-		/* 
+		/* getShellyRegistersfromOID
          * works for Shelly 
          * OID übergeben, schauen ob childrens enthalten sind und die richtigen register rausholen, wenn nicht eine Ebene höher gehen
          * wenn die OIDs nicht vorhanden ist als Ergebnis false zurückgeben
@@ -534,10 +661,80 @@
             else
                 {
     			$cids = @IPS_GetChildrenIDs(IPS_GetParent($oid));
-                if ($debug) 
+                if ($debug) echo "             no parent, $oid seems to be a register from the beginning, do some extra analysis based on devicelist !\n";
+                $found=false;
+                switch (IPS_GetName($oid))
                     {
-                    echo "             no parent, $oid seems to be a register from the beginning !\n";
-                    //print_R($cids);
+                    case "Gesamtwirkenergie": 
+                    case "Gesamtverbrauch": 
+                    case "Gesamtverbrauch 1":
+                    case "Gesamtverbrauch 2":
+                    case "Gesamtverbrauch 3":
+                    case "Phase A Gesamtwirkenergie":
+                    case "Phase B Gesamtwirkenergie":
+                    case "Phase C Gesamtwirkenergie":
+                    case "Wirkleistung":
+                    case "Wirkleistung 1":
+                    case "Wirkleistung 2":
+                    case "Wirkleistung 3":
+                        $name=array();
+                        foreach ($this->oids as $index=>$data)
+                            {
+                            foreach ($data as $type=>$entry)
+                                {
+                                if (isset($entry["Name"])) $name[$entry["Name"]][$type]=$entry;
+                                }
+                            }
+                        foreach ($this->oids as $index=>$data)
+                            {
+                            foreach ($data as $type=>$entry)
+                                {
+                                if (isset($entry["Name"])) $name[$entry["Name"]][$type]=$entry;    
+                                if (isset($entry["COID"])===false) print_R($entry);
+                                elseif ($entry["COID"] == $oid) 
+                                    {
+                                    $found=true; $newtype=false; $item1="EnergieID"; $item2="LeistungID";
+                                    $lookfor=$entry["OID"]; 
+                                    $pos1=strpos($type,"POWER");
+                                    if ($pos1 !== false) { $newtype="ENERGY".substr($type,5); $item2=$item1; $item1="LeistungID"; }
+                                    $pos1=strpos($type,"ENERGY");
+                                    if ($pos1 !== false) $newtype="POWER".substr($type,6);
+                                    if ($newtype===false) continue;
+                                    $lookforname=$entry["Name"];
+                                    if ($debug) 
+                                        {
+                                        echo "                    found, $type ==> $newtype \n";
+                                        if (isset($name[$lookforname])) echo "                                        found name\n";
+                                        }
+                                    //print_R($entry);
+                                    if (isset($this->oids[$lookfor][$newtype]["COID"]))
+                                        {
+                                        $result[$item1]=$oid;
+                                        $result[$item2]=$this->oids[$lookfor][$newtype]["COID"];
+                                        return ($result);
+                                        }
+                                    else 
+                                        {
+                                        if ($debug) echo "did not found $lookfor $newtype try $lookforname\n";
+                                        }
+                                    if (isset($name[$lookforname])) 
+                                        {
+                                        $result[$item1]=$oid;
+                                        $result[$item2]=$name[$lookforname][$newtype]["COID"];
+                                        return ($result);
+                                        //print_r($name[$lookforname]);                                        
+                                        }
+                                    }
+                                }
+                            }
+                        if ($found===false) print_r($this->oids);
+                        $result["EnergieID"]=$oid;
+                        $result["LeistungID"]=false;            // eigenes Register
+                        return ($result);
+                    default:
+                        echo "getShellyRegistersfromOID, Warning $oid (".IPS_GetName($oid).") not found, even it seems to be a register, probably not known. \n";
+                        $cids = @IPS_GetChildrenIDs(IPS_GetParent($oid));
+                        break;
                     }
                 }
             if ($cids === false)  return(false);
@@ -566,6 +763,12 @@
                         }  */
                     }
                 // Workaround future proof
+                if (isset($result["EnergieID"])===false) 
+                    {
+                    echo "Error, no result, getShellyRegistersfromOID($oid \n";
+                    if ($debug) return (false);                                         // try again with debug and exit here if unsolved
+                    $this->getShellyRegistersfromOID($oid,2);
+                    }
                 $result["HM_EnergieID"] = $result["EnergieID"];
                 $result["HM_LeistungID"] = $result["LeistungID"];
                 return ($result);
@@ -573,9 +776,14 @@
 			}	
 
 
-        /* allgemeine Funktion das Energieregister herauszufinden. Unabhängig von einer Hardwaretype
-         * die MeterConfig oder eben nur Teile daraus kann auch als Parameter übergeben werden.
+        /* getRegistersfromOID, depricated
          *
+         * allgemeine Funktion das Energieregister herauszufinden. Unabhängig von einer Hardwaretype
+         * die MeterConfig oder eben nur Teile daraus kann auch als Parameter übergeben werden.
+         * parameter ist entweder ein Name oder eine OID, wenn Name, doiesen suchen und diese function noch einmal aufrufen
+         *
+         * called from printMeterTopology, writeEnergySumme
+         * does not work with Type register
          */            
 			
 		function getRegistersfromOID($oid,$MConfig=array(),$debug=false)
@@ -587,7 +795,7 @@
 				$MConfig=$this->MeterConfig;
 				}
             if ($debug>1) echo "getRegistersfromOID($oid,[".json_encode($MConfig) ."]) aufgerufen.\n";              
-            if (is_string($oid))
+            if (is_string($oid))                // nach Namen suchen ist weiterhin möglich
                 {
                 $name=trim($oid);
                 if ($debug) echo "           getRegistersfromOID($name as NAME to look for\n";
@@ -600,6 +808,9 @@
                     //if ($debug) echo "           ".$entry["NAME"].",";                        
                     if ($entry["NAME"]==$name) 
                         {
+                        $found=true;
+                        return($entry);
+                        /* depricated
                         if (isset($entry["OID"])) 
                             {
                             $realOID=$entry["OID"];
@@ -607,7 +818,11 @@
                             $found=true;
                             $result=$this->getRegistersfromOID($realOID,$MConfig,$debug);
                             }
-                        else echo "       no OID found ".json_encode($entry)."\n";
+                        else 
+                            {
+                            $type = $entry["TYPE"];
+                            echo "       getRegistersfromOID, $name, $type, no OID found ".json_encode($entry)."\n";
+                            } */
                         }
                     }
                 if ($found === false) 
@@ -620,6 +835,7 @@
                 }
             else
                 {
+                echo "getRegistersfromOID($oid,[".json_encode($MConfig) ."]) called. Depricated. Solve in SetMeterConfig.\n";
                 foreach ($MConfig as $identifier => $meter)
                     {
                     if ( isset($meter["OID"]) == true )
@@ -1065,21 +1281,26 @@
                 foreach ($entry["Instances"] as $index => $instance)
                     {
                     $found=false;
-                    if ($instance["TYPEDEV"]=="TYPE_METER_POWER") 
+                    switch ($instance["TYPEDEV"])
                         {
-                        //print_R($childrens); foreach ($childrens as $children) echo IPS_getName($children)."  "; echo "\n";
-                        $found=true;
-                        }
-                    else if ($instance["TYPEDEV"]=="TYPE_SWITCH")                                   // keine eigene Instanz für Messwerte
-                        {
-                        if ($debug>1) echo "      $index   ".json_encode($instance)."    \n";
-                        if (isset($entry["Channels"][$index]["TYPE_METER_POWER"]))
-                            {
-                            // gefunden
+                        case "TYPE_METER_POWER": 
+                            //print_R($childrens); foreach ($childrens as $children) echo IPS_getName($children)."  "; echo "\n";
                             $found=true;
-                            }
+                            break;
+                        case "TYPE_SWITCH":                                   // keine eigene Instanz für Messwerte
+                            if ($debug>1) echo "      $index   ".json_encode($instance)."    \n";
+                            if (isset($entry["Channels"][$index]["TYPE_METER_POWER"]))
+                                {
+                                // gefunden
+                                $found=true;
+                                }
+                            break;
+                        case "TYPE_BUTTON":             // ignore this one
+                            break;
+                        default:
+                            echo "      doublecheckEnergyRegisters, $name $index no known TYPEDEV  ".json_encode($instance)."    \n";
+                            break;
                         }
-                    else echo "      $index  $name no TYPEDEV  ".json_encode($instance)."    \n";
                     if ($found)
                         {
                         $powerMeter[$instance["OID"]]["NAME"]=$instance["NAME"];
@@ -1132,7 +1353,7 @@
             //echo"-------------------------------------------------------------\n";
             //print_r($energyMeter);
             //echo"-------------------------------------------------------------\n";
-            echo "doublecheckEnergyRegisters, all Register marked with *** are not in the AMIS configuration.\n";
+            echo "doublecheckEnergyRegisters, all Register marked with *** are not in the AMIS configuration. Values are from device registers.\n";
             foreach ($energyMeterAll as $oid => $register)
                 {
                 $props=IPS_GetVariable($oid);
@@ -1170,7 +1391,7 @@
 			$homematicAvailable=false;
 			if (strtoupper($meter["TYPE"])=="HOMEMATIC")
 				{
-                if ($debug) echo "   writeEnergyHomematic: aufgerufen mit ".json_encode($meter)." mit Werten von : ".$meter["NAME"]."\n";
+                echo "deprecated, writeEnergyHomematic: aufgerufen mit ".json_encode($meter)." mit Werten von : ".$meter["NAME"]." \n";
 				$homematicAvailable=true;
 				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
@@ -1458,7 +1679,7 @@
                 // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false, $debug=false)
 				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   // 0 Boolean 1 Integer 2 Float 3 String,  alle selbe Position
 
-				$WirkenergieID      = CreateVariableByName($ID, $identifier.'_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$LetzteWirkenergieID      = CreateVariableByName($ID, $identifier.'_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
 				$EnergieID          = IPS_GetObjectIDByName('Wirkenergie', $ID);
 				$LeistungID         = IPS_GetObjectIDByName('Wirkleistung', $ID);
 				$LeistungTagID      = IPS_GetObjectIDByName('Wirkleistung (Tag)', $ID); 
@@ -1470,7 +1691,7 @@
             
                 /* Meter Variablen bestimmen */
                 $error=false; $HMenergieID=false; $HMleistungID=false;
-                if ( isset($meter["OID"]) == true )             // wenn der TYPE nicht bekannt ist wird auch OID nicht übernommen
+                /*if ( isset($meter["OID"]) == true )             // wenn der TYPE nicht bekannt ist wird auch OID nicht übernommen
                     {
                     switch ($type)
                         {
@@ -1492,7 +1713,7 @@
                     }
                 else            /* es gibt die Möglichkeit statt der OID, das wäre entweder das Energy Register oder die Instanz auch die entsprechenden Homematic Register direkt anzugeben */
                     {
-                    if (( (isset($result["EnergieID"])) && (isset($result["LeistungID"])) ) === false) $error=true;
+                    if (( (isset($meter["EnergieID"])) && (isset($meter["LeistungID"])) ) === false) $error=true;
                     else
                         {
                         $HMenergieID  = $meter["EnergieID"];        // aber von SetConfiguration aktuell gefiltered      
@@ -1504,6 +1725,11 @@
                 if ( ($HMenergieID != 0) && ($HMleistungID != 0) && !$error)
                     {
                     $changeDone=$this->historyLogging($ID, $HMenergieID, ($debug>1));
+                    // Config und History Logging auslesen, debug purposes 
+                    $ConfigID = IPS_GetObjectIDByName('ConfigReading', $ID);
+                    $configuration = json_decode(GetValue($ConfigID),true);
+                    if ($debug && $changeDone) echo "History of Wirkenergie Counter: ".$configuration["HISTORY"]."  \n";
+
                     /* Config und History Logging machen 
                     $changeDone=false;
                     $configValue=json_encode($configuration);                    
@@ -1531,7 +1757,38 @@
                             SetValue($ConfigID, $configValue);                             
                             }
                         }   */
-
+                    if ( isset($meter["Calculate"]) == true )
+                        {
+                        $calculate = explode(",",$meter["Calculate"]);                  
+                        if ($debug) echo "     dazu werden die folgenden Register zusammengezählt: ".$meter["Calculate"]."\n";
+                        //print_r($calculate);
+                        $e=0; $energie=0; $leistung=0;
+                        echo "       #  Name      Wirkenergie  Wirleistung    Result\n";
+                        foreach ($calculate as $oid)
+                            {
+                            $e++;       // Zeilenindex, oid ist ein Name oder eine ID
+                            if ($debug>1) echo "        $e bearbeite $oid:\n";                          
+                            $result=$this->getRegistersfromOID($oid,[],($debug>1));           // das sind die Quellregister (von Homematic, Register, AMSI Zähler etc.), vor der Verarbeitung
+                            if ($result !== false)
+                                {
+                                if (isset($result["NAME"])===false) print_R($result);
+                                $category=IPS_GetObjectIdByName($result["NAME"],$this->CategoryIdData);
+                                if ($category !== false)
+                                    {
+                                    $wirkEnergieId=IPS_GetObjectIdByName("Wirkenergie",$category);
+                                    $wirkLeistungId=IPS_GetObjectIdByName("Wirkleistung",$category);
+                                    if ( ($wirkEnergieId !== false) && ($wirkLeistungId !== false) )
+                                        {
+                                        echo "          ".str_pad($e,3).str_pad($result["NAME"],30).str_pad("$wirkEnergieId : ".nf(GetValue($wirkEnergieId),"kWh")." $wirkLeistungId : ".nf(GetValue($wirkLeistungId),"kW"),60);
+                                        $energie+=GetValue($wirkEnergieId);
+                                        $leistung+=GetValue($wirkLeistungId);
+                                        echo " ergibt Summe Energie ($EnergieID): ".nf($energie,"kWh")." Summe Leistung ($LeistungID): ".nf($leistung,"kW")."\n"; 
+                                        }
+                                    }
+                                }
+                            else echo "Warning, Variable $oid to Calculate Sum not found. Looked for [Name] not Key.\n";
+                            }
+                        }
                     /* Werte schreiben Leistung gemittelt für 24 Stunden */
                     $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
                     if ($logAvailable) 
@@ -1542,18 +1799,21 @@
                     switch ($type)
                         {
                         case "SHELLY":              
-                            $energie=GetValue($HMenergieID);            
+                            $energie=GetValue($HMenergieID);                    // Shelly Energiewert ist in kWH
                             $leistung=GetValue($HMleistungID);
                             break;
                         case "HOMEMATIC":   
                         case "SUMME":        
-                            $energie=GetValue($HMenergieID)/1000;               // Homematic Wert ist in Wh, in kWh umrechnen 
+                            $energie=GetValue($HMenergieID)/1000;               // Homematic Energiewert ist in Wh, in kWh umrechnen 
                             $leistung=GetValue($HMleistungID);
                             break;
                         } 
 
+                    // neuer Wert $energie wird gespeichert, es wird kein Vorschub gespeichert, Offset wird ermittelt, hat aber keine Auwswirkungen
+                    //$energievorschub=$this->deltaCalcEnergy($ID, $energie, $changeDone, $debug);          // immer mit Letzte_Wirkenergie
+
                     // Wieviel ist in den letzten 15 Minuten weitergegangen, es wird mit dem gespeicherten Zählerstand verglichen    
-                    $energievorschub=$energie-GetValue($WirkenergieID);
+                    $energievorschub=$energie-GetValue($LetzteWirkenergieID);
                     //echo "$energievorschub=$energie-".GetValue($WirkenergieID)."\n";
                     if ($changeDone)                // das Homemeatic Register hat sich geändert. Erster Wert ist Offset. Nächsten Wert erst für den Vorschub verwenden 
                         {
@@ -1562,9 +1822,9 @@
                         }                      
                     elseif ($energievorschub<0)       // Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt 
                         {
-                        echo "   >>Fehler, Energievorschub kleiner 0, ist $energievorschub. Den aktuellen Wert des Spiegelregisters in Data ($WirkenergieID) auf den Offset aufaddieren : ".GetValue($WirkenergieID)."kWh.\n";
+                        echo "   >>Fehler, Energievorschub kleiner 0, ist $energievorschub. Den aktuellen Wert des Spiegelregisters in Data ($LetzteWirkenergieID) auf den Offset aufaddieren : ".GetValue($LetzteWirkenergieID)."kWh.\n";
                         $offset = GetValue($OffsetID);                        
-                        $offset+=GetValue($WirkenergieID); // als Offset alten bekannten Wert dazu addieren 
+                        $offset+=GetValue($LetzteWirkenergieID); // als Offset alten bekannten Wert dazu addieren 
                         $energievorschub=$energie;
                         SetValue($OffsetID,$offset);
                         }
@@ -1577,7 +1837,7 @@
                     $energie_neu=GetValue($EnergieID)+$energievorschub;
                     if ($debug==false)
                         {
-                        SetValue($WirkenergieID,$energie);          // Spiegelregister für Homematic Energie Register 
+                        SetValue($LetzteWirkenergieID,$energie);          // Spiegelregister für Homematic/Shelly/Summe Energie Register 
                         SetValue($EnergieID,$energie_neu);
                         SetValue($LeistungID,$energievorschub*4);
                         }
@@ -1591,7 +1851,7 @@
                         $cost=$leistung*24/1000*365*0.4;
                         echo "       Achtung Debug Mode, keine Werte speichern   \n";
                         echo "       Werte aus dem Device    : ".nf($energie,"kWh")." ".nf($leistung,"W")."    ~".nf($cost,"€")."/year if continous (40ct/kWh)\n";
-                        echo "       Energievorschub aktuell : ".nf($energievorschub,"kWh")."  in Bezug zu ".nf(GetValue($WirkenergieID),"kWh")."\n";
+                        echo "       Energievorschub aktuell : ".nf($energievorschub,"kWh")."  in Bezug zu ".nf(GetValue($LetzteWirkenergieID),"kWh")."\n";
                         echo "       Energiezählerstand      : ".nf($energie_neu,"kWh")." Leistung : ".nf(GetValue($LeistungID),"kW")." \n";
                         echo "       Offset Energie          : ".nf(GetValue($OffsetID),"kWh")." \n";                       // schwer zu erklären, die Summe aller ignorierten und bereits angesammelten Zählerstände, Energie-Offset ist der Zeitpunkt des letzten Fehlers
                         echo "       Configuration           : $configValue \n\n";
@@ -1716,9 +1976,6 @@
 			{
 			$registerAvailable=false;
             $identifier="Summe";
-			$energie=0;
-			$leistung=0;
-
 			if (strtoupper($meter["TYPE"])=="SUMME")
 				{
 				$registerAvailable=true;
@@ -1726,7 +1983,7 @@
 			      
 				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-				$WirkenergieID      = CreateVariableByName($ID, $identifier.'_Wirkenergie', 2, false, false, 100);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$LetzteWirkenergieID      = CreateVariableByName($ID, $identifier.'_Wirkenergie', 2, false, false, 100);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
 				$EnergieID          = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 				$LeistungID         = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 				$LeistungTagID      = IPS_GetObjectIDByName('Wirkleistung (Tag)', $ID); 
@@ -1751,7 +2008,7 @@
 					$calculate = explode(",",$meter["Calculate"]);                  
 					if ($debug) echo "     dazu werden die folgenden Register zusammengezählt: ".$meter["Calculate"]."\n";
 					//print_r($calculate);
-                    $e=0;
+                    $e=0; $energie=0; $leistung=0;
 					foreach ($calculate as $oid)
 						{
                         $e++;       // Zeilenindex, oid ist ein Name oder eine ID
@@ -1765,7 +2022,7 @@
                         */
                         if ($result !== false)
                             {
-                            $category=IPS_GetObjectIdByName($result["Name"],$this->CategoryIdData);
+                            $category=IPS_GetObjectIdByName($result["NAME"],$this->CategoryIdData);
                             if ($category !== false)
                                 {
                                 $wirkEnergieId=IPS_GetObjectIdByName("Wirkenergie",$category);
@@ -1816,10 +2073,11 @@
                 echo "  Last updated ".date("d.m.Y H:i:s",$lastChanged)." seit $timeChanged Sekunden,  Wert  :  ".nf(GetValue($EnergieID),"kWh")." \n";
 
 				$leistungVergleich=$energievorschub/$timeChanged*15*60*4;
-                $energie = GetValue($EnergieID)+$energievorschub;
+                $energie_neu = GetValue($EnergieID)+$energievorschub;
                 if ( ($timeChanged>880 ) && ($debug===false) )     // 15 Minuten sind 900 Sekunden
                     {
-				    SetValue($EnergieID,$energie);
+                    SetValue($LetzteWirkenergieID,$energie);          // Spiegelregister für Homematic/Shelly/Summe Energie Register                         
+				    SetValue($EnergieID,$energie_neu);
 				    SetValue($LeistungID,$leistung);
 				    echo "  Neue Werte : ".nf($energie,"kWh")."  ".nf($leistung,"kW")."    Zum Vergleich : ".nf($leistungVergleich,"kW")."\n"; 
                     }
@@ -1904,6 +2162,16 @@
          *
          * nur verwendet für die Ausgeben die hinter Execute stehen
 		 * verwendet AC_GetLoggedValues
+         *
+         * erzeugt auch die Variablen in CategoryIdData.meter[NAME]:
+         *          Wirkenergie
+         *          Wirkleistung
+         *          Offset_Wirkenergie
+         *          Shelly_Wirkenergie,Homematic_Wirkenergie
+		 *
+         * meter als Config übergibt zumindest
+         *          OID
+         *      oder HM_EnergieID,HM_LeistungID         
 		 *
          */
 		function writeEnergyRegistertoString($MConfig,$html=true,$debug=false)			/* alle Werte aus der Config ausgeben */
@@ -1972,7 +2240,7 @@
                         if ($debug)
                             {
                             echo "-----------------------------".$newline;
-                            echo "Werte von : ".$meter["NAME"].$newline;
+                            echo "Values from ".$meter["NAME"]." with type ".$meter["TYPE"].$newline;
                             }
                         $ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
@@ -1981,7 +2249,12 @@
                         $OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
                         if (strtoupper($meter["TYPE"]) == "SHELLY") $Homematic_WirkergieID = CreateVariableByName($ID, 'Shelly_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
                         else $Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-                        if ( isset($meter["OID"]) == true )
+                        if ( (isset($meter["EnergieID"])) && (isset($meter["LeistungID"])) )        // works best with Shelly
+                            {
+                            $HMenergieID  = $meter["EnergieID"];
+                            $HMleistungID = $meter["LeistungID"];
+                            }
+                        elseif ( isset($meter["OID"]) == true )         // works best with Homematic
                             {
                             $OID  = $meter["OID"];
                             $cids = IPS_GetChildrenIDs($OID);
@@ -1997,25 +2270,36 @@
                                 $o = IPS_GetObject($cid);
                                 if($o['ObjectIdent'] != "")
                                     {
-                                    if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
-                                    if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
+                                    switch ($o['ObjectName'])       // von addonkeyname übernehmen
+                                        {
+                                        case "POWER":
+                                            $HMleistungID=$o['ObjectID']; 
+                                            break;
+                                        case "ENERGY_COUNTER":
+                                            $HMenergieID=$o['ObjectID']; 
+                                            break;
+                                        default:
+                                            //echo IPS_GetName($cid)." ";
+                                            break;
+                                        }
                                     }
                                 }
-                            //echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+                            echo "  OID der Homematic Register selbst bestimmt : EnergieID : ".$HMenergieID." LeistungID : ".$HMleistungID."\n";
                             }
                         else
                             {
+                            echo "MeterConfig : ".json_encode($meter)."\n";
                             $HMenergieID  = $meter["HM_EnergieID"];
                             $HMleistungID = $meter["HM_LeistungID"];
                             }
                             
                         $energievorschub=GetValue($LeistungID);
-                        $energie=GetValue($Homematic_WirkergieID);
+                        $energie=GetValue($Homematic_WirkergieID);          // aus data, der letzte gemessene Wert
                         if ($debug)
                             {
-                            echo "  Werte aus dem Gerät : aktuelle Energie : ".number_format($energie, 2, ",", "" )." kWh  aktuelle Leistung : ".number_format(GetValue($HMleistungID), 2, ",", "" )." W".$newline;
-                            echo "  Energievorschub aktuell : ".number_format($energievorschub, 2, ",", "" )." kWh".$newline;
-                            echo "  Energiezählerstand      : Energie ".number_format(GetValue($EnergieID), 2, ",", "" )." kWh Leistung : ".number_format(GetValue($LeistungID), 2, ",", "" )." kW".$newline;
+                            echo "  Werte aus dem Gerät : letzte Energie : ".number_format($energie, 2, ",", "" )." kWh aktuelle Energie : ".number_format(GetValue($HMenergieID), 2, ",", "" )." Wh "."aktuelle Leistung : ".number_format(GetValue($HMleistungID), 2, ",", "" )." W".$newline;
+                            echo "  Energievorschub aktuell vom Leistungswert : ".number_format($energievorschub, 2, ",", "" )." kWh".$newline;
+                            echo "  Energiezählerstand aus data     : Energie ".number_format(GetValue($EnergieID), 2, ",", "" )." kWh Leistung : ".number_format(GetValue($LeistungID), 2, ",", "" )." kW".$newline;
                             }
                         $vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
                         $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
@@ -2783,7 +3067,7 @@
                         $count++;
                         }
                     // Space for additional Evaluations that result into zeile[metercount]
-                    $zeile[$metercount]["Power"] = $this->getArchivePower($EnergieID,($debug>1));
+                    $zeile[$metercount]["Power"] = $this->getArchivePower($EnergieID,true);         // ($debug>1)
                     }
 				$metercount+=1;                                     //  nächste Zeile
 				} /* ende foreach Meter Entry */
@@ -4569,6 +4853,7 @@
                                 [Calculate] => Arbeitszimmer,Wohnzimmer,Gaestezimmer,Kueche,Weinkuehler    )
                         [CHILDREN] => Array    (         
          *
+         * Headline:   Name   Type    OID   value(OID)   PowerID   Power
          */
         function printMeterTopology($meterTopology, $meterValues, $ident="",$debug=false)
             {
@@ -4594,8 +4879,11 @@
                         if ($oid !== false) 
                             {
                             $item = str_pad($type,10)."   ($oid) ".nf(getValue($oid),"kW");
-                            $regs=$this->getRegistersfromOID($name);     // geht auch mit Name
-                            if (isset($regs["LeistungID"])) $item .= "  (".$regs["LeistungID"]."): ".GetValueIfFormatted($regs["LeistungID"]);
+                            if (strtoupper($type) != "SUMME")
+                                {
+                                $regs=$this->getRegistersfromOID($name);     // geht auch mit Name
+                                if (isset($regs["LeistungID"])) $item .= "  (".$regs["LeistungID"]."): ".GetValueIfFormatted($regs["LeistungID"]);
+                                }
                             //echo " (".$ipsOps->path($oid).") ";
                             if ($debug) echo $item;
                             $text .= $item;

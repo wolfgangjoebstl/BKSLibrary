@@ -3,6 +3,7 @@
 /***********************************************************************
  *
  * Alle automatischen Steuerungen zB bei Tastendruck oder Werteänderung hier vereinen
+ * Details siehe unten bei Funktionen.
  *
  * macht abhängig von der Art des Aufrufes unterschiedliche Funktionen
  *
@@ -25,7 +26,9 @@
  *
  * Funktionen
  *      Initialisierung
- *      verwendet die module IPSComponent, IPSLight (wegen Kompatibilität), Stromheizung, EvaluateHardware
+ *      verwendet die module IPSComponent, IPSLight (wegen Kompatibilität), Stromheizung, EvaluateHardware, Autosteuerung
+ *      zusaetzlich noch OperationCenter und Sprachsteuerung
+ *      Logging log fuer Autosteuerung und Anwesenheitserkennung
  *
  ***********************************************************/
 
@@ -231,6 +234,25 @@ if ($_IPS['SENDER']=="RunScript")
  * uebergeben wird die Variable ID und der neue Wert dazu kann ausgelesen werden.
  * 
  * an die Funktion wird als Parameter übergeben:   $params,$value,$variableID,false,$wertOpt  diese meldet einen Status zurück
+ *
+ * für die VariableID (IPS_VARIABLE) rausfinden ob es einen Eintrag gibt, wenn ja params sonst eine Sprachmeldung (?)
+ *      params[0] ist OnUpdate, OnChange
+ *      params[1] ist Status+Bounce, nach dem ersten Parameter wird aufgerufen
+ *      params[2] sind die Befehle
+ *
+ *
+ *      iTunes,Media        iTunesSteuerung
+ *      GutenMorgenWecker   GutenMorgenWecker
+ *      Anwesenheit         Anwesenheit
+ *      Ventilator1         Ventilator1
+ *      Parameter           Parameter
+ *      Ventilator,HeatControl,Heizung          Ventilator2
+ *      Status              Status
+ *      StatusParallel      StatusParallel
+ *      StatusRGB           StatusRGB
+ *      Switch
+ *      Custom
+ *      Monitor
  *
  *********************************************************************************************/
 

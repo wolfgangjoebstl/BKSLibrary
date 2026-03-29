@@ -1909,7 +1909,7 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
     function GetValueIfFormatted($oid)
         {
         $variabletyp=IPS_GetVariable($oid);
-        if ( ($variabletyp["VariableProfile"]!="")  or ($variabletyp["VariableCustomProfile"]!="") )
+        if ( ($variabletyp["VariableProfile"] != "")  or ($variabletyp["VariableCustomProfile"] != "") or ($variabletyp["VariablePresentation"] != "") or ($variabletyp["VariableCustomPresentation"] != "") )
             {
             $result=@GetValueFormatted($oid);
             if ($result===false) { echo "GetValueIfFormatted: Fehler mit Format von $oid.\n"; }
@@ -15513,7 +15513,9 @@ class ComponentHandling
 
     private $installedModules, $debug;
     private $remote, $messageHandler;
-    //private $congigMessage;
+    
+    protected $configMessage;
+    protected $archiveSDQL_HandlerID;
 
     /* ComponentHandling Klasse initialisiseren 
      * kann archiveHandlerID und archiveSDQL_HandlerID
@@ -16164,18 +16166,74 @@ class ComponentHandling
                 $index="Helligkeit";
                 $profile="Helligkeit";                  // Variablen Profil
                 break;
-            case "ENERGY":    
-            case "SUMENERGY":                                     
+            // Gesamtenergie
+            case "ENERGY":                                              // Homematic
+            case "SUMENERGY":                                           // Register
+            case "GESAMTVERBRAUCH":                                     // Shelly                              kWh
+            case "GESAMTVERBRAUCH 1":                                     // Shelly                              kWh
+            case "GESAMTVERBRAUCH 2":                                     // Shelly                              kWh
+            case "GESAMTVERBRAUCH 3":                                     // Shelly                              kWh
+            case "GESAMTWIRKENERGIE":
+            case "ENERGY_COUNTER":                                      // Homematic                            Wh
                 $variabletyp=2; 		            // Float 
                 $index="Stromverbrauch";
                 $profile="~Electricity";                  // Variablen Profil
+                $keyName["REGISTER"]="ENERGY";
                 break;
+            // Phasenenergie L1
+            case "PHASE A GESAMTWIRKENERGIE":
+                $variabletyp=2; 		            // Float 
+                $index="Stromverbrauch";
+                $profile="~Electricity";                  // Variablen Profil
+                $keyName["REGISTER"]="ENERGY_L1";
+                break;
+            // Phasenenergie L2
+            case "PHASE B GESAMTWIRKENERGIE":
+                $variabletyp=2; 		            // Float 
+                $index="Stromverbrauch";
+                $profile="~Electricity";                  // Variablen Profil
+                $keyName["REGISTER"]="ENERGY_L2";
+                break;
+            // Phasenenergie L3
+            case "PHASE C GESAMTWIRKENERGIE":
+                $variabletyp=2; 		            // Float 
+                $index="Stromverbrauch";
+                $profile="~Electricity";                  // Variablen Profil
+                $keyName["REGISTER"]="ENERGY_L3";
+                break;
+            // Gesamtleistung
             case "POWER":  
             case "SUMPOWER":
-                //$detectmovement="Helligkeit";
+            case "WIRKLEISTUNG":
+            case "WIRKLEISTUNG 1":
+            case "WIRKLEISTUNG 2":            
+            case "WIRKLEISTUNG 3": 
+            case "WIRKLEISTUNG AUF ALLEN PHASEN":
                 $variabletyp=2; 		            // Float 
                 $index="Stromverbrauch";
                 $profile="~Power";                  // Variablen Profil ist kW, irgendwo muss umgerechnet werden
+                $keyName["REGISTER"]="POWER";
+                break;
+            // Phasenleistung L1
+            case "PHASE A WIRKLEISTUNG":
+                $variabletyp=2; 		            // Float 
+                $index="Stromverbrauch";
+                $profile="~Power";                  // Variablen Profil ist kW, irgendwo muss umgerechnet werden
+                $keyName["REGISTER"]="POWER_L1";
+                break;
+            // Phasenleistung L2                
+            case "PHASE B WIRKLEISTUNG":
+                $variabletyp=2; 		            // Float 
+                $index="Stromverbrauch";
+                $profile="~Power";                  // Variablen Profil ist kW, irgendwo muss umgerechnet werden
+                $keyName["REGISTER"]="POWER_L2";
+                break;
+            // Phasenleistung L3
+            case "PHASE C WIRKLEISTUNG":
+                $variabletyp=2; 		            // Float 
+                $index="Stromverbrauch";
+                $profile="~Power";                  // Variablen Profil ist kW, irgendwo muss umgerechnet werden
+                $keyName["REGISTER"]="POWER_L3";
                 break;
             case "CONTACT":
                 $detectmovement="Contact";
@@ -16247,6 +16305,7 @@ class ComponentHandling
             default:	
                 $variabletyp=0; 		/* Boolean */	
                 echo "************AllgemeineDefinitionen::addOnKeyName, kenne ".strtoupper($keyName["KEY"])." nicht.\n";
+                echo "          ".json_encode($keyName)."\n"; 
                 return (false);                 // testweise probieren, Fehler muss abgefangen werden
                 break;
             }
@@ -18914,7 +18973,7 @@ class ModuleHandling
 	private $modules;	// array mit Liste der Namen und GUIDs von Modules 
 	private $functions;
 	private $debug;
-    private $ips;       // Hilfestellung
+    private $ipsOps;       // Hilfestellung
 	
     /* verwendet class storage for libraries and modules, mit Indizierter Suche 
      */

@@ -133,11 +133,13 @@
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
-//Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
+    IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+    IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
+    IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+    IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // unbedingt erforderlich
 
 /******************************************************
  *
@@ -206,7 +208,8 @@ if ($_IPS['SENDER']=="TimerEvent")          // alle 60 Sekunden
 					$amis->sendReadCommandAmis($meter,$identifier,"F001");
 					break;
 				case "7":  /* Auto */
-					$amis->writeEnergyHomematic($meter);
+					//$amis->writeEnergyHomematic($meter);
+                    $amis->writeEnergyDevice($meter,"HOMEMATIC");
 					break;
 				case "6":  /* Auto */
                     $amis->sendReadCommandAmis($meter,$identifier,"F009");                
@@ -294,6 +297,8 @@ if ($_IPS['SENDER']=="Execute")
                 else { echo "  AMIS Zähler Port auf OID ".$com_Port." definiert.\n"; }
                 break;
             case "SUMME":
+                //print_R($meter);
+                echo "    Calculate ".$meter["Calculate"].":\n";
                 $amis->writeEnergySumme($meter,$debug);               // true für Debug
                 break;
             case "SHELLY":

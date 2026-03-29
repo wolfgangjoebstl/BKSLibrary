@@ -940,6 +940,7 @@ class HardwareShelly extends Hardware
     {
 
     protected $socketID, $bridgeID, $deviceID;
+    protected $DeviceManager;    
 	
 	public function __construct($config=false,$debug=false)
 		{

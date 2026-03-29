@@ -27,7 +27,7 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
     $startexec=microtime(true);
     $manualstart=false;
     $startup=false;                 // testing purposes
-    $dotimer=true;    
+    $dotimer=false;    
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     if (!isset($moduleManager))
@@ -110,7 +110,7 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
 		switch ($event)
 			{
             case $tim6ID:
-				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." einmal am Tag durchführen.");
+				IPSLogger_Dbg(__file__, "TimerEvent from : $event einmal am Tag durchführen.");
                 /********************************************************************
                 *
                 * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
@@ -145,7 +145,7 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
 			case $tim3ID:
                 $processStart=json_decode(GetValue($ProcessStartID),true);            
 				$counter=GetValue($ScriptCounterID);
-				IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." Autostart durchführen. ScriptcountID: $counter. Process ".json_encode($processStart));
+				IPSLogger_Inf(__file__, "TimerEvent from : $event Autostart durchführen. ScriptcountID: $counter. Process ".json_encode($processStart));
 				switch ($counter)
 					{
 					case 7:
@@ -260,7 +260,7 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
 				break;
 
 			default:
-				IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
+				IPSLogger_Inf(__file__, "TimerEvent from : $event ID unbekannt.");
 			   break;
 			}
 		}
