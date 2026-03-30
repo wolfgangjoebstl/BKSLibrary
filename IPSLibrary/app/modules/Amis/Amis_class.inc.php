@@ -380,7 +380,7 @@
             $MeterConfig=$this->getMeterConfig();
             foreach ($MeterConfig as $index => $entry)
                 {
-                echo str_pad($entry["NAME"],30).str_pad($entry["TYPE"],10);
+                echo str_pad($entry["NAME"],30).str_pad($entry["TYPE"],15);
                 if (isset($entry["OID"]))  echo "OID ";
                 if (isset($entry["EnergieID"]))  echo "EnergieID ";
                 if (isset($entry["LeistungID"]))  echo "LeistungID ";

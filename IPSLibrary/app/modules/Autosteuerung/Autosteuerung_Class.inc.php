@@ -9493,6 +9493,92 @@ function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
 
 /********************************************************************************************
  *
+ *  Measurement
+ *
+ * similar to Heating, but measures the amount of central heating 
+ * still in construction, but already quite effective
+ *
+ *************************************************************************************************/
+
+function Measure($params,$status,$variableID,$simulate=false)
+	{
+	global $categoryId_Autosteuerung,$params;
+	
+    $savespace=true;
+    $targetPercentage=50;
+    $threshold=[1,30,100,300,1000];         // immer mit 1 anfange, 0 werden nicht gespeichert
+    $compare=3;     // over 100
+    
+    $archOps = new archOps();
+	$measurementID = CreateVariableByName($categoryId_Autosteuerung,"Measurement",1);             // Integer
+    $variableLoggedId = CreateVariableByName($measurementID,"Wert_".IPS_GetName($variableID),2);             // Float
+    if ($savespace) $archOps->setArchiving($variableLoggedId,0,0);
+    else $archOps->setArchiving($variableLoggedId,1,0);
+
+    $statusLoggedId = CreateVariableByName($measurementID,"Status_".IPS_GetName($variableID),1);             // integer
+    $archOps->setArchiving($statusLoggedId,1,0);
+    $activeLoggedId = CreateVariableByName($measurementID,"Active_".IPS_GetName($variableID),1);             // integer, seconds
+    $archOps->setArchiving($activeLoggedId,1,0);
+    $starttimeId = CreateVariableByName($measurementID,"Starttime_".IPS_GetName($variableID),1);             // integer
+
+    $changeLoggedId = CreateVariableByName($measurementID,"Change_".IPS_GetName($variableID),2);             // float
+    if ($savespace) $archOps->setArchiving($changeLoggedId,0,0);
+    else $archOps->setArchiving($changeLoggedId,1,0);
+
+    echo "Measure as function of Autosteuerung called, Value for $variableID is $status Category is $categoryId_Autosteuerung, this Category is $measurementID  \n";
+    $oldValue=GetValue($variableLoggedId);
+    $change=$status-$oldValue;
+    if ($oldValue==0) $changePercent=$change;
+    else $changePercent = $change/$oldValue*100;
+    echo "Change change=new-old  $change=$status-$oldValue $changePercent\n";
+    SetValue($changeLoggedId,$changePercent);
+    SetValue($variableLoggedId,$status);
+
+    if ($threshold)
+        {
+        $oldstatus=GetValue($statusLoggedId);
+        $newstatus=sizeof($threshold);
+        foreach ($threshold as $index=>$min)
+            {
+            echo "        $index $min ";
+            if ($status<$min) { $newstatus=$index; break; }
+            }
+        echo "        $newstatus \n";
+        SetValue($statusLoggedId,$newstatus);
+
+        // Time over Threshold
+
+        if ( ($newstatus >= $compare) && ($oldstatus < $compare) )              // raise, we need starttime
+            {
+            SetValue($starttimeId,time());
+            }
+        if ( ($newstatus < $compare) && ($oldstatus >= $compare) )              // raise, we need starttime
+            {
+            if (GetValue($starttimeId) !== false)    
+                {
+                $duration=time()-GetValue($starttimeId);
+                SetValue($activeLoggedId,$duration);
+                }
+            SetValue($starttimeId,false);
+            }
+        }
+    elseif ($targetPercentage)
+        {
+        if ($changePercent>$targetPercentage) 
+            {
+            echo "Change $changePercent Status plus\n";
+            SetValue($statusLoggedId,2);
+            }
+        if ($changePercent<(-$targetPercentage)) 
+            {
+            echo "Change $changePercent Status minus\n";
+            SetValue($statusLoggedId,1);
+            }
+        }
+    }
+
+/********************************************************************************************
+ *
  *  Alexa
  *
  * passt nicht ganz dazu. Soll aber wie die Routinen Status die Befehle die von Alexa kommen abarbeiten.

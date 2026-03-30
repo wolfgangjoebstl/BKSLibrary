@@ -312,6 +312,10 @@ if ($_IPS['SENDER']=="Variable")
 				//Ventilator($params,$value);				
 		      break;
 			/*********************************************************************************************/
+		   case "Measure":
+		      Measure($params,$value,$variableID,false,$wertOpt);
+		      break;                
+			/*********************************************************************************************/
 		   case "Parameter":
 		      Parameter($params,$value,$variableID,false,$wertOpt);
 		      break;

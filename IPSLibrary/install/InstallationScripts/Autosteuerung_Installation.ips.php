@@ -450,7 +450,8 @@
     $profileOps = new profileOps();         // local                Profilverwaltung, InActive wird fürAlarmanlage benötigt
 	$profilname=array("InActive"=>"update");
     $profileOps->synchronizeProfiles($profilname);  
-
+    echo "\n";
+    
     $tabs=array();                          // neue Darstellung
 	$webfront_links=array();
 	foreach ($AutoSetSwitches as $nameAuto => $AutoSetSwitch)
@@ -766,7 +767,14 @@
                     {                
 				    $webfront_links[$AutosteuerungID]["OID_R"]=$inputSchalt;									
                     }
-				break;	
+				break;
+            case "MEASUREMENT":
+               $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Measurement'));             
+                if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
+                    {  				
+			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputHtml;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste */				
+                    }            
+                break;	
 			case "STROMHEIZUNG":
 				/* Stromheizung macht ein Progamm für die nächsten 14 Tage. Funktioniert derzeit für die Stromheizung und den eigenen Temperaturregler
 				 * Neue Funktion befüllt die Tabelle automatisch. Es gibt eine eigene Klasse für diese Funktion: AutosteuerungStromheizung
