@@ -597,7 +597,7 @@
 			echo "   Summenvariable Gesamtauswertung_".$group." mit ".$statusID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
    			//$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			$messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Motion,'.$parameter.',SUMMOTION','IPSModuleSensor_Motion',$debug);
+			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Motion,,'.$parameter.',SUMMOTION','IPSModuleSensor_Motion',$debug);
 			/* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
 			echo "      Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
 			}

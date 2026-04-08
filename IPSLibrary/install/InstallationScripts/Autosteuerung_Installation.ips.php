@@ -419,18 +419,26 @@
     $inputHtml = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenHtml, 0, "",null,null,""  );   /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
     $log = new Logging("No-Output",$inputHtml,"", true);            // true für html
 
+    //
     $categoryId_NachrichtenAnwe    = CreateCategory('Nachrichtenverlauf-AnwesenheitErkennung',   $CategoryIdData, 20);
     $inputAnwe = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenAnwe, 0, "",null,null,""  );     /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
     $log_Anwesenheitserkennung=new Logging($setup["LogDirectory"]."Anwesenheitserkennung.csv",$inputAnwe,IPS_GetName(0).";Anwesenheitserkennung;");
 
+    // AutosteuerungAlarmanlage
     $categoryId_NachrichtenSicherheit    = CreateCategory('Nachrichtenverlauf-Sicherheit',   $CategoryIdData, 20);
     $inputSicherheit = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenSicherheit, 0, "",null,null,""  );     /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
     $log_AlarmSicherheit=new Logging($setup["LogDirectory"]."AlarmSicherheit.csv",$inputSicherheit,IPS_GetName(0).";Sicherheit;");
+
+    // AutosteuerungMeasure
+    $categoryId_NachrichtenMeasurement    = CreateCategory('Nachrichtenverlauf-Measurement',   $CategoryIdData, 20);
+    $inputMeasurement = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenMeasurement, 0, "",null,null,""  );     /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
+    $log_AlarmMeasurement=new Logging($setup["LogDirectory"]."Measurement.csv",$inputMeasurement,IPS_GetName(0).";Measurement;");
 
 	$categoryId_Schaltbefehle = CreateCategory('Schaltbefehle-Anwesenheitssimulation',   $CategoryIdData, 20);
     $inputSchalt=CreateVariable("Schaltbefehle",3,$categoryId_Schaltbefehle, 0,'',null,'');
     //$categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);
     //$inputWoche=IPS_GetVariableIDByName("Wochenplan",$categoryId_Wochenplan);							// nicht generieren, wird erst später von den Routinen erstellt
+    
     $categoryId_Alexa = CreateCategory('Nachrichten-Alexa',   $CategoryIdData, 20);
     $inputAlexa=CreateVariable("Nachrichten",3,$categoryId_Alexa, 0,'',null,'');
 	$categoryId_Control = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
@@ -772,7 +780,7 @@
                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Measurement'));             
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {  				
-			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputHtml;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste */				
+			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputMeasurement;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste */				
                     }            
                 break;	
 			case "STROMHEIZUNG":

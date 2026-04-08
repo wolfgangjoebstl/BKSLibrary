@@ -1884,11 +1884,11 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 			return self::$eventConfigurationCust;
 		}
 
-		/**
-		 * @private
+		/* IPSMessageHandlerExtended::StoreEventConfiguration
 		 *
 		 * Speichert die aktuelle Event Konfiguration
          * aufgerufen nach registerEvent und unRegisterEvent
+         * !!! stellt sicher dass keine Variablen gespeichert werden die es nicht gibt 
 		 *
 		 * @param string[] $configuration Konfigurations Array
 		 */
@@ -1896,16 +1896,22 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
             {            
 			// Build Configuration String
 			$configString = '$eventConfiguration = array(';
-			foreach ($configuration as $variableId=>$params) {
+			foreach ($configuration as $variableId=>$params) 
+                {
 				$myString = PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) {
+				for ($i=0; $i<count($params); $i=$i+3) 
+                    {
 					if ($i>0) $myString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
 					$myString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
-				}
+				    }
 				$myString .= '),';
-                if ($comment) $configString .= str_pad($myString,120).'   //'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId));
-                else $configString .= $myString;
-			}
+                if (IPS_ObjectExists($variableId))
+                    {
+                    if ($comment) $configString .= str_pad($myString,120).'   //'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId));
+                    else $configString .= $myString;
+                    }
+                else echo "                 StoreEventConfiguration Object $variableId does not exist: $myString \n";
+    			}
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 
 			// Write to File
@@ -1926,7 +1932,9 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
             self::$eventConfigurationAuto = $configuration;
 		    }
 				
-                                    
+    	/* IPSMessageHandlerExtended::DeleteEvent
+		 *
+         */                                
         public static function DeleteEvent($eventName) 
             {
             $scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));

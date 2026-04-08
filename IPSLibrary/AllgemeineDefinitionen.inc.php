@@ -4346,6 +4346,7 @@ class archiveOps
      * aufgerufen von  getValues wenn Parameter Aggregated auf false steht
      * es gibt keine Funktion die Werte holt, also rund um AC_getLogged was machen
      * Zwischen Start und Endtime werden Werte aus dem Archiv getLogged geholt, es gibt keine 10.000er Begrenzung, allerdings wird der Speicher schnell knapp
+     *
      * Es gibt eine manuelle Aggregation die sowohl die Summe als auch den Average und Max/Min berechnen kann. 
      * Die Funktion kann auch die Übergabe von einer 10.000 Tranche zur nächsten
      *    if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config 
@@ -4655,13 +4656,22 @@ class archiveOps
         return ($werte);
         }
 
-    /* zum Check die Datenflut als Tageswerte zusammenzählen 
+    /* manualDailyAggregate
+     * zum Check die Datenflut in verschiedenen Perioden zusammenzählen. Die Symcon Aggregate Funktionen sind dafür nicht so wirklich geeignet.
+     * ich habe regelmaessige Werte und die will ich zusammenzählen, keinen Mittelwert. Das ist nicht so einfach mit Symcon hinzubekommen.
+     * mit Increment kann ich ide Methode des Aggregieren einstellen.
+     * 
      * zusätzlich zum Daily Aggreagate gibt es auch wöchentliche oder monatliche Auswertungen 
      * das Ergebnis wird im Array result gespeichert, return ist etwas anderes, das Ergebnis
      * result wird wenn nicht leer einfach länger, zeitlich und nach Index wird einfach hinten dran angehängt, index = 0,1,2....n
      *
+     * Die Funktion kann auch die Übergabe von einer 10.000 Tranche zur nächsten
+     *    if ($config["manAggregate"]) $config["carryOver"] = $this->manualDailyAggregate($werteTotal,$werte,$config,$debug1);      // werteTotal ist ergebnis, werte ist Input, config 
+     *    else {$this->manualDailyEvaluate($werteTotal,$werte,$config,$debug1); $werteTotal = array_merge($werteTotal,$werte); }
+     *     
      * config Einstellungen
-     *      manAggregate        daily, weekly, monthly
+     *      manAggregate        hourly, 4hours, daily, weekly, monthly
+     *                          array wäre auch möglich für detailliertere Aufgabenstellungen, tbd
      *      carryOver           Übertrag, wenn der halbe Tag noch nicht fertig wird die bisherige Summe als Teil der Konfiguration übergeben
      *      counter             Zähler oder Standard, zusätzliche Information ob die Werte steigen oder nur der Vorschub sind
      *      means.Full          pointer auf die class für die Mittelwertsberechnung
@@ -4670,7 +4680,7 @@ class archiveOps
      * unterschiedliche Arten der Berechnung des Aggregates, Increment = [0,1,2]
      *      0 gut geeignet für 15 Minuten Energiewerte, wird nur bei Daily verwendet
      *      1 für nicht so standardisiserte Werte, keine Berücksichtigung der aufgelaufenen Werte zwischen den Einzelwerten
-     *      2 für Zählerwerte, Differenz dist dei Aggregation
+     *      2 für Zählerwerte, Differenz ist die Aggregation
      *
      */
     public function manualDailyAggregate(&$result,$werte,$config,$debug=false)
@@ -4690,6 +4700,15 @@ class archiveOps
             {
             switch (strval($config["manAggregate"]))
                 {
+                case "0":
+                case "hourly":
+                    $manAggregate=0;
+                    $increment=0;                       // unterschiedliche Funktionen bei der Integration der Werte, geeignet für 15 Minutenwerte     
+                    break;
+                case "4hours":
+                    $manAggregate=40;
+                    $increment=0;                       // unterschiedliche Funktionen bei der Integration der Werte, geeignet für 15 Minutenwerte     
+                    break;
                 case "1":
                 case "daily":
                     $manAggregate=1;
@@ -4786,6 +4805,8 @@ class archiveOps
                     echo "   Tagesanfang ist allerdings $dailyDelay Minuten früher. berücksichtigen.\n";
                     echo "   Aktuelle Woche ist $woche\n";
                     }
+                $interval=0;  
+                $vorigestunde=$stunde;  
                 $vorigertag=$tag;
                 $vorigeWoche=$woche;
                 $vorigeMonat=$monat;
@@ -4814,7 +4835,35 @@ class archiveOps
              * wenn neuer Tag erkannt wird mit 0 beginnen und alten Wert zum alten Tag dazuzählen
              *
              */
-            if ( ( ($tag!=$vorigertag) && ($manAggregate==1) ) || ( ($woche!=$vorigeWoche) && ($manAggregate==2) ) || ( ($monat!=$vorigeMonat) && ($manAggregate==3) ) )     // Tages/Wochen/Monatswechsel, beim ersten Mal kommt man hier nicht vorbei
+            $chgOfSpan=false;
+            switch ($manAggregate)
+                {
+                case 0:         // hourly
+                    if ($stunde!=$vorigestunde) $chgOfSpan=true;
+                    break;
+                case 1:
+                    if ($tag!=$vorigertag) $chgOfSpan=true;
+                    break;
+                case 2:
+                    if ($woche!=$vorigeWoche) $chgOfSpan=true;
+                    break;
+                case 3:
+                    if ($monat!=$vorigeMonat) $chgOfSpan=true;
+                    break;
+                case 40:        // every 4 hours
+                    if ($stunde!=$vorigestunde) 
+                        {
+                        $vorigestunde=$stunde;
+                        //echo "Stunde voll \n";
+                        $interval++;
+                        if ($interval==4) $chgOfSpan=true;
+                        }
+                default:
+                    break;
+                }
+
+            //if ( ( ($tag!=$vorigertag) && ($manAggregate==1) ) || ( ($woche!=$vorigeWoche) && ($manAggregate==2) ) || ( ($monat!=$vorigeMonat) && ($manAggregate==3) ) )     // Tages/Wochen/Monatswechsel, beim ersten Mal kommt man hier nicht vorbei
+            if ($chgOfSpan)
                 { 
                 $showAgg=true;                      // Ergebnis anzeigen, es gibt einen Übertrag
                 //echo "Wechsel Aggregate $manAggregate Mode $increment\n"; 
@@ -4863,7 +4912,7 @@ class archiveOps
                             if ($countPeriode!=0) $result[$index]["Avg"]=$ergebnisTag/$countPeriode;            // Fehler abfangen und lieber keinen Wert
                             else $result[$index]["Avg"]=0;
                             $countPeriode=2; 
-                            if ($debug) echo "Tagesende erkannt, Tag $ergebnisTag Weiter $ergebnis \n";
+                            if ($debug) echo "Periodenende erkannt, $stunde / $interval Summe Periode: $ergebnisTag Weiter mit : $ergebnis \n";
                             }
                         if ($direction=="future")
                             {
@@ -4884,7 +4933,8 @@ class archiveOps
                         break;
                     default:
                     }
-                
+                $interval=0;
+                $vorigestunde=$stunde;                
                 $vorigertag=$tag; 
                 $vorigeWoche=$woche;
                 $vorigeMonat=$monat;                    
@@ -8253,6 +8303,21 @@ class meansRollEvaluate extends statistics
                         //$debug=false;
                         $duration=(7*24*60*60);         // es werden Zeitstempel verglichen
                         break;
+                    case "DAY":
+                        $count=10;                           // mehr Arbeitstage, Count, es wird nach duration abgebrochen
+                        //$debug=false;
+                        $duration=(24*60*60);         // es werden Zeitstempel verglichen
+                        break;                         
+                    case "4HOUR":
+                        $count=10;                           // mehr Arbeitstage, Count, es wird nach duration abgebrochen
+                        //$debug=false;
+                        $duration=(4*60*60);         // es werden Zeitstempel verglichen
+                        break;                         
+                    case "HOUR":
+                        $count=10;                           // mehr Arbeitstage, Count, es wird nach duration abgebrochen
+                        //$debug=false;
+                        $duration=(60*60);         // es werden Zeitstempel verglichen
+                        break;                         
                     default:
                         break;
                     }

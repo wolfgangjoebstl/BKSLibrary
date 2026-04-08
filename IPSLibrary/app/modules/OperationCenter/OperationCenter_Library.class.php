@@ -6355,6 +6355,7 @@ class BackupIpsymcon extends OperationCenter
  *
  *      readxmllogfile
  *      readlogfile
+ *      readlogfileFiltered
  *
  *      readLogDir
  *      DirLogs

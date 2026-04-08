@@ -3953,7 +3953,7 @@ class Autosteuerung
 	 * unterschiedliche Bearbeitung für Ventilator, Anwesenheit und alle anderen
 	 *
 	 * Es gibt folgende Befehle die extrahiert werden:
-	 *  NAME, SPEAK, OFF, ON, OFF_MASK, ON_MASK, COND, DELAY
+	 *  NAME, SPEAK, LOG, OFF, ON, OFF_MASK, ON_MASK, COND, DELAY
 	 *  NAME, SETPOINT, THRESHOLD, MODE
 	 *
 	 * Kurzbefehle:
@@ -4019,7 +4019,9 @@ class Autosteuerung
 			{
 			$Kommando++;
 			$command=trim($command);		// Leerzeichen am Anfang und Ende des Kommandos entfernen
-			$moduleParams2 = explode(',', $command);
+			//$moduleParams2 = explode(',', $command);
+            $moduleParams2 = $this->explode_ignoring_quotes(',',$command,'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
+            //print_R($moduleParams2);     // escape character " erkannt
 			$count=count($moduleParams2);
 			$Eintrag=$count;
 			$switch=false;		// marker wenn kein ON oder OFF Befehl gesetzt wurde
@@ -4043,7 +4045,8 @@ class Autosteuerung
 							$i=4;
 							while ($i<count($moduleParams2))
 								{
-								$params_more=explode(":",$moduleParams2[$i]);
+								//$params_more = explode(":",$moduleParams2[$i]);
+                                $params_more = $this->explode_ignoring_quotes(':',$moduleParams2[$i],'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
 								if (count($params_more)>1)
 									{
 									$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
@@ -4053,7 +4056,8 @@ class Autosteuerung
 								}					
 						case "4":
 							$i=3;
-							$params_more=explode(":",$moduleParams2[$i]);
+							//$params_more = explode(":",$moduleParams2[$i]);
+                            $params_more = $this->explode_ignoring_quotes(':',$moduleParams2[$i],'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
 							if (count($params_more)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
@@ -4067,7 +4071,8 @@ class Autosteuerung
 								}
 							$i--;								
 						case "3":
-							$params_three=explode(":",$moduleParams2[2]);
+							//$params_three = explode(":",$moduleParams2[2]);
+                            $params_three = $this->explode_ignoring_quotes(':',$moduleParams2[2],'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
 							if (count($params_three)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
@@ -4080,7 +4085,8 @@ class Autosteuerung
 								$Eintrag--;					
 								}
 						case "2":
-							$params_two=explode(":",$moduleParams2[1]);
+							//$params_two = explode(":",$moduleParams2[1]);
+                            $params_two = $this->explode_ignoring_quotes(':',$moduleParams2[1],'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
 							if (count($params_two)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
@@ -4093,7 +4099,8 @@ class Autosteuerung
 								$Eintrag--;								
 								}
 						case "1":			/* Name */
-							$params_one=explode(":",$moduleParams2[0]);
+							//$params_one = explode(":",$moduleParams2[0]);
+                            $params_one = $this->explode_ignoring_quotes(':',$moduleParams2[0],'"','\\');
 							if (count($params_one)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_one);
@@ -4135,7 +4142,8 @@ class Autosteuerung
 							$i=3;
 							while ($i<count($moduleParams2))
 								{
-								$params_more=explode(":",$moduleParams2[$i]);
+								//$params_more = explode(":",$moduleParams2[$i]);
+                                $params_more = $this->explode_ignoring_quotes(':',$moduleParams2[$i],'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
 								if (count($params_more)>1)
 									{
 									$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
@@ -4144,7 +4152,8 @@ class Autosteuerung
 								$i++;
 								}
 						case "3":
-							$params_three=explode(":",$moduleParams2[2]);
+							//$params_three = explode(":",$moduleParams2[2]);
+                            $params_three = $this->explode_ignoring_quotes(':',$moduleParams2[2],'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
 							if (count($params_three)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
@@ -4158,7 +4167,8 @@ class Autosteuerung
 								$Eintrag--;								
 								}
 						case "2":
-							$params_two=explode(":",$moduleParams2[1]);
+							//$params_two = explode(":",$moduleParams2[1]);
+                            $params_two = $this->explode_ignoring_quotes(':',$moduleParams2[1],'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
 							if (count($params_two)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
@@ -4181,7 +4191,8 @@ class Autosteuerung
 								$Eintrag--;								
 								}
 						case "1":
-							$params_one=explode(":",$moduleParams2[0]);
+							//$params_one = explode(":",$moduleParams2[0]);
+                            $params_one = $this->explode_ignoring_quotes(':',$moduleParams2[0],'"','\\');
 							if (count($params_one)>1)
 								{
 								$result=self::parseParameter($params_one);
@@ -4257,7 +4268,8 @@ class Autosteuerung
 							$i=3;
 							while ($i<count($moduleParams2))
 								{
-								$params_more=explode(":",$moduleParams2[$i]);
+								//$params_more = explode(":",$moduleParams2[$i]);
+                                $params_more = $this->explode_ignoring_quotes(':',$moduleParams2[$i],'"','\\');
 								if (count($params_more)>1)
 									{
 									$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
@@ -4266,7 +4278,8 @@ class Autosteuerung
 								$i++;
 								}
 						case "3":
-							$params_three=explode(":",$moduleParams2[2]);
+							//$params_three = explode(":",$moduleParams2[2]);
+                            $params_three = $this->explode_ignoring_quotes(':',$moduleParams2[2],'"','\\');
 							if (count($params_three)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
@@ -4280,7 +4293,8 @@ class Autosteuerung
 								$Eintrag--;								
 								}
 						case "2":
-							$params_two=explode(":",$moduleParams2[1]);
+							//$params_two = explode(":",$moduleParams2[1]);
+                            $params_two = $this->explode_ignoring_quotes(':',$moduleParams2[1],'"','\\');
 							if (count($params_two)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
@@ -4303,7 +4317,8 @@ class Autosteuerung
 								$Eintrag--;								
 								}
 						case "1":
-							$params_one=explode(":",$moduleParams2[0]);
+							//$params_one = explode(":",$moduleParams2[0]);
+                            $params_one = $this->explode_ignoring_quotes(':',$moduleParams2[0],'"','\\');
 							if (count($params_one)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_one);
@@ -4675,6 +4690,7 @@ class Autosteuerung
 	 * SOURCE, OID, NAME, 
      * MODULE, DEVICE, COMMAND
      * SPEAK, LOUDSPEAKER
+     * LOG
 	 * STATUS, ON#COLOR, ON#LEVEL, ON, OFF#COLOR, OFF#LEVEL, OFF,
 	 * MODE, SETPPOINT, THRESHOLD, NOFROST 
 	 * DELAY, DIM, DIM#LEVEL, DIM#TIME, 
@@ -4721,9 +4737,11 @@ class Autosteuerung
 				break;
 			case "OID":			/* wie switch name nur statt IPSLight die OID */
 			case "MODULE":		/* Das IPSModule in dem das Device oder der Name zu finden ist */
-			case "DEVICE":		/* ein Geraet, wenn das Modul nicht bekannt ist */
-			case "SPEAK":		/* text der zum Sprechen ist */
-			case "COMMAND":	/* befehl für Module oder Device */
+			case "DEVICE":		// ein Geraet, wenn das Modul nicht bekannt ist 
+			case "SPEAK":		// text der zum Sprechen ist
+            case "LOG":         // der Text der ins Logfile kommt 
+			case "COMMAND":	    // befehl für Module oder Device 
+            case "FUNCTION":    // Function für eine Funktion, hier measure
 				$result[$Befehl0]=$befehl[1];
 				break;
 			case "LOUDSPEAKER":			/* wenn echocontrol installiert ist kann auch auf einem Amazon Gerät ausgegeben werden. macht nicht tts_play */
@@ -5239,7 +5257,7 @@ class Autosteuerung
         if (count($befehl)>2) foreach ($befehl as $index => $entry) if ($index>2) $remain .= $entry;
         if ($debug)
             {
-		    echo "evalCondition: allgemeine Funktion zur Evaluierung von Varianten des Befehls $if:$cond ";
+		    echo "           evalCondition: allgemeine Funktion zur Evaluierung von Varianten des Befehls $if:$cond";
             if ($remain != "") echo " und es gibt weitere Zusatzbefehle: \"$remain\".";
             //IPSLogger_Inf(__file__, 'evalCondition: allgemeine Funktion zur Evaluierung von Varianten des Befehls "'.$if.':'.$cond.'".');
             }
@@ -5293,6 +5311,37 @@ class Autosteuerung
                         $state=false;						
                         if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
                         }                    								
+                    }
+                break;
+            case "GT":
+            case "LT":
+            case "EQ":
+            case "EQ20":        // innerhalb vonm 20% nach oben und unten
+                if (isset($befehl[2])) 
+                    {
+                    $compare=$befehl[2];
+                    if ($debug) echo ":$compare for STATUS  ".$result["STATUS"]." ";
+                    if ($debug) echo "State Begin : ".($state?"true":"false")." ";
+                     // IF State Ergebnis bleibt sonst wird es geändert
+                    switch ($cond) 
+                        {
+                         case "GT":
+                            if ( ($result["STATUS"]>$compare) == false ) $state=!$state;               
+                            break;
+                        case "LT":
+                            if ( ($result["STATUS"]<$compare) == false ) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
+                            break;
+                        case "EQ":
+                            if ( ($result["STATUS"]==$compare) == false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
+                            break;
+                        case "EQ20":
+                            if ( ($result["STATUS"] < ($compare*1.2) ) && ($result["STATUS"] > ($compare*0.8) ) == false ) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
+                            break;
+                        default:
+                            echo "new comparision mode: $cond not executed ";
+                            break;
+                        }
+                    if ($debug) echo "State End : ".($state?"true":"false")." ";
                     }
                 break;
             case "OFF":
@@ -5356,6 +5405,8 @@ class Autosteuerung
     /* of Autosteuerung
      * Zusatz Evaluierungen von Conditions, Rückgabe über die ersten drei Variablen.
      * state auch updaten, wird für die IFAND etc Befehle verwendet
+     * evaluiert wird ein = Zeichen 
+     *
      */
 
 	private function evalConditionExtended(&$befehl,&$result,&$state,$debug)
@@ -8791,13 +8842,17 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
         $this->debug=$debug;    
         }
 
+    /* AutosteuerungAlarmanlage::WriteLink
+     * must copy and adapt, requested additional function from abstract
+     */
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
 		{
         // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
 		$this->zeile[$i] = CreateVariableByName($vid,"Zeile".$i,$type,$profile,"",$i*10,$scriptIdHeatControl);
 		}
 
-    /*
+    /* AutosteuerungAlarmanlage::InitMesagePuffer
+     * must copy and adapt, requested additional function from abstract    
      * kümmert sich ums Logging
      */
 	function InitMesagePuffer($type=3,$profile="")
@@ -8848,7 +8903,7 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
             }            
 		}
 
-    /* 
+    /* AutosteuerungAlarmanlage::getPowerLockEnvironmentConfig
      * holt sich die Config wenn operationCenter installiert ist
      * benutzt getComponent 
      */
@@ -8887,7 +8942,8 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
         }
 
 
-    /* Homematic Türschlösser sind nicht vollständig in IP Symcon integriert
+    /* AutosteuerungAlarmanlage::setPowerLockProfiles
+     * Homematic Türschlösser sind nicht vollständig in IP Symcon integriert
      * sind aber erstaunlich robust, aber wahrscheinlich unzuverlässig, weiter ausprobieren
      */
     public function setPowerLockProfiles($config,$debug=false)
@@ -8915,21 +8971,256 @@ class AutosteuerungAlarmanlage extends AutosteuerungFunktionen
             }
         }
 
-
-
 	}
 
 
+/*****************************************************************************************************
+ *
+ * Measure in der Autosteuerung
+ *
+ * Routinen zur Darstellung der Measurement Funktionen
+ *
+ * Achtung, beim kopieren von Defaultfunktionen auf folgende Punkte aufpassen:
+ *      Links und Namen in Init MessagePuffer adaptieren
+ *      array zeile is depricated, needs too much variables, only html Output is allowed
+ *      Different Logging arreas für different classes
+ *          Wochenplan-Stromheizung                 AutosteuerungStromheizung           variable based
+ *          Nachrichtenverlauf-Sicherheit           AutosteuerungAlarmanlage    html output
+ *          Nachrichtenverlauf-Measurement          AutosteuerungMeasure        html output
+ * Minimalmethoden:
+ *    AutosteuerungFunktionen::InitMesagePuffer, AutosteuerungFunktionen::WriteLink
+ *
+ *
+ **************************************************************************************************************/
 
 
+class AutosteuerungMeasure extends AutosteuerungFunktionen
+	{
+
+	protected $log_File="Default";
+	protected $script_Id="Default";
+	protected $nachrichteninput_Id="Default";
+	protected $installedmodules;
+    protected $categoryIdData,$categoryIdApp,$categoryId_Ansteuerung;
+	protected $zeile=array();
+
+    protected $configuration;                   // Configuration from Config File
+    protected $config=array();                  // internal configuration
+
+    protected $htmlLogging=true;
+
+    protected $debug;                       // additional Debug Function
+    
+    /**************************/
+
+	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
+		{
+		//echo "AutosteuerungMeasure Logfile Construct\n";
+        $this->configuration = $this->set_Configuration();
+		$this->debug=false;
+
+		/******************************* Init *********/
+		$this->log_File=$logfile;
+		$this->nachrichteninput_Id=$nachrichteninput_Id;			
+		$this->Init();      /* Autosteuerung_HeatControl Script ID wird festgelegt in $this->scriptIdHeatControl */
+
+        $this->CategoryId_Ansteuerung			= IPS_GetCategoryIDByName("Ansteuerung", $this->categoryIdData);
+        //echo "__construct AutosteuerungMeasure, CategoryID Data : ".$this->categoryIdData." CategoryId_Ansteuerung : ".$this->CategoryId_Ansteuerung."\n";           //no global needed
+
+		/******************************* File Logging *********/
+		$this->InitLogMessage();
+		
+		/******************************* Nachrichten Logging *********/
+		$type=3;$profile=""; $this->zeile=array();
+        $this->config["HTMLOutput"]=$this->htmlLogging;        
+		$this->InitLogNachrichten($type,$profile);          /*  ruft das Geraete spezifische InitMesagePuffer() auf */
+		}
+
+    /* AutosteuerungMeasure::WriteLink
+     * must copy and adapt, requested additional function from abstract
+     */
+	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
+		{
+        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+		$this->zeile[$i] = CreateVariableByName($vid,"Zeile".$i,$type,$profile,"",$i*10,$scriptIdHeatControl);
+		}
+
+    /* AutosteuerungMeasure::InitMesagePuffer
+     * must copy and adapt, requested additional function from abstract    
+     * kümmert sich ums Logging
+     */
+	function InitMesagePuffer($type=3,$profile="")
+		{	
+        //echo "Installed Modules : ".json_encode($this->installedmodules)."\n";
+		if ($this->nachrichteninput_Id != "Ohne")
+			{
+			// bei etwas anderem als einem String stimmt der defaultwert nicht
+			$vid=@IPS_GetObjectIDByName("Nachrichten",$this->nachrichteninput_Id);	/* <<<<<<< change here */
+			if ($vid===false) 
+				{
+				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Alarmanalage InitMessagePuffer, keine Kategorie Sicherheit in '.$this->nachrichteninput_Id);
+				}
+			}
+		else
+			{
+            if ($this->debug)
+                {
+                echo "   auch Wenn 'Ohne' angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt.\n";
+                echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$this->categoryIdData."  (".IPS_GetName($this->categoryIdData).")\n";
+                echo "Nchrichten input Id ".$this->nachrichteninput_Id."   Vid $vid   \n";
+                }
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Nachrichtenverlauf-Measurement",$this->categoryIdData);	/* <<<<<<< change here */
+			$vid=@IPS_GetObjectIDByName("Nachricht_Input",$this->nachrichteninput_Id);							/* <<<<<<< change here */
+			if ($vid==false) 
+				{
+				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Measurement InitMessagePuffer, keine Input Variable in '.$this->nachrichteninput_Id);
+				}
+			}
+        if ($vid)
+            {
+            if ($this->config["HTMLOutput"])
+                {
+                //echo "AutosteuerungAnwesenheitssimulation::InitMesagePuffer, Init Html Message buffer\n";
+                $sumTableID = CreateVariable("MessageTable", 3,  $vid, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $storeTableID = CreateVariable("MessageStorage", 3,  $vid, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
+                IPS_SetHidden($storeTableID,true);                    // Nachrichtenarray nicht anzeigen
+                $this->config["storeTableID"]=$storeTableID;
+                $this->config["sumTableID"]=$sumTableID;
+                $this->config["nachrichteninput_Id"]=$vid;
+                SetValue($sumTableID,$this->PrintNachrichten(true));            // true für htmlOutput
+                }
+            else
+                {
+				//EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }                    
+                }
+            }            
+		}
+
+    /* measureExecute
+     * function for evaluting values, data for evaluation is stored
+     * parameter support for different functions: FUNCTION, SWITCH
+     * usecase : 
+     *      output SWITCH to switch something of or on, lamp lighted when power>200 Watt
+     *      speak a text on a device when some device has stopped consuming power,die Waschmaschie ist fertig
+     *      log a text for later review
+     *      measure operationtime, this is additionally to switch, works independently
+     *              SWITCH true means the headlamp is on as long the server is running, consuming power
+     *
+     * what is evaluated, calculated, from the stored data:
+     *          duration of time beeing active, only duration is stored as new data item
+     *
+     *
+     */
+    function measureExecute($variableID,$status,$command,$debug=false)
+        {
+        //echo "measureExecute ".json_encode($command)."\n";
+        if (isset($command["FUNCTION"])) $function=$command["FUNCTION"];        // Zusatzparameter
+        else $function=false;
+        if (isset($command["SWITCH"])) $switch=$command["SWITCH"];          // external evaluations i.e. IF:GT:40 , nur wenn größer 40 
+        else $switch=false;
+        $noOuter = preg_replace('/^"(.*)"$/s', '$1', $function);   // remove first/last "
+        $inner   = stripcslashes($noOuter);                 // unescape \" -> ", \\ -> \, etc
+
+        echo "measureExecute Function $inner Switch ".($switch?"true":"false")."\n";
+        //parse function
+        $auto=new Autosteuerung();          // just for explode
+        $function = $auto->explode_ignoring_quotes(',',$inner,'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
+        print_R($function);
+
+        $savespace=true;
+        $targetPercentage=50;
+        $threshold=[1,30,100,300,1000];         // immer mit 1 anfangen, 0 werden nicht gespeichert
+        $compare=3;     // over 100
+        
+        $archOps = new archOps();
+        $measurementID = CreateVariableByName($this->CategoryId_Ansteuerung,"Measurement",1);             // Integer
+        if ($debug) echo "measureExecute, create Measurement data area at $measurementID (".IPS_GetLocation($measurementID).") \n";
+        $deviceNameId=CreateCategoryByName($measurementID,IPS_GetName(IPS_GetParent($variableID)));
+        $variableLoggedId = CreateVariableByName($deviceNameId,"Wert_".IPS_GetName($variableID),2);             // Float
+        if ($savespace) $archOps->setArchiving($variableLoggedId,0,0);
+        else $archOps->setArchiving($variableLoggedId,1,0);
+
+        $statusLoggedId = CreateVariableByName($deviceNameId,"Status_".IPS_GetName($variableID),1);             // integer
+        $archOps->setArchiving($statusLoggedId,1,0);
+        $activeLoggedId = CreateVariableByName($deviceNameId,"Active_".IPS_GetName($variableID),1);             // integer, seconds
+        $archOps->setArchiving($activeLoggedId,1,0);
+        $starttimeId = CreateVariableByName($deviceNameId,"Starttime_".IPS_GetName($variableID),1);             // integer
+
+        $changeLoggedId = CreateVariableByName($deviceNameId,"Change_".IPS_GetName($variableID),2);             // float
+        if ($savespace) $archOps->setArchiving($changeLoggedId,0,0);
+        else $archOps->setArchiving($changeLoggedId,1,0);
+
+        echo "Measure as function of Autosteuerung called, Value for $variableID is $status , this Category is $deviceNameId (".IPS_GetLocation($deviceNameId).") \n";
+        $oldValue=GetValue($variableLoggedId);
+        $change=$status-$oldValue;
+        if ($oldValue==0) $changePercent=$change;
+        else $changePercent = $change/$oldValue*100;
+        echo "Change change=new-old  $change=$status-$oldValue $changePercent\n";
+        SetValue($changeLoggedId,$changePercent);
+        SetValue($variableLoggedId,$status);
+
+        if ($threshold)
+            {
+            $oldstatus=GetValue($statusLoggedId);
+            $newstatus=sizeof($threshold);
+            foreach ($threshold as $index=>$min)
+                {
+                echo "        $index $min ";
+                if ($status<$min) { $newstatus=$index; break; }
+                }
+            echo "        $newstatus \n";
+            SetValue($statusLoggedId,$newstatus);
+
+            // Time over Threshold
+
+            if ( ($newstatus >= $compare) && ($oldstatus < $compare) )              // raise, we need starttime
+                {
+                SetValue($starttimeId,time());
+                }
+            if ( ($newstatus < $compare) && ($oldstatus >= $compare) )              // raise, we need starttime
+                {
+                if (GetValue($starttimeId) !== false)    
+                    {
+                    $duration=time()-GetValue($starttimeId);
+                    SetValue($activeLoggedId,$duration);
+                    }
+                SetValue($starttimeId,false);
+                }
+            }
+        elseif ($targetPercentage)
+            {
+            if ($changePercent>$targetPercentage) 
+                {
+                echo "Change $changePercent Status plus\n";
+                SetValue($statusLoggedId,2);
+                }
+            if ($changePercent<(-$targetPercentage)) 
+                {
+                echo "Change $changePercent Status minus\n";
+                SetValue($statusLoggedId,1);
+                }
+            }
+        }
+
+    }
 
 
 /********************************************************************************************
  *
  *	Implementierte Applikationen:
  *
- *	Anwesenheit, iTunesSteuerung, GutenMorgenWecker, Status, StatusParallel, Ventilator2, Alexa
+ *	    Anwesenheit
+ *      iTunesSteuerung
+ *      GutenMorgenWecker
+ *      Status
+ *      StatusParallel
+ *      Ventilator2 
+ *      Measure
+ *      Alexa
+ *      
  *      SwitchFunction
+ *
  *  Ventilator1, Ventilator, StatusRGB sollte nicht mehr in Verwendung sein
  *
  ***************************************************************************************************/
@@ -9463,6 +9754,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
 				}	
 			} /* Ende foreach Befehl */
 		echo "Ergebnis EvaluateCommand ".$entry." : ".json_encode($command[$entry])."\n";
+
 		$auto->ControlSwitchLevel($command[$entry],$simulate);	
 		
         if (isset($command[$entry]["COMMENT"]))         // wenn keine Schaltbefehler getätigt werden keinen Logeintrag machen, wird dadurch übrsichtlicher
@@ -9496,86 +9788,172 @@ function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
  *  Measurement
  *
  * similar to Heating, but measures the amount of central heating 
+ * same function as Status, this is benchmark anyway
+ *
+ * Usecase:  
+ *      Betriebszeiten hochzählen
+ *      Power 0 oder >30 erfassen, 
+ *      Auswertungen machen, Logs schreiben, Sprache aussenden
+ *      zB die Waschmaschine ist fertig
+ *
+ * Die Berechnung der Auslösung geht wie immer über eine normale Evaluierung, unterstützt wird zum Beispiel
+ *          IF, ANDIF, ORIF, ANDIFNOT etc.  es gibt auch IFDIF das ist der Abstand zum vorigen alten Wert
+ *          der Befehl ist schon in seine Komponenten aufgeteilt bevor EvaluateCommand aufgerufen wird
+ *          SWITCH ist das Ergebnis der Vorab Evaluierung, FUNCTION wären die zusaetzlichen Funktionen
+ *
+ *  Befehle wie Status, Measure
+ *
+ *  egal ob bei einer variablenänderung oder bei einem Update werden verschiedene Befehle die im Parameterfeld stehen abgearbeitet
+ *  Aufruf mit Status/Measure/xxx($params,$status,$variableID,$simulate=false,$wertOptInput="",$debug=false)
+ *      params, die Konfiguration, der Befehl
+ *      status, Wert des Events mit dem diese Routine aufgerufen wurde
+ *      variableID, die ID der Variable die den Wert Status hält
+ *      simulate, true wenn nur zu SImulationzwecken der Compiler geprüft wird
+ *      wertOptInput (neu), Zusatzparameter neben  Status, Zb Aufruf mit Status+Nolog oder Status+Nolog+Bounces
+ *      debug, Zusatzinfos bei simulate oder wenn direkt aufgerufen wird
+ * 
+ * 	in Autosteurung, Autosteuerung_GetEventConfiguration() steht die Konfiguration. Aufgrund einer Variablenänderung
+ *  oder einem Update der Ereignisvariable wird eine Applikation, wie diese oder eine Funktion aufgerufen.
+ *	In der Applikation wird der letzte Parameter, die Kommandokette geparst und als Array gespeichert.
+ * 	Die Kommandokette besteht aus mehreren Kommandos. Jedes Kommando wird dann noch Applikationsspezifisch ergänzt werden.
+ *	Jedes Kommando besteht aus mehreren Befehlen.
+ *
+ *	Optioning -> Status -> Parse -> Evaluate -> Function -> Execute -> Timer
+ *
+ *      evalWertOpt, die Optionen für die Ausführung auswerten, stehen in Config
+ *            Beispiele für Optioning       
+ *                  config -> evalinlinescript      ein script für die Eventbehandlung erstellen, statt hier die bearbeitung machen
+ *                  bounce    setNewStatusBounce($variableID,$status,$interval,$update);
+ *      setNewStatus
+ *      ParseCommand($params,$status,$simulate), Aufteilung des Kommandos in Befehle
+ *      für jeden Befehl innerhalb eines Kommandos EvaluateCommand($befehl,$command[$entry],$simulate)
+ *      Function, zB diese
+ *      für jedes Kommando $result=ExecuteCommand($command[$entry],$simulate) und timerCommand($result,$simulate);
+ * ParseCommand zerlegt den Konfigstring in ein Array. Trennzeichen sind ; für die Befehlszeile, innerhalb einer Befehlszeiledann das Komma,
+ *   abhängig davon wieviele Kommas die Befehlszeile trennen die Befehle aus der Befehlszeile interpretieren, 
+ *   ein Befehl kann Untergruppen haben, Trennzeichen ist der :, der erste Teil des Befehls wird erkannt   zB IF
+ *          IF:STATUS (	auch für "IFOR", "ORIF", "IFAND", "ANDIF") funktioniert nicht für NOTIF/IFNOT usw.
+ *          IF:STATUS:GT:40	oder IF:STATUS>40		
+ *
+ * ExecuteCommand, das ist die Ausführung des langen arrays, danach kann auch noch ein Timer kommen: timerCommand
+ * da drinnen könnte man auch module machen, wenn Module Smamsung oder Module Measure dann mache etwas, das ist dann aber anstelle von Execute Switch
+ * wir brauchen es aber zusaetzlich, in Execute wird auch gesprochen aber nichts besonders geloggt
+ * Sprachausgaben kann man dorthin leiten, loggging lassen wir mal hier
+ *
+ * Zwischenrechnung Ölverbrauch :  3000l in 7 Monaten sind rund 200 Tagen, das wären 15l am Tag, oder rund 0,5l/Stunde, Brennzeit 500 Sekunden 1ml/Sekunde
+ * Zur Anzeige des Ölverbrauchs brauchen wir wieder einen Counter, andernfalls werden die Zeiten wie ein Temperaturwert behandelt
  * still in construction, but already quite effective
  *
  *************************************************************************************************/
 
-function Measure($params,$status,$variableID,$simulate=false)
+function Measure($params,$status,$variableID,$simulate=false,$wertOptInput="",$debug=false)
 	{
-	global $categoryId_Autosteuerung,$params;
-	
-    $savespace=true;
-    $targetPercentage=50;
-    $threshold=[1,30,100,300,1000];         // immer mit 1 anfange, 0 werden nicht gespeichert
-    $compare=3;     // over 100
-    
-    $archOps = new archOps();
-	$measurementID = CreateVariableByName($categoryId_Autosteuerung,"Measurement",1);             // Integer
-    $variableLoggedId = CreateVariableByName($measurementID,"Wert_".IPS_GetName($variableID),2);             // Float
-    if ($savespace) $archOps->setArchiving($variableLoggedId,0,0);
-    else $archOps->setArchiving($variableLoggedId,1,0);
+	global $categoryId_Autosteuerung,$params,$speak_config;
 
-    $statusLoggedId = CreateVariableByName($measurementID,"Status_".IPS_GetName($variableID),1);             // integer
-    $archOps->setArchiving($statusLoggedId,1,0);
-    $activeLoggedId = CreateVariableByName($measurementID,"Active_".IPS_GetName($variableID),1);             // integer, seconds
-    $archOps->setArchiving($activeLoggedId,1,0);
-    $starttimeId = CreateVariableByName($measurementID,"Starttime_".IPS_GetName($variableID),1);             // integer
+    if ($debug) echo "      Aufruf Measure+$wertOptInput, Debug Mode aktiv.\n";
+    $control=array();           // hier sind die Zusatzelemente gespeichert
 
-    $changeLoggedId = CreateVariableByName($measurementID,"Change_".IPS_GetName($variableID),2);             // float
-    if ($savespace) $archOps->setArchiving($changeLoggedId,0,0);
-    else $archOps->setArchiving($changeLoggedId,1,0);
+    $auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
+    $funcMeasure = new AutosteuerungMeasure();
+    $exectime=hrtime(true)/1000000;
 
-    echo "Measure as function of Autosteuerung called, Value for $variableID is $status Category is $categoryId_Autosteuerung, this Category is $measurementID  \n";
-    $oldValue=GetValue($variableLoggedId);
-    $change=$status-$oldValue;
-    if ($oldValue==0) $changePercent=$change;
-    else $changePercent = $change/$oldValue*100;
-    echo "Change change=new-old  $change=$status-$oldValue $changePercent\n";
-    SetValue($changeLoggedId,$changePercent);
-    SetValue($variableLoggedId,$status);
+    $auto->evalWertOpt($control, $wertOptInput, $variableID, $status, $debug);
 
-    if ($threshold)
+   /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
+   /* array($params[0], $params[1],             $params[2],),                     										*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe',),       														*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe,false',),       														*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe,true,20',),       														*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe,on:true,off:false,timer#dawn-23:45',),       			*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe,on:true,off:false,if:light',),       				*/
+
+    /* alten Wert der Variable ermitteln um den Unterschied erkennen, gleich, groesser, kleiner 
+     * neuen Wert gleichzeitig schreiben
+     */
+    $oldValue=$auto->setNewStatus($variableID,$status);	                    // Category ist der dritte Parameter, hier default 0
+    $command=array(); 
+    $entry=1;	
+
+    if ($control["config"]) 
         {
-        $oldstatus=GetValue($statusLoggedId);
-        $newstatus=sizeof($threshold);
-        foreach ($threshold as $index=>$min)
+        $simulate=true;
+        $wertOpt="";
+        if ($debug) echo "     Aufruf Config for Status(".json_encode($params).",$status,$variableID,true,$wertOpt,$debug);\n";        
+        $command = Status($params,$status,$variableID,$simulate,$wertOpt,false);          // recursive, ein zweites mal aber als Simulation aufgerufen
+        if (isset($command[1])) 
             {
-            echo "        $index $min ";
-            if ($status<$min) { $newstatus=$index; break; }
+            $command = $auto->evalInlineScript($command[1],$debug);
+            if (isset($command["Script"])) $auto->CreateEvent($variableID,"OnUpdate",$command["Script"]);
+            return ($command);              // inline script im Event
             }
-        echo "        $newstatus \n";
-        SetValue($statusLoggedId,$newstatus);
+        else return (false);
+        }
 
-        // Time over Threshold
-
-        if ( ($newstatus >= $compare) && ($oldstatus < $compare) )              // raise, we need starttime
+    if ($control["bounce"]==false)   // bei einem Bounce die ganze Befehlsabarbeitung deaktivieren
+        {
+        if ($control["log"]) 
             {
-            SetValue($starttimeId,time());
+            IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+            //$auto->log->LogNachrichten('Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
             }
-        if ( ($newstatus < $compare) && ($oldstatus >= $compare) )              // raise, we need starttime
+        if ($control["note"]) 
             {
-            if (GetValue($starttimeId) !== false)    
+            if (is_bool($status))   $auto->logHtml->LogNachrichten('Status+Note: '.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).' ('.$variableID.') : '.$params[0].' und Status '.($status?"Ein":"Aus")); 
+            else                    $auto->logHtml->LogNachrichten('Status+Note: '.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).' ('.$variableID.') : '.$params[0].' und Wert '.$status); 
+            }
+        //$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
+        
+        $parges=$auto->ParseCommand($params,$status,$simulate);
+        
+        /* nun sind jedem Parameter Befehle zugeordnet die nun abgearbeitet werden, Kommando fuer Kommando */
+        //print_r($parges);
+        foreach ($parges as $kom => $Kommando)
+            {
+            $command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+            $command[$entry]["STATUS"]=$status;	
+            $command[$entry]["OLDSTATUS"]=$oldValue;			/* alter Wert, vor der Änderung */        
+            $command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
+        
+            foreach ($Kommando as $num => $befehl)
                 {
-                $duration=time()-GetValue($starttimeId);
-                SetValue($activeLoggedId,$duration);
-                }
-            SetValue($starttimeId,false);
-            }
+                //echo "      |".$num." : Bearbeite Befehl ".$befehl[0]."\n";
+                switch (strtoupper($befehl[0]))
+                    {
+                    default:
+                        $auto->EvaluateCommand($befehl,$command[$entry],$simulate,$debug);
+                        //if ($debug) echo "       Evaluate Befehl Ergebnis : ".json_encode($command[$entry])."\n";
+                        break;
+                    }	
+                } /* Ende foreach Befehl */
+            if ($debug) echo "        EvaluateCommand abgeschlossen, Aufruf Befehl ExecuteCommand mit : ".json_encode($command[$entry])."\n";  
+
+            $funcMeasure->measureExecute($variableID,$status,$command[$entry]);
+
+            $result=$auto->ExecuteCommand($command[$entry],$simulate,$debug);   
+                                                        // für Status
+            if (isset($result["COMMANDLINE"])) $command[$entry]["COMMANDLINE"]=$result["COMMANDLINE"];
+            if (isset($result["OID"])) $command[$entry]["OID"]=$result["OID"];
+            
+            $ergebnis=$auto->timerCommand($result,$simulate);
+            //print_r($command[$entry]);
+            $entry++;			
+            } /* Ende foreach Kommando */
+        unset ($auto);							/* Platz machen im Speicher */
+        $exectime=round(hrtime(true)/1000000-$exectime,0);
+        if ($control["log"]) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') fertig. Ausführungszeit '.$exectime.' Millisekunden.');
         }
-    elseif ($targetPercentage)
-        {
-        if ($changePercent>$targetPercentage) 
-            {
-            echo "Change $changePercent Status plus\n";
-            SetValue($statusLoggedId,2);
-            }
-        if ($changePercent<(-$targetPercentage)) 
-            {
-            echo "Change $changePercent Status minus\n";
-            SetValue($statusLoggedId,1);
-            }
-        }
+    else
+        {           // bounce erkannt, Befehl ignorieren
+        $command[$entry]["SWITCH"]=false;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+        $command[$entry]["STATUS"]=$status;	
+        $command[$entry]["OLDSTATUS"]=$oldValue;			/* alter Wert, vor der Änderung */        
+        $command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */
+        $exectime=round(hrtime(true)/1000000-$exectime,0);
+        if ($control["log"]) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.$variableID.' wegen Bounce ignoriert. Ausführungszeit '.$exectime.' Millisekunden.');
+        }		
+	return($command);
     }
+
 
 /********************************************************************************************
  *

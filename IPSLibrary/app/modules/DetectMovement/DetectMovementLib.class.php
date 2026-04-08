@@ -6772,17 +6772,26 @@ class DetectEventListHandler extends DetectEventHandler
         }
 
     /* DetectEventListHandler::extendComponent, object oriented
+     * in DiagnoseCenter um 00:20 aufgerufen, erzeugt sauviel Fehlermeldungen
+     * ruft den $logger = new $loggerName($event["EventID"],null,null,$typeDef); auf
      *
      */
-    public function extendComponent($countmax=20)
+    public function extendComponent($countmax=20, $debug=false)
         {
         echo "Component Info abgleichen: verarbeite $countmax Zeilen\n";                    // max Zeilen Begrenzung
+        if ($debug>10) $filter=$debug;
+        else $filter=false;
         $startexec=microtime(true);
         $first=true; $count=0;             
         foreach ($this->eventlist as $index => $event)
             {
             if ($count++>$countmax) break;
             echo "  ".str_pad($event["EventID"],10).str_pad($event["NameEvent"],30);
+            if ($filter && ($event["EventID"] != $filter)) 
+                {
+                echo "\n";
+                continue;
+                }
             $componentName = false;
             $loggerName    = false;
             $config=explode(",",$event["Component"]);
@@ -6818,12 +6827,13 @@ class DetectEventListHandler extends DetectEventHandler
                             $class=$component->GetComponentParams($event["EventID"]);                // da kommt wieder der componentName raus
                             //print_R($class);
                             }
+                        else echo "GetComponentParams does not exist";
                         if (method_exists($component,"GetComponentLogger")) 
                             {
                             $loggerName=$component->GetComponentLogger();                // da kommt jetzt der Logger raus
                             if ($loggerName && ($loggerName !== ""))
                                 {
-                                //echo "     $loggerName(".$event["EventID"].",null,null,$typeDef) ";
+                                if ($debug) echo "     call new $loggerName(".$event["EventID"].",null,null,$typeDef) ";
                                 $logger = new $loggerName($event["EventID"],null,null,$typeDef);
                                 $variableInfo=$logger->getVariableOIDLogging();
                                 if (isset($variableInfo["variableLogID"]))
@@ -6841,7 +6851,11 @@ class DetectEventListHandler extends DetectEventHandler
 
 
                             }
-                        else $logger=false;
+                        else 
+                            {
+                            $logger=false;
+                            echo "$componentName, methode GetComponentLogger does not exist";
+                            }
                         }
                     }
                 }
