@@ -6463,7 +6463,7 @@ class LogFileHandler extends OperationCenter
     /* 
      * standard logfile reading, line by line since they are quite large
      */
-    function readlogfile($serverDir)
+    function readlogfile($serverDir,$targetfile=false)
         {
 
                 $maxLine=3;

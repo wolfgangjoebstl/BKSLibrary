@@ -114,11 +114,11 @@
     $config=array();
     $config["StartTime"]=strtotime("-10days");
 
-if (false)
+if (false)              // Vergleich mehrere Tageswerte
     {
-    // Vergleich mehrere Tageswerte
     // Tageswerte mehrere Werte
     $names=["KBG47"=>"KBG47","KellerHeizraumSumme"=>"Summe","KellerHeizraum"=>"All","KellerHeizraum_L1"=>"L1","KellerHeizraum_L2"=>"L2","KellerHeizraum_L3"=>"L3"];
+    $names=["HeizungBrenner"=>"Brenner"];
     $config["Aggregated"]="daily";            // daily tägliche Werte, false alle geloggten Werte auslesen
     foreach ($names as $name=>$short)
         {
@@ -135,9 +135,9 @@ if (false)
     $archiveOps->showValues(false,[],false);        
     }
 
-if (false)
+if (false)              // detaillierte Darstellung eines Wertes
     {
-    // detaillierte Darstellung eines Wertes
+    $archiveOps = new archiveOps();                     // Reset Display    
     $name="Wohnung-LBG70";
     $wirkenergieId=$amis->getWirkenergieID($name);
     $wirkleistungId=$amis->getWirkleistungID($name);
