@@ -155,6 +155,14 @@ if ($_IPS['SENDER']=="Execute") $debug=true;
     $tim14ID = @IPS_GetEventIDByName("UpdateStatus", $scriptId);                   /* rausfinden welche Module ein Update benötigen, war früher bei FleStatus Timer dabei. */ 
     $tim16ID = @IPS_GetEventIDByName("UpdatesomeTables",$scriptId);	                // die Tastertabelle updaten, vielleicht findet sich noch etwas
 
+
+    /********************************************************
+   	Publish Client MQTT 
+	**********************************************************/
+
+    $mqtt = new MQTT_OperationCenter();
+    $tim21ID = @IPS_GetEventIDByName("MQTTSync",$scriptId);	                // die Tastertabelle updaten, vielleicht findet sich noch etwas
+
 /*********************************************************************************************/
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -538,6 +546,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	echo "  Timer CleanUpEndofDay OID   : ".$tim13ID."\n";              /* CleanUp für Backup starten, sollte alte Backups loeschen */
 	echo "  Timer UpdateStatus OID      : ".$tim14ID."\n";              /* rausfinden welche Module ein Update benötigen, war früher bei FleStatus Timer dabei. */
     echo "  Timer UpdatesomeTables      : ".$tim16ID."\n";              // ein paar Tabellen auf den letzten Stand bringen, nicht so wichtig
+    echo "  Timer Send MQTT Data        : ".$tim21ID."\n";
 
 	/********************************************************
    	Erreichbarkeit Hardware im Execute
@@ -857,12 +866,6 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 
 	echo "============================================================================================================\n";
 
-    /********************************************************
-   	Publish Client MQTT 
-	**********************************************************/
-
-    $mqtt = new MQTT_OperationCenter();
-
 	/********************************************************
    	Sys Ping the Devices
 	**********************************************************/
@@ -1007,15 +1010,17 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
         }
 
     echo "Buttonlist aus der Autosterung Konfiguration erzeugen: \n";
-    $buttonList=array();
+    $buttonlist=array();
     foreach ($eventlist as $event)
         {
+        echo $event["Name"];
         if ( (isset($event["Homematic"])) && ($event["Homematic"]=="Button") )
             { 
-            //echo $event["Pfad"]."\n";
+            echo "       ".$event["Pfad"];
             $buttonlist[]=$event;
             } 
-            }
+        echo "\n";
+        }
     //print_r($buttonlist);
     //echo "=========================================================\n";
     $html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Pfad",$buttonlist));
@@ -1275,8 +1280,6 @@ if ($_IPS['SENDER']=="TimerEvent")
                 //echo "SwitchBot Device ($i) Values updated. \n";
                 SetValue($LastTimePullId,time());                       
                 }
-            // Publish Status
-            $mqtt->publishValue(12345);
 			break;
 		case $tim5ID:       // CyclicUpdate
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CyclicUpdate");
@@ -1603,6 +1606,9 @@ if ($_IPS['SENDER']=="TimerEvent")
                 $html=$testMovement->writeEventlistTable($testMovement-> sortEventList("Pfad",$buttonlist));
                 SetValue($TableEventsButton_ID,$html);   
                 }
+            break;
+        case $tim21ID:              // Publish MQTT Status
+            $mqtt->publishValue(12345);
             break;
 		default:                // unbekannt
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");

@@ -378,6 +378,10 @@
     $timerOps->CreateTimerSync("AutoStart", 60, $scriptIdStartSymcon);    
     $timerOps->CreateTimerHour("AutoStartPerDay",4,12,$scriptIdStartSymcon);
 
+    // MQTT Handling 
+    $tim21ID = $timerOps->CreateTimerSync("MQTTSync", 30, $scriptIdOperationCenter);               // alle 30 Sekunden, das gibt richtig traffic
+    IPS_SetEventActive($tim21ID,true);
+
 	/*******************************
 	 *
 	 * Event Control

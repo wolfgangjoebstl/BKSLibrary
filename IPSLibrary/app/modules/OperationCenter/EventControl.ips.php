@@ -39,7 +39,7 @@
     $instance = $_IPS['INSTANCE'];	        //InstanceID for state change
     $instanceName = IPS_GetName($instance);
     $status = $_IPS['STATUS'];              //	State of the instance. A list of possible values is found here: IPS_GetInstance
-    $statusText = $_IPS['STATUSTEXT'];
+    $statustext = $_IPS['STATUSTEXT'];
 	$log_Watchdog->LogMessage("$instanceName ($instance) has new Status $status : $statustext , info from EventControl");
 	$log_Watchdog->LogNachrichten("$instanceName ($instance) has new Status $status : $statustext , info from EventControl");
 

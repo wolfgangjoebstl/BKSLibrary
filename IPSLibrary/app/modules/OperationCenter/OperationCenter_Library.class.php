@@ -69,6 +69,8 @@
  *  setSetup
  *  setConfigurationSoftware
  *  setConfiguration
+ *  setCamConfig
+ *  setCCUConfig
  *
  * soll wie auch in anderen Modulen ein zentrale Verwaltung und Anpassung der Konfiguration an neue versionen des betriebssystem (auch Win oder Ubuntu) oder Symcon erleichtern
  *
@@ -291,13 +293,16 @@ class OperationCenterConfig
 
             configfileParser($configInput, $configCam, ["CAM" ],"CAM" ,[]);  
             //print_r($configCam);
-            
             $config["CAM"]=$this->setCamConfig($configCam,$config)["CAM"];
+
             configfileParser($configInput, $config, ["LED" ],"LED" ,[]);  
             
             configfileParser($configInput, $config, ["DENON" ],"DENON" ,[]);
 
-            configfileParser($configInput, $config, ["CCU" ],"CCU" ,[]);                        // minimum damit CCU fail Erkennung umgesetzt wird
+            //echo "setConfiguration CCU:\n";
+            configfileParser($configInput, $configCCU, ["CCU" ],"CCU" ,[]);                        // minimum damit CCU fail Erkennung umgesetzt wird
+            $config["CCU"]=$this->setCCUConfig($configCCU,$config)["CCU"];
+
 
             }
         //$this->oc_Configuration = $config;
@@ -309,18 +314,25 @@ class OperationCenterConfig
      * nutzt Input von setSetup, wenn dort das FTP.Directory definiert ist, wird es als Ergänzung zum FTPFOLDER verwendet
      * alternativ kann es auch hier als zweiter Parameter übergeben werden
      */
-    public function setCamConfig($camConfig,$setup=false)
+    public function setCamConfig($camConfig,$setup=false,$debug=false)
         {
         if ($setup===false) $setup = $this->setSetup();
         $dosOps=new dosOps();
         $ftp=false;
         if (isset($setup["FTP"]["Directory"])) $ftp=$setup["FTP"];
         $config=array();
-        foreach ($camConfig as $index=>$configInput);           // identify Index
-        //echo "setCamConfig for $index : ";print_r($configInput);
+        foreach ($camConfig as $index=>$configInput)           // identify Index, index wird CAM sein
+            {
+            if ($debug)
+                {
+                echo "setCamConfig for $index : ";
+                print_r($configInput);          // alle Cameras ausgeben
+                }
+            }
         $output=array();
         foreach($configInput as $camName => $camera)
             {
+            $config=array();                    // immer initialisieren, sonst werden die alten Werte weitergeschrieben
             $config["NAME"]=$camName;
             configfileParser($camera, $config, ["STATUS" ],"STATUS" ,"enabled");                // default enabled
             configfileParser($camera, $config, ["FTP" ],"FTP" ,"disabled");
@@ -367,6 +379,66 @@ class OperationCenterConfig
         return($output);
         }
 
+    /*
+     * aufgerufen von setConfiguration
+     * 
+     */
+    public function setCCUConfig($ccuConfig,$setup=false,$debug=false)
+        {
+        if ($setup===false) $setup = $this->setSetup();
+        $dosOps=new dosOps();
+        $config=array();
+        foreach ($ccuConfig as $index=>$configInput)
+            {
+            // identify Index
+            if ($debug) 
+                {
+                echo "setCCUConfig for Index $index : ";
+                print_r($configInput);          // index wird CCU sein
+                }
+            }
+        $output=array();
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        $target='HomeMatic CCU Socket';
+        $oids = $modulhandling->getInstances($target); 
+        foreach($configInput as $ccuName => $ccuEntry)              // alle CCUs durchgehen
+            {
+            $config=array();
+            $config["NAME"]=$ccuName;
+            configfileParser($ccuEntry, $config, ["OID" ],"OID" , null);
+            configfileParser($ccuEntry, $config, ["NOK_HOURS"],"NOK_HOURS", null);
+            configfileParser($ccuEntry, $config, ["REBOOTSWITCH"],"REBOOTSWITCH", null);
+            $output[$index][$ccuName]=$config;            
+            }
+                
+        $setOids=$oids;                 // es bleiben die über für die es keine config gibt
+        foreach ($output as $index => $configccu)                 // index
+            {
+            foreach ($configccu as $name => $entry)         // ccuname
+                {
+                if (isset($entry["OID"])) 
+                    {
+                    $oid=$entry["OID"];
+                    $pos=array_search($oid,$setOids);
+                    //echo "look for $oid $pos\n";
+                    if ( (in_array($oid,$setOids) && ($pos !== false)) ) unset($setOids[$pos]);         //wenn config oid auch wirklich einen Socket hat dann aus der Tabelle loeschen
+                    else 
+                        {
+                        echo "setCCUConfig, Warung, die OID $oid für einen Homematic CCU Socket kennen wir nicht.\n";
+                        unset($output[$index][$name]);
+                        }
+                    }
+                }
+            }
+        if (count($setOids)) 
+            {
+            echo "Bekannte Homematic CCU Sockets, jetzt abgleichen, diese sind nicht in der config:\n";       
+            print_r($setOids);
+            }
+            
+        if (sizeof($output)==0) return ["CCU"=>array()];
+        return($output);
+        }
 
     }
 
@@ -800,6 +872,10 @@ class OperationCenter extends OperationCenterConfig
             $ipall=""; $hostname="unknown"; $lookforgateway=false;
             exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
             //exec('ipconfig',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden, allerdings fehlt dann der Hostname */
+            if ($debug>1) 
+                {
+                foreach ($catch as $line) echo $line."\n";
+                }
             foreach($catch as $line)
                 {
                 if (strlen($line)>2)
@@ -9490,6 +9566,58 @@ class RemoteAccessData
             return ($text);  
             }
         else return (false);
+        }
+
+    function getTailscaleStatus($resultSystemInfo,$debug=false)
+        {
+        $dosOps = new dosOps();
+        $sysOps = new sysOps();
+
+        $lines=explode("\n",$resultSystemInfo);
+        //print_r($lines);
+        $tailScaleServer=array();
+        $num=0;
+        foreach ($lines as $line)
+            {
+            $params=explode(" ",$line);
+            foreach ($params as $id=>$param) 
+                {
+                //echo "\"$param\" ";
+                if ($param=="") unset($params[$id]);
+                }
+            //print_r($params);
+            $sub=0;
+            foreach ($params as $id=>$param) 
+                {
+                //echo "\"$param\" ";
+                switch ($sub)
+                    {
+                    case 0:
+                        $tailScaleServer[$num]["IP"]=$param;
+                        break;
+                    case 1:
+                        $tailScaleServer[$num]["NAME"]=$param;
+                        break;
+                    case 2:
+                        $tailScaleServer[$num]["USER"]=$param;                            
+                        break;
+                    case 3:
+                        $tailScaleServer[$num]["SYSTEM"]=$param;                            
+                        break;
+                    case 4:
+                        if ($debug) echo "Status of ".$tailScaleServer[$num]["NAME"]." is $param \n";
+                        //if 
+                        $tailScaleServer[$num]["STATUS"]=$param;                            
+                        break;                            
+                    default:
+                        break;
+                    }
+                $sub++;
+                }
+            $num++;
+            }
+        if ($debug) print_r($tailScaleServer);
+        return ($tailScaleServer);
         }
 
     /* show tailscale Status

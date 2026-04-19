@@ -1264,6 +1264,7 @@ class AutosteuerungOperator
 	private $logicAnwesend;			// die überarbeitete Konfiguration
 	private $motionDetect_DataID;	// hier sind die verzoegerten Spiegelvariablen gespeichert 
     protected $categoryIdData,$categoryId_Available;
+    protected $commandstructure=array();                // used as return for analysing config
 
 	public function __construct($debug=false)
 		{
@@ -1345,6 +1346,7 @@ class AutosteuerungOperator
         }
 
     /* AutosteuerungOperator::MonitorStatus
+     *
      * Im Configfile gibt es eine Möglichkeit den gewünschten  Status des Monitors (Ein/Aus) aus einer OR und AND Verknüpfung von  Statuswerten zu ermitteln.
      * Überprüfung der Config mit getLogicMonitorConf
      * Das ist die schnellste Art Monitor Ein/Aus zu ermitteln. Wird im Autosteuerungs Handler alle 60 Sekunden aufgerufen.
@@ -1423,7 +1425,9 @@ class AutosteuerungOperator
 		return ($result);				
         }
 
-    /* AutosteuerungOperator::getLogicMonitorConf get Logic Monitor Configuration aus function Autosteuerung_MonitorMode
+    /* AutosteuerungOperator::getLogicMonitorConf 
+     * 
+     * get Logic Monitor Configuration aus function Autosteuerung_MonitorMode
      * Analyse der entsprechenden Konfiguration in "Condition" und abspeichern der Config in einem class object
      * Folgende Operatoren werden unterstützt:
      *      OR
@@ -1809,7 +1813,9 @@ class AutosteuerungOperator
             }
         }
 
-    /* log Activities according to Config
+    /* AutosteuerungOperator::loggingActivity
+     * 
+     * log Activities according to Config
      */
     public function loggingActivity($config,$starttime,$endtime,$debug=false)
         {
@@ -1857,7 +1863,9 @@ class AutosteuerungOperator
         return ($logging);
         }
 
-    /* jetzt die Logging Ereignisse auswerten und zusammenfassen nach Typ (OR Verknüpfung)
+    /* AutosteuerungOperator::analyseLoggingActivity
+     * 
+     * jetzt die Logging Ereignisse auswerten und zusammenfassen nach Typ (OR Verknüpfung)
      * Rückmeldung als Array, erzeugt status und summary und liefert als presence anwesend
      * im Debug Mode erfolgt eine Ausgabe der einzelnen Signale Contact, Motion und Available
      * Funktion:
@@ -1975,7 +1983,8 @@ class AutosteuerungOperator
         }
 
 
-    /*
+    /* AutosteuerungOperator::Anwesend
+     *
      * Im Configfile gibt es eine Möglichkeit die Anwesenheit aus einer OR und AND Verknüpfung von  Statuswerten zu ermitteln.
      * Das ist die schnellste Art Anwesend oder Abwesend zu ermitteln. Wird im Autosteuerungs Handler alle 60 Sekunden aufgerufen.
      * Config Format
@@ -2034,7 +2043,9 @@ class AutosteuerungOperator
 		}
 
 
-    /* AutosteuerungOperator::setLogicAnwesend   die Configuration schreiben , get Funktion dazu passend siehe weiter unten
+    /* AutosteuerungOperator::setLogicAnwesend   
+     * 
+     * die Configuration schreiben , get Funktion dazu passend siehe weiter unten
      * analyse der entsprechenden Konfiguration in Autosteuerung_Configuration.inc.php mit der Funktion Autosteuerung_Anwesend und abspeichern in einem class object
      * wird von construct aufgerufen 
      * Funktion Delayed ist Default false, kann man in der Config einschalten
@@ -2128,7 +2139,9 @@ class AutosteuerungOperator
         return ($config);
         }
 
-    /* AutosteuerungOperator::getLogicAnwesend   das ist die passende Debug Funktion zu Anwesend()
+    /* AutosteuerungOperator::getLogicAnwesend   
+     *
+     * das ist die passende Debug Funktion zu Anwesend()
      * hier ausgeben wie berechnet wurde. Könnte als Zusatzinfo in Autosteuerung Anwesenheitserkennung gemacht werden.
      *
      * Verarbeitet die Informationen aus function Autosteuerung_Anwesend
@@ -2266,7 +2279,8 @@ class AutosteuerungOperator
         }
 
 
-	/*
+	/* AutosteuerungOperator::writeTopologyTable
+     *
 	 * die Topologischen Werte für die Anzeige des Status verwenden, derzeit Anzeige als simple Tabelle, gibt aber schon einen grundsätzlichen Überblick
 	 * style für html wird hier definiert, max x für die Breite der Tabelle  wird automatisch definiert
 	 * die Werte kommen von Input topology, da ist auch der Status drinnen, also ob Anwesend oder nicht (2,1,0)
@@ -2418,6 +2432,11 @@ class AutosteuerungOperator
     
     /* AutosteuerungOperator::showConfigFunction
      * show configuration
+     * filterInput is required, either as array or as value
+     *      array
+     *          PROGRAMM =>
+     *          OPTION   =>
+     *
      *
      */
      public function showConfigFunction($filterInput,$htmlOutput=false,$debug=false)
@@ -2568,6 +2587,25 @@ class AutosteuerungOperator
                 if ($htmlOutput) $html .= $this->showCommand($oid,$params,$html, $debug);           // entweder oder, sonst lange Ausführungszeit
                 else $text .= $this->showCommand($oid,$params,false, $debug);            
                 break;                    
+            case "Measure":
+                if ($filter != "Measure") break;
+                if ($filteroption)          // look for programm parameters              
+                    {
+                    $found=false;
+                    if ($wertOpt != "")         // there are programm Parameters
+                        {
+                        foreach ($wertparam as $param)          // der erste ist Status
+                            {
+                            if ($param == $filteroption) $found=true;
+                            }
+                        }
+                    if ($found===false) break;              // die restlichen Progammzeilen überspringen, wenn Option nicht gefunden
+                    print_r($wertparam); echo "\n";
+                    }
+
+                if ($htmlOutput) $html .= $this->showCommand($oid,$params,$html, $debug);           // entweder oder, sonst lange Ausführungszeit
+                else $text .= $this->showCommand($oid,$params,false, $debug);            
+                break;
                 }
             }
         echo $text; 
@@ -9117,21 +9155,66 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         //echo "measureExecute ".json_encode($command)."\n";
         if (isset($command["FUNCTION"])) $function=$command["FUNCTION"];        // Zusatzparameter
         else $function=false;
-        if (isset($command["SWITCH"])) $switch=$command["SWITCH"];          // external evaluations i.e. IF:GT:40 , nur wenn größer 40 
-        else $switch=false;
+        if (isset($command["LOG"])) echo "Logging expected with ".$command["LOG"]." if Switch shows green\n";
+        if (isset($command["SWITCH"])) 
+            {
+            $switch=$command["SWITCH"];          // external evaluations i.e. IF:GT:40 , nur wenn größer 40 
+            //if ($switch && (isset($command["LOG"])) ) $this->LogNachrichten($command["LOG"]." $status ");
+            }
+        else $switch=false;                
         $noOuter = preg_replace('/^"(.*)"$/s', '$1', $function);   // remove first/last "
         $inner   = stripcslashes($noOuter);                 // unescape \" -> ", \\ -> \, etc
+
+        $optime=false;
+        $savespace=true;
+        $targetPercentage=50;
+        $threshold=[1,30,100,300,1000];         // immer mit 1 anfangen, 0 werden nicht gespeichert
+        $compare=3;     // over 100
 
         echo "measureExecute Function $inner Switch ".($switch?"true":"false")."\n";
         //parse function
         $auto=new Autosteuerung();          // just for explode
         $function = $auto->explode_ignoring_quotes(',',$inner,'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
-        print_R($function);
-
-        $savespace=true;
-        $targetPercentage=50;
-        $threshold=[1,30,100,300,1000];         // immer mit 1 anfangen, 0 werden nicht gespeichert
-        $compare=3;     // over 100
+        //print_R($function);
+        foreach ($function as $entry)
+            {
+            $cmds = $auto->explode_ignoring_quotes(':',$entry,'"','\\');                
+            switch (strtoupper($cmds[0]))
+                {
+                case "OPTIME":
+                    echo "    OPTIME, measure Operationtime\n";
+                    $optime=true;
+                    break;
+               case "THRESHOLD":
+                    $noOuter = preg_replace('/^"(.*)"$/s', '$1', $cmds[1]);   // remove first/last "
+                    $inner   = stripcslashes($noOuter);                 // unescape \" -> ", \\ -> \, etc               
+                    $params = $auto->explode_ignoring_quotes(',',$inner,'"','\\');
+                    if (is_array($params))
+                        {
+                        //print_r($threshold);
+                        echo "    THRESHOLD, ".json_encode($params)." set Ranges for Status\n";
+                        $threshold=$params;
+                        //print_r($threshold);
+                        }
+                    break;
+               case "COMPARE":
+                    if (isset($cmds[1])) 
+                        {
+                        if (is_numeric($cmds[1])) 
+                            {
+                            $compare=$cmds[1];
+                            echo "    COMPARE, $compare, set Value to compare Ranges results into Status\n";
+                            }
+                        }
+                    break;
+                case "ARCHIVE":
+                    $savespace=false;
+                    break;                    
+                default:
+                    echo "    ".json_encode($cmds)."  \n";
+                    break;
+                }
+            }
         
         $archOps = new archOps();
         $measurementID = CreateVariableByName($this->CategoryId_Ansteuerung,"Measurement",1);             // Integer
@@ -9145,6 +9228,8 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         $archOps->setArchiving($statusLoggedId,1,0);
         $activeLoggedId = CreateVariableByName($deviceNameId,"Active_".IPS_GetName($variableID),1);             // integer, seconds
         $archOps->setArchiving($activeLoggedId,1,0);
+        $activeCountedId = CreateVariableByName($deviceNameId,"ActiveCounted_".IPS_GetName($variableID),1);             // integer, seconds, as counter
+        $archOps->setArchiving($activeCountedId,1,1);            
         $starttimeId = CreateVariableByName($deviceNameId,"Starttime_".IPS_GetName($variableID),1);             // integer
 
         $changeLoggedId = CreateVariableByName($deviceNameId,"Change_".IPS_GetName($variableID),2);             // float
@@ -9160,7 +9245,7 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         SetValue($changeLoggedId,$changePercent);
         SetValue($variableLoggedId,$status);
 
-        if ($threshold)
+        if ($optime)     // statusLoggedId
             {
             $oldstatus=GetValue($statusLoggedId);
             $newstatus=sizeof($threshold);
@@ -9172,18 +9257,22 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
             echo "        $newstatus \n";
             SetValue($statusLoggedId,$newstatus);
 
-            // Time over Threshold
+            // Time over Threshold, Test 1,3,1 <= 3 Test 1,2,3,1 <= 3
 
             if ( ($newstatus >= $compare) && ($oldstatus < $compare) )              // raise, we need starttime
                 {
                 SetValue($starttimeId,time());
+                $this->LogNachrichten("starttime");                
                 }
-            if ( ($newstatus < $compare) && ($oldstatus >= $compare) )              // raise, we need starttime
+            if ( ($newstatus < $compare) && ($oldstatus >= $compare) )              // down, we get stopptime
                 {
-                if (GetValue($starttimeId) !== false)    
+                if (GetValue($starttimeId) !== false)                               // if we get stopptime before starttime, ignore
                     {
                     $duration=time()-GetValue($starttimeId);
-                    SetValue($activeLoggedId,$duration);
+                    SetValue($activeCountedId,GetValue($activeCountedId)+$duration);                    
+                    if (GetValue($activeLoggedId)==$duration) $duration++;          // gleiche Messwerte werden sonst unterdrückt
+                    SetValue($activeLoggedId,$duration);  
+                    $this->LogNachrichten("stopptime, after Duration $duration");                                              
                     }
                 SetValue($starttimeId,false);
                 }
