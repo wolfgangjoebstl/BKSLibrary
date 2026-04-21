@@ -1131,7 +1131,9 @@
  * Vereinheitlichung der unterschiedlichen über die Vergangenheit angewachsenen Methoden
  *
  * ----------------------------------------------------------------------------------------------------------------------------*/
-
+    $autoWebfront = new AutosteuerungWebfront();
+	$webfront_links=$autoWebfront->arrangeWebfrontLinks($webfront_links,$tabs,"Administrator");
+    /*
 	echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
 	//print_r($webfront_links);
     foreach ($webfront_links as $OID => $webfront_link)
@@ -1175,7 +1177,9 @@
             $webfront_links[$Name]["CONFIG"]=$webFrontConfiguration[$Name];
             }
         echo "\n";
-        }
+        }   */
+
+        
     if ($debug==false) { 
         echo "****************Ausgabe Webfront Links               ";    
 	    print_r($webfront_links); 

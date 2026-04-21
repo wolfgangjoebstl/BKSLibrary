@@ -22,9 +22,12 @@
  * Übersicht verwendete Klassen
  *   AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
  *   AutosteuerungConfiguration, abstract class als konfigurierbarer Eventhandler für:
- *       AutosteuerungConfigurationAlexa 
- *       AutosteuerungConfigurationHandler
- *       AutosteuerungConfigurationFloorplan   
+ *          AutosteuerungConfigurationAlexa 
+ *          AutosteuerungConfigurationHandler
+ *          AutosteuerungConfigurationFloorplan
+ *          AutosteuerungConfigurationGeofency
+ *          AutosteuerungConfigurationSetSwitches
+ *   
  *    Notiz, Funktionsumfang nicht erweitert im vergleich zur DetectMovement Library
  * 
  *   AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung) 
@@ -34,8 +37,9 @@
  *       AutosteuerungAnwesenheitsSimulation
  *       AutosteuerungAlexa
  *       AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung 
- *
  *       AutosteuerungAlarmanlage
+ *       AutosteuerungMeasure
+ *
  *
  * Im Detail, das php script Autosteuerung_class ist eine Sammlung aus unterschiedlichen Klassen:
  *
@@ -2441,7 +2445,7 @@ class AutosteuerungOperator
      */
      public function showConfigFunction($filterInput,$htmlOutput=false,$debug=false)
         {
-        $filteroption=false;
+        $filteroption=false; $result=array();
         if (is_array($filterInput))
             {
             if (isset($filterInput["PROGRAMM"])) $filter=$filterInput["PROGRAMM"];
@@ -2451,7 +2455,23 @@ class AutosteuerungOperator
             {
             $filter=$filterInput;
             }
-        echo "Autosteuerung showConfigFunction, Filter is $filter:\n";
+        if (is_array($htmlOutput) === false) 
+            {
+            $htmlConfig=array();
+            $htmlConfig["HTML"]=$htmlOutput;
+            $htmlConfig["OUTPUT"]="html";
+            }
+        else 
+            {
+            $htmlConfig=$htmlOutput;            // Übergabe an showCommand
+            if (isset($htmlConfig["OUTPUT"]))
+                {
+                if ($htmlConfig["OUTPUT"]=="Array") $htmlConfig["HTML"]=2;
+                elseif ($htmlConfig["OUTPUT"]=="html") $htmlConfig["HTML"]=true;
+                else $htmlConfig["HTML"]=false;
+                }
+            }
+        echo "Autosteuerung showConfigFunction, Filter is $filter, Optionen $filteroption, Output is ".($htmlOutput?"html":"text").":\n";
         if ($debug && (is_array($filterInput)) ) echo "  Parameter Filter as array ".json_encode($filterInput)."\n";
         $text="";
         $html="";
@@ -2584,7 +2604,7 @@ class AutosteuerungOperator
                     print_r($wertparam); echo "\n";
                     }
 
-                if ($htmlOutput) $html .= $this->showCommand($oid,$params,$html, $debug);           // entweder oder, sonst lange Ausführungszeit
+                if ($htmlOutput) $html .= $this->showCommand($oid,$params,$htmlConfig, $debug);           // entweder oder, sonst lange Ausführungszeit
                 else $text .= $this->showCommand($oid,$params,false, $debug);            
                 break;                    
             case "Measure":
@@ -2603,23 +2623,37 @@ class AutosteuerungOperator
                     print_r($wertparam); echo "\n";
                     }
 
-                if ($htmlOutput) $html .= $this->showCommand($oid,$params,$html, $debug);           // entweder oder, sonst lange Ausführungszeit
+                if ($htmlConfig["HTML"]==2) 
+                    {
+                    $result[]["html"]=$html;
+                    $result[]=$this->showCommand($oid,$params,$htmlConfig, $debug);
+                    if ($debug) $text .= $this->showCommand($oid,$params,false, $debug);            
+                    }
+                elseif ($htmlConfig["HTML"]==true)
+                    {
+                    $html .= $this->showCommand($oid,$params,$htmlConfig, $debug);           // entweder oder, sonst lange Ausführungszeit
+                    if ($debug) $text .= $this->showCommand($oid,$params,false, $debug);            
+                    }
                 else $text .= $this->showCommand($oid,$params,false, $debug);            
                 break;
                 }
             }
         echo $text; 
+        $result[]["html"]="</table>";
         //echo $html;                           // übersichtliche Darstellung neben Control Logging
         echo "--\n"; 
 
 
 
 
-
+        if ($htmlConfig["HTML"]==2) return ($result);
+        elseif ($htmlConfig["HTML"]) return ($html);
+        else return ($text);
         }           // ende func
 
 
         /* aktuelle Funktion aufgerufen von showConfigFunction
+
         *
                     case "Status":
                         if ($filter != "Status") break;
@@ -2628,14 +2662,40 @@ class AutosteuerungOperator
         */
         private function showCommand($oid,$params,$htmlOutput=false,$debug=false)         // AutosteuerungOperator::showConfigFunction
             {
-            if ($debug>1) echo "showCommand Status\n";          // auftrennen in display and simulate
+            //if ($debug>1) echo "showCommand Status\n";          // auftrennen in display and simulate
             $auto=new Autosteuerung();
 
-            if ($htmlOutput != false) $html=$htmlOutput;
-            else $html="";
+            echo "showCommand ";
+            $html="";
+            $option="unknown"; $compile=false;
+            if (is_array($htmlOutput))
+                {
+                echo json_encode($htmlOutput);
+                // zusaetzliche Befehle, wie inline Evaluierung hier übergeben
+                if (isset($htmlOutput["HTML"])) $htmlInput=$htmlOutput["HTML"];
+                if (isset($htmlOutput["OUTPUT"])) 
+                    {
+                    switch (strtoupper($htmlOutput["OUTPUT"]))
+                        {
+                        case "HTML":
+                            $htmlInput=true;
+                            break;
+                        case "TEXT":
+                            $htmlInput=false;
+                            break;
+                        default:
+                            $htmlInput=strtoupper($htmlOutput["OUTPUT"]);
+                            break;
+                        }
+                    }
+                if (isset($htmlOutput["OPTION"])) $option=$htmlOutput["OPTION"];
+                if (isset($htmlOutput["COMPILE"])) $compile=$htmlOutput["COMPILE"];
+                $htmlOutput=$htmlInput;
+                }
+            echo "  $htmlOutput \n";
+            // if ($htmlOutput != false) $html=$htmlOutput; else $html="";              //braucht man glaub ich nicht mehr, return ist html
 
             // Zusatzoptionen rausfiltern HeatControl+Bounce, Status+Config
-            $option="unknown";
             $wert=$params[1];
             if (strpos($wert,"+"))
                 {   // es gibt einen Zusatzparameter beim Modul
@@ -2661,20 +2721,29 @@ class AutosteuerungOperator
             $line = str_pad($oid,8).str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)),70);
             //$text .=  json_encode($encoding);
             $line .=  "\n"; 
+            $text = $line;              // erste Zeile
 
                     $command=explode(";",$encoding[2]);
-                    $first=true;
+                    $first=true; $line="";
                     foreach ($command as $cmd)
                         {  
                         if ($first)
                             {
                             $line .= str_pad(" ",8);
                             $line .= str_pad(GetValueIfFormatted($oid),15);
+                            $html .= "<tr><td></td><td>".GetValueIfFormatted($oid)."</td>";
                             $first=false;
                             }
-                        else $line .= str_pad(" ",22);
+                        else 
+                            {
+                            $line .= str_pad(" ",22);
+                            $html .= "<tr><td></td><td></td>";
+                            }
                         $line .= trim($cmd)."\n";
+                        $html .= "<td>".trim($cmd)."</td><td>3</td><td>4</td></tr>";
+                        //$html .= "<tr><td></td><td>1</td><td>2</td><td>3</td><td>4</td></tr>";
                         }         
+                    $text .= $line;
                     echo "Optionally Process $option :\n";
                     $value=GetValue($oid); $simulate=true; $variableID=$oid;
                     switch ($option)
@@ -2693,7 +2762,7 @@ class AutosteuerungOperator
                                 }
                             break;
                         }
-                    if (false)
+                    if ($compile)
                         {
                         // compile to learn more on function
 
@@ -2734,8 +2803,12 @@ class AutosteuerungOperator
                             }
                         }       // endif false
             
-            if ($htmlOutput) return ($html);
-            else return ($line);
+            if ($htmlOutput=="ARRAY")
+                {
+                return (["html"=>$html,"text"=>$text,"result"=>$command]);
+                }
+            elseif ($htmlOutput===true) return ($html);
+            else return ($text);
             }        
 
 	} /* ende class */
@@ -9150,7 +9223,7 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
      *
      *
      */
-    function measureExecute($variableID,$status,$command,$debug=false)
+    function measureExecute($variableID,$status,&$command,$debug=false)
         {
         //echo "measureExecute ".json_encode($command)."\n";
         if (isset($command["FUNCTION"])) $function=$command["FUNCTION"];        // Zusatzparameter
@@ -9161,7 +9234,12 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
             $switch=$command["SWITCH"];          // external evaluations i.e. IF:GT:40 , nur wenn größer 40 
             //if ($switch && (isset($command["LOG"])) ) $this->LogNachrichten($command["LOG"]." $status ");
             }
-        else $switch=false;                
+        else $switch=false; 
+
+        $commandfunc=$this->analyseFunctionMeasure($function,$command);
+        $command=array_merge($command,$commandfunc);
+        
+        /*
         $noOuter = preg_replace('/^"(.*)"$/s', '$1', $function);   // remove first/last "
         $inner   = stripcslashes($noOuter);                 // unescape \" -> ", \\ -> \, etc
 
@@ -9214,16 +9292,20 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
                     echo "    ".json_encode($cmds)."  \n";
                     break;
                 }
-            }
+            }   */
         
+
         $archOps = new archOps();
         $measurementID = CreateVariableByName($this->CategoryId_Ansteuerung,"Measurement",1);             // Integer
         if ($debug) echo "measureExecute, create Measurement data area at $measurementID (".IPS_GetLocation($measurementID).") \n";
         $deviceNameId=CreateCategoryByName($measurementID,IPS_GetName(IPS_GetParent($variableID)));
         $variableLoggedId = CreateVariableByName($deviceNameId,"Wert_".IPS_GetName($variableID),2);             // Float
-        if ($savespace) $archOps->setArchiving($variableLoggedId,0,0);
-        else $archOps->setArchiving($variableLoggedId,1,0);
-
+        if ($commandfunc["savespace"]) $archOps->setArchiving($variableLoggedId,0,0);
+        else 
+            {
+            $archOps->setArchiving($variableLoggedId,1,0);
+            $archOps->setArchiving($variableID,1,0);
+            }
         $statusLoggedId = CreateVariableByName($deviceNameId,"Status_".IPS_GetName($variableID),1);             // integer
         $archOps->setArchiving($statusLoggedId,1,0);
         $activeLoggedId = CreateVariableByName($deviceNameId,"Active_".IPS_GetName($variableID),1);             // integer, seconds
@@ -9231,9 +9313,10 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         $activeCountedId = CreateVariableByName($deviceNameId,"ActiveCounted_".IPS_GetName($variableID),1);             // integer, seconds, as counter
         $archOps->setArchiving($activeCountedId,1,1);            
         $starttimeId = CreateVariableByName($deviceNameId,"Starttime_".IPS_GetName($variableID),1);             // integer
+        $stopptimeId = CreateVariableByName($deviceNameId,"Stopptime_".IPS_GetName($variableID),1);             // integer
 
         $changeLoggedId = CreateVariableByName($deviceNameId,"Change_".IPS_GetName($variableID),2);             // float
-        if ($savespace) $archOps->setArchiving($changeLoggedId,0,0);
+        if ($commandfunc["savespace"]) $archOps->setArchiving($changeLoggedId,0,0);
         else $archOps->setArchiving($changeLoggedId,1,0);
 
         echo "Measure as function of Autosteuerung called, Value for $variableID is $status , this Category is $deviceNameId (".IPS_GetLocation($deviceNameId).") \n";
@@ -9245,11 +9328,14 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         SetValue($changeLoggedId,$changePercent);
         SetValue($variableLoggedId,$status);
 
-        if ($optime)     // statusLoggedId
+        /* optime, schreibt auf status der sich durch threshold ergibt auf statusLoggedId
+         * wenn compare wird dieser status abgeglichen mit Wert aus compare
+         */
+        if ($commandfunc["optime"])     // statusLoggedId
             {
             $oldstatus=GetValue($statusLoggedId);
-            $newstatus=sizeof($threshold);
-            foreach ($threshold as $index=>$min)
+            $newstatus=sizeof($commandfunc["threshold"]);
+            foreach ($commandfunc["threshold"] as $index=>$min)
                 {
                 echo "        $index $min ";
                 if ($status<$min) { $newstatus=$index; break; }
@@ -9259,37 +9345,118 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
 
             // Time over Threshold, Test 1,3,1 <= 3 Test 1,2,3,1 <= 3
 
-            if ( ($newstatus >= $compare) && ($oldstatus < $compare) )              // raise, we need starttime
+            if ( ($newstatus >= $commandfunc["compare"]) && ($oldstatus < $commandfunc["compare"]) )              // raise, we need starttime
                 {
                 SetValue($starttimeId,time());
-                $this->LogNachrichten("starttime");                
+                if (GetValue($stopptimeId) !== false)                               // if we get stopptime before starttime, ignore
+                    { 
+                    $pausetime=GetValue($starttimeId)-GetValue($stopptimeId);
+                    }
+                if (isset($command["LOG"]))
+                    {
+                    $this->LogNachrichten($command["LOG"].", starttime, continue after Pause $pausetime");                
+                    }
                 }
-            if ( ($newstatus < $compare) && ($oldstatus >= $compare) )              // down, we get stopptime
+            if ( ($newstatus < $commandfunc["compare"]) && ($oldstatus >= $commandfunc["compare"]) )              // down, we get stopptime
                 {
                 if (GetValue($starttimeId) !== false)                               // if we get stopptime before starttime, ignore
                     {
                     $duration=time()-GetValue($starttimeId);
                     SetValue($activeCountedId,GetValue($activeCountedId)+$duration);                    
                     if (GetValue($activeLoggedId)==$duration) $duration++;          // gleiche Messwerte werden sonst unterdrückt
-                    SetValue($activeLoggedId,$duration);  
-                    $this->LogNachrichten("stopptime, after Duration $duration");                                              
+                    SetValue($activeLoggedId,$duration); 
+                    if (GetValue($stopptimeId) !== false)                               // if we get stopptime before starttime, ignore
+                        { 
+                        $pausetime=GetValue($starttimeId)-GetValue($stopptimeId);
+                        }
+                    SetValue($stopptimeId,time());
+                    if (isset($command["LOG"]))
+                        {
+                        $this->LogNachrichten($command["LOG"].", stopptime, after Duration $duration");  
+                        }                                            
                     }
                 SetValue($starttimeId,false);
                 }
             }
-        elseif ($targetPercentage)
+        elseif ($commandfunc["targetPercentage"])
             {
-            if ($changePercent>$targetPercentage) 
+            if ($changePercent>$commandfunc["targetPercentage"]) 
                 {
                 echo "Change $changePercent Status plus\n";
                 SetValue($statusLoggedId,2);
                 }
-            if ($changePercent<(-$targetPercentage)) 
+            if ($changePercent<(-$commandfunc["targetPercentage"])) 
                 {
                 echo "Change $changePercent Status minus\n";
                 SetValue($statusLoggedId,1);
                 }
             }
+        }
+
+    function analyseFunctionMeasure($functionInput,$command)
+        {
+        echo "analyseFunctionMeasure :   $functionInput\n";
+        if (isset($command["SWITCH"])) 
+            {
+            $switch=$command["SWITCH"];          // external evaluations i.e. IF:GT:40 , nur wenn größer 40 
+            //if ($switch && (isset($command["LOG"])) ) $this->LogNachrichten($command["LOG"]." $status ");
+            }
+        else $switch=false;   
+
+        $commandfunc=array();         
+        $commandfunc["optime"]=false;
+        $commandfunc["savespace"]=false;
+        $commandfunc["targetPercentage"]=50;
+        $commandfunc["threshold"]=[1,30,100,300,1000];
+        $commandfunc["compare"]=3;
+
+        //parse function
+        $auto=new Autosteuerung();          // just for explode
+        $noOuter = preg_replace('/^"(.*)"$/s', '$1', $functionInput);   // remove first/last "
+        $inner   = stripcslashes($noOuter);                 // unescape \" -> ", \\ -> \, etc
+        $function = $auto->explode_ignoring_quotes(',',$inner,'"','\\');         // Trennzeichen zwischen quotes ignorieren, \ ist das Escape Zeichen
+        echo "measureExecute Function $inner Switch ".($switch?"true":"false")."\n";
+        //print_R($function);
+        foreach ($function as $entry)
+            {
+            $cmds = $auto->explode_ignoring_quotes(':',$entry,'"','\\');                
+            switch (strtoupper($cmds[0]))
+                {
+                case "OPTIME":
+                    echo "    OPTIME, measure Operationtime\n";
+                    $commandfunc["optime"]=true;
+                    break;
+               case "THRESHOLD":
+                    $noOuter = preg_replace('/^"(.*)"$/s', '$1', $cmds[1]);   // remove first/last "
+                    $inner   = stripcslashes($noOuter);                 // unescape \" -> ", \\ -> \, etc               
+                    $params = $auto->explode_ignoring_quotes(',',$inner,'"','\\');
+                    if (is_array($params))
+                        {
+                        //print_r($threshold);
+                        echo "    THRESHOLD, ".json_encode($params)." set Ranges for Status\n";
+                        $commandfunc["threshold"]=$params;
+                        //print_r($threshold);
+                        }
+                    break;
+               case "COMPARE":
+                    if (isset($cmds[1])) 
+                        {
+                        if (is_numeric($cmds[1])) 
+                            {
+                            $commandfunc["compare"]=$cmds[1];
+                            echo "    COMPARE, ".$commandfunc["compare"].", set Value to compare Ranges results into Status\n";
+                            }
+                        }
+                    break;
+                case "ARCHIVE":
+                    $commandfunc["savespace"]=false;
+                    break;                    
+                default:
+                    echo "    ".json_encode($cmds)."  \n";
+                    break;
+                }
+            }
+        return ($commandfunc);
         }
 
     }
@@ -10279,6 +10446,94 @@ function parseParameter($params,$result=array())
 		}
 	return($result);
 	}
+
+/* class Webfront support
+ *
+ *
+ *
+ */
+class AutosteuerungWebfront
+    {
+
+    /* die Zusammenstellung der Wwebfrontlinks hat sich geändert, aus webfrontlinks udn tabs eine gemeinsame Darstellung machen
+     */
+    function arrangeWebfrontLinks($webfront_links,$tabs,$user,$debug=false)
+        {
+        if ($debug) echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
+        if ($debug>1) print_r($webfront_links);
+        foreach ($webfront_links as $OID => $webfront_link)
+            {
+            if ($debug>1)echo str_pad($OID,10);
+            $tab = $webfront_link["TAB"];
+            $auswertungID  = $webfront_link["OID_L"];
+            $nachrichtenID = $webfront_link["OID_R"];
+            if (isset($tabs[$tab])===false)     
+                {
+                if ($debug>1)echo "n/a";
+                $tabs[$tab]=array();
+                $tabs[$tab]["Auswertung"][$auswertungID]=array();
+                $tabs[$tab]["Auswertung"][$auswertungID]["NAME"]=$webfront_link["NAME"];
+                $tabs[$tab]["Auswertung"][$auswertungID]["ORDER"]=100;
+                $tabs[$tab]["Nachrichten"][$nachrichtenID]=array();
+                $tabs[$tab]["Nachrichten"][$nachrichtenID]["NAME"]=$webfront_link["NAME"];
+                $tabs[$tab]["Nachrichten"][$nachrichtenID]["ORDER"]=100;        
+                }
+            else        // gibts schon, nicht mehr neu schreiben
+                {
+                if ($debug>1)echo "   ";
+                //echo "    das war schon einmal da.\n";
+                $auswertungID  = $webfront_link["OID_L"];
+                $tabs[$tab]["Auswertung"][$auswertungID]=array();
+                $tabs[$tab]["Auswertung"][$auswertungID]["NAME"]=$webfront_link["NAME"];
+                $tabs[$tab]["Auswertung"][$auswertungID]["ORDER"]=100;            
+                }
+            if ($debug>1)echo "\n";
+            }
+        if ($debug) echo "\nWebfront Tabs anlegen:\n";
+        $webfront_OrigLinks=$webfront_links;
+        $webfront_links=$tabs;
+
+        $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()[$user];         // Zusatzparametrierung
+        foreach ($webfront_links as $Name => $webfront_group)
+            {
+            if ($debug) echo "    Subtab:    ".str_pad($Name,25)."  ";
+            if (isset($webFrontConfiguration[$Name])) 
+                {
+                echo json_encode($webFrontConfiguration[$Name]);
+                $webfront_links[$Name]["CONFIG"]=$webFrontConfiguration[$Name];
+                }
+            else 
+                {
+                echo "Index not known in webFrontConfiguration {";  // Betriebsstunden ???
+                //print_R($webFrontConfiguration);    
+                foreach ($webFrontConfiguration as $tname => $tentry) echo $tname.", ";
+                echo "}\n";
+                // es fehlt der Config Eintrag
+                }
+            if ($debug) echo "\n";
+            }        
+        return($webfront_links);
+        }
+
+    /* ersetzt diese Zeile
+     * $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,$AutoSetSwitch["NAME"])); 
+     */
+    function mergeWebfrontLinks($links,$AutoSetSwitch,$default="Default")
+        {
+        $webfront_link=array();    
+        $webfront_link["TAB"]="Autosteuerung";
+        if (isset($AutoSetSwitch["OWNTAB"]))				/* es ist doch ein Tab konfiguriert, kann immer noch der selbe sein */
+            {
+            $webfront_link["TAB"]=$AutoSetSwitch["OWNTAB"];	/* Default Tab Name ueberschreiben */
+            if (isset( $AutoSetSwitch["TABNAME"]))
+                {
+                $webfront_link["TABNAME"]=$AutoSetSwitch["TABNAME"];		/* und wenn gewuenscht auch noch einen speziellen namen dafür vergeben */
+                }
+            else $webfront_link["TABNAME"]=$default; 						
+            }
+        return (array_merge($links,$webfront_link));             
+        }
+    }
 
 /********************************************************************************************
  *
