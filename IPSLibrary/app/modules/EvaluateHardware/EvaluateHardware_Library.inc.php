@@ -2928,7 +2928,7 @@ class EvaluateHardware
                         }
                     else 
                         {
-                        echo '===============> Error "Device" nicht erkannt.'."\n";
+                        echo '===============> Error "Device" nicht erkannt, check getHomematicDeviceType('.$instanz.").\n";
                         print_r($HomematicList[$instanzName]);
                         $typedev = $DeviceManager->getHomematicDeviceType($instanz,0,true);         //noch einmal mit Debug
                         }

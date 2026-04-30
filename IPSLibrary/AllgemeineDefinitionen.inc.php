@@ -14971,6 +14971,159 @@ class textOps
     */
     }       // ende class
 
+    /**
+    * Weekday bitmask helper (bits 0..7).
+    * Bit 0..6 = Mo..So, Bit 7 = optional "special".
+    * final means, there is enheriting possible
+    * Functions
+    *      hasDay          Prüft, ob ein bestimmter Tag im Maskenwert gesetzt ist    
+    *      setDay          Setzt oder löscht einen Tag im Maskenwert
+    *      setDays         Setzt mehrere Tage auf einmal (true/false), z.B. ['Mon'=>true,'Sun'=>true]
+    *      getDays         Liefert alle gesetzten Tage als Array von Namen zurück
+    *      fromDays        Erzeugt eine Maske aus einer Liste von Tagen, z.B. ['Mon','Wed','Fri']
+    *      toString
+    *      dayToBit
+    * Example
+        $mask = 0; // alles aus
+
+        // Setze Montag, Mittwoch, Freitag
+        $mask = WeekdayBitmask::fromDays(['Mon', 'Wed', 'Fri']);
+        echo "Mask (dec): {$mask}\n";
+        echo "Mask (bin): " . str_pad(decbin($mask), 8, '0', STR_PAD_LEFT) . "\n";
+        echo "Days: " . WeekdayBitmask::toString($mask, false) . "\n\n";
+
+        // Sonntag zusätzlich setzen
+        $mask = WeekdayBitmask::setDay($mask, 'Sun', true);
+        echo "After adding Sunday:\n";
+        echo "Mask (bin): " . str_pad(decbin($mask), 8, '0', STR_PAD_LEFT) . "\n";
+        echo "Has Sun? " . (WeekdayBitmask::hasDay($mask, 'Sun') ? 'yes' : 'no') . "\n\n";
+
+        // Freitag löschen
+        $mask = WeekdayBitmask::setDay($mask, 'Fri', false);
+        echo "After removing Friday:\n";
+        echo "Mask (bin): " . str_pad(decbin($mask), 8, '0', STR_PAD_LEFT) . "\n";
+        echo "Days: " . WeekdayBitmask::toString($mask, false) . "\n"; 
+    *
+    */
+    final class WeekdayBitmask
+        {
+        // Bit-Index -> Name
+        private const BIT_TO_DAY = [
+            0 => 'Mon',
+            1 => 'Tue',
+            2 => 'Wed',
+            3 => 'Thu',
+            4 => 'Fri',
+            5 => 'Sat',
+            6 => 'Sun',
+            7 => 'Special', // optional/reserved
+        ];
+
+        // Name -> Bit-Index (case-insensitive mapping)
+        private const DAY_TO_BIT = [
+            'mon' => 0,
+            'tue' => 1,
+            'wed' => 2,
+            'thu' => 3,
+            'fri' => 4,
+            'sat' => 5,
+            'sun' => 6,
+            'special' => 7,
+        ];
+
+        /**
+        * Prüft, ob ein bestimmter Tag im Maskenwert gesetzt ist.
+        */
+        public static function hasDay(int $mask, string $day): bool
+            {
+            $bit = self::dayToBit($day);
+            return (bool)($mask & (1 << $bit));
+            }
+
+        /**
+        * Setzt oder löscht einen Tag im Maskenwert.
+        * Gibt den neuen Maskenwert zurück.
+        */
+        public static function setDay(int $mask, string $day, bool $enabled = true): int
+            {
+            $bit = self::dayToBit($day);
+            $flag = (1 << $bit);
+
+            if ($enabled) {
+                $mask |= $flag;     // set bit
+            } else {
+                $mask &= ~$flag;    // clear bit
+            }
+
+            // nur Bits 0..7 behalten (optional, verhindert "Überlauf" anderer Bits)
+            return $mask & 0xFF;
+            }
+
+        /**
+        * Setzt mehrere Tage auf einmal (true/false), z.B. ['Mon'=>true,'Sun'=>true]
+        */
+        public static function setDays(int $mask, array $days): int
+            {
+            foreach ($days as $day => $enabled) {
+                $mask = self::setDay($mask, (string)$day, (bool)$enabled);
+            }
+            return $mask & 0xFF;
+            }
+
+        /**
+        * Liefert alle gesetzten Tage als Array von Namen zurück.
+        * Optional: includeSpecial ob Bit 7 mitgeliefert werden soll.
+        */
+        public static function getDays(int $mask, bool $includeSpecial = true): array
+            {
+            $mask &= 0xFF;
+
+            $result = [];
+            foreach (self::BIT_TO_DAY as $bit => $name) {
+                if ($bit === 7 && !$includeSpecial) {
+                    continue;
+                }
+                if ($mask & (1 << $bit)) {
+                    $result[] = $name;
+                }
+            }
+            return $result;
+            }
+
+        /**
+        * Erzeugt eine Maske aus einer Liste von Tagen, z.B. ['Mon','Wed','Fri'].
+        */
+        public static function fromDays(array $days): int
+            {
+            $mask = 0;
+            foreach ($days as $day) {
+                $mask = self::setDay($mask, (string)$day, true);
+            }
+            return $mask & 0xFF;
+            }
+
+        /**
+        * Gibt eine menschenlesbare Darstellung zurück, z.B. "Mon, Wed, Fri".
+        */
+        public static function toString(int $mask, bool $includeSpecial = true): string
+            {
+            return implode(', ', self::getDays($mask, $includeSpecial));
+            }
+
+        /**
+        * Validiert/konvertiert Tagesname -> Bit.
+        */
+        private static function dayToBit(string $day): int
+            {
+            $key = strtolower(trim($day));
+            if (!array_key_exists($key, self::DAY_TO_BIT)) {
+                $allowed = implode(', ', array_keys(self::DAY_TO_BIT));
+                throw new InvalidArgumentException("Unknown day '{$day}'. Allowed: {$allowed}");
+            }
+            return self::DAY_TO_BIT[$key];
+            }
+        }
+
 /**************************************************************************************************************************
  *
  * timerOps
@@ -14983,9 +15136,10 @@ class textOps
  *  write_eventlist
  *  filter_eventlist
  *
- *  CreateTimerHour
- *  CreateTimerSync
- *  setTimerPerMinute
+ *  CreateTimerHour         create with $name,$stunde,$minute,$scriptID, cyclic every day at configured clock time
+ *  CreateTimerSync         create with $name,$sekunden,$scriptID, cyclic every configured amount of Sekunden
+ *  setTimerPerMinute       create with $name, $scriptIdActivity, $minutes, cyclic every configured amount of Minuten
+ *
  *  getEventData             echo aktiv und zuletzt aufgerufen
  *  setDelayedEvent
  *  setEventTimer
@@ -15082,7 +15236,7 @@ class timerOps
     public function filter_eventlist($config=array(),$debug=false)
         {
         if ($debug) echo "filter_eventlist(".json_encode($config)."\n";
-        $result=array();
+        $result=array(); $action=array();
         if (is_array($config))
             {
             configfileParser($config,$action,["Status","status","State","state"],"Status",null);
@@ -15142,6 +15296,80 @@ class timerOps
         return ($result); 
         }
 
+	/* CreateTimerCalendar, Symcon befehl heisst Wochenplan
+     * automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen, Timer ist auf ein Script bezogen 
+     * nicht zu verwechseln mit Kernmodul/instanz Calendar-Control für geplante Abwesenheiten
+     * Wert	CreateEvent Beschreibung 0	Legt ein “ausgelöstes” Ereignis an, 1	ein “zyklisches” , 2 ein “Wochenplan” Ereignis an
+     * hier die Variante mit dem ANlegen eines Calendar
+     *      IPS_SetEventConditionDayOfTheWeekRule, IPS_SetEventScheduleGroup
+     * Timer wird automatisch gestartet
+     */
+	public function CreateTimerCalendar($name,$parent,$configInput,$variableId=false,$debug=false)
+		{
+        $action=array(); $config=array();           // Platz reservieren
+		$timID=@IPS_GetEventIDByName($name, $parent);
+		if ($timID==false)          // neu
+			{
+ 
+			$timID = IPS_CreateEvent(2);                    // Wochenplan
+			IPS_SetParent($timID, $parent);
+			IPS_SetName($timID, $name);
+
+            /*Anlegen von Aktionen 
+            IPS_SetEventScheduleAction($EreignisID, 0, "Warm", 0xFF0000, "FHT_SetTemperature(\$_IPS['TARGET'], 22.5);");
+            IPS_SetEventScheduleAction($EreignisID, 1, "Kalt", 0x0000FF, "FHT_SetTemperature(\$_IPS['TARGET'], 17);");
+            IPS_SetEventScheduleAction($EreignisID, 2, "Öko", 0x00FF00, "FHT_SetTemperature(\$_IPS['TARGET'], 20);");   */
+            //IPS_SetEventScheduleGroup
+
+			//IPS_SetEventCyclic($timID,0,0,0,0,0,0);             //  IPS_SetEventCyclic (int $EventID, int $DateType, int $DateInterval, int $DateDay, int $DateDayInterval, int $TimeType, int $TimeInterval)
+			//IPS_SetEventCyclicTimeFrom($timID,$stunde,$minute,0);  /* immer um ss:xx */
+            
+            // Seit IP-Symcon 6.0 erforderlich, sofern das Ereignis eine Automation ausführen soll (z.B. ein PHP-Skript)
+            //IPS_SetEventAction($timID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);
+            // alternativ ein PHP inline : IPS_SetEventScript ($timID, string $Skriptinhalt) 
+			IPS_SetEventActive($timID,true);
+			if ($debug) echo "   Timer Event ".$name." neu angelegt. Timer ist aktiviert.\n";
+			}
+		else                        // eventuell überarbeiten
+			{
+			if ($debug) echo "   Timer Event ".$name." bereits angelegt. Timer ist aktiviert.\n";
+            $configEvent = IPS_GetEvent($timID);
+            //print_R($configEvent);
+            echo "ScheduleActions:\n";
+            foreach ($configEvent["ScheduleActions"] as $index => $entry) echo "   ".str_pad($index,4).json_encode($entry)."\n";
+            echo "ScheduleGroups:\n";
+            foreach ($configEvent["ScheduleGroups"] as $index => $entry) 
+                {
+                if ($index==$entry["ID"])
+                    {
+                    $days=WeekdayBitmask::toString($entry["Days"]);
+                    echo "   ".str_pad($index,4).str_pad($days,20).json_encode($entry)."\n";
+                    //$mask = WeekdayBitmask::getDays($entry["Days"]);
+                    //echo "                          ".str_pad($entry["ID"],4).str_pad($entry["Days"],10).json_encode($mask)."\n";
+                    $data["Points"]=$entry["Points"];
+                    echo formatPointsReadable($data)."\n";
+                    }
+                else echo "Warning, timerOps, wrong Formating.\n";
+                }
+			IPS_SetEventActive($timID,true);
+			}
+        configFileParser($configInput,$config,["action","Action"],"action",null);
+        if (isset($config["action"]))
+            {
+            //print_R($config["action"]);
+            foreach ($config["action"] as $index => $actionInput)
+                {
+                $action=array();
+                configFileParser($actionInput,$action,["name","Name"],"name","Default");
+                configFileParser($actionInput,$action,["color","Color"],"color",0x00AACC+$index*428);
+                echo "     $index ".json_encode($action)."\n";
+                IPS_SetEventScheduleAction($timID, $index, $action["name"],$action["color"], "SetValue(".(string)$variableId.",".(string)$index.");");
+                }
+            }
+
+		return($timID);
+		}
+
 
 	/* CreateTimerHour
      * automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
@@ -15160,6 +15388,9 @@ class timerOps
 			IPS_SetName($timID, $name);
 			IPS_SetEventCyclic($timID,0,0,0,0,0,0);             //  IPS_SetEventCyclic (int $EventID, int $DateType, int $DateInterval, int $DateDay, int $DateDayInterval, int $TimeType, int $TimeInterval)
 			IPS_SetEventCyclicTimeFrom($timID,$stunde,$minute,0);  /* immer um ss:xx */
+            // Seit IP-Symcon 6.0 erforderlich, sofern das Ereignis eine Automation ausführen soll (z.B. ein PHP-Skript)
+            IPS_SetEventAction($timID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);
+
 			IPS_SetEventActive($timID,true);
 			if ($debug) echo "   Timer Event ".$name." neu angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
 			}
@@ -15171,11 +15402,11 @@ class timerOps
 		return($timID);
 		}
 
-    /* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
+    /* automatisch Sekunden Zyklischen Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
+     * nutzt IPS_SetEventCyclic
      * hier die Variante die alle x Sekunden aufgerufen wird
      * Timer wird nicht automatisch gestartet
      */
-
 	public function CreateTimerSync($name,$sekunden,$scriptID,$debug=false)
 		{
 		$timID = @IPS_GetEventIDByName($name, $scriptID);
@@ -15187,6 +15418,9 @@ class timerOps
 			IPS_SetEventCyclic($timID,0,1,0,0,1,$sekunden);      // alle x sec, kein Datumstyp-täglich, keine Auswertung, Sekunden 
 			//IPS_SetEventActive($tim2ID,true);
 			IPS_SetEventCyclicTimeFrom($timID,0,2,$sekunden%60);  // damit die Timer hintereinander ausgeführt werden, Sekunden modulo 60
+            // Seit IP-Symcon 6.0 erforderlich, sofern das Ereignis eine Automation ausführen soll (z.B. ein PHP-Skript)
+            IPS_SetEventAction($timID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);
+
 			if ($debug) echo "   Timer Event ".$name." neu angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
 			}
 		else
@@ -15198,6 +15432,11 @@ class timerOps
 		return($timID);
 		}	
 
+    /* automatisch Minuten Zyklischen Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen 
+     * nutzt IPS_SetEventCyclic
+     * hier die Variante die alle x Minuten aufgerufen wird
+     * Timer wird nicht automatisch gestartet
+     */
     function setTimerPerMinute($name, $scriptIdActivity, $minutes,$debug=false)
         {
         $tim4ID = @IPS_GetEventIDByName($name, $scriptIdActivity);
@@ -15209,6 +15448,9 @@ class timerOps
             /* das Event wird alle 5 Minuten aufgerufen, der Standard Sysping, wenn nicht als FAST gekennzeichnet, läuft allerdings alle 60 Minuten */
             IPS_SetEventCyclic($tim4ID,0,1,0,0,2,$minutes);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
             IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
+            // Seit IP-Symcon 6.0 erforderlich, sofern das Ereignis eine Automation ausführen soll (z.B. ein PHP-Skript)
+            IPS_SetEventAction($timID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);
+
             IPS_SetEventActive($tim4ID,true);
             if ($debug) echo "   Timer Event $name neu angelegt. Timer $minutes Minuten ist aktiviert.\n";
             }
@@ -15224,7 +15466,6 @@ class timerOps
 
     /* Infos über ein Timer Event ausgeben 
      */
-
     public function getEventData($EreignisID,$debug=false)
         {
         $EreignisInfo = @IPS_GetEvent($EreignisID);
@@ -15246,7 +15487,6 @@ class timerOps
     /* verwendet in IpsComponentSensor_Motion für die Delayed Bewegungungsereignisse
      *
      */
-
     public function setDelayedEvent($name,$scriptId,$delay,$execScript="",$debug=false)
         {
         if ($debug) echo "setDelayedEvent($name,$scriptId,$delay,$execScript,$debug) aufgerufen.\n";
@@ -15269,11 +15509,9 @@ class timerOps
 
         }
 
-
 	/* kommt von class Autosteuerung 
      * einen Timer anlegen und setzen, ist für ein einmaliges Event 
      */
-    
     function setEventTimer($name,$delay,$command,$categoryIdApp,$debug=false)
 	    {
     	if ($debug) echo "setEventTimer: Jetzt wird der Timer gesetzt : ".$name."_EVENT mit Zeitverzoegerung von $delay Sekunden. Befehl lautet : ".str_replace("\n","",$command)."\n";
@@ -15297,7 +15535,6 @@ class timerOps
 
 	/* class Autosteuerung einen zyklischen Timer anlegen und setzen, ist für ein einmaliges Event 
      */
-
 	function setDimTimer($name,$delay,$command,$categoryIdApp,$debug=false)
 		{
 		if ($debug) echo "setDimTimer: Jetzt wird der Timer gesetzt : ".$name."_EVENT_DIM"." und 10x alle ".$delay." Sekunden aufgerufen\n";
@@ -15316,7 +15553,6 @@ class timerOps
      *
      * verwendet in class Autosteuerung
      */
-
     function getEventTimerStatus($name,$categoryIdApp,$debug=false)
 	    {
     	$EreignisID = $this->getEventTimerID($name,$categoryIdApp);         // timerID abfragen oder wenn nicht vorhanden einen Timer ohne besondere Parametrierung anlegen
@@ -15337,7 +15573,6 @@ class timerOps
      *
      * verwendet in class Autosteuerung
      */
-
     function getEventTimerID($name,$categoryIdApp)
 	    {
 	    $EreignisID = @IPS_GetEventIDByName($name,  $categoryIdApp);
@@ -15350,6 +15585,135 @@ class timerOps
 		return($EreignisID);
 		}
 
+
+    /**
+    * Formatiert ein "Start"-Objekt (Hour/Minute/Second) zu HH:MM:SS
+    * Akzeptiert auch alternative Keys, falls vorhanden (z.B. h/m/s).
+    */
+    function formatTime(array $start): string
+        {
+        $h = (int)($start['Hour']   ?? $start['hour']   ?? $start['H'] ?? 0);
+        $m = (int)($start['Minute'] ?? $start['minute'] ?? $start['M'] ?? 0);
+        $s = (int)($start['Second'] ?? $start['second'] ?? $start['S'] ?? 0);
+        return sprintf('%02d:%02d:%02d', $h, $m, $s);
+        }
+
+    /**
+    * Gibt Sekunden seit 00:00:00 zurück, um sauber sortieren zu können.
+    */
+    function timeToSeconds(array $start): int
+        {
+        $h = (int)($start['Hour']   ?? $start['hour']   ?? $start['H'] ?? 0);
+        $m = (int)($start['Minute'] ?? $start['minute'] ?? $start['M'] ?? 0);
+        $s = (int)($start['Second'] ?? $start['second'] ?? $start['S'] ?? 0);
+        return $h * 3600 + $m * 60 + $s;
+        }
+
+
+    /**
+    * Generischer "Points" Formatter:
+    * - sortiert nach Startzeit
+    * - optional: ActionID/ID mappen auf Labels
+    * - optional: extra Felder ausgeben
+    */
+    function formatPointsReadable(
+            array $data,
+            array $options = []
+        ): string {
+        $opts = array_merge([
+            'pointsKey'      => 'Points',
+            'sortByTime'     => true,
+            'showIndex'      => true,
+            'showRawStart'   => false,
+            'includeFields'  => [],   // z.B. ['Foo', 'Bar'] falls Points weitere Felder haben
+            'idLabelMap'     => [],   // z.B. [0=>'Point A', 1=>'Point B']
+            'actionLabelMap' => [],   // z.B. [0=>'OFF', 1=>'ON', 2=>'DIM']
+            'linePrefix'     => '      • ',
+        ], $options);
+
+        $debug=true;
+        $pointsKey = $opts['pointsKey'];
+        //if ($debug) echo "formatPointsReadable $pointsKey\n";
+        $points = $data[$pointsKey] ?? null;
+
+        if (!is_array($points)) {
+            return "Keine gültigen '$pointsKey' gefunden.\n";
+        }
+
+        // Sortieren nach Zeit, falls gewünscht
+        if ($opts['sortByTime']) {
+            usort($points, function ($a, $b) {
+                $sa = $this->timeToSeconds((array)($a['Start'] ?? []));
+                $sb = $this->timeToSeconds((array)($b['Start'] ?? []));
+                return $sa <=> $sb;
+            });
+        }
+
+        $out = [];
+        //$out[] = "Points (" . count($points) . "):";
+
+        foreach ($points as $i => $p) {
+            if (!is_array($p)) continue;
+
+            $id       = $p['ID'] ?? null;
+            $actionId = $p['ActionID'] ?? null;
+            $start    = (array)($p['Start'] ?? []);
+
+            $timeStr  = $this->formatTime($start);
+
+            // Labels auflösen
+            $idLabel = ($id !== null && isset($opts['idLabelMap'][$id]))
+                ? $opts['idLabelMap'][$id]
+                : null;
+
+            $actionLabel = ($actionId !== null && isset($opts['actionLabelMap'][$actionId]))
+                ? $opts['actionLabelMap'][$actionId]
+                : null;
+
+            $parts = [];
+
+            if ($opts['showIndex']) {
+                $parts[] = "#".($i+1);
+            }
+
+            $parts[] = $timeStr;
+
+            if ($id !== null) {
+                $parts[] = "ID={$id}" . ($idLabel ? " ({$idLabel})" : "");
+            }
+
+            if ($actionId !== null) {
+                $parts[] = "ActionID={$actionId}" . ($actionLabel ? " ({$actionLabel})" : "");
+            }
+
+            // Zusatzfelder generisch ausgeben
+            foreach ((array)$opts['includeFields'] as $field) {
+                if (array_key_exists($field, $p)) {
+                    $val = $p[$field];
+                    if (is_array($val) || is_object($val)) {
+                        $val = json_encode($val, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    }
+                    $parts[] = "{$field}={$val}";
+                }
+            }
+
+            if ($opts['showRawStart'] && !empty($start)) {
+                $parts[] = "StartRaw=" . json_encode($start, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+
+            $out[] = $opts['linePrefix'] . implode(" | ", $parts);
+        }
+
+        return implode("\n", $out) . "\n";
+        }
+
+    /**
+    * Bonus: Pretty-Print JSON (falls du einfach "lesbar" meinst).
+    */
+    function prettyJson(mixed $value): string
+        {
+        return json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
+        }
 
     function write($string)
         {
@@ -17054,14 +17418,33 @@ class WfcHandling
 
     /* WfcHandling::createLinkinWebfront
      * nur den Link anlegen, nicht soviel Automatik
-     * wird in Stromheizung_Installation verwendet, 
+     * wird in Stromheizung_Installation verwendet,
+     * 
      * link kann einen :: enthalten, zusätzliche Aktion ist die Zuordnung des vorderen Teils zu einem CustomComponent
-     *
+     * link kann auch das Tag Link#12345 enthalten, das ist der direkte Verweis auf eine OID
+     * zuerst auf .. achten, wenn ein :: enthalten ist dann eben ganz andere Funktion
      *
      */
 
     public function createLinkinWebfront($link,$name,$categoryId,$order)
         {
+        $pos1=strpos($link,"Link#");
+        if ($pos1===0)          // ein Link
+            {
+            $register=explode('#',$link);
+            if ($register[0]=="Link")
+                {
+                if (is_numeric($register[1]))
+                    {
+                    $variableID=(integer)$register[1];
+                    if (IPS_ObjectExists($variableID))
+                        {
+                        if (isset($register[2])) $name=$register[2];
+                        $this->CreateLinkWithDestination($name, $variableID, $categoryId, $order);    
+                        }
+                    }    
+                }
+            }
         $register=explode('::',$link);
         if ( (count($register)>1) && (isset($this->customComponentCategories[$register[0]])) )
             {

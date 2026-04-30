@@ -129,7 +129,7 @@
  * werden mittlerweile groestenteils haendisch angelegt, es geht aber auch automatisch, zB für Standardvariablen
  *      __construct
  *      set_Configuration               Konfigurationsmanagement, function Autosteuerung_Setup in Autosteuerung_Configuration.inc.php
- *      get_Configuration               LogDirectory, HeatControl
+ *      get_Configuration               LogDirectory, HeatControl normalisiserte Parameter auslesen
  
  *      Get_EventConfigurationAuto
  *      Set_EventConfigurationAuto
@@ -194,6 +194,8 @@ class AutosteuerungHandler
             if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
             $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
 
+            configfileParser($configInput, $config, ["Weather" ],"Weather" ,false);
+            
             configfileParser($configInput, $configHeatControl, ["HeatControl" ],"HeatControl" ,array());  
             //print_R($configHeatControl);
             configfileParser($configHeatControl["HeatControl" ], $config["HeatControl" ], ["EVENT_IPSHEAT","SwitchName" ],"SwitchName" ,null);  
@@ -4852,6 +4854,7 @@ class Autosteuerung
 			case "SPEAK":		// text der zum Sprechen ist
             case "LOG":         // der Text der ins Logfile kommt 
 			case "COMMAND":	    // befehl für Module oder Device 
+            case "DISPLAY":     // Display für eine Funktion, hier measure
             case "FUNCTION":    // Function für eine Funktion, hier measure
 				$result[$Befehl0]=$befehl[1];
 				break;
@@ -9228,6 +9231,8 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         //echo "measureExecute ".json_encode($command)."\n";
         if (isset($command["FUNCTION"])) $function=$command["FUNCTION"];        // Zusatzparameter
         else $function=false;
+        if (isset($command["DISPLAY"])) $display=$command["DISPLAY"];        // Zusatzparameter
+        else $display="Measurement";        
         if (isset($command["LOG"])) echo "Logging expected with ".$command["LOG"]." if Switch shows green\n";
         if (isset($command["SWITCH"])) 
             {
@@ -9296,7 +9301,12 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
         
 
         $archOps = new archOps();
-        $measurementID = CreateVariableByName($this->CategoryId_Ansteuerung,"Measurement",1);             // Integer
+        $displayID = IPS_GetVariableIDByName($display,$this->CategoryId_Ansteuerung);             // Integer
+        if ($displayID) echo "Variable Display happens at $displayID ".IPS_GetName($displayID)."\n";
+        else echo "No variable Display happens in Autosteuerung Tab.\n";
+
+        // all Variables are Stored under Category Measurement
+        $measurementID = CreateCategoryByName($this->CategoryId_Ansteuerung,"Measurement");
         if ($debug) echo "measureExecute, create Measurement data area at $measurementID (".IPS_GetLocation($measurementID).") \n";
         $deviceNameId=CreateCategoryByName($measurementID,IPS_GetName(IPS_GetParent($variableID)));
         $variableLoggedId = CreateVariableByName($deviceNameId,"Wert_".IPS_GetName($variableID),2);             // Float
@@ -9305,6 +9315,8 @@ class AutosteuerungMeasure extends AutosteuerungFunktionen
             {
             $archOps->setArchiving($variableLoggedId,1,0);
             $archOps->setArchiving($variableID,1,0);
+    		// definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") 
+            CreateLinkByDestination(IPS_GetName($variableID), $variableID, $displayID,10);            
             }
         $statusLoggedId = CreateVariableByName($deviceNameId,"Status_".IPS_GetName($variableID),1);             // integer
         $archOps->setArchiving($statusLoggedId,1,0);
@@ -9589,7 +9601,7 @@ function iTunesSteuerung($params,$status,$variableID,$simulate=false,$wertOpt=""
  *
  *	Sonderfunktion für Status, könnte eigentlich gleich sein, da die Abfrage ob der Wecker aktiv ist bereits in Autosteuerung erfolgt ist.
  *
- * 	in Autosteurung, Autosteuerung_GetEventConfiguration() steht die Konfiguration. Aufgrund einer Variablenänderung
+ * 	in Autosteuerung, Autosteuerung_GetEventConfiguration() steht die Konfiguration. Aufgrund einer Variablenänderung
  *  oder einem Update der Ereignisvariable wird eine Applikation, wie diese oder eine Funktion aufgerufen.
  *	In der Applikation wird der letzte Parameter, die Kommandokette geparst und als Array gespeichert.
  * 	Die Kommandokette besteht aus mehreren Kommandos. Jedes Kommando wird dann noch Applikationsspezifisch ergänzt werden.
@@ -9678,7 +9690,7 @@ function GutenMorgenWecker($params,$status,$variableID,$simulate=false,$wertOpt=
  *            +log
  *            +note
  *            +bounce
- *            +config
+ *            +config           bedeutet ein php script wird direkt im Event gespeichert, es erfolgt keine Verarbeitung wenn das Event triggert
  *
  * Beschreibung Parse:
  *      ParseCommand
@@ -9698,7 +9710,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$de
 
     $exectime=hrtime(true)/1000000;
 
-    $auto->evalWertOpt($control, $wertOptInput, $variableID, $status, $debug);
+    $auto->evalWertOpt($control, $wertOptInput, $variableID, $status, $debug);          // speichert in Parameter Variable Control
 
     
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
@@ -10533,6 +10545,163 @@ class AutosteuerungWebfront
             }
         return (array_merge($links,$webfront_link));             
         }
+
+    function readWeatherInformation()
+        {
+        echo "Wetterinformation von ORF abfragen:\n";
+        $curlOps = new curlOps();
+        $dosOps = new dosOps();
+
+        $orfUrl="https://wetter.orf.at/wien/prognose";
+        $dir="C:/Scripts/download/";
+        $curlOps->downloadFile($orfUrl, $dir); 
+
+        $fileName="prognose";           // table class="prognoseTable"
+        $prognose=$dosOps->readFileToString($dir.$fileName);
+        $pos=mb_strpos($prognose,"prognoseTable");
+        $pos1=mb_strpos(mb_substr($prognose,$pos-20,6000,"UTF-8"),"<table");
+        $pos1=$pos-20+$pos1;
+        $pos2=mb_strpos(mb_substr($prognose,$pos1,6000,"UTF-8"),"</table");
+        $len=$pos2+8;
+        //echo "Tabelle gefunden auf $pos1 $len \n";
+        $tabelle=mb_substr($prognose,$pos1,$len,"UTF-8");
+        //echo $tabelle."\n";
+        $data = htmlTableToArray($tabelle);
+        //print_r($data);
+        $range=""; $text=false;
+        foreach ($data as $line => $col)
+            {
+            //print_r($col);
+            foreach ($col as $index => $item)
+                {
+                if ($text)
+                    {
+                    if ($index==0) echo mb_str_pad($item,45);
+                    else echo mb_str_pad($item,25);
+                    }
+                if (($index==1) && ($line==2)) $range.=$item;
+                if (($index==1) && ($line==1)) $range.=$item."  ";
+                }
+            if ($text) echo "\n";
+            }
+        $range="Prognose heute : ".str_replace("ï¿œ","ö",$range);
+        echo "   $range \n";
+        
+        $orfUrl="https://wetter.orf.at/wien/";
+        $curlOps->downloadFile($orfUrl, $dir);
+        
+        //$result=$dosOps->readdirToArray($dir); print_R($result);
+
+        $fileName="wien";           // table class="prognoseTable"
+        $wien=$dosOps->readFileToString($dir.$fileName);
+        //echo $wien;
+        $text = $this->getDivTextByClass($wien,"details");
+        //echo $text;
+        $result=explode("\n",$text);
+        //print_R($result);
+        foreach ($result as $line) 
+            {
+            if (trim($line)!="") echo "   ".trim($line)."\n";
+            }
+
+        // $text = getDivTextByClass($wien,"stationData");  echo $text;            // Stammersdorf
+
+        $pos=mb_strpos($wien,'class="stationsHeadline"');
+        $text = mb_substr($wien,$pos,6000,"UTF-8");
+        //echo "\nPosition $pos   \n";
+        //echo $text;
+        $data = $this->htmlTableToArray($text);
+        //print_R($data);
+        $range=""; $text=true;
+        foreach ($data as $line => $col)
+            {
+            //print_r($col);
+            foreach ($col as $index => $item)
+                {
+                if ($text)
+                    {
+                    echo "   ";
+                    if ($index==0) echo mb_str_pad($item,45);
+                    else echo mb_str_pad($item,25);
+                    }
+                if (($index==1) && ($line==4)) $range.=$item."  ";
+                if (($index==2) && ($line==4)) $range.=$item."  ";
+                }
+            if ($text) echo "\n";
+            }
+        echo "   Aktuelles Wetter : $range  \n";
+
+        /* Entscheidungskriterien erwartete Höchsttemperatur, Regen oder bewölkt, aktuelle Version */ 
+
+
+
+        function getDivTextByClass(string $html, string $className): string
+            {
+            libxml_use_internal_errors(true);
+
+            $dom = new DOMDocument('1.0', 'UTF-8');
+            $dom->loadHTML(
+                mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'),
+                LIBXML_NOERROR | LIBXML_NOWARNING
+            );
+
+            $xpath = new DOMXPath($dom);
+
+            // XPath: div mit bestimmter Klasse
+            $nodes = $xpath->query(
+                "//div[contains(concat(' ', normalize-space(@class), ' '), ' {$className} ')]"
+            );
+
+            if ($nodes->length === 0) {
+                return '';
+            }
+
+            // textContent entfernt automatisch alle HTML-Tags
+            return trim($nodes->item(0)->textContent);
+            }
+
+
+
+        function htmlTableToArray(string $html): array
+            {
+            libxml_use_internal_errors(true);
+
+            $dom = new DOMDocument();
+            // Wrap in a full HTML document for safer parsing
+            $dom->loadHTML('<meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $html);
+
+            $xpath = new DOMXPath($dom);
+
+            // Select first table; adjust if you need a specific one
+            $table = $xpath->query('//table')->item(0);
+            if (!$table) {
+                return [];
+            }
+
+            $rows = [];
+            foreach ($xpath->query('.//tr', $table) as $tr) {
+                $cells = [];
+                // Take both th and td
+                foreach ($xpath->query('./th|./td', $tr) as $cell) {
+                    $cells[] = trim(preg_replace('/\s+/', ' ', $cell->textContent));
+                }
+                // Skip empty rows
+                if (count($cells) > 0) {
+                    $rows[] = $cells;
+                }
+            }
+
+        return $rows;
+        }
+
+        /* Example usage:
+        $html = file_get_contents('table.html'); // or your HTML string
+        $data = htmlTableToArray($html);
+        print_r($data);
+        */
+
+        }
+
     }
 
 /********************************************************************************************

@@ -668,6 +668,8 @@ Path=Visualization.Mobile.Stromheizung
          *    3 Datenobjekte als Komma getrennte Links
          *    4 Datenobjekte als Komma getrennte Namen, wenn kein 4 dann sind Links gleich die Namen
          * die Variablen werden mit getVariableId in Switch, groups oder programs gesucht
+         *
+         * with extra link handling   Sensor::Wirkleistung oder Link#12345#Temperatur   createLinkinWebfront
          */
 		$order = 10;
 		foreach($webFrontConfig as $tabName=>$tabData) {
@@ -682,6 +684,7 @@ Path=Visualization.Mobile.Stromheizung
 						break;
 					case IPSHEAT_WFCCATEGORY:
 						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+                        $status=@EmptyCategory($categoryId);
 						echo "CreateWFCItemCategory ($WFCItem[1], $WFCItem[2],$order, $WFCItem[3],$WFCItem[4], $categoryId, false)\n";
 						$wfcHandling->CreateWFCItemCategory ($WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
 						break;
@@ -691,12 +694,12 @@ Path=Visualization.Mobile.Stromheizung
 						$categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
 						if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
 							$categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
-						}
+						    }
 						$links      = explode(',', $WFCItem[3]);
 						$names      = $links;
 						if (array_key_exists(4, $WFCItem)) {
 							$names = explode(',', $WFCItem[4]);
-						}
+						    }
 						foreach ($links as $idx=>$link) {
 							$order = $order + 1;
                             $wfcHandling->createLinkinWebfront($link,$names[$idx],$categoryId,$order);                            
@@ -705,7 +708,7 @@ Path=Visualization.Mobile.Stromheizung
                             if (count($register)>0) echo "Link für ein Register, kein Schalter \n";
                             $variableID = getVariableId($link,[$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms]);
 							if ($variableID) CreateLinkByDestination($names[$idx], $variableID, $categoryId, $order);   */
-						}
+						    }
 						break;
 					default:
 						trigger_error('Unknown WFCItem='.$WFCItem[0]);
@@ -715,9 +718,10 @@ Path=Visualization.Mobile.Stromheizung
         $wfcHandling->write_WebfrontConfig($config["ConfigId"]);
 		}
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// User Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
+	/* ----------------------------------------------------------------------------------------------------------------------------
+	 * User Installation
+     * without extra Link handling, standard CreateLinkByDestination
+	 * ---------------------------------------------------------------------------------------------------------------------------- */
 
 	echo "\n";
 	echo "=====================================================\n";
@@ -752,6 +756,7 @@ Path=Visualization.Mobile.Stromheizung
 						break;
 					case IPSHEAT_WFCCATEGORY:
 						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+                        $status=@EmptyCategory($categoryId);
 						$wfcHandling->CreateWFCItemCategory ($WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
 						break;
 					case IPSHEAT_WFCGROUP:

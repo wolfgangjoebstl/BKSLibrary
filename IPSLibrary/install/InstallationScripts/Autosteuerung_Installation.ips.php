@@ -472,7 +472,24 @@
             }
         else $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung, $AutoSetSwitch["NAME"], 1, $AutoSetSwitch["PROFIL"], false, 0, $scriptIdWebfrontControl );  /* 0 Boolean 1 Integer 2 Float 3 String */        
         echo "-------------------------------------------------------\n";
-        echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
+        echo "Bearbeite Autosetswitch : \"".$AutoSetSwitch["NAME"]."\"  \n";
+        $name=$AutoSetSwitch["NAME"]; $tabname=$AutoSetSwitch["TABNAME"]; $owntab="Autosteuerung";
+        if (isset($AutoSetSwitch["OWNTAB"])) 
+            {
+            $owntab=$AutoSetSwitch["OWNTAB"];
+            if ($name!=$tabname) 
+                {
+                echo "Default (only here): ".strtoupper($AutoSetSwitch["TABNAME"]).", Name of Switch - Variable Ein/Aus/Auto: $name, Webfront Tabname : $owntab (Own Tab) \n";
+                }
+            elseif ($name!=$owntab) echo "     Name of Switch - Variable Ein/Aus/Auto: $name, Webfront Tabname : $owntab (Own Tab)\n";
+            else echo "     Identifier, Name of Switch and Webfront Tabname all same\n";
+            }
+        else 
+            {
+            if ($name!=$tabname) echo "Default (only here): ".strtoupper($AutoSetSwitch["TABNAME"])."\n";
+            elseif ($name!=$owntab) echo "     Name of Switch - Variable Ein/Aus/Auto: $name, Webfront Tabname : $owntab (Joint Tab)\n";
+            else echo "     Identifier, Name of Switch and Webfront Tabname all same\n";
+            }
 
 		$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
@@ -777,11 +794,34 @@
                     }
 				break;
             case "MEASUREMENT":
-               $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Measurement'));             
+                /* Auswertungen einer Variable, zum Beispiel nach Betriebsstunden, Darstellung als Counter
+                 *      TABNAME     hier Measurmeent
+                 *      OWNTAB      der Tabname im Autosteuerungs Webfront
+                 *      NAME        die Kategorie und der Switch, könnte man auch Measurement nennen
+                 */            
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Measurement'));
+                $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
+
+                $auswertungID  = $webfront_links[$AutosteuerungID]["OID_L"];                 
+                $tab = $webfront_links[$AutosteuerungID]["TAB"];
+                if (isset($webFrontConfiguration[$tab])===false) echo "Achtung, ohne einen Eintrag mit $tab in Autosteuerung_GetWebFrontConfiguration geht gar nichts.\n";
+
+                /* Name Oelheizung $auswertungId ist ungleich Tabname Measurement, wenn gleich einfacher, herausfinden
+                 * eigentlich kein Problem, ausser function call Measurement speichert unter der Variable/Categorie Measurement
+                 * Abhilfe das eine ist die Category und das andere ist die Variable
+                 */
+                $tabs[$tab]=array();
+                $tabs[$tab]["Auswertung"][$auswertungID]=array();
+                $tabs[$tab]["Auswertung"][$auswertungID]["NAME"]=$AutoSetSwitch["NAME"];
+
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {  				
 			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputMeasurement;											/* Darstellung rechts im Webfront, immer eine Nachrichtenliste */				
-                    }            
+                    $nachrichtenID = $webfront_links[$AutosteuerungID]["OID_R"];
+                    $tabs[$tab]["Nachrichten"][$nachrichtenID]=array();
+                    $tabs[$tab]["Nachrichten"][$nachrichtenID]["NAME"]=$AutoSetSwitch["NAME"];
+                    $tabs[$tab]["Nachrichten"][$nachrichtenID]["ORDER"]=100;  
+                    } 
                 break;	
 			case "STROMHEIZUNG":
 				/* Stromheizung macht ein Progamm für die nächsten 14 Tage. Funktioniert derzeit für die Stromheizung und den eigenen Temperaturregler
@@ -1124,6 +1164,29 @@
 		}
 	IPS_SetEventActive($tim2ID,true);
 
+    /* Weather, setup Timer
+     */
+
+    if (isset($setup["Weather"]))
+        {
+        $timerOps = new timerOps();
+        $updateTime=60*60*4;            // default every 4 hour
+        if (isset($setup["Weather"]["update"])) $updateTime=$setup["Weather"]["update"];           
+        echo "install weathermen, update time $updateTime Secs:\n";
+    	$tim4ID = $timerOps->CreateTimerSync("Weathertimer",$updateTime, $scriptIdHeatControl);
+        IPS_SetEventActive($tim4ID,true);
+
+        /* $tim4ID = @IPS_GetEventIDByName("Weathertimer", $scriptIdHeatControl);
+        if ($tim4ID==false)
+            {
+            $tim4ID = IPS_CreateEvent(1);
+            IPS_SetParent($tim4ID, $scriptIdHeatControl);
+            IPS_SetName($tim4ID, "Weathertimer");
+            IPS_SetEventCyclic($tim4ID,0,0,0,0,1,60);		// alle 60 Sekunden , kein Datumstyp, 0, 0 ,0 2 minütlich/ 1 sekündlich 
+            }  */
+
+        }
+    else IPS_SetEventActive($tim4ID,false);         // nicht aufrufen wenn nicht konfiguriert
 
 /*----------------------------------------------------------------------------------------------------------------------------
  *

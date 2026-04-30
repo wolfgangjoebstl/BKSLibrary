@@ -23,6 +23,8 @@
  *
  * im OperationCenter gibt es die Livestreamdarstellung und eine Capturebilder Darstellung
  *
+ * call for overview, no function, only default for variable, webfront call
+ *
  *
  */
 
@@ -53,10 +55,25 @@
     $repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 	$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
 
+    /* Wir möchten mit IP-Symcon 5.3 endlich die seit Windows Vista eingeführte Trennung zwischen Programm und Daten umsetzen, 
+     * wie alle anderen es bereits von MacOS, Linux, Raspberry Pi kennen. Dafür migriert das Setup alle relevanten Daten 
+     * in den C:\ProgramData\Symcon Ordner. IP-Symcon wird dann weiterhin im alten Ordner* installiert - beinhaltet jedoch
+     * nur noch die installierten Dateien**. Ihr könnt dann also in Zukunft ein Backup vom C:\ProgramData\Symcon Ordner machen und 
+     * direkt auf eine andere Plattform wechseln. Downgrade: Backup zurückspielen und den Dienst einfach starten
+     * IPS_GetKernelDir  um an C:\ProgramData\Symcon heranzukommen, im Vergleich zu IPS_GetKernelDirEx für C:\Program Files\Symcon\
+     *
+     * Der C:\ProgramData\Symcon\user Ordner beinhaltet benutzerdefinierte Inhalte von IP-Symcon (z.B. weitere Darstellungskripte für Webfront).
+     * Der Ordner C:\ProgramData\Symcon\webfront\user ist nur für IPS Versionen kleiner 7.0
+     */
+
 	echo "IP Symcon Daten:\n";
-	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
+    echo "  IPS KernelDir    : ".IPS_GetKernelDir()."\n";
+    echo "  IPS LogDir       : ".IPS_GetLogDir()."\n";
+    echo "  IPS KernelDirEx  : ".IPS_GetKernelDirEx()."\n";    
+	echo "    Kernelversion : ".IPS_GetKernelVersion()."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "  Modulversion  : ".$ergebnis."\n";
+	echo "    Modulversion  : ".$ergebnis."\n";
+    echo "\n";
 
 	/*******************************
      *
@@ -68,7 +85,8 @@
     $dosOps = new dosOps();
 
     $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$CategoryIdDataOC);
-    echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".$ipsOps->path($CategoryIdDataOverview)."\n";
+    //echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".$ipsOps->path($CategoryIdDataOverview)."\n";
+    echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".IPS_GetLocation($CategoryIdDataOverview)."\n";
 
     //echo "(".memory_get_usage()." Byte).\n";	
 
@@ -90,8 +108,10 @@
         
         }
     else
-        {
-
+        {       // all other reasons then a Webfront Call
+        if (isset($installedModules["IPSCam"])) echo "IPSCam Modul installed, do minimal Config of IPSCam, still useful. \n";
+        else echo "Warning, do install IPSCam. Do Config as well.\n";
+        
         /*******************************************
         *
         * Media Objects Vorbereitung, Evaluierung
@@ -101,28 +121,48 @@
         $mediaFound=$ipsOps->getMediaListbyType(3);     // get Streams out of MediaList
 
         echo "\n";
-        echo "Anzahl Eintraege Streaming Media ".count($mediaFound)."\n";
+        echo "Anzahl Eintraege Streaming Media mit Angabe Modul ".count($mediaFound)."\n";
         $module=array();
         foreach ($mediaFound as $media)
             {
-            $objectR=$media;
-            echo " $media ";
-            echo "   ".IPS_GetName($objectR);
             $moduleName="";
+            echo " $media ";
+            echo IPS_getLocation($media);
+            //echo "   ".IPS_GetName($objectR);            
+            $objectR=$media;
             while ($objectR=IPS_GetParent($objectR))
                 {
                 if (IPS_GetName($objectR)=="modules") $moduleName=$last;
                 $last=IPS_GetName($objectR);
-                echo ".".$last;
-                }
-            echo ".".IPS_GetName($objectR);
-            echo "         $moduleName    ".IPS_GetMedia($media)["MediaFile"];
+                //echo ".".$last;
+                } 
+            //echo "\\".IPS_GetName($media);  
+            echo "     $moduleName    ";  
+            echo "    ".IPS_GetMedia($media)["MediaFile"];
             echo "\n";
             $module[$moduleName][$media]=IPS_GetName($media);
             }
         echo "\n";
         echo "Auflistung, Strukturierung anhand Parent Verzeichnis = Module:\n";
         print_r($module);
+
+        // CamOperation::copyCamSnapshots aufrufen, erzeugt das Verzeichnis AllPics
+        /* Die Snapshots der IPS Cam Kameras auf einen Bildschirm bringen, kann auch Modul Webcamera übernehmen */	
+        $camOperation = new CamOperation();
+        $camOperation->copyCamSnapshots([],true);           // true Debug
+
+        IPSUtils_Include ("WebCamera_Configuration.inc.php","IPSLibrary::config::modules::WebCamera");
+        IPSUtils_Include ("WebCamera_Library.inc.php","IPSLibrary::app::modules::WebCamera");
+
+        $webCamera = new webCamera();  
+        $zielVerzeichnis = $webCamera->zielVerzeichnis();
+        echo "Download : $zielVerzeichnis \n";                  // 'C:/ProgramData/Symcon/user/OperationCenter/AllPics'
+        $handle=opendir ($zielVerzeichnis);
+        while ( false !== ($datei = readdir ($handle)) )
+            {
+            echo $datei."\n";
+            }
+
 
         /*******************************
          *

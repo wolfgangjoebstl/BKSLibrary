@@ -21,8 +21,8 @@
 	 *
 	 * Script zur Erstellung von WebCamera Anzeigen
      *
-     * seit IP Symcon 7 hat sich das Veruechnis geändert von webfront/user auf user/
-     * noch kein vollständig eigenständiges Modul. Verwendet aber bereits eigenes Webfront für die Darstellung
+     * seit IP Symcon 7 hat sich das Verzeichnis geändert von webfront/user auf user/
+     * Webcamera ist noch kein vollständig eigenständiges Modul. Verwendet aber bereits eigenes Webfront für die Darstellung.
      * die Config kommt von OperationCenter und IPSCam, ohne OperationCenter erfolgt keine Installation der Webfronts
      * In IPSCam und OperationCenter das Install der Wenfronts noch deaktivieren
      *

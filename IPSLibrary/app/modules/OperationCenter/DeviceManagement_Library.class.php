@@ -1635,7 +1635,7 @@ class DeviceManagement
             $result[0]="Stellmotor";   
             $i=0;                            
             $resultType[$i]="TYPE_ACTUATOR";
-            if (array_search("LEVEL",$registerNew) !== false)           // di emodernere Variante
+            if (array_search("LEVEL",$registerNew) !== false)           // die modernere Variante
                 {
                 $resultReg[$i]["VALVE_STATE"]="LEVEL"; 
                 if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false)$resultReg[$i]["SET_TEMPERATURE"]="SET_POINT_TEMPERATURE";
@@ -1839,9 +1839,18 @@ class DeviceManagement
             else $result[1] = "Funk RSSI Wert";
             $resultType[0] = "TYPE_RSSI";             
             $resultReg[0]["RSSI"] = "";
-            }            
+            }
+        /*-------Wassermessgerät------------------------------*/            
+        elseif ( array_search("WATER_VOLUME",$registerNew) !== false)                   // Wasser Messgerät 
+            {
+            $result[0] = "Wassermessgeraet";
+            $result[1] = "IP Funk Wassermessgeraet";                    // eigentlich für HomematicIP immer IP Funk
+            $resultType[0] = "TYPE_METER_WATER";             
+            if (array_search("WATER_VOLUME",$registerNew)) $resultReg[0]["VOLUME"]="WATER_VOLUME";                   // diese Register werden zur Verfügung gestellt und regelmaessig ausgewertet
+            if (array_search("WATER_FLOW",$registerNew)) $resultReg[0]["FLOW"]="WATER_FLOW";  
+            }                      
         /*-------Energiemessgerät------------------------------*/
-        elseif ( array_search("CURRENT",$registerNew) !== false) /* Messgerät */
+        elseif ( array_search("CURRENT",$registerNew) !== false)                            // Energie Messgerät 
             {
             $result[0] = "Energiemessgeraet";
             if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
@@ -3955,6 +3964,14 @@ class DeviceManagement_Shelly extends DeviceManagement
                 case "Shelly Power Strip 4 Gen4":                                         // Device
                     $this->itemslist[$oid]["TypeDev"]="TYPE_DEVICE";              // als Namensgeber der Devices mitnehmen, Eigenheit von Shelly
                     break;
+                case "Shelly 1 Gen4":               // komplizierte Shelly Welt, Gerät mit Add-On bringt hier zwei Temperaturmessgeräte hinzu
+                    /* ohne Add-on nur ein Switch 
+                     * mit Add-On die unterschiedlichen Funktionen möglich, 
+                     * Add-Ons bei Vielen Geräten möglich
+                     *
+                     */
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_DEVICE"; 
+                    break;
                 case "Shelly Pro 3EM":                    
                     $this->itemslist[$oid]["TypeDev"]="TYPE_DEVICE_MULTY_METER";              // als Namensgeber der Devices mitnehmen, wird auch als Component verwendet
                     break;                     
@@ -3967,6 +3984,9 @@ class DeviceManagement_Shelly extends DeviceManagement
                     break; 
                 case "cloud":                               // other component, do nothing
                 case "wifi":
+                    break;
+                case "temperature":
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_METER_TEMPERATURE";
                     break;
                 case "em":                                  // Energy meter phase, voltage, ampere and power
                     if ($debug) echo "Component ".str_pad($item["instanceID"],8).str_pad($item["name"],12).str_pad($item["InstanceName"],20)."\n";
@@ -4040,7 +4060,8 @@ class DeviceManagement_Shelly extends DeviceManagement
      * Shelly Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
      * die Register werden wie bei Homematic übergeben, allerdings mit dem Namen in Grossbuchstaben als Key
      * zusätzlich wird die Config der Instanz mit übergeben, bei Hue gibt es mehr Informationen die ausgewertet werden können
-     * 
+     * verwendet itemslist, auslesen für Ermittlung TypeDev 
+     *
      * nach der Auswertung wird $resultType[0] mit dem DeviceType beschrieben.
      * 
      * erkannte Device Typen (1fach oder 4fach Switche)
@@ -4076,6 +4097,7 @@ class DeviceManagement_Shelly extends DeviceManagement
         if (is_array($entry["OID"])) return (false);                                // es werden keine mehreren Instanzen als Übergane unterstützt
 
         /* itemslist auslesen für Ermittlung TypeDev
+         * in der itemlist sind nur Eintraege sich ind er Konfigurator Formlist finden, die andern dazu erfinden
          * key ist oid der Instanz, ausgelesen wird TypeDev [TYPE_SWITCH,TYPE_DEVICE   ]
          * wenn nicht vorhanden wird die Config der Instanz angesehen
          *
@@ -4105,7 +4127,7 @@ class DeviceManagement_Shelly extends DeviceManagement
             }
         else 
             {
-            echo "                    DeviceType::Shelly, called for instance ".$entry["OID"]." (".IPS_GetName($entry["OID"]).") not found in itemlist, see registers:\n";
+            if ($debug) echo "                    DeviceType::Shelly, info, called for instance ".$entry["OID"]." (".IPS_GetName($entry["OID"]).") not found in itemlist, not in Configurators Formlist, see registers: add it now\n";
             $this->itemslist[$entry["OID"]]["TypeDev"]="TYPE_DEVICE"; 
             $devicetype="TYPE_DEVICE";
             }
@@ -4171,6 +4193,30 @@ class DeviceManagement_Shelly extends DeviceManagement
                 $result[4]["TYPECHAN"] = "TYPE_SWITCH,TYPE_METER_POWER";              
                 $result[4]["TYPE_SWITCH"] = $resultRegSwitch;
                 $result[4]["TYPE_METER_POWER"] = $resultRegEnergy;
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                break;   
+            case "TYPE_METER_TEMPERATURE":                     // mit AddOns lassen sich Temperaturen auslesen
+                // passende Channels finden
+                $resultRegSwitch=array();$resultRegEnergy=array(); 
+                foreach ($registerNew as $regname)                          // wir suchen was
+                    {
+                    //echo " $regname ";
+                    $pos1=strpos($regname,"Temperature");
+                    if ($pos1 !== false) $resultRegTemp["TEMPERATURE"]=$regname;            // beginnt mit Status
+                    }
+                //echo "\n"; print_r($resultRegEnergy); print_r($resultRegSwitch);
+                /*--Schalter 1fach oder 4fach -----------------------------------*/ 
+                if ($debug) echo "                     AddOn mit Temperatursensor gefunden.\n";
+
+                $result[0] = "AddOn mit Temperatursensor";
+                $result[1] = "WIFI AddOn mit Temperatursensor";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["Register"] = $resultRegTemp;
+                $result[3]["RegisterAll"]=$registerNew;
+                $result[4]["TYPECHAN"] = "TYPE_METER_TEMPERATURE";              
+                $result[4]["TYPE_METER_TEMPERATURE"] = $resultRegTemp;
                 $result[4]["RegisterAll"]=$registerNew;
                 $found=true;
                 break;   
@@ -4251,12 +4297,12 @@ class DeviceManagement_Shelly extends DeviceManagement
                 $result[1] = "WIFI Shelly Device";
                 $result[2] = $devicetype;            
                 $result[3]["Type"] = $devicetype;            
-                $result[3]["RegisterAll"]=$registerNew;
+                $result[3]["RegisterAll"]=$registerNew;         // and include all register that are also available as components
                 $result[4]["RegisterAll"]=$registerNew;
                 $found=true;
                 break;                                            
             default:
-                echo "      Warning, ".strtoupper($devicetype)." not found.\n";
+                echo "      Warning, DeviceManagement_Shelly::DeviceType, ".strtoupper($devicetype)." not found.\n";
                 print_r($register);
                 break;
             }

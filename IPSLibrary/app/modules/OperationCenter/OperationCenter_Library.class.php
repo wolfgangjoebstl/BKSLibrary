@@ -2192,7 +2192,7 @@ class OperationCenter extends OperationCenterConfig
         $categoryId_SysPing    	= @IPS_GetObjectIDByName('SysPing',       	$this->CategoryIdData);
         $categoryId_RebootCtr  	= @IPS_GetObjectIDByName('RebootCounter', 	$this->CategoryIdData);
         $categoryId_Sockets     = @IPS_GetObjectIDByName("SocketStatus", 	$categoryId_SysPing);
-        if ($debug>1) echo "OperationCenter RebootCounter Category  $categoryId_RebootCtr SysPing $categoryId_SysPing \n";
+        if ($debug>1) echo "   OperationCenter RebootCounter Category  $categoryId_RebootCtr, SysPing $categoryId_SysPing, Config size, number of ccus monitored ".sizeof($device_config)."\n";
         if ($categoryId_SysPing && $categoryId_RebootCtr ) 
             {
             if (sizeof($device_config)>0)               // eigene Auswertung 
@@ -2201,9 +2201,18 @@ class OperationCenter extends OperationCenterConfig
                 foreach ($childs as $oid)                               // other way round, see whats there and whether you can use it
                     {
                     $name=IPS_GetName($oid);
+                    if ($debug>1) echo "      found $oid $name \n";
                     foreach ($device_config as $ccuname => $config) 
                         {
+                        /* entweder stimmen der Indexname der Config zusammen oder der Name wird über die OID ermittelt, 
+                         * Reboot Counter muss gleichen Namen, oder Teile des CCU Namnens haben
+                         */
                         $pos1=strpos($name,$ccuname);           // haystack needle
+                        if ($debug>1) echo "         doublecheck deviceconfig index $ccuname with $name : $pos1\n";
+                        if ($pos1 !== false) break;             // 0 is a valid result
+                        if (isset($config["OID"])) $ccuname=IPS_GetName($config["OID"]);
+                        $pos1=strpos($name,$ccuname);           // haystack needle
+                        if ($debug>1) echo "         doublecheck deviceconfig oidname $ccuname with $name : $pos1\n";
                         if ($pos1 !== false) break;             // 0 is a valid result
                         }
                     $statusID       = @IPS_GetObjectIDByName($name,$categoryId_SysPing);   
@@ -6881,8 +6890,13 @@ class LogFileHandler extends OperationCenter
 										$this->dosOps->mkdirtree($this->dosOps->correctDirName($verzeichnis.$unterverzeichnis));
 										}
                                     //echo "rename ".$verzeichnis.$file."   ,    ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
-									rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-									if ($debug) echo "                   Datei: ".$verzeichnis.$file." auf ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+									//rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+                                    [$ok, $msg] = $this->moveFile($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file, false);
+									if ($debug) 
+                                        {
+                                        echo ($ok ? "OK: " : "ERR: ") . $msg . PHP_EOL;
+                                        echo "                   Datei: ".$verzeichnis.$file." auf ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+                                        }
 									if ($statusID != 0) SetValue($statusID,$letztesfotodatumzeit);
 									}
 								}
@@ -6897,6 +6911,176 @@ class LogFileHandler extends OperationCenter
 				}
 		return (100-$count);
 		}
+
+
+    /**
+    * Move/rename a file with pre-checks and good error reporting.
+    *
+    * - Checks existence, readability, destination directory, destination non-existence (optional),
+    *   and tries to detect lock on Windows (best-effort).
+    * - Uses rename() first; if it fails (e.g., across filesystems), falls back to copy+unlink.
+    *
+    * @return array [bool $ok, string $message]
+    *
+    * Example usage:
+        [$ok, $msg] = moveFile('/path/from/file.txt', '/path/to/file.txt', false);
+        echo ($ok ? "OK: " : "ERR: ") . $msg . PHP_EOL;
+    *
+    */
+    function moveFile(string $src, string $dst, bool $overwrite = false): array
+        {
+        // Normalize paths (optional)
+        $src = rtrim($src);
+        $dst = rtrim($dst);
+
+        if ($src === '' || $dst === '') {
+            return [false, "Source or destination path is empty."];
+            }
+
+        if (!file_exists($src)) {
+            return [false, "Source does not exist: {$src}"];
+            }
+
+        if (!is_file($src)) {
+            return [false, "Source is not a regular file: {$src}"];
+            }
+
+        if (!is_readable($src)) {
+            return [false, "Source is not readable (permissions?): {$src}"];
+            }
+
+        $dstDir = dirname($dst);
+        if (!is_dir($dstDir)) {
+            return [false, "Destination directory does not exist: {$dstDir}"];
+            }
+
+        // Need write permission on destination directory
+        if (!is_writable($dstDir)) {
+            return [false, "Destination directory is not writable (permissions?): {$dstDir}"];
+            }
+
+        if (file_exists($dst) && !$overwrite) {
+            return [false, "Destination already exists (overwrite=false): {$dst}"];
+            }
+
+        // Best-effort lock check:
+        // On Windows: if another process holds an exclusive lock, opening with 'r+' often fails.
+        // On Unix: locks are advisory; this does NOT guarantee anything.
+        $lockCheck = $this->canOpenAndLock($src);
+        if ($lockCheck !== true) {
+            // If you want to ignore lock checks and just attempt move, comment this out.
+            return [false, $lockCheck];
+            }
+
+        // Try atomic rename first
+        $lastError = null;
+        set_error_handler(function($severity, $message) use (&$lastError) {
+            $lastError = $message;
+            return true; // suppress warning
+            });
+
+        $ok = @rename($src, $dst);
+
+        restore_error_handler();
+
+        if ($ok) {
+            return [true, "Moved successfully via rename(): {$src} -> {$dst}"];
+            }
+
+        // If rename fails, try copy+unlink (useful for cross-filesystem moves)
+        $copyError = null;
+        set_error_handler(function($severity, $message) use (&$copyError) {
+            $copyError = $message;
+            return true;
+            });
+
+        $copied = @copy($src, $dst);
+        if ($copied) {
+            // Try to preserve permissions/time if you care (optional)
+            // @chmod($dst, fileperms($src) & 0777);
+            // @touch($dst, filemtime($src));
+
+            $deleted = @unlink($src);
+            restore_error_handler();
+
+            if ($deleted) {
+                return [true, "Moved successfully via copy+unlink(): {$src} -> {$dst}"];
+                }
+
+            // Rollback if delete failed
+            @unlink($dst);
+            return [false, "Copied to destination but failed to delete source (permissions/lock?). Source kept. Error: " . ($copyError ?? $lastError ?? 'unknown')];
+            }    
+
+        restore_error_handler();
+
+        // Give best diagnostics
+        $reason = $lastError ?? $copyError ?? 'unknown';
+        $details = $this->diagnoseMoveFailure($src, $dst);
+
+        return [false, "Move failed. Reason: {$reason}. Diagnostics: {$details}"];
+        }
+
+    /**
+    * Best-effort lock check.
+    * - On Windows: if locked by another process, fopen may fail.
+    * - On Unix: locks are advisory; this is not a reliable indicator.
+    *
+    * @return true|string true if OK, otherwise error message
+    */
+    function canOpenAndLock(string $path)
+        {
+        // Try open for read/write without truncation
+        $h = @fopen($path, 'r+b');
+        if ($h === false) {
+            // Often indicates access denied or locked (Windows)
+            return "Cannot open source for read/write (locked or insufficient rights?): {$path}";
+            }
+
+        // Try non-blocking exclusive lock
+        $wouldBlock = false;
+        $locked = @flock($h, LOCK_EX | LOCK_NB, $wouldBlock);
+
+        if ($locked) {
+            // Release immediately
+            @flock($h, LOCK_UN);
+            @fclose($h);
+            return true;
+            }
+
+        @fclose($h);
+
+        // On Unix this might just mean "someone else didn't release advisory lock"
+        // On Windows it can indicate real lock contention.
+        return "Source appears to be locked by another process (flock could not acquire). Path: {$path}";
+        }
+
+    /**
+    * Provide extra clues about why move might fail.
+    */
+    function diagnoseMoveFailure(string $src, string $dst): string
+        {
+        $dstDir = dirname($dst);
+        $bits = [];
+
+        $bits[] = "src_exists=" . (file_exists($src) ? "yes" : "no");
+        $bits[] = "src_readable=" . (is_readable($src) ? "yes" : "no");
+        $bits[] = "src_writable=" . (is_writable($src) ? "yes" : "no");
+        $bits[] = "dstDir_exists=" . (is_dir($dstDir) ? "yes" : "no");
+        $bits[] = "dstDir_writable=" . (is_writable($dstDir) ? "yes" : "no");
+        $bits[] = "dst_exists=" . (file_exists($dst) ? "yes" : "no");
+
+        // Cross-filesystem hint (not perfect):
+        // If rename fails but copy works, it's likely cross-device.
+        // Here we just add a generic hint.
+        $bits[] = "hint=if rename fails across filesystems, fallback copy+unlink is needed";
+
+        return implode(", ", $bits);
+        }
+
+
+
+
 	/*
 	 *  Die oft umfangreichen Fotos der Webcams in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
 	 *	 werden kann. Es werden die selben Move Operationen wie bei Logs verwendet.
