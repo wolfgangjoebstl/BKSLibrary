@@ -24,8 +24,9 @@
      * erweitert um die Funktionen von Selenium und chromedriver
      * Abhängig von der Betriebsart wird iMacro (nur mehr gegen Geld nutzbar) oder Selenium initialisiert
      *
-	 * Installationsroutine, Eigenes Tab im SystemTP für Selenium Status
+	 * Installationsroutine Selenium: 
      * Selenium Funktion wird hier immer mehr ausgeweitet
+     * Eigenes Tab im SystemTP für Selenium Status
      * Selenium benötigt aktuelle chromedriver Versionen, diese werden über Synology Drive verteilt
      * Aus Synology Drive die chromedriver_xxx xxx version katalogisieren
      * über Tastendruck kann Selemium aktualisisert werden, erfordert Aufruf Installation
@@ -33,12 +34,17 @@
      * Zusätzlich werden jetzt auch die letztgültigen chromedriver versionen in das Download Verzeichnis geladen
      * erfordert json download der versionierung und link, unzip und Speicherung mit _xxx
      *
+     * Optionen:
+     *      GuthabenAllgConfig["Selenium"]["getChromeDriver"]       kann auf false gesetzt werden, dann werden von der Webpage keine Chromedriver Versionen geholt oder entpackt, 
+     *      die letzte version ist immer das Sharedrive, es erfolgt auch kein Update des Sharedrives. Wichtig bei Opt out Variante, das die notwendigen Variablen trotzdem gesetzt werden
+     *
+     * Installationsroutine Money:
      * Allgemeine Funktion Money mit dem Dollarzeichen
      * Darstellung von Guthaben, aktuellem Depotwert, Analyseergebnisse von Yahoo Finance API
      * nachdem diese API nur mehr intern für Webbrowser Aufrufe funktioniert und systematisch für externe Aufrufe geblockt wird
      * wird die API Schnittstelle deaktiviert und um eine Selenium Schnittstelle erweitert 
      *
-     * Installationsschritte:
+     * Installationsschritte Allgemein:
      *      INIT, generell, check ob AMIS Modul
      *      INIT, Variablen anlegen
      *      Setup YahooApi und vielleicht auch andere, die Variablen initialisisern
@@ -55,6 +61,9 @@
      *      INIT, Nachrichtenspeicher, Ausgeben wenn Execute
      *      Selenium Webfront initialisieren, display of Guthabensteuerung Information
 	 *
+     * Offene Implementierungen:
+     *      nach Todo suchen
+     *
 	 * @file          Guthabensteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
@@ -354,10 +363,14 @@
                 $version    = $seleniumChromedriver->getListAvailableChromeDriverVersion();          // alle bekannten Versionen von chromedriver aus dem Verzeichnis erfassen 
                 //print_R($version);          // Version Nummer, Filename, Size in Bytes
 
+            // Todo: recommended Version bestimmen
+
                 $latestVersion=array_key_last($version);
                 $cdVersion=(string)$latestVersion;
                 $actualVersion = $seleniumChromedriverUpdate->identifyFileByVersion("chromedriver.exe",$version);
                 if ($actualVersion != $latestVersion) echo "Update with latest available Chromedriver version \"$cdVersion\" recommended. Actual version is \"$actualVersion\".\n";
+
+            // Todo: Fall bei Erstinstallation, es gibt noch keine Actual Version
 
                 if (isset($configWatchdog["Software"]["Selenium"]["Directory"]))
                     {
@@ -367,7 +380,7 @@
                     $selDirContent = $dosOps->readdirToArray($selDir);                   // Inhalt Verzeichnis als Array
                     //print_R($selDirContent);
                     $found = $dosOps->findfiles($selDirContent,"chromedriver-alt.exe");                // true debug, wir suchen ein altes file mit dem minus als Trennzeichen zur Version nicht _
-                    if ($found)
+                    if ($found)     //Kompatibilitaet
                         {
                         echo "Altes chromedriver-xxx.exe gefunden. Wegen Kompatibilität jetzt loeschen \"".$found[0]."\"\n";   
                         $dosOps->deleteFile($selDir.$found[0]);
@@ -387,19 +400,25 @@
                 }               // OperationCenter ist installiert 
                 
             $html = "";                     // Init, auch wenn kein get from google download vorhanden
-            $getChromedriverID=false;   
-            if ( (isset($GuthabenAllgConfig["Selenium"]["getChromeDriver"])) && ($GuthabenAllgConfig["Selenium"]["getChromeDriver"]) )
+            $getChromedriverID=false; 
+
+            // vorhandene Versionen, Details über heruntergeladene Version hier speichern
+            $configChromedriverID       = CreateVariableByName($CategoryId_Mode,"ConfigChromeDriver", 3,"","",124);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+
+            if ( (isset($GuthabenAllgConfig["Selenium"]["getChromeDriver"])) && ($GuthabenAllgConfig["Selenium"]["getChromeDriver"] === false) )
+                {
+                echo "Chromedriver automatisch und manuell von Webpage laden wurde explizit deaktiviert.\n";
+                }
+            else            // only when explicitly opt out do above code, dann gibt es keinen Get Button
                 {
                 echo "\n";
                 echo "Chromedriver automatisch und manuell von Webpage laden.\n";
+
                 $pname="GetChromeDriver";                                         // keine Standardfunktion, da Inhalte Variable
                 $nameID=["Get"];
                 echo "Update Profile $pname with ".json_encode($nameID)."\n";
                 $webOps->createActionProfileByName($pname,$nameID,0);                 // erst das Profil, dann die Variable initialisieren, , 0 ohne Selektor
                 $getChromedriverID          = CreateVariableByName($CategoryId_Mode,"GetChromeDriver", 1,$pname,"",125,$GuthabensteuerungID);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-                // vorhandene Versionen, Details über heruntergeladene Version hier speichern
-                $configChromedriverID       = CreateVariableByName($CategoryId_Mode,"ConfigChromeDriver", 3,"","",124);                        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
-
 
                 /**************************** es werden chromedriver Versionen automatisch geladen, 
                 * geht auch über GetChromeDriver Taste Get und Guthabensteuerung Script, siehe Zeile if ($getChromedriver)
@@ -482,11 +501,22 @@
                                 $dosOps->writeDirStat($dirname);                    // Ausgabe Directory ohne Debug bei writeDirToArray einzustellen
                                 echo "moveFile ".$dirname."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
                                 //$dosOps->moveFile($dirname."chromedriver.exe",$dir."chromedriver_$version.exe");
-                                if (!copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe")) echo "failed to copy ".$dirname."chromedriver.exe...\n";
-                                //echo "rename  ".$dir."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
-                                //rename($dir."chromedriver.exe",$dir."chromedriver_".$version.".exe");
-                                $dosOps->rrmdir($dirname);
-                                echo "    -> finished, result and $dirname deleted.\n";
+                                if (file_exists($dirname."chromedriver.exe"))
+                                    {
+                                    if (!@copy($dirname."chromedriver.exe",$dir."chromedriver_$version.exe")) echo "failed to copy ".$dirname."chromedriver.exe...\n";
+                                    else   
+                                        {
+                                        //echo "rename  ".$dir."chromedriver.exe to ".$dir."chromedriver_$version.exe\n";
+                                        //rename($dir."chromedriver.exe",$dir."chromedriver_".$version.".exe");
+                                        $dosOps->rrmdir($dirname);
+                                        echo "    -> finished, result and $dirname deleted.\n";
+                                        }
+                                    }
+                                else
+                                    {
+                                    echo "File ".$dirname."chromedriver.exe does not exist.\n";
+                                    print_r($files);
+                                    }
                                 }
                             else 
                                 {

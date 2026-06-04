@@ -10,7 +10,7 @@
      *      Statistik           Regenstatistik, Dauer, Intensität von lokaler Wetterstation
      *      Powerpump           Leistung und Energieverbrauch, Fehlermeldungen wenn kein Wasser etc.
      *      DataQuality         eine Art Maintenance, unterstützung bei der Einschätzung der Qualität der Daten, Aufgebaut wie Reporting
-     *
+     *      Consumption         Wasserverbrauch, Darstellung
 	 *
 	 * @file          Gartensteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -538,9 +538,19 @@
 			if ($debug) echo "      TabItem ID ".$tabItem." nicht mehr vorhanden.\n";
 			}	
 
-        if ($debug) echo "   Webfront für Giessanlage entspreechend Konfiguration anlegen [Giessanlage|Statistik|Gartenpumpe]:\n";
+        if ($debug) echo "   Webfront für Giessanlage entsprechend Konfiguration anlegen [Giessanlage|Statistik|Gartenpumpe]:\n";
         if ($debug) echo "     erzeugt TabPaneItem :".$config["TabPaneItem"]." in ".$config["TabPaneParent"]."\n";
         CreateWFCItemTabPane   ($WFC10_ConfigId, $config["TabPaneItem"], $config["TabPaneParent"],  $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]); /* Autosteuerung Haeuschen */
+        /* TAB Overview
+         *          Irrigation
+         *          Statistics
+         *          PowerPump
+         *          DataQuality
+         *          Consumption
+         */
+
+        /* typische Webfront Tab für die Steuerung der Giessanlage, schaltet Ventile ein/aus
+         */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["Irrigation"])=="ENABLED")
             {
             if ($debug) echo "     ConfOption Giessanlage, erzeugt Split TabItem :".$tabItem." mit Name ".$config["TabName"]." in ".$config["TabPaneItem"]." und darunter die Items Left und Right.\n";
@@ -564,8 +574,8 @@
             CreateLinkByDestination('Nachrichten', $input,    $categoryIdRight,  110);
             }
 
-		/* zusaetzliches Webfront Tab für Statistik Auswertungen */
-
+		/* zusaetzliches Webfront Tab für Statistik Auswertungen 
+         */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["Statistics"])=="ENABLED")                //tabItem0
             {
             if ($debug) echo "     ConfOption Statistik, erzeugt SplitPaneItem :".$tabItem."0 in ".$config["TabPaneItem"]."\n";
@@ -581,8 +591,9 @@
             CreateLinkByDestination("Regenereignisse", $StatistikBox3ID ,           $categoryIdRight0,  150);
             }
 
-		/* zusaetzliches Webfront Tab für Auswertungen über die Stromaufnahme der Gartenpumpe */
-
+		/* zusaetzliches Webfront Tab für Auswertungen über die Stromaufnahme der Gartenpumpe 
+         * anhand der Konfiguration für CheckPower die Daten werden angelegt
+         */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["PowerPump"])=="ENABLED")                 //tabItem1
             {
             if ($debug) echo "     ConfOption Gartenpumpe, erzeugt SplitPaneItem :".$tabItem."1 in ".$config["TabPaneItem"]."\n";                
@@ -599,6 +610,10 @@
 
                 }
             }
+
+		/* zusaetzliches Webfront Tab für Auswertungen über die Herkunft der Daten, besonders gemessene aus Regensensoren etc.
+         * links sind konfigurierte Buttons, rechts die Daten  
+         */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["DataQuality"])=="ENABLED") 
             {
             if ($debug) echo "     ConfOption Datenqualität, erzeugt SplitPaneItem :".$tabItem."2 in ".$config["TabPaneItem"]."\n";                
@@ -630,6 +645,24 @@
                 print_R(json_decode($wfcHandling->getLinkTable(),true));
                 }
             }
+
+		/* zusaetzliches Webfront Tab für Auswertungen über den Verbrauch 
+         */
+        if (strtoupper($GartensteuerungConfiguration["Configuration"]["Consumption"])=="ENABLED") 
+            {
+            if ($debug) echo "     ConfOption Consumption, erzeugt SplitPaneItem :".$tabItem."3 in ".$config["TabPaneItem"]."\n";                
+            $categoryIdLeft3  = CreateCategory('Left3',  $categoryId_WebFrontAdministrator, 10);
+            $categoryIdRight3 = CreateCategory('Right3', $categoryId_WebFrontAdministrator, 20);
+            CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."3",           $config["TabPaneItem"],    100,     "Consumption",     "Wave", 1 /*Vertical*/, 10 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."3".'_Left',   $tabItem."3",   10, '', '', $categoryIdLeft3   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."3".'_Right',  $tabItem."3",   20, '', '', $categoryIdRight3  /*BaseId*/, 'false' /*BarBottomVisible*/);    
+
+            if ($debug) echo "Gartenwasserverbrauch überprüft durch besondere Register : ".$GartensteuerungConfiguration["Configuration"]["CheckConsumption"]."\n";
+            $consumptionID = $GartensteuerungConfiguration["Configuration"]["CheckConsumption"];
+            //CreateLinkByDestination("Leistung Gartenpumpe", $powerID ,    $categoryIdRight1,  150);
+
+            }
+        //else print_r($GartensteuerungConfiguration["Configuration"]);
 		}
 
 	ReloadAllWebFronts(); /* es wurde das Gartensteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
@@ -716,15 +749,17 @@
 		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
 		}
 
-    echo "Summary WFC Konfiguration : \n";
-    $wfc=$wfcHandling->read_wfc(1,true);                             // 1 ist der level der angezeigt wird, true für Debug
-    //$wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
-    foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+    if ($debug>1)               // besonderes Debug, achauen ob doppelte Eintraege da sind
         {
-        echo "\n------$index:\n";
-        $wfcHandling->print_wfc($wfc[$index]);
-        } 
-
+        echo "Summary WFC Konfiguration : \n";
+        $wfc=$wfcHandling->read_wfc(1,true);                             // 1 ist der level der angezeigt wird, true für Debug
+        //$wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
+        foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+            {
+            echo "\n------$index:\n";
+            $wfcHandling->print_wfc($wfc[$index]);
+            } 
+        }
 
 /***********************************************************************************************
 

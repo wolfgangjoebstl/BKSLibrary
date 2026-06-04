@@ -12933,7 +12933,7 @@ class dosOps
     public function writeDirStat($verzeichnis, $dirstat=false)
         {
         $verzeichnis = $this->correctDirName($verzeichnis);
-        echo "Verzeichnis : $verzeichnis \n";            
+        echo "writeDirStat, Verzeichnis : $verzeichnis \n";            
         $files=$this->readdirToArray($verzeichnis);
         foreach ($files as $file)
             {

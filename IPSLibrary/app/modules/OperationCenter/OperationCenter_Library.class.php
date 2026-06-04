@@ -379,8 +379,8 @@ class OperationCenterConfig
         return($output);
         }
 
-    /*
-     * aufgerufen von setConfiguration
+    /* OperationCenterConfig::setCCUConfig
+     * aufgerufen von setConfiguration zur Überprüfung der CCU Konfiguration in 
      * 
      */
     public function setCCUConfig($ccuConfig,$setup=false,$debug=false)
@@ -6545,8 +6545,13 @@ class LogFileHandler extends OperationCenter
 
         }
 
-    /* 
+    /* LogFileHandler::readlogfile
      * standard logfile reading, line by line since they are quite large
+     * liest alle logfiles, ausser 
+     *          sie fangen mit IPSModuleManager_ an
+     *          sie enden nicht mit .log
+     *          wenn definiert sie stimmen nicht mit dem targetfile überein
+     * es werden die letzten Zeilen ausgegeben
      */
     function readlogfile($serverDir,$targetfile=false)
         {
@@ -6631,24 +6636,50 @@ class LogFileHandler extends OperationCenter
 
         }
 
-    function readlogfileFiltered($serverDir,$targetfile)
+    /* LogFileHandler::readlogfileFiltered
+     * es fehlt noch der Filter, übergeben wird das Verzeichnis und ein targetfile ohne .log Erweiterung
+     * gefiltert wird nach, vorerst im script
+     *      filter1         "LEVEL" => ["DEBUG","MESSAGE","CUSTOM","NOTIFY","WARNING"]                ignore when LEVEL is one of them, default is true
+     *      filter2         "SOURCE" => ["Kernel"]                                                    ignore when Source is somw of them, default is true
+     *      filter3         "OID" => 12345                                                            only show events from this OID 
+     *      filter4         "TEXT" => "PONG"                                                          only if event includes such a text  
+     *
+     */
+    function readlogfileFiltered($serverDir,$targetfile,$filter=false,$debug=false)
         {
         $dosOps = new dosOps();
+        $counter=10;
+
             $file=$dosOps->correctDirName($serverDir."\\").$targetfile.".log";                        //target file
             echo "Filter Logfile $file and display:\n";
             // kleine Logik davor bauen
             
-            
-            $filter1=false;
-            $filter1="LEVEL";
-            $filter2=false;
-            $filter3=false;     
+            $filter1=false; $filter2=false; $filter3=false; $filter4=false; 
+            if (is_array($filter))
+                {
+                echo "Parameter Filter detected : ".json_encode($filter)."\n";
+                if (isset($filter["LEVEL"]))
+                    {
+                    $filter1="LEVEL"; $levelmask=$filter["LEVEL"];
+                    }
+                if (isset($filter["SOURCE"]))
+                    {
+                    $filter2="SOURCE"; $sourcemask=$filter["SOURCE"];
+                    if (is_array($sourcemask)===false) $sourcemask=false;
+                    }                    
+                if (isset($filter["OID"]))
+                    {
+                    $filter3=$filter["OID"];
+                    } 
+                if (isset($filter["TEXT"]))
+                    {
+                    $filter4=$filter["TEXT"];
+                    }                                                      
+                }
+
             //$filter3=20072;
-            
-            $filter4=false;
             //$filter4="Pong";
 
-                    $debug=false;
                     $line=0; $lineshow=0; $linemax=80;
                     $handle1=fopen($file,"r");
                     if ($handle1) echo "Open $file for reading:\n";
@@ -6671,11 +6702,22 @@ class LogFileHandler extends OperationCenter
                             if (isset($inputline[2]))
                                 {
                                 $level=trim($inputline[2]);
-                                if ($level=="DEBUG") continue;
-                                if ($level=="MESSAGE") continue;
-                                if ($level=="CUSTOM") continue;
-                                if ($level=="NOTIFY") continue;
-                                if ($level=="WARNING") continue;
+                                if ($levelmask)
+                                    {
+                                    if (in_array($level,$levelmask))
+                                        {
+                                        if ($counter && $debug) { echo "$level|"; $counter--; if ($counter==0) echo "\n"; }
+                                        continue;
+                                        }   
+                                    }
+                                else        // default, only error
+                                    {
+                                    if ($level=="DEBUG") continue;
+                                    if ($level=="MESSAGE") continue;
+                                    if ($level=="CUSTOM") continue;
+                                    if ($level=="NOTIFY") continue;
+                                    if ($level=="WARNING") continue;
+                                    }
                                 }
                             else continue;                                  // lines without logging level
                             }
@@ -6686,17 +6728,24 @@ class LogFileHandler extends OperationCenter
                                 {
                                 $source=trim($inputline[3]);
                                 if (strlen($source)>20) continue;
-                                if ($source=="Kernel") continue;
-                                if ($source=="ScriptEngine") continue;
-                                if ($source=="VariableManager") continue;
-                                if ($source=="IPSModuleManager") continue;   
-                                if ($source=="EventManager") continue; 
-                                if ($source=="Archive Control") continue;   
-                                if ($source=="...") continue;    
-                                if ($source=="NetatmoWeatherDevice") continue;  
-                                if ($source=="TimerPool") continue; 
-                                if ($source=="TopologyDevice") continue; 
-                                if ($source=="IPSFileHandler") continue;                    
+                                if ($sourcemask)
+                                    {
+                                    if (in_array($source,$sourcemask)) continue;
+                                    }
+                                else                // Defaultpath "SOURCE" => true|"default"|
+                                    {
+                                    if ($source=="Kernel") continue;
+                                    if ($source=="ScriptEngine") continue;
+                                    if ($source=="VariableManager") continue;
+                                    if ($source=="IPSModuleManager") continue;   
+                                    if ($source=="EventManager") continue; 
+                                    if ($source=="Archive Control") continue;   
+                                    if ($source=="...") continue;    
+                                    if ($source=="NetatmoWeatherDevice") continue;  
+                                    if ($source=="TimerPool") continue; 
+                                    if ($source=="TopologyDevice") continue; 
+                                    if ($source=="IPSFileHandler") continue;                    
+                                    }
                                 }
                             else continue;
                             }
@@ -6724,7 +6773,7 @@ class LogFileHandler extends OperationCenter
                         }
         }
 
-    /* readLogDir
+    /* LogFileHandler::readLogDir
      * standard dir read of verzeichnis, default is kerneldir/logs
      * wenn ext false dann ganzes dir, sonst ist es ein Filter zB log oder xml
      * wenn filter dann von den Dateien das Datum ermitteln
@@ -6764,7 +6813,7 @@ class LogFileHandler extends OperationCenter
         return ($file);
         }	
         																								
-	/*
+	/* LogFileHandler::DirLogs
 	 *  Die oft umfangreichen Files die erstellt werden in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
 	 *	 werden kann.
 	 *
@@ -6822,7 +6871,7 @@ class LogFileHandler extends OperationCenter
 		return($dir);		
 		}
 
-	/*
+	/* MoveFiles
 	 *  Die oft umfangreichen Log-Files oder Captured Pics bei Alarmierung in einem gemeinsamen Ordner pro Tag zusammenfassen, 
 	 *  damit können die Dateien leichter gelogged und gelöscht werden.
 	 *	 

@@ -3962,6 +3962,7 @@ class DeviceManagement_Shelly extends DeviceManagement
                 // Devices
                 case "Shelly Plug S MTR Gen3": 
                 case "Shelly Power Strip 4 Gen4":                                         // Device
+                case "Shelly 1PM Gen4":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_DEVICE";              // als Namensgeber der Devices mitnehmen, Eigenheit von Shelly
                     break;
                 case "Shelly 1 Gen4":               // komplizierte Shelly Welt, Gerät mit Add-On bringt hier zwei Temperaturmessgeräte hinzu
@@ -3984,6 +3985,9 @@ class DeviceManagement_Shelly extends DeviceManagement
                     break; 
                 case "cloud":                               // other component, do nothing
                 case "wifi":
+                    break;
+                case "input":
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_CONTACT";
                     break;
                 case "temperature":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_METER_TEMPERATURE";
@@ -4195,7 +4199,31 @@ class DeviceManagement_Shelly extends DeviceManagement
                 $result[4]["TYPE_METER_POWER"] = $resultRegEnergy;
                 $result[4]["RegisterAll"]=$registerNew;
                 $found=true;
-                break;   
+                break;
+            case "TYPE_CONTACT"  :
+                // passende Channels finden
+                $resultRegSwitch=array();$resultRegEnergy=array(); 
+                foreach ($registerNew as $regname)
+                    {
+                    //echo " $regname ";
+                    $pos1=strpos($regname,"Eingangsstatus");
+                    if ($pos1 !== false) $resultRegSwitch["STATE"]=$regname;            // beginnt mit Eingangsstatus
+                    }
+                //echo "\n"; print_r($resultRegEnergy); print_r($resultRegSwitch);
+                /*--Schalter 1fach oder 4fach -----------------------------------*/ 
+                if ($debug) echo "                     1fach Contact gefunden.\n";
+
+                $result[0] = "Schalter mit Contact";
+                $result[1] = "WIFI Schalter mit Contact";
+                $result[2] = $devicetype;            
+                $result[3]["Type"] = $devicetype;            
+                $result[3]["Register"] = array_merge($resultRegSwitch, $resultRegEnergy);
+                $result[3]["RegisterAll"]=$registerNew;
+                $result[4]["TYPECHAN"] = "TYPE_CONTACT";              
+                $result[4]["TYPE_CONTACT"] = $resultRegSwitch;
+                $result[4]["RegisterAll"]=$registerNew;
+                $found=true;
+                break;                   
             case "TYPE_METER_TEMPERATURE":                     // mit AddOns lassen sich Temperaturen auslesen
                 // passende Channels finden
                 $resultRegSwitch=array();$resultRegEnergy=array(); 

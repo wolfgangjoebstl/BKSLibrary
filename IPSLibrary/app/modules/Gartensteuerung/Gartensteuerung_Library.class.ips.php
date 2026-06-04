@@ -74,7 +74,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
      *      getConfig_aussentempID                      tempId aus dem Ergebnis der Auswertung von setGartensteuerungConfiguration
      *      getConfig_raincounterID                     siehe oben
      *      getRainRegisters
-     *      getConfig_xID
+     *      getConfig_xID                               immer gleiche Vereinheitlichung der Auswertung der Eingabe für OIDs, auch in IPSHeat
      *      getConfig_waterPumpID
      *      getConfig_valveControlIDs
      *      getConfig_RemoteAccess_Address
@@ -630,6 +630,13 @@ class Gartensteuerung
         return ($confResult);
 		}
 
+    function getConfig_checkConsumptionIDs($config=false,$debug=false)
+        {
+
+
+
+        }
+
     /*******************
      * 
      * übernimmt oder liest die Konfiguration
@@ -841,17 +848,21 @@ class Gartensteuerung
         if (($configConf["Configuration"] != null) && (count($configConf["Configuration"])>0))          //sizeof ist zu spezialisisert
             {
             /* Sub Configuration abarbeiten */
+            //print_r($configConf["Configuration"]);
             if ($debug) echo "setGartensteuerungConfiguration: moderne Darstellung der Konfiguration mit Unterpunkt Configuration: \n";
             // Darstellung Webfronts, individuelle Tabs einstellen
             configfileParser($configConf["Configuration"], $config["Configuration"], ["STATISTICS","Statistics","statistics"],"Statistics" ,"ENABLED");  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["IRRIGATION","Irrigation","irrigation"],"Irrigation" ,"ENABLED");  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["POWERPUMP","Powerpump","powerpump","PowerPump",],"PowerPump" ,"ENABLED");  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["DATAQUALITY","Dataquality","dataquality","DataQuality",],"DataQuality" ,"ENABLED");  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["CONSUMPTION","Consumption","consumption",],"Consumption" ,"DISABLED");  
+            //print_r($config["Configuration"]);
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["MODE","Mode","mode"],"Mode" ,"Switch");          //Default, mit automatischen Regenkreisumschalter  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["WATERPUMP","WaterPump","Waterpump","waterpump"],"WaterPump" ,false);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["VALVECONTROL","ValveControl","Valvecontrol","valvecontrol"],"ValveControl" ,false);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["CHECKPOWER","CheckPower","Checkpower","checkpower"],"CheckPower" ,null);  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["CHECKCONSUMPTION","CheckConsumption","Checkconsumption","checkconsumption"],"CheckConsumption" ,false);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTER","Raincounter","RainCounter","raincounter"],"RainCounter" ,false);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTERHISTORY","Raincounterhistory","RainCounterHistory","raincounterhistory"],"RainCounterHistory",null);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["AUSSENTEMP","Aussentemp","AusenTemp","aussentemp"],"AussenTemp",null);
@@ -878,6 +889,7 @@ class Gartensteuerung
             $config["Configuration"]["RemoteAccessAdr"]=$this->getConfig_RemoteAccess_Address($config["Configuration"], $debug);   
             $config["Configuration"]["WaterPump"]=$this->getConfig_waterPumpID($config["Configuration"], $debug);
             $config["Configuration"]["ValveControl"]=$this->getConfig_valveControlIDs($config["Configuration"], $debug);
+            $config["Configuration"]["CheckConsumption"]=$this->getConfig_checkConsumptionIDs($config["Configuration"], $debug);
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["TEMPERATUR-MITTEL","TemperaturMittel","Temperaturmittel"],"TEMPERATUR-MITTEL",19);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["TEMPERATUR-MAX","TemperaturMax","Temperaturmax"],"TEMPERATUR-MAX",28);
