@@ -408,6 +408,7 @@
             if ( (isset($GuthabenAllgConfig["Selenium"]["getChromeDriver"])) && ($GuthabenAllgConfig["Selenium"]["getChromeDriver"] === false) )
                 {
                 echo "Chromedriver automatisch und manuell von Webpage laden wurde explizit deaktiviert.\n";
+                $html .= "Get from Googles Chromedriver Downloadpage not activated, set Selenium->getChromeDriver <br>";
                 }
             else            // only when explicitly opt out do above code, dann gibt es keinen Get Button
                 {
@@ -541,8 +542,7 @@
                         }
                     }
                 else $html .= "Copy to sharedrive not activated : $execDir <br>";  
-                }
-            else $html .= "Get from Googles Chromedriver Downloadpage not activated, set Selenium->getChromeDriver <br>";                 
+                }                 
             break;
         case "NONE":
             $DoInstall=false;
