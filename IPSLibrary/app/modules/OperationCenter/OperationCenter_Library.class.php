@@ -380,8 +380,9 @@ class OperationCenterConfig
         }
 
     /* OperationCenterConfig::setCCUConfig
-     * aufgerufen von setConfiguration zur Überprüfung der CCU Konfiguration in 
-     * 
+     * aufgerufen von setConfiguration zur Überprüfung der CCU Konfiguration in OperationCenter_Configuration
+     * folgende Konfigurationen sind möglich
+     *
      */
     public function setCCUConfig($ccuConfig,$setup=false,$debug=false)
         {
@@ -405,9 +406,22 @@ class OperationCenterConfig
             {
             $config=array();
             $config["NAME"]=$ccuName;
-            configfileParser($ccuEntry, $config, ["OID" ],"OID" , null);
+            configfileParser($ccuEntry, $config, ["STATUS","Status","status" ],"STATUS" , true);                // Default CCU einschaltens
+            configfileParser($ccuEntry, $config, ["OID","Oid","oid" ],"OID" , null);
             configfileParser($ccuEntry, $config, ["NOK_HOURS"],"NOK_HOURS", null);
             configfileParser($ccuEntry, $config, ["REBOOTSWITCH"],"REBOOTSWITCH", null);
+            switch ($config["STATUS"])
+                {
+                case "Active":
+                case "active":
+                case "ACTIVE":
+                case true:
+                    $config["STATUS"]=true;
+                    break;
+                default:
+                    $config["STATUS"]=false;
+                    break;
+                }
             $output[$index][$ccuName]=$config;            
             }
                 
@@ -6780,7 +6794,10 @@ class LogFileHandler extends OperationCenter
      *
      * ermittelt heutiges und gestriges Datum
      * öffnet das Verzeichnis 
+     * sucht nach logdateien mit einem _ und einem Datum im Format Ymd
+     * wenn das Datum heute oder gestern ist abspeichern
      *
+     * Zusatzfunktion für standard logfiles, wie in readlog
      */
 	function readLogDir($Verzeichnis=false, $ext=false, $debug=false)
         {
@@ -6788,21 +6805,43 @@ class LogFileHandler extends OperationCenter
         $today = date("Ymd");
         $yesterday = date("Ymd",time() - (1 * 24 * 60 * 60));
         $file=array();
+
+        if ($ext=="logfile") {$ext="log"; $lookfor="logfile";}
+        else $lookfor=false;
+
         $handle=opendir ($Verzeichnis);
         $i=0;
         while ( false !== ($datei = readdir ($handle)) )
             {
             if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($Verzeichnis.$datei) == false) )  
                 {
+                $fullpath=$Verzeichnis."\\".$datei;
                 $filename=explode(".",$datei);
                 if ($filename[1] == $ext)
                     {
+                    $filesize=filesize($fullpath);          // siehe auch readlogfile, selber Algorithmus
+                    $datetime=filemtime($fullpath);
+
                     $filedate=explode("_",$filename[0]);
                     if (isset($filedate[1]))
                         {
                         if ($filedate[1] == $today) { $file["lognametoday"]=$datei; }
                         if ($filedate[1] == $yesterday) { $file["logname"]=$datei; }
                         if ($debug) echo " $ext file found : ".$filename[0].".".$filename[1]." with log date ".$filedate[1]."\n";
+                        }
+                    else
+                        {
+                        if ($debug) echo str_pad($filename[0],30)." ".nf($filesize,"Byte",12)."      ".date("d.m.Y H:i:s",$datetime)."\n";
+                        if ($lookfor) $pos2=strpos($filename[0],$lookfor);
+                        else $pos2=false;
+                        $date=substr($filename[0],7);
+                        if (is_numeric($date) && ($pos2 !== false))                      //logfile.log ignorieren, aber es gibt ja auch eine zweite Spiegeldatei
+                            {
+                            $timeold=time()-$datetime;              // datetime ist das aktuelle Filedatum
+                            if ($debug) echo "    $date ".date("d.m.Y H:i",(int)$date)."  Time since last write ".nf($timeold,"s")."\n";
+                            $file[$lookfor][]=$filename[0];
+                            } 
+                        //if ($debug) echo " logfile $ext found : ".$filename[0]." with log date ".$datetime."\n";
                         }                    
                     }
                 $i++;

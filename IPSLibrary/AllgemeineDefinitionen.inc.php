@@ -11208,23 +11208,41 @@ class ipsOps
 class netOps
     {
 
+
+    protected $sysOps,$netDrive;
+
+    function __construct($netdrive=false)
+        {
+        $this->sysOps = new sysOps(); 
+        $dosOps=new dosOps();
+        if ($netdrive) 
+            {
+            $netdrive=$dosOps->correctDirName($netdrive);
+            $this->netDrive=$netdrive."net.exe";
+            }
+        else $this->netDrive="C:/Windows/System32/net.exe";   
+        echo "netOps using command ".$this->netDrive."\n";
+        } 
+
     /* several steps to mount a network drive. Use same user 
      * this is System User not the logggedin user or administrator, usually session identifier 0
      *
      */
     public function sharedDrives()
         {
-        $resultSystemInfo=$sysOps->ExecuteUserCommand("C:/Windows/System32/net.exe","share", true, true,0);  
+        $resultSystemInfo=$this->sysOps->ExecuteUserCommand($this->netDrive,"share", true, true,0);  
         return ($resultSystemInfo);
         }
+
     /* wichtig ist System User und das Laufwerk muss geshared werden
      *
      */
-    public function mountDrive($server, $username, $password)
+    public function mountDrive($server, $drive, $username, $password)
         {
-        $resultSystemInfo=$sysOps->ExecuteUserCommand("C:/Windows/System32/net.exe","use \\\\10.0.1.8\\Symcon /user:wolfgangjoebstl Cloudg06", false, true,0);            // hat funktioniert, besser als map drive !!
-
+        $resultSystemInfo=$this->sysOps->ExecuteUserCommand($this->netDrive,"use \\\\".$server."\\".$drive." /user:".$username." ".$password, false, true,0);            // hat funktioniert, besser als map drive !!
+        return ($resultSystemInfo);
         }
+
 
     }
 
