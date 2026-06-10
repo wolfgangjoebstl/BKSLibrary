@@ -549,7 +549,8 @@
          *          Consumption
          */
 
-        /* typische Webfront Tab für die Steuerung der Giessanlage, schaltet Ventile ein/aus
+        /* Irrigation
+         * typische Webfront Tab für die Steuerung der Giessanlage, schaltet Ventile ein/aus
          */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["Irrigation"])=="ENABLED")
             {
@@ -574,7 +575,9 @@
             CreateLinkByDestination('Nachrichten', $input,    $categoryIdRight,  110);
             }
 
-		/* zusaetzliches Webfront Tab für Statistik Auswertungen 
+		/* Statistics
+         * zusaetzliches Webfront Tab für Statistik Auswertungen 
+         * die Anzeigen sind vorgegeben, können mit Button Update aktiualisisert werden
          */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["Statistics"])=="ENABLED")                //tabItem0
             {
@@ -591,8 +594,10 @@
             CreateLinkByDestination("Regenereignisse", $StatistikBox3ID ,           $categoryIdRight0,  150);
             }
 
-		/* zusaetzliches Webfront Tab für Auswertungen über die Stromaufnahme der Gartenpumpe 
+		/* PowerPump
+         * zusaetzliches Webfront Tab für Auswertungen über die Stromaufnahme der Gartenpumpe 
          * anhand der Konfiguration für CheckPower die Daten werden angelegt
+         * aktuell nur ein Wert
          */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["PowerPump"])=="ENABLED")                 //tabItem1
             {
@@ -611,8 +616,11 @@
                 }
             }
 
-		/* zusaetzliches Webfront Tab für Auswertungen über die Herkunft der Daten, besonders gemessene aus Regensensoren etc.
-         * links sind konfigurierte Buttons, rechts die Daten  
+		/* DataQuality
+         * zusaetzliches Webfront Tab für Auswertungen über die Herkunft der Daten, besonders gemessene aus Regensensoren etc.
+         * links sind konfigurierte Buttons, rechts die Daten 
+         * die Elemente sind hier vorgegeben, mit den Buttons werden die Inhalte dargestellt und berechnet/aktualisisert
+         * 
          */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["DataQuality"])=="ENABLED") 
             {
@@ -646,7 +654,8 @@
                 }
             }
 
-		/* zusaetzliches Webfront Tab für Auswertungen über den Verbrauch 
+		/* Consumption
+         * zusaetzliches Webfront Tab für Auswertungen über den Verbrauch 
          */
         if (strtoupper($GartensteuerungConfiguration["Configuration"]["Consumption"])=="ENABLED") 
             {
@@ -659,6 +668,8 @@
 
             if ($debug) echo "Gartenwasserverbrauch überprüft durch besondere Register : ".$GartensteuerungConfiguration["Configuration"]["CheckConsumption"]."\n";
             $consumptionID = $GartensteuerungConfiguration["Configuration"]["CheckConsumption"];
+
+
             //CreateLinkByDestination("Leistung Gartenpumpe", $powerID ,    $categoryIdRight1,  150);
 
             }

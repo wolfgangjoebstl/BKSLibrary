@@ -463,11 +463,17 @@ class Gartensteuerung
 		return($meterID); 		
 		}  */
 
-    /* immer gleiche Vereinheitlichung der Auswertung für OIDs, auch in IPSHeat
+    /* getConfig_xID
+     * immer gleiche Vereinheitlichung der Auswertung für OIDs, auch in IPSHeat
      * kann ein Integerwert oder ein String sein
      * wenn String kann es ein Wert aus IPSHeat sein
+     *  wenn string
+     *      ist IPSHeat installiert
+     *      schauen ob Switch, Group oder Program, auflösen in ID, TYP, NAME, MODULE
+     *  wenn Nummer
+     *      check ob Variable oder Object return Nummer
+     *  sonst false
      */
-
     private function getConfig_xID($configID,$debug=false)
         {
         $result=false;    
@@ -533,7 +539,6 @@ class Gartensteuerung
      * dann noch die Plausichecks ob es die Variable auch gibt, sonst halt false als return Wert
      *
      */
-
 	function getConfig_waterPumpID($config=false,$debug=false)
 		{
         if ($debug || $this->debug) 
@@ -586,7 +591,6 @@ class Gartensteuerung
      * dann noch die Plausichecks ob es die Variable auch gibt, sonst halt false als return Wert
      *
      */
-
 	function getConfig_valveControlIDs($config=false,$debug=false)
 		{
         $failure=true;
@@ -630,11 +634,43 @@ class Gartensteuerung
         return ($confResult);
 		}
 
+    /* 
+     * Prüfung Detailkonfiguration, aufgerufen von setGartensteuerungConfiguration
+     * Paramter bereits geprüft: "CheckConsumption" , Default  false
+     * Wenn keine Inhalte default false rückmelden
+     *
+     */
     function getConfig_checkConsumptionIDs($config=false,$debug=false)
         {
-
-
-
+        $failure=true;
+        $confResult=Array();
+        $debug = $debug || $this->debug;
+        if ($debug) echo "getConfig_checkConsumptionIDs aufgerufen.\n";            
+        if ($config===false) 
+            {
+            if ($debug) echo "Read Configuration direkt from GartensteuerungConfiguration.\n";
+            $Configuration = $this->GartensteuerungConfiguration;
+            if (isset($Configuration["Configuration"])) $Configuration = $Configuration["Configuration"];
+            }
+        else $Configuration = $config;
+        //if ($debug) print_R($Configuration);
+		if ( (isset($Configuration["CheckConsumption"])) && ($Configuration["CheckConsumption"]!==false) && (is_array($Configuration["CheckConsumption"])) )
+			{
+            foreach ($Configuration["CheckConsumption"] as $index => $entry)
+                {
+                if ($debug) echo "     ".str_pad($index,20)." : $entry    \n";
+                if (is_array($entry))
+                    {
+                    $confResult[$index] = $entry;           // irgendwas mit Pos ID und Name
+                    }
+                else $confResult[$index] = $this->getConfig_xID($entry); 
+                }
+            }
+        else
+            {
+            return (false);
+            }
+        return ($confResult);
         }
 
     /*******************
@@ -809,6 +845,30 @@ class Gartensteuerung
         }
 
     /* Konfiguration auswerten und standardisiseren 
+     * alle Einstellungen unter Configuration zusammengefasst
+     *  Es gibt jetzt verschiedene Tabs die aktivierbar sind:
+     *          Statistics
+     *          Irrigation 
+     *          PowerPump
+     *          DataQuality
+     *          Consumption
+     *  Weitere Einstellungen
+     *          Mode
+     *          CheckPower
+     *          CheckConsumption
+     *
+     *
+     * Unterkonfigurationen werden in eigenen functions bearbeitet
+     *          getConfig_Reports 
+     *          getConfig_raincounterID
+     *          getConfig_aussentempID
+     *          getConfig_RemoteAccess_Address
+     *          getConfig_waterPumpID
+     *          getConfig_valveControlIDs
+     *          getConfig_checkConsumptionIDs
+     *
+     *   
+    
 			"KREISE" => 5,
 			"TEMPERATUR-MITTEL" => 19,    // Wenn Aussentemperatur im Mittel ueber diesen Wert UND Niederschlag kleiner REGN48H dann Giessen 
 			"TEMPERATUR-MAX" => 28,			// wenn es in den letzten  10 Tage weniger als REGEN10T geregnet hat ODER die Maiximaltemperatur den Wert TEMPERATUR-MAX ueberschreitet doppelt so lange giessen 

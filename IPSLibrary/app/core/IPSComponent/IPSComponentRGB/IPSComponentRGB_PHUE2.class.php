@@ -109,6 +109,7 @@
          * @param IPSModuleRGB $module Module Object an das das aufgetretene Event weitergeleitet werden soll
          */
         public function HandleEvent($variable, $value, IPSModuleRGB $module){
+            $module->SyncState($value, $this);
         }
 
         /**
