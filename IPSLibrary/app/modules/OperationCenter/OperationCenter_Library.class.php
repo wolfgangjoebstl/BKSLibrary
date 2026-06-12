@@ -263,7 +263,15 @@ class OperationCenterConfig
         return ($config);    
         }
 
-    /* Konfigurationen für IP Adressen etc.
+    /* OperationCenterConfig::setConfiguration
+     * Konfigurationen für IP Adressen etc. Eingeteilt in mehrere Hauptbereiche:
+     *      INTERNET
+     *      ROUTER
+     *      FTP
+     *      CAM                 setCamConfig  
+     *      LED
+     *      DENON
+     *      CCU                 setCCUConfig
      */
     public function setConfiguration()
         {
@@ -272,9 +280,10 @@ class OperationCenterConfig
         if (function_exists("OperationCenter_Configuration"))
             {
             $configInput = OperationCenter_Configuration();            
+            // Internet
             configfileParser($configInput, $config, ["INTERNET" ],"INTERNET" ,"[]");  
 
-            /* Router, nur die aktiven, kopieren */
+            // Router, nur die aktiven, kopieren 
             configfileParser($configInput, $configRouter, ["ROUTER" ],"ROUTER" ,"[]");
             if (count($configRouter['ROUTER'])==0) 
                 { 
@@ -288,17 +297,21 @@ class OperationCenterConfig
                     $config["ROUTER"][$name]=$router;
                     }
                 }
-
+            // Ftp
             configfileParser($configInput, $config, ["FTP" ],"FTP" ,["Mode"=>"disabled"]);  
 
+            // Cam
             configfileParser($configInput, $configCam, ["CAM" ],"CAM" ,[]);  
             //print_r($configCam);
             $config["CAM"]=$this->setCamConfig($configCam,$config)["CAM"];
 
+            // Led
             configfileParser($configInput, $config, ["LED" ],"LED" ,[]);  
             
+            // Denon
             configfileParser($configInput, $config, ["DENON" ],"DENON" ,[]);
 
+            // CCU
             //echo "setConfiguration CCU:\n";
             configfileParser($configInput, $configCCU, ["CCU" ],"CCU" ,[]);                        // minimum damit CCU fail Erkennung umgesetzt wird
             $config["CCU"]=$this->setCCUConfig($configCCU,$config)["CCU"];
@@ -382,7 +395,10 @@ class OperationCenterConfig
     /* OperationCenterConfig::setCCUConfig
      * aufgerufen von setConfiguration zur Überprüfung der CCU Konfiguration in OperationCenter_Configuration
      * folgende Konfigurationen sind möglich
-     *
+     *          STATUS
+     *          OID
+     *          NOK_HOURS
+     *          REBOOTSWITCH
      */
     public function setCCUConfig($ccuConfig,$setup=false,$debug=false)
         {
@@ -408,8 +424,9 @@ class OperationCenterConfig
             $config["NAME"]=$ccuName;
             configfileParser($ccuEntry, $config, ["STATUS","Status","status" ],"STATUS" , true);                // Default CCU einschaltens
             configfileParser($ccuEntry, $config, ["OID","Oid","oid" ],"OID" , null);
-            configfileParser($ccuEntry, $config, ["NOK_HOURS"],"NOK_HOURS", null);
-            configfileParser($ccuEntry, $config, ["REBOOTSWITCH"],"REBOOTSWITCH", null);
+            configfileParser($ccuEntry, $config, ["NOK_HOURS","NokHours","nokhours","nok_hours","Nok_Hours"],"NOK_HOURS", null);
+            configfileParser($ccuEntry, $config, ["REBOOTSWITCH","RebootSwitch","rebootswitch"],"REBOOTSWITCH", null);
+            configfileParser($ccuEntry, $config, ["AUTOCLOSEOPEN","AutoCloseopen","autocloseopen"],"AUTOCLOSEOPEN", false);
             switch ($config["STATUS"])
                 {
                 case "Active":
@@ -452,6 +469,21 @@ class OperationCenterConfig
             
         if (sizeof($output)==0) return ["CCU"=>array()];
         return($output);
+        }
+
+    /* OperationCenterConfig::getCCUConfig
+     * Input ist die CCU Config aus OperationCenter_Configuration
+     * die Konfig wird neu indiziert, OID wird zum Index
+     */
+    public function getCCUConfig($ccuConfig)
+        {
+        $config=array();
+        foreach($ccuConfig as $index => $entry)
+            {
+            $config[$entry["OID"]]=$entry;
+            $config[$entry["OID"]]["INDEX"]=$index;    
+            }
+        return ($config);
         }
 
     }

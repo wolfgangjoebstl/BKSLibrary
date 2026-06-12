@@ -1434,8 +1434,30 @@
 				}	
 			}
 
-
-		// ----------------------------------------------------------------------------------------------------------------------------
+        /* ----------------------------------------------------------------------------------------------------------------------------
+         * SynchronizeSwitch
+         * aufgerufen von SynState aus dem jeweiligen Component, wenn sich ein externer Wert ändert
+         * die Spiegelvariable in Switch anpassen
+         * benötigt dazu die functions IPSHeat_BeforeSynchronizeSwitch und IPSHeat_AfterSynchronizeSwitch, auch für die Unterparameter
+         * wenn erstere true ist wird die Spiegelvariable aufgerufen und alle Gruppen und Programme ebenfalls upgedatet
+         * einfache Funktion: AlleLampen geht von false auf true wenn eine der Lampen plötzlich eingeschaltet wird
+         *
+         * andere Routinen dazu für den Betrieb von Thermostaten bei heizungen
+         *          SynchronizePosition für den LEVEL, also dieEinstellung des Thermosteaten, hier gemeinsam mit Switch   FEHLERHAFT ???
+         *          SynchronizeSetTemp für die Zieltemperatur eines Raumes, etwas verwirrend, Update innerhalb einer Gruppe unterschiedlich, ein Wert ändert alle anderen FEHLERHAFT ???
+         *          SynchronizeSetMode wie SetTemp
+         *
+         * andere Routinen dazu für den Betrieb von RGB, RGBW, Amber, Dimmer und Standard Lampen         
+         *          SynchronizeDimmer   setzt Level und State
+         *          SynchronizeRGB      setzt Level, State und Color
+         *
+         * Alternative Implementierung, jedes Register triggert und ändert nur dieses Register 
+         *      Vereinfachung, andernfalls würden immer alle Funktionen mehrfach ausfgeführt
+         *      eine State Änderung zieht den Gruppenwert nach
+         *      eine Parameter Änderung (Level, Color, Ambient) verändert die Gruppeneinstellungen nicht
+         *      aber eine Veränderung der Gruppenparameter ändert die Parameter aller Lampen
+         *
+         */
 		public function SynchronizeSwitch($switchName, $deviceState) {
 			IPSLogger_Trc(__file__, "Received StateChange from Heat '$switchName'=$deviceState");
 			//echo "Received StateChange from Heat ".$switchName."=".$deviceState."\n";
@@ -1447,7 +1469,7 @@
 			if (IPSHeat_BeforeSynchronizeSwitch($switchId, $deviceState)) {
 				//echo "Synchronize StateChange from Light ".$switchName.", State=".($deviceState?'On':'Off')."\n";
 				if (GetValue($switchId) <> $deviceState) {
-					IPSLogger_Inf(__file__, 'Synchronize StateChange from Light '.$switchName.', State='.($deviceState?'On':'Off'));
+					IPSLogger_Inf(__file__, 'Synchronize StateChange from IPSHeat '.$switchName.', State='.($deviceState?'On':'Off'));
 					SetValue($switchId, $deviceState);
 					$this->SynchronizeGroupsBySwitch($switchId);
 					$this->SynchronizeProgramsBySwitch($switchId);
@@ -1456,8 +1478,59 @@
 			IPSHeat_AfterSynchronizeSwitch($switchId, $deviceState);
 		}
 
+		public function SynchronizeBrightness($switchName, $deviceLevel) 
+            {
+			//IPSLogger_Trc(__file__, 'Received Brightness from IPSHeat '.$switchName.', Level='.$deviceLevel);
+			$switchId    = IPS_GetVariableIDByName($switchName, $this->switchCategoryId);
+			$levelId     = IPS_GetVariableIDByName($switchName.IPSHEAT_DEVICE_LEVEL, $this->switchCategoryId);
+
+			$lightConfig = IPSHeat_GetHeatConfiguration();
+			$deviceType  = $lightConfig[$switchName][IPSHEAT_TYPE];
+
+            if (GetValue($levelId)<>$deviceLevel) 
+                {
+                IPSLogger_Inf(__file__, 'Synchronize Brightness from IPSHeat '.$switchName.', Level='.$deviceLevel);
+                SetValue($levelId,  $deviceLevel);
+                }
+            }
+
+		public function SynchronizeColor($switchName, $deviceRGB) 
+            {
+			//IPSLogger_Trc(__file__, 'Received Change Color from IPSHeat '.$switchName.', RGB='.$deviceRGB);
+			$switchId    = IPS_GetVariableIDByName($switchName, $this->switchCategoryId);
+			$levelId     = IPS_GetVariableIDByName($switchName.IPSHEAT_DEVICE_LEVEL, $this->switchCategoryId);
+			$rgbId       = IPS_GetVariableIDByName($switchName.IPSHEAT_DEVICE_COLOR, $this->switchCategoryId);
+
+			$lightConfig = IPSHeat_GetHeatConfiguration();
+			$deviceType  = $lightConfig[$switchName][IPSHEAT_TYPE];
+
+            if (GetValue($rgbId)<>$deviceRGB) 
+                {
+                IPSLogger_Inf(__file__, 'Synchronize Color from IPSHeat '.$switchName.', RGB='.$deviceRGB);
+                SetValue($rgbId,    $deviceRGB);
+                }
+            }
+
+		public function SynchronizeAmber($switchName, $deviceAmber) 
+            {
+			//IPSLogger_Trc(__file__, 'Received Change Amber from IPSHeat '.$switchName.', Amber='.$deviceAmber);
+			$amberId       = IPS_GetVariableIDByName($switchName.IPSHEAT_DEVICE_AMBIENCE, $this->switchCategoryId);
+
+			$lightConfig = IPSHeat_GetHeatConfiguration();
+			$deviceType  = $lightConfig[$switchName][IPSHEAT_TYPE];
+
+            if (GetValue($amberId)<>$deviceAmber) 
+                {
+                IPSLogger_Inf(__file__, 'Synchronize Amber from IPSHeat '.$switchName.', Amber='.$deviceAmber);
+                SetValue($amberId,    $deviceAmber);
+                }
+            }
+
 		/* ----------------------------------------------------------------------------------------------------------------------------
-         *
+         * SynchronizePosition
+         * siehe SynchronizeSwitch, ist ein Parameter von Switch
+         * Switch State wird ebenfalls synchronisiert, eine Änderung von Level verändert auch den Switch State, 
+         *      in etwa so >0 ein, 0 aus, Veränderung bei >0 ebenfalls ein
          */
 		public function SynchronizePosition($switchName, $deviceState, $deviceLevel) {
 			IPSLogger_Trc(__file__, 'Received StateChange from Light '.$switchName.', State='.$deviceState.', Level='.$deviceLevel);
@@ -1469,7 +1542,7 @@
 
 			if (IPSHeat_BeforeSynchronizeSwitch($switchId, $deviceState)) {
 				if (GetValue($switchId)<>$deviceState or GetValue($levelId)<>$deviceLevel) {
-					IPSLogger_Inf(__file__, 'Synchronize StateChange from Light '.$switchName.', State='.($deviceState?'On':'Off').', Level='.$deviceLevel);
+					IPSLogger_Inf(__file__, 'Synchronize StateChange Level from IPSHeat '.$switchName.', State='.($deviceState?'On':'Off').', Level='.$deviceLevel);
 					SetValue($switchId, $deviceState);
 					SetValue($levelId, $deviceLevel);
 					$this->SynchronizeGroupsBySwitch($switchId);

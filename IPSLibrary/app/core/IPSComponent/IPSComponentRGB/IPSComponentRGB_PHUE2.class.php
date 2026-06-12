@@ -108,9 +108,15 @@
          * @param string $value Wert der Variable
          * @param IPSModuleRGB $module Module Object an das das aufgetretene Event weitergeleitet werden soll
          */
-        public function HandleEvent($variable, $value, IPSModuleRGB $module){
-            $module->SyncState($value, $this);
-        }
+        public function HandleEvent($variable, $value, IPSModuleRGB $module, $debug=false)
+            {
+            //if variable is type status
+            if ($this->statusId == $variable)               $module->SyncState($value, $this, $debug);               // debug level
+            elseif ($this->helligkeitId == $variable)       $module->SyncState($value, $this, $debug);
+            elseif ($this->farbtemperaturId == $variable)   $module->SyncState($value, $this, $debug);            
+            elseif ($this->farbeId == $variable)            $module->SyncState($value, $this, $debug);
+            else echo "IPSComponentRGB_PHUE2::HandleEvent, do not know VariableID $variable \n";            
+            }
 
         /**
          * @public

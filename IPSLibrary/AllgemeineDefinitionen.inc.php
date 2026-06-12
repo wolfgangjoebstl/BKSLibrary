@@ -16688,6 +16688,13 @@ class ComponentHandling
                 $profile="~Power";                  // Variablen Profil ist kW, irgendwo muss umgerechnet werden
                 $keyName["REGISTER"]="POWER_L3";
                 break;
+            // Volumen, Wasser
+            case "VOLUME":
+                $variabletyp=2; 		            // Float 
+                //$index="Stromverbrauch";
+                //$profile="~Electricity";                  // Variablen Profil
+                $keyName["REGISTER"]="VOLUME";
+                break;                
             case "CONTACT":
                 $detectmovement="Contact";
                 $keyName["Key"]="STATE";                        // Eigenen Index Key definieren

@@ -23,7 +23,9 @@
  * Lösungen ohne Symcon-Neustart
  * Ein kompletter Symcon-Neustart ist die "Vorschlaghammer-Methode". Es gibt elegantere Wege, den Socket gezielt zu resetten.
  *
- *
+ *      diesen Workaround nur mehr umsetzen wenn er für eine Instanz aktiviert wurde
+ *      Logging weiterhin für alle Instanzen, die hier eingetragen sind
+ *      Open Semaphore blocking, to avoid event stacking 
  *
  ***********************************************************/
 
@@ -47,39 +49,57 @@
     $OperationConfig=new OperationCenterConfig();
 
     $configSetup=$OperationConfig->setSetup();
+    $configuration=$OperationConfig->setConfiguration()["CCU"];
     $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
     $input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
     $log_Watchdog=new Logging($configSetup["LogDirectory"]."Log_Watchdog.csv",$input);    
+    $ccuConfig=$OperationConfig->getCCUConfig($configuration);
 
     if ($_IPS['SENDER'] == "Execute")
         {
-        echo "\nEventControl,StartSymcon: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
+        echo "\n";
+        echo "EventControl,StartSymcon: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
         echo "   Define Logging Channel        : ".$configSetup["LogDirectory"]."Log_Watchdog.csv \n";
         echo "   Define Logging Input Register : ".$input."\n";
-        //print_R($configSetup);    
+        echo "Configuration CCU:\n";
+        print_R($ccuConfig);    
         }
     else
         {
-        /* Logging konfigurieren und festlegen */
-
         $instance = $_IPS['INSTANCE'];	        //InstanceID for state change
         $instanceName = IPS_GetName($instance);
         $status = $_IPS['STATUS'];              //	State of the instance. A list of possible values is found here: IPS_GetInstance
         $statustext = $_IPS['STATUSTEXT'];
+        // Logging konfigurieren und festlegen 
         $log_Watchdog->LogMessage("$instanceName ($instance) has new Status $status : $statustext , info from EventControl");
         $log_Watchdog->LogNachrichten("$instanceName ($instance) has new Status $status : $statustext , info from EventControl");
 
-        if ($status>=200)
+        if (isset($ccuConfig[$instance]["AUTOCLOSEOPEN"]) && $ccuConfig[$instance]["AUTOCLOSEOPEN"])       // nur weiter wenn es eine Konfiguration gibt, und die Funktion aktiviert wurde
             {
-            IPS_SetProperty($instance, "Open", false);
-            IPS_ApplyChanges($instance);
-            
-            IPS_Sleep(3000); // 3 Sekunden warten
-            
-            // Socket wieder aktivieren
-            IPS_SetProperty($instance, "Open", true);
-            IPS_ApplyChanges($instance);
-            $log_Watchdog->LogMessage("$instanceName ($instance) has been reseted , info from EventControl");
+            if ($status>=200)
+                {
+                if (IPS_SemaphoreEnter("EventControl".$instance, 1000))          // Verwende bei EvenTcontrol damit sich nicht viele EVents überholen könen, vielleicht auch bei SyncState, damit ein SyncState nicht gleich den nächsten triggert
+                    {
+                    IPS_SetProperty($instance, "Open", false);
+                    IPS_ApplyChanges($instance);
+                    
+                    IPS_Sleep(3000); // 3 Sekunden warten
+                    
+                    // Socket wieder aktivieren
+                    IPS_SetProperty($instance, "Open", true);
+                    IPS_ApplyChanges($instance);
+                    $log_Watchdog->LogMessage("$instanceName ($instance) has been reseted , info from EventControl");
+                    // ...Run critical Commands
+                    //Release semaphore again!
+                    IPS_SemaphoreLeave("EventControl".$instance);
+                    }
+                else
+                    {
+                    // ...No execution possible. Another script uses the "CriticalPoint" 
+                    // for more than 1 second, so our wait time is exceeded.
+                    $log_Watchdog->LogMessage("$instanceName ($instance) is in reset process, no action, info from EventControl");
+                    }            
+                }
             }
         }
 	
