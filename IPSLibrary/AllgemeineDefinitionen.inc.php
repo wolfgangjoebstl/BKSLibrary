@@ -19876,10 +19876,13 @@ class ModuleHandling
                 {
                 $lib=@IPS_GetLibrary($guid)["Name"];
                 if ($lib===false) $lib=@IPS_GetModule ($guid)["ModuleName"];
-                echo "   Warning, addNonDiscovery, no Configurators available for ";
-                if ($lib == false) echo "Library/Module $name ";
-                else echo "Library/Module $lib ";
-                echo " $guid.\n";
+                if ($debug)                 // this output is annoying, since it is clear from design, only in debug mode
+                    {
+                    echo "   Warning, addNonDiscovery, no Configurators available for ";
+                    if ($lib == false) echo "Library/Module $name ";
+                    else echo "Library/Module $lib ";
+                    echo " $guid.\n";
+                    }
                 }
             else
                 {

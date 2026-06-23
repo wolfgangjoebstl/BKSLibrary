@@ -2063,7 +2063,7 @@ class OperationCenter extends OperationCenterConfig
         else return ($PrintLn);
 		}
 
-    /* appInstalledWin
+    /* OperationCenter::appInstalledWin
      *
      * Application installed by checking Directory
      * Check if Directory is available
@@ -2081,7 +2081,7 @@ class OperationCenter extends OperationCenterConfig
         else return (false);
         }
 
-    /* cmdInstalledWin
+    /* OperationCenter::cmdInstalledWin
      * 
      * CLI Command installed
      * Check if Directory is available and file is in there
@@ -2102,7 +2102,7 @@ class OperationCenter extends OperationCenterConfig
         return (false);
         }
 
-    /* getJavaVersion
+    /* OperationCenter::getJavaVersion
      *
      * get Java version primarily by reading dirs 
      * and if debug by calling java
@@ -2132,7 +2132,7 @@ class OperationCenter extends OperationCenterConfig
         return($javaVersion);            
         }
 
-    /* getTailScaleStatus
+    /* OperationCenter::getTailScaleStatus
      * get TailScale Status
      *
      */
@@ -2198,7 +2198,7 @@ class OperationCenter extends OperationCenterConfig
         return($tailScaleServer);
         }
 
-    /* ccu_checkReboot
+    /* OperationCenter::ccu_checkReboot
      *
      * Reset when unavailable, device_checkReboot
      *
@@ -2253,11 +2253,11 @@ class OperationCenter extends OperationCenterConfig
                         /* entweder stimmen der Indexname der Config zusammen oder der Name wird über die OID ermittelt, 
                          * Reboot Counter muss gleichen Namen, oder Teile des CCU Namnens haben
                          */
-                        $pos1=strpos($name,$ccuname);           // haystack needle
+                        $pos1=strpos($name,$ccuname."_");           // haystack needle
                         if ($debug>1) echo "         doublecheck deviceconfig index $ccuname with $name : $pos1\n";
                         if ($pos1 !== false) break;             // 0 is a valid result
                         if (isset($config["OID"])) $ccuname=IPS_GetName($config["OID"]);
-                        $pos1=strpos($name,$ccuname);           // haystack needle
+                        $pos1=strpos($name,$ccuname."_");           // haystack needle
                         if ($debug>1) echo "         doublecheck deviceconfig oidname $ccuname with $name : $pos1\n";
                         if ($pos1 !== false) break;             // 0 is a valid result
                         }
@@ -2334,7 +2334,7 @@ class OperationCenter extends OperationCenterConfig
         else echo "Category Sockets not defined well : $categoryId_SysPing $categoryId_RebootCtr  \n";
         }
 
-    /*
+    /* OperationCenter::escalationLogging
      * simple function, do logging, but decrease amount of logging if already a long time has passed
      * all Time is in minutes, escalation is typically reboot_ctr/max
      *          escalation  
@@ -2392,12 +2392,15 @@ class OperationCenter extends OperationCenterConfig
         if ($debug) echo $logMessage."\n";
         }
 
-    /* 
+    /* OperationCenter::setRebootVar
      * common function between ccu_checkReboot and device_checkReboot
      * Set Archiving if not set before, print History for debugging function
      */
     function setRebootVar($RebootID,$debug=false)
         {
+        $daysback=1;            
+        $RebootID = $this->setDebugArchiveVar($RebootID,$daysback,$debug);
+        /*
         if (AC_GetLoggingStatus($this->archiveHandlerID,$RebootID) === false)
             { // nachtraeglich Loggingstatus setzen
             AC_SetLoggingStatus($this->archiveHandlerID,$RebootID,true);
@@ -2423,9 +2426,45 @@ class OperationCenter extends OperationCenterConfig
                         }
                     }
                 }
+            }  */
+        return($RebootID);
+        }
+
+    /* OperationCenter::setDebugArchiveVar
+     * common function between ccu_checkReboot and device_checkReboot
+     * Set Archiving if not set before, print History for debugging function
+     */
+    function setDebugArchiveVar($RebootID,$daysback,$debug=false)
+        {
+        if ($debug) echo "setDebugArchiveVar for $RebootID show values back $daysback days.\n";
+        if (AC_GetLoggingStatus($this->archiveHandlerID,$RebootID) === false)
+            { // nachtraeglich Loggingstatus setzen
+            AC_SetLoggingStatus($this->archiveHandlerID,$RebootID,true);
+            AC_SetAggregationType($this->archiveHandlerID,$RebootID,0);
+            IPS_ApplyChanges($this->archiveHandlerID);
+            }
+        else
+            {
+            $werte = AC_GetLoggedValues($this->archiveHandlerID, $RebootID, time()-$daysback*24*60*60, time(),1000); 
+            if ($debug && $werte) 
+                {
+                echo "Aufgezeichnete Werte für ".IPS_GetName($RebootID)." über das Verhalten des Wertes:\n";
+                //print_r($werte);
+                if (count($werte))
+                    {
+                    echo "       Datum/Zeit           Wert   Dauer zwischen Werten\n";
+                    foreach ($werte as $wert)
+                        {
+                        //print_r($wert);
+                        echo "        ".date("d.m.Y H:i:s",$wert["TimeStamp"]);
+                        echo  "  ".$wert["Value"]."   ".$wert["Duration"]."\n";             // nur beim ersten Wert ändert sich Dauer
+                        }
+                    }
+                }
             }
         return($RebootID);
         }
+
 
     /****************************************************************************************************************/
 

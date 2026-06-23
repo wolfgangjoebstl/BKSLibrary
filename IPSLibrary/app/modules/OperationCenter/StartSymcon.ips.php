@@ -39,9 +39,22 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
     $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
     $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+    // OperationCenter
+
     $scriptIdOperationCenter    = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 	$scriptIdStartSymcon    = IPS_GetScriptIDByName('StartSymcon', $CategoryIdApp);
 	$scriptIdStoppSymcon    = IPS_GetScriptIDByName('StoppSymcon', $CategoryIdApp);
+
+    $OperationConfig=new OperationCenterConfig();
+    $configSetup=$OperationConfig->setSetup();
+    $configuration=$OperationConfig->setConfiguration()["CCU"];    
+    $ccuConfig=$OperationConfig->getCCUConfig($configuration);
+
+    $categoryId_EventControl    = @IPS_GetObjectIDByName('EventControl',        $CategoryIdData);
+    $categoryId_Nachrichten     = @IPS_GetObjectIDByName('Nachrichtenverlauf',  $CategoryIdData);   
+    $categoryId_RebootCtr  	    = @IPS_GetObjectIDByName('RebootCounter', 	    $CategoryIdData);
+
+    // Autostart
 
     $autostart = new AutostartHandler();
     //$config = $autostart->getSetup();
@@ -57,9 +70,8 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
     /* Logging konfigurieren und festlegen */
 
 	//echo "\nStartSymcon: OperationCenter Logspeicher für Start und Stopp vorbereiten.\n";
-	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-    $log_Watchdog=new Logging($configWatchdog["LogDirectory"]."Log_Watchdog.csv",$input);   
+	$input = @IPS_GetObjectIDByName("Nachricht_Input",$categoryId_Nachrichten);
+    if ($input) $log_Watchdog=new Logging($configWatchdog["LogDirectory"]."Log_Watchdog.csv",$input);   
 
 	$tim3ID = @IPS_GetEventIDByName("AutoStart", $scriptIdStartSymcon);
   	$tim6ID = @IPS_GetEventIDByName("AutoStartPerDay", $scriptIdStartSymcon);         // einmal am Tag 4:12     
@@ -77,6 +89,24 @@ IPSUtils_Include ("Autostart_Library.class.php","IPSLibrary::app::modules::Opera
         * andernfalls könnte $watchDog->checkAutostartProgram auch ohne einer Prozessliste aufgerufen werden
         *
         **********************************************************************/
+        echo "\n";
+        echo "CCU Reset Workaround:\n";       
+        foreach ($ccuConfig as $instance=>$entry)
+            {
+            $instanceName=IPS_GetName($entry["OID"]);
+            $resetCounterID       = @IPS_GetObjectIDByName($instanceName."_ResetCounter", $categoryId_EventControl); 
+            if ($resetCounterID) SetValue($resetCounterID,0);
+            if ( (isset($ccuConfig[$instance]["STATUS"])) && ($ccuConfig[$instance]["STATUS"]=="ACTIVE") )
+                {
+                if (IPS_SemaphoreEnter("EventControl".$instance, 1000)) 
+                    {
+                    echo "   Set Property of instance $instanceName $instance : to Open\n";
+                    IPS_SetProperty($instance, "Open", true); 
+                    IPS_ApplyChanges($instance);   
+                    IPS_SemaphoreLeave("EventControl".$instance);
+                    }
+                }
+            }
 
         echo "\n";
         $processes    = $autostart->getActiveProcesses();

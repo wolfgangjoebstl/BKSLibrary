@@ -37,9 +37,20 @@
      * class IPSHeat_Manager
      * private vars $switchCategoryId, $groupCategoryId, $programCategoryId
      *
+     * Funktionen als class implementiert, aufendiger als die Command library
+     *
      *  __construct
      *  getSwitchCategoryId
      *  setConfiguration
+     *  
+     *  Configuration Management
+     *      setHeatConfiguration
+     *      getHeatConfiguration
+     *      setHeatGroupConfiguration
+     *      getHeatGroupConfiguration
+     *      setHeatProgramConfiguration
+     *      getHeatProgramConfiguration
+     *
      *  getConfigSwitches
      *  getConfigGroups
      *  getConfigPrograms
@@ -88,25 +99,19 @@
 	class IPSHeat_Manager {
 
         private $ipsOps;           // class ipsOps
-		/**
-		 * @private
-		 * ID Kategorie mit Schalter und Dimmern
-		 */
-		private $lightId; 
-		private $switchCategoryId,$lightSwitchCategoryId;
 
-		/**
-		 * @private
-		 * ID Kategorie mit Schalter
-		 */
-		private $groupCategoryId,$lightGroupCategoryId;
+		private $lightId=false; 
+		private $lightSwitchCategoryId=false;
+		private $lightGroupCategoryId=false;
+		private $lightProgramCategoryId=false;
 
-		/**
-		 * @private
-		 * ID Kategorie mit Programmen
-		 */
-		private $programCategoryId,$lightProgramCategoryId;
-        private $configuration;                                         // configuration
+		private $groupCategoryId;
+		private $switchCategoryId;
+		private $programCategoryId;
+
+        private $configuration;                                         // class configuration
+        private $heatconfiguration,$heatgroupconfiguration, $heatprogramconfiguration;                                  // switch configuration
+
         protected $debug=false;
 
 		/**
@@ -123,15 +128,21 @@
 			$this->switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 			$this->groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
 			$this->programCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId);
-			$this->lightId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight',true);
+            // compatibility with IPSLight, no longer needed
+			$this->lightId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight1',true);
 			if ($this->lightId)
 				{
 				$this->lightSwitchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 				$this->lightGroupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
 				$this->lightProgramCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId);
 				}
+            else echo "IPSHeat_Manager : IPSLight is depricated, deinstall soon.\n";
+
 			$this->ipsOps = new ipsOps();
-            $this->configuration["donotupdateSwitch"]=false;
+            $this->setConfiguration(false);         //donotupdateSwitch
+            $this->setHeatConfiguration();
+            $this->setHeatGroupConfiguration();
+            $this->setHeatProgramConfiguration();
 
 			/* Vorbereitung für ein Sync zwischen IPSHeat und IPSLight, aber nicht zurück */
 		}
@@ -140,6 +151,9 @@
             {
             return ($this->switchCategoryId);
             }
+
+        /************* Config Handling Standard  ********/
+
         /* Configuration Handling einführen
          *
          */
@@ -148,6 +162,46 @@
             $this->configuration["donotupdateSwitch"]=$state;
             }
 
+        public function setHeatConfiguration()
+            {
+            if ((function_exists("IPSHeat_GetHeatConfiguration"))===false) IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");	                
+            $config=IPSHeat_GetHeatConfiguration();
+            $this->heatconfiguration=$config;
+            return ($config);
+            }
+
+        public function getHeatConfiguration()
+            {
+            return ($this->heatconfiguration);
+            }
+
+        public function setHeatGroupConfiguration()
+            {
+            if ((function_exists("IPSHeat_GetGroupConfiguration"))===false) IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");	                
+            $config=IPSHeat_GetGroupConfiguration();
+            $this->heatgroupconfiguration=$config;
+            return ($config);
+            }
+
+        public function getHeatGroupConfiguration()
+            {
+            return ($this->heatgroupconfiguration);
+            }            
+
+        public function setHeatProgramConfiguration()
+            {
+            if ((function_exists("IPSHeat_GetProgramConfiguration"))===false) IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");	                
+            $config=IPSHeat_GetProgramConfiguration();
+            $this->heatprogramconfiguration=$config;
+            return ($config);
+            }
+
+        public function getHeatProgramConfiguration()
+            {
+            return ($this->heatprogramconfiguration);
+            }  
+
+        /************* Config Display, shorten the config and make it readable  ********/
 
         /* List Switch Config and store as array with readable identifiers
          *
@@ -248,6 +302,117 @@
             return($result);
             }
         
+        /**************************** supporting functions *************/
+
+        /* rework the config in a way that the instance of the component is the index and the other are parameters
+         * so the instanceId is the new index, will be copied only if the second paramter of the component is numeric
+         *
+         */
+        public function reindexHeatConfigOnInstance($debug=false)
+            {
+            $configHeat = $this->getHeatConfiguration();
+            $configPerInstance=array();
+            foreach ($configHeat as $indexname => $item)
+                {
+                if ($debug) echo "    ".str_pad($indexname,35).str_pad($item[IPSHEAT_COMPONENT],50)."\n";
+                $component = explode(",",$item[IPSHEAT_COMPONENT]);
+                //print_R($component);
+                if (sizeof($component)>1)
+                    {
+                    $instance=$component[1];
+                    if (is_numeric($instance))
+                        {
+                        $componentname=$component[0];
+                        $configPerInstance[$instance]=$item;
+                        $configPerInstance[$instance]["Indexname"]=$indexname;
+                        $configPerInstance[$instance]["Component"]=$componentname;
+                        }
+                    }
+                }
+            return($configPerInstance);
+            } 
+
+        /* specific function to reconfigure PHUEV2 components.
+         * define a mask consisting of keep or not and the correspondig variable/parameter name
+         * returns a list of these two arrays
+         */
+        public function getMaskNameFromType($type)
+            {
+            /*              'IPSHEAT_TYPE_SWITCH',			'Switch');
+                            'IPSHEAT_TYPE_RGB',				'RGB');
+                            'IPSHEAT_TYPE_AMBIENT',			'Ambient');
+                            'IPSHEAT_TYPE_DIMMER',			'Dimmer');
+                            'IPSHEAT_TYPE_SET',				'Thermostat'); */
+            $maskname=["Status","Helligkeit","Farbe","Farbtemperatur","Übergang","Szene"];
+            switch ($type)
+                {
+                case IPSHEAT_TYPE_SWITCH:
+                    $mask=[1,0,0,0,0,0];                // 6 Einträge, Keep nur für Status
+                    $typename=$type;
+                    break;
+                case IPSHEAT_TYPE_RGB:
+                    $mask=[1,1,1,0,0,0];                // 6 Einträge, Keep nur für Status, Helligkeit und Farbe
+                    $typename=$type;
+                    break;
+                case IPSHEAT_TYPE_AMBIENT:
+                    $mask=[1,1,0,1,0,0];                // 6 Einträge, Keep nur für Status, Helligkeit und Farbtemperatur
+                    $typename=$type;
+                    break;
+                case IPSHEAT_TYPE_DIMMER:
+                    $mask=[1,1,0,0,0,0];                // 6 Einträge, Keep nur für Status, Helligkeit und Farbtemperatur
+                    $typename=$type;
+                    break;
+                case IPSHEAT_TYPE_SET:
+                    $mask=false;
+                    $typename=$type;
+                    break;
+                default:
+                    $mask=false;
+                    $typename="unknown";
+                    break;
+                }
+            return ([$typename,$mask,$maskname]);
+            }
+
+        public function changeInstanceOnMask($instance, $typename, $mask, $maskname, $debug=false)
+            {
+            if ($debug) echo "\n        Work on Instance $instance :  Type $typename";
+            $config = json_decode(IPS_GetConfiguration($instance), true);
+            $deviceId=false; $resourceId=false; $roomzoneId=false;
+            if (isset($config["DeviceID"]))     { $deviceId=$config["DeviceID"]; echo ", DeviceID $deviceId"; }
+            if (isset($config["ResourceID"]))   { $resourceId=$config["ResourceID"]; echo ", ResourceID $resourceId"; }
+            if ( (isset($config["RoomZoneID"])) && ($config["RoomZoneID"] != "") )   { $roomzoneId=$config["RoomZoneID"]; echo ", RoomZoneID $roomzoneId"; }
+            if ($debug) echo "\n";
+            //print_r($config);        // 2. Zur Kontrolle: Struktur anzeigen (hier siehst du die Keys, z.B. "ShowBrightness")
+            $configvariables = json_decode($config["Variables"], true);
+            //print_R($configvariables);
+            $changed=false;
+            foreach ($configvariables as $confindex => $confitem)
+                {
+                if ($debug) echo "            ".str_pad($confindex,8).str_pad($confitem["Name"],25).str_pad($confitem["Pos"],5).str_pad($confitem["Keep"]?"Show":"no",5); 
+                if ($mask)
+                    {
+                    if ( (isset($mask[$confindex])) && ($maskname[$confindex]==$confitem["Name"]) )
+                        {
+                        if ($configvariables[$confindex]["Keep"]!=$mask[$confindex])
+                            {
+                            $configvariables[$confindex]["Keep"]=$mask[$confindex]; 
+                            if ($debug) echo "  changed to ".($mask[$confindex]?"Show":"No")."\n"; 
+                            $changed=true;
+                            } 
+                        elseif ($debug)  echo "\n";
+                        }  
+                    }  
+                }
+            //$configvariables[2]["Keep"]=false;
+            $config["Variables"] = json_encode($configvariables);
+            if ($changed)
+                {
+                IPS_SetConfiguration($instance,json_encode($config));
+                IPS_ApplyChanges($instance);
+                }
+            return ($changed);
+            }
         /* generates a summary with link according to the type
          * used in mergeTopologyOpjects
          * the idea ist to combine Category and Type as uppercase, used as identifier:
@@ -329,6 +494,9 @@
      * immer gleiche Vereinheitlichung der Auswertung für OIDs, auch in Gartensteuerung
      * kann ein Integerwert oder ein String sein
      * wenn String kann es ein Wert aus IPSHeat sein
+     *
+     * der Reihe nach in Switch Group und Program schauen ob der Name bekannt ist
+     * wenn eine Zahl, dann schauen ob der Ort der Ort vernuenftig ist
      */
 
     public function getConfig_xID($configID,$debug=false)
@@ -399,11 +567,12 @@
         }
 
         /* Summarizes the Group Identifiers in one table
-         * 
+         * Bei Debug gibt er den Input aus, Ergebnis ist ein einfaches array mit allen Group OIDs
          */
-        public function getGroupIDs()
+        public function getGroupIDs($debug=false)
             {
-            $configGroups = IPSHeat_GetGroupConfiguration();
+            $configGroups = $this->getHeatGroupConfiguration();
+            if ($debug) print_R($configGroups);
             $IDs = array();
             $config = $this->getConfigGroups($configGroups,false);                    // erst einmal die Groups, Programs folgen noch
             foreach ($config as $index => $entry)
@@ -423,7 +592,7 @@
          */
         public function getProgramIDs()
             {
-            $configPrograms = IPSHeat_GetProgramConfiguration();
+            $configPrograms = $this->getHeatprogramConfiguration();;
             $IDs = array();
             $config = $this->getConfigPrograms($configPrograms,false);                    // erst einmal die Groups, Programs folgen noch
             foreach ($config as $index => $entry)

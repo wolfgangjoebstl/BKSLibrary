@@ -40,6 +40,7 @@
 	define ('IPSHEAT_PROGRAMLEVEL',			9);
 	define ('IPSHEAT_PROGRAMRGB',			10);
     define ('IPSHEAT_MEMBERS',			    20);            // neu
+	define ('IPSHEAT_SYNC',					21);            // neu      external sync requested, do it only if explicitly requested to limit amount of events
 	define ('IPSHEAT_ROOM',					30);            // neu
 	define ('IPSHEAT_DESCRIPTION',			99);            // neu
 		

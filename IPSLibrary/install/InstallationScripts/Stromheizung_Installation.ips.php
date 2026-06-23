@@ -408,6 +408,34 @@ Path=Visualization.Mobile.Stromheizung
 
     if ($doRegister)
         { 
+        $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
+        $configPerInstance=$ipsheatManager->reindexHeatConfigOnInstance();
+
+        /* DeviceListMangement does not analyse Groups correctly. Groups do not have a device as base
+         * To get the Type of a group it is not possible to analyse the device, you have to go back to the roots
+         * and analyse the registers aligned to the group. Unfortunately Hue does always keep all registers
+         * but you can remove them by changing the configuration
+         * this is done here. Groups do not have a deviceID.
+         */ 
+        echo "Component Install Check:\n";
+        $changed = 0;
+        foreach ($configPerInstance as $instance => $item)
+            {
+            $componentname = $item["Component"];
+            $type = $item[IPSHEAT_TYPE];
+            echo "   ".str_pad($instance,8).str_pad($componentname,35).str_pad($type,20);
+            switch ($componentname)
+                {
+                case "IPSComponentRGB_PHUE2":  
+                    list($typename,$mask,$maskname)=$heatManager->getMaskNameFromType($type);
+                    $changed += $heatManager->changeInstanceOnMask($instance, $typename, $mask, $maskname);
+                    // echo $typename; print_r($mask); print_r($maskname);
+                    break;
+                }
+            echo "\n";
+            }
+        echo "   The Component Install was changed for $changed instances.\n";
+
         echo "\nRegister Events für Device Synchronization.\n";
         /* this is when devicelist comes in, we know its an ACTUATOR, but not the real varname of the register
             * how is devcielist built. We have Actuators that were brought to the config
@@ -421,7 +449,6 @@ Path=Visualization.Mobile.Stromheizung
         // moderne Implementierung
         $devicelist = new DeviceListManagement();           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
         $devicelist->setEventListFromConfigFile();
-        $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
         $devicelist->analyse($ipsheatManager);              // calc coids, oids and uuids
         echo "Result is new arrays structured as UUIDs with list of Topology Devices, oids and coids :\n";
         $oids=$devicelist->get_oids();

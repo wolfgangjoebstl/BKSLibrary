@@ -24,6 +24,7 @@
  * Hardware
  *      HardwareDenonAVR                
  *      HardwareShelly
+ *      HardwareHomematicHCU
  *      HardwareHomematicExtended
  *      HardwareNetatmoWeather 
  *      HardwareHomematic
@@ -197,7 +198,10 @@ class Hardware
                 break;
             case "{91624C6F-E67E-47DA-ADFE-9A5A1A89AAC3}":          // HomematicExtended Instanzen, ModuleID erfunden
                 $hardwareType="HomematicExtended";  
-                break;                
+                break; 
+            case "{5250C02D-DA1D-34A1-DBE2-A36794984804}":          // HomematicHCU, like HomematicExtended, but different notation of devices
+                $hardwareType="HomematicHCU";  
+                break; 
             case "{E4B2E379-63A8-4B79-3067-AF906DA91C33}":          // HUE Discovery
             case "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}":          // HUE Configurator
                 $hardwareType="HUE";                
@@ -359,7 +363,7 @@ class Hardware
 
     public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
         {
-        if ($debug) echo"          getDeviceParameters:Allgemein aufgerufen. Eintrag \"$name\" hinterlegt.\n";            
+        if ($debug) echo"          Hardware::getDeviceParameters aufgerufen. Eintrag \"$name\" hinterlegt.\n";            
         $deviceList[$name]["Type"]=$type;
         if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];           // Index und Name sind unterschiedlich
         else $entry["NAME"]=$name;
@@ -385,7 +389,7 @@ class Hardware
      */
     public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)                 // class Hardware
         {
-        if ($debug) echo "          getDeviceChannels:Allgemein aufgerufen für ".$entry["OID"]." mit $name $type. Keine Funktion hinterlegt.\n";
+        if ($debug) echo "          Hardware::getDeviceChannels aufgerufen für ".$entry["OID"]." mit $name $type. Keine Funktion hinterlegt.\n";
         //print_r($deviceList[$name]["Instances"]);
         //print_r($entry);
         $oids=array();
@@ -575,7 +579,7 @@ class Hardware
                     {
                     if ( (isset($instance["OID"])) && (isset($actuators[$instance["OID"]])) ) 
                         {
-                        echo "Eintrag $name einfügen : ".json_encode($actuators[$instance["OID"]])."\n";
+                        echo "Eintrag $name als Actuators einfügen, getDeviceActuatorsFromIpsHeat: ".json_encode($actuators[$instance["OID"]])."\n";
                         $deviceList[$name]["Actuators"][$port]=$actuators[$instance["OID"]];
                         $actuators[$instance["OID"]]["result"]="copied";
                         }
@@ -1030,6 +1034,9 @@ class HardwareShelly extends Hardware
 
 
     /* HardwareShelly::getDeviceConfiguration for creation of devicelist
+     * defines NAME, OID, CONFIG and DeviceID
+     * DeviceID is reconstructed from MQTT topic of shelly devices
+     *
      * Neudefinition der function um Check auf gleiche Namen von ShellyComponent mit anderen Devices gleich hier einbauen
      * es kann ja sein dass ein Homematic Device gleich heisst wie ein Shelly Device. zB ArbeitszimmerSchalter
      * dann um Zahlen nach dem Namen erweitern
@@ -1063,7 +1070,7 @@ class HardwareShelly extends Hardware
                 $adress=explode("-",$configuration["MQTTTopic"]);
                 if (sizeof($adress)>1) $deviceId=$adress[1];
                 else $deviceId=$adress;
-                $hardware[$hardwareType][$devicename]["DeviceID"]=$deviceId;
+                $hardware[$hardwareType][$devicename]["DeviceID"]=$deviceId;            // aus dem Topic die DeviceID rausziehen
                 }
             }
         }
@@ -1180,8 +1187,8 @@ class HardwareShelly extends Hardware
         return (true);
         }
 
-    /* HardwareHUEV2::getDeviceChannels
-     * HueV2 hat pro Gerät mehrere Instanzen, die Instanzen werden erst nach jedem Aufruf von getDeviceParameter hinzugefügt, bis es alle sind
+    /* HardwareShelly::getDeviceChannels
+     * Shelly hat pro Gerät mehrere Instanzen, die Instanzen werden erst nach jedem Aufruf von getDeviceParameter hinzugefügt, bis es alle sind
      * die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät hat die Kategorien Instances,Channels,Actuators, es kann mehrer Einträge in Instances und Channels haben, 
      * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
      * alle instances durchgehen, OIDs einsammeln mit Zuordnung Port abspeichern
@@ -1256,6 +1263,327 @@ class HardwareShelly extends Hardware
         }
 
     }       // endofclass
+
+
+/* Objektorientiertes class Management für Geräte (Hardware)
+ * HardwareHomematicHCU
+ *
+ * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
+ * für Library HomematicHCU, HCU Objekte für HCU Darstellung von HomematicIP, CCFU3 udn CCU2 sind getrennt, andere Verarbeitung und Anordnung der Variablen pro Geraet
+ *      Beispiel für HomematicIP Socket Switch
+ *          Instance is a "HomeMatic HCU Gerät", die zugeordneten Datenpunkte (Variablen) können auf verschioeden eArten eingestellt werden, Konfiguration der Instanz
+ *              Ausgewählte
+ *              Whitelist
+ *              Ausgewählte und Whitelist
+ *              Alle
+ *          Bedeutet die Anzahl der Elemente ist unklar. Der Typ kann nicht anhand der Datenpunkte festgelegt werden, Auskesen des Configurators erforderlich
+ *          Standard wie bei anderen Devices zB Hue, Shelly etc.
+ *
+ *  Anpassen der GUIDs
+ *        HomeMatic HCU Discovery        = {5250C02D-DA1D-34A1-DBE2-A36794984804}       Discovery
+ *        HomeMatic HCU Configurator     = {7A113DC4-88F5-71B3-055C-209F3AA8E188}       Konfigurator  
+ *        HomeMatic HCU Gateway          = {9ACB5D0F-8FAB-C069-1BE4-C7CD6E3880E1}       Splitter
+ *        HomeMatic HCU Device           = {36B89A98-2608-4272-8144-B8D572F7C708}       Gerät
+ *        HomeMatic HCU Group            = {D822744F-B59E-24E9-9280-3CEE35150E6D}       Gerät 
+ *
+ * erweitert Hardware um
+ *      getDeviceCheck      vereinfacht
+ *      getDeviceParameter
+ *      getDeviceChannels
+ *      getDeviceInformation
+ *      checkConfig
+ */
+
+class HardwareHomematicHCU extends Hardware
+    {
+
+    protected $socketID, $bridgeID, $deviceID;
+    protected $DeviceManager;  
+
+	public function __construct($config=false,$debug=false)
+		{
+        parent::__construct($config, $debug);                                            // am Anfang sonst wird DeviceID doppelt geschrieben, da ja HardwareHomatic erweitert wird                                       
+        $this->socketID = "{9ACB5D0F-8FAB-C069-1BE4-C7CD6E3880E1}";             // I/O oder Splitter ist der Socket für das Device
+        $this->bridgeID = "{7A113DC4-88F5-71B3-055C-209F3AA8E188}";             // Configurator
+        $this->deviceID = ["HomeMatic HCU Device","HomeMatic HCU Group"];             // das Gerät selbst, wenn mehrere statt GUID auch Namen möglich, use array
+
+        // read Configurator here, compare to Shelly, device type identification with configurator, not based on assigned variables
+        $typedevs=array(); 
+        $this->setInstalledModules();
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            //IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+            IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+            if ($debug>2) echo "class DeviceManagement aufgerufen:\n";   
+            $this->DeviceManager = new DeviceManagement_HomematicHCU($debug>2);              // die Darstellung der ConfigurationForm ist wieder anders als bei Hue
+            $typedevs=$this->DeviceManager->getItemlist("TypeDev");
+            // für spätere Abfragen und Fehlerprüfungen benötigt
+            }              
+        parent::__construct($config, $debug);                   // nur construct von Hardware nicht HarwdareHomematic, sonst werden die constructs hier wieder überschrieben
+
+
+        }
+
+
+    /* HardwareHomematicHCU::getDeviceConfiguration for creation of devicelist, standard overwrite
+     * defines NAME, OID, CONFIG and DeviceID
+     * DeviceID is a parameter of the instance configuration    
+     *
+     * Neudefinition der function um Check auf gleiche Namen von ShellyComponent mit anderen Devices gleich hier einbauen
+     * es kann ja sein dass ein Homematic Device gleich heisst wie ein Shelly Device. zB ArbeitszimmerSchalter
+     * dann um Zahlen nach dem Namen erweitern
+     * in Homematic wurde ein Device mit mehreren Instanzen über den Doppelpunkt im Namen gelöst, könnte man hier schon richtig machen über die Device Addresse im MQTTTopic
+     * unique nameing eingeführt, DeviceID um zu erkennen welche Instanzen zusammengehören
+     */
+    public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
+        {
+        $config = @IPS_GetConfiguration($device);                   //tatsächliche Konfiguration des ShellyComponent auslesen
+        if ($config !== false) 
+            {                    
+            $devicename = IPS_GetName($device);
+            if ($debug>1) echo "             HardwareHomematicHCU::getDeviceConfiguration, $devicename $config   \n";          // wir sind auf Component Ebene, das wäre eine Instance ist gleich ein Channel
+            $oldname = $devicename;
+            if (isset($hardware[$hardwareType][$devicename]))
+                {
+                for ($num=1;($num<5);$num++) 
+                    {
+                    if (isset($hardware[$hardwareType][$devicename.$num])==false) break;
+                    }
+                $devicename = $devicename.$num;
+                echo "HardwareHomematicHCU::getDeviceConfiguration, warning instance name $oldname exists already, look for new name : $devicename.\n";
+                $hardware[$hardwareType][$devicename]["NAME"]=$oldname;
+                }
+            else $hardware[$hardwareType][$devicename]["NAME"]=$devicename;
+            $hardware[$hardwareType][$devicename]["OID"]=$device;
+            $hardware[$hardwareType][$devicename]["CONFIG"]=$config;
+
+            $configuration=json_decode($config,true);
+            //print_r($configuration);
+            if (isset($configuration["DeviceID"]))                        // vergleichbar zur DeviceID von HUEV2, könnte gleich aus der Hardwarelist übernommen werden
+                {
+                $hardware[$hardwareType][$devicename]["DeviceID"]=$configuration["DeviceID"];
+                } 
+            }
+        }
+
+    /* HardwareHomematicHCU::getDeviceCheck
+     * Übergabe deviceList und name der Instanz, name besteht aus 2 Teilen mit : getrennt
+     * entry beinhaltet die Configuration unter ["CONFIG"], Configuration ist json encoded
+     * entry beinhaltet auch ["OID"] , check wenn OperationCenter Modul installiert ist
+     *
+     * Rückgabe false für Extended erleichtert nur mehr wenn
+     *    es gibt eine Eintrag Adresse in der Config
+     *    wenn OperationCenter Modul installiert ist 
+     *      typedev Auswertung muss erfolgreich sein
+     *
+     * Homematic, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
+     *
+     * Ein Homematic Device kann aus mehreren Instances bestehen, zuerst prüfen ob aus einer Instanz heraus das Device bereits angelegt wurde
+     * der Name der Instanz muss immer einen Doppelpunkt haben, vor dem Doppelpunkt ist der Name des Gerätes
+     * In entry gibt es ["CONFIG"]["Address"] mit der Homematic Adresse
+     *
+     * DeviceList wird nicht abgeändert
+     * verwendet einheitlich getHomematicDeviceType
+     */
+
+    public function getDeviceCheck(&$deviceList, &$name, $type, $entry, $debug=false)
+        {
+        if ($debug) echo "HardwareHomematicHCU::getDeviceCheck, $name, keine Prüfung auf : im Namen und der Adresse.\n";
+
+        /* Fehlerprüfung anhand der Seriennummer, Adresse. Port 0 wird nicht ausgewertet */
+        $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+        if (isset($result["Address"])===false) 
+            {
+            echo "       >>HardwareHomematicHCU::getDeviceCheck Fehler, keine Seriennummer.\n";
+            print_r($result);
+            return (false);
+            }
+
+        /* erweiterte Fehlerprüfung wenn OperationCenter, check Matrix */
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            $instanz=$entry["OID"];
+            $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+            if ( ($typedev=="") || ($typedev===false) )
+                {
+                echo "       >>HardwareHomematic::getDeviceCheck, Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$this->DeviceManager->getHomematicDeviceType($instanz,4)."]. \n";
+                $this->DeviceManager->getHomematicDeviceType($instanz,0,true);          // gleich mit Debug starten
+                return(false);
+                }
+            
+            }
+        return (true);
+        }
+
+    /* HardwareHomematicHCU::getDeviceParameter 
+     * die Homematic Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * Antwort ist true wenn alles in Ordnung verlaufen ist
+     * Entry wird direkt in die Devicelist unter Instances integriert, Name ist der Key des Eintrags mit dem integriert wird, Subkategorie ist eben Instances, Entry ist der Wert der eingesetzt wird 
+     * Das Gerät Name wird um den Typ Type erweitert, beim Eintrag entry wird der Name zusätzlich gespeichert
+     *
+     * SubType      Funk|Wired|IP
+     * Information  DeviceManager->getHomematicHMDevice($instanz,1)     zB 'Schaltaktor 1-fach Energiemessung'
+     * Serialnummer $entry["CONFIG"]["Address"][0]
+     * Type         HomematicExtended
+     * Instances
+     *
+     *
+     * verwendet einheitlich getHomematicDeviceType
+     *     
+     * erzeugt 
+     *  $name 
+     *      Type
+     *      Name
+     *      Instances
+     *          Port#           (laufende Nummer)
+     *              OID
+     *              TYPEDEV
+     *              NAME
+     *              CONFIG oder ähnlich aus der Instanz
+     */
+
+    public function getDeviceParameter(&$deviceList,$name, $type, $entry, $debug=false)
+        {
+        $deviceInfo=array();
+        /* Durchführung, es gibt keine : */            
+
+        if ($debug) echo "           HardwareHomematicHCU::getDeviceParameter Name \"".$name."\" neuer Eintrag. Nur wenn OperationCenter instzalliert ist.\n";
+
+        /* Sonderfunktionen wenn OperationCenter Modul installiert ist */
+        $deviceList[$name]["Type"]=$type;
+        if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"]; 
+        else $entry["NAME"]=$name;         
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            $instanz=$entry["OID"];
+
+            $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+            //if ($debug) echo "    TYPEDEV: $typedev";
+            $entry["TYPEDEV"]=$typedev;
+            $deviceList[$name]["Instances"][]=$entry;
+            return (true);
+            }
+        else return (false);                // fehlender Typedev Wert erzeugt keinen Eintrag !!!
+        }
+
+
+    /* HardwareHomematicHCU:getDeviceChannels
+     * der Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
+     * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden, muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
+     * Homematic Geräte haben immer mehrer Instances. Die Naming Convention ist Gerätename:Channelname
+     * mit den Gerätenamen ist die deviceList indiziert. Der Key muss vorhanden sein.
+     * nur wenn OperationCenter installiert ist werden Channels angelegt. Der geräte Port der den Key der Instanz definiert wird auch für den Channel verwendet.
+     *
+     * mit $DeviceManager->getHomematicDeviceType wird der Typedev bestimmt (Type, Name, RegisterAll, Register ... )
+     * Typedev ist der fertige Channel Eintrag, es wird RegisterAll und Name besonders hervorgehoben und doppelt abgespeichert
+     *
+     * verwendet einheitlich getHomematicDeviceType
+     */
+
+    public function getDeviceChannels(&$deviceList,$name, $type, $entry, $debug=false)              // class HardwareHomematic
+        {
+        $port=0;        // kann nicht aus der Adresse ermittelt werden
+        if ($debug) echo str_pad("          HardwareHomematicHCU::getDeviceChannels  für \"$name\" : ",90).str_pad(" ",50);
+        //echo "       getDeviceChannels: Channels hinzufügen.\n"; print_r($this->installedModules);
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            //IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');  
+            IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter"); 
+            $DeviceManager = new DeviceManagement();                    
+            $instanz=$entry["OID"];
+            //$typedev    = $DeviceManager->getHomematicDeviceType($instanz,4,$debug);     /* true debug, wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+            $typedev    = $DeviceManager->getHomematicDeviceType($instanz,4,false);
+            if ($typedev !== false)  
+                {
+                if ($debug) 
+                    {
+                    if (isset($typedev["TYPE_MOTION"])) print_r($typedev);
+                    }
+                if (isset($typedev["RegisterAll"])) 
+                    {
+                    $deviceList[$name]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];
+                    $deviceList[$name]["Channels"][$port]=$typedev;
+                    if (isset($deviceList[$name]["Name"])) $deviceList[$name]["Channels"][$port]["Name"]=$deviceList[$name]["Name"];
+                    else $deviceList[$name]["Channels"][$port]["Name"]=$name;
+                    if ($debug) 
+                        {
+                        if (isset($typedev["TYPECHAN"])) echo "       Schreibe Channels $port mit Typ ".$typedev["TYPECHAN"].".\n";         // Ausgabemodus 4
+                        else    
+                            {
+                            echo "       getDeviceChannels in HardwareHomematic, Schreibe Channels $port typedev config ist:\n";
+                            print_r($typedev);
+                            }
+                        }
+                    }
+                else 
+                    {
+                    echo "      >>getDeviceChannels Fehler, Name \"".$name."\" kein RegisterAll ermittelt.\n";
+                    print_r($typedev);        // typedev nicht immer vollständig, Fehlerüberprüfung
+                    echo "\n";
+                    }
+                }
+            else echo "   >>getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
+            }                            
+        return (true);
+        }
+
+    /* HardwareHomematicExtended::getDeviceInformation 
+     * eigenes Tab mit Device befüllen, wird aktuell von  getDeviceParameter gemacht
+     *
+     */
+
+    public function getDeviceInformation(&$deviceList,$name, $type, $entry, $debug=false)
+        {
+        $deviceInfo=array();
+
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            $instanz=$entry["OID"];
+            $deviceInfo["Gateway"]=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
+            }
+
+        $deviceList[$name]["Device"][0]=$deviceInfo;                      
+
+        }
+
+    /* rausfinden ob weitergemacht werden kann, verändert die Variable goOn
+     * Config ist die Configuration der Variable oid
+     */
+
+    function checkConfig(&$goOn,$config,$oid=false)
+        {
+        //$goOn=true;           // Variable wird als Pointer übergeben
+        $result=json_decode($config,true);   // als array zurückgeben 
+        //print_r($result);
+        if (isset($result["Address"])) 
+            {
+            $addressSelect=explode(":",$result["Address"]);
+            if (count($addressSelect)>1)
+                {
+                $port=(integer)$addressSelect[1];
+                if ($port==0) 
+                    {
+                    //echo "Fehler, Port 0 von \"".$nameSelect[0]."\" wird ignoriert : ".$entry["CONFIG"].".\n";
+                    $goOn=false;
+                    }
+                }
+            else 
+                {
+                echo "     getDeviceChannels Fehler, Seriennummer ohne Port.\n";
+                $goOn=false;
+                }
+            }
+        else 
+            {
+            echo "      getDeviceChannels Fehler, keine Seriennummer.\n";
+            $goOn=false;
+            }
+        return ($port);
+        }
+
+    }
+
 
 /* Objektorientiertes class Management für Geräte (Hardware)
  * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
@@ -1535,7 +1863,7 @@ class HardwareNetatmoWeather extends Hardware
     public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)     // HardwareNetatmoWeather
         {
         //$debug=true;        // overwrite for local debug
-        if ($debug) echo "          getDeviceChannels: NetatmoWeather aufgerufen für \"".$entry["OID"]."\" mit $name $type.\n";
+        if ($debug) echo "          HardwareNetatmoWeather::getDeviceChannels aufgerufen für \"".$entry["OID"]."\" mit $name $type.\n";
         //echo "Bereits erstellter/bearbeiteter Eintrag in der deviceList über vorhandene Instanzen:\n";        print_r($deviceList[$name]["Instances"]);
         //echo "Übergebene zusätzliche Parameter:\n";        print_r($entry);
         $oids=array();
@@ -2179,7 +2507,7 @@ class HardwareHomematic extends Hardware
         /* Durchführung */
         if ($goOn)
             {
-            if ($debug) echo str_pad("          getDeviceChannels: Homematic  für \"$name\" : ",90).str_pad(" ",40);
+            if ($debug) echo str_pad("          HardwareHomematic::getDeviceChannels  für \"$name\" : ",90).str_pad(" ",50);
             //echo "       getDeviceChannels: Channels hinzufügen.\n"; print_r($this->installedModules);
             if (isset($this->installedModules["OperationCenter"])) 
                 {
@@ -2592,6 +2920,8 @@ class HardwareHUEV2 extends Hardware
             $hardware[$hardwareType][$devicename]["CONFIG"]=$config;
             $configuration=json_decode($config,true);
             if (isset($configuration["DeviceID"])) $hardware[$hardwareType][$devicename]["DeviceID"]=$configuration["DeviceID"];
+            if (isset($configuration["ResourceID"])) $hardware[$hardwareType][$devicename]["ResourceID"]=$configuration["ResourceID"]; 
+            if ( (isset($configuration["RoomZoneID"])) && ($configuration["RoomZoneID"] != "") ) $hardware[$hardwareType][$devicename]["RoomZoneID"]=$configuration["RoomZoneID"];
             }
         }
 
@@ -2688,7 +3018,7 @@ class HardwareHUEV2 extends Hardware
             return(false);
             }            
         /* Durchführung */
-        if ($debug) echo "          getDeviceParameters:HUE V2    aufgerufen. Eintrag \"$name\" hinterlegt.\n";
+        if ($debug) echo "          HardwareHUEV2::getDeviceParameters    aufgerufen. Eintrag \"$name\" hinterlegt.\n";
         //print_R($entry);      
         //if (isset($deviceList[$name]["Name"])) $entry["NAME"]=$deviceList[$name]["Name"];               // Name wird übergeben für Debug
         //else $entry["NAME"]=$name;
@@ -2711,6 +3041,9 @@ class HardwareHUEV2 extends Hardware
 
     /* HardwareHUEV2::getDeviceChannels
      * HueV2 hat pro Gerät mehrere Instanzen, die Instanzen werden erst nach jedem Aufruf von getDeviceParameter hinzugefügt, bis es alle sind
+     * HueV2 hat auch mehrere Konfiguratoren: Geraete, Zonen, Räume   Zonen sind typischerweise Gruppen, Räume können auch Gruppen darstellen
+     * verwendet aus dem OperationCenter getHueDeviceType um die Channel Informationen festzulegen
+     *
      * die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät hat die Kategorien Instances,Channels,Actuators, es kann mehrer Einträge in Instances und Channels haben, 
      * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
      * alle instances durchgehen, OIDs einsammeln mit Zuordnung Port abspeichern

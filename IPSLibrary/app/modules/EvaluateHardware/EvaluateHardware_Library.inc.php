@@ -63,10 +63,10 @@ class DeviceListManagement extends TopologyLibraryManagement
         parent::__construct($debug);
         }
 
-    /* setEventListFromConfigFile
-    * get Eventlist from config file and store it in class
-    * es fehlt die Angabe des include files
-    */
+    /* DeviceListManagement::setEventListFromConfigFile
+     * get Eventlist from config file and store it in class
+     * es fehlt die Angabe des include files
+     */
     public function setEventListFromConfigFile($debug=false)
         {
         if ($debug) echo "DeviceListManagement::setEventListFromConfigFile:\n";
@@ -76,6 +76,7 @@ class DeviceListManagement extends TopologyLibraryManagement
             echo "FEHLER: function DeviceList nicht vorhanden.\n";
             $this->devicelist = array();
             }
+        return ($this->devicelist);
         }
 
     /*
@@ -122,6 +123,7 @@ class DeviceListManagement extends TopologyLibraryManagement
 
         foreach ($this->devicelist as $name => $entry)
             {
+            if ($debug) echo "$name   \n";
             // prepare standard info    
             $value=array();
             $topoName=""; $topoUniqueName="";
@@ -179,9 +181,11 @@ class DeviceListManagement extends TopologyLibraryManagement
                                 }
                             //print_R($devicelist[$name]);                            
                             }
+                        elseif ($debug) echo "No OID and TYPECHAN in Channels.\n";
                         }
                     }
                 }
+            elseif ($debug) echo "No instances and channels.\n";
             if (isset($entry["Actuators"]))
                 {
                 if ($debug>1) echo "   ".str_pad($name,50).json_encode($entry["Actuators"])."   ";
@@ -222,6 +226,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                     if ($debug && $switchId)  echo "   Found $name in devicelist as IPSHeat Actuator pointing to $switchId ".IPS_GetLocation($switchId)." in $topoName.\n";
                     }
                 }
+            elseif ($debug) echo "No Actuators.\n";
             }           // ende foreach deviceList
         // result coids und oids und uuids
         $this->oids=$oids;

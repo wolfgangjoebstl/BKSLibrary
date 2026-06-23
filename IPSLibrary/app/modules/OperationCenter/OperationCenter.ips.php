@@ -1608,7 +1608,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                 }
             break;
         case $tim21ID:              // Publish MQTT Status
-            $mqtt->publishValue(12345);
+            //$mqtt->publishValue(12345);
             break;
 		default:                // unbekannt
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");

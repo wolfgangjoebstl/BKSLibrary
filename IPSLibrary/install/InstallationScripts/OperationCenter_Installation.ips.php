@@ -193,7 +193,7 @@
             IPS_RunScriptWait($scriptIdEvaluateHardware);
             echo "Script Evaluate Hardware gestartet wurde mittlerweile abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
             }
-        else echo "Warning, EvalauateHarwdare Script not started.\n";
+        else echo "Warning, EvaluateHardware Script yet not started, doublecheck execscript local config.\n";
         }
 
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
@@ -1238,12 +1238,19 @@
 
 	*************************************************************/
 
+    $OperationConfig=new OperationCenterConfig();
+    $configSetup=$OperationConfig->setSetup();
+    $configuration=$OperationConfig->setConfiguration()["CCU"];
+    $ccuConfig = $OperationConfig->getCCUConfig($configuration);
+
 	echo "===========================================\n";
 	echo "Sysping Variablen anlegen.\n";
 
-	$categoryId_SysPing           = CreateCategoryByName($CategoryIdData,'SysPing',    200);
-    $categoryId_SysPingControl    = CreateCategoryByName($categoryId_SysPing, 'SysPingControl', 200);
-    $categoryId_Sockets           = CreateCategoryByName($categoryId_SysPing, "SocketStatus",300);
+	$categoryId_SysPing             = CreateCategoryByName($CategoryIdData,'SysPing',    200);
+    $categoryId_SysPingControl      = CreateCategoryByName($categoryId_SysPing, 'SysPingControl', 200);
+    $categoryId_Sockets             = CreateCategoryByName($categoryId_SysPing, "SocketStatus",300);
+    $categoryId_EventControl        = CreateCategory('EventControl',   $CategoryIdData, 2000);
+
     echo "Socket Status on OID $categoryId_Sockets, SysPingControl on $categoryId_SysPingControl.\n";
 
    /* Standardvariablen für den Betrieb von Socketstatus in TabPane Radisostatus setzen
@@ -1636,6 +1643,7 @@
 		$categoryId_AutosteuerungSimulation    = CreateCategory('TimerSimulation',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_AutosteuerungSimulation, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
 		$TableEventsButton_ID = CreateVariableByName($categoryId_AutosteuerungSimulation, "TableEvents",3, "~HTMLBox");
+        echo "===========================================\n";
 		}
 		
 	/********************************************************
@@ -1648,7 +1656,10 @@
     echo "Hue Bridge Instanzen suchen:\n";
 	$HUE=$modulhandling->getInstances('HUEBridge');	
 	$countHue = sizeof($HUE);
-	echo "Es gibt insgesamt ".$countHue." SymCon Hue Instanzen.\n";
+	echo "   Es gibt insgesamt ".$countHue." alte SymCon Hue Bridge Instanzen. Bitte umstellen auf HueV2.\n";
+	$HUE=$modulhandling->getInstances('HUE Bridge');	
+	$countHue = sizeof($HUE);
+	echo "   Es gibt insgesamt ".$countHue." neue SymCon Hue Bridge Instanzen.\n";    
 	if ($countHue>0)
 		{
 		$configHue=IPS_GetConfiguration($modulhandling->getInstances("HUEBridge")[0]);
@@ -1659,9 +1670,20 @@
 	/********************************************************
 	 *
 	 *		INIT HM Inventory Homematic Geraete Darstellung 
+     *
+     * init also EventControl and StatusConnect Function here
 	 *
 	 ***************************************************/
     
+    /* when module EvaluateHardware is installed we can take care on Webdisplay of HomematicInventory
+     *      there is profile for control on webdisplay to setup
+     *      check the Homematic CCU sockets and doublecheck for HMI inventory ports
+     *      take care on EventControll as well
+     *          on the occassion check also ccu reboot activities, there is config, check if it is okay and there is a CCU found foreach config entry
+     *          if so mark it in CCU config (the one with OID as index)
+     *          create variable for CCU socket status logging and time of last time rest of counter and counter of reset incidents
+     *
+     */
 	if (isset ($installedModules["EvaluateHardware"])) 
 		{ 
         echo "HM Inventory Homematic Geraete Darstellung:\n";
@@ -1690,15 +1712,15 @@
         IPS_SetVariableProfileAssociation($pname, 6, " ", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color		
         IPS_SetVariableProfileAssociation($pname, 7, "Update", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color		
 
-        echo "Anzahl Homematic Sockets ermitteln, dann schauen ob es gleich viel Inventories gibt:\n";
+        echo "   Anzahl Homematic Sockets ermitteln, dann schauen ob es gleich viel Inventories gibt:\n";
         $modulhandling = new ModuleHandling();              // neu initialisiseren, filter entfernen
         $discovery = $modulhandling->getDiscovery();
         $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Module hinzufügen
-        if ($debug) print_R($discovery);
-        echo "Auswertung der SocketList (I/O Instanzen).\n";
+        if ($debug) ; print_R($discovery);
+        echo "      Auswertung der SocketList (I/O Instanzen).\n";
         $socket=array();
-        $socket = $topologyLibrary->get_SocketList($discovery);
-        if ($debug) print_r($socket);
+        $socket = $topologyLibrary->get_SocketList($discovery,true);                // true Debug
+        if ($debug) ; print_r($socket);
         $countSocket=0;
         foreach ($socket as $modul => $module) 
             {
@@ -1707,7 +1729,8 @@
                 case "Homematic":
                     foreach ($module as $name => $entry) 
                         {
-                        echo "Homematic Socket $name .\n";
+                        $ccuConfig[$entry["OID"]]["found"]=true;
+                        echo "Homematic                 ".str_pad($name,40)." ".json_encode($entry)."\n";
                         $countSocket++;
                         }
                     break;
@@ -1716,6 +1739,66 @@
                     break;
                 }
             }
+
+    $daysback=10; 
+    //$debug=true;
+    print_r($ccuConfig);
+    foreach ($ccuConfig as $index=>$entry)
+        {
+        //echo "$index \n";
+        if ( (isset($entry["found"])) && (isset($entry["OID"])) )             // muss nur da sein damit die Variablen aufgebaut werden
+            {
+            // EventControl
+            $instanceName=IPS_GetName($entry["OID"]);
+            // initialises all copunters
+            $CloseOpenID        = CreateVariableByName($categoryId_EventControl, $instanceName."_SocketStatus", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+            $timeOfLastResetID  = CreateVariableByName($categoryId_EventControl, $instanceName."_TimeOfLastReset", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+            $resetCounterID     = CreateVariableByName($categoryId_EventControl, $instanceName."_ResetCounter", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+            $ResetActiveID      = CreateVariableByName($categoryId_EventControl, $instanceName."_ResetActive", 0);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+            $logLevelID         = CreateVariableByName($categoryId_EventControl, $instanceName."_logLevel", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+
+            SetValue($timeOfLastResetID,time());
+            SetValue($resetCounterID,0);
+            SetValue($ResetActiveID,false);
+            SetValue($logLevelID,3);                                        // 3 log all events
+
+            echo "   ".str_pad($instanceName,35)." $CloseOpenID \n";
+            $daysback=1;
+            $CloseOpenID    = $OperationCenter->setDebugArchiveVar($CloseOpenID,$daysback,$debug);
+            $resetCounterID = $OperationCenter->setDebugArchiveVar($resetCounterID,$daysback,$debug);
+                /* wie setRebootVar, unterfunktion machen
+                if (AC_GetLoggingStatus($archiveHandlerID,$CloseOpenID) === false)
+                    { // nachtraeglich Loggingstatus setzen
+                    AC_SetLoggingStatus($archiveHandlerID,$CloseOpenID,true);
+                    AC_SetAggregationType($archiveHandlerID,$CloseOpenID,0);
+                    IPS_ApplyChanges($archiveHandlerID);
+                    }
+                else
+                    $werte = AC_GetLoggedValues($archiveHandlerID, $CloseOpenID, time()-$daysback*24*60*60, time(),1000); 
+                    if ($debug) 
+                        {
+                        echo "Aufgezeichnete Werte für ".IPS_GetName($CloseOpenID)." über das Verhalten des Reboot Switch Counters:\n";
+                        //print_r($werte);
+                        if (count($werte))
+                            {
+                            echo "       Datum/Zeit           Wert   Dauer zwischen Werten\n";
+                            foreach ($werte as $wert)
+                                {
+                                //print_r($wert);
+                                echo "        ".date("d.m.Y H:i:s",$wert["TimeStamp"]);
+                                echo  "  ".$wert["Value"]."   ".$wert["Duration"]."\n";             // nur beim ersten Wert ändert sich Dauer
+                                }
+                            }
+                        } */
+            if ($entry["AUTOCLOSEOPEN"])
+                {
+                }
+
+            }           // ende if found
+        else echo "not found ".json_encode($entry)."\n";
+        }               // ende foreach
+
+
 
         $order=1000;	
         $HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		

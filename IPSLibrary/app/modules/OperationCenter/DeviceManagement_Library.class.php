@@ -32,11 +32,12 @@
  *
  *
  *      DeviceManagement  
- *          DeviceManagement_FS20       extends DeviceManagement
- *          DeviceManagement_Homematic  extends DeviceManagement
- *          DeviceManagement_Hue        extends DeviceManagement
- *          DeviceManagement_HueV2      extends DeviceManagement_Hue
- *          DeviceManagement_Shelly     extends DeviceManagement
+ *          DeviceManagement_FS20           extends DeviceManagement
+ *          DeviceManagement_Homematic      extends DeviceManagement
+ *          DeviceManagement_HomematicHCU   extends DeviceManagement
+ *          DeviceManagement_Hue            extends DeviceManagement
+ *          DeviceManagement_HueV2          extends DeviceManagement_Hue
+ *          DeviceManagement_Shelly         extends DeviceManagement
  */
 
 
@@ -1030,6 +1031,7 @@ class DeviceManagement
      */
     private function updateHmiReport($HMI,$debug=false, $supress=false, $callCreateReport=false)
         {
+        $debug=false; $createreport=false;
         $result=false; 
         $configHMI=IPS_GetConfiguration($HMI);
         $lastUpdateRequestTimeId = CreateVariableByName($HMI,"HMIReportUpdateRequestTime", 1, "", "", 101, null);         // integer, time
@@ -1086,12 +1088,13 @@ class DeviceManagement
                 {
                 $lastUpdateRequestTime = GetValue($lastUpdateRequestTimeId);
                 SetValue($lastUpdateRequestTimeId,time());
-                //if ($debug) 
+                if ($createreport) 
                     {
                     echo "     updateHmiReport: HMI_CreateReport($HMI) aufrufen:";   
+                    HMI_CreateReport($HMI);  
+                    echo "  --> done\n";                  
                     }
-                HMI_CreateReport($HMI);  
-                if ($debug) echo "  --> done\n";                  
+                else echo "     updateHmiReport: HMI_CreateReport($HMI) blocked by commandline. Do manually.\n";
                 }                    
             }                   // es gibt einen report
         else echo "ERROR, no HMI Report created, no devicelist available.\n";
@@ -2922,6 +2925,126 @@ class DeviceManagement_Homematic extends DeviceManagement
 
 /**************************************************
  * Hardware spezifische Device management Class
+ * verwendet Homematic HCU Modul und daraus die Rückmeldung aus dem ConfigurationForm, dieses etwas umständlich auswerten
+ * wir gehen davon aus, es gibt nur einen Configurator
+ *
+ * für Homematic HCU typische Routinen rauslösen
+ *      createItemlist
+ *      showItemlist,getItemlist
+ */
+class DeviceManagement_HomematicHCU extends DeviceManagement
+	{
+
+    protected $itemslist=array(); 
+
+    public function __construct($debug=false)
+        {
+        if ($debug) echo "DeviceManagement_HomematicHCU construct started.\n";
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        $oids = $modulhandling->getInstances('HomeMatic HCU Configurator');               //   HCU Configurator
+        if (isset($oids[0])) 
+            {
+            $oid=$oids[0];
+            $config=json_decode(IPS_GetConfigurationForm($oid),true);
+            if ($debug) echo "Instance of Configurator for Library Homematic HCU (Built-In) found: $oid  ".IPS_GetName($oid)."\n";
+            $actions = $modulhandling->lookforkeyinarray($config,"actions",$debug>2);           // uses built-in function like in Shelly
+            $values  = $modulhandling->lookforkeyinarray($actions,"values",$debug>2);            
+            if ($values) $this->createItemlist($values,$debug>1);                                //erzeugt itemlist
+            }
+        else echo "No \"HomeMatic HCU Configurator\" Instance found.\n";
+        parent::__construct($debug>1);                       // wenn ein eigenes construct dann auch das übergeordnete aifrufen
+        }
+
+    /* DeviceManagement_HomematicHCU::createItemlist
+     * die itemlist erzeugen, Basis sind die values aus dem configurationForm
+     *
+     * ein configurationForm ist immer gleich aufgebaut, es ist eine Liste aus items/entries
+     *      das item ohne Parameter parent ist die root, alle anderen verweisen mit parent auf die id eines objektes
+     *      es gibt zumindest die Parameter parent und id
+     *      nach instanceID suchen, nur damit hat das item einen Eintrag in IPSymcon
+     *
+     * sucht nach einer instanceID, sonst ist die Instanz nicht angelegt, diese mal so komplett in der itemList abspeichern
+     * Struktur ist immer je Hardware Configurator unterschiedlich 
+     *      "instanceID"        die DeviceID die schlussendlich in Category Hardware/HomematicHCU abgespeichert wird
+     *      unter der InstanceId wird die gesamte Konfiguration in der itemList angespeichert. Dann wird weiter analysiert
+     *          "DeviceType"        Device Description, String
+     *          "Type"              Standardisiserter TYPE, von der HCU
+     *          "Name"              Name der Instanz
+     *
+     * zusätzliche Auswertung über ganzes Array:
+     *             Type     aus dem Wert den Wert für TypeDev ableiten
+     * es werden immer neue Gerätetypen erkannt, kontinuierlich erweitern:
+     *          Hue filament bulb
+     *
+     */
+    private function createItemlist($values,$debug) 
+        {
+        //$debug=true;
+        if ($debug) echo "createItemlist HomeMatic HCU for ".sizeof($values)." items called.\n";
+        //print_r($values);
+        // based on Shelly, Hue and Hue V2
+        foreach ($values as $itemIndex => $itemConfig)
+            {
+            if (isset($itemConfig["instanceID"]))
+                {
+                $instanceID=$itemConfig["instanceID"];              
+                // es gibt viele Eintraege mit instanceID gleich 0, ignorieren 
+                if ($instanceID>0) $this->itemslist[$instanceID] = $itemConfig;   
+                }
+            }
+        foreach ($this->itemslist as $oid => $item)
+            {
+            // es gibt DeviceType, Unterkategorie create.configuration
+            //echo "    $oid \n"; print_R($item); 
+            if (isset($item["DeviceType"])===false) { print_r($item); continue; }
+            if (isset($item["Type"])===false) { print_r($item); continue; }
+            if (isset($item["create"]["configuration"])) $itemconfig=$item["create"]["configuration"];
+            else { echo "Warning, no itemconfig.\n"; continue; }
+            //if ($item["DeviceType"]=="") $item["DeviceType"]=$itemconfig["Component"];                                                    // mix and merge component and device
+            switch ($item["Type"])
+                {
+                /* Devices 
+                 * for Homematic CCU items there was matrix which instances are useful, getHomematicHMDevice
+                 * for HomeMatic HCU items a useful Type ia allready delivered
+                 */
+                case "PLUGABLE_SWITCH_MEASURING":
+                    if ($debug) echo "   Component ".str_pad($item["instanceID"],8).str_pad($item["Name"],25).str_pad($item["DeviceType"],20).str_pad($item["Type"],20)."\n";
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_SWITCH";
+                    break;                
+                default:
+                    echo "DeviceManagement_HomematicHCU::createItemlist, warning, do not know key \"".$item["Type"]."\" (".$item["DeviceType"].")\n";
+                    print_r($item);
+                    break;
+                }       
+            }                     
+        }
+
+    /* DeviceManagement_Shelly, DeviceManagement_HomematicHCU
+     * variable ist protected, daher hier eine nette Anzeige bauen
+     */
+    public function showItemlist()
+        {
+        print_r($this->itemslist);
+        }
+
+    public function getItemlist($filter=false)
+        {
+        if ($filter)
+            {
+            $result=array();
+            foreach ($this->itemslist as $oid => $entry)
+                {
+                if (isset($entry[$filter])) $result[$oid]=$entry[$filter];
+                }
+            return ($result);
+            }
+        else return($this->itemslist);
+        }
+
+    }
+
+/**************************************************
+ * Hardware spezifische Device management Class
  * verwendet Hue Modul und daraus die Rückmeldung aus dem ConfigurationForm, dieses etwas umständlich auswerten
  *
  * für Hue typische Routinen rauslösen
@@ -3056,17 +3179,26 @@ class DeviceManagement_Hue extends DeviceManagement
             }                    
         }
 
-    /* DeviceManagement_Hue
+    /* DeviceManagement_Hue::showItemlist
      * variable ist proteced, daher jhier eine nette Anzeige bauen
      */
-    public function showItemlist()
+    public function showItemlist($filter=false)
         {
-        print_r($this->itemslist);
+        if ($filter) 
+            {
+            if (is_numeric($filter)) print_r($this->itemslist[$filter]);
+            if (is_array($filter))
+                {
+                foreach ($filter as $item) print_r($this->itemslist[$item]);
+                }
+            }
+        else print_r($this->itemslist); 
         }
 
     /* DeviceManagement_Hue::getHueDeviceType
+     * ermittelt die Children in grossbuchstaben und ruft HueDeviceType auf
      *
-     * gibt für eine Philips Hue Instanz/Kanal eines Gerätes den Typ aus
+     * gibt für eine Philips Hue und HueV2 Instanz/Kanal eines Gerätes den Typ aus
      * zB TYPE_METER_TEMPERATURE
      *
      * Routine ermittelt alle Children eines Objektes und übergibt sie als array zur Prüfung
@@ -3096,6 +3228,14 @@ class DeviceManagement_Hue extends DeviceManagement
 
     /* DeviceManagement_Hue::HueDeviceType
      * Hue Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen, gemeinsam für Hue und HueV2 
+     *
+     * in entry wird OID, CONFIG übergeben, mehrer Möglichkeiten für einen Treffer
+     * (1) wenn die OID aus entry in der in der class gespeicherten itemlist enthalten ist, 
+     *     und in der hinterlegten Config ein TypeDev vorhanden ist bedeutet es wird gleich $resultType[0] weiter bewertet
+     * (2) es gibt kein TypeDev, wenn in der CONFIG aus entry bereits ein DeviceType vorhanden ist wird es übernommen und anhand der register analysiert
+     * dann gibt es ein found, $resultType[0] wird weiter bewertet
+     * register ist die Liste der Childrens der gesuchten Instanz
+     *
      * die Register werden wie bei Homematic übergeben, allerdings mit dem Namen in Grossbuchstaben als Key
      * zusätzlich wird die Config der Instanz mit übergeben, bei Hue gibt es mehr Informationen die ausgewertet werden können
      * 
@@ -3128,10 +3268,10 @@ class DeviceManagement_Hue extends DeviceManagement
      *
      *
      *
-     *
      */
     private function HueDeviceType($register, $outputVersion, $entry, $debug=false)
         {
+        //$debug=2;           // overwrite for special debugging
         $i=0; $devicetype=false; $found=false; $resultType=array();
         if (is_array($entry["OID"])) return (false);                                // es gibt keine mehreren Instanzen
         //echo "                HueDeviceType aufgerufen für ".$entry["OID"]."\n";
@@ -3140,27 +3280,29 @@ class DeviceManagement_Hue extends DeviceManagement
             {
             $config=$this->itemslist[$entry["OID"]];
             //echo "                     ".json_encode($config)."\n";
-            if ($debug>1) echo "getDeviceParameters::HUE,function HueDeviceType, called for instance ".$entry["OID"]." : Config ".json_encode($config);
+            if ($debug>1) echo "                function HueDeviceType, called for instance ".$entry["OID"];
             if (isset($config["TypeDev"])) 
                 {
-                $resultType[$i]= $config["TypeDev"];
+                if ($config["TypeDev"]=="TYPE_GROUP") $devicetype="GROUPS";          // Workaround bei Group gibt es keine Indizien was es ist, ausser grouped_light
+                else $resultType[$i]= $config["TypeDev"];
                 $found=true;
                 }
             elseif ($debug>1)
                 {
-                echo "  , TypeDev in Config nicht gefunden.";
+                echo "  , TypeDev in Config nicht gefunden";            // Fehlermeldung zuerst, config jsonencoded zu lange
                 //print_r($config);
                 } 
-            if ($debug>1) echo "\n";
+            if ($debug>1) echo " : Config ".json_encode($config)."\n";
             //if ($found) echo "                   getDeviceParameters:HUE, HueDeviceType, Hue device ".$entry["NAME"]." available. ".$config["TypeDev"]."\n";
             }
         if ($found==false)
             {
             $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
             if (isset($result["DeviceType"])) $devicetype=$result["DeviceType"];
-            if ($debug>1) echo "getDeviceParameters:HUE, HueDeviceType, called for instance ".$entry["OID"]."  ".$entry["CONFIG"]." with devicetype $devicetype\n";
+            //else print_r($result);
+            if ($debug>1) echo "                function HueDeviceType, called for instance ".$entry["OID"]." with devicetype \"$devicetype\" : ".$entry["CONFIG"]." \n";
             }
-        if ($devicetype)            // nur ufgerufen wenn found false und DeviceType set in Config
+        if ($devicetype)            // nur aufgerufen wenn found false und DeviceType set in Config
             {
             //echo "getDeviceParameters:HUE, HueDeviceType, analyse devicetype $devicetype.\n";
             switch (strtoupper($devicetype))
@@ -3187,20 +3329,44 @@ class DeviceManagement_Hue extends DeviceManagement
                     //echo "               getDeviceParameters:HUE, HueDeviceType, Hue Device ".$entry["NAME"]." available. ".$resultType[$i]."\n";
                     break;
                 case "GROUPS":
+                    /* es ist eine Gruppe und wir haben nur die Register:  Status, Helligkeit, Farbe, Farbtemperatur, Übergang, Szene als Information
+                     * man könnte aktiv die nicht benötigten löschen, Teil der Konfiguration, Einstellung kommt über Stromheizung_Configuration
+                     */
+                    $debug=true;
                     $resultType[$i]="TYPE_GROUP";
-                    if ($debug) echo "  getDeviceParameters:HUE, HueDeviceType, Hue Group  available. Childrens are : ".json_encode($register)."\n";
                     $found=true;
-                    if (isset($register["FARBMODUS"]))                                          // es gibt das Register Farbmodus und das kann man auslesen
+                    if ($outputVersion>0)
                         {
-                        $modus = GetValueIfFormatted($register["FARBMODUS"]);
-                        //echo "getDeviceParameters:HUE ".str_pad($name,22)." : ".$modus."    ".json_encode($result)."\n";
-                        if (strtoupper($modus)=="FARBTEMPERATUR") $resultType[$i]="TYPE_AMBIENT"; 
-                        else            // schwierige Unterscheidung zwischen Dimmer und RGB
+                        if ($debug) echo "  getDeviceParameters:HUE, HueDeviceType, Hue Group  available. Childrens are : ".json_encode($register)."\n";
+                        if (isset($register["STATUS"]))
                             {
-                            if ( (isset($register["FARBE"])) && (GetValue($register["FARBE"])==0) ) $resultType[$i]="TYPE_DIMMER";
+                            if (isset($register["HELLIGKEIT"]))
+                                {
+                                if (isset($register["FARBTEMPERATUR"])) 
+                                    {
+                                    $resultType[$i]="TYPE_AMBIENT";  
+                                    }
+                                elseif (isset($register["FARBTEMPERATUR"]))
+                                    {
+                                    $resultType[$i]="TYPE_RGB";             // overwrite 
+                                    }
+                                else $resultType[$i]="TYPE_DIMMER";
+                                }
+                            else $resultType[$i]="TYPE_SWITCH";
                             }
-                        }
-                    //echo "               getDeviceParameters:HUE, HueDeviceType, Hue Group ".$entry["NAME"]." available. ".$resultType[$i]." \n";                        
+                        // older Hue Components
+                        if (isset($register["FARBMODUS"]))                                          // es gibt das Register Farbmodus und das kann man auslesen, vielleicht war das bei Hue und nicht bei HueV2
+                            {
+                            $modus = GetValueIfFormatted($register["FARBMODUS"]);
+                            //echo "getDeviceParameters:HUE ".str_pad($name,22)." : ".$modus."    ".json_encode($result)."\n";
+                            if (strtoupper($modus)=="FARBTEMPERATUR") $resultType[$i]="TYPE_AMBIENT"; 
+                            else            // schwierige Unterscheidung zwischen Dimmer und RGB
+                                {
+                                if ( (isset($register["FARBE"])) && (GetValue($register["FARBE"])==0) ) $resultType[$i]="TYPE_DIMMER";
+                                }
+                            }
+                        //echo "               getDeviceParameters:HUE, HueDeviceType, Hue Group ".$entry["NAME"]." available. ".$resultType[$i]." \n";         
+                        }               
                     break;
                 case "SENSORS":                         // Hue Sensoren, das sind zum Beispiel Taster und Bewegungsmelder
                     $found=true;
@@ -3263,6 +3429,9 @@ class DeviceManagement_Hue extends DeviceManagement
                         if ($regName=="Temperatur") $typedevRegs["TEMPERATURE"]=$regName;           // als String wenn formattiert
                         break;                                                                      
                     case "TYPE_SENSOR":
+                        break;
+                    default:
+                        echo "TypeDev $typedev not defined.\n";
                         break;
                     }
                 $resultReg[$i]=$typedevRegs;                     
@@ -3659,7 +3828,7 @@ class DeviceManagement_Hue extends DeviceManagement
                 } 
             else return ($result[0]);
             }
-        else 
+        else            // not found
             {
             if ($outputVersion>100) 
                 {
@@ -3667,7 +3836,11 @@ class DeviceManagement_Hue extends DeviceManagement
                 foreach ($registerNew as $entry) $result .= $entry." ";
                 return ($result);
                 }
-            else return (false);
+            else 
+                {
+                echo "HueDeviceType, Instanz ".$entry["OID"]." Register not found, Output version $outputVersion.\n";
+                return (false);
+                }
             }
 
         }
@@ -3788,6 +3961,8 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
     private function createItemlist($values,$debug) 
         {
         //$debug=true;
+        //print_R($values);   // die ganze Liste
+
         if ($debug) echo "createItemlist Hue V2 for ".sizeof($values)." items called.\n";
         foreach ($values as $itemIndex => $itemConfig)
             {
@@ -3839,7 +4014,9 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                 case "room":
                 case "zone":            // eine Gruppierung, aber wahrscheinlich örtlich abgegrenzt
                     // damit kann die Topologie abgeglichen werden
-                    //print_r($entry);
+                    if ($debug) echo "   $oid, ".IPS_GetName($oid).",TypeDev wird hier anhand von Type gesetzt. Type Gruppe gefunden (room,zone), damit kein Rueckschluss möglich:\n";
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_GROUP";
+                    //print_r($item);
                     break;
                 case "Hue motion sensor":
                     //echo "Hue motion sensor, $oid ".json_encode($item)."\n";
