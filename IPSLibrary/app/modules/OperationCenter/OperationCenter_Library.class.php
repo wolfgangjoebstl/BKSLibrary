@@ -2436,6 +2436,7 @@ class OperationCenter extends OperationCenterConfig
      */
     function setDebugArchiveVar($RebootID,$daysback,$debug=false)
         {
+        if ($RebootID==0) return(false);
         if ($debug) echo "setDebugArchiveVar for $RebootID show values back $daysback days.\n";
         if (AC_GetLoggingStatus($this->archiveHandlerID,$RebootID) === false)
             { // nachtraeglich Loggingstatus setzen
@@ -6637,9 +6638,13 @@ class LogFileHandler extends OperationCenter
      *          sie enden nicht mit .log
      *          wenn definiert sie stimmen nicht mit dem targetfile überein
      * es werden die letzten Zeilen ausgegeben
+     * zusaetzlich filter eingebaut
      */
     function readlogfile($serverDir,$targetfile=false)
         {
+        $filesfiltered=array();
+        $fileindex=0;
+        $filter1="LEVEL"; $levelmask=false;
 
                 $maxLine=3;
                 $firstrows=2; $lastrows=20; $rollingsize=40;
@@ -6665,22 +6670,71 @@ class LogFileHandler extends OperationCenter
                                 if ($pos1===false)
                                     {
                                     echo str_pad($filename[0],30)." ".nf($filesize,"Byte",12)."      ".date("d.m.Y H:i:s",$datetime)."\n";
-                                    $pos2=strpos($filename[0],"logfile");
+                                    $pos2=strpos($filename[0].".","logfile");
                                     $date=substr($filename[0],7);
                                     $timeold=time()-$datetime;
-                                    echo "    $date ".date("d.m.Y H:i",(int)$date)."  Time since last write ".nf($timeold,"s")."\n";
-                                    if ( ($pos2 !== false) && ($timeold>(10*60)) )
+                                    if (is_numeric($date)) echo "    $date ".date("d.m.Y H:i",(int)$date);
+                                    else $date=false;
+                                    echo "  Time since last write ".nf($timeold,"s")."\n";
+                                    if ($pos2 !== false) 
                                         {
-                                        if ($targetfile)
-                                            { 
-                                            $pos3=strpos($filename[0],$targetfile);
-                                            if  ($pos3 === false) continue;
-                                            }
+                                        //echo "     $pos2  \"".$filename[0]."\"    $datei\n";
+                                        // writing archived logs corresponding with targetfile and logfile in its name
+                                        $entry["Filename"]=$datei;
+                                        if ($date) $entry["FilenameDate"]=date("d.m.Y H:i",(int)$date);
+                                        $entry["FileDate"]=date("d.m.Y H:i",$datetime);
+                                        $filesfiltered[$fileindex]=$entry;
+                                        $fileindex++;
+                                        }
+                                    $found=false;
+                                    if ($targetfile)
+                                        { 
+                                        $pos3=strpos($datei,$targetfile);
+                                        if  ($pos3 === false) continue;
+                                        $found=true;
+                                        }
+                                    if ($found || ( ($pos2 !== false) && ($timeold>(10*60)) ))
+                                        {
                                         if ( (($filehandle = fopen($fullpath, "r")) !== false) )      // nur machen wenn filename  richtig
                                             {
                                             $row=1;
+                                            // zeilenweises lesen
                                             while (($data = fgets($filehandle)) !== false) 
                                                 {
+                                                // filter
+                                                $inputline=explode("|",$data);
+                                                //print_R($inputline);
+                                                $date=$inputline[0];
+                                                $time=strtotime($date);
+                                                if ($time==false) continue;                                                
+                                                if ($filter1=="LEVEL")
+                                                    {
+                                                    if (isset($inputline[2]))
+                                                        {
+                                                        $level=trim($inputline[2]);
+                                                        if ($levelmask)
+                                                            {
+                                                            if (in_array($level,$levelmask))
+                                                                {
+                                                                if ($counter && $debug) { echo "$level|"; $counter--; if ($counter==0) echo "\n"; }
+                                                                continue;
+                                                                }   
+                                                            }
+                                                        else        // default, only error
+                                                            {
+                                                            if ($level=="DEBUG") continue;
+                                                            if ($level=="MESSAGE") continue;
+                                                            if ($level=="CUSTOM") continue;
+                                                            if ($level=="NOTIFY") continue;
+                                                            if ($level=="WARNING") continue;
+                                                            }
+                                                        }
+                                                    else continue;                                  // lines without logging level
+                                                    }
+                                                if (isset($inputline[4]))
+                                                    { 
+
+                                                    }
                                                 $row++;
                                                 if ($firstrows)
                                                     {
@@ -6704,11 +6758,11 @@ class LogFileHandler extends OperationCenter
                                             fclose($filehandle);
                                             if ($lastrows)
                                                 {
-                                                echo "   $lastrow $lastrows \n";
+                                                echo "   .............  show from line ".($lastrow-$lastrows)." \n";
                                                 for ($i=($lastrow-$lastrows);$i<($lastrow+1);$i++)
                                                     {
                                                     $index=fmod($i,$rollingsize);
-                                                    echo "     ".$filecontent[$index];
+                                                    echo "    ".$filecontent[$index];
                                                     }
                                                 }
                                             }
@@ -6717,8 +6771,8 @@ class LogFileHandler extends OperationCenter
                                 }
                             }
                         }
-
-
+        echo "\n";
+        return ($filesfiltered);
         }
 
     /* LogFileHandler::readlogfileFiltered

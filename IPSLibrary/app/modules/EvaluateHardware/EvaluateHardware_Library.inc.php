@@ -192,6 +192,7 @@ class DeviceListManagement extends TopologyLibraryManagement
                 foreach ($entry["Actuators"] as $actuator)
                     {
                     $heatname=$actuator["Name"];
+                    $switchId=false;
                     switch ($actuator["Category"])
                         {
                         case "Switches":

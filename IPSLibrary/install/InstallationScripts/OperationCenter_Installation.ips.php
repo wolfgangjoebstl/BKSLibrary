@@ -430,6 +430,8 @@
         }  
     IPS_SetProperty($eventControl,"StatusEvents",json_encode($events));              
     IPS_ApplyChanges($eventControl);
+    $tim90ID  = $timerOps->CreateTimerSync("CheckStatus",150, $scriptIdEventControl);
+
 
 	/*******************************
 	 *
@@ -1751,7 +1753,8 @@
             // EventControl
             $instanceName=IPS_GetName($entry["OID"]);
             // initialises all copunters
-            $CloseOpenID        = CreateVariableByName($categoryId_EventControl, $instanceName."_SocketStatus", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+            $CloseOpenID        = CreateVariableByName($categoryId_EventControl, $instanceName."_SocketStatus", 1);  
+            $ccuStatusID        = CreateVariableByName($categoryId_EventControl, $instanceName."_CCUStatus", 1);                   // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
             $timeOfLastResetID  = CreateVariableByName($categoryId_EventControl, $instanceName."_TimeOfLastReset", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
             $resetCounterID     = CreateVariableByName($categoryId_EventControl, $instanceName."_ResetCounter", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
             $ResetActiveID      = CreateVariableByName($categoryId_EventControl, $instanceName."_ResetActive", 0);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
@@ -1761,6 +1764,7 @@
             SetValue($resetCounterID,0);
             SetValue($ResetActiveID,false);
             SetValue($logLevelID,3);                                        // 3 log all events
+            SetValue($ccuStatusID,0);                                   // 400 reset process still in process
 
             echo "   ".str_pad($instanceName,35)." $CloseOpenID \n";
             $daysback=1;

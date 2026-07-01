@@ -3216,22 +3216,32 @@ class DeviceManagement_Hue extends DeviceManagement
      */
     function getHueDeviceType($instanz, $outputVersion=false, $config=array(), $debug=false)
 	    {
-        if ($debug) echo "             getHueDeviceType : $instanz  \"".IPS_GetName($instanz)."\" Modus : $outputVersion\n";
 	    $homematic=array();
     	$cids = IPS_GetChildrenIDs($instanz);
         $register=array();
         foreach($cids as $cid) $register[strtoupper(IPS_GetName($cid))]=$cid;
     	//foreach($cids as $cid) $homematic[$cid]=IPS_GetName($cid);
     	//return ($this->HueDeviceType($homematic,$outputVersion, $config, $debug));
-        return ($this->HueDeviceType($register,$outputVersion, $config, $debug));
+        $result=$this->HueDeviceType($register,$outputVersion, $config, $debug);
+        if ($debug) 
+            {
+            if (is_array($result)) $resulttext=json_encode($result);
+            else $resulttext=$result;
+            echo "             getHueDeviceType : $instanz  \"".IPS_GetName($instanz)."\" Modus : $outputVersion     Ergebnis: $resulttext\n";
+            }
+        return ($result);
     	}
 
     /* DeviceManagement_Hue::HueDeviceType
      * Hue Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen, gemeinsam für Hue und HueV2 
+     * nachdem HUE nicht mehr interstützt wird, gilt HUEV2 auf Basis von HUE
      *
      * in entry wird OID, CONFIG übergeben, mehrer Möglichkeiten für einen Treffer
      * (1) wenn die OID aus entry in der in der class gespeicherten itemlist enthalten ist, 
-     *     und in der hinterlegten Config ein TypeDev vorhanden ist bedeutet es wird gleich $resultType[0] weiter bewertet
+     *     und in der hinterlegten Config ein TypeDev vorhanden ist bedeutet es wird gleich $resultType[0] weiter bewertet, die anderen VArianten übersprungen
+     *     Sonderformen, typedev ist 
+     *          TYPE_GROUP, dann ist der channel unterschiedlich zum device
+     *          TYPE_RGB_AMBIENT, ebenfalls und es gibt zwei Channels TYPECHAN = TYPE_RGB,TYPE_AMBIENT
      * (2) es gibt kein TypeDev, wenn in der CONFIG aus entry bereits ein DeviceType vorhanden ist wird es übernommen und anhand der register analysiert
      * dann gibt es ein found, $resultType[0] wird weiter bewertet
      * register ist die Liste der Childrens der gesuchten Instanz
@@ -3280,7 +3290,7 @@ class DeviceManagement_Hue extends DeviceManagement
             {
             $config=$this->itemslist[$entry["OID"]];
             //echo "                     ".json_encode($config)."\n";
-            if ($debug>1) echo "                function HueDeviceType, called for instance ".$entry["OID"];
+            if ($debug>1) echo "                HueDeviceType, called for instance ".$entry["OID"];
             if (isset($config["TypeDev"])) 
                 {
                 if ($config["TypeDev"]=="TYPE_GROUP") $devicetype="GROUPS";          // Workaround bei Group gibt es keine Indizien was es ist, ausser grouped_light
@@ -3300,7 +3310,7 @@ class DeviceManagement_Hue extends DeviceManagement
             $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
             if (isset($result["DeviceType"])) $devicetype=$result["DeviceType"];
             //else print_r($result);
-            if ($debug>1) echo "                function HueDeviceType, called for instance ".$entry["OID"]." with devicetype \"$devicetype\" : ".$entry["CONFIG"]." \n";
+            if ($debug>1) echo "                HueDeviceType, called for instance ".$entry["OID"]." with devicetype \"$devicetype\" : ".$entry["CONFIG"]." \n";
             }
         if ($devicetype)            // nur aufgerufen wenn found false und DeviceType set in Config
             {
@@ -3337,7 +3347,7 @@ class DeviceManagement_Hue extends DeviceManagement
                     $found=true;
                     if ($outputVersion>0)
                         {
-                        if ($debug) echo "  getDeviceParameters:HUE, HueDeviceType, Hue Group  available. Childrens are : ".json_encode($register)."\n";
+                        //if ($debug) echo "                  getDeviceParameters:HUE, HueDeviceType, Hue Group  available. Childrens are : ".json_encode($register)."\n";
                         if (isset($register["STATUS"]))
                             {
                             if (isset($register["HELLIGKEIT"]))
@@ -3377,7 +3387,8 @@ class DeviceManagement_Hue extends DeviceManagement
                 }
             }
 
-
+        /* nocheinmal analysieren, aber eher um die richtigen Register anhand des Types zu finden
+         */
         if (isset($resultType[$i]))
             {
             $typedev = $resultType[$i];
@@ -3385,7 +3396,7 @@ class DeviceManagement_Hue extends DeviceManagement
             $cids = IPS_GetChildrenIDs($entry["OID"]);           // für jede Instanz die Children einsammeln
             $register=array();
             if ($debug>1) echo "                  $typedev : ";         // Typedev Ausgabe
-            $first=true;
+            $first=true; $onetype=true;
             foreach($cids as $cid)
                 {
                 $regName=IPS_GetName($cid);
@@ -3406,6 +3417,17 @@ class DeviceManagement_Hue extends DeviceManagement
                         if ($regName=="Status")     $typedevRegs["STATE"]=$regName;
                         if ($regName=="Helligkeit") $typedevRegs["LEVEL"]=$regName;
                         break;
+                    case "TYPE_RGB_AMBIENT":
+                        if ($regName=="Status")         { $typedevRegs["STATE"]=$regName; $typedevRegs1["STATE"]=$regName; }
+                        if ($regName=="Helligkeit")     { $typedevRegs["LEVEL"]=$regName; $typedevRegs1["LEVEL"]=$regName; }
+                        if ($onetype)
+                            {
+                            if ($regName=="Farbtemperatur") $typedevRegs["AMBIENCE"]=$regName;                  // mired und nicht Kelvin, Mired ist der Kehrwert der Farbtemperatur in Kelvin, multipliziert mit einer Million.
+                            if ($regName=="Color Temperature Kelvin") $typedevRegs["COLORTEMP"]=$regName;
+                            }
+                        elseif ($regName=="Color Temperature Kelvin") $typedevRegs1["COLORTEMP"]=$regName;
+                        if ($regName=="Farbe")          $typedevRegs["COLOR"]=$regName;                      // muss aber nicht stimmen     
+                        break;                   
                     case "TYPE_AMBIENT":
                         if ($regName=="Status")         $typedevRegs["STATE"]=$regName;
                         if ($regName=="Helligkeit")     $typedevRegs["LEVEL"]=$regName;
@@ -3434,16 +3456,29 @@ class DeviceManagement_Hue extends DeviceManagement
                         echo "TypeDev $typedev not defined.\n";
                         break;
                     }
-                $resultReg[$i]=$typedevRegs;                     
-                sort($register);
-                $registerNew=array();
-                $oldvalue="";        
-                /* gleiche Einträge eliminieren */
-                foreach ($register as $index => $value)
+                }                    
+            // am Ende für alle Register machen, typedevregs ist aufgebaut, in register sind alle variable - childrens
+            $resultReg[$i]=$typedevRegs;                     
+            sort($register);
+            $registerNew=array();
+            $oldvalue="";        
+            /* gleiche Einträge eliminieren */
+            foreach ($register as $index => $value)
+                {
+                if ($value!=$oldvalue) {$registerNew[]=$value;}
+                $oldvalue=$value;
+                } 
+            if ($onetype===false)
+                {                    
+                switch ($typedev)                       
                     {
-                    if ($value!=$oldvalue) {$registerNew[]=$value;}
-                    $oldvalue=$value;
-                    }                     
+                    case "TYPE_RGB_AMBIENT":
+                        $resultType[$i]="TYPE_RGB";
+                        $i++;
+                        $resultType[$i]="TYPE_AMBIENT";
+                        $resultReg[$i]=$typedevRegs1;                     
+                        break;
+                    }
                 }
             if ($debug>1) echo "\n";
             //print_R($typedevRegs);
@@ -3890,7 +3925,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
     /* DeviceManagement_HueV2::analyseConfigStructure jetzt auch in Modulhandling
      * Values in der ConfigurationForms gefunden, jetzt analysieren, die ConfigurationForms ist mit parent als hierarchische Struktur aufgebaut
      */
-    private function analyseConfigStructure($values,$debug=false)
+    public function analyseConfigStructure($values,$debug=false)
         {
         $result=array();
         if ($debug) echo "analyseConfigStructure \n";
@@ -3920,6 +3955,14 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                     if ($debug) echo "  OID:  ".$value["instanceID"]."     ";
                     //print_r($value);
                     }
+                if ( (isset($value["ModelID"])) && ($value["ModelID"] != "")  )             // Type wird entweder Productname Hue Motion Sensor oder Type device
+                    {
+                    $modelId=$value["ModelID"];
+                    if ($debug) echo $modelId."     ";
+                    //print_r($value);
+                    } 
+                else $modelId=false;                   
+                //echo json_encode($value);
                 //if (isset($value["instanceID"])) echo "  OID:  ".$value["instanceID"];
                 foreach ($values as $idx => $child)          // looking for childrens
                     {
@@ -3934,6 +3977,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                             $result[$deviceOID]["instanceID"]=$deviceOID;              // geht sonst bei merge verloren
                             $result[$deviceOID]["name"]=$name;
                             $result[$deviceOID]["Type"]=$type;
+                            if ($modelId) $result[$deviceOID]["ModelID"]=$modelId;
                             $result[$deviceOID]["TypeChild"]=$child["Type"];
                             $found=$id;
                             //print_r($value);
@@ -3957,10 +4001,66 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
      * es werden immer neue Gerätetypen erkannt, kontinuierlich erweitern:
      *          Hue filament bulb
      *
+     *      Abfrage nach Zigbee Device identifier https://zigbee.blakadder.com/search.html
+     *      LCA001                  Hue White and Color Ambiance A60 E27
+     *      LTW001                  Hue White Ambiance 110 A19 E27
+     *      LCT024  440400982842    Hue White and Color Ambiance Play Light Bar
+     *      LTG002                  Hue White Ambiance GU10 w/ BT
+     *      LLC011                  Hue Bloom Living Colors Starter Pack   
+     *      LST002                  Hue LightStrip Plus  
+     *    
+     *      Hue bulb A19 0x0210 (Extended Color Light) LCT001, LCT007 B Yes
+     *      Hue bulb A19 0x0210 (Extended Color Light) LCT010, LCT014, LCT015, LCT016 Yes
+     *      Hue Spot BR30 0x0210 (Extended Color Light) LCT002 B Yes
+     *      Hue Spot GU10 0x0210 (Extended Color Light) LCT003 B Yes
+     *      Hue BR30 Richer Colors 0x0210 (Extended Color Light) LCT011 C Yes
+     *      Hue BR30 White Ambience 0x0220 (Color Temperature Light) LTW011 2200K-6500K Yes
+     *      Hue LightStrips 0x0200 (Color Light) LST001 A Yes
+     *      Hue Living Colors Iris 0x0200 (Color Light) LLC010 A Yes
+     *      Hue Living Colors Bloom 0x0200 (Color Light) LLC011, LLC012 A Yes
+     *      Living Colors Gen3 Iris* 0x0200 (Color Light) LLC006 A No
+     *      Living Colors Gen3 Bloom, Aura* 0x0200 (Color Light) LLC005, LLC007, LLC014 A No
+     *      Disney Living Colors 0x0200 (Color Light) LLC013 A Yes
+     *      Hue White 0x0100 (Dimmable Light) LWB004, LWB006, LWB007 – Yes
+     *      Hue White lamp 0x0100 (Dimmable Light) LWB010, LWB014 – Yes
+     *      Color Light Module 0x0210 (Extended Color Light) LLM001 B Yes
+     *      Color Temperature Module 0x0220 (Color Temperature Light) LLM010, LLM011, LLM012 2200K-6500K Yes
+     *      Hue bulb A19 0x0210 (Extended Color Light) LCT001, LCT007 B Yes
+     *      Hue bulb A19 0x0210 (Extended Color Light) LCT010, LCT014, LCT015, LCT016 Yes
+     *      Hue Spot BR30 0x0210 (Extended Color Light) LCT002 B Yes
+     *      Hue Spot GU10 0x0210 (Extended Color Light) LCT003 B Yes
+     *      Hue BR30 Richer Colors 0x0210 (Extended Color Light) LCT011 C Yes
+     *      Hue BR30 White Ambience 0x0220 (Color Temperature Light) LTW011 2200K-6500K Yes
+     *      Hue LightStrips 0x0200 (Color Light) LST001 A Yes
+     *      Hue Living Colors Iris 0x0200 (Color Light) LLC010 A Yes
+     *      Hue Living Colors Bloom 0x0200 (Color Light) LLC011, LLC012 A Yes
+     *      Living Colors Gen3 Iris* 0x0200 (Color Light) LLC006 A No
+     *      Living Colors Gen3 Bloom, Aura* 0x0200 (Color Light) LLC005, LLC007, LLC014 A No
+     *      Disney Living Colors 0x0200 (Color Light) LLC013 A Yes
+     *      Hue White 0x0100 (Dimmable Light) LWB004, LWB006, LWB007 – Yes
+     *      Hue White lamp 0x0100 (Dimmable Light) LWB010, LWB014 – Yes
+     *      Color Light Module 0x0210 (Extended Color Light) LLM001 B Yes
+     *      Color Temperature Module 0x0220 (Color Temperature Light) LLM010, LLM011, LLM012 2200K-6500K Yes
+     *      Hue A19 White Ambiance 0x0220 (Color Temperature Light) LTW001, LTW004, LTW010, LTW015 2200K-6500K Yes
+     *      Hue ambiance spot 0x0220 (Color Temperature Light) LTW013, LTW014 2200K-6500K Yes
+     *      Hue Go 0x0210 (Extended Color Light) LLC020 C Yes
+     *      Hue LightStrips Plus 0x0210 (Extended Color Light) LST002 C Yes
+     *      Hue color candle 0x0210 (Extended Color Light) LCT012 C Yes
+     *      Hue ambiance candle 0x0220 (Color Temperature Light) LTW012 2200K-6500K Yes
+     *      Hue A19 White Ambiance 0x0220 (Color Temperature Light) LTW001, LTW004, LTW010, LTW015 2200K-6500K Yes
+     *      Hue ambiance spot 0x0220 (Color Temperature Light) LTW013, LTW014 2200K-6500K Yes
+     *      Hue Go 0x0210 (Extended Color Light) LLC020 C Yes
+     *      Hue LightStrips Plus 0x0210 (Extended Color Light) LST002 C Yes
+     *      Hue color candle 0x0210 (Extended Color Light) LCT012 C Yes
+     *      Hue ambiance candle 0x0220 (Color Temperature Light) LTW012 2200K-6500K Yes
+     *  see https://developers.meethue.com/develop/hue-api/supported-devices/ , 
+     *  see https://www.reddit.com/r/Hue/comments/b9hauz/fyi_philips_hue_bulb_model_numbers_are_listed_in/?rdt=46547
+     *
+     *
      */
     private function createItemlist($values,$debug) 
         {
-        //$debug=true;
+        //$debug=2;
         //print_R($values);   // die ganze Liste
 
         if ($debug) echo "createItemlist Hue V2 for ".sizeof($values)." items called.\n";
@@ -3974,25 +4074,46 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
             }
         foreach ($this->itemslist as $oid => $item)
             {
-            //echo "    $oid \n";
+            //if ($debug>1) echo "    $oid ";
             if (isset($item["Type"])===false) continue;
+            //if ($debug>1) echo "    ".$item["Type"]."  ".json_encode($item)."\n";
             switch ($item["Type"])
                 {
+                // RGB - Ambient List
+                case "Hue color lamp":                                            // LCA001 neue Hue White and Color, LCT001 uralte Color lamp mit eingeschränktem Farbspektrum
+                    switch ($item["ModelID"])
+                        {
+                        case "LCA001":
+                            $this->itemslist[$oid]["TypeDev"]="TYPE_RGB_AMBIENT";               // Device Type, its two devices at the same time, hue app switches between operation mode 
+                            break;
+                        case "LCT001":
+                            $this->itemslist[$oid]["TypeDev"]="TYPE_RGB";                
+                            break;
+                        default:
+                            echo "DeviceManagement_HueV2::createItemlist, Hue color lamp : ".json_encode($item)."  Default Type TYPE_RGB \n";
+                            break;
+                        }
+                    break;
+                case "Hue Infuse ceiling":
+                    $this->itemslist[$oid]["TypeDev"]="TYPE_RGB_AMBIENT";               // Device Type, its two devices at the same time, hue app switches between operation mode 
+                    break;    
+                // RGB list
                 case "Hue lightstrip plus":
                 case "Hue lightstrip outdoor":
                 case "Hue bloom":
                 case "Hue Play":
                 case "Extended color light":
-                case "Hue color lamp":
                 case "Hue color spot":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_RGB";
                     break;
+                // Ambient List
                 case "Hue ambiance lamp":
                 case "Hue ambiance spot":
                 case "Hue filament bulb":               // die grosse Lampe, kann dimmen und ambient, TypeChild Light
                 case "Hue ambiance ceiling":
                     $this->itemslist[$oid]["TypeDev"]="TYPE_AMBIENT";
                     break;
+                // Dimmer List
                 case "Hue white lamp":              // wenn typeChild definiert und nicht light aufpassen   
                 case "Hue white candle":
                 case "Hue dimmer lamp":

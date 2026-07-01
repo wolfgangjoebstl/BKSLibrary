@@ -100,11 +100,6 @@
 
         private $ipsOps;           // class ipsOps
 
-		private $lightId=false; 
-		private $lightSwitchCategoryId=false;
-		private $lightGroupCategoryId=false;
-		private $lightProgramCategoryId=false;
-
 		private $groupCategoryId;
 		private $switchCategoryId;
 		private $programCategoryId;
@@ -129,14 +124,8 @@
 			$this->groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
 			$this->programCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId);
             // compatibility with IPSLight, no longer needed
-			$this->lightId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight1',true);
-			if ($this->lightId)
-				{
-				$this->lightSwitchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
-				$this->lightGroupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-				$this->lightProgramCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId);
-				}
-            else echo "IPSHeat_Manager : IPSLight is depricated, deinstall soon.\n";
+			$lightId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight',true);
+			if ($lightId) echo "IPSHeat_Manager : IPSLight is depricated, deinstall soon.\n";
 
 			$this->ipsOps = new ipsOps();
             $this->setConfiguration(false);         //donotupdateSwitch
@@ -354,6 +343,10 @@
                     $mask=[1,1,1,0,0,0];                // 6 Einträge, Keep nur für Status, Helligkeit und Farbe
                     $typename=$type;
                     break;
+                case IPSHEAT_TYPE_RGBW:
+                    $mask=[1,1,1,1,0,0];                // 6 Einträge, Keep nur für Status, Helligkeit und Farbe
+                    $typename=$type;
+                    break;                     
                 case IPSHEAT_TYPE_AMBIENT:
                     $mask=[1,1,0,1,0,0];                // 6 Einträge, Keep nur für Status, Helligkeit und Farbtemperatur
                     $typename=$type;
@@ -702,6 +695,9 @@
 		 * @public
 		 *
 		 * Setzt den Wert einer Control Variable (Schalter, Dimmer, Gruppe, ...) anhand der zugehörigen ID
+         * die ID ist ein Switch, ein Thermostatwert, eine Farbtemperatur usw. 
+         * den Parent analysieren - Switch-Group-Program
+         * config zu dem Wert herausfinden
 		 *
 		 * @param int $variableId ID der Variable
 		 * @param int $value Neuer Wert der Variable
@@ -728,6 +724,10 @@
 							if ($debug) echo "IPS_HeatManager SetValue Type Dimmer SetDimmer($variableId (".IPS_GetName($variableId)."),$value)\n";
 							$this->SetDimmer($variableId, $value);
 							break;
+						case IPSHEAT_TYPE_RGBW:
+							if ($debug) echo "IPS_HeatManager SetValue Type RGBW SetRGBW; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
+							$this->SetRGBW($variableId, $value, true, true, $debug);
+							break;                            
 						case IPSHEAT_TYPE_RGB:
 							if ($debug) echo "IPS_HeatManager SetValue Type RGB SetRGB; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
 							$this->SetRGB($variableId, $value, true, true, $debug);
@@ -859,6 +859,80 @@
 				$this->SynchronizeProgramsBySwitch ($switchId);
 			}
 		}
+
+		/**
+		 * @public
+		 *
+		 * Setzt den Wert einer RGBW Farb Variable anhand der zugehörigen ID
+         * das können besondere Ledstripes sein oder eine Huelampe die beides kann, Ambience und Farbe
+		 *
+		 * @param int $variableId ID der Variable
+		 * @param bool $value Neuer Wert der Variable
+		 */
+		public function SetRGBW($variableId, $value, $syncGroups=true, $syncPrograms=true, $debug=false) {
+			if ($debug) echo "SetRGBW ".$variableId." (".IPS_GetName($variableId).") ".$value." ".dechex($value)."\n";
+            else
+                {
+                if (GetValue($variableId)==$value) { return; }          // nix tun wenn unverändert
+                }
+			$configName   = $this->GetConfigNameById($variableId);
+			$configLights = IPSHeat_GetHeatConfiguration();
+			$switchId     = IPS_GetVariableIDByName($configName, $this->switchCategoryId);
+			$colorId      = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_COLOR, $this->switchCategoryId);
+            $colortempId  = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_AMBIENCE, $this->switchCategoryId);
+			$levelId      = IPS_GetVariableIDByName($configName.IPSHEAT_DEVICE_LEVEL, $this->switchCategoryId);
+			$switchValue  = GetValue($switchId);
+			
+            $ambience=false;                    // als RGB aufgerufen       
+            if ($variableId==$colortempId) $ambience=true;
+            ;
+			/* Sync mit IPSLight */
+
+			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
+            
+            SetValue($variableId, $value);
+            if (!$switchValue and ($variableId==$levelId or $variableId==$colorId or $variableId==$colortempId)) 
+                {
+                SetValue($switchId, true);              // einschalten wenn man an den Einstellungen rumspielt
+                }
+            $switchValue  = GetValue($switchId);
+            IPSLogger_Inf(__file__, 'Turn Heat/Light SetRGBW '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId).', Color='.GetValue($colorId):'Off')."  RGB Wert : ".dechex(GetValue($colorId))."   ".$componentParams);
+
+            if (trim($componentParams)=="") 
+                {
+                if ($debug) echo "SetRGBW component params empty \"$componentParams\" \n";                             // können auch leer sein, oder ein Dummy Component
+                }
+            else    
+                {
+                $component       = IPSComponent::CreateObjectByParams($componentParams);
+
+
+                if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 
+                    {
+                    if ($ambience) 
+                        {
+                        if ($debug) echo "    SetState(".GetValue($switchId).",".dechex(GetValue($colortempId)).",".GetValue($levelId).",Ambience)\n";  
+                        $component->SetState(GetValue($switchId), GetValue($colortempId), GetValue($levelId), true);           // true als Ambient aufgerufen, false als Color
+                        }
+                    else 
+                        {
+                        if ($debug) echo "    SetState(".GetValue($switchId).",".dechex(GetValue($colorId)).",".GetValue($levelId).")\n";  
+                        $component->SetState(GetValue($switchId), GetValue($colorId), GetValue($levelId), false); 
+                        }
+                    }
+                IPSHeat_AfterSwitch($switchId, $switchValue);
+                }
+
+			//IPSLogger_Inf(__file__, "Turn Heat/Light SetRGBW Synchronize Groups for $switchId if ".($syncGroups?"Ein":"Aus"));
+			if ($syncGroups) {
+				$this->SynchronizeGroupsBySwitch($switchId);
+			}
+			//IPSLogger_Inf(__file__, "Turn Heat/Light SetRGBW Synchronize Programs for $switchId if ".($syncPrograms?"Ein":"Aus"));
+			if ($syncPrograms) {
+				$this->SynchronizeProgramsBySwitch ($switchId);
+			}
+		}
+
 
 		/**
 		 * @public

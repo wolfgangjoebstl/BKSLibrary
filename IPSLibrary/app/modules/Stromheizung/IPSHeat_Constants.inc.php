@@ -52,6 +52,7 @@
 	// Supported Device Types
 	define ('IPSHEAT_TYPE_SWITCH',			'Switch');
 	define ('IPSHEAT_TYPE_RGB',				'RGB');
+    define ('IPSHEAT_TYPE_RGBW',			'RGBW');                    // probably different styles, White channel or mired or Kelvin, lets do step by step
 	define ('IPSHEAT_TYPE_AMBIENT',			'Ambient');
 	define ('IPSHEAT_TYPE_DIMMER',			'Dimmer');
 	define ('IPSHEAT_TYPE_SET',				'Thermostat');

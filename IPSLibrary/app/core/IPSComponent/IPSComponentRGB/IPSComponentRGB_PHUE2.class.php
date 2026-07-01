@@ -61,6 +61,7 @@
      *      SetStateHUE
 	 */
 
+    IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include ('IPSComponentRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
 	IPSUtils_Include ("IPSLogger.inc.php", "IPSLibrary::app::core::IPSLogger");
 
@@ -112,9 +113,9 @@
             {
             //if variable is type status
             if ($this->statusId == $variable)               $module->SyncState($value, $this, $debug);               // debug level
-            elseif ($this->helligkeitId == $variable)       $module->SyncState($value, $this, $debug);
-            elseif ($this->farbtemperaturId == $variable)   $module->SyncState($value, $this, $debug);            
-            elseif ($this->farbeId == $variable)            $module->SyncState($value, $this, $debug);
+            elseif ($this->helligkeitId == $variable)       $module->SyncBrightness($value, $this, $debug);
+            elseif ($this->farbtemperaturId == $variable)   $module->SyncColor($value, $this, $debug);            
+            elseif ($this->farbeId == $variable)            $module->SyncAmbience($value, $this, $debug);
             else echo "IPSComponentRGB_PHUE2::HandleEvent, do not know VariableID $variable \n";            
             }
 
@@ -169,7 +170,7 @@
                 //PHUE_SwitchMode($this->lampOID, $power);
                 RequestAction($this->statusId, $power);
 				} 
-			elseif ($ambience)                      // als Ambience ELD Lampe aufgerufen
+			elseif ($ambience)                      // als Ambience LED Lampe aufgerufen
 				{
 				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
                 if ($color>1000) 

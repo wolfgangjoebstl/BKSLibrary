@@ -275,6 +275,13 @@ Path=Visualization.Mobile.Stromheizung
 				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
                 IPS_SetHidden($switchId,false); IPS_SetHidden($levelId,false);
 				break;
+			case IPSHEAT_TYPE_RGBW:
+				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+				$colorId  = CreateVariable($deviceName.IPSHEAT_DEVICE_COLOR, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~HexColor',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+				$miredId  = CreateVariable($deviceName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~TWColor',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+                IPS_SetHidden($switchId,false); IPS_SetHidden($colorId,false); IPS_SetHidden($levelId,false); IPS_SetHidden($miredId,false);
+				break;            
 			//case IPSLIGHT_TYPE_RGB:
 			case IPSHEAT_TYPE_RGB:
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
@@ -334,6 +341,13 @@ Path=Visualization.Mobile.Stromheizung
             echo "   $groupName $groupType\n";                
 			switch ($groupType) 
 				{
+                case IPSHEAT_TYPE_RGBW:                    
+					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+					$colorId  = CreateVariable($groupName.IPSHEAT_DEVICE_COLOR, 1 /*Integer*/, $categoryIdGroups,  $idx, '~HexColor', $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+					$miredId  = CreateVariable($groupName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdGroups,  $idx, '~TWColor', $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+					$levelId  = CreateVariable($groupName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdGroups,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+                    IPS_SetHidden($switchId,false); IPS_SetHidden($colorId,false); IPS_SetHidden($miredId,false); IPS_SetHidden($levelId,false);                
+                    break;                  
                 case IPSHEAT_TYPE_RGB:                    
 					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 					$colorId  = CreateVariable($groupName.IPSHEAT_DEVICE_COLOR, 1 /*Integer*/, $categoryIdGroups,  $idx, '~HexColor', $scriptIdActionScript, false, 'HollowDoubleArrowRight');
@@ -427,8 +441,8 @@ Path=Visualization.Mobile.Stromheizung
             switch ($componentname)
                 {
                 case "IPSComponentRGB_PHUE2":  
-                    list($typename,$mask,$maskname)=$heatManager->getMaskNameFromType($type);
-                    $changed += $heatManager->changeInstanceOnMask($instance, $typename, $mask, $maskname);
+                    list($typename,$mask,$maskname)=$ipsheatManager->getMaskNameFromType($type);
+                    $changed += $ipsheatManager->changeInstanceOnMask($instance, $typename, $mask, $maskname);
                     // echo $typename; print_r($mask); print_r($maskname);
                     break;
                 }
@@ -445,6 +459,7 @@ Path=Visualization.Mobile.Stromheizung
         IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');   
         IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+        IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
         // moderne Implementierung
         $devicelist = new DeviceListManagement();           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
@@ -454,7 +469,6 @@ Path=Visualization.Mobile.Stromheizung
         $oids=$devicelist->get_oids();
         echo "   Number of OIDs detected : ".sizeof($oids)."\n";
 
-
         IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
         IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
@@ -463,6 +477,7 @@ Path=Visualization.Mobile.Stromheizung
         $eventList->setEventListFromConfigFile();
         $eventListData = $eventList->getEventList();
         
+        echo "Register Device Register Events:\n";
         $lightConfig = IPSHeat_GetHeatConfiguration();
         foreach ($lightConfig as $deviceName=>$deviceData) 
             {
@@ -471,7 +486,24 @@ Path=Visualization.Mobile.Stromheizung
             $componentParams = explode(',', $component);
             $componentClass = $componentParams[0];
 
-            echo "   Bearbeite ".$deviceName." mit ComponentClass : ".$componentClass."\n";				
+            $instanceID=false; $instancename=""; $registers="[]";
+            if (is_numeric($componentParams[1])) 
+                {
+                $instanceID=$componentParams[1];
+                if (IPS_ObjectExists($instanceID))
+                    {
+                    $instancename=IPS_GetName($instanceID);
+                    if (isset($oids[$instanceID])) $registers=json_encode($oids[$instanceID]);
+                    else $registers="[]";
+                    }
+                else $instanceID=false;
+                
+                echo "   Bearbeite ".str_pad($deviceName,50)." mit ComponentClass : ".str_pad($componentClass,30)." und Instance ".str_pad($instancename,30);
+                if ($instanceID) echo " $instanceID :    $registers ";
+                echo "\n";		
+                }
+            else echo "   Bearbeite ".str_pad($deviceName,50)." mit ComponentClass : ".str_pad($componentClass,30)." und weiteren Parametern ".$componentParams[1]."\n";
+                                                                                                                        // two lines to see an error message in case
             switch ($componentClass)
                 {
                 case 'IPSComponentSwitch_LCNa':         //  für einen LCN analog Ausgang implementiert., immer noch original Brauneis
@@ -559,11 +591,18 @@ Path=Visualization.Mobile.Stromheizung
                 case 'IPSComponentRGB_PhilipsHUE':		// alte Component mit Direktansteuerung von HUE
                 case 'IPSComponentRGB_HUE':			    // neuere Variante
                 case 'IPSComponentRGB_PHUE':	        // finale V1 Variante Philips HUE mit Discovery Funktion
-                case 'IPSComponentRGB_PHUE2':               // neues V2 Modul mit besserer Kommunikation
                 case 'IPSComponentDimmer_Homematic':
                 case 'IPSComponentShutter_XHomematic':			
                 case 'IPSComponentSwitch_RMonitor':
                 case 'IPSComponentRGB_LW12':
+                    break;					
+                case 'IPSComponentRGB_PHUE2':               // neues V2 Modul mit besserer Kommunikation
+                    $registers=json_decode($registers,true);
+                    print_r($registers);
+                    foreach ($registers as $varname => $variableId)
+                        {
+                        //$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleHeatSet_All,');
+                        }
                     break;					
                 default:
                     trigger_error('Unknown ComponentType '.$componentClass.' found for Heat or Light '.$deviceName.' cannot register.');			

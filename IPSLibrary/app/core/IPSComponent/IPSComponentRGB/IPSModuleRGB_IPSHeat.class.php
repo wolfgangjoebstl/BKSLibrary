@@ -23,17 +23,38 @@
 	 * verwendet werden kann.
      *
      * Nur ein Script das referenziert wird, funktioniert nur mehr mit IPSHeat
+     *
+     * relevant to sync external data with internal representation
+     * an external change will be propagated to the internal variables that are displayed in webfront
+     * old style webfron was used to harmonize different ways of controlling devices into one way of displaying them
+     * new style tiles Webfront changes the way how it is done and displays the individual devices directly 
+     * so as future guide, display the devices directly and sync the changes to the internal representation for interoperability
+     *
+     * does only work for IPSHeat, IPSLight is depricated
+     *
 	 *
 	 * @author Andreas Brauneis, Wolfgang Joebstl
 	 */
 
 
     IPSUtils_Include ('IPSModuleRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
-
+	IPSUtils_Include ("IPSHeat.inc.php",          "IPSLibrary::app::modules::Stromheizung");
 
 	class IPSModuleRGB_IPSHeat extends IPSModuleRGB {
 
-		/* SyncState
+        protected $installedModules;
+        protected $heatManager;
+        protected $configPerInstance;
+
+        public function __construct()
+            {
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedModules = $moduleManager->VersionHandler()->GetInstalledModules();   
+            $this->heatManager = new IPSHeat_Manager(); 
+            $this->configPerInstance = $this->heatManager->reindexHeatConfigOnInstance();            
+            }
+
+		/* IPSModuleRGB_IPSHeat::SyncState
 		 * Ermöglicht die Synchronisation einer RGB basierenden Beleuchtung zu IPSHeat
          * Bedeutet eine externe Änderung der Parameter wird in IPSymcon und im Webfront/Kachel nachgezogen
 		 * 
@@ -47,19 +68,25 @@
 		public function SyncState($state, IPSComponentRGB $componentToSync, $debug=false) 
 			{
             if ($debug) echo "IPSModuleRGB_IPSHeat::SyncState aufgerufen.\n";
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-			if (isset($installedModules["Stromheizung"]) )
+			if (isset($this->installedModules["Stromheizung"]) )
 				{			
-				IPSUtils_Include ("IPSHeat.inc.php",          "IPSLibrary::app::modules::Stromheizung");
 				$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
-				if ($debug) echo "   IPSModuleRGB_IPSHeat SyncState ".IPS_GetName($componentParamsToSync[1])." (".$componentParamsToSync[1].")\n";
-                if ($debug) echo "      check IPSHeat_GetHeatConfiguration for HUE Instance : ".$componentParamsToSync[1]." to synchronize.\n";
-				$deviceHeatConfig          = IPSHeat_GetHeatConfiguration();
+                $instanceId=$componentParamsToSync[1];
+				if ($debug) echo "   IPSModuleRGB_IPSHeat SyncState ".IPS_GetName($instanceId)." ($instanceId)\n";
+                if ($debug) echo "      check IPSHeat_GetHeatConfiguration for HUE Instance : $instanceId to synchronize.\n";
+                if (isset($this->configPerInstance[$instanceId])) 
+                    {
+                    //print_R($this->configPerInstance[$instanceId]);
+                    $deviceIdent=$this->configPerInstance[$instanceId]["Indexname"];
+                    echo "        IPSModuleRGB_IPSHeat SyncState synchronize from Type Heatswitch ".$deviceIdent." mit Status ".$state.". Call SynchronizeSwitch.\n";
+                    $this->heatManager->SynchronizeSwitch($deviceIdent, $state);
+                    }
+				/* 
+                $deviceHeatConfig          = IPSHeat_GetHeatConfiguration();
                 //print_R($deviceHeatConfig);			
 				foreach ($deviceHeatConfig as $deviceIdent=>$deviceData) 
 					{
-                    if ($debug>1) echo "         Compare for ".$componentParamsToSync[1]." : ".str_pad($deviceIdent,30).$deviceData[IPSHEAT_COMPONENT]."\n";
+                    if ($debug>1) echo "         Compare for $instanceId : ".str_pad($deviceIdent,30).$deviceData[IPSHEAT_COMPONENT]."\n";
                     if ($deviceData[IPSHEAT_COMPONENT] != "")
                         {
                         $componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
@@ -74,66 +101,74 @@
                             }
                         }
                     elseif ($debug>1) echo "        Warning, Compare ".str_pad($deviceIdent,30).$deviceData[IPSHEAT_COMPONENT]." incomplete.\n";
-					}			
-				}  // ende if
-			if (isset($installedModules["IPSLight"]) && false)
-				{			
-				IPSUtils_Include ("IPSLight.inc.php",          "IPSLibrary::app::modules::IPSLight");
-				$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
-				echo "   IPSModuleSwitch_IPSLight SyncState ".IPS_GetName($componentParamsToSync[1])." (".$componentParamsToSync[1].")\n";
-                echo "      check IPSLight_GetLightConfiguration\n";
-                $deviceConfig          = IPSLight_GetLightConfiguration();
-				foreach ($deviceConfig as $deviceIdent=>$deviceData) 
-					{
-					$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSLIGHT_COMPONENT]);
-					//$componentParamsConfig = $componentConfig->GetComponentParams();
-					$componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
-					//if ($componentParamsConfig[1]==$componentParamsToSync[1])
-					if ( (isset($componentParamsConfig[1])) && ($componentParamsConfig[1]==$componentParamsToSync[1]) )
-						{
-						echo "      IPSModuleSwitch_IPSLight SyncState synchronize from Type Lightswitch ".$deviceIdent." mit ".$state."\n";
-						$lightManager = new IPSLight_Manager();
-						$lightManager->SynchronizeSwitch($deviceIdent, $state);
-						$heatManager = new IPSHeat_Manager();
-						$heatManager->SynchronizeSwitch($deviceIdent, $state);
-						}
-					}
+					} */			
 				}  // ende if
             echo "----\n";
 			}	
 
+        /* IPSModuleRGB_IPSHeat::SyncBrightness
+         * an external change will be propagated to the internal variables that are displayed in webfront
+         * external variables are always harmonized to internal ones. The internal copy is the status.
+         * 
+         */
 		public function SyncBrightness($state, IPSComponentRGB $componentToSync, $debug=false) 
 			{
             if ($debug) echo "IPSModuleRGB_IPSHeat::SyncBrightness aufgerufen.\n";
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-			if (isset($installedModules["Stromheizung"]) )
+			if (isset($this->installedModules["Stromheizung"]) )
 				{			
-				IPSUtils_Include ("IPSHeat.inc.php",          "IPSLibrary::app::modules::Stromheizung");
 				$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
-				if ($debug) echo "   IPSModuleRGB_IPSHeat SyncBrightness ".IPS_GetName($componentParamsToSync[1])." (".$componentParamsToSync[1].")\n";
-                if ($debug) echo "      check IPSHeat_GetHeatConfiguration for HUE Instance : ".$componentParamsToSync[1]." to synchronize.\n";
-				$deviceHeatConfig          = IPSHeat_GetHeatConfiguration();
-                //print_R($deviceHeatConfig);			
-				foreach ($deviceHeatConfig as $deviceIdent=>$deviceData) 
-					{
-                    if ($debug>1) echo "         Compare for ".$componentParamsToSync[1]." : ".str_pad($deviceIdent,30).$deviceData[IPSHEAT_COMPONENT]."\n";
-                    if ($deviceData[IPSHEAT_COMPONENT] != "")
-                        {
-                        $componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
-                        $componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
-                        //echo " :  ".$componentParamsConfig[1]." == ".$componentParamsToSync[1]." \n";
-                        //if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
-                        if ( (isset($componentParamsConfig[1])) && ($componentParamsConfig[1]==$componentParamsToSync[1]) )
-                            {
-                            echo "        IPSModuleRGB_IPSHeat SyncState synchronize from Type Heatswitch ".$deviceIdent." mit Status ".$state.". Call SynchronizeSwitch.\n";
-                            $heatManager = new IPSHeat_Manager();
-                            $heatManager->SynchronizeBrightness($deviceIdent, $state);
-                            }
-                        }
-                    elseif ($debug>1) echo "        Warning, Compare ".str_pad($deviceIdent,30).$deviceData[IPSHEAT_COMPONENT]." incomplete.\n";
-					}			
+                $instanceId=$componentParamsToSync[1];
+				if ($debug) echo "   IPSModuleRGB_IPSHeat SyncBrightness ".IPS_GetName($instanceId)." ($instanceId)\n";
+                if ($debug) echo "      check IPSHeat_GetHeatConfiguration for HUE Instance : $instanceId to synchronize.\n";
+                if (isset($this->configPerInstance[$instanceId])) 
+                    {
+                    //print_R($this->configPerInstance[$instanceId]);
+                    $deviceIdent=$this->configPerInstance[$instanceId]["Indexname"];
+                    echo "        IPSModuleRGB_IPSHeat SyncState synchronize from Type Heatswitch ".$deviceIdent." mit Status ".$state.". Call SynchronizeSwitch.\n";
+                    $this->heatManager->SynchronizeBrightness($deviceIdent, $state);
+                    }            
 				}  // ende if
+            echo "----\n";                
+            }
+
+		public function SyncColor($state, IPSComponentRGB $componentToSync, $debug=false) 
+			{
+            if ($debug) echo "IPSModuleRGB_IPSHeat::SyncBrightness aufgerufen.\n";
+			if (isset($this->installedModules["Stromheizung"]) )
+				{			
+				$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
+                $instanceId=$componentParamsToSync[1];
+				if ($debug) echo "   IPSModuleRGB_IPSHeat SyncBrightness ".IPS_GetName($instanceId)." ($instanceId)\n";
+                if ($debug) echo "      check IPSHeat_GetHeatConfiguration for HUE Instance : $instanceId to synchronize.\n";
+                if (isset($this->configPerInstance[$instanceId])) 
+                    {
+                    //print_R($this->configPerInstance[$instanceId]);
+                    $deviceIdent=$this->configPerInstance[$instanceId]["Indexname"];
+                    echo "        IPSModuleRGB_IPSHeat SyncState synchronize from Type Heatswitch ".$deviceIdent." mit Status ".$state.". Call SynchronizeSwitch.\n";
+                    $this->heatManager->SynchronizeColor($deviceIdent, $state);
+                    }            
+				}  // ende if
+            echo "----\n";                
+            }
+
+		public function SyncAmbience($state, IPSComponentRGB $componentToSync, $debug=false) 
+			{
+            if ($debug) echo "IPSModuleRGB_IPSHeat::SyncBrightness aufgerufen.\n";
+			if (isset($this->installedModules["Stromheizung"]) )
+				{			
+				$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
+                $instanceId=$componentParamsToSync[1];
+				if ($debug) echo "   IPSModuleRGB_IPSHeat SyncBrightness ".IPS_GetName($instanceId)." ($instanceId)\n";
+                if ($debug) echo "      check IPSHeat_GetHeatConfiguration for HUE Instance : $instanceId to synchronize.\n";
+                if (isset($this->configPerInstance[$instanceId])) 
+                    {
+                    //print_R($this->configPerInstance[$instanceId]);
+                    $deviceIdent=$this->configPerInstance[$instanceId]["Indexname"];
+                    echo "        IPSModuleRGB_IPSHeat SyncState synchronize from Type Heatswitch ".$deviceIdent." mit Status ".$state.". Call SynchronizeSwitch.\n";
+                    $this->heatManager->SynchronizeAmber($deviceIdent, $state);
+                    }            
+				}  // ende if
+            echo "----\n";                
             }
 	}
 
