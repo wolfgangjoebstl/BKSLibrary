@@ -47,6 +47,8 @@
 
     $startexec=microtime(true);
     $doRegister=false;                  // keine zusätzliche Registrierung von MessageHandler Events, alles erfolgt in RemoteAccess 
+    $doRegisterHueV2=true;
+    $webfrontInstall=true;             // shall be true to have Webfront update, set to false for test only
     $debug=false;
     
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -119,7 +121,7 @@
  *
  ********************************/
 
-	echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
+	if ($debug) echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("mode.HM"=>"update");
     $profileOps->synchronizeProfiles($profilname);
 
@@ -146,9 +148,13 @@
  *
  ********************************/
 
-	echo "Webfront Konfiguration ueberpruefen:\n";
+
     $wfcHandling =  new WfcHandling();
-    $wfcHandling->get_WfcStatus();
+	if ($debug) 
+        {
+        echo "Webfront Konfiguration ueberpruefen:\n";    
+        $wfcHandling->get_WfcStatus();
+        }
 
     $WebfrontConfigID = $wfcHandling->installWebfront();            // Webfront Administrator, User und Kachel Visulaisiserung anlegen
 
@@ -219,13 +225,16 @@ Path=Visualization.Mobile.Stromheizung
     $moduleManagerCC      = new IPSModuleManager('CustomComponent',$repository);
 	$CategoryIdDataCC     = $moduleManagerCC->GetModuleCategoryID('data');
 
-    echo "\n";
-    echo "Alle Kategorien von CustomComponent anzeigen:\n";         // Auswertungen werden in ein Register Array gespeichert aber es passiert vorerst nichts
+    if ($debug) 
+        {
+        echo "\n";
+        echo "Alle Kategorien von CustomComponent anzeigen:\n";         // Auswertungen werden in ein Register Array gespeichert aber es passiert vorerst nichts
+        }
     $customComponentCategories=array();
 	$Category=IPS_GetChildrenIDs($CategoryIdDataCC);
 	foreach ($Category as $CategoryId)
 		{
-		echo "  ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
+		if ($debug) echo "  ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
 		$Params = explode("-",IPS_GetName($CategoryId)); 
         if ( (sizeof($Params)>1) && ($Params[1]=="Auswertung") )
             {
@@ -237,8 +246,11 @@ Path=Visualization.Mobile.Stromheizung
 	// Add Scripts
 	$scriptIdActionScript  = IPS_GetScriptIDByName('IPSHeat_ActionScript', $CategoryIdApp);
 	
-    echo "\n";
-	echo "Action Script hat OID: ".$scriptIdActionScript."\n";
+    if ($debug)
+        {
+        echo "\n";
+	    echo "Action Script hat OID: ".$scriptIdActionScript."\n";
+        }
 	
 	/* ===================================================================================================
 	 * Add Heat or Light Devices
@@ -250,8 +262,11 @@ Path=Visualization.Mobile.Stromheizung
      *
 	 * ===================================================================================================   */
 
-    echo "\n";
-    echo "Create Mirror Variables for Switches, dependent on Type create one or more objects.\n";
+    if ($debug)
+        {
+        echo "\n";
+        echo "Create Mirror Variables for Switches, dependent on Type create one or more objects.\n";
+        }
     $childs=IPS_GetChildrenIDs($categoryIdSwitches);
     foreach ($childs as $child) IPS_SetHidden($child,true);         // alle Switches hide
 
@@ -261,7 +276,7 @@ Path=Visualization.Mobile.Stromheizung
 	foreach ($lightConfig as $deviceName=>$deviceData) 
 		{
 		$deviceType = $deviceData[IPSHEAT_TYPE];
-        echo "   $deviceName $deviceType\n";
+        if ($debug) echo "   $deviceName $deviceType\n";
 		switch ($deviceType) 
 			{
 			//case IPSLIGHT_TYPE_SWITCH:
@@ -325,8 +340,11 @@ Path=Visualization.Mobile.Stromheizung
 	// Add Groups
 	// ===================================================================================================
 
-    echo "\n";
-    echo "Create Mirror Variables for Groupes, dependent on Type create one or more objects.\n";
+    if ($debug)
+        {
+        echo "\n";
+        echo "Create Mirror Variables for Groupes, dependent on Type create one or more objects.\n";
+        }
     /* cleanup unused variables */
     $childs=IPS_GetChildrenIDs($categoryIdGroups);
     foreach ($childs as $child) IPS_SetHidden($child,true);         // alle Gruppen Hide
@@ -338,7 +356,7 @@ Path=Visualization.Mobile.Stromheizung
 		if ( Isset($groupData[IPSHEAT_TYPE]) )
 			{
 			$groupType = $groupData[IPSHEAT_TYPE];		
-            echo "   $groupName $groupType\n";                
+            if ($debug) echo "   $groupName $groupType\n";                
 			switch ($groupType) 
 				{
                 case IPSHEAT_TYPE_RGBW:                    
@@ -383,20 +401,24 @@ Path=Visualization.Mobile.Stromheizung
 	// ===================================================================================================
 	// Add Programs
 	// ===================================================================================================
-    echo "\n";
-    echo "Create Mirror Variables for Programs in $categoryIdPrograms.\n";                  // Integer mit einem Profil
+    
+    if ($debug)
+        {
+        echo "\n";
+        echo "Create Mirror Variables for Programs in $categoryIdPrograms.\n";                  // Integer mit einem Profil
+        }
 	$idx = 10;
 	$programConfig = IPSHeat_GetProgramConfiguration();
 	foreach ($programConfig as $programName=>$programData) 
 		{
-        echo "   $programName ";            
+        if ($debug) echo "   $programName ";            
 		$itemIdx = 0;
 		$programAssociations = array();
 		foreach ($programData as $programItemName=>$programItemData) 
 			{
 			$programAssociations[]=$programItemName;
 			}
-        echo json_encode($programAssociations)."\n";
+        if ($debug) echo json_encode($programAssociations)."\n";
 
 		CreateProfile_Associations ('IPSHeat_'.$programName, $programAssociations, "ArrowRight");
 		$programId = CreateVariable($programName, 1 /*Integer*/, $categoryIdPrograms,  $idx,  'IPSHeat_'.$programName, $scriptIdActionScript, 0);
@@ -420,90 +442,103 @@ Path=Visualization.Mobile.Stromheizung
      *
 	 ***************************************************************************/
 
-    if ($doRegister)
-        { 
-        $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
-        $configPerInstance=$ipsheatManager->reindexHeatConfigOnInstance();
+    $ipsheatManager = new IPSHeat_Manager();            // class from Stromheizung
+    $configPerInstance=$ipsheatManager->reindexHeatConfigOnInstance();
 
-        /* DeviceListMangement does not analyse Groups correctly. Groups do not have a device as base
-         * To get the Type of a group it is not possible to analyse the device, you have to go back to the roots
-         * and analyse the registers aligned to the group. Unfortunately Hue does always keep all registers
-         * but you can remove them by changing the configuration
-         * this is done here. Groups do not have a deviceID.
-         */ 
-        echo "Component Install Check:\n";
-        $changed = 0;
-        foreach ($configPerInstance as $instance => $item)
+    /* DeviceListMangement does not analyse Groups correctly. Groups do not have a device as base
+        * To get the Type of a group it is not possible to analyse the device, you have to go back to the roots
+        * and analyse the registers aligned to the group. Unfortunately Hue does always keep all registers
+        * but you can remove them by changing the configuration
+        * this is done here. Groups do not have a deviceID.
+        */ 
+    if ($debug) echo "Component Install Check:\n";
+    $changed = 0;
+    foreach ($configPerInstance as $instance => $item)
+        {
+        $componentname = $item["Component"];
+        $type = $item[IPSHEAT_TYPE];
+        if ($debug) echo "   ".str_pad($instance,8).str_pad($componentname,35).str_pad($type,20);
+        switch ($componentname)
             {
-            $componentname = $item["Component"];
-            $type = $item[IPSHEAT_TYPE];
-            echo "   ".str_pad($instance,8).str_pad($componentname,35).str_pad($type,20);
-            switch ($componentname)
-                {
-                case "IPSComponentRGB_PHUE2":  
-                    list($typename,$mask,$maskname)=$ipsheatManager->getMaskNameFromType($type);
-                    $changed += $ipsheatManager->changeInstanceOnMask($instance, $typename, $mask, $maskname);
-                    // echo $typename; print_r($mask); print_r($maskname);
-                    break;
-                }
-            echo "\n";
+            case "IPSComponentRGB_PHUE2":  
+                list($typename,$mask,$maskname)=$ipsheatManager->getMaskNameFromType($type);
+                $changed += $ipsheatManager->changeInstanceOnMask($instance, $typename, $mask, $maskname);
+                // echo $typename; print_r($mask); print_r($maskname);
+                break;
             }
-        echo "   The Component Install was changed for $changed instances.\n";
+        if ($debug) echo "\n";
+        }
+    if ($debug) echo "   The Component Install was changed for $changed instances.\n";
 
-        echo "\nRegister Events für Device Synchronization.\n";
-        /* this is when devicelist comes in, we know its an ACTUATOR, but not the real varname of the register
-            * how is devcielist built. We have Actuators that were brought to the config
-            */
-        IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-        IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
-        IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
-        IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');   
-        IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
-        IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+    if ($debug) echo "\nRegister Events für Device Synchronization.\n";
 
-        // moderne Implementierung
-        $devicelist = new DeviceListManagement();           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
-        $devicelist->setEventListFromConfigFile();
-        $devicelist->analyse($ipsheatManager);              // calc coids, oids and uuids
-        echo "Result is new arrays structured as UUIDs with list of Topology Devices, oids and coids :\n";
-        $oids=$devicelist->get_oids();
-        echo "   Number of OIDs detected : ".sizeof($oids)."\n";
+    /* this is when devicelist comes in, we know its an ACTUATOR, but not the real varname of the register
+        * how is devcielist built. We have Actuators that were brought to the config
+        */
+    IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+    IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+    IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');   
+    IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
-        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+    // moderne Implementierung
+    $debug1=true;
+    $devicelist = new DeviceListManagement();           // DeviceListManagement extends TopologyLibraryManagement, class object, use as it is a variable
+    $devicelist->setEventListFromConfigFile();
+    $devicelist->analyse($ipsheatManager);              // calc coids, oids and uuids
+    if ($debug1) echo "Result is new arrays structured as UUIDs with list of Topology Devices, oids and coids :\n";
+    $oids=$devicelist->get_oids();
+    if ($debug1) echo "   Number of OIDs detected : ".sizeof($oids)."\n";
 
-        // Eventlist aus dem MessageHandler
-        $eventList = new DetectEventListHandler();
-        $eventList->setEventListFromConfigFile();
-        $eventListData = $eventList->getEventList();
-        
-        echo "Register Device Register Events:\n";
-        $lightConfig = IPSHeat_GetHeatConfiguration();
-        foreach ($lightConfig as $deviceName=>$deviceData) 
-            {
+    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+
+    // Eventlist aus dem MessageHandler
+    $eventList = new DetectEventListHandler();
+    $eventList->setEventListFromConfigFile();
+    $eventListData = $eventList->getEventList();
+    
+    if ($debug1) echo "Register Device Register Events:\n";
+    $lightConfig = IPSHeat_GetHeatConfiguration();
+    foreach ($lightConfig as $deviceName=>$deviceData) 
+        {
+        if ( (isset($deviceData[IPSHEAT_SYNC])) && ($deviceData[IPSHEAT_SYNC]) )    
+            {            
             //echo "   Bearbeite ".$deviceName."\n";
             $component = $deviceData[IPSHEAT_COMPONENT];
             $componentParams = explode(',', $component);
             $componentClass = $componentParams[0];
 
-            $instanceID=false; $instancename=""; $registers="[]";
-            if (is_numeric($componentParams[1])) 
+            echo "   Bearbeite ".$deviceName." mit ComponentClass : ".$componentClass."\n";	
+            $instancedescription=$componentParams[1];
+            if (is_numeric($instancedescription))
                 {
-                $instanceID=$componentParams[1];
-                if (IPS_ObjectExists($instanceID))
-                    {
-                    $instancename=IPS_GetName($instanceID);
-                    if (isset($oids[$instanceID])) $registers=json_encode($oids[$instanceID]);
-                    else $registers="[]";
-                    }
-                else $instanceID=false;
-                
-                echo "   Bearbeite ".str_pad($deviceName,50)." mit ComponentClass : ".str_pad($componentClass,30)." und Instance ".str_pad($instancename,30);
-                if ($instanceID) echo " $instanceID :    $registers ";
-                echo "\n";		
+                $instanceId = $instancedescription;
+                echo "        Work on $instanceId ".IPS_GetName($instanceId)."\n";
                 }
-            else echo "   Bearbeite ".str_pad($deviceName,50)." mit ComponentClass : ".str_pad($componentClass,30)." und weiteren Parametern ".$componentParams[1]."\n";
-                                                                                                                        // two lines to see an error message in case
+            else 
+                {
+                $instancepath=explode(".",$instancedescription);
+                if (sizeof($instancepath)>1) $instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);  // expects path
+                else 
+                    {
+                    echo "      Error, look for ".$componentParams[1]." fails\n";
+                    continue;
+                    }
+                }
+            //echo "      found $instanceId \n";
+            if (isset($oids[$instanceId])) 
+                {
+                //print_R($oids[$instanceId]);			
+                $variables=$oids[$instanceId];
+                echo "        Also part of devicelist \n";
+                }
+            else 
+                {
+                $variables=array();
+                }
+
             switch ($componentClass)
                 {
                 case 'IPSComponentSwitch_LCNa':         //  für einen LCN analog Ausgang implementiert., immer noch original Brauneis
@@ -597,12 +632,36 @@ Path=Visualization.Mobile.Stromheizung
                 case 'IPSComponentRGB_LW12':
                     break;					
                 case 'IPSComponentRGB_PHUE2':               // neues V2 Modul mit besserer Kommunikation
-                    $registers=json_decode($registers,true);
-                    print_r($registers);
-                    foreach ($registers as $varname => $variableId)
+                    if (isset($oids[$instanceId]))
                         {
-                        //$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleHeatSet_All,');
+                        //print_R($oids[$instanceId]);            // LEVEL, STATE and LEVEL,STATE,COLOR and LEVEL, AMBIENCE, STATE es sollte auch LEVEL, AMBIENCE, COLOR, STATE geben
+                        foreach ($oids[$instanceId] as $name => $oid)
+                            {
+                            $type=IPS_GetName($oid);
+                            // wir suchen den zweiten Parameter nach Component und Instanz, wenn doregister im messagehandler das register registrieren	soll
+                            //print_r($componentParams);								
+                            $variableId = @IPS_GetObjectIDByName($type, $instanceId);
+                            //echo "        We look for $type in $instanceId (".IPS_GetName($instanceId).") : $variableId \n";
+                            if ( isset($componentParams[2]) )
+                                {
+                                echo "          Register ".str_pad($type,20).str_pad($component,30)." : ".$instanceId."     ".$variableId."       ".$componentParams[2]."\n";
+                                }
+                            else
+                                {	
+                                echo "          Register ".str_pad($type,20).str_pad($component,30)." : ".IPS_GetName($instanceId).",  VariableId   ".$variableId."  (".IPS_GetName($variableId).")\n";
+                                }
+                            if ($variableId===false) 
+                                {
+                                $moduleManager->LogHandler()->Log('Variable with Name $type could NOT be found for Homematic Instance='.$instanceId);
+                                } 
+                            elseif ($doRegisterHueV2) 
+                                {
+                                //$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
+                                $messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleRGB_IPSHeat,');
+                                }
+                            }
                         }
+                    else echo "      Error, device not part of devicelist. Check given instance $instanceId.\n";
                     break;					
                 default:
                     trigger_error('Unknown ComponentType '.$componentClass.' found for Heat or Light '.$deviceName.' cannot register.');			
@@ -610,7 +669,6 @@ Path=Visualization.Mobile.Stromheizung
                 }
             }
         }
-    else echo "Do not Register Variables to be updated when changed locally. Maybe done somewhere else.\n";
 	/***********************************************************************************************
 	 * Register Data area for Thermostat Configuration Handling 
 	 *
@@ -627,347 +685,349 @@ Path=Visualization.Mobile.Stromheizung
 	 *
 	 *****************************************************************************************/
 
-	$webFrontConfig = IPSHeat_GetWebFrontConfiguration();
-	
-	/* nur die Heizungstellwerte bei der Autosteuerung, Tab Stromheizung dazuhaengen */ 
+    if ($webfrontInstall)
+        {
+        $webFrontConfig = IPSHeat_GetWebFrontConfiguration();
+        
+        /* nur die Heizungstellwerte bei der Autosteuerung, Tab Stromheizung dazuhaengen */ 
 
-	$WFC10_Autosteuerung_Path='Visualization.WebFront.Administrator.Autosteuerung.Stromheizung.AutoTPADetails2_LeftDown';
-	if ($WFC10_Enabled) 
-		{
-        $config = $configWFront["Administrator"];            
-		$categoryId_Autosteuerung_WebFront                = CreateCategoryPath($WFC10_Autosteuerung_Path);
-		if ($WFC10_Regenerate) 
-			{
-			/* Loescht die Stromheizung ein/aus und die anderen Variablen auch, eigenes Tab left down machen  */
-			EmptyCategory($categoryId_Autosteuerung_WebFront);
-			}		
-		echo "Auch in Autosteuerung Stromheizung die Links installieren : ".$categoryId_Autosteuerung_WebFront."\n";
-		$order = 10;
-		foreach($webFrontConfig as $tabName=>$tabData) {
-			foreach($tabData as $WFCItem) {
-				$order = $order + 10;
-				switch($WFCItem[0]) 
-					{
-					case IPSHEAT_WFCSPLITPANEL:
-					case IPSHEAT_WFCCATEGORY:
-					case IPSHEAT_WFCGROUP:
-						break;
-					case IPSHEAT_WFCLINKS:
-						echo "  WFCLINKS : ".$WFCItem[2]."   ".$WFCItem[3]."\n";
-						//print_r($WFCItem);
-						$links      = explode(',', $WFCItem[3]);
-						$names      = $links;
-						if (array_key_exists(4, $WFCItem)) { $names = explode(',', $WFCItem[4]); 	}
-						foreach ($links as $idx=>$link) 
-							{
-							$order = $order + 1;
-							$name=explode('#', $names[$idx]);
-							if (isset($name[1])==true) 
-								{ 
-								// CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
-								//echo "GetVariableID from : \n";   //.$link."  (".IPS_GetName($link).")\n";
-								//print_r($link);
-								//echo "\n";
-								CreateLinkByDestination($name[0], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId_Autosteuerung_WebFront, $order);
-								}
-							}
-						break;
-					default:
-						trigger_error('Unknown WFCItem='.$WFCItem[0]);
-			   	    }
-				}
-			}
-		
-		}
-
-	/****************************************************************************
-	 *
-	 * Webfront Installation der Stromheizung
-	 *
-	 * komplettes Webfront wie bei IPSLight aufbauen 
-     * Basis Konfiguration wird aus der ini Datei übernommen
-	 *  $WFC10_Enabled       Webfront aufbauen
-     *  $WFC10_Path          das ist die Kategorie wo die Links reinkommen, beginnt bei Visualization.Webfront oder Visualization.Mobile
-     *                       in der ini steht zumindesten Administrator.Stromheizung
-     *  $WFC10_Regenerate    Kategorie $WFC10_Path komplett löschen, kann hier auf Zeile 285 ein/ausgeschaltet werden
-     *  $WFC10_ConfigId      so kann man das WFC ansprechen Administrator/User etc.
-     *  $WFC10_TabPaneItem   interner Name für das Webfront, nur in der WFC vorhanden
-     *  $WFC10_TabPaneParent aso. Parameters to setup a TabPane
-	 *
-	 *****************************************************************************************/
-
-	echo "\n";
-	echo "=====================================================\n";
-
-	//print_r($webFrontConfig);	echo "\n";
-	
-	if ($WFC10_Enabled) 
-		{
-		/* Default Path ist Visualization.WebFront.Administrator.Stromheizung */
-        $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
-        $config = $configWFront["Administrator"];   
-        $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
-        echo "Webfront Administrator aufbauen in ".$config["Path"]." :\n";
-        echo "\n";		
-        $categoryId_WebFront                = CreateCategoryPath($config["Path"]);   // Administrator.Stromheizung
-        IPS_SetHidden($categoryId_WebFront,true);
-		if ($WFC10_Regenerate) 
-			{
-			EmptyCategory($categoryId_WebFront);
-			$wfcHandling->DeleteWFCItems($config["TabPaneItem"]);				// HeatTPA
-			//DeleteWFCItems($WFC10_ConfigId, 'Light_TP');		/* eventuell alte Installationen von IPS_light wegraeumen */
-			}
-        echo "Tab Pane mit HeatTPA machen : \nCreateWFCItemTabPane   (".$config["ConfigId"].",".$config["TabPaneItem"].",".$config["TabPaneParent"].",".$config["TabPaneOrder"].",".$config["TabPaneName"].",".$config["TabPaneIcon"].")\n";    
-		$wfcHandling->CreateWFCItemTabPane   ($config["TabPaneItem"], $config["TabPaneParent"], $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]);   // Tab Pane mit HeatTPA machen
-
-        /* $webFrontConfig is an array with setup of tabpane
-         * Index is the Category in the Webfront category $WFC10_Path
-         * darunter sind die WFC Befehle mit den Parametern, sehr sehr einfach 
-         *    0  WFC Befehl
-         *    1  Name
-         *    2  Parent
-         *    3..9 die Parameter
-         * Achtung, nach einem WFCSPLITPANEL muessen auf jeden Fall die WFCCATEGORY Befehle kommen, eine für den OriginalNamen und eine für den neue Split Namen
-         * das SplitPanel erzeugt einen neuen Tab, in diesem Tab werden zwei neue Kategorien angelegt
-         * Nur die WFCLINKS und WFCGROUPS verlinken auf die Datenobjekte und werden in den Categories gespeichert
-         *    2 Kategorie
-         *    3 Datenobjekte als Komma getrennte Links
-         *    4 Datenobjekte als Komma getrennte Namen, wenn kein 4 dann sind Links gleich die Namen
-         * die Variablen werden mit getVariableId in Switch, groups oder programs gesucht
-         *
-         * with extra link handling   Sensor::Wirkleistung oder Link#12345#Temperatur   createLinkinWebfront
-         */
-		$order = 10;
-		foreach($webFrontConfig as $tabName=>$tabData) {
-			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFront, $order);
-			foreach($tabData as $WFCItem) {
-				$order = $order + 10;
-				switch($WFCItem[0]) 
-					{
-					case IPSHEAT_WFCSPLITPANEL:
-						echo "CreateWFCItemSplitPane (".$config["ConfigId"].", $WFCItem[1], $WFCItem[2] ,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9])\n";
-						$wfcHandling->CreateWFCItemSplitPane ($WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
-						break;
-					case IPSHEAT_WFCCATEGORY:
-						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
-                        $status=@EmptyCategory($categoryId);
-						echo "CreateWFCItemCategory ($WFCItem[1], $WFCItem[2],$order, $WFCItem[3],$WFCItem[4], $categoryId, false)\n";
-						$wfcHandling->CreateWFCItemCategory ($WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
-						break;
-					case IPSHEAT_WFCGROUP:
-					case IPSHEAT_WFCLINKS:
-						echo "  WFCLINKS : ".$WFCItem[2]."   ".$WFCItem[3]."\n";
-						$categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
-						if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
-							$categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
-						    }
-						$links      = explode(',', $WFCItem[3]);
-						$names      = $links;
-						if (array_key_exists(4, $WFCItem)) {
-							$names = explode(',', $WFCItem[4]);
-						    }
-						foreach ($links as $idx=>$link) {
-							$order = $order + 1;
-                            $wfcHandling->createLinkinWebfront($link,$names[$idx],$categoryId,$order);                            
-							/* CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
-                            $register=explode('::',$link);
-                            if (count($register)>0) echo "Link für ein Register, kein Schalter \n";
-                            $variableID = getVariableId($link,[$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms]);
-							if ($variableID) CreateLinkByDestination($names[$idx], $variableID, $categoryId, $order);   */
-						    }
-						break;
-					default:
-						trigger_error('Unknown WFCItem='.$WFCItem[0]);
-			   	    }
-				}
-			}
-        $wfcHandling->write_WebfrontConfig($config["ConfigId"]);
-		}
-
-	/* ----------------------------------------------------------------------------------------------------------------------------
-	 * User Installation
-     * without extra Link handling, standard CreateLinkByDestination
-	 * ---------------------------------------------------------------------------------------------------------------------------- */
-
-	echo "\n";
-	echo "=====================================================\n";
-	
-	if ($WFC10User_Enabled) 
-		{
-        $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
-        $config = $configWFront["User"];               
-        echo "Webfront User aufbauen in ".$config["Path"]." :\n";
-        echo "\n";
-        $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
-		$categoryId_WebFrontUser                = CreateCategoryPath($config["Path"]);
-		/* in der normalen Viz Darstellung verstecken */
-		IPS_SetHidden($categoryId_WebFrontUser, true); //Objekt verstecken	
-		EmptyCategory($categoryId_WebFrontUser);
-		echo "================= ende empty categories \ndelete ".$config["TabPaneItem"]."\n";	
-		$wfcHandling->DeleteWFCItems($config["TabPaneItem"]);
-		echo "================= ende delete ".$config["TabPaneItem"]."\n";
-        echo "Tab Pane mit HeatTPU machen : \nCreateWFCItemTabPane   (".$config["ConfigId"].",".$config["TabPaneItem"].",".$config["TabPaneParent"].",".$config["TabPaneOrder"].",".$config["TabPaneName"].",".$config["TabPaneIcon"].")\n";    
-		$wfcHandling->CreateWFCItemTabPane   ($config["TabPaneItem"], $config["TabPaneParent"], $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]);   // Tab Pane mit HeatTPA machen
-		echo "================ende create Tabitem \n";
-		$webFrontConfig = IPSHeat_GetWebFrontUserConfiguration();
-		$order = 10;
-		foreach($webFrontConfig as $tabName=>$tabData) {
-			echo "================create ".$tabName."\n";
-			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFrontUser, $order);
-			foreach($tabData as $WFCItem) {
-				$order = $order + 10;
-				switch($WFCItem[0]) {
-					case IPSHEAT_WFCSPLITPANEL:
-						$wfcHandling->CreateWFCItemSplitPane ($WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
-						break;
-					case IPSHEAT_WFCCATEGORY:
-						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
-                        $status=@EmptyCategory($categoryId);
-						$wfcHandling->CreateWFCItemCategory ($WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
-						break;
-					case IPSHEAT_WFCGROUP:
-					case IPSHEAT_WFCLINKS:
-						$categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
-						if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
-							$categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
-						}
-						$links      = explode(',', $WFCItem[3]);
-						$names      = $links;
-						if (array_key_exists(4, $WFCItem)) {
-							$names = explode(',', $WFCItem[4]);
-						}
-						foreach ($links as $idx=>$link) {
-							$order = $order + 1;
-							CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
-						}
-						break;
-					default:
-						trigger_error('Unknown WFCItem='.$WFCItem[0]);
-			   }
-			}
-		}
-    $wfcHandling->write_WebfrontConfig($config["ConfigId"]);        
-	}
-
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// Mobile Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
-	
-	echo "\n";
-	echo "=====================================================\n";
-	//echo "\n";
-		
-	if ($Mobile_Enabled ) 
-		{
-        $config = $configWFront["Mobile"];              
-	    echo "Webfront Mobile aufbauen in ".$config["Path"]." : Die Kategorie wird ".($mobile_Regenerate?"neu erzeugt":"nur upgedated")."\n";
-        $MobilePathSegments=explode(".",$config["Path"]);
-        //print_R($MobilePathSegments);
-        $parent=0;
-        $MobilePathOIDs=array(); 
-        $oldVisID=false;       
-        foreach ($MobilePathSegments as $index => $MobilePathSegment)
+        $WFC10_Autosteuerung_Path='Visualization.WebFront.Administrator.Autosteuerung.Stromheizung.AutoTPADetails2_LeftDown';
+        if ($WFC10_Enabled) 
             {
-            $visID = @IPS_GetObjectIDByName ($MobilePathSegment, $parent);
-            if ($visID===false)
+            $config = $configWFront["Administrator"];            
+            $categoryId_Autosteuerung_WebFront                = CreateCategoryPath($WFC10_Autosteuerung_Path);
+            if ($WFC10_Regenerate) 
                 {
-                echo "\nFehler, $MobilePathSegment ist in $parent nicht vorhanden (".$config["Path"].")\n";
-                $oldVisID = @IPS_GetObjectIDByName ("Stromheizung", $parent);
+                /* Loescht die Stromheizung ein/aus und die anderen Variablen auch, eigenes Tab left down machen  */
+                EmptyCategory($categoryId_Autosteuerung_WebFront);
+                }		
+            if ($debug) echo "Auch in Autosteuerung Stromheizung die Links installieren : ".$categoryId_Autosteuerung_WebFront."\n";
+            $order = 10;
+            foreach($webFrontConfig as $tabName=>$tabData) {
+                foreach($tabData as $WFCItem) {
+                    $order = $order + 10;
+                    switch($WFCItem[0]) 
+                        {
+                        case IPSHEAT_WFCSPLITPANEL:
+                        case IPSHEAT_WFCCATEGORY:
+                        case IPSHEAT_WFCGROUP:
+                            break;
+                        case IPSHEAT_WFCLINKS:
+                            if ($debug) echo "  WFCLINKS : ".$WFCItem[2]."   ".$WFCItem[3]."\n";
+                            //print_r($WFCItem);
+                            $links      = explode(',', $WFCItem[3]);
+                            $names      = $links;
+                            if (array_key_exists(4, $WFCItem)) { $names = explode(',', $WFCItem[4]); 	}
+                            foreach ($links as $idx=>$link) 
+                                {
+                                $order = $order + 1;
+                                $name=explode('#', $names[$idx]);
+                                if (isset($name[1])==true) 
+                                    { 
+                                    // CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
+                                    //echo "GetVariableID from : \n";   //.$link."  (".IPS_GetName($link).")\n";
+                                    //print_r($link);
+                                    //echo "\n";
+                                    CreateLinkByDestination($name[0], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId_Autosteuerung_WebFront, $order);
+                                    }
+                                }
+                            break;
+                        default:
+                            trigger_error('Unknown WFCItem='.$WFCItem[0]);
+                        }
+                    }
+                }
+            
+            }
+
+        /****************************************************************************
+        *
+        * Webfront Installation der Stromheizung
+        *
+        * komplettes Webfront wie bei IPSLight aufbauen 
+        * Basis Konfiguration wird aus der ini Datei übernommen
+        *  $WFC10_Enabled       Webfront aufbauen
+        *  $WFC10_Path          das ist die Kategorie wo die Links reinkommen, beginnt bei Visualization.Webfront oder Visualization.Mobile
+        *                       in der ini steht zumindesten Administrator.Stromheizung
+        *  $WFC10_Regenerate    Kategorie $WFC10_Path komplett löschen, kann hier auf Zeile 285 ein/ausgeschaltet werden
+        *  $WFC10_ConfigId      so kann man das WFC ansprechen Administrator/User etc.
+        *  $WFC10_TabPaneItem   interner Name für das Webfront, nur in der WFC vorhanden
+        *  $WFC10_TabPaneParent aso. Parameters to setup a TabPane
+        *
+        *****************************************************************************************/
+
+        echo "\n";
+        echo "=====================================================\n";
+
+        //print_r($webFrontConfig);	echo "\n";
+        
+        if ($WFC10_Enabled) 
+            {
+            /* Default Path ist Visualization.WebFront.Administrator.Stromheizung */
+            $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+            $config = $configWFront["Administrator"];   
+            $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
+            echo "Webfront Administrator aufbauen in ".$config["Path"]." :\n";
+            echo "\n";		
+            $categoryId_WebFront                = CreateCategoryPath($config["Path"]);   // Administrator.Stromheizung
+            IPS_SetHidden($categoryId_WebFront,true);
+            if ($WFC10_Regenerate) 
+                {
+                EmptyCategory($categoryId_WebFront);
+                $wfcHandling->DeleteWFCItems($config["TabPaneItem"]);				// HeatTPA
+                //DeleteWFCItems($WFC10_ConfigId, 'Light_TP');		/* eventuell alte Installationen von IPS_light wegraeumen */
+                }
+            if ($debug) echo "Tab Pane mit HeatTPA machen : \nCreateWFCItemTabPane   (".$config["ConfigId"].",".$config["TabPaneItem"].",".$config["TabPaneParent"].",".$config["TabPaneOrder"].",".$config["TabPaneName"].",".$config["TabPaneIcon"].")\n";    
+            $wfcHandling->CreateWFCItemTabPane   ($config["TabPaneItem"], $config["TabPaneParent"], $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]);   // Tab Pane mit HeatTPA machen
+
+            /* $webFrontConfig is an array with setup of tabpane
+            * Index is the Category in the Webfront category $WFC10_Path
+            * darunter sind die WFC Befehle mit den Parametern, sehr sehr einfach 
+            *    0  WFC Befehl
+            *    1  Name
+            *    2  Parent
+            *    3..9 die Parameter
+            * Achtung, nach einem WFCSPLITPANEL muessen auf jeden Fall die WFCCATEGORY Befehle kommen, eine für den OriginalNamen und eine für den neue Split Namen
+            * das SplitPanel erzeugt einen neuen Tab, in diesem Tab werden zwei neue Kategorien angelegt
+            * Nur die WFCLINKS und WFCGROUPS verlinken auf die Datenobjekte und werden in den Categories gespeichert
+            *    2 Kategorie
+            *    3 Datenobjekte als Komma getrennte Links
+            *    4 Datenobjekte als Komma getrennte Namen, wenn kein 4 dann sind Links gleich die Namen
+            * die Variablen werden mit getVariableId in Switch, groups oder programs gesucht
+            *
+            * with extra link handling   Sensor::Wirkleistung oder Link#12345#Temperatur   createLinkinWebfront
+            */
+            $order = 10;
+            foreach($webFrontConfig as $tabName=>$tabData) {
+                $tabCategoryId	= CreateCategory($tabName, $categoryId_WebFront, $order);
+                foreach($tabData as $WFCItem) {
+                    $order = $order + 10;
+                    switch($WFCItem[0]) 
+                        {
+                        case IPSHEAT_WFCSPLITPANEL:
+                            if ($debug) echo "CreateWFCItemSplitPane (".$config["ConfigId"].", $WFCItem[1], $WFCItem[2] ,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9])\n";
+                            $wfcHandling->CreateWFCItemSplitPane ($WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+                            break;
+                        case IPSHEAT_WFCCATEGORY:
+                            $categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+                            $status=@EmptyCategory($categoryId);
+                            if ($debug) echo "CreateWFCItemCategory ($WFCItem[1], $WFCItem[2],$order, $WFCItem[3],$WFCItem[4], $categoryId, false)\n";
+                            $wfcHandling->CreateWFCItemCategory ($WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+                            break;
+                        case IPSHEAT_WFCGROUP:
+                        case IPSHEAT_WFCLINKS:
+                            if ($debug) echo "  WFCLINKS : ".$WFCItem[2]."   ".$WFCItem[3]."\n";
+                            $categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
+                            if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
+                                $categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
+                                }
+                            $links      = explode(',', $WFCItem[3]);
+                            $names      = $links;
+                            if (array_key_exists(4, $WFCItem)) {
+                                $names = explode(',', $WFCItem[4]);
+                                }
+                            foreach ($links as $idx=>$link) {
+                                $order = $order + 1;
+                                $wfcHandling->createLinkinWebfront($link,$names[$idx],$categoryId,$order);                            
+                                /* CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
+                                $register=explode('::',$link);
+                                if (count($register)>0) echo "Link für ein Register, kein Schalter \n";
+                                $variableID = getVariableId($link,[$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms]);
+                                if ($variableID) CreateLinkByDestination($names[$idx], $variableID, $categoryId, $order);   */
+                                }
+                            break;
+                        default:
+                            trigger_error('Unknown WFCItem='.$WFCItem[0]);
+                        }
+                    }
+                }
+            $wfcHandling->write_WebfrontConfig($config["ConfigId"]);
+            }
+
+        /* ----------------------------------------------------------------------------------------------------------------------------
+        * User Installation
+        * without extra Link handling, standard CreateLinkByDestination
+        * ---------------------------------------------------------------------------------------------------------------------------- */
+
+        echo "\n";
+        echo "=====================================================\n";
+        
+        if ($WFC10User_Enabled) 
+            {
+            $wfcHandling =  new WfcHandling();                              // ohne Parameter wird die Konfiguration der Webfronts editiert, sonst werden die Standard Befehle der IPS Library verwendet
+            $config = $configWFront["User"];               
+            echo "Webfront User aufbauen in ".$config["Path"]." :\n";
+            echo "\n";
+            $wfcHandling->read_WebfrontConfig($config["ConfigId"]);         // register Webfront Confígurator ID          
+            $categoryId_WebFrontUser                = CreateCategoryPath($config["Path"]);
+            /* in der normalen Viz Darstellung verstecken */
+            IPS_SetHidden($categoryId_WebFrontUser, true); //Objekt verstecken	
+            EmptyCategory($categoryId_WebFrontUser);
+            echo "================= ende empty categories \ndelete ".$config["TabPaneItem"]."\n";	
+            $wfcHandling->DeleteWFCItems($config["TabPaneItem"]);
+            echo "================= ende delete ".$config["TabPaneItem"]."\n";
+            echo "Tab Pane mit HeatTPU machen : \nCreateWFCItemTabPane   (".$config["ConfigId"].",".$config["TabPaneItem"].",".$config["TabPaneParent"].",".$config["TabPaneOrder"].",".$config["TabPaneName"].",".$config["TabPaneIcon"].")\n";    
+            $wfcHandling->CreateWFCItemTabPane   ($config["TabPaneItem"], $config["TabPaneParent"], $config["TabPaneOrder"], $config["TabPaneName"], $config["TabPaneIcon"]);   // Tab Pane mit HeatTPA machen
+            echo "================ende create Tabitem \n";
+            $webFrontConfig = IPSHeat_GetWebFrontUserConfiguration();
+            $order = 10;
+            foreach($webFrontConfig as $tabName=>$tabData) {
+                if ($debug) echo "================create ".$tabName."\n";
+                $tabCategoryId	= CreateCategory($tabName, $categoryId_WebFrontUser, $order);
+                foreach($tabData as $WFCItem) {
+                    $order = $order + 10;
+                    switch($WFCItem[0]) {
+                        case IPSHEAT_WFCSPLITPANEL:
+                            $wfcHandling->CreateWFCItemSplitPane ($WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+                            break;
+                        case IPSHEAT_WFCCATEGORY:
+                            $categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+                            $status=@EmptyCategory($categoryId);
+                            $wfcHandling->CreateWFCItemCategory ($WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+                            break;
+                        case IPSHEAT_WFCGROUP:
+                        case IPSHEAT_WFCLINKS:
+                            $categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
+                            if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
+                                $categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
+                            }
+                            $links      = explode(',', $WFCItem[3]);
+                            $names      = $links;
+                            if (array_key_exists(4, $WFCItem)) {
+                                $names = explode(',', $WFCItem[4]);
+                            }
+                            foreach ($links as $idx=>$link) {
+                                $order = $order + 1;
+                                CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+                            }
+                            break;
+                        default:
+                            trigger_error('Unknown WFCItem='.$WFCItem[0]);
+                }
+                }
+            }
+        $wfcHandling->write_WebfrontConfig($config["ConfigId"]);        
+        }
+
+        // ----------------------------------------------------------------------------------------------------------------------------
+        // Mobile Installation
+        // ----------------------------------------------------------------------------------------------------------------------------
+        
+        echo "\n";
+        echo "=====================================================\n";
+        //echo "\n";
+            
+        if ($Mobile_Enabled ) 
+            {
+            $config = $configWFront["Mobile"];              
+            echo "Webfront Mobile aufbauen in ".$config["Path"]." : Die Kategorie wird ".($mobile_Regenerate?"neu erzeugt":"nur upgedated")."\n";
+            $MobilePathSegments=explode(".",$config["Path"]);
+            //print_R($MobilePathSegments);
+            $parent=0;
+            $MobilePathOIDs=array(); 
+            $oldVisID=false;       
+            foreach ($MobilePathSegments as $index => $MobilePathSegment)
+                {
+                $visID = @IPS_GetObjectIDByName ($MobilePathSegment, $parent);
+                if ($visID===false)
+                    {
+                    echo "\nFehler, $MobilePathSegment ist in $parent nicht vorhanden (".$config["Path"].")\n";
+                    $oldVisID = @IPS_GetObjectIDByName ("Stromheizung", $parent);
+                    if ($oldVisID !== false)
+                        {
+                        echo "  Aber Stromheizung ($oldVisID) ist in $parent vorhanden.\n";
+                        }
+                    $visID=$parent;
+                    break;                
+                    }
+                //echo "$visID.";
+                $parent=$visID;
+                }
+            echo "\n";
+            $lastOne=sizeof($MobilePathSegments)-1;
+            //echo "Insgesamt ".($lastOne+1)." Segmente im Pfad: ".$MobilePathSegments[$lastOne]."\n";
+            if ($MobilePathSegments[$lastOne] != "Stromheizung")
+                {
+                if ($oldVisID===false)
+                    {
+                    $beforeLastOne=sizeof($MobilePathOIDs)-2;
+                    $oldVisID = @IPS_GetObjectIDByName ("Stromheizung", $MobilePathOIDs[$beforeLastOne]);
+                    }
                 if ($oldVisID !== false)
                     {
-                    echo "  Aber Stromheizung ($oldVisID) ist in $parent vorhanden.\n";
+                    echo "Stromheizung ($oldVisID) ist in $parent vorhanden, wird gelöscht. Neuer Pfad ist $Mobile_Path.\n";
+                    EmptyCategory($oldVisID);
+                    IPS_DeleteCategory($oldVisID);
                     }
-                $visID=$parent;
-                break;                
+                else echo "Stromheizung ($oldVisID) ist in $parent nicht mehr vorhanden. Neuer Pfad ist $Mobile_Path.\n";
                 }
-            //echo "$visID.";
-            $parent=$visID;
-            }
-        echo "\n";
-        $lastOne=sizeof($MobilePathSegments)-1;
-        //echo "Insgesamt ".($lastOne+1)." Segmente im Pfad: ".$MobilePathSegments[$lastOne]."\n";
-        if ($MobilePathSegments[$lastOne] != "Stromheizung")
-            {
-            if ($oldVisID===false)
-                {
-                $beforeLastOne=sizeof($MobilePathOIDs)-2;
-                $oldVisID = @IPS_GetObjectIDByName ("Stromheizung", $MobilePathOIDs[$beforeLastOne]);
-                }
-            if ($oldVisID !== false)
-                {
-                echo "Stromheizung ($oldVisID) ist in $parent vorhanden, wird gelöscht. Neuer Pfad ist $Mobile_Path.\n";
-			    EmptyCategory($oldVisID);
-                IPS_DeleteCategory($oldVisID);
-                }
-            else echo "Stromheizung ($oldVisID) ist in $parent nicht mehr vorhanden. Neuer Pfad ist $Mobile_Path.\n";
-            }
-        else echo "Aufbau Mobile Webfront erfolgt im Standard Pfad.\n";
-        echo "Config Mobile Webfront : ".json_encode($config)."\n";
-		$mobileId  = CreateCategoryPath($config["Path"], $config["PathOrder"], $config["PathIcon"]);
-		if ($mobile_Regenerate) { 			EmptyCategory($mobileId); 		}
+            else echo "Aufbau Mobile Webfront erfolgt im Standard Pfad.\n";
+            echo "Config Mobile Webfront : ".json_encode($config)."\n";
+            $mobileId  = CreateCategoryPath($config["Path"], $config["PathOrder"], $config["PathIcon"]);
+            if ($mobile_Regenerate) { 			EmptyCategory($mobileId); 		}
 
-        /* es gibt eine Mobile Webfront Konfigurationsfunction
-         *
-         *
-         */
+            /* es gibt eine Mobile Webfront Konfigurationsfunction
+            *
+            *
+            */
 
-		$order = 10;
-		foreach (IPSHeat_GetMobileConfiguration() as $roomName=>$roomData) {
-			if (is_array($roomData)) 
-                {
-                echo "create Links for $roomName based on roomData Array ".json_encode($roomData).".\n";
-				$roomId	= CreateCategory($roomName, $mobileId, $order);
-                echo "   create Category $roomName with ID $roomId in $mobileId.\n";
-				foreach($roomData as $roomItem) 
+            $order = 10;
+            foreach (IPSHeat_GetMobileConfiguration() as $roomName=>$roomData) {
+                if (is_array($roomData)) 
                     {
-                    echo "  do Room ".json_encode($roomItem)."\n";
-					$order = $order + 10;
-					switch($roomItem[0]) {
-						case IPSHEAT_WFCGROUP:
-						case IPSHEAT_WFCLINKS:
-							$instanceId = $roomId;
-							if ($roomItem[0]==IPSHEAT_WFCGROUP) 
-                                {
-								$instanceId = CreateDummyInstance ($roomItem[1], $roomId, $order);
-							    }
-							$links      = explode(',', $roomItem[2]);
-							$names      = $links;
-							if (array_key_exists(3, $roomItem)) 
-                                {
-								$names = explode(',', $roomItem[3]);
-							    }
-							foreach ($links as $idx=>$link) 
-                                {
-								$order = $order + 1;
-                                echo "    create link ".$names[$idx]." in $instanceId\n";
-								CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $instanceId, $order);
-							    }
-							break;
-						 
-						default:
-							trigger_error('Unknown RoomItem='.$roomItem[0]);
-				       }
-				    }
-			    }
-            else 
-                {
-                echo "create Links based on roomData \"$roomData\".\n";
-				$links = explode(',', $roomData);
-				foreach ($links as $link) 
-                    {
-                    $variableId=getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms,true);                                            // true Debug
-                    if ($variableId==false) echo "VariableID $link not found to link in $categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms .\n";
-                    else
+                    echo "create Links for $roomName based on roomData Array ".json_encode($roomData).".\n";
+                    $roomId	= CreateCategory($roomName, $mobileId, $order);
+                    echo "   create Category $roomName with ID $roomId in $mobileId.\n";
+                    foreach($roomData as $roomItem) 
                         {
-                        echo "   Create Link $link with Variable $variableId at Kategorie $mobileId and Order $order.\n";
-                        CreateLink($link, $variableId, $mobileId, $order);
+                        echo "  do Room ".json_encode($roomItem)."\n";
+                        $order = $order + 10;
+                        switch($roomItem[0]) {
+                            case IPSHEAT_WFCGROUP:
+                            case IPSHEAT_WFCLINKS:
+                                $instanceId = $roomId;
+                                if ($roomItem[0]==IPSHEAT_WFCGROUP) 
+                                    {
+                                    $instanceId = CreateDummyInstance ($roomItem[1], $roomId, $order);
+                                    }
+                                $links      = explode(',', $roomItem[2]);
+                                $names      = $links;
+                                if (array_key_exists(3, $roomItem)) 
+                                    {
+                                    $names = explode(',', $roomItem[3]);
+                                    }
+                                foreach ($links as $idx=>$link) 
+                                    {
+                                    $order = $order + 1;
+                                    echo "    create link ".$names[$idx]." in $instanceId\n";
+                                    CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $instanceId, $order);
+                                    }
+                                break;
+                            
+                            default:
+                                trigger_error('Unknown RoomItem='.$roomItem[0]);
                         }
-                    $order = $order + 10;
+                        }
+                    }
+                else 
+                    {
+                    echo "create Links based on roomData \"$roomData\".\n";
+                    $links = explode(',', $roomData);
+                    foreach ($links as $link) 
+                        {
+                        $variableId=getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms,true);                                            // true Debug
+                        if ($variableId==false) echo "VariableID $link not found to link in $categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms .\n";
+                        else
+                            {
+                            echo "   Create Link $link with Variable $variableId at Kategorie $mobileId and Order $order.\n";
+                            CreateLink($link, $variableId, $mobileId, $order);
+                            }
+                        $order = $order + 10;
+                        }
                     }
                 }
             }
         }
-
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Mobile Installation von IPSLight explizit entfernen

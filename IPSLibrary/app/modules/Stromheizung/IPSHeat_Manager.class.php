@@ -372,9 +372,21 @@
             if ($debug) echo "\n        Work on Instance $instance :  Type $typename";
             $config = json_decode(IPS_GetConfiguration($instance), true);
             $deviceId=false; $resourceId=false; $roomzoneId=false;
-            if (isset($config["DeviceID"]))     { $deviceId=$config["DeviceID"]; echo ", DeviceID $deviceId"; }
-            if (isset($config["ResourceID"]))   { $resourceId=$config["ResourceID"]; echo ", ResourceID $resourceId"; }
-            if ( (isset($config["RoomZoneID"])) && ($config["RoomZoneID"] != "") )   { $roomzoneId=$config["RoomZoneID"]; echo ", RoomZoneID $roomzoneId"; }
+            if (isset($config["DeviceID"]))     
+                { 
+                $deviceId=$config["DeviceID"]; 
+                if ($debug) echo ", DeviceID $deviceId"; 
+                }
+            if (isset($config["ResourceID"]))   
+                { 
+                $resourceId=$config["ResourceID"]; 
+                if ($debug) echo ", ResourceID $resourceId"; 
+                }
+            if ( (isset($config["RoomZoneID"])) && ($config["RoomZoneID"] != "") )   
+                { 
+                $roomzoneId=$config["RoomZoneID"]; 
+                if ($debug) echo ", RoomZoneID $roomzoneId"; 
+                }
             if ($debug) echo "\n";
             //print_r($config);        // 2. Zur Kontrolle: Struktur anzeigen (hier siehst du die Keys, z.B. "ShowBrightness")
             $configvariables = json_decode($config["Variables"], true);

@@ -18485,17 +18485,17 @@ class WfcHandling
     public function installWebfront($debug=false)
         {
 
-        if ($debug) echo "installWebfront, Webfront GUID herausfinden:\n";
+        if ($debug>1) echo "installWebfront, Webfront GUID herausfinden:\n";
         //$wfcTree=$this->read_wfc(10,$debug);
         //print_r($wfcTree);	
-        if ($debug) echo "-----------------------------\n";
+        if ($debug>1) echo "-----------------------------\n";
         $WebfrontConfigID=array();
         $alleInstanzen = $this->get_Webfronts();                 // alle Visualisiserungen auslesen
         foreach ($alleInstanzen as $index => $instanz)
             {
             $instance=IPS_GetInstance($instanz["OID"]);
             $WebfrontConfigID[IPS_GetName($instanz["OID"])]=$instance["InstanceID"];
-            echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz["OID"]),25)." ID : ".$instance["InstanceID"]."  (".$instanz["OID"].")\n";
+            if ($debug) echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz["OID"]),25)." ID : ".$instance["InstanceID"]."  (".$instanz["OID"].")\n";
             $config=json_decode(IPS_GetConfiguration($instanz["OID"]));
 
         /* $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
@@ -18512,7 +18512,7 @@ class WfcHandling
                 print_r($configItems);
                 }           */
 
-            if ($debug) 
+            if ($debug>1) 
                 {
                 print_r($config);
                 if (isset($config->Items))          // funktioniert auch für Kachelvisualisiserung
@@ -18521,9 +18521,12 @@ class WfcHandling
                     print_r($configItems);
                     }
                 }            
-            echo "  Remote Access Webfront Password set : (".$config->Password.")\n";
-            if (isset($config->MobileID)) echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
-            if (isset($config->RetroID))  echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";                
+            if ($debug)
+                {
+                echo "  Remote Access Webfront Password set : (".$config->Password.")\n";
+                if (isset($config->MobileID)) echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
+                if (isset($config->RetroID))  echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";                
+                }
             }
         //print_r($WebfrontConfigID);
         
@@ -18543,7 +18546,7 @@ class WfcHandling
         else
             {
             $AdministratorID = $WebfrontConfigID["Administrator"];
-            echo "Webfront Configurator \"Administrator\" bereits vorhanden : ".$AdministratorID." \n";
+            if ($debug) echo "Webfront Configurator \"Administrator\" bereits vorhanden : ".$AdministratorID." \n";
             /* kein Mobile Access für Administratoren */
             IPS_SetConfiguration($AdministratorID,'{"MobileID":-1}');
             IPS_ApplyChanges($AdministratorID);			
@@ -18566,7 +18569,7 @@ class WfcHandling
         else
             {
             $UserID = $WebfrontConfigID["User"];
-            echo "Webfront Configurator \"User\" bereits vorhanden : ".$UserID." \n";
+            if ($debug) echo "Webfront Configurator \"User\" bereits vorhanden : ".$UserID." \n";
             $categoryId_Mobile         = CreateCategoryPath("Visualization.Mobile");		
             //$config = IPS_GetConfiguration($UserID);
             //echo "Konfig : ".$config."\n";
@@ -18598,18 +18601,18 @@ class WfcHandling
             else
                 {
                 $KachelID = $WebfrontConfigID["Kachel Visualisierung"];
-                echo "Webfront Configurator \"Kachel Visualisierung\" bereits vorhanden : ".$KachelID." \n";
+                if ($debug) echo "Webfront Configurator \"Kachel Visualisierung\" bereits vorhanden : ".$KachelID." \n";
                 }
             $config = IPS_GetConfiguration($KachelID);
-            print_R($config);
+            //print_R($config);
             IPS_SetConfiguration($KachelID,'{"BaseID":'.$worldID.'}');
             IPS_ApplyChanges($KachelID);			
             }
-        echo "\n";
+        if ($debug) echo "\n";
 
         /* check nach weiteren Webfront Konfiguratoren */
 
-        echo "Security and Configuration check.\n";
+        echo "Webfronts, Security and Configuration check:\n";
         foreach ($WebfrontConfigID as $key=>$item)
             {
             $config=json_decode(IPS_GetConfiguration($item));
@@ -18624,11 +18627,11 @@ class WfcHandling
                 case "Kachel Visualisierung":
                     if ($config->Password == "") 
                         {
-                        echo "  ".$key.": Remote Access Webfront Password not set.   --> setzen\n";
+                        echo "     NOK ".str_pad($key,25).": Remote Access Webfront Password not set.   --> setzen\n";
                         }
                     else	
                         {
-                        echo "  OK ".$key.": Remote Access Webfront Password set : (".$config->Password.")\n";
+                        echo "     OK  ".str_pad($key,25).": Remote Access Webfront Password set : (".$config->Password.")\n";
                         }					
                     break;
                 default:

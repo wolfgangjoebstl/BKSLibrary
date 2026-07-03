@@ -63,8 +63,11 @@
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
 	IPSUtils_Include ('IPSComponentRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
-	IPSUtils_Include ("IPSLogger.inc.php", "IPSLibrary::app::core::IPSLogger");
 
+	IPSUtils_Include ("IPSLogger.inc.php", "IPSLibrary::app::core::IPSLogger");
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+    
 	class IPSComponentRGB_PHUE2 extends IPSComponentRGB {
 
 		private $lampOID;
@@ -112,10 +115,29 @@
         public function HandleEvent($variable, $value, IPSModuleRGB $module, $debug=false)
             {
             //if variable is type status
-            if ($this->statusId == $variable)               $module->SyncState($value, $this, $debug);               // debug level
-            elseif ($this->helligkeitId == $variable)       $module->SyncBrightness($value, $this, $debug);
-            elseif ($this->farbtemperaturId == $variable)   $module->SyncColor($value, $this, $debug);            
-            elseif ($this->farbeId == $variable)            $module->SyncAmbience($value, $this, $debug);
+            //$debug=true; echo "IPSComponentRGB_PHUE2::HandleEvent($variable, $value  :  ".$this->statusId."  ".$this->helligkeitId."  ".$this->farbtemperaturId."  ".$this->farbeId."\n";
+            $log=new Switch_Logging($variable);         		//echo "Logging.\n";
+			            
+            if ($this->statusId == $variable)               
+                {
+                $result=$log->Switch_LogValue("State");                    
+                $module->SyncState($value, $this, $debug);               // debug level
+                }
+            elseif ($this->helligkeitId == $variable)       
+                {
+                $result=$log->Switch_LogValue("Brightness");                    
+                $module->SyncBrightness($value, $this, $debug);
+                }
+            elseif ($this->farbtemperaturId == $variable)   
+                {
+                $result=$log->Switch_LogValue("ColTemperature");                    
+                $module->SyncAmbience($value, $this, $debug);            
+                }
+            elseif ($this->farbeId == $variable)            
+                {
+                $result=$log->Switch_LogValue("Color");                    
+                $module->SyncColor($value, $this, $debug);
+                }
             else echo "IPSComponentRGB_PHUE2::HandleEvent, do not know VariableID $variable \n";            
             }
 
@@ -472,6 +494,128 @@
 
     }
 	
+
+	/********************************* 
+	 *
+	 * Klasse überträgt die Werte an einen remote Server und schreibt lokal in einem Log register mit
+     * IPSComponentSwitch_Remote war Teil des Includes für RHomematic
+	 *
+	 * legt dazu zwei Kategorien im eigenen data Verzeichnis ab
+	 *
+	 * xxx_Auswertung und xxxx_Nachrichten
+	 *
+	 * in Auswertung wird eine lokale Kopie aller Register angelegt und archiviert. 
+	 * in Nachrichten wird jede Änderung als Nachricht mitgeschrieben 
+     *
+     * im construct die beiden zusätzlichen Werte wegen Kompatibilität zu zB Temperature_Logging
+     *
+     * teilweise umgestellt auf vergleichbare Routinen mit
+     *      constructFirst
+     *      do_init noch offen, $variableTypeReg="Switch" bereits vorbereitet
+	 *
+	 **************************/
+
+	class Switch_Logging extends Logging
+		{
+		//private $variable, $variableLogID;
+
+		//private $SwitchAuswertungID;
+		//private $SwitchNachrichtenID;
+
+		// $configuration, $variablename, $CategoryIdData
+
+		protected $installedmodules;              /* installierte Module */
+        protected $DetectHandler;		        /* Unterklasse */        
+        protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */          
+				
+		function __construct($variable,$variablename=Null,$variableTypeReg="Switch",$debug=false)
+			{
+            if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
+            else $this->debug=$debug;
+            if ($this->debug) echo "   Switch_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
+
+            $this->constructFirst();        // sets startexecute, installedmodules, CategoryIdData, mirrorCatID, logConfCatID, logConfID, archiveHandlerID, configuration, SetDebugInstance()
+
+
+            /************** abgelöst durch constructFirst
+            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedmodules=$moduleManager->GetInstalledModules();   
+			$moduleManager_CC = new IPSModuleManager('CustomComponent');     //   <--- change here 
+			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+            */
+
+            //$NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
+
+            /* abgelöst durch do_init und do_init_switch */
+            $dosOps= new dosOps();
+
+			//echo "Construct IPSComponentSswitch_Remote Logging for Variable ID : ".$variable."\n";
+			$result=IPS_GetObject($variable);
+			$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist immer der Parent Name 
+		
+			// Create Category to store the Move-LogNachrichten und Spiegelregister	
+			$this->SwitchNachrichtenID=$this->CreateCategoryNachrichten("Switch",$this->CategoryIdData);
+			$this->SwitchAuswertungID=$this->CreateCategoryAuswertung("Switch",$this->CategoryIdData);;
+			if ($this->debug) echo "  Switch_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)." anlegen : [".$this->SwitchNachrichtenID.",".$this->SwitchAuswertungID."]\n";
+
+			// lokale Spiegelregister aufsetzen 
+			if ($variable<>null)
+				{
+		        $this->variable=$variable;   
+				if ($this->debug) echo "      Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$this->SwitchAuswertungID." ".IPS_GetName($this->SwitchAuswertungID)." anlegen.\n";
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->SwitchAuswertungID,0,'~Switch');                   // $this->variableLogID schreiben
+				}
+
+			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
+            $directory=$this->configuration["LogDirectories"]["SwitchLog"];
+            $dosOps= new dosOps();
+            $dosOps->mkdirtree($directory);
+            // str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // alles wegloeschen das einem korrekten Filenamen widerspricht, Logging:construct macht keine weitere Bearbeitung mehr, da hier schon die Verzeichnisse dabei sind
+            $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Switch.csv";   
+
+			/* im do_init oder gerade hier oben besser
+            $directories=get_IPSComponentLoggerConfig();                                // Log verzeichnis richtig einordnen
+			if (isset($directories["LogDirectories"]["SwitchLog"]))
+		   		 { $directory=$directories["LogDirectories"]["SwitchLog"]; }
+			else {
+                $directory="Switch/"; 	
+                $systemDir     = $dosOps->getWorkDirectory();
+                $directory=$systemDir.$directory;
+                }
+            echo "      Erzeuge Verzeichnis: ".$directory."\n";
+            $dosOps->mkdirtree($directory);
+			$filename=$directory.$this->variablename."_Switch.csv";  */
+			parent::__construct($this->filename,$this->SwitchNachrichtenID);
+			}
+
+		function Switch_LogValue($param=false)
+			{
+			$result=GetValueFormatted($this->variable);
+			if ($param=="State") SetValue($this->variableLogID,GetValue($this->variable));          // nur Status wird gespiegelt
+			echo "Neuer Wert fuer $param ".$this->variablename." ist ".GetValueFormatted($this->variable).", ".$this->variableLogID." ist updated.\n";
+			//parent::LogMessage($result);
+			parent::LogNachrichten($this->variablename." ($param) mit Wert ".$result);
+			//echo "done.\n";
+			}
+
+		public function GetComponent() {
+			return ($this);
+			}
+			
+		/*************************************************************************************
+		Ausgabe des Eventspeichers in lesbarer Form
+		erster Parameter true: macht zweimal evaluate
+		zweiter Parameter true: nimmt statt dem aktuellem Event den Gesamtereignisspeicher
+		*************************************************************************************/
+
+		public function writeEvents($comp=true,$gesamt=false)
+			{
+
+			}
+			
+	   }
+
 	// @cond Ignore this class in doxygen
 
 	/**  depricated

@@ -69,6 +69,10 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
      *
      * Funktionen, Überblick:
      *      __construct
+     *
+     *      getRainRegsFromComponent
+     *      getTempRegsFromComponent
+     *
      *      getCategoryRegisterID                       von CustomComponents die Counter Category finden
      *
      *      getConfig_aussentempID                      tempId aus dem Ergebnis der Auswertung von setGartensteuerungConfiguration
@@ -77,6 +81,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
      *      getConfig_xID                               immer gleiche Vereinheitlichung der Auswertung der Eingabe für OIDs, auch in IPSHeat
      *      getConfig_waterPumpID
      *      getConfig_valveControlIDs
+     *      getConfig_checkConsumptionIDs
+     *
      *      getConfig_RemoteAccess_Address
      *      getConfig_Modes                             Welche Tabs werden aktiviert
      *      getConfig_Reports                           Einzelne Reports in der DataQuality Tab
@@ -634,6 +640,60 @@ class Gartensteuerung
         return ($confResult);
 		}
 
+    /* getPipeConfig
+     * 
+     * übernimmt oder liest die Konfiguration von $this->GartensteuerungConfiguration 
+     * vereinheitlicht die verschiedenen Konfigurationen dadurch da sie sich auf die Leitungen bezieht und nicht auf die Ventile, da diese scheinbar fix sind
+     *
+     * we have the valves and we have the pipes, pipes are fixed and have name and description, Valves have numbers counting from 0 to something, 
+     * not all Valves may be in service, you may exclude some of them for maintenance
+     * finally you assign valves to pipes, only the valves that are assigned are switched
+     *
+     * uses KREIS1..KREIS6 (or more) for the pipes description Info and Index
+     * uses ValveControl after getConfig_valveControlIDs was called
+     */
+	function getPipeConfig($config=false,$debug=false)
+		{
+        $failure=true;
+        $confResult=Array();
+        if ($debug || $this->debug) echo "getPipeConfig aufgerufen.\n"; 
+
+        // source of config, from class or as parameter which is already already set to subarray Configuration        
+        if ($config===false) 
+            {
+            if ($debug) echo "Read Configuration direkt from GartensteuerungConfiguration.\n";
+            $Configuration = $this->GartensteuerungConfiguration;
+            if (isset($Configuration["Configuration"])) $gartenconfig = $Configuration["Configuration"];
+            }
+        else $gartenconfig = $config;
+
+        // pipes, kreise
+        $pipes=array();
+        for ($i=0;$i<=10;$i++)
+            {
+            if (isset($gartenconfig["KREIS".$i]))
+                {
+                echo str_pad($i,4).str_pad($gartenconfig["KREIS".$i],50)."\n";
+                $pipes[$i]["Index"]="KREIS".$i;
+                $pipes[$i]["Info"]=$gartenconfig["KREIS".$i];
+                }
+            }
+        // valves
+        foreach ($gartenconfig["ValveControl"] as $index => $oid)
+            {
+            foreach ($pipes as $i => $pipe)
+                {
+                if ($pipe["Index"]==$index) $pipes[$i]["ValveId"]=$oid;
+                foreach ($gartenconfig["ValveConfig"] as $id => $name)
+                    {
+                    if ($pipe["Index"]==$name) $pipes[$i]["Sort"]=$id+10;    
+                    }  
+                }
+            }
+        //print_r($pipes);
+        return ($pipes);
+		}
+
     /* 
      * Prüfung Detailkonfiguration, aufgerufen von setGartensteuerungConfiguration
      * Paramter bereits geprüft: "CheckConsumption" , Default  false
@@ -846,12 +906,14 @@ class Gartensteuerung
 
     /* Konfiguration auswerten und standardisiseren 
      * alle Einstellungen unter Configuration zusammengefasst
+     *
      *  Es gibt jetzt verschiedene Tabs die aktivierbar sind:
      *          Statistics
      *          Irrigation 
      *          PowerPump
      *          DataQuality
      *          Consumption
+     *
      *  Weitere Einstellungen
      *          Mode
      *          CheckPower
@@ -867,7 +929,12 @@ class Gartensteuerung
      *          getConfig_valveControlIDs
      *          getConfig_checkConsumptionIDs
      *
-     *   
+     * Configuration:
+     *  we have the valves and we have the pipes, pipes are fixed and have name and description, Valves have numbers counting from 0 to something, 
+     *  not all Valves may be in service, you may exclude some of them for maintenance
+     *  finally you assign valves to pipes, only the valves that are assigned are switched
+     *
+     *
     
 			"KREISE" => 5,
 			"TEMPERATUR-MITTEL" => 19,    // Wenn Aussentemperatur im Mittel ueber diesen Wert UND Niederschlag kleiner REGN48H dann Giessen 
@@ -920,7 +987,6 @@ class Gartensteuerung
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["MODE","Mode","mode"],"Mode" ,"Switch");          //Default, mit automatischen Regenkreisumschalter  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["WATERPUMP","WaterPump","Waterpump","waterpump"],"WaterPump" ,false);  
-            configfileParser($configConf["Configuration"], $config["Configuration"], ["VALVECONTROL","ValveControl","Valvecontrol","valvecontrol"],"ValveControl" ,false);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["CHECKPOWER","CheckPower","Checkpower","checkpower"],"CheckPower" ,null);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["CHECKCONSUMPTION","CheckConsumption","Checkconsumption","checkconsumption"],"CheckConsumption" ,false);  
             configfileParser($configConf["Configuration"], $config["Configuration"], ["RAINCOUNTER","Raincounter","RainCounter","raincounter"],"RainCounter" ,false);  
@@ -935,6 +1001,9 @@ class Gartensteuerung
             configfileParser($configConf["Configuration"], $config["Configuration"], ["DEBUG","Debug","debug"],"DEBUG",false);
             configfileParser($configConf["Configuration"], $config["Configuration"], ["PUMPE","Pumpe","pumpe"],"PUMPE",null);           // nur wenn vorhanden übernehmen, sonst Waterpump, OID Parameter für den Fall setGartenpumpe(state,["PUMPE"])
 
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["VALVECONTROL","ValveControl","Valvecontrol","valvecontrol"],"ValveControl" ,false);  
+            configfileParser($configConf["Configuration"], $config["Configuration"], ["VALVECONFIG","ValveConfig","Valveconfig","valveconfig"],"ValveConfig" ,false);  
+
             configfileParser($configConf["Configuration"], $config["Configuration"], ["KREISE","Kreise","kreise"],"KREISE",0);
             for ($i=1;$i<=$config["Configuration"]["KREISE"];$i++)
                 {
@@ -942,13 +1011,15 @@ class Gartensteuerung
                 if ($debug) echo"   $i:".$config["Configuration"]["KREIS".$i]."\n";
                 }
 
-            $config["Configuration"]["RainCounterInput"]=$config["Configuration"]["RainCounter"];
-            $config["Configuration"]["RainCounter"]=$this->getConfig_raincounterID($config["Configuration"], "Increment", $debug);
-            $config["Configuration"]["RainCounterIncrement"]=$config["Configuration"]["RainCounter"];
-            $config["Configuration"]["AussenTemp"]=$this->getConfig_aussentempID($config["Configuration"], $debug);
-            $config["Configuration"]["RemoteAccessAdr"]=$this->getConfig_RemoteAccess_Address($config["Configuration"], $debug);   
-            $config["Configuration"]["WaterPump"]=$this->getConfig_waterPumpID($config["Configuration"], $debug);
-            $config["Configuration"]["ValveControl"]=$this->getConfig_valveControlIDs($config["Configuration"], $debug);
+            $config["Configuration"]["RainCounterInput"]     = $config["Configuration"]["RainCounter"];
+            $config["Configuration"]["RainCounter"]          = $this->getConfig_raincounterID($config["Configuration"], "Increment", $debug);
+            $config["Configuration"]["RainCounterIncrement"] = $config["Configuration"]["RainCounter"];
+            $config["Configuration"]["AussenTemp"]           = $this->getConfig_aussentempID($config["Configuration"], $debug);
+            $config["Configuration"]["RemoteAccessAdr"]      = $this->getConfig_RemoteAccess_Address($config["Configuration"], $debug);   
+            $config["Configuration"]["WaterPump"]            = $this->getConfig_waterPumpID($config["Configuration"], $debug);
+            $config["Configuration"]["ValveControl"]         = $this->getConfig_valveControlIDs($config["Configuration"], $debug);
+            $config["Configuration"]["Pipes"]                = $this->getPipeConfig($config["Configuration"], $debug);
+
             $config["Configuration"]["CheckConsumption"]=$this->getConfig_checkConsumptionIDs($config["Configuration"], $debug);
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["TEMPERATUR-MITTEL","TemperaturMittel","Temperaturmittel"],"TEMPERATUR-MITTEL",19);

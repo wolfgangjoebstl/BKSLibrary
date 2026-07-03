@@ -4219,7 +4219,7 @@
                                 else    
                                     {
                                     $identifier = strtoupper($subconfigActuator["Category"]).strtoupper($subconfigActuator["Type"]);
-                                    echo "$subindex $identifier ";
+                                    If ($debug) echo "$subindex $identifier ";
                                     $plusLink=$ipsheatManager->checkActuators($subconfigActuator["Name"],$identifier,$debug>2);
                                     $topologyPlusLinks[$name]["TOPO"]["DEVICE"][$subconfigActuator["Name"]]=$plusLink;
                                     }

@@ -207,6 +207,8 @@ class AutosteuerungHandler
 
             configfileParser($configInput, $config, ["ElectricHeating",'Stromheizung',"Electricheating",'StromHeizung' ],"ElectricHeating" ,array());  
 
+            configfileParser($configInput, $config, ["Illumination",'illumination',"Brightness",'ILLUMINATION' ],"Illumination" ,null);  
+
             configfileParser($configInput, $configFloorplan, ["FloorPlan","floorplan","FLOORPLAN" ],"FloorPlan" ,array());       // wenn keine Angaben fangen wir mit der Welt an 
             configfileParser($configFloorplan["FloorPlan"], $config["FloorPlan"], ["PlaceToStart","placetostart","PLACETOSTART" ],"PlaceToStart" ,"World");       // wenn keine Angaben fangen wir mit der Welt an 
 
