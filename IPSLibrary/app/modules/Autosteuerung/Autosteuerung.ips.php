@@ -403,7 +403,8 @@ if ($_IPS['SENDER']=="TimerEvent")
      * Aufgaben 60sec Anwesendtimer
      *      Monitor ein/ausschalten     $AutoSetSwitches["MonitorMode"]["NAME"]
      *      Anwesendheit Status         $StatusAnwesend=$operate->Anwesend();
-     *      Anzeige Bewegung auf Tabelee/Topologie    writeTopologyTable
+     *      Anzeige Bewegung auf Table/Topologie    writeTopologyTable
+     *      Update weiterer globaler Variablen, wie Illumination
      *
 	 * lassen sich aber nicht in der event gesteuerten Parametrierung einstellen
 	 *

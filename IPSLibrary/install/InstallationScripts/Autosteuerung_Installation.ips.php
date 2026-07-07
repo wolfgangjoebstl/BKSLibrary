@@ -444,6 +444,7 @@
 	$categoryId_Control = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 	$inputControl=CreateVariable("ReglerAktionen",3,$categoryId_Control, 0,'',null,'');
 
+    // Available
 	$categoryId_Available = CreateCategory('Available',   $CategoryIdData, 200);
     $StatusAnwesenheitID = CreateVariable("StatusAnwesenheit",0, $categoryId_Available,0,"~Presence",null,null,"");
     $StatusAlarmID    = CreateVariable("StatusAlarm",0, $categoryId_Available,0,"~Presence",null,null,"");
@@ -451,6 +452,15 @@
     AC_SetAggregationType($archiveHandlerID,$StatusAnwesenheitID,0);      /* normaler Wert */
     AC_SetLoggingStatus($archiveHandlerID,$StatusAlarmID,true);
     AC_SetAggregationType($archiveHandlerID,$StatusAlarmID,0);      /* normaler Wert */
+
+    // Global
+    /* Brightness Integer 0..255   : below 50 dark, normal 63, hell 100   Homematic Bewegungssensoren
+     * Illumination  Float 0..255
+     * Illumination in lux : HomematicIP Sensor, übernehme Hue Variable vom Motion Sensor
+     * es gibt für Helligkeit auch Gruppen die eine Vereinheitlichung der Werte unterstützen
+     */
+	$categoryId_Global = CreateCategory('Global',   $CategoryIdData, 220); 
+    $illuminationID = CreateVariable("Illumination",0, $categoryId_Global,0,"~Illumination",null,null,"");              //  in Lux, Umrechnung mglw erforderlich     
 
     $log->LogMessage('Autosteuerung Installation aufgerufen');
     $log_Autosteuerung->LogNachrichten('Autosteuerung Installation aufgerufen');      
