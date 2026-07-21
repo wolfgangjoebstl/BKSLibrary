@@ -1249,7 +1249,7 @@ Path=Visualization.Mobile.iTunes
 
                 // Register Message Handler
                 echo "Register Message Handler :\n";
-                IPSMessageHandler::RegisterOnChangeEvent($mediaPlayerTitel/*Var*/, 'IPSComponentPlayer_MediaPlayer,'.$MediaPlayerInstanceId, 'IPSModulePlayer_NetPlayer');
+                IPSMessageHandler::RegisterOnChangeEvent($mediaPlayerTitel/*Var*/, 'IPSComponentPlayer_MediaPlayer,'.$MediaPlayerInstanceId.",,", 'IPSModulePlayer_NetPlayer');
             }    
         }
     }               // if installed

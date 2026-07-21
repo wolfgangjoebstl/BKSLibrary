@@ -460,7 +460,13 @@
      * es gibt für Helligkeit auch Gruppen die eine Vereinheitlichung der Werte unterstützen
      */
 	$categoryId_Global = CreateCategory('Global',   $CategoryIdData, 220); 
-    $illuminationID = CreateVariable("Illumination",0, $categoryId_Global,0,"~Illumination",null,null,"");              //  in Lux, Umrechnung mglw erforderlich     
+    $illuminationID = CreateVariable("Illumination",1, $categoryId_Global,0,"~Illumination",null,null,"");              //  in Lux, Umrechnung mglw erforderlich     
+    $daylevelID     = CreateVariable("DayLevel",    1, $categoryId_Global,0,"~Intensity.100",null,null,"");              //  in %, direkt wert für Level
+    $convert = new convertOps();
+    $daystart=$convert->daystart();
+    $newLevel = $convert->convert(time()-$daystart);
+    SetValue($daylevelID,$newLevel);
+    echo "Aktueller Wert für Level : ".GetValueIfFormatted($daylevelID)."\n";    
 
     $log->LogMessage('Autosteuerung Installation aufgerufen');
     $log_Autosteuerung->LogNachrichten('Autosteuerung Installation aufgerufen');      

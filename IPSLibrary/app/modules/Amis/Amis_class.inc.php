@@ -199,7 +199,7 @@
                             if (isset($result[$index]["OID"])===false) echo "Warning, OID must be provided for TYPE Homematic.\n";
                             else    
                                 {
-                                if ($this->debug) echo "getShellyRegistersfromOID(".$result[$index]["OID"]." for MeterConfig $index\n";
+                                if ($this->debug) echo "getHomematicRegistersfromOID(".$result[$index]["OID"]." for MeterConfig $index\n";
                                 $regResult=$this->getHomematicRegistersfromOID($result[$index]["OID"],$this->debug);         // 2 damit Debug
                                 //print_r($regResult);
                                 $result[$index]["EnergieID"]=$regResult["EnergieID"];

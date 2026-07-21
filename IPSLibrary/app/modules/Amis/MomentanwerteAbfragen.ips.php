@@ -151,8 +151,14 @@
 	$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $debug=true;
 
-    $amis=new Amis();
+    if ($debug)
+        {
+        print_R(get_MeterConfiguration());
+        }
+
+    $amis=new Amis($debug);
     $MeterConfig = $amis->getMeterConfig();
 
     /* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
@@ -257,7 +263,6 @@ if ($_IPS['SENDER']=="TimerEvent")          // alle 60 Sekunden
 	
 if ($_IPS['SENDER']=="Execute")
 	{
-    $debug=false;
     echo "===========================================================\n";
     echo "Execute aufgerufen:\n";        
     echo "Amis::MomentwerteAbfragen Ausgabe der Konfiguration:\n";    

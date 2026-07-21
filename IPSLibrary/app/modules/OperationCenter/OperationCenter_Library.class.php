@@ -6793,6 +6793,7 @@ class LogFileHandler extends OperationCenter
             echo "Filter Logfile $file and display:\n";
             // kleine Logik davor bauen
             
+            $linemax=80;
             $filter1=false; $filter2=false; $filter3=false; $filter4=false; 
             if (is_array($filter))
                 {
@@ -6813,13 +6814,22 @@ class LogFileHandler extends OperationCenter
                 if (isset($filter["TEXT"]))
                     {
                     $filter4=$filter["TEXT"];
-                    }                                                      
+                    } 
+                if (isset($filter["CONFIG"]))
+                    {
+                    $filterconfig=$filter["CONFIG"];
+                    if (isset($filterconfig["LINEMAX"])) 
+                        {
+                        $linemax=$filterconfig["LINEMAX"];
+                        echo "FilterConfig: Linemax =  $linemax\n";                        
+                        }
+                    }                                                                          
                 }
 
             //$filter3=20072;
             //$filter4="Pong";
 
-                    $line=0; $lineshow=0; $linemax=80;
+                    $line=0; $lineshow=0; 
                     $handle1=fopen($file,"r");
                     if ($handle1) echo "Open $file for reading:\n";
                     while ( !feof($handle1) ) 
@@ -6905,7 +6915,8 @@ class LogFileHandler extends OperationCenter
                                 if ($pos4===false) continue;
                                 }
                             else continue;
-                            }    
+                            }
+                        echo str_pad($line,6);    
                         echo str_pad($lineshow-1,10).str_pad($time,12).$input;
                         $line++;
                         if ($line>$linemax) break; 
@@ -7682,7 +7693,7 @@ class HomematicOperation extends OperationCenter
     public function ccuSocketDutyCycle($log_OperationCenter=false, $debug=false)
         {
         if ($log_OperationCenter===false) return(false);
-        echo "ccuSocketStatus Hour passed: ".(parent::$hourPassed?"Yes":"No")." Four Hours passed : ".(parent::$fourHourPassed?"Yes":"No")."\n";
+        echo "ccuSocketStatus Hour passed: ".(parent::$hourPassed?"Yes":"No").", Four Hours passed : ".(parent::$fourHourPassed?"Yes":"No").", Debug : ".($debug?"Yes":"No")."\n";
         $archiveOps = new archiveOps();
         $archiveHandlerID=$archiveOps->getArchiveID();
         $html="";
@@ -7703,7 +7714,8 @@ class HomematicOperation extends OperationCenter
             $config["CleanUpData"] = $configCleanUpData; 
             $config["ShowTable"]["align"]="hourly";                  
             
-            $result=$this->get_CCUDevices();
+            $result=$this->get_CCUDevices();                // solten das nicht mehrere sein, getComponent(deviceList(),["TYPECHAN" => "TYPE_CCU","REGISTER" => "DUTY_CYCLE_LEVEL"
+            print_r($result);
             foreach ($result as $name => $entry)
                 {
                 $oid = $entry["COID"];

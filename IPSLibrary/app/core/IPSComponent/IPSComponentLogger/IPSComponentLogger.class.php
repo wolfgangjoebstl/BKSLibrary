@@ -116,6 +116,7 @@ class Logging
 
     public static   $debugInstance=false;                   // wenn nicht false werden besondere Debug Nachrichten generiert
     protected       $archiveHandlerID;                      // Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden  
+    protected       $loggerConfigId=false;                        // Dummy Modul for IPSComponentLogger
 
 	private         $prefix;							    // Zuordnung File Log Data am Anfang nach Zeitstempel 
 	private         $log_File="Default";
@@ -150,6 +151,12 @@ class Logging
     protected $variableLogID, $variableDelayLogID;
 
     /* wichtige interne Variablen werden angelegt
+     *
+     *  default without any logging
+     *  logfile is the filename to log all information, dont use often to not spoil the disk space and slow the engine
+     *  nachrichteninput_Id the oid for sending messages and store them as json in case of html display, line display is depricated anyhow
+     *      default Ohne means only it is the default Storage space, does not prevent from storing
+     *
      *
      * installedmodules     wird auch in den childrens verwendet, daher parallele Initialisierung auch in den Childrens
      * prefix               nur lokal
@@ -243,8 +250,9 @@ class Logging
                     }    
                 if ($debug) echo "\n";                
                 }
-            else
+            else                    // depricated
                 {
+                echo "Warning, this part of Logging is depricated. Will be deleted soon.\n";
                 $this->config["MessageInputID"]=$nachrichteninput_Id;                
                 $this->zeile = $this->CreateZeilen($this->nachrichteninput_Id);
                 $this->zeile1 = CreateVariable("Zeile01",3,$this->nachrichteninput_Id, 10 );
@@ -265,7 +273,7 @@ class Logging
                 $this->zeile16 = CreateVariable("Zeile16",3,$this->nachrichteninput_Id, 160 );                     
                 }
 			}
-        else
+        else            // Default Area, depricated ?
 			{
             if ($this->config["HTMLOutput"]) 
                 {
@@ -287,8 +295,9 @@ class Logging
                     } 
                 if ($debug) echo "\n";                                     
                 }
-            else
+            else        // depricated, Default Ohne
                 {
+                echo "Warning, this part of Default Logging is depricated. Will be deleted soon.\n";                    
                 //echo "  Kategorien im Datenverzeichnis Custom Components: ".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
                 $vid= $this->config["MessageInputID"];
                 $this->zeile = $this->CreateZeilen( $this->config["MessageInputID"]);
@@ -348,6 +357,13 @@ class Logging
                 echo "      InputId: ".IPS_GetName($vid)."/".IPS_GetName(IPS_GetParent($vid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($vid)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($vid))))."\n";
                 }
             }
+        if ($this->loggerConfigId)              // erstelle Zusammenfassung
+            {
+            //echo "Construct IPSLogger : ".$this->config["MessageInputID"]."\n";
+            /* CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0) */
+            $configId=CreateVariableByName($this->loggerConfigId,"IPSLogger_".$this->config["MessageInputID"],3);
+            SetValue($configId,json_encode($this->config));
+            }
 	    }
 
     /* Vereinheitlichung des Constructs, was macht das child und was der parent 
@@ -372,8 +388,10 @@ class Logging
         //if (self::$debugInstance) $debug=true; else $debug=false;
 		//if ($debug) echo "Logging Construct: ".IPS_GetName(self::$debugInstance)." (".self::$debugInstance.")   MirrorCat ".$this->mirrorCatID."  ConfigCat ".$this->logConfCatID." (at) ".$this->CategoryIdData."\n";
 
-        $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+        $archiveID="{43192F0B-135B-4CE7-A0A7-1475603F3060}";
+        $this->archiveHandlerID=IPS_GetInstanceListByModuleID($archiveID)[0]; 
         $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen */
+        $this->loggerConfigId=$this->createComponentLoggerInstance();
         }
 
     /**
@@ -557,6 +575,34 @@ class Logging
 
         if ($debug) print_r($config);
         return ($config);
+        }
+
+    /* new Dummy Module instance with all configurations
+     *
+     */
+    public function createComponentLoggerInstance($debug=false)
+        {
+        $repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+        IPSUtils_Include ("IPSModuleManager.class.php", "IPSLibrary::install::IPSModuleManager");
+        // Load and Install IPSLogger
+        $moduleManagerLog  = new IPSModuleManager('IPSLogger', $repository);
+        $CategoryIdDataLog = $moduleManagerLog->GetModuleCategoryID('data');
+        if ($debug) echo "IPSLogger Data Category       : $CategoryIdDataLog \n";
+
+        $modulhandling  =  new ModuleHandling();
+        $instances=$modulhandling->getInstances("Dummy Module");
+        $instanceTable=array();
+        foreach ($instances as $instance) $instanceTable[IPS_GetName($instance)]=$instance;
+        //print_R($instanceTable);
+        if (isset($instanceTable["IPSComponentLogger"])===false)
+            {
+            $LoggerConfigId = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+            IPS_SetParent($LoggerConfigId, $CategoryIdDataLog);
+            IPS_SetName($LoggerConfigId, "IPSComponentLogger");
+            }
+        else $LoggerConfigId = $instanceTable["IPSComponentLogger"];
+        if ($debug) echo "IPSComponentLogger Instance is here :  $LoggerConfigId \n";
+        return ($LoggerConfigId);
         }
 
     private function createFullDir(&$input,$systemDir)

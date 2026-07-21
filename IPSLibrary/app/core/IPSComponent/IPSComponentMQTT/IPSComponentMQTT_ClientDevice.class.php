@@ -3,14 +3,14 @@
      * @{
      *
       *
-     * @file          IPSComponentRGB_PHUE2.class.php
+     * @file          IPSComponentMQTT_ClientDevice.class.php
      * @author        Wolfgang Joebstl, inspiriert von Andreas Brauneis
      *
      *
      */
 
 	/**
-	 * @class IPSComponentRGB_PHUE
+	 * @class IPSComponentMQTT_ClientDevice
 	 *
 	 * Definiert ein IPSComponentRGB_PHUE2 Object, das ein IPSComponentRGB Object fuer PhilipsHUE implementiert.
 	 *
@@ -62,13 +62,13 @@
 	 */
 
     IPSUtils_Include ('AllgemeineDefinitionen.inc.php', 'IPSLibrary');
-	IPSUtils_Include ('IPSComponentRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
+	IPSUtils_Include ('IPSComponentMQTT.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
 
 	IPSUtils_Include ("IPSLogger.inc.php", "IPSLibrary::app::core::IPSLogger");
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
     
-	class IPSComponentRGB_PHUE2 extends IPSComponentRGB {
+	class IPSComponentMQTT_ClientDevice extends IPSComponentMQTT {
 
 		private $lampOID;
         private $statusId=false,$helligkeitId=false,$farbeId=false,$farbtemperaturId=false;             // die einzelnen Variablen, werden jetzt direkt gesetztm´, nicht mehr über Modul
@@ -281,216 +281,6 @@
 		    }
 		
 
-	
-       /**********************depricated ones */
-
-		/**     depricated
-		 *  @brief Converts colour value from RGB to XY 
-		 *  
-		 *  @param [in] $color Color in RGB
-		 *  @param [in] $model Philips lamp model
-		 *  @return XY value
-		 */
-		private function calculateXY($color, $model) {
-		
-			// Get the RGB values from color object and convert them to be between 0 and 1.
-			$red = round($color[0] / 255,2);
-			$green = round($color[1] / 255,2);
-			$blue = round($color[2] / 255,2);
-
-			// Apply a gamma correction to the RGB values
-			$r = ($red > 0.04045) ? pow(($red + 0.055) / (1.0 + 0.055), 2.4) : ($red / 12.92);
-			$g = ($green > 0.04045) ? pow(($green + 0.055) / (1.0 + 0.055), 2.4) : ($green / 12.92);
-			$b = ($blue > 0.04045) ? pow(($blue + 0.055) / (1.0 + 0.055), 2.4) : ($blue / 12.92);
-
-			// Convert the RGB values to XYZ using the Wide RGB D65 conversion formula
-			$X = $r * 0.649926 + $g * 0.103455 + $b * 0.197109;
-			$Y = $r * 0.234327 + $g * 0.743075 + $b * 0.022598;
-			$Z = $r * 0.0000000 + $g * 0.053077 + $b * 1.035763;
-			
-			// Calculate the xy values from the XYZ values
-			if($X==0 && $Y ==0 && $Z ==0) $Z = 0.1;
-			
-			$cx  = $X / ($X + $Y + $Z);
-			$cy  = $Y / ($X + $Y + $Z);
-			if(is_nan($cx)) $cx = 0.0;
-			if(is_nan($cy)) $cy = 0.0;
-
-			// Check if the found xy value is within the color gamut of the light
-			$xyPoint = new cgpoint2($cx, $cy);
-			$colorPoints = $this->getColorPointsForModel($model);
-			$inReachOfLamps = $this->checkPointInLampsReach($xyPoint, $colorPoints);
-
-			if(!$inReachOfLamps)
-			{
-			    // Calculate the closest point on the color gamut triangle and use that as xy value
-				$pAB = $this->getClosestPointToPoints($colorPoints[0], $colorPoints[1], $xyPoint);
-				$pAC = $this->getClosestPointToPoints($colorPoints[2], $colorPoints[0], $xyPoint);
-				$pBC = $this->getClosestPointToPoints($colorPoints[1], $colorPoints[2], $xyPoint);
-
-				$dAB = $this->getDistanceBetweenTwoPoints($xyPoint, $pAB);
-				$dAC = $this->getDistanceBetweenTwoPoints($xyPoint, $pAC);
-				$dBC = $this->getDistanceBetweenTwoPoints($xyPoint, $pBC);
-
-				$lowest = $dAB;
-				$closestPoint = $pAB;
-
-				if($dAC < $lowest)
-				{
-					$lowest = $dAC;
-					$closestPoint = $pAC;
-				}
-				if($dBC < $lowest)
-				{
-					$lowest = $dBC;
-					$closestPoint = $pBC;
-				}
-
-				$cx = $closestPoint->x;
-				$cy = $closestPoint->y;
-			}
-			return new cgpoint2($cx, $cy);
-		}
-		
-        /**  depricated
-		 *  @brief Returns the color gamut of a specific Philips light model
-		 *  
-		 *  @param [in] $model ID of the lamp model
-		 *  @return Array with color gamut
-		 *  
-		 *  @details 
-		 *  
-		 *  Following models are supported:
-		 *  
-		 *  Hue
-         *   "LCT001": Hue A19 
-         *   "LCT002": Hue BR30 
-         *   "LCT003": Hue GU10
-		 *	LivingColors
-		 *	 "LLC001": Monet, Renoir, Mondriaan (gen II) 
-         *   "LLC005": Bloom (gen II) 
-         *   "LLC006": Iris (gen III) 
-         *   "LLC007": Bloom, Aura (gen III) 
-         *   "LLC011": Hue Bloom 
-         *   "LLC012": Hue Bloom 
-         *   "LLC013": Storylight 
-         *   "LST001": Light Strips 
-         * 
-		 */
-		private function getColorPointsForModel($model) {
-			$colorPoints = array();
-			$hueBulbs = array("LCT001","LCT002","LCT003");
-			$livingColors = array("LLC001","LLC005","LLC006","LLC007","LLC011","LLC012","LLC013","LST001");
-
-			if(in_array($model, $hueBulbs))
-			{
-				array_push($colorPoints, new cgpoint2(0.674,0.322));
-				array_push($colorPoints, new cgpoint2(0.408,0.517));
-				array_push($colorPoints, new cgpoint2(0.168,0.041));
-			}
-			else if(in_array($model, $livingColors))
-			{
-				array_push($colorPoints, new cgpoint2(0.703,0.296));
-				array_push($colorPoints, new cgpoint2(0.214,0.709));
-				array_push($colorPoints, new cgpoint2(0.139,0.081));
-			}
-			else
-			{
-				array_push($colorPoints, new cgpoint2(1.0,0.0));
-				array_push($colorPoints, new cgpoint2(0.0,1.0));
-				array_push($colorPoints, new cgpoint2(0.0,0.0));
-			}
-			
-			return $colorPoints;
-		}
-
-		/** depricated
-		 * @brief Find the distance between two points.
-		 *
-		 * @param one
-		 * @param two
-		 * @return the distance between point one and two
-		 */
-		private function getDistanceBetweenTwoPoints($one, $two) {
-		
-			$dx = $one->x - $two->x;
-			$dy = $one->y - $two->y;
-			$dist = sqrt($dx * $dx + $dy * $dy);
-			return $dist;
-		}
-		
-		/** depricated
-		 *  @brief Find the closest point on a line. This point will be within reach of the lamp.
-		 *
-		 * @param A the point where the line starts
-		 * @param B the point where the line ends
-		 * @param P the point which is close to a line.
-		 * @return the point which is on the line.
-		 */
-		private function getClosestPointToPoints($A, $B, $P) {
-		
-			$AP = new cgpoint2($P->x - $A->x, $P->y - $A->y);
-			$AB = new cgpoint2($B->x - $A->x, $B->y - $A->y);
-			$ab2 = $AB->x * $AB->x + $AB->y * $AB->y;
-			$ap_ab = $AP->x * $AB->x + $AP->y * $AB->y;
-
-			$t = $ap_ab / $ab2;
-			if($t < 0.0)
-			{
-				$t = 0.0;
-			}
-			else if($t > 1.0)
-			{
-				$t = 1.0;
-			}
-			$newPoint = new cgpoint2($A->x + $AB->x * $t, $A->y + $AB->y * $t);
-			return $newPoint;
-		}
-
-		/** depricated
-		 *  @brief Calculates crossProduct of two 2D vectors / points
-		 * 
-		 * @param p1 first point used as vector
-		 * @param p2 second point used as vector
-		 * @return crossProduct of vectors
-		 *  
-		 */
-		private function getCrossProduct($p1, $p2) {
-			return ($p1->x * $p2->y - $p1->y * $p2->x);
-		}
-
-		/** depricated
-		 * @brief Method to see if the given XY value is within the reach of the lamps.
-		 *
-		 * @param p the point containing the X,Y value
-		 * @return true if within reach, false otherwise.
-		 *  
-		 */
-		private function checkPointInLampsReach($p, $colorPoints) {
-		
-			$red = $colorPoints[0];
-			$green = $colorPoints[1];
-			$blue = $colorPoints[2];
-			$grx =$green->x - $red->x;
-			$gry =$green->y - $red->y;
-			$brx =$blue->x - $red->x;
-			$bry =$blue->y -$red->y;
-			$prx =$p->x - $red->x;
-			$pry =$p->y - $red->y;
-			$v1 = new cgpoint2($grx, $gry);
-			$v2 = new cgpoint2($brx, $bry);
-			$q = new cgpoint2($prx, $pry);
-
-			$s = ($this->getCrossProduct($q, $v2) / $this->getCrossProduct($v1, $v2));
-			$t = ($this->getCrossProduct($v1, $q) / $this->getCrossProduct($v1, $v2));
-
-			if(($s > 0.0) && ($t >= 0.0) && ($s + $t <= 1.0))
-			{
-				return true;
-			}
-			return false;
-		}
-
 
     }
 	
@@ -515,7 +305,7 @@
 	 *
 	 **************************/
 
-	class Lamp_Logging extends Logging
+	class MQTT_Logging extends Logging
 		{
 		//private $variable, $variableLogID;
 
@@ -542,12 +332,10 @@
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();   
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     //   <--- change here 
-			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-            */
+			$thi
 
             //$NachrichtenID=$this->do_init($variable,$variablename,null, $variableTypeReg, $this->debug);              // $typedev ist $variableTypeReg, $value wird normalerweise auch übergeben, $variable kann auch false sein
 
-            /* abgelöst durch do_init und do_init_switch */
             $dosOps= new dosOps();
 
 			//echo "Construct IPSComponentSswitch_Remote Logging for Variable ID : ".$variable."\n";
@@ -616,69 +404,6 @@
 			
 	   }
 
-	// @cond Ignore this class in doxygen
-
-	/**  depricated
-    *
-    * Helper class to ease translation from Philips C-coding
-	* Implements CGPoint class from iOS SDK
-    *
-    */	
-	
-  class cgpoint2 {
-  
-	public $x;
-	public $y;
-	
-	function __construct($_x, $_y) {
-      $this->x = $_x;
-	  $this->y = $_y;
-	}
-	
-
-       
-        /**
-         * @public  DEPRICIATED
-         *
-         * @brief Zustand Setzen 
-         *
-         * @param boolean $power RGB Gerät On/Off
-         * @param integer $color RGB Farben (Hex Codierung)
-         * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
-         */
-        public function SetStateHUE($power, $color, $level) {
-            if (!$power) {
-                $cmd = '"on":false';  
-            } else {
-
-			   $rotDec = (($color >> 16) & 0xFF);
-			   $gruenDec = (($color >> 8) & 0xFF);
-			   $blauDec = (($color >> 0) & 0xFF); 
-			   $color_array = array($rotDec,$gruenDec,$blauDec);
-			   
-			   $modelID = $this->modelID;
-			   
-			   //Convert RGB to XY values
-			   $values = $this->calculateXY($color_array, $modelID);
-			  
-			   //IPSLight is using percentage in variable Level, Hue is using [0..255] 
-			   $level = round($level * 2.55);
-			   $cmd 	= '"bri":'.$level.', "xy":['.$values->x.','.$values->y.'], "on":true'; 
-			   
-            }
-			
-			$type	 = 'Lights'; //Type of Command
-			$request = 'PUT';	 //Type of Request
-            
-			//Send command to Hue lamp
-			//$this->hue_SendLampCommand($type, $request, $cmd);
-			HUE_SetValue($this->lampOID, "STATE",$power);
-			HUE_SetValue($this->lampOID, "COLOR",$color);
-			HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
-        }
-
-	};
-	// @endcond
 
     /** @}*/
 ?>

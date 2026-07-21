@@ -149,6 +149,10 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
     $StatusAnwesenheitID = IPS_GetObjectIDByName("StatusAnwesenheit",$categoryId_Available);
     $StatusAlarmID       = IPS_GetObjectIDByName("StatusAlarm",$categoryId_Available);
 
+    $categoryId_Global  = IPS_GetCategoryIDByName('Global',   $CategoryIdData); 
+    $illuminationID     = IPS_GetObjectIDByName("Illumination", $categoryId_Global);              //  in Lux, Umrechnung mglw erforderlich     
+    $daylevelID         = IPS_GetObjectIDByName("DayLevel",      $categoryId_Global);              //  in %, direkt wert für Level
+
     $StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AnwesenheitserkennungID, 1010, '~HTMLBox');
 
     $MonitorModeID                = @IPS_GetObjectIDByName("MonitorMode", $categoryId_Autosteuerung);           // Zum Ein und Ausschalten des Monitors, eigene Routinen sind konfigurierbar, aber nicht notwendig
@@ -489,6 +493,15 @@ if ($_IPS['SENDER']=="TimerEvent")
 			$html=$operate->writeTopologyTable($topology);
 			SetValue($StatusTableMapHtml,$html);
             
+            if ($daylevelID)
+                {
+                $convert = new convertOps();
+                $daystart=$convert->daystart();
+                $newLevel = $convert->convert(time()-$daystart);
+                SetValue($daylevelID,$newLevel);
+                //echo "Aktueller Wert für Level : ".GetValueIfFormatted($daylevelID)."\n";  
+                }
+
 			if ($changesDetected) IPSLogger_Not(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , Monitor : '.($state?"Ein":"Aus").' Anwesend : '.($StatusAnwesend ?"Ja":"Nein"));
             break;
 		case $timerAufrufID:
@@ -773,6 +786,15 @@ if ($_IPS['SENDER']=="Execute")
 		echo "Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
 		$register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
 		}
+
+    if ($daylevelID)
+        {
+        $convert = new convertOps();
+        $daystart=$convert->daystart();
+        $newLevel = $convert->convert(time()-$daystart);
+        SetValue($daylevelID,$newLevel);
+        echo "Aktueller Wert für Level : ".GetValueIfFormatted($daylevelID)."\n";  
+        }
 
 	echo "----------------------------------------------\n";
 	echo "Category App           ID:".$CategoryIdApp."\n";

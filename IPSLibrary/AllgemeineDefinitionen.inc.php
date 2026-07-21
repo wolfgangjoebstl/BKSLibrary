@@ -15905,6 +15905,108 @@ class geoOps
 
     }
 
+/**************************************************************************************************************************
+ *
+ * Convert behavior curves
+ *
+ * daylight in %
+ *
+ * 
+ *
+ ******************************************************/
+
+
+    class convertOps
+        {
+        protected $convertdata;
+
+        function __construct()
+            {
+            // Location Control
+            $modulhandling = new ModuleHandling();		// true bedeutet mit Debug    
+            $oids = $modulhandling->getInstances('Location Control');           // jede IP Symcon Instanz hat ihre geografischen Ort hinterlegt, wenn der User es eingegeben hat
+            //print_R($oids);
+            $daystart = $this->daystart();
+            foreach ($oids as $oid) 
+                {
+                /*
+                $config=json_decode(IPS_GetConfiguration($oid),true);
+                print_R($config);
+                $configform = json_decode(IPS_GetConfigurationForm($oid),true);
+                $actions = $modulhandling->lookforkeyinarray($configform,"actions");         // actions->[0]->values oder actions->values
+                $values  = $modulhandling->lookforkeyinarray($actions[0],"values",$debug); 
+                $resultDevices=$modulhandling->findAllParentsConfigForm($values,$debug);
+                $modulhandling->analyseConfigForm($resultDevices);        
+                print_r($configform);   */
+                $childs=IPS_GetChildrenIDs($oid);
+                foreach ($childs as $child)
+                    {
+                    $name=IPS_GetName($child);
+                    //echo str_pad($name,40).str_pad(getValueIfFormatted($child),20)."\n";
+                    // normiere Tag
+                    if ($name=="Sonnenaufgang") $rise=GetValue($child)-$daystart;
+                    if ($name=="Sonnenuntergang") $dawn=GetValue($child)-$daystart;
+                    }
+                if ($rise>24*60*60) $rise = $rise - (24*60*60);
+                if ($dawn>24*60*60) $dawn = $dawn - (24*60*60);
+                echo "from 00:00 onwards rise in ".nf($rise,"sec")." dawn in ".nf($dawn,"sec")."   \n";
+                }
+
+            // mann könnte noch mehr datenpunkte definieren
+
+            $convert = array(
+                    0  =>       1,
+                    $rise =>    1, 
+                    (($dawn-$rise)/2+$rise) => 100,
+                    $dawn => 1,
+                    (24*60*60) => 1,
+            );
+            ksort($convert);
+            $this->convertdata=$convert;
+            print_r($this->convertdata);
+            }
+
+        function daystart()
+            {
+            $newtime=time();
+            $year  = (integer)date("Y",$newtime);
+            $month = (integer)date("m",$newtime);
+            $day = (integer)date("d",$newtime);
+            $daystart = mktime(0, 0, 0, $month, $day, $year); 
+            return ($daystart);               
+            }
+
+
+        function convert($input, $debug=false)
+            {    
+
+            $actual=$input;
+            //echo nf($actual,"sec")."\n";
+            
+            $start=false; $end=false; $startindex=false; $endindex=false; 
+            foreach ($this->convertdata as $index => $result)
+                {
+                if (($end===false) && ($actual<=$index)) { $end=$result; $endindex = $index; }
+                if (($end===false) && ($actual>=$index)) { $start=$result; $startindex=$index; }
+                }
+            if ($actual == $startindex) return($start);
+            $normstart=$startindex; $norm=($endindex-$startindex); $actual= ($actual-$normstart)/$norm;
+            $normstart=min($start,$end);$normend=max($start,$end); $norm=$normend-$normstart;
+            if ($norm>0) 
+                {
+                $first=($start-$normstart)/$norm; 
+                $last=($end-$normstart)/$norm; 
+                }
+            else { $first=0; $last=0; }
+            //echo "si $startindex  s $start  a $actual  ei $endindex  e $end first $first last  $last  \n";
+            if ($first==$last) $input=$actual;
+            elseif ($first>$last) $input=(1-$actual*$actual);
+            else $input=1-(1-$actual*$actual);
+            $output=$input*$norm+$normstart;
+            //echo " $actual   $first     $last    $output \n";
+            return (round($output,0));
+            }
+        }
 
 /**************************************************************************************************************************
  *
@@ -19639,7 +19741,8 @@ class ModuleHandling
         return($modules);
 		}
 
-	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben 
+	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben
+     * Ausgabe # OID Name Name-Parent     
      */
 	public function printInstances($input)
 		{

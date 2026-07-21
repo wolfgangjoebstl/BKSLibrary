@@ -6518,7 +6518,7 @@ class DetectEventListHandler extends DetectEventHandler
 			if (substr($name,0,1)=="O")	;								// sollte mit O anfangen
             else echo "   Fehler getEventListByScriptId $eventOid, Name falsch.\n";
             
-            if (IPS_ObjectExists($eventID)==false) echo "   Fehler getEventListByScriptId $eventOid, Event Trigger Variable existiert nicht.\n"; 
+            if (IPS_ObjectExists($eventID)==false) echo "   Fehler getEventListByScriptId $eventOid, Event Trigger Variable existiert nicht. Manuell loeschen in IPS_MessageHandler_Event\n"; 
             else
                 {
                 $eventlist[$i]["OID"]=$eventOid;	            //die OID des Events			

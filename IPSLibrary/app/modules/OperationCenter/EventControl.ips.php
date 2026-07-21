@@ -4,6 +4,9 @@
  *
  * Event Control
  *
+ * nach einer Initsektion, drei Bereiche, Execute, TimerEvent, StatusEvent
+ *      StatusEvent immer bei einer Änderung des CCU Status, AUTOCLOSEOPEN parameter in der Config muss gesetzt sein
+ *
  * Das Phänomen, dass der HomeMatic-Socket in IP-Symcon nach einem fehlgeschlagenen „Pong“ (KeepAlive-Timeout) einfriert und sich oft nur durch einen kompletten Symcon-Neustart wiederbeleben lässt, 
  * ist ein bekanntes (und extrem nerviges) Problem.
  *
@@ -264,7 +267,7 @@
                                         // Socket wieder aktivieren
                                         IPS_SetProperty($instance, "Open", true);
                                         IPS_ApplyChanges($instance);
-                                        $logmessage="$instanceName ($instance) has been reseted , $resetCounter, info from EventControl";
+                                        $logmessage="$instanceName ($instance) Socket has been reseted , $resetCounter, info from EventControl";
                                         $log_Watchdog->LogMessage($logmessage);           // geht in die Datei
                                         $log_Watchdog->LogNachrichten($logmessage);
                                         // ...Run critical Commands

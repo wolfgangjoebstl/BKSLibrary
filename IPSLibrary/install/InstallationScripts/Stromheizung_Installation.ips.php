@@ -657,7 +657,7 @@ Path=Visualization.Mobile.Stromheizung
                             elseif ($doRegisterHueV2) 
                                 {
                                 //$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
-                                $messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleRGB_IPSHeat,');
+                                $messageHandler->RegisterOnChangeEvent($variableId, $component.",,", 'IPSModuleRGB_IPSHeat,');
                                 }
                             }
                         }

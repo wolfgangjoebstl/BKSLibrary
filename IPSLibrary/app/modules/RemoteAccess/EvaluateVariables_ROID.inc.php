@@ -1,35 +1,35 @@
 <?php
-/*erstellt von RemoteAccess::add_Guthabensteuerung() am 19.04.2026 05:05
+/*erstellt von RemoteAccess::add_Guthabensteuerung() am 21.07.2026 05:05
  */
 function GuthabensteuerungList() { return array(
-    "Phone_Cost" => array(
-         "OID" => 17479, 
-         "Name" => "Phone_Cost", 
-         "Typ" => 2, 
-         "Order" => "500", 
-             	),
-    "Phone_CL_Change" => array(
-         "OID" => 22337, 
-         "Name" => "Phone_CL_Change", 
-         "Typ" => 2, 
-         "Order" => "501", 
-             	),
     "StartImacro" => array(
          "OID" => 14828, 
          "Name" => "StartImacro", 
          "Typ" => 1, 
-         "Order" => "502", 
+         "Order" => "500", 
              	),
     "Phone_Load" => array(
          "OID" => 15501, 
          "Name" => "Phone_Load", 
          "Typ" => 2, 
-         "Order" => "503", 
+         "Order" => "501", 
+             	),
+    "Phone_Cost" => array(
+         "OID" => 17479, 
+         "Name" => "Phone_Cost", 
+         "Typ" => 2, 
+         "Order" => "502", 
              	),
     "ScriptTimer" => array(
          "OID" => 28552, 
          "Name" => "ScriptTimer", 
          "Typ" => 3, 
+         "Order" => "503", 
+             	),
+    "Phone_CL_Change" => array(
+         "OID" => 22337, 
+         "Name" => "Phone_CL_Change", 
+         "Typ" => 2, 
          "Order" => "504", 
              	),
     "checkScriptCounter" => array(
@@ -53,7 +53,7 @@ function GuthabensteuerungList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_Amis() am 19.04.2026 05:05
+/*erstellt von RemoteAccess::add_Amis() am 21.07.2026 05:05
  */
 function AmisStromverbrauchList() { return array(
     "Wohnung-LBG70_Wirkenergie" => array(
@@ -311,7 +311,7 @@ function AmisStromverbrauchList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_SysInfo() am 19.04.2026 05:05
+/*erstellt von RemoteAccess::add_SysInfo() am 21.07.2026 05:05
  */
 function SysInfoList() { return array(
     "Hostname" => array(
@@ -366,7 +366,7 @@ function SysInfoList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_RemoteServer() am 19.04.2026 05:05
+/*erstellt von RemoteAccess::add_RemoteServer() am 21.07.2026 05:05
  */
 function ROID_List() { return array(
       );}

@@ -2893,7 +2893,7 @@ class Autosteuerung
 	
 	var $installedmodules;
 	var $CategoryIdData, $CategoryIdApp;
-	var $CategoryId_Ansteuerung, $CategoryId_Status;        // werden immer in Install generiert
+	var $CategoryId_Ansteuerung, $CategoryId_Status, $CategoryId_Global;        // werden immer in Install generiert
 	var $availableModules;							// eigentlich Liste aller GUIDs der Module, für check ob Parameter ein gültige Modul GID hat
     var $configuration;                     // die Konfiguration
     var $debug;                                             // centrally set Debug Mode
@@ -2961,6 +2961,7 @@ class Autosteuerung
 		$this->CategoryIdApp      				= $moduleManager->GetModuleCategoryID('app');
 		$this->CategoryId_Ansteuerung			= IPS_GetCategoryIDByName("Ansteuerung", $this->CategoryIdData);
 		$this->CategoryId_Status			    = IPS_GetCategoryIDByName("Status", $this->CategoryIdData);
+		$this->CategoryId_Global			    = IPS_GetCategoryIDByName("Global", $this->CategoryIdData);
 
 		$this->scriptId_Autosteuerung  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
         $this->configuration = $this->set_Configuration($debug);
@@ -3121,6 +3122,7 @@ class Autosteuerung
 		{
 		$children=array();
 		$childrenIDs=IPS_GetChildrenIDs($this->CategoryId_Ansteuerung);
+        print_R($childrenIDs);
 		foreach ($childrenIDs as $ID)
 			{
 			$children[IPS_GetName($ID)]["OID"]=$ID;
@@ -3823,8 +3825,8 @@ class Autosteuerung
 		else return ($value);	
 		}
 
-	/***************************************
-	 * of Autosteuerung
+	/* Autosteuerung::setNewValueIfDif
+     *
 	 * Vorwert erfassen und speichern wenn Änderung groesser $dif ist
 	 *
 	 * in der entsprechenden Kategorie data.modules.Autosteuerung.Ansteuerung.Stromheizung einen Eintrag mit
@@ -3858,8 +3860,8 @@ class Autosteuerung
 		else return ($value);	
 		}
 
-	/***************************************
-	 * of Autosteuerung
+	/* Autosteuerung::setNewStatus
+     *
 	 * Vorwert (Boolean) des Triggers erfassen und in der Category data::modules::Autosteuerung::Status speichern, 
      * eingesetzt bei Status und StatusParallel um zB zu erkennen wie sich der Status des Triggers geändert hat on->off, off->on, just bounce, or only update on->on etc.
 	 * wird bei jeder Änderung aufgerufen
@@ -3904,8 +3906,8 @@ class Autosteuerung
 		else return ($value);	
 		}
 
-	/***************************************
-	 * of Autosteuerung
+	/* Autosteuerung::setNewStatusBounce
+     *
 	 * Ermittlung zeitlicher Abstand zur letzen Änderung, wenn groesser $bounce ist wird true rückgemeldet
      *
      * Änderungen nur abspeichern wenn zeitlich lang genug vom letztem Speicherdatum entfernt sind, Wert ist eigentlich völlig egal, es wird das Speicherdatum der Variable genommen
@@ -5518,7 +5520,8 @@ class Autosteuerung
         return ($found);     // andere evaluierung des IF Befehls findet auch statt
 		}
 
-    /* of Autosteuerung
+    /* Autosteuerung::evalConditionExtended
+     *
      * Zusatz Evaluierungen von Conditions, Rückgabe über die ersten drei Variablen.
      * state auch updaten, wird für die IFAND etc Befehle verwendet
      * evaluiert wird ein = Zeichen 
@@ -5686,7 +5689,9 @@ class Autosteuerung
             }
         }
 
-    /* Befehl wurde bislang noch nicht für Autosteuerung verarbeitet, es geht um die Verarbeitung von Werten statt Statusinformationen
+    /* Autosteuerung::evalCom_LEVEL
+     *
+     * Befehl wurde bislang noch nicht für Autosteuerung verarbeitet, es geht um die Verarbeitung von Werten statt Statusinformationen
      * Bei Alexa kommen die Werte rein und müssen dann weitergegeben werden, es wird result[LEVEL] gesetzt
      * LEVEL:5 oder LEVEL:VALUE, 
      * es gibt noch keine Konvertierung
@@ -5742,7 +5747,20 @@ class Autosteuerung
                 if ($value>8032) $level=100;
 				$result["VALUE_ON"]=$level;
                 $result["LEVEL"]=(integer)$result["STATUS"];
-                break;         
+                break;  
+            case "DAYLIGHT":
+                $daylevelID         = IPS_GetObjectIDByName("DayLevel",      $this->CategoryId_Global);              //  in %, direkt wert für Level
+                if ($daylevelID)
+                    {
+                    $level=GetValue($daylevelID);
+                    echo "Aktueller Wert für Level : ".GetValueIfFormatted($daylevelID)."\n";                        
+                    }
+                else $level=80;
+                $result["NAME_EXT"]="#LEVEL";                                   // NAME_EXT manuell setzen, muss nicht Teil von Befehl name:  sein
+				$result["VALUE_ON"]=$level;                
+                $result["ON"]="TRUE";                                           // sonst wird nichts gemacht
+                $result["LEVEL"]=(integer)$result["STATUS"];                
+                break;
 			default:
 				$result["LEVEL"]=(integer)$befehl[1];
 				break;
@@ -6065,8 +6083,8 @@ class Autosteuerung
         return (false);
         }
 
-	/***************************************
-	 * ControlSwitchLevel of Autosteuerung
+	/* Autosteuerung::ControlSwitchLevel
+     *
 	 * HeatControl, Stromheizung erfordert Regelfunktionen, die können entweder auf Switch oder Level gehen. 
 	 * übernimmt result und benötigt daraus zumindestens:
      *      NAME
@@ -6290,8 +6308,7 @@ class Autosteuerung
 		return ($result);	
 		}
 
-	/***************************************
-	 * ExecuteCommand of Autosteuerung
+	/* Autosteuerung::ExecuteCommand
 	 * 
      * hier wird der Befehl umgesetzt. Abhängig von "MODULE" werden die Funktionen unterschiedlich umgesetzt
      * Folgende Module sind aktuell implementiert
@@ -7036,8 +7053,8 @@ class Autosteuerung
 		return $instanzID;
 		}
 
-	/***************************************
-	 *
+	/* Autosteuerung::switchObject
+     *
 	 * hier wird geschaltet. Funktion funktioniert für Modul IPSLight und IPSHeat
      * wenn SWITCH true ist und zumindest ON oder OFF gesetzt sind dann gehts weiter:
 	 *
@@ -7080,7 +7097,7 @@ class Autosteuerung
 					{
 					if ($simulate==false)			/* Bei simulate nicht schalten */
 						{
-						$undo = $this->switchObjectNow($result,true);											
+						$undo = $this->switchObjectNow($result,true,$debug);											
 						}
 					else 
                         {
@@ -7125,13 +7142,17 @@ class Autosteuerung
 		return($ergebnis);		
 		}
 
-	/* Jetzt wirklich schalten, es muss das ganze result übergeben werden, und ob ein oder aus 
+	/* Autosteuerung::switchObjectNow
+     *
+     * Jetzt wirklich schalten, es muss das ganze result übergeben werden, und ob ein oder aus 
      * Parameter sind result MODULE, IPSLIGHT und TYPE. COMMAND ist der Rückgängig Befehl
-     *      MODULE ist IPSLIGHT oder IPSHEAT
+     *      MODULE ist IPSLIGHT oder default: IPSHEAT
      *      IPSLIGHT ist None, Switch, Group, Program
      *      TYPE ist None, Switch, Group oder #LEVEL, #COLOR etc.
      *
-     *      SWITCH|GROUP mit SWITCH|GROUP oder #LEVEL etc. NONE ist nichts tun	 *
+     *      SWITCH|GROUP mit SWITCH|GROUP oder #LEVEL etc. NONE ist nichts tun	 
+     *
+     * Hue Groups sind ein Switch, nicht das gleiche wie IPSHeat Groups
      *
 	 * benötigt werden innerhalb von result die keys "ON", "OFF", "IPSLIGHT", "MODULE", "NAME", "OID", "VALUE_ON", "VALUE_OFF"
      *
@@ -7156,7 +7177,7 @@ class Autosteuerung
             SetValue($result["OID"],$state);
             $undo.="SetValue(".$result["OID"].",".($state?"false":"true").");"; 
             }
-        elseif ($result["MODULE"]=="IPSLight")
+        elseif ($result["MODULE"]=="IPSLight")              // IPSLight, depricated
             {
             if ($result["IPSLIGHT"]=="Group") 	
                 {
@@ -7195,7 +7216,7 @@ class Autosteuerung
                     }
                 }						
             }
-        else
+        else                // IPSHeat or default
             {
             echo "Autosteuerung::switchObjectNow (IPS_Heat) mit Status ".($state?"true":"false")." aufgerufen (".json_encode($result).").\n";
             if ($result["IPSLIGHT"]=="Group")  	
@@ -7233,7 +7254,8 @@ class Autosteuerung
                     else $undo.='$heatManager->SetRGB("'.$result["OID"].'",'.$value.");";	 
                     }	
                 if ($result["TYPE"]=="#LEVEL") 	
-                    {	
+                    {
+                    if ($debug) echo 'Aufruf HeatManager SetValue('.$result["OID"].','.$value.");";		
                     if ($state) $this->heatManager->SetValue($result["OID"], $value); 
                     else $undo.='$heatManager->SetValue("'.$result["OID"].'",'.$value.");";	 
                     }	
