@@ -35,7 +35,7 @@
 	 */
 
 
-    IPSUtils_Include ('IPSModuleRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
+    IPSUtils_Include ('IPSModuleMQTT.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentMQTT');
 
 	class IPSModuleMQTT_ClientDevice extends IPSModuleMQTT {
 

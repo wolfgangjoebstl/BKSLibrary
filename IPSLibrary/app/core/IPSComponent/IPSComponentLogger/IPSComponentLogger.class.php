@@ -572,6 +572,8 @@ class Logging
         $this->createFullDir($config["LogDirectories"]["ClimateLog"],$config["BasicConfigs"]["SystemDir"]);
         configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SwitchLog"],"SwitchLog","/Logging/Switch/");    
         $this->createFullDir($config["LogDirectories"]["SwitchLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["MQTTLog"],"MQTTLog","/Logging/MQTT/");    
+        $this->createFullDir($config["LogDirectories"]["MQTTLog"],$config["BasicConfigs"]["SystemDir"]);
 
         if ($debug) print_r($config);
         return ($config);
@@ -614,7 +616,7 @@ class Logging
         //echo "Verzeichnis korrigiert: $input\n";
         }
 
-    /* in CustomComponent Data werden immer zwei paare an Kategorien erstellet. Auswertung und Nachrichten. Der erste Teil ist variable.
+    /* in CustomComponent Data werden immer zwei paare an Kategorien erstellt. Auswertung und Nachrichten. Der erste Teil ist Variable.
      *
      */
 

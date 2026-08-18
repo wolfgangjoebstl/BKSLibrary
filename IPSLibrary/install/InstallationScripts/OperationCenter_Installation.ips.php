@@ -1014,22 +1014,26 @@
                 echo "-----------------------------\n";
                 }
             }
-        else
-            {           // Batch Datei read_Systeminfo.bat schreiben für Windows Betriebssystem, wenn Watchdog Modul installiert ist
-            $verzeichnisSystem=$OperationCenterSetup["SystemDirectory"];
-            $filenameSystem = $verzeichnisSystem."read_Systeminfo.bat";    
-            $handle2=fopen($filenameSystem,"w");
-            fwrite($handle2,'cd '.$verzeichnisSystem."\r\n");
-            fwrite($handle2,'echo %username% >>username.txt'."\r\n");
-            fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
-            fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
-            fwrite($handle2,'jps >>jps.txt'."\r\n");  
-            //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
-            fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
-            //fwrite($handle2,"pause\r\n");
-            fwrite($handle2,'systeminfo >>system.txt'."\r\n");
-            fclose($handle2);
-            }
+        // Batch Datei read_Systeminfo.bat schreiben für Windows Betriebssystem, wenn Watchdog Modul installiert ist
+        $verzeichnisSystem=$OperationCenterSetup["SystemDirectory"];
+        $filenameSystem = $verzeichnisSystem."read_Systeminfo.bat";    
+        $handle2=fopen($filenameSystem,"w");
+        fwrite($handle2,'cd '.$verzeichnisSystem."\r\n");
+        fwrite($handle2,'del username.txt'."\r\n");
+        fwrite($handle2,'echo %username% >>username.txt'."\r\n");
+        fwrite($handle2,'del processlist.txt'."\r\n");
+        fwrite($handle2,'wmic process list >>processlist.txt'."\r\n");                          // sehr aufwendige Darstellung der aktiven Prozesse
+        fwrite($handle2,'del tasklist.txt'."\r\n");
+        fwrite($handle2,'tasklist >>tasklist.txt'."\r\n");
+        fwrite($handle2,'del jps.txt'."\r\n");
+        fwrite($handle2,'jps >>jps.txt'."\r\n");  
+        //fwrite($handle2,'wmic Path win32_process Where "CommandLine Like \'%selenium%\'" >>wmic.txt');
+        fwrite($handle2,'del wmic.txt'."\r\n");
+        fwrite($handle2,'wmic Path win32_process >>wmic.txt'."\r\n");
+        //fwrite($handle2,"pause\r\n");
+        fwrite($handle2,'del system.txt'."\r\n");
+        fwrite($handle2,'systeminfo >>system.txt'."\r\n");
+        fclose($handle2);
         }
     else            // Unix Mode
         {
@@ -1884,7 +1888,9 @@
      *
      *
      */
-
+    $wo = new WebfrontOrganisation();
+    $webfront_links = $wo->prepareHomematicInventory();
+    /*
     $paneName="Homematic";
     $webfront_links=array();
     $hmi=1; $order=100;
@@ -1908,7 +1914,7 @@
     $webfront_links[$paneName]["CONFIG"] = array("type" => "pane");
     
     print_r($webfront_links);
-
+    */
 
     /* Webfront Darstellung für Homematic Inventory in Administrator
      *

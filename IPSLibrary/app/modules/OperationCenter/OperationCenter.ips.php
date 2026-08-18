@@ -425,6 +425,7 @@ if ($_IPS['SENDER']=="WebFront")
                     }  
                 if (isset($ActionButton[$variableId]["RemoteAccess"]))
                     {
+                    //echo "Update Remote Access ";
                     $remoteaccessId = getCategoryIdByName($CategoryIdData, "RemoteAccess");
                     $htmlBoxId = getVariableIDByName($remoteaccessId, "htmlBigBox");                        
                     $dir=$OperationCenter->appInstalledWin("Tailscale");
@@ -435,7 +436,7 @@ if ($_IPS['SENDER']=="WebFront")
                             {
                             echo "SQL Instanz installiert : $oid \n";
                             }
-                        echo "TailScale Installed at $dir \n";
+                        //echo "TailScale Installed at $dir \n";
                         $resultSystemInfo=$sysOps->ExecuteUserCommand($dir."tailscale.exe","status", false, true);
 
                         /* verwendung von ipsTables, mehrfache verwendung ergibt jede Menge gleicher Styles, die aber nicht richtig gekapselt sind
@@ -461,7 +462,7 @@ if ($_IPS['SENDER']=="WebFront")
                             flex-direction: row; flex-wrap: wrap;        
                             justify-content: space-between;   ";
                             //align-items: flex-start; align-content: flex-start;
-                            $text.="box-sizing: border-box; padding: 1px 1px 1px 1px;		}"; 
+                        $text.="box-sizing: border-box; padding: 1px 1px 1px 1px;		}"; 
                         // zusaetzliche Formatierung für die divs unter maindiv1 :
                         $text.=".".$class."1>* { position: relative;	z-index: 1; }"; 
                         // div darunter für left-aligned, center-aligned und right aligned
@@ -487,11 +488,12 @@ if ($_IPS['SENDER']=="WebFront")
 
                         $remoteaccessId = getCategoryIdByName($CategoryIdData, "RemoteAccess");
                         $htmlBoxId = getVariableIDByName($remoteaccessId, "htmlBigBox");
-                        echo "Remote Access Data Id in OperationCenter : $remoteaccessId  View html Box : $htmlBoxId \n";
+                        //echo "Remote Access Data Id in OperationCenter : $remoteaccessId  View html Box : $htmlBoxId \n";
                         if ($htmlBoxId)
                             {
                             SetValue($htmlBoxId,$html);
                             }
+                        //echo "done";
                         }
                     }                                       
 				}	

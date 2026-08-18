@@ -9281,7 +9281,101 @@ class statusDisplay
 		
 /****************************************************************************************************************/
 
+/* Webfront Config Preparation for easysetupwebfront
+ *
+ *
+ */
+class WebfrontOrganisation extends OperationCenter
+    {
 
+    /*
+     * fixed path : Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory
+     * OperationCenter_Install writes the data into this path, and empties it before
+     */
+    public function prepareHomematicInventory($debug=false)
+        {
+        $CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+
+        $paneName="Homematic";
+        $webfront_links=array();
+        $hmi=1; $order=100;
+
+        $subCategories = IPS_GetChildrenIDs($CategoryIdHomematicInventory);
+        foreach ($subCategories as $categoryID) 
+            {
+            if ($debug) echo $categoryID." ".IPS_GetName($categoryID)."\n";
+            $variables = IPS_GetChildrenIDs($categoryID);
+            foreach ($variables as $variableID) 
+                {
+                if ($debug) echo "    ".$variableID." ".IPS_GetName($variableID)."\n";
+                $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["NAME"]=IPS_GetName($variableID);
+                if (IPS_GetName($variableID)=="Sortieren") $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["ORDER"]=10;
+                else $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["ORDER"]=$order;
+                $order += 10;
+                }
+            $webfront_links[$paneName][IPS_GetName($categoryID)]["@CONFIG"] = array("type" => "link", "name" => "HMI".$hmi, "icon"=>"Notebook",);               // um sicherzustellen dass nicht irrtümlich noch eine Unterkatgeorie erkannt wird
+            $hmi++;
+            }
+        $webfront_links[$paneName]["@CONFIG"] = array("type" => "pane");
+        
+        if ($debug) print_r($webfront_links);
+
+        return($webfront_links);
+        }
+
+    public function prepareSystemStatus($debug=false)
+        {
+        IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        $moduleManager    = new ModuleManagerIPS7('OperationCenter',$repository);
+    	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+
+    	$categoryId_SystemInfo	        = IPS_GetCategoryIDByName('SystemInfo',   $CategoryIdData);
+    	$categoryId_SysPing             = IPS_GetCategoryIDByName('SysPing', $CategoryIdData);
+        $categoryId_SysPingControl      = IPS_GetCategoryIDByName('SysPingControl',$categoryId_SysPing);
+
+    	$categoryId_Nachrichten    = IPS_GetCategoryIDByName('Nachrichtenverlauf',   $CategoryIdData);
+	    $NachrichtinputID          = IPS_GetVariableIDByName("Nachricht_Input",$categoryId_Nachrichten);
+        $MessageTableID            = IPS_GetVariableIDByName("MessageTable", $NachrichtinputID);
+
+        $sumTableHtmlID      	= IPS_GetVariableIDByName("SystemInfoOverview",$categoryId_SystemInfo);                 // obige Informationen als kleine Tabelle erstellen
+        $SysPingUpdateID        = IPS_GetVariableIDByName("Update",$categoryId_SysPingControl);                       
+
+	    $SysPingActivityTableID = IPS_GetVariableIDByName("SysPingActivityTable",$categoryId_SysPingControl);
+    	$SysPingTableID = IPS_GetVariableIDByName("SysPingTable",$categoryId_SysPingControl);
+    	$SysPingSortTableID = IPS_GetVariableIDByName("SortPingTable",$categoryId_SysPingControl);
+         
+        echo "\n===================================================================================\n";
+        echo "Webfront Installation für den Systatus Monitor (Doctorbag):\n";
+        $resultStream=array();
+        if ($sumTableHtmlID !== false)              // stream 2 ist rechts oben
+            {
+            $resultStream[2]["Stream"]["Name"]="SysInfo";
+            $resultStream[2]["Stream"]["OID"]=$sumTableHtmlID;
+            $resultStream[2]["Data"]["Update"]=$SysPingUpdateID;
+
+            }
+        if ($MessageTableID !== false)              // stream 1 Mitte
+            {
+            $resultStream[1]["Stream"]["Name"]="Nachrichten";
+            $resultStream[1]["Stream"]["OID"]=$MessageTableID;
+            }
+        if ($SysPingActivityTableID !== false)      // stream 0 ist rechts unten
+            {
+            $resultStream[0]["Stream"]["Name"]="SyspingActivityTabelle";
+            $resultStream[0]["Stream"]["OID"]=$SysPingActivityTableID;
+            }
+        if ($SysPingTableID !== false)              // stream 4 ist links
+            {
+            $resultStream[4]["Stream"]["Name"]="SysPingTable";
+            $resultStream[4]["Stream"]["OID"]=$SysPingTableID;
+            $resultStream[4]["Data"]["Sort"]=$SysPingSortTableID;
+            }
+        print_R($resultStream);
+
+        }
+
+    }
 
 /********************************************************************************************
  *
@@ -9883,8 +9977,10 @@ class seleniumChromedriverUpdate extends OperationCenterConfig
     }
 
 /* class handles data display in RemoteAccess Data Pane
- *      showSqlStatus
- *      showRemoteAcessStatus
+ *      showSqlStatus                       holt sich MySQL Instance, gibt oid der Instanz aus
+ *      showRemoteAcessStatus               aktuell veraltete Information die da ausgewertet werden
+ *
+ *      getTailscaleStatus
  *      showTailscaleStatus
  *
  */

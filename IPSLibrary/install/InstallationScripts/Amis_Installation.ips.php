@@ -274,7 +274,6 @@ if ($do>1)
 	 *  umgesetzt auf [AMIS,Homematic,Register,Summe] und ein Tab für die Zusammenfassung
 	 *****************************************************************************************************************/
      
-	$webfront_links=array();
 	$pos=100;
 	foreach ($MeterConfig as $identifier => $meter)
 		{
@@ -350,16 +349,6 @@ if ($do>1)
                     $configuration = array(); echo "Configuration neu angelegt.\n"; 
                     SetValue($ConfigID,json_encode($configuration));  
                     }
-
-                // Homematic
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$EnergieID]["NAME"]="Wirkenergie";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$EnergieID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungTagID]["NAME"]="Wirkleistung (Tag)";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungTagID]["PANE"]=true;		
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;              		
             	break;
 		    case "REGISTER":       /*********************** Irgendein Register Zähler, wahrscheinlich von Remote Access uebermittelt */
             case "DAILYREAD":
@@ -377,14 +366,6 @@ if ($do>1)
                 $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
 
                 SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
-                
-                // Register
-                $webfront_links["Register"][$meter["NAME"]][$EnergieID]["NAME"]="Wirkenergie";
-                $webfront_links["Register"][$meter["NAME"]][$EnergieID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
-                $webfront_links["Register"][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
-                $webfront_links["Register"][$meter["NAME"]][$LeistungID]["PANE"]=true;	
-                $webfront_links["Register"][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-                $webfront_links["Register"][$meter["NAME"]][$chartID]["PANE"]=false;             	
                 break;
 		    case "SUMME":                /*********************** aus mehreren Werten eine Berechnung anstellen 
                                         * links die Werte Wirkenergie und Leistung pro Gruppe meter Name
@@ -402,14 +383,6 @@ if ($do>1)
                 $chartID = CreateVariableByName($ID, "Chart", 3,'~HTMLBox');
                             
                 SetValue($MeterReadID,true);  // wenn Werte parametriert, dann auch regelmaessig auslesen 
-
-                // SUMME Gruppe Meter Name, Links Wirkenergie, Wirkleistung
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$EnergieID]["NAME"]="Wirkenergie";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$EnergieID]["PANE"]=true;				            // linkes Tab, Anordnung in gemeinsamer gruppe	
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["PANE"]=true;		
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=true;                        			
                 break;
 			
 		    case "AMIS":                /************************** und ein AMIS Zähler mit dem auslesen über die serielle Schnittstelle 
@@ -556,18 +529,6 @@ if ($do>1)
                     {
                     if (strtoupper($meter["STATUS"]) != "ACTIVE" ) SetValue($AmisReadMeterID,false);
                     }	
-                $webfront_links["Control"]["Read Meter"][$AmisReadMeterID]["NAME"]="ReadAMISMeter";		            // Read Meter ist die Gruppe
-                $webfront_links["Control"]["Read Meter"][$AmisReadMeterID]["PANE"]=false;                           // notwendig, entweder ist der Name Auswertung oder Nachrichten, oder PANE wird definiert
-
-                // AMIS, Gruppe meter NAME, Wirkenergie, Leistung, Andere Seite Zählervariablen			
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["NAME"]="Wirkenergie";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["PANE"]=true;						
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$aktuelleLeistungID]["NAME"]="Wirkleistung";
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$aktuelleLeistungID]["PANE"]=true;						
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$zaehlerid]["NAME"]="Zaehlervariablen";						
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$zaehlerid]["PANE"]=false;	
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["NAME"]="Kurve";						
-                $webfront_links[$meter["TYPE"]][$meter["NAME"]][$chartID]["PANE"]=false;					
                 break;
             default:
                 break;
@@ -612,13 +573,9 @@ if ($do>2)
 	IPS_SetPosition($ID,9990);
 	$tableID = CreateVariableByName($ID, "Historie-Energie", 3);
 	IPS_SetVariableCustomProfile($tableID,'~HTMLBox');			
-	$webfront_links["Zusammenfassung"]["Energievorschub der letzten Tage"][$tableID]["NAME"]="Zaehlervariablen";
-	$webfront_links["Zusammenfassung"]["Energievorschub der letzten Tage"][$tableID]["PANE"]=false;
 		
 	$regID = CreateVariableByName($ID, "Aktuelle-Energie", 3);
 	IPS_SetVariableCustomProfile($regID,'~HTMLBox');			
-	$webfront_links["Zusammenfassung"]["Energieregister"][$regID]["NAME"]="Zaehlervariablen";	
-	$webfront_links["Zusammenfassung"]["Energieregister"][$regID]["PANE"]=false;	
 	
 	/* Tab Kurven
      * html basierte Kurven ebenfalls anzeigen, Name Zaehlervariablen als Identifier für rechtes Tab 
@@ -658,146 +615,77 @@ if ($do>2)
 		IPS_SetEventCyclicTimeFrom($tim1ID,1,rand(1,59),0);  /* immer um 01:xx , nicht selbe Zeit damit keine Zugriffsverletzungen auf der Drei Homepage entstehen */
 		}
 	IPS_SetEventActive($tim1ID,true);
-         
+
+    echo "Weiteres Tab Smart Meter, wird aktuell immer installiert.\n";
+    $webOps = new webOps();
+    $categoryId_SmartMeter        = CreateCategory('SmartMeter',        $CategoryIdData, 8000);
+
+    //$pnames = ["Directory","Update","Calculate","Sort"];
+    $buttonsId = $webOps->createSelectButtons(SMART_SELECT,$categoryId_SmartMeter, $scriptIdAmis);              // Ergebnis ist ein array aus Einzelbuttons die untereinander angeordnet werden sollen
+
+    $statusDirectoryID = CreateVariableByName($categoryId_SmartMeter, "DirectoryStatus", 3,'~HTMLBox');
+    $statusSmartMeterID = CreateVariableByName($categoryId_SmartMeter, "SmartMeterStatus", 3,'~HTMLBox');
+
+    // function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+	$variableIdInterActiveHTML = CreateVariableByName($categoryId_SmartMeter, "InterActive", 3 , '~HTMLBox', 'Information', 300,  false, '<iframe frameborder="0" width="100%" height="600px"  src="../user/Guthabensteuerung/GuthabensteuerungReceiver.php"</iframe>' );
+
 /* ----------------------------------------------------------------------------------------------------------------------------
  * WebFront Installation
  *  ----------------------------------------------------------------------------------------------------------------------------
  */
 
-
-	foreach ($webfront_links as $Name => $webfront_group)
-	   	{
-        //$webfront_links[$Name]["STYLE"]=true;                   // für easySetupWebfront
-        $webfront_links[$Name]["CONFIG"]=array(IPSHEAT_WFCSPLITPANEL);
-        }
-    
-    //if ($debug)
-        {
-        echo "****************Ausgabe Webfront Links               ";    
-        print_r($webfront_links);
-        }
+    $af = new AmisWebfront();
+    $webfront_links=$af->createWebfrontLinks($debug);
     }               // Ende do 3
 
 if ($do>3)          // der Debug bevor die Implementierung startet
     {
 	if ($WFC10_Enabled)
 		{
-        $categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+        $debug=false;
+        $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];	
         $configWf=$configWFront["Administrator"];
+        print_R($configWf);             // hier fehlt noch das HausTPA
+
+        $categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
+
+        // Create Name-Admin Category
         /* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-        CreateWFCItemCategory  ($configWf["ConfigId"], 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+        $wfcHandling->CreateWFCItemCategory  ('Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
-        if (true)          // neue Webfront Erstellung
-            {
-            echo "Use new Webfront Creation Toolset for Administrator:\n";
-            $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
+        // Create HouseTPA in roottp, order 200
+        $wfcHandling->CreateWFCItemTabPane("HouseTPA", $configWf["TabPaneParent"],  $configWf["TabPaneOrder"], "", "HouseRemote");  /* macht das Haeuschen in die oberste Leiste */
+        // Create EnergyTPA in HouseTPA
+        $wfcHandling->CreateWFCItemTabPane($configWf["TabPaneItem"], "HouseTPA", 30, $configWf["TabPaneName"], $configWf["TabPaneIcon"]);    /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
 
-            $wfcHandling->CreateWFCItemTabPane("HouseTPA", $configWf["TabPaneParent"],  $configWf["TabPaneOrder"], "", "HouseRemote");  /* macht das Haeuschen in die oberste Leiste */
-            $wfcHandling->CreateWFCItemTabPane($configWf["TabPaneItem"], "HouseTPA", 30, $configWf["TabPaneName"], $configWf["TabPaneIcon"]);    /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+        $af = new AmisWebfront();
+        $webfront_links=$af->createWebfrontLinks($debug);
+        $webfrontlinks=$af->createWebfrontLinksSmart($debug);
+        $webfront_links["SmartMeter"]=$webfrontlinks["SmartMeter"];         //@CONFIG aus topLevel wegnehmen
+        
+        $configWf["Path"]=$configWf["Path"];                    // Amis ist der Path, wir sind hier ja nur Gast
+        $configWf["TabPaneParent"] = "HouseTPA"; 
+        $configWf["TabPaneItem"]   = "EnergyTPA";               // schon gesetzt
+        $configWf["TabPaneOrder"] = 30;        // das Haeuschen ist dazwischen geschoben
 
-            $configWf["TabPaneParent"] = "HouseTPA"; $configWf["TabPaneOrder"] = 30;        // das Haeuschen ist dazwischen geschoben
-            //$configWf["Path"] .="Test";            // sonst loescht er immer die aktuellen Kategorien
-            $wfcHandling->easySetupWebfront($configWf,$webfront_links, "Administrator", true);
+        $config = array();
+        $config["Scope"]="Administrator";
+        $config["EmptyCategory"]=false;                 // does emptying the Categories on default, but some are selectable ????
+        
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
+        $wfcHandling->easySetupWebfront($configWf,$webfront_links, $config, $debug);
 
-            //$wfc=$wfcHandling->read_wfc(1);
-            $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
-            if ($debug)
-                {
-                foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
-                    {
-                    echo "\n------$index:\n";
-                    $wfcHandling->print_wfc($wfc[$index]);
-                    } 
-                }
-            $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
-            }
-        /* else               // alte Webfront erstellung
-            {
-            // Kategorien für Administrator werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen 
-
-            $configWf=$configWFront["Administrator"];
-            echo "====================================================================================\n";
-            // Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible 
-            CreateWFCItemCategory  ($configWf["ConfigId"], 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   , 'true' );
-
-            // Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen 
-
-            echo "\nWebportal LocalAccess TabPane installieren in: ".$configWf["Path"]." \n";
-            // Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible 
-            echo "Webfront TabPane mit Parameter : ".$configWf["ConfigId"]." ".$configWf["TabPaneItem"]." ".$configWf["TabPaneParent"]." ".$configWf["TabPaneOrder"]." ".$configWf["TabPaneName"]." ".$configWf["TabPaneIcon"]."\n";
-            CreateWFCItemTabPane   ($configWf["ConfigId"], "HouseTPA", $configWf["TabPaneParent"],  $configWf["TabPaneOrder"], "", "HouseRemote");  // macht das Haeuschen in die oberste Leiste 
-            CreateWFCItemTabPane   ($configWf["ConfigId"],$configWf["TabPaneItem"], "HouseTPA", 30, $configWf["TabPaneName"], $configWf["TabPaneIcon"]);    // macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen 
-
-            $categoryId_WebFrontAdministrator         = CreateCategoryPath($configWf["Path"]);
-            IPS_SetHidden($categoryId_WebFrontAdministrator,true);
-            //EmptyCategory($categoryId_WebFrontAdministrator);
-
-            foreach ($webfront_links as $Name => $webfront_group)
-                {
-                // Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: AMIS, Homematic etc. Der Name für die Felder wird selbst erfunden.
-                $categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, 10);    // Unterverzeichnis unter AMIS, zB pro Typ 
-                $categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontTab, 10);			/´/ Zwei Seiten
-                $categoryIdRight = CreateCategory('Right', $categoryId_WebFrontTab, 20);
-                //EmptyCategory($categoryIdLeft);
-                //EmptyCategory($categoryIdRight);
-                //EmptyCategory($categoryId_WebFrontTab);
-                echo "Kategorien erstellt, Main für ".$Name." : ".$categoryId_WebFrontTab." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
-
-                $tabItem = $configWf["TabPaneItem"].$Name;
-                if ( exists_WFCItem($configWf["ConfigId"], $tabItem) )
-                    {
-                    echo "Webfront ".$configWf["ConfigId"]." (".IPS_GetName($configWf["ConfigId"]).")  Gruppe ".$Name." löscht TabItem : ".$tabItem."\n";
-                    DeleteWFCItems($configWf["ConfigId"], $tabItem);
-                    }
-                else
-                    {
-                    echo "Webfront ".$configWf["ConfigId"]." (".IPS_GetName($configWf["ConfigId"]).")  Gruppe ".$Name." TabItem : ".$tabItem." nicht mehr vorhanden.\n";
-                    }				
-                IPS_ApplyChanges($configWf["ConfigId"]);
-                echo "Webfront ".$configWf["ConfigId"]." erzeugt TabItem :".$tabItem." in ".$configWf["TabPaneItem"]."\n";
-                //CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
-                CreateWFCItemSplitPane ($configWf["ConfigId"], $tabItem, $configWf["TabPaneItem"],    0,     $Name,     "", 1 , 40 , 0 , 0, 'true');
-                CreateWFCItemCategory  ($configWf["ConfigId"], $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   , 'false' );
-                CreateWFCItemCategory  ($configWf["ConfigId"], $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  , 'false' );
-
-                //CreateLinkByDestination("Read Meter", $MeterReadID,    $categoryIdLeft,  0);
-                foreach ($webfront_group as $Group => $webfront_link)
-                    {
-                    //if left
-                    //$categoryIdGroup  = CreateCategory($Group,  $categoryIdLeft, 10);
-                    $categoryIdGroup  = CreateVariableByName($categoryIdLeft, $Group, 3);   // 0 Boolean 1 Integer 2 Float 3 String 
-                    EmptyCategory($categoryIdGroup);	
-                    if (is_array($webfront_link))			
-                        {
-                        foreach ($webfront_link as $OID => $link)
-                            {
-                            //echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
-                            if ( (isset($link["NAME"])) && ( $link["NAME"]=="Zaehlervariablen" ))
-                                {
-                                echo "erzeuge Link mit Name ".$Group."-".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
-                                CreateLinkByDestination($Group."-".$link["NAME"], $OID,    $categoryIdRight,  20);
-                                echo "\n";
-                                }
-                            elseif (isset($link["NAME"]))
-                                {
-                                echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft." / ".$categoryIdGroup."\n";
-                                CreateLinkByDestination($link["NAME"], $OID,    $categoryIdGroup,  20);
-                                echo "\n";
-                                }
-                            }
-                        }
-                    }
-                }
-            }*/
+        $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       
         }
     else                            // ifnot ($WFC10_Enabled)
         {
         /* Admin not enabled, alles loeschen */
-            DeleteWFCItems($WFC10_ConfigId, "HouseTPA");
+        DeleteWFCItems($WFC10_ConfigId, "HouseTPA");
         }
 
     }
-if ($do>4)          // mit der Pflicht aufhören, es kommt der User und der einzelne Smart Meter Tab
+if ($do>4)          // mit der Pflicht aufhören, es kommt der User 
     {
 
 	if ($WFC10User_Enabled)
@@ -912,7 +800,7 @@ if ($do>4)          // mit der Pflicht aufhören, es kommt der User und der einz
     }
     echo "=================================================================\n";
 
-if ($do>5)
+/*if ($do>5)
     {
     echo "Weiteres Tab Smart Meter, wird aktuell immer installiert.\n";
     $webOps = new webOps();
@@ -927,50 +815,8 @@ if ($do>5)
     // function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
 	$variableIdInterActiveHTML = CreateVariableByName($categoryId_SmartMeter, "InterActive", 3 , '~HTMLBox', 'Information', 300,  false, '<iframe frameborder="0" width="100%" height="600px"  src="../user/Guthabensteuerung/GuthabensteuerungReceiver.php"</iframe>' );
 
-	$webfront_links=array(
-        "SmartMeter"     => array(
-            "Left"          => array(),
-            "Select"         => array(),
-            "@CONFIG"       => array(
-                "style"         =>  "WFCSplitPanel",
-                "width"         =>  10,
-                "right"         => "Select",
-                "left"          => "Left",
-                            ),
-                        ),
-        "@CONFIG" => array( ),                // sonst wird Smart Meter ein Category Pane und kein wie gewollt Splitpane
-                );
-
-        $webfront_links["SmartMeter"]["Left"]        = array(
-                $statusDirectoryID => array(
-                    "NAME"              => "Directory",
-                    "ORDER"             => 10,
-                    "ADMINISTRATOR"     => true,
-                    "PANE"              => true,
-                            ),
-                $statusSmartMeterID => array(
-                    "NAME"              => "Status",
-                    "ORDER"             => 10,
-                    "ADMINISTRATOR"     => true,
-                    "PANE"              => true,
-                            ),
-                $variableIdInterActiveHTML => array(
-                    "NAME"              => "InterActive",
-                    "ORDER"             => 100,
-                    "ADMINISTRATOR"     => true,
-                    "PANE"              => true,
-                            ),
-                        );
-        foreach ($buttonsId as $index => $buttonId)
-            {
-            $webfront_links["SmartMeter"]["Select"][$buttonId["ID"]] = array(
-                        "NAME"              => " ",
-                        "ORDER"             => (200+$index*10),
-                        "ADMINISTRATOR"     => true,
-                        "PANE"              => true,
-                        );
-            }
-
+    $webfrontlinks=$af->createWebfrontLinksSmart();
+  
 	if ($WFC10_Enabled) 
 		{
         $categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
@@ -978,17 +824,14 @@ if ($do>5)
         $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID
 
         $configWf["TabPaneParent"] = "HouseTPA"; $configWf["TabPaneOrder"] = 30;        // das Haeuschen ist dazwischen geschoben
-        // does emptying the Categories on default
-        // easySetupWebfront($configWF,$webfront_links, $config, $debug=false)
         $config = array();
         $config["Scope"]="Administrator";
-        $config["EmptyCategory"]=false;
+        $config["EmptyCategory"]=false;                 // does emptying the Categories on default, but some are selectable ????
         $wfcHandling->easySetupWebfront($configWf, $webfront_links, $config, $debug);
 
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);       // nur hier wird geschrieben
-        }
-    }
-
+        }   */
+        
     echo "=================================================================  Do Level $do  \n";
     echo "AMIS Installation erfolgreich abgeschlossen.\n";
 

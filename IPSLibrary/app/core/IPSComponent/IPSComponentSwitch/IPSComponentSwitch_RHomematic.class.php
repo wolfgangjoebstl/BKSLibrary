@@ -66,7 +66,7 @@
      * 
      ****/
 
-
+	IPSUtils_Include ('IPSComponent.class.php', 'IPSLibrary::app::core::IPSComponent');
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
 
     /* Erweiterung zur Homematic Switch Class */

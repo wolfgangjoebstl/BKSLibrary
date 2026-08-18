@@ -519,8 +519,8 @@
 		{
 		//private $variable, $variableLogID;
 
-		//private $SwitchAuswertungID;
-		//private $SwitchNachrichtenID;
+		protected $SwitchAuswertungID;
+		protected $SwitchNachrichtenID;
 
 		// $configuration, $variablename, $CategoryIdData
 

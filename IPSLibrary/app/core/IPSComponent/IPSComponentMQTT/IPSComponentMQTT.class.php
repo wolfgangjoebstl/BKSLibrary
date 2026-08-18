@@ -34,7 +34,7 @@
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleRGB $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
-		abstract public function HandleEvent($variable, $value, IPSModuleRGB $module);
+		abstract public function HandleEvent($variable, $value, IPSModuleMQTT $module);
 
 		/**
 		 * @public

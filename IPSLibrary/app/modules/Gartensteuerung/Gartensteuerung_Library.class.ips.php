@@ -673,7 +673,7 @@ class Gartensteuerung
             {
             if (isset($gartenconfig["KREIS".$i]))
                 {
-                echo str_pad($i,4).str_pad($gartenconfig["KREIS".$i],50)."\n";
+                if ($debug) echo str_pad($i,4).str_pad($gartenconfig["KREIS".$i],50)."\n";
                 $pipes[$i]["Index"]="KREIS".$i;
                 $pipes[$i]["Info"]=$gartenconfig["KREIS".$i];
                 }
@@ -1005,9 +1005,10 @@ class Gartensteuerung
             configfileParser($configConf["Configuration"], $config["Configuration"], ["VALVECONFIG","ValveConfig","Valveconfig","valveconfig"],"ValveConfig" ,false);  
 
             configfileParser($configConf["Configuration"], $config["Configuration"], ["KREISE","Kreise","kreise"],"KREISE",0);
-            for ($i=1;$i<=$config["Configuration"]["KREISE"];$i++)
+            //for ($i=1;$i<=$config["Configuration"]["KREISE"];$i++)        // wird nicht mehr benötigt, wäre jetzt max valves, später vielleicht wieder verwenden
+            for ($i=1;$i<=10;$i++)
                 {
-                configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS".$i,"Kreis".$i,"kreis".$i],"KREIS".$i,"unknown description");
+                configfileParser($configConf["Configuration"], $config["Configuration"], ["KREIS".$i,"Kreis".$i,"kreis".$i],"KREIS".$i,null);
                 if ($debug) echo"   $i:".$config["Configuration"]["KREIS".$i]."\n";
                 }
 
