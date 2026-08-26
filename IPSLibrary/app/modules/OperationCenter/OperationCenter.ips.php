@@ -403,6 +403,7 @@ if ($_IPS['SENDER']=="WebFront")
                     //echo "Update gedrückt. Bitte Geduld :";                   // kommt nicht etwa schneller, sondern mit allen Ergebnissen gemeinsam am Ende
                     $sysOps->ExecuteUserCommand($filename,"", false, false,-1,false);                          // false nix anzeigen  false nix warten, da Batch writing wäre das ausreichend
                     // $OperationCenter->SystemInfo();                            //  ohne Parameter fragt SystemInfo selbst ab, mit Parameter wird der Input aus einer Variable extrahiert
+                    $OperationCenter->IPS_SystemInfo();                 // nur wichtigste IPS Parammetr und externe IP Adresse
 
                     $categoryId_SysInfo = CreateCategory('SystemInfo', 		$CategoryIdData, 230);
                     $sumTableHtmlID     = IPS_GetObjectIdByName("SystemInfoOverview", $categoryId_SysInfo);           // obige Informationen als kleine Tabelle erstellen
@@ -1341,6 +1342,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                 $sysOps->ExecuteUserCommand($filename,"", false, false,-1,false);                          // false nix anzeigen  false nix warten, da Batch writing wäre das ausreichend
                 }
 			else $OperationCenter->SystemInfo();                            // bei den LBG und BKS einmal so lassen
+            $OperationCenter->IPS_SystemInfo();                 // nur wichtigste IPS Parammeter und externe IP Adresse updaten
 			break;		
 		case $tim9ID:       // Homematic RSSI auslesen
 			/************************************************************************************

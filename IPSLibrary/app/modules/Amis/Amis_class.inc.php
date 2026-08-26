@@ -140,8 +140,9 @@
          *
          *
          */
-        public function setMeterConfig()
+        public function setMeterConfig($internalconfig="clean")
             {
+            if ($internalconfig=="clean") $clean=true;    
             if (function_exists("get_Cost")) $cost=get_Cost();
             else $cost=0.40;
             if ($this->debug) 
@@ -155,12 +156,19 @@
             foreach (get_MeterConfiguration() as $index => $config)
                 {
                 //echo "Bearbeite Zähler $index.\n"; print_r($config);
-                if ( (isset($config["Status"])) && ( (strtoupper($config["Status"])=="DISABLED") || (strtoupper($config["Status"])=="DEACTIVATED") ) )
+                configfileParser($config,$result[$index],["Status","STATUS","status"],"Status","enabled");
+                //echo "setMeterConfig, $index Status ".$result[$index]["Status"]."\n";
+                $status=strtoupper($result[$index]["Status"]); 
+
+                if ( ($status=="DISABLED") || ($status=="DEACTIVATED") )        // Deaktivierte Energiezähler aus der Konfig nehmen, wenn Parameter intrernalconfig auf clean 
                     {
-                    /* Deaktivierte Energiezähler aus der Konfig nehmen */
+                    $result[$index]["Status"]="disabled";
+                    
+                    //echo "setMeterConfig, $index is deactivated.\n";
                     }
                 else
-                    {                    
+                    { 
+                    //echo "setMeterConfig, $index is activated. ".json_encode($config)."\n";                                           
                     //$result[$index]=$config;
                     // configfileParser(&$inputArray, &$outputArray, $synonymArray,$tag,$defaultValue,$debug=false)
                     configfileParser($config,$result[$index],["Name","NAME","name"],"NAME",$index);
@@ -286,6 +294,13 @@
                             break;
                         }  
                     if (strtoupper($result[$index]["ORDER"])=="SUB")  configfileParser($config,$result[$index],["Parent","PARENT","parent"],"PARENT","Main");
+                    }
+                }
+            if ($clean)
+                {
+                foreach ($result as $index => $meter)
+                    {
+                    if ($meter["Status"] == "disabled") unset ($result[$index]);
                     }
                 }
             return ($result);

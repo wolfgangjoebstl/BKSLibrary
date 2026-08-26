@@ -1733,6 +1733,36 @@ class OperationCenter extends OperationCenterConfig
 		return $results;
 		}	
 
+    /* IPS_SystemInfo
+     * remove old parts from SystemInfo and focus on operating system independent information
+     *
+     */
+	 function IPS_SystemInfo()
+	 	{
+		$ExternalIP			= IPS_GetObjectIdByName("ExternalIP", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		
+		$UptimeID			= IPS_GetObjectIdByName("IPS_UpTime", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$VersionID			= IPS_GetObjectIdByName("IPS_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+
+		$results=array();
+		
+		$IPAdresse=$this->whatismyIPaddress1()[0]["IP"];
+
+		if (GetValue($ExternalIP) !== $IPAdresse) SetValue($ExternalIP,$IPAdresse);
+		$results["ExterneIP"]=$IPAdresse;
+
+		$ServerUptime=date("D d.m.Y H:i:s",IPS_GetKernelStartTime());
+		$results["IPS_UpTime"]=$ServerUptime;
+
+		$ServerVersion=IPS_GetKernelVersion();
+		$results["IPS_Version"]=$ServerVersion;
+		
+        SetValue($UptimeID,$ServerUptime);
+        SetValue($VersionID,$ServerVersion);
+
+		return ($results);
+		}	
+
     /* Umrechnung der Bezeichnung in SystemInfo in einen Array Index
      * trim, explode blank, wenn Verfügbar dann umschreiben in ue
      */
@@ -9988,7 +10018,8 @@ class seleniumChromedriverUpdate extends OperationCenterConfig
 class RemoteAccessData
     {
 
-    /* gibt nur die OID der ersten SQL Instanz zurück
+    /* RemoteAccessData::showSqlStatus
+     * gibt nur die OID der ersten SQL Instanz zurück
      */
     function showSqlStatus($debug=false)
         {
@@ -10007,7 +10038,23 @@ class RemoteAccessData
             }
         }
 
-    /* rausfinden wann die letzten Updates von IPS Version waren
+    /* RemoteAccessData::showRemoteAcessStatus
+     * rausfinden wann die letzten Updates von IPS Version waren
+     * verwendet Module remoteAccess, nur wenn das RemoteAccess Fenster aktiv ist weiter machen
+     * liest die Information die im Webfront gespeichert ist : Visualization.WebFront.Administrator.RemoteAccess
+     * hier ist für alle Server mit RemoteAccess eine Spiegelwelt mit Informationen aufgebaut
+     *      BKS-VIS
+     *      BKS01-2
+     *      KHG07
+     *      KBG47
+     * dort nach Category SysInfo und Object IPS_Version suchen, die Informationen auiswerten
+     * die Tabelle gibt nur aus wie lange der Server schon auf einer Version ist und ob später noch ein Update getriggert wurde.
+     * die Originaldaten verweisen aus dem MessageHandler Config
+     *    47824 => array('OnChange','IPSComponentSensor_Remote,','IPSModuleSensor_Remote',),
+     *
+     * Todo:
+     *      aktuell ist die Information veraltet, warum, wird nicht mehr upgeddatet da SystemInfo depricated ist
+     *      die lokalen Informationen über IPS_version prüfen
      *
      */
     function showRemoteAcessStatus($debug=false)    
@@ -10073,6 +10120,23 @@ class RemoteAccessData
         else return (false);
         }
 
+    /* RemoteAccessData::getTailscaleStatus
+     * Routine bekommt das Ergebnis einer Tailscale Abfrage
+     * Beuiispielcode
+                    $dir=$op->appInstalledWin("Tailscale");
+                    if ($dir) 
+                        {
+                        $remoteaccessData = new RemoteAccessData();     // OperationCenter_Library
+                        echo $remoteaccessData->showRemoteAcessStatus(true);            // very outdated information
+                        echo "TailScale Installed at $dir , tailscale status aufgrufen.\n";
+                        $resultSystemInfo=$sysOps->ExecuteUserCommand($dir."tailscale.exe","status", false, true);
+                        $html = $remoteaccessData->showTailscaleStatus($resultSystemInfo);
+                        echo $html;
+                        $result = $remoteaccessData->getTailscaleStatus($resultSystemInfo);           // RemoteAccessData
+                        }
+     *
+     *
+     */
     function getTailscaleStatus($resultSystemInfo,$debug=false)
         {
         $dosOps = new dosOps();
@@ -10125,8 +10189,9 @@ class RemoteAccessData
         return ($tailScaleServer);
         }
 
-    /* show tailscale Status
-     *
+    /* RemoteAccessData::showTailscaleStatus
+     * show tailscale Status
+     * wie vorige Routine, aber als nette html Tabelle anzeigen
      */
     function showTailscaleStatus($resultSystemInfo,$debug=false)
         {
@@ -10196,6 +10261,21 @@ class RemoteAccessData
                 
         }
 
+    /*
+     * $result = $op->ownIPaddress();
+     *
+     */ 
+    public function getTailscaleFromIPConfig($result)
+        {
+        $ownTailIp=false;
+        foreach ($result as $ip => $entry) 
+            {
+            $pos1=strpos($entry["Name"],"Tailscale");
+            //echo "$pos1 ".$entry["Name"]."\n";
+            if ($pos1 !== false) $ownTailIp=$ip;
+            }
+        return ($ownTailIp);
+        }
     } 
 
 /***************************************************************************************************************

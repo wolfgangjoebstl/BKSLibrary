@@ -117,6 +117,7 @@
         { 
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
         IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
+        IPSUtils_Include ("EvaluateHardware_Configuration.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
         $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
         $CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');
         echo "Modul EvaluateHardware ist installiert. Scripts für WebfronControl sind hier $CategoryIdAppEH.\n"; 
@@ -227,7 +228,9 @@
     $webfrontID        = CreateCategoryByName($VisualizationID, "WebFront");
     $webfrontAdminID   = CreateCategoryByName($webfrontID, "Administrator");
     $webfrontUserID    = CreateCategoryByName($webfrontID, "User");
-    $webfrontTileID    = CreateCategoryByName($webfrontID, "Tiles");
+
+    $TileVisualizationID   = CreateCategoryByName(0, "Topology",3010);       // Kategorie anlegen
+    $webfrontTileID    = CreateCategoryByName($TileVisualizationID, "World");
 
 
     $wfcHandling =  new WfcHandling();

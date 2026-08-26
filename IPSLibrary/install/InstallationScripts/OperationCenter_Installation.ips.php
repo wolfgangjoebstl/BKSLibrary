@@ -93,12 +93,18 @@
         echo "Script Execute, Darstellung automatisch mit Debug aktiviert. \n";
         $debug=false;
         $execscript=false;
+        $oplevel=3;         // 3 without webfront install
         }
-    else $debug=false;
+    else 
+        {
+        $debug=false;
+        $oplevel=9;             // install all levels
+        }
 
 	$dosOps = new dosOps();
     $ipsOps = new ipsOps();
     $webOps = new webOps();
+    $archOps = new archOps();    
     $wfcHandling = new WfcHandling();		// für die Interoperabilität mit den alten WFC Routinen nocheinmal mit der Instanz als Parameter aufrufen
 
  	$installedModules = $moduleManager->GetInstalledModules();
@@ -1139,6 +1145,8 @@
 	
 	*/
 
+if ($oplevel>0)
+    {
 	if ( (isset ($installedModules["WebCamera"])) || (isset ($installedModules["IPSCam"])) )
 		{
 		echo "\n"; 
@@ -1185,8 +1193,8 @@
 
 		IPSUtils_Include ("IPSCam_Constants.inc.php",         "IPSLibrary::app::modules::IPSCam");
 		IPSUtils_Include ("IPSCam_Configuration.inc.php",     "IPSLibrary::config::modules::IPSCam");
-
-		if (isset ($OperationCenterConfig['CAM']))
+        
+		if ((isset ($OperationCenterConfig['CAM'])))
 			{
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
@@ -1196,24 +1204,22 @@
                     $verzeichnis = $cam_config['FTPFOLDER'];
                     $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
                     if ($cam_categoryId==false)
-                    {
+                        {
                         $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
                         IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
                         IPS_SetParent($cam_categoryId,$CategoryIdData);
+                        echo "   New cam Category is $cam_categoryId \n";
                         }
+                    else echo "   Cam Category is $cam_categoryId \n";
                     $WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3); /* 0 Boolean 1 Integer 2 Float 3 String */
                     $WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-                    AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
-                    AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
-                    IPS_ApplyChanges($archiveHandlerID);
-
                     $WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-                    AC_SetLoggingStatus($archiveHandlerID,$WebCam_MotionID,true);
-                    AC_SetAggregationType($archiveHandlerID,$WebCam_MotionID,0);      /* normaler Wwert */
-                    IPS_ApplyChanges($archiveHandlerID);
+                    echo "   Variables in Cam Category : $WebCam_LetzteBewegungID, $WebCam_PhotoCountID, $WebCam_MotionID \n";
+                    $archOps->setArchiving($WebCam_PhotoCountID,true,1);
+                    $archOps->setArchiving($WebCam_MotionID,true,0);
 
                     // Test, ob ein Verzeichnis angegeben wurde
-                    if ( is_dir ( $verzeichnis ))
+                    if (( is_dir ( $verzeichnis )))
                         {
                         // öffnen des Verzeichnisses
                         if ( $handle = opendir($verzeichnis) )
@@ -1298,8 +1304,7 @@
 		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 			{
 			$StatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
-			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+            $archOps->setArchiving($StatusID,true,0);
 			}
 		}
 
@@ -1311,8 +1316,7 @@
 		foreach ($device_config as $name => $config)
 			{
 			$StatusID = CreateVariableByName($categoryId_SysPing, "LED_".$name, 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
-			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
-			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+            $archOps->setArchiving($StatusID,true,0);
 			}
 		}
 
@@ -1324,30 +1328,26 @@
 		foreach ($device_config as $name => $config)
 			{
 			$StatusID = CreateVariableByName($categoryId_SysPing, "Denon_".$name, 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
-			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
-			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+            $archOps->setArchiving($StatusID,true,0);
 			}
 		}
 
 	foreach ($OperationCenterConfig['ROUTER'] as $cam_name => $cam_config)
 		{
 		$StatusID = CreateVariableByName($categoryId_SysPing, "Router_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-		AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
-		AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+        $archOps->setArchiving($StatusID,true,0);
 		}
 
 	foreach ($OperationCenterConfig['INTERNET'] as $name => $config)
 		{
 		$StatusID = CreateVariableByName($categoryId_SysPing, "Internet_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-		AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
-		AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+        $archOps->setArchiving($StatusID,true,0);
 		}
 
 	if (isset ($installedModules["IPSWeatherForcastAT"]))
 		{
 		$StatusID = CreateVariableByName($categoryId_SysPing, "Server_Wunderground", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-		AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
-		AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+        $archOps->setArchiving($StatusID,true,0);
 		}
 
 	if (isset ($installedModules["RemoteAccess"]))
@@ -1362,12 +1362,13 @@
 				{
 				echo "       Server Name : ".$Name."\n";
 				$StatusID = CreateVariableByName($categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-				AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
-				AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+                $archOps->setArchiving($StatusID,true,0);
 				}
 			}
 		}
-	IPS_ApplyChanges($archiveHandlerID);
+    }
+if ($oplevel>1)
+    { 
 
 	/******************************************************
 
@@ -1672,7 +1673,11 @@
 		echo "   ".$configHue."\n";
 		$categoryId_Hue = CreateCategoryPath('Hardware.HUE');		
 		}
-				
+
+    }
+if ($oplevel>2)
+    {        
+
 	/********************************************************
 	 *
 	 *		INIT HM Inventory Homematic Geraete Darstellung 
@@ -1874,7 +1879,9 @@
                 }
             }
         }
-        
+    }
+if ($oplevel>3)
+    {
     /* easySetupWebfront braucht im einfachsten Fall folgende Struktur
      * Tabpane 
      *   Subtabpane Auswertung
@@ -1924,18 +1931,27 @@
 		{
         echo "\n";
         $configWF = $configWFront["Administrator"];
-        $configWF["Path"].=".Homematic";
+        //$configWF["Path"].=".Homematic";
         $tabPaneParent=$configWF["TabPaneItem"];
-        $configWF["TabPaneItem"]="Homematic";
+        $configWF["TabPaneItem"]="Homematic";               //nur wenn kein @CONFIG
         $configWF["TabPaneParent"]=$tabPaneParent;
         echo "Homematic Module im Administrator Webfront $tabPaneParent mit Namen ".$configWF["TabPaneItem"]." abspeichern.\n";
         echo "Visualization Kategorie : ".$configWF["Path"]."\n";
 
+        $config = array();
+        $config["Scope"]="Administrator";
+        $config["EmptyCategory"]=false;                 // clears root
+        $config["EmptyTabCategory"]=true;              // Debug purposes, otherwise category changes after each install
+        $config["EmptyTabPanes"]=true;
+        $config["Active"]=true;
+
         $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
-        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            // true für Debug
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,$config,true);            // true für Debug
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);
         }
-																																
+    }
+if ($oplevel>4)
+    {																																
 	/* ----------------------------------------------------------------------------------------------------------------------------
 	 * WebFront Installation
 	 *
@@ -2472,6 +2488,7 @@
 			}			// ende WFCCam enabled */
 			
 		}
+    }
 
 	if (isset ($installedModules["OperationCenter"])) 
 		{
@@ -2479,9 +2496,19 @@
         echo "Install Module OperationCenter abgeschlossen. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 		}
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// Local Functions
-	// ----------------------------------------------------------------------------------------------------------------------------
+
+	/* ----------------------------------------------------------------------------------------------------------------------------
+	 Local Functions
+
+            installWebfrontRemoteAccess
+            installWebfrontMon
+            installWebfrontRadio
+            installWebfrontCam
+
+            CreateHomematicInstance
+            imgsrcstring
+
+	 ----------------------------------------------------------------------------------------------------------------------------*/
 
 
 
