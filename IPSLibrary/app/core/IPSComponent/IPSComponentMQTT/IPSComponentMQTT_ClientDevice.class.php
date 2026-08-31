@@ -45,12 +45,13 @@
         /**
          * @public
          *
-         * Initialisierung eines IPSComponentRGB_PHUE Objektes
-         * basiert nun auf dem Philps HUE Modul
-         * vorher war es das Symcon HUE Modul und ein proprietäres Modul. Die Bridge bzw. vorher die Schlüssel müssen nicht mehr übergeben werden, sind in der Config ooder in der verbundenen Bridge Instanz 
-		 * Bridge ID und alles IP und key spezielle ist damit bereits abgedeckt
+         * Initialisierung eines IPSComponentMQTT_ClientDevice Objektes
+         * CheckEvent(24934) : ["OnChange","IPSComponentMQTT_ClientDevice,,,","IPSModuleMQTT_ClientDevice,"]
+         * es ist bereits Value registriert, es müssen keine Children mehr berücksichtigt werden, optional kann man beim registrieren die Instanz mitgeben
+         * 
+		 * 
 		 *
-		 * HueBridge ist die I/O Instanz bei der die Parameter der Hue Bridge hinterlegt sind.
+		 * 
 		 *
 		 *
 		 *
@@ -58,12 +59,15 @@
 		public function __construct($mqttOID) 
 			{
 			$this->mqttOID = $mqttOID;
-            echo "construct get MQTT Client Device ID : ".$this->mqttOID;
-            $cids = IPS_GetChildrenIDs($this->mqttOID);           // für jede Instanz die Children einsammeln
-            foreach($cids as $cid)
+            if (is_numeric($this->mqttOID))
                 {
-                $regName=IPS_GetName($cid);
-                if ($regName=="Value")          $this->statusId=$cid;           // Value, das ist der Wert der sich ändert, hier wahrscheinlich JSON Format
+                echo "construct get MQTT Client Device ID : ".$this->mqttOID;
+                $cids = IPS_GetChildrenIDs($this->mqttOID);           // für jede Instanz die Children einsammeln
+                foreach($cids as $cid)
+                    {
+                    $regName=IPS_GetName($cid);
+                    if ($regName=="Value")          $this->statusId=$cid;           // Value, das ist der Wert der sich ändert, hier wahrscheinlich JSON Format
+                    }
                 }
             }
 
@@ -85,6 +89,7 @@
 			            
             if ($this->statusId == $variable)                   // Value, alles in Ordnung        
                 {
+                $result=$log->MQTT_LogValue($value);
                 //$result=$log->Switch_LogValue("State");                    
                 //$module->SyncState($value, $this, $debug);               // debug level
                 }
@@ -198,15 +203,15 @@
             
                 // Get Category to store the Move-LogNachrichten und Spiegelregister	
                 $this->MQTTNachrichtenID  = $this->CreateCategoryNachrichten("MQTT",$this->CategoryIdData);
-                $this->MQTTAuswertungID   = $this->CreateCategoryAuswertung("Switch",$this->CategoryIdData);;
+                $this->MQTTAuswertungID   = $this->CreateCategoryAuswertung("MQTT",$this->CategoryIdData);;
                 if ($this->debug) echo "  MQTT_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)." anlegen : [".$this->MQTTNachrichtenID.",".$this->MQTTAuswertungID."]\n";
 
                 // lokale Spiegelregister aufsetzen 
                 if ($variable<>null)
                     {
                     $this->variable=$variable;   
-                    if ($this->debug) echo "      Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$this->SwitchAuswertungID." ".IPS_GetName($this->SwitchAuswertungID)." anlegen.\n";
-                    $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->SwitchAuswertungID,0,'~Switch');                   // $this->variableLogID schreiben
+                    if ($this->debug) echo "      Lokales Spiegelregister als String auf ".$this->variablename." ".$this->MQTTAuswertungID." ".IPS_GetName($this->MQTTAuswertungID)." anlegen.\n";
+                    $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->MQTTAuswertungID,3,"");                   // $this->variableLogID schreiben
                     }
                 $directory=$this->configuration["LogDirectories"]["SwitchLog"];
                 $this->filename=$directory.str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $this->variablename)."_Switch.csv";   
@@ -244,11 +249,11 @@
 
 		function MQTT_LogValue($param=false)
 			{
-			$result=GetValueFormatted($this->variable);
-			if ($param=="State") SetValue($this->variableLogID,GetValue($this->variable));          // nur Status wird gespiegelt
-			echo "Neuer Wert fuer $param ".$this->variablename." ist ".GetValueFormatted($this->variable).", ".$this->variableLogID." ist updated.\n";
+			$result=GetValue($this->variable);
+			SetValue($this->variableLogID,GetValue($this->variable));          // nur Status wird gespiegelt
+			echo "Neuer Wert fuer $param ".$this->variablename." ist ".GetValue($this->variable).", ".$this->variableLogID." ist updated.\n";
 			//parent::LogMessage($result);
-			parent::LogNachrichten($this->variablename." ($param) mit Wert ".$result);
+			parent::LogNachrichten($result);
 			//echo "done.\n";
 			}
 

@@ -1216,6 +1216,12 @@ class SNMPObj
 
 /* MQTT Funktionen zusammenlegen
  *
+ *  __construct             ruft analyseClientConfig auf um $instanceList zu setzen
+ *  analyseClientConfig
+ *  showTableOfInstances    eine Tabelle anzeigen
+ *  createInstanceByTopic   ein topic in Liste suchen, wenn nich nicht angelegt neu anlegen
+ *  getInstanceByTopic
+ *  getRegisterFromClientId     findet aktuell das letze Child der Client Instanz, sollte aber nur Value sein 
  *
  *
  */
@@ -1430,6 +1436,39 @@ class MQTT_OperationCenter
             return ($clientDeviceID);
             }
 
+        }
+
+    public function getInstanceByTopic($findtopic)
+        {
+        $found=false;
+        foreach ($this->instanceList as $client => $entry)
+            {
+            //echo "  ".str_pad($client,8).str_pad(IPS_GetName($client),30).str_pad($entry["Type"],6);
+            $topic=$entry["Topic"];
+            //echo str_pad($topic,30);
+            if ($topic == $findtopic) $found=$client;
+
+            if (isset($entry["SendTopic"])) 
+                {
+                $sendtopic=$entry["SendTopic"];
+                if ($sendtopic == $findtopic) $found=$client;
+                //echo str_pad($sendtopic,30);
+                }
+            //else echo str_pad("",30);
+            }
+        return ($found);
+        }
+
+    public function getRegisterFromClientId($clientID)
+        {
+        $childs=IPS_GetChildrenIDs($clientID);
+        $count=0;
+        foreach ($childs as $child)
+            {
+            $count++;
+            }
+        if ($count>1) echo "getRegisterFromClientId, too many results. Other type, json decoded ? \n";
+        return ($child);
         }
 
     public function publishValue($valueId)

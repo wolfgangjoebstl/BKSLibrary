@@ -616,10 +616,11 @@ class Logging
         //echo "Verzeichnis korrigiert: $input\n";
         }
 
-    /* in CustomComponent Data werden immer zwei paare an Kategorien erstellt. Auswertung und Nachrichten. Der erste Teil ist Variable.
+    /* Logging::CreateCategoryAuswertung
+     * vereinfachtes Anlegen der Auswertung Categories
+     * in CustomComponent Data werden immer zwei paare an Kategorien erstellt. Auswertung und Nachrichten. Der erste Teil ist Variable.
      *
      */
-
     public function CreateCategoryAuswertung($name,$CategoryIdData)
         {
         $name .= "-Auswertung";
@@ -634,6 +635,9 @@ class Logging
         return ($MoveAuswertungID);
         }
 
+    /* Logging::CreateCategoryNachrichten
+     * vereinfachtes Anlegen der Nachrichten Categories
+     */
     public function CreateCategoryNachrichten($name,$CategoryIdData)
         {
         /* Create Category to store the Move-LogNachrichten */	

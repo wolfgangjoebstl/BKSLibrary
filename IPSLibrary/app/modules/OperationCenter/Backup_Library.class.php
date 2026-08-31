@@ -33,7 +33,6 @@ IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules:
  *
  * diese Klassen werden hier behandelt, waren vorher in der OperationCenter_Library
  *
- * Backup
  *
  *
  */

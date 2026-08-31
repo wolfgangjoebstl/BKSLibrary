@@ -57,7 +57,7 @@
 	 */
 
 
-	/******************************************************
+/******************************************************  Init 
 	 *
 	 * INIT, Init
 	 *
@@ -173,6 +173,9 @@
 	//$OperationCenterConfig = $OperationCenter->oc_Configuration;			// alter zugriff direkt auf die Config Variable
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
+    
+    $OperationConfig=new OperationCenterConfig();
+    $configSetup=$OperationConfig->setSetup();                  // geich wie $OperationCenterSetup
 
 	$modulhandling = new ModuleHandling();
 	
@@ -1250,8 +1253,6 @@ if ($oplevel>0)
 
 	*************************************************************/
 
-    $OperationConfig=new OperationCenterConfig();
-    $configSetup=$OperationConfig->setSetup();
     $configuration=$OperationConfig->setConfiguration()["CCU"];
     $ccuConfig = $OperationConfig->getCCUConfig($configuration);
 
@@ -1675,7 +1676,7 @@ if ($oplevel>1)
 		}
 
     }
-if ($oplevel>2)
+if ($oplevel>2)                 // Init HM Inventory, MQTT Gerätedarstellung
     {        
 
 	/********************************************************
@@ -1751,65 +1752,65 @@ if ($oplevel>2)
                 }
             }
 
-    $daysback=10; 
-    //$debug=true;
-    print_r($ccuConfig);
-    foreach ($ccuConfig as $index=>$entry)
-        {
-        //echo "$index \n";
-        if ( (isset($entry["found"])) && (isset($entry["OID"])) )             // muss nur da sein damit die Variablen aufgebaut werden
+        $daysback=10; 
+        //$debug=true;
+        print_r($ccuConfig);
+        foreach ($ccuConfig as $index=>$entry)
             {
-            // EventControl
-            $instanceName=IPS_GetName($entry["OID"]);
-            // initialises all copunters
-            $CloseOpenID        = CreateVariableByName($categoryId_EventControl, $instanceName."_SocketStatus", 1);  
-            $ccuStatusID        = CreateVariableByName($categoryId_EventControl, $instanceName."_CCUStatus", 1);                   // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
-            $timeOfLastResetID  = CreateVariableByName($categoryId_EventControl, $instanceName."_TimeOfLastReset", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
-            $resetCounterID     = CreateVariableByName($categoryId_EventControl, $instanceName."_ResetCounter", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
-            $ResetActiveID      = CreateVariableByName($categoryId_EventControl, $instanceName."_ResetActive", 0);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
-            $logLevelID         = CreateVariableByName($categoryId_EventControl, $instanceName."_logLevel", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
-
-            SetValue($timeOfLastResetID,time());
-            SetValue($resetCounterID,0);
-            SetValue($ResetActiveID,false);
-            SetValue($logLevelID,3);                                        // 3 log all events
-            SetValue($ccuStatusID,0);                                   // 400 reset process still in process
-
-            echo "   ".str_pad($instanceName,35)." $CloseOpenID \n";
-            $daysback=1;
-            $CloseOpenID    = $OperationCenter->setDebugArchiveVar($CloseOpenID,$daysback,$debug);
-            $resetCounterID = $OperationCenter->setDebugArchiveVar($resetCounterID,$daysback,$debug);
-                /* wie setRebootVar, unterfunktion machen
-                if (AC_GetLoggingStatus($archiveHandlerID,$CloseOpenID) === false)
-                    { // nachtraeglich Loggingstatus setzen
-                    AC_SetLoggingStatus($archiveHandlerID,$CloseOpenID,true);
-                    AC_SetAggregationType($archiveHandlerID,$CloseOpenID,0);
-                    IPS_ApplyChanges($archiveHandlerID);
-                    }
-                else
-                    $werte = AC_GetLoggedValues($archiveHandlerID, $CloseOpenID, time()-$daysback*24*60*60, time(),1000); 
-                    if ($debug) 
-                        {
-                        echo "Aufgezeichnete Werte für ".IPS_GetName($CloseOpenID)." über das Verhalten des Reboot Switch Counters:\n";
-                        //print_r($werte);
-                        if (count($werte))
-                            {
-                            echo "       Datum/Zeit           Wert   Dauer zwischen Werten\n";
-                            foreach ($werte as $wert)
-                                {
-                                //print_r($wert);
-                                echo "        ".date("d.m.Y H:i:s",$wert["TimeStamp"]);
-                                echo  "  ".$wert["Value"]."   ".$wert["Duration"]."\n";             // nur beim ersten Wert ändert sich Dauer
-                                }
-                            }
-                        } */
-            if ($entry["AUTOCLOSEOPEN"])
+            //echo "$index \n";
+            if ( (isset($entry["found"])) && (isset($entry["OID"])) )             // muss nur da sein damit die Variablen aufgebaut werden
                 {
-                }
+                // EventControl
+                $instanceName=IPS_GetName($entry["OID"]);
+                // initialises all copunters
+                $CloseOpenID        = CreateVariableByName($categoryId_EventControl, $instanceName."_SocketStatus", 1);  
+                $ccuStatusID        = CreateVariableByName($categoryId_EventControl, $instanceName."_CCUStatus", 1);                   // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+                $timeOfLastResetID  = CreateVariableByName($categoryId_EventControl, $instanceName."_TimeOfLastReset", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+                $resetCounterID     = CreateVariableByName($categoryId_EventControl, $instanceName."_ResetCounter", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+                $ResetActiveID      = CreateVariableByName($categoryId_EventControl, $instanceName."_ResetActive", 0);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
+                $logLevelID         = CreateVariableByName($categoryId_EventControl, $instanceName."_logLevel", 1);                    // Category, Name, 0 Boolean 1 Integer 2 Float 3 String 
 
-            }           // ende if found
-        else echo "not found ".json_encode($entry)."\n";
-        }               // ende foreach
+                SetValue($timeOfLastResetID,time());
+                SetValue($resetCounterID,0);
+                SetValue($ResetActiveID,false);
+                SetValue($logLevelID,3);                                        // 3 log all events
+                SetValue($ccuStatusID,0);                                   // 400 reset process still in process
+
+                echo "   ".str_pad($instanceName,35)." $CloseOpenID \n";
+                $daysback=1;
+                $CloseOpenID    = $OperationCenter->setDebugArchiveVar($CloseOpenID,$daysback,$debug);
+                $resetCounterID = $OperationCenter->setDebugArchiveVar($resetCounterID,$daysback,$debug);
+                    /* wie setRebootVar, unterfunktion machen
+                    if (AC_GetLoggingStatus($archiveHandlerID,$CloseOpenID) === false)
+                        { // nachtraeglich Loggingstatus setzen
+                        AC_SetLoggingStatus($archiveHandlerID,$CloseOpenID,true);
+                        AC_SetAggregationType($archiveHandlerID,$CloseOpenID,0);
+                        IPS_ApplyChanges($archiveHandlerID);
+                        }
+                    else
+                        $werte = AC_GetLoggedValues($archiveHandlerID, $CloseOpenID, time()-$daysback*24*60*60, time(),1000); 
+                        if ($debug) 
+                            {
+                            echo "Aufgezeichnete Werte für ".IPS_GetName($CloseOpenID)." über das Verhalten des Reboot Switch Counters:\n";
+                            //print_r($werte);
+                            if (count($werte))
+                                {
+                                echo "       Datum/Zeit           Wert   Dauer zwischen Werten\n";
+                                foreach ($werte as $wert)
+                                    {
+                                    //print_r($wert);
+                                    echo "        ".date("d.m.Y H:i:s",$wert["TimeStamp"]);
+                                    echo  "  ".$wert["Value"]."   ".$wert["Duration"]."\n";             // nur beim ersten Wert ändert sich Dauer
+                                    }
+                                }
+                            } */
+                if ($entry["AUTOCLOSEOPEN"])
+                    {
+                    }
+
+                }           // ende if found
+            else echo "not found ".json_encode($entry)."\n";
+            }               // ende foreach
 
 
 
@@ -1880,7 +1881,59 @@ if ($oplevel>2)
             }
         }
     }
-if ($oplevel>3)
+
+	/********************************************************
+	 *
+	 *		INIT MQTT Geraete Darstellung 
+     *
+     * 
+	 *
+	 ***************************************************/
+
+    /* KeepAlive Mode, erfordert $configSetup mit
+     *   ConnectionID       vom MQTT Client der auf KNG47 Socket zeigt
+     *   Client Mode
+     *   Topic ist fix server/announce
+     *
+     * Der MQTT Client muss angegeben werden, damit die Verbindung zum MQTT Server funktioniert
+     *
+     */
+    $categoryId=CreateCategoryByName(0,"MQTT",0);       // Parent Name Position   
+
+    // Basic Config
+
+        // MQTT Client mit username und password, topics subscribed
+        // MQTT Socket mit KBG47 als Tailscale Host
+
+    // Special Config
+    $findtopic="server/announce";
+    echo "Install MQTT KeepAlive Mode:\n";
+    if (isset($configSetup["MQTT"]["KeepAlive"]))           // operationCenter Install, KeepAlive 
+        {
+        $configmqtt=$configSetup["MQTT"]["KeepAlive"];
+        print_r($configmqtt);
+        $clientmode=true; $connectionID=false;
+        if ( (isset($configmqtt["Mode"])) && ($configmqtt["Mode"]=="Server") ) 
+            {
+            echo "Server Mode :\n";
+            $clientmode=false;
+            }
+        if (isset($configmqtt["Gateway"]["OID"])) $connectionID=$configmqtt["Gateway"]["OID"];
+        if ($connectionID && $clientmode) 
+            {
+            $mqtt = new MQTT_OperationCenter();  
+            $mqtt->createInstanceByTopic($findtopic,$categoryId,$connectionID);
+            }
+        else echo "    Configuration incomplete.\n";
+        }
+    else echo "     not activated.";
+
+    /*-------------------------------------------------
+    *
+    * Webfront Installation
+    *
+    *---------------------------------------------------*/
+if ($oplevel>3)                 // Webfront Install
     {
     /* easySetupWebfront braucht im einfachsten Fall folgende Struktur
      * Tabpane 

@@ -52,7 +52,7 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
 
 $ExecuteExecute=true;             	// Execute machen
 $debug=false;	                    // keine lokalen Echo Ausgaben
-if ($_IPS['SENDER']=="Execute") $debug=true;
+if ($_IPS['SENDER']=="Execute") $debug=true;            // mit 2 noch mehr Ausgaben
 
 /******************************************************
 
@@ -161,7 +161,9 @@ if ($_IPS['SENDER']=="Execute") $debug=true;
 	**********************************************************/
 
     $mqtt = new MQTT_OperationCenter();
-    $tim21ID = @IPS_GetEventIDByName("MQTTSync",$scriptId);	                // die Tastertabelle updaten, vielleicht findet sich noch etwas
+    $tim21ID = @IPS_GetEventIDByName("MQTTSync",$scriptId);	                // MQTT announce schicken für Auswertungen
+
+    if ($debug) echo "Timerkonfiguration abgeschlossen, Aktuell vergangene Zeit :".(microtime(true)-$startexec)." Sekunden\n";
 
 /*********************************************************************************************/
 
@@ -211,7 +213,8 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
     
     $DeviceManager = new DeviceManagement();                            // stürzt aktuell mit HMI_CreateReport ab
     //$DeviceManagerHomematic = new DeviceManagement_Homematic();         // deshalb diese class verwenden
-    
+	$LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
+    if ($debug) echo "Logging aktiviert, OperationsCenters hochgefahren, abgeschlossen, Aktuell vergangene Zeit :".(microtime(true)-$startexec)." Sekunden\n";
 
 /**********************************
  *
@@ -219,10 +222,9 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
  *
  *************************************/
 
-	$BackupCenter=new BackupIpsymcon($subnet);
-
-	$LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
-
+	$BackupCenter=new BackupIpsymcon($subnet,$debug);          // braucht super lange
+    if ($debug) echo "BackupCenter Init abgeschlossen, Aktuell vergangene Zeit :".(microtime(true)-$startexec)." Sekunden\n";
+    
 /***********************************************
  *
  * Homematic RSSI Werte auslesen
@@ -246,6 +248,7 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$ActionButton+=$DeviceManager->get_ActionButton();
     //$ActionButton+=$DeviceManagerHomematic->get_ActionButton();               // keine zusätzlichen Buttons
 	$ActionButton+=$BackupCenter->get_ActionButton();
+    if ($debug) echo "Init abgeschlossen, Aktuell vergangene Zeit :".(microtime(true)-$startexec)." Sekunden\n";
 
 /********************************************************************************************
  *  HMI Buttons in Doctor Bag -> HMI
@@ -676,7 +679,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 
     /* Timer 2 Emulation/Simulation */
         echo "\n=================================================================\n";
-        echo "Timer 2 showCamCaptureFiles und showCamSnapshots ausführen:\n\n";
+        echo "Timer 2 showCamCaptureFiles und showCamSnapshots ausführen:     , Aktuell vergangene Zeit :".(microtime(true)-$startexec)." Sekunden\n";
         if (isset ($OperationCenterConfig['CAM']))
             {
             $count=0;
@@ -866,7 +869,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
             //$OperationCenter->get_routerdata_RT1900($router,true);
 			}
 		}
-
+    echo "    Router, Aktuell vergangene Zeit :".(microtime(true)-$startexec)." Sekunden\n";
 	echo "============================================================================================================\n";
 
 	/********************************************************
@@ -875,15 +878,18 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 
 	//SysPingAllDevices($OperationCenter,$log_OperationCenter);
 	//$OperationCenter->SysPingAllDevices($log_OperationCenter);
+    if ($debug>1)     // sehr lange Laufzeit, nur bei Debug=2
+        {
+        $homematicOperation  = new HomematicOperation();
+                
+        $homematicOperation->ccuSocketStatus($log_OperationCenter);        // true für Debug
+        $homematicOperation->ccuSocketDutyCycle($log_OperationCenter,true);      // called every hour, internal controled by variable in count5mins
+        $pingOperation->SysPingAllDevices($log_OperationCenter);          
+        $pingOperation->ccu_checkReboot($OperationCenterConfig["CCU"],$debug);          // true for debug
 
-    $homematicOperation  = new HomematicOperation();
-			
-    $homematicOperation->ccuSocketStatus($log_OperationCenter);        // true für Debug
-    $homematicOperation->ccuSocketDutyCycle($log_OperationCenter,true);      // called every hour, internal controled by variable in count5mins
-    $pingOperation->SysPingAllDevices($log_OperationCenter);          
-    $pingOperation->ccu_checkReboot($OperationCenterConfig["CCU"],$debug);          // true for debug
-
-	echo "============================================================================================================\n";
+        echo "    SysPing, Aktuell vergangene Zeit :".(microtime(true)-$startexec)." Sekunden\n";
+        echo "============================================================================================================\n";
+        }
 
 	/********************************************************
     *
@@ -915,11 +921,18 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
   	einmal als aktuelle Werte und einmal als historische Werte
 	*************************************************************************************/
-	echo "============================================================================================================\n";
-	echo "Operation center, Filestatus (Send_status) berechnen.\n";
     IPSUtils_Include ("SendStatus_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-	$OperationCenter->FileStatus();             // Teil von Timer 7
-	
+    if ($debug>1)     // sehr lange Laufzeit, nur bei Debug=2
+        {
+        echo "============================================================================================================\n";
+        echo "Operation center, Filestatus (Send_status) berechnen.\n";
+        $OperationCenter->FileStatus();             // Teil von Timer 7
+        echo "     Filestatus Berechnung durchgelaufen, Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+        }
+
+    /*********************************************************************
+     *  AMIS Registertabellen
+     */
 	if (isset ($installedModules["Amis"]))
 		{
 		echo "============================================================================================================\n";
@@ -936,27 +949,33 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 		$regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);
 		$Meter=$amis->writeEnergyRegistertoArray($MeterConfig);
 		SetValue($tableID,$amis->writeEnergyRegisterTabletoString($Meter));
-		SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));		
+		SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));	
+        echo "     AMIS Tabellenberechnung durchgelaufen, Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
 		}				
 
 	/************************************************************************************
 	 * System Informationen berechnen
 	 *
 	 *************************************************************************************/
+    if ($debug>1)     // sehr lange Laufzeit, nur bei Debug=2
+        {
+        echo "============================================================================================================\n";
+        echo "Operation center, SystemInfo.\n";
 
-	echo "============================================================================================================\n";
-	echo "Operation center, SystemInfo.\n";
+        //$OperationCenter->SystemInfo();
+        $sysOps->getProcessListFull($fileRead);
 
-	//$OperationCenter->SystemInfo();
-    $sysOps->getProcessListFull($fileRead);
-
-    // ButtonTable erstellen
-
+        // ButtonTable erstellen
+        echo "SystemInfo mit getProcessListFull durchgelaufen, Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+        }
     echo "========================================================================\n";    
     echo "Button Table erstellen:\n";  
-    $debug=false;                           // ohne Debug, an den vielen Ausgaben sparen         
-    $testMovement = new TestMovement($debug);
-    $testMovement->syncEventList($debug);       // speichert eventList und eventListDelete, früher Teil des constructs
+    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+
+    $debugmove=false;                           // ohne Debug, an den vielen Ausgaben sparen         
+    $testMovement = new TestMovement($debugmove);
+    $testMovement->syncEventList($debugmove);       // speichert eventList und eventListDelete, früher Teil des constructs
     if (false)
         {
         $eventListforDeletion = $testMovement->getEventListforDeletion();
@@ -1000,7 +1019,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
         }
     $testMovement->setEventListFromConfigFile();            //IPS MessageHandler Configuration im neuen Config Format
     //nicht nur die CustomComponents Events bearbeiten, sondern auch Autosteuerungs Events anschauen, hier die Liste erstellen
-    $eventlist=$testMovement->getAutoEventListTable($autosteuerung_config,$debug);
+    $eventlist=$testMovement->getAutoEventListTable($autosteuerung_config,$debugmove);
 
     if (false)
         {
@@ -1016,13 +1035,13 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
     $buttonlist=array();
     foreach ($eventlist as $event)
         {
-        echo $event["Name"];
+        if ($debugmove) echo "     ".$event["Name"];
         if ( (isset($event["Homematic"])) && ($event["Homematic"]=="Button") )
             { 
-            echo "       ".$event["Pfad"];
+            if ($debugmove) echo "       ".$event["Pfad"];
             $buttonlist[]=$event;
             } 
-        echo "\n";
+        if ($debugmove) echo "\n";
         }
     //print_r($buttonlist);
     //echo "=========================================================\n";
@@ -1033,8 +1052,42 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
     echo $html;
     if ($TableEventsButton_ID) SetValue($TableEventsButton_ID,$html);    
 
+	/************************************************************************************
+	 * MQTT Darstellungen und Abfragen
+	 *
+	 *************************************************************************************/
+    echo "========================================================================\n";  
+    if (isset($OperationCenterSetup["MQTT"]))
+        {
+        echo "\nVorhandene, konfigurierte MQTT Funktionen:\n";
+        $mqtt = new MQTT_OperationCenter();     
+        //print_R($OperationCenterSetup["MQTT"]);
+        if (isset($OperationCenterSetup["MQTT"]["KeepAlive"]))           // operationCenter Install, KeepAlive 
+            {
+            echo "   MQTT KeepAlive Mode:\n";
+            $configmqtt=$OperationCenterSetup["MQTT"]["KeepAlive"];
+            print_r($configmqtt); 
+            if (isset($configmqtt["Gateway"]["OID"])) $connectionID=$configmqtt["Gateway"]["OID"]; 
+            else $connectionID=false; 
+            if ( (isset($configmqtt["Mode"])) && ($configmqtt["Mode"]=="Server") ) 
+                {
+                echo "      Server Mode :\n";
+                $clientmode=false;
+                }
+            else echo "      Client Mode :  $connectionID  ".IPS_GetName($connectionID)."\n";
+            echo "\MQTT Table of Instances:\n";
+            $mqtt->showTableOfInstances();
+            }
+        }
+    else 
+        {
+        echo "No MQTT Configurations available : "; 
+        print_R($OperationCenterSetup);
+        }
+
 	echo "============================================================================================================\n";
-	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+	echo "Ende Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n\n";
+
 
 
 	} /* ende Execute */
@@ -1612,7 +1665,22 @@ if ($_IPS['SENDER']=="TimerEvent")
                 }
             break;
         case $tim21ID:              // Publish MQTT Status
-            //$mqtt->publishValue(12345);
+            if (isset($OperationCenterSetup["MQTT"]["KeepAlive"]))           // operationCenter Install, KeepAlive 
+                {
+                if ( (isset($configmqtt["Mode"])) && ($configmqtt["Mode"]=="Server") )                     
+                    {
+
+                    }
+                else
+                    {
+                    $findtopic="server/announce";
+                    $client = $mqtt->getInstanceByTopic($findtopic);
+                    $child = $mqtt->getRegisterFromClientId($client);
+                    echo "Found Child $child of Instance $client.\n";
+                    //$child=24934;
+                    RequestAction($child,date("H:i:s d.m.Y")." Alive ".IPS_GetName(0));
+                    }
+                }
             break;
 		default:                // unbekannt
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");

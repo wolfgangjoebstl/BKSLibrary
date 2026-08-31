@@ -1816,6 +1816,9 @@ class RA_Autosteuerung extends RemoteAccess
  *
  *
  * uses $eventConfiguration
+ *  readEventConfiguration
+ *  writeEventConfiguration
+ *
  *  Get_EventConfigurationAuto
  *  Get_EventConfigurationCust
  *  StoreEventConfiguration
@@ -2115,7 +2118,7 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 		 *
 		 * @param integer $variable ID der auslösenden Variable
 		 */
-		public function CheckEvent($variable) 
+		public function CheckEvent($variable,$debug=false) 
             {
 			$configurationAuto = self::Get_EventConfigurationAuto();
 			$configurationCust = self::Get_EventConfigurationCust();
@@ -2143,6 +2146,7 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
                     {
 					throw new IPSMessageHandlerException('Invalid IPSMessageHandler Configuration, Event Defintion needs 3 parameters');
 				    }
+                if ($debug) echo "CheckEvent($variable) [0,1,2]: ".json_encode($params)."\n";
                 /* aus CreateObject
                  * $params = explode(',', $params);
                  * $object = new $params[0]($params[1],$params[2],$params[3],$params[4],$params[5],$params[6]);

@@ -158,6 +158,10 @@ class OperationCenterConfig
             configfileParser($configInput["FTP"], $config["FTP"], ["Directory","DIRECTORY","directory","dir"],"Directory","C:\Scripts");
             }    
 
+        /* MQTT Client/Server Configuration */
+        configfileParser($configInput, $configMQTT, ["MQTT","Mqtt","mqtt"],"MQTT",null);
+        if (isset($configMQTT)) $config["MQTT"]=$this->setMQTTConfig($configMQTT)["MQTT"];                      // MQTT Configurations, null if not
+
         /* Autostart, Selenium Handling */
         configfileParser($configInput, $config, ["SOFTWARE","Software","software"],"Software",null);    
 
@@ -484,6 +488,28 @@ class OperationCenterConfig
             $config[$entry["OID"]]["INDEX"]=$index;    
             }
         return ($config);
+        }
+
+    public function setMQTTConfig($mqttConfig,$debug=false)
+        {
+        $config=array();
+        $configAlive=array();
+        if (isset($mqttConfig["MQTT"]))          // ohne FTP keine weiteren Defaults
+            {  
+            if ($debug) { echo "Vorher "; print_r($mqttConfig["MQTT"]);  }
+            configfileParser($mqttConfig["MQTT"], $configAlive, ["KeepAlive","KEEPALIVE","keepalive","Keepalive"],"KeepAlive",null);    
+            if (isset($configAlive["KeepAlive"]))
+                {
+                configfileParser($configAlive["KeepAlive"], $config["MQTT"]["KeepAlive"], ["STATUS","Status","status","State"],"State","InActive"); 
+                configfileParser($configAlive["KeepAlive"], $config["MQTT"]["KeepAlive"], ["Mode","MODE","mode"],"Mode","Client");    
+                configfileParser($configAlive["KeepAlive"], $config["MQTT"]["KeepAlive"], ["Gateway","GATEWAY","gateway"],"Gateway",[]);    
+                // Interface
+                }
+            }
+
+        if ($debug) { echo "Nachher "; print_r($config); }
+        if (sizeof($config)==0) return ["MQTT"=>array()];
+        return($config);
         }
 
     }
@@ -4542,6 +4568,13 @@ class BackupIpsymcon extends OperationCenter
 
         $this->dosOps = new dosOps();     // create classes used in this class
         //$this->systemDir     = $this->dosOps->getWorkDirectory();
+
+        //echo "Construct BackupIpSymcon.\n";
+        $configuration        = $this->getConfigurationBackup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
+        $BackupDrive          = $configuration["Directory"];                    // für vorher nachher vergleich
+        $this->backupActive   = $this->setActive($configuration,$debug);
+        $this->SourceDrive    = IPS_GetKernelDirEx();           // das alte C:/IP-Symcon  - sollte eigentlich IPS_GetKernelDir() sein
+
         if ($debug) 
             {
             echo "class BackupIpsymcon: _construct\n";
@@ -4550,14 +4583,9 @@ class BackupIpsymcon extends OperationCenter
             echo "   OperatingSystem is ".$this->dosOps->evaluateOperatingSystem()."\n";
             echo "   install Dir is ".IPS_GetKernelDirEx()."\n";
             echo "   IPS platform is ".IPS_GetKernelPlatform()."\n";
+            echo "   Active           ".$this->backupActive."\n"; 
             }
 
-        //echo "Construct BackupIpSymcon.\n";
-        $configuration        = $this->getConfigurationBackup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
-        $BackupDrive          = $configuration["Directory"];                    // für vorher nachher vergleich
-        $this->backupActive   = $this->setActive($configuration,$debug);
-        $this->SourceDrive    = IPS_GetKernelDirEx();           // das alte C:/IP-Symcon  - sollte eigentlich IPS_GetKernelDir() sein
-	
 		/* Allgemeine Variablen am Webfront, oder im Data Bereich */		
 		$this->categoryId_BackupFunction	= IPS_GetObjectIdByName('Backup', $this->CategoryIdData);
 
@@ -4568,18 +4596,24 @@ class BackupIpsymcon extends OperationCenter
         $this->StatusSliderMaxcopyID            = IPS_GetObjectIdByName("Maxcopy per Session", $this->categoryId_BackupFunction);
 
         $this->StatusBackupID				= IPS_GetObjectIdByName("Status", $this->categoryId_BackupFunction);
-		if ($this->backupActive==false) SetValue($this->StatusSchalterBackupID,0);   // keinen andern Statuzustand erlauben wenn keine Konfiguration vorhanden
-		$this->ConfigurationBackupID		= IPS_GetObjectIdByName("Configuration", $this->categoryId_BackupFunction);
-		
-        $this->TokenBackupID		        = IPS_GetObjectIdByName("Token", $this->categoryId_BackupFunction);
-		$this->ErrorBackupID                = IPS_GetObjectIdByName("LastErrorMessage", $this->categoryId_BackupFunction);
-	    $this->ExecTimeBackupId             = IPS_GetObjectIdByName("ExecTime", $this->categoryId_BackupFunction);	
-        $this->TableStatusBackupId          = IPS_GetObjectIdByName("StatusTable", $this->categoryId_BackupFunction);      /* man kann in einer tabelle alles mögliche darstellen */
+		if ($this->backupActive==false) 
+            { 
+            SetValue($this->StatusSchalterBackupID,0);   // keinen andern Statuzustand erlauben wenn keine Konfiguration vorhanden
+            }
+        else
+            {
+            $this->ConfigurationBackupID		= IPS_GetObjectIdByName("Configuration", $this->categoryId_BackupFunction);
+            
+            $this->TokenBackupID		        = IPS_GetObjectIdByName("Token", $this->categoryId_BackupFunction);
+            $this->ErrorBackupID                = IPS_GetObjectIdByName("LastErrorMessage", $this->categoryId_BackupFunction);
+            $this->ExecTimeBackupId             = IPS_GetObjectIdByName("ExecTime", $this->categoryId_BackupFunction);	
+            $this->TableStatusBackupId          = IPS_GetObjectIdByName("StatusTable", $this->categoryId_BackupFunction);      /* man kann in einer tabelle alles mögliche darstellen */
 
-        $this->BackupDrive                  = $this->getAccessToDrive($configuration, $debug);                                                    // wenn notwendig Zugriff auf ein Netzlaufwerk erreichen, wie auch immer
-        if ((is_dir($this->BackupDrive))===false) $this->backupActive=false;
-        if ($this->debug) echo "BackupDrive configured with: $BackupDrive results into ".$this->BackupDrive."  Backup ist : ".($this->BackupDrive?"AKTIV":"DEAKTIVIERT")."\n";
-        $this->fileOps  = new fileOps($this->BackupDrive."Backup.csv"); 
+            $this->BackupDrive                  = $this->getAccessToDrive($configuration, $debug);                                                    // wenn notwendig Zugriff auf ein Netzlaufwerk erreichen, wie auch immer
+            if ((is_dir($this->BackupDrive))===false) $this->backupActive=false;
+            if ($this->debug) echo "BackupDrive configured with: $BackupDrive results into ".$this->BackupDrive."  Backup ist : ".($this->BackupDrive?"AKTIV":"DEAKTIVIERT")."\n";
+            $this->fileOps  = new fileOps($this->BackupDrive."Backup.csv"); 
+            }
         }
 
     /* adressing of local variables of class */
@@ -4594,8 +4628,10 @@ class BackupIpsymcon extends OperationCenter
     public function setActive($configuration,$debug=false)
         {
         if ($debug) print_r($configuration);
+        if (isset($configuration["Status"])===false) return (false);
+        if (is_bool($configuration["Status"]) && ($configuration["Status"]===true)) return (true);
         $status=strtoupper($configuration["Status"]);
-        if ( ($status=="ACTIVE") || ($status=="ENABLED") || ($status==true) ) return (true);       // das ist ein Wert für die Konfiguration im Configfile, aktiv oder disabled (true/false)
+        if ( ($status=="ACTIVE") || ($status=="ENABLED") ) return (true);       // das ist ein Wert für die Konfiguration im Configfile, aktiv oder disabled (true/false)
         else return (false);    			
         }
 
