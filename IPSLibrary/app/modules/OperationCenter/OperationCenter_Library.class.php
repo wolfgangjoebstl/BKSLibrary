@@ -498,13 +498,21 @@ class OperationCenterConfig
             {  
             if ($debug) { echo "Vorher "; print_r($mqttConfig["MQTT"]);  }
             configfileParser($mqttConfig["MQTT"], $configAlive, ["KeepAlive","KEEPALIVE","keepalive","Keepalive"],"KeepAlive",null);    
+            configfileParser($mqttConfig["MQTT"], $configAlive, ["Shelly","SHELLY","shelly","Shellies"],"Shelly",null);    
             if (isset($configAlive["KeepAlive"]))
                 {
                 configfileParser($configAlive["KeepAlive"], $config["MQTT"]["KeepAlive"], ["STATUS","Status","status","State"],"State","InActive"); 
                 configfileParser($configAlive["KeepAlive"], $config["MQTT"]["KeepAlive"], ["Mode","MODE","mode"],"Mode","Client");    
                 configfileParser($configAlive["KeepAlive"], $config["MQTT"]["KeepAlive"], ["Gateway","GATEWAY","gateway"],"Gateway",[]);    
+                configfileParser($configAlive["KeepAlive"], $config["MQTT"]["KeepAlive"], ["Interface","INTERFACE","interface","Socket","SOCKET","socket"],"Interface",[]);    
                 // Interface
                 }
+            if (isset($configAlive["Shelly"]))
+                {
+                configfileParser($configAlive["Shelly"], $config["MQTT"]["Shelly"], ["STATUS","Status","status","State"],"State","InActive");
+                configfileParser($configAlive["Shelly"], $config["MQTT"]["Shelly"], ["Gateway","GATEWAY","gateway"],"Gateway",[]);    
+                configfileParser($configAlive["Shelly"], $config["MQTT"]["Shelly"], ["Interface","INTERFACE","interface","Socket","SOCKET","socket"],"Interface",[]);    
+                }                
             }
 
         if ($debug) { echo "Nachher "; print_r($config); }
@@ -9348,7 +9356,8 @@ class statusDisplay
 /****************************************************************************************************************/
 
 /* Webfront Config Preparation for easysetupwebfront
- *
+ *      prepareHomematicInventory
+ *      prepareSystemStatus
  *
  */
 class WebfrontOrganisation extends OperationCenter
@@ -9362,7 +9371,6 @@ class WebfrontOrganisation extends OperationCenter
         {
         $CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
 
-        $paneName="Homematic";
         $webfront_links=array();
         $hmi=1; $order=100;
 
@@ -9374,15 +9382,14 @@ class WebfrontOrganisation extends OperationCenter
             foreach ($variables as $variableID) 
                 {
                 if ($debug) echo "    ".$variableID." ".IPS_GetName($variableID)."\n";
-                $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["NAME"]=IPS_GetName($variableID);
+                $webfront_links[IPS_GetName($categoryID)][$variableID]["NAME"]=IPS_GetName($variableID);
                 if (IPS_GetName($variableID)=="Sortieren") $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["ORDER"]=10;
-                else $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["ORDER"]=$order;
+                else $webfront_links[IPS_GetName($categoryID)][$variableID]["ORDER"]=$order;
                 $order += 10;
                 }
-            $webfront_links[$paneName][IPS_GetName($categoryID)]["@CONFIG"] = array("type" => "link", "name" => "HMI".$hmi, "icon"=>"Notebook",);               // um sicherzustellen dass nicht irrtümlich noch eine Unterkatgeorie erkannt wird
+            $webfront_links[IPS_GetName($categoryID)]["@CONFIG"] = array("type" => "link", "name" => "HMI".$hmi, "icon"=>"Notebook",);               // um sicherzustellen dass nicht irrtümlich noch eine Unterkatgeorie erkannt wird
             $hmi++;
             }
-        $webfront_links[$paneName]["@CONFIG"] = array("type" => "pane");
         
         if ($debug) print_r($webfront_links);
 
@@ -9438,6 +9445,59 @@ class WebfrontOrganisation extends OperationCenter
             $resultStream[4]["Data"]["Sort"]=$SysPingSortTableID;
             }
         print_R($resultStream);
+
+
+        /* Data avilable for display
+            *      SystemInfoOverview, Update          Used Windowsversion, Amount RAM etc. (sumTableHtml,Update)
+            */
+        $webfront_links["SystemStatus"] = array(
+                    "@CONFIG" => array(                 // TabPaneItem setzen, ist der Parent
+                                "style"         =>  "WFCSplitPanel",
+                                "width"         =>  67, "right"         => "Left", "left"          => "Right", "order"         => 900,  ),                          // 67% is the left side
+                    "Left"          => array(
+                        "@CONFIG" => array(                 // TabPaneItem setzen, ist der Parent
+                                    "style"         =>  "WFCSplitPanel",
+                                    "width"         =>  50, "order"         =>  20, "vertical"      =>  0,                          // false ist nicht erlaubt
+                            ),
+                        "Subleft" => array(
+                            $sumTableHtmlID => array(
+                                "NAME"				=> "sumTableHtml",
+                                "ORDER"				=> 10,
+                                "ADMINISTRATOR" 	=> true, "USER" => false, "MOBILE" => false, ),
+                            $SysPingUpdateID =>  array(
+                                "NAME"				=> "Update",
+                                "ORDER"				=> 10,
+                                "ADMINISTRATOR" 	=> true, "USER" => false, "MOBILE" => false, ),
+                            ),
+                        "Subright" => array(
+                            $SysPingTableID => array(
+                                "NAME"				=> "sysPingTableHtml",
+                                "ORDER"				=> 10,
+                                "ADMINISTRATOR" 	=> true, "USER" => false, "MOBILE" => false, ),
+                            $SysPingSortTableID =>  array(
+                                "NAME"				=> "SortPingTable",
+                                "ORDER"				=> 10,
+                                "ADMINISTRATOR" 	=> true, "USER"	=> false, "MOBILE" => false, ),
+                            ),
+                        ),         // ohne Eintrag in @CONFIG werden es zwei Categories
+                    "Right"         => array(
+                        "@CONFIG" => array(                 // TabPaneItem setzen, ist der Parent
+                                    "style"         =>  "WFCSplitPanel", ),
+                        "SubUp" => array(
+                            $MessageTableID => array(
+                                "NAME"				=> "Nachrichten",
+                                "ORDER"				=> 10,
+                                "ADMINISTRATOR" 	=> true,  "USER"				=> false,  "MOBILE"			=> false,  ),
+                            ),
+                        "SubDown" => array(
+                            $SysPingActivityTableID => array(
+                                "NAME"				=> "sysPingActivityTableHtml",
+                                "ORDER"				=> 10,
+                                "ADMINISTRATOR" 	=> true,  "USER"				=> false,   "MOBILE"			=> false,  ),
+                            ),
+                        ),
+                );
+
 
         }
 

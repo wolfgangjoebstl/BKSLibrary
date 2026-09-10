@@ -1777,6 +1777,11 @@ class Logging
         return($this->config);
         }
 
+    function StoreTableID()
+        {
+        return ($this->storeTableID);    
+        }
+
     /* Ausgabe message in einem File mit dem Namen log_File
      */
 

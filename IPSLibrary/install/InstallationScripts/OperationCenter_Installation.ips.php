@@ -93,7 +93,7 @@
         echo "Script Execute, Darstellung automatisch mit Debug aktiviert. \n";
         $debug=false;
         $execscript=false;
-        $oplevel=3;         // 3 without webfront install
+        $oplevel=4;         // 3 without webfront install
         }
     else 
         {
@@ -1662,7 +1662,7 @@ if ($oplevel>1)
 	
     echo "\n";	
     echo "Hue Bridge Instanzen suchen:\n";
-	$HUE=$modulhandling->getInstances('HUEBridge');	
+	$HUE=$modulhandling->getInstances('HUEBridge');	        // erst alte Bridges suchen
 	$countHue = sizeof($HUE);
 	echo "   Es gibt insgesamt ".$countHue." alte SymCon Hue Bridge Instanzen. Bitte umstellen auf HueV2.\n";
 	$HUE=$modulhandling->getInstances('HUE Bridge');	
@@ -1670,7 +1670,7 @@ if ($oplevel>1)
 	echo "   Es gibt insgesamt ".$countHue." neue SymCon Hue Bridge Instanzen.\n";    
 	if ($countHue>0)
 		{
-		$configHue=IPS_GetConfiguration($modulhandling->getInstances("HUEBridge")[0]);
+		$configHue=IPS_GetConfiguration($modulhandling->getInstances("HUE Bridge")[0]);             // das ist die neue Bridge
 		echo "   ".$configHue."\n";
 		$categoryId_Hue = CreateCategoryPath('Hardware.HUE');		
 		}
@@ -1728,11 +1728,11 @@ if ($oplevel>2)                 // Init HM Inventory, MQTT Gerätedarstellung
         $modulhandling = new ModuleHandling();              // neu initialisiseren, filter entfernen
         $discovery = $modulhandling->getDiscovery();
         $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Module hinzufügen
-        if ($debug) ; print_R($discovery);
+        if ($debug) print_R($discovery);
         echo "      Auswertung der SocketList (I/O Instanzen).\n";
         $socket=array();
         $socket = $topologyLibrary->get_SocketList($discovery,true);                // true Debug
-        if ($debug) ; print_r($socket);
+        if ($debug) print_r($socket);
         $countSocket=0;
         foreach ($socket as $modul => $module) 
             {
@@ -1754,7 +1754,7 @@ if ($oplevel>2)                 // Init HM Inventory, MQTT Gerätedarstellung
 
         $daysback=10; 
         //$debug=true;
-        print_r($ccuConfig);
+        if ($debug) print_r($ccuConfig);
         foreach ($ccuConfig as $index=>$entry)
             {
             //echo "$index \n";
@@ -1950,43 +1950,13 @@ if ($oplevel>3)                 // Webfront Install
      */
     $wo = new WebfrontOrganisation();
     $webfront_links = $wo->prepareHomematicInventory();
-    /*
-    $paneName="Homematic";
-    $webfront_links=array();
-    $hmi=1; $order=100;
-
-    $subCategories = IPS_GetChildrenIDs($CategoryIdHomematicInventory);
-    foreach ($subCategories as $categoryID) 
-        {
-        echo $categoryID." ".IPS_GetName($categoryID)."\n";
-        $variables = IPS_GetChildrenIDs($categoryID);
-        foreach ($variables as $variableID) 
-            {
-            echo "    ".$variableID." ".IPS_GetName($variableID)."\n";
-            $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["NAME"]=IPS_GetName($variableID);
-            if (IPS_GetName($variableID)=="Sortieren") $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["ORDER"]=10;
-            else $webfront_links[$paneName][IPS_GetName($categoryID)][$variableID]["ORDER"]=$order;
-            $order += 10;
-            }
-        $webfront_links[$paneName][IPS_GetName($categoryID)]["CONFIG"] = array("type" => "link", "name" => "HMI".$hmi, "icon"=>"Notebook",);               // um sicherzustellen dass nicht irrtümlich noch eine Unterkatgeorie erkannt wird
-        $hmi++;
-        }
-    $webfront_links[$paneName]["CONFIG"] = array("type" => "pane");
-    
-    print_r($webfront_links);
-    */
-
-    /* Webfront Darstellung für Homematic Inventory in Administrator
-     *
-     */
+    //print_r($webfront_links);
 
 	if ($WFC10_Enabled)
 		{
         echo "\n";
         $configWF = $configWFront["Administrator"];
-        //$configWF["Path"].=".Homematic";
         $tabPaneParent=$configWF["TabPaneItem"];
-        $configWF["TabPaneItem"]="Homematic";               //nur wenn kein @CONFIG
         $configWF["TabPaneParent"]=$tabPaneParent;
         echo "Homematic Module im Administrator Webfront $tabPaneParent mit Namen ".$configWF["TabPaneItem"]." abspeichern.\n";
         echo "Visualization Kategorie : ".$configWF["Path"]."\n";
@@ -1999,8 +1969,18 @@ if ($oplevel>3)                 // Webfront Install
         $config["Active"]=true;
 
         $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+        //$wfcHandling->deletePanes("OperationCenterTPAHomematic",true);
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,$config,true);            // true für Debug
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);
+
+        $wfcHandling->read_WebfrontConfig($WFC10_ConfigId); 
+        $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
+        foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
+            {
+            echo "\n------$index:\n";
+            $wfcHandling->print_wfc($wfc[$index]);
+            } 
+
         }
     }
 if ($oplevel>4)

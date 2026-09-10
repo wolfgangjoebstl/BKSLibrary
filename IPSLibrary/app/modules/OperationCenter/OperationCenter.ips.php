@@ -1667,6 +1667,7 @@ if ($_IPS['SENDER']=="TimerEvent")
         case $tim21ID:              // Publish MQTT Status
             if (isset($OperationCenterSetup["MQTT"]["KeepAlive"]))           // operationCenter Install, KeepAlive 
                 {
+                $configmqtt=$OperationCenterSetup["MQTT"]["KeepAlive"];
                 if ( (isset($configmqtt["Mode"])) && ($configmqtt["Mode"]=="Server") )                     
                     {
 

@@ -2008,6 +2008,8 @@ function send_status($aktuell, $startexec=0, $debug=false)              // DEPRI
         }
 
     /* einfache CreateCategory Function
+     * sieht nach ob es die Kategorie mit dem Namen schon gibt, wenn nicht wird sie neu angelegt
+     * wenn es sie schon gibt wird nur die Position upgedatet
      */
     function CreateCategoryByName($parentID, $name, $position=0)
         {
@@ -19403,8 +19405,13 @@ class WfcHandling
                             if ($debug) echo "setupWebfrontEntry Typ 2.1, Kategorie Auswertung in $Name vorhanden oder Config für link level. Nur ein Pane erstellen. Active $active\n";
                             if ($active)
                                 {
-                                echo "CreateWFCItemCategory   ($tabItem, $WFC10_TabPaneItem,  $order, $Name, ,$categoryId_WebFrontTab)\n";    
-                                $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $Name, '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
+                                $configproc=array();
+                                ConfigFileParser($config,$configproc,["name","Name","NAME"],"name",$Name);
+                                ConfigFileParser($config,$configproc,["icon","Icon","ICON"],"icon","");
+                                //print_r($configproc);
+                                //CreateWFCItemCategory ($ItemId, $ParentId, $Position, $Title, $Icon="", $BaseId /*ID of Category*/, $BarBottomVisible='true' /*'true' or 'false'*/, $BarColums=9, $BarSteps=5, $PercentageSlider='true' /*'true' or 'false'*/ )
+                                echo "CreateWFCItemCategory   ($tabItem, $WFC10_TabPaneItem,  $order, ".$configproc["name"].", ,$categoryId_WebFrontTab)\n";    
+                                $this->CreateWFCItemCategory  ($tabItem, $WFC10_TabPaneItem,  $order, $configproc["name"], $configproc["icon"], $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);   
                                 if ($config !==false ) $this->createLinks($webfront_group,$scope,$categoryId_WebFrontTab,false,$debug);
                                 else $this->createGroupLinks($webfront_group,$scope,$categoryId_WebFrontTab,false,$debug);
                                 }
@@ -19930,15 +19937,26 @@ class WfcHandling
 
     public function deletePane($tabItem,$debug=false)
         {
+        if ($debug===false) $debug = $this->debug;
         if ( $this->exists_WFCItem($tabItem) )
             {
-            if ($this->debug) echo "deletePane, Webfront Config löscht TabItem : ".$tabItem."\n";
+            if ($debug) echo "deletePane, Webfront Config löscht TabItem : ".$tabItem."\n";
             $this->DeleteWFCItems($tabItem);
             }
         else
             {
-            if ($this->debug) echo "deletePane, Webfront Config TabItem : ".$tabItem." nicht mehr vorhanden.\n";
+            if ($debug) echo "deletePane, Webfront Config TabItem : ".$tabItem." nicht mehr vorhanden.\n";
             }	
+        }
+
+    public function deletePanes($tabItem,$debug=false)
+        {
+        if ($debug===false) $debug = $this->debug;
+        if (strlen($tabItem)>8)
+            {
+            if ($debug) echo "deletePanes, Webfront Config deletes all TabItems beginning with ".$tabItem."\n";
+            $this->DeleteWFCItems($tabItem);
+            }
         }
 
     }   // ende class

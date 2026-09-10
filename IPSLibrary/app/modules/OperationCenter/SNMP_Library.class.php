@@ -1215,33 +1215,39 @@ class SNMPObj
     }
 
 /* MQTT Funktionen zusammenlegen
+ * Fokus auf MQTT Client Devices, aber auch andere Funktionen
  *
- *  __construct             ruft analyseClientConfig auf um $instanceList zu setzen
- *  analyseClientConfig
- *  showTableOfInstances    eine Tabelle anzeigen
- *  createInstanceByTopic   ein topic in Liste suchen, wenn nich nicht angelegt neu anlegen
- *  getInstanceByTopic
+ *  __construct                 ruft analyseClientConfig auf um $instanceList zu setzen
+ *  analyseClientConfig         aus einer Liste an MQTT Client Devices eine gemeinsame KOnfiguration erstellen
+ *  showTableOfInstances        für die in der Klasse gespeicherte Konfiguration der MQTT Client Devices eine Tabelle ausgeben
+ *  createInstanceByTopic       ein topic in Liste suchen, wenn noch nicht angelegt neu anlegen
+ *  getInstanceByTopic          ein Topic in der in der Klasse gespeicherten Liste suchen
  *  getRegisterFromClientId     findet aktuell das letze Child der Client Instanz, sollte aber nur Value sein 
+ *  publishValue                Publish Keep Alive Statement
  *
+ *  getShellyDeviceConfig       aus den ShellyDevice Instances eine gemeinsame KOnfiguration erstellen, Ausgabe nach Shelly Serial oder INstances
+ *  getMQTTConfiguratorForm     aus den MQTT Client Configurator Instances eine Konfiguration herauslesen
  *
  */
 class MQTT_OperationCenter
     {
 
+    protected $modulhandling;
     protected $instanceList=array();
 
     public function __construct()
         {
-        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
-        $clients=$modulhandling->getInstances('MQTT Client Device');   
+        $this->modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        $clients=$this->modulhandling->getInstances('MQTT Client Device');   
 
         $this->instanceList=$this->analyseClientConfig($clients);
         }
 
     /* MQTT_OperationCenter::analyseClientConfig
+     * aus einer Liste an MQTT Client Devices eine gemeinsame KOnfiguration erstellen
      * Beispiel
-     *     $clients=$modulhandling->getInstances('MQTT Client Device');  
-     *
+     *      $clients = $modulhandling->getInstances('MQTT Client Device');  
+     *      $result  = analyseClientConfig($clients);
      * ausserhalb der function alle MQTT Clients ermitteln, dann in dieser function die Configuration dafür auslesen
      * auch die Instance Daten, damit die Connections ermittelt werden können
      */
@@ -1264,10 +1270,20 @@ class MQTT_OperationCenter
             $result[$client]=array();
             $configuration=json_decode(IPS_GetConfiguration($client),true);
             $gatewayID=$instanceInfo["ConnectionID"];
-
-            $gatewayName = IPS_GetName($gatewayID);
+            if (IPS_ObjectExists($gatewayID)) 
+                {
+                $gatewayName = IPS_GetName($gatewayID);
+                $gatewayConfig = json_decode(IPS_GetConfiguration($gatewayID),true);
+                //print_R($gatewayConfig);
+                }
+            else 
+                {
+                $gatewayName = "unknow instance";
+                $gatewayID=false;
+                }
             $result[$client]["GatewayID"]=$gatewayID;
             $result[$client]["GatewayName"]=$gatewayName;
+
             //print_R($configuration);
             $type=$configuration["Type"];
             $result[$client]["Type"]=$type;
@@ -1303,13 +1319,15 @@ class MQTT_OperationCenter
             else echo " ";  */          
             if ($gatewayID)          // es gibt eine Connection, weiter auswerten
                 {
+                $result[$client]["GatewayConfig"]=$gatewayConfig;                    
+
                 // Infos zum Gateway/Schnittstelle auslesen
                 $parentObj = IPS_GetInstance($gatewayID);
                 $connectionID = $parentObj['ConnectionID'];
                 $result[$client]["InterfaceID"]=$connectionID;
                 $parentModule = IPS_GetModule($parentObj['ModuleInfo']['ModuleID'])["ModuleName"];
                 $result[$client]["InterfaceModule"]=$parentModule;
-                if ($debug) echo str_pad($gatewayID,10).str_pad(IPS_GetName($gatewayID),30);
+                if ($debug) echo str_pad($gatewayID,8).str_pad(IPS_GetName($gatewayID),32);
                 if ($connectionID)  
                     {
                     //echo "   $connectionID ".str_pad(IPS_GetName($connectionID),45);
@@ -1318,6 +1336,7 @@ class MQTT_OperationCenter
                     //print_r($config);
                     if ($debug) echo $config["Host"]."  \n";
                     $result[$client]["Host"]=$config["Host"];
+                    $result[$client]["Port"]=$config["Port"];
                     }
                 elseif ($debug)  echo "  \n";
                 //print_R($parentObj);
@@ -1337,7 +1356,10 @@ class MQTT_OperationCenter
         return ($result);    
         }
 
-    public function showTableOfInstances()
+    /* MQTT_OperationCenter::showTableOfInstances
+     * für die in der Klasse gespeicherte Konfiguration der MQTT Client Devices eine Tabelle ausgeben
+     */
+    public function showTableOfInstances($gatewayID=false)
         {
         $first=true;
         foreach ($this->instanceList as $client => $entry)
@@ -1345,21 +1367,24 @@ class MQTT_OperationCenter
             if ($first)
                 {
                 $first=false;
-                echo "  ".str_pad("#",8).str_pad("Name",30)."Type  ".str_pad("Topic",30).str_pad("SendTopic",30).str_pad("Gateway ID/Name",40)."Interface Host IP    "."\n";
+                echo "  ".str_pad("#",8).str_pad("Name",30)."Type  ".str_pad("Topic",30).str_pad("SendTopic",30).str_pad("Gateway ID/Name",40)."Interface ".str_pad("Host IP",22)."Port    "."\n";
+                }
+            if ($gatewayID)         // Filter on GatewayID
+                {
+                if ( ($entry["GatewayID"]) && ($entry["GatewayID"] !== $gatewayID) ) continue;
                 }
             echo "  ".str_pad($client,8).str_pad(IPS_GetName($client),30);
             echo str_pad($entry["Type"],6);
             echo str_pad($entry["Topic"],30);
             if (isset($entry["SendTopic"])) echo str_pad($entry["SendTopic"],30);
             else echo str_pad("",30);
-
             if ($entry["GatewayID"])          // es gibt eine Connection, weiter auswerten
                 {
                 echo str_pad($entry["GatewayID"],10).str_pad(IPS_GetName($entry["GatewayID"]),30);
                 if ($entry["InterfaceID"])  
                     {
                     echo str_pad($entry["InterfaceID"],10);
-                    echo $entry["Host"]."  \n";
+                    echo str_pad($entry["Host"],22).$entry["Port"]."  \n";
                     }
                 else echo "  \n";
                 } 
@@ -1367,6 +1392,9 @@ class MQTT_OperationCenter
             }
         }
 
+    /* MQTT_OperationCenter::createInstanceByTopic   
+     * ein Topic in Liste suchen, wenn noch nicht angelegt neu anlegen
+     */
     public function createInstanceByTopic($findtopic,$parent,$connectionID)
         {
         $found=false;
@@ -1435,9 +1463,11 @@ class MQTT_OperationCenter
             IPS_ApplyChanges($clientDeviceID);
             return ($clientDeviceID);
             }
-
         }
 
+    /* MQTT_OperationCenter::getInstanceByTopic   
+     * ein Topic in der in der Klasse gespeicherten Liste suchen
+     */
     public function getInstanceByTopic($findtopic)
         {
         $found=false;
@@ -1459,6 +1489,9 @@ class MQTT_OperationCenter
         return ($found);
         }
 
+    /* unter einer MQTT Client/Server Device Instance sind die Variablen
+     * die richtige auswählen. Aktuell darf nur eine Variable angelegt worden sein
+     */
     public function getRegisterFromClientId($clientID)
         {
         $childs=IPS_GetChildrenIDs($clientID);
@@ -1471,11 +1504,554 @@ class MQTT_OperationCenter
         return ($child);
         }
 
+    /* Publish Keep Alive
+     */
     public function publishValue($valueId)
         {
         RequestAction(49077,"Alive ".date("d.m.Y H:i:s"));
 
         }
+
+    /* MQTT_OperationCenter::getShellyDeviceConfig
+     * included function, gets ShellyDevices and anlyzes their configuration, 
+     * two outputs, 
+     *      serial      per serial of configured shellies, 
+     *      mqtt        per Instance of ShellyDevice
+     */
+    public function getShellyDeviceConfig($output="mqtt",$debug=false)
+        {
+        $clients=$this->modulhandling->getInstances('ShellyDevice');          // Das sind auch MQTT Objekte, der Konfigurator gibt keine volle Payload aus
+        //print_r($clients);   // array mit oids
+
+        $debug=true;
+        $result=array();
+        $shellies=array();
+        $first=true;
+        foreach ($clients as $client)
+            {  
+            $instanceInfo=IPS_GetInstance($client);
+            if ($first)
+                {
+                $first=false;
+                if ($debug>1) print_R($instanceInfo);
+                if ($debug) echo "  ".str_pad("#",8).str_pad("Name",50).str_pad("Topic",40).str_pad("Gateway ID/Name",40)."Interface ID, Port   "."\n";
+                }
+            $result[$client]=array();
+            $configuration=json_decode(IPS_GetConfiguration($client),true);         // MQTTTopic, ModelID
+            $topic=$configuration["MQTTTopic"];
+            $modelID=$configuration["ModelID"];
+            $gatewayID=$instanceInfo["ConnectionID"];
+            if (IPS_ObjectExists($gatewayID)) 
+                {
+                $gatewayName = IPS_GetName($gatewayID);
+                $gatewayConfig = json_decode(IPS_GetConfiguration($gatewayID),true);
+                //print_R($gatewayConfig);
+                }
+            else 
+                {
+                $gatewayName = "unknow instance";
+                $gatewayID=false;
+                }
+            $result[$client]["GatewayID"]=$gatewayID;
+            $result[$client]["GatewayName"]=$gatewayName;
+            $result[$client]["Topic"]=$topic;
+            $identifier=explode("-",$topic);
+            if (isset($identifier[1])) $serial=$identifier[1];
+            else $serial=false;
+            $result[$client]["ModelID"]=$modelID;
+            if ($serial)
+                {
+                $shellies[$serial]["OID"]=$client;                          // Shelly Device
+                $shellies[$serial]["Name"]=IPS_GetName($client);
+                $shellies[$serial]["Type"]=$identifier[0];
+                $shellies[$serial]["ModelID"]=$modelID;
+                }
+            if ($debug) 
+                {
+                echo "  ".str_pad($client,8).str_pad(IPS_GetName($client),50);
+                echo str_pad($topic,40);
+                //echo json_encode($configuration);
+                }
+
+
+            if ($gatewayID)          // es gibt eine Connection, weiter auswerten, gleich zu analyseClientConfig
+                {
+                $result[$client]["GatewayConfig"]=$gatewayConfig;                    
+                
+                // Infos zum Gateway/Schnittstelle auslesen
+                $parentObj = IPS_GetInstance($gatewayID);
+                $connectionID = $parentObj['ConnectionID'];
+                $result[$client]["InterfaceID"]=$connectionID;
+                $parentModule = IPS_GetModule($parentObj['ModuleInfo']['ModuleID'])["ModuleName"];
+                $result[$client]["InterfaceModule"]=$parentModule;
+                if ($debug) 
+                    {
+                    echo str_pad($gatewayID,8).str_pad(IPS_GetName($gatewayID),32);
+                    //echo str_pad($gatewayConfig["UserName"]."/".$gatewayConfig["Password"],30);
+                    }
+                if ($connectionID)  
+                    {
+                    //echo "   $connectionID ".str_pad(IPS_GetName($connectionID),45);
+                    if ($debug) echo str_pad($connectionID,10);
+                    $config = json_decode(IPS_GetConfiguration($connectionID),true);
+                    //echo json_encode($config);
+                    if ($debug) echo $config["Port"]."  \n";
+                    //$result[$client]["Host"]=$config["Host"];
+                    //echo "\n";
+                    }
+                elseif ($debug)  echo "  \n";
+                //print_R($parentObj);
+                //print_R($parentModule);
+
+                /* Ausgabe
+                echo "   Instanz: " . IPS_GetName($instanceID) . " (ID: $instanceID)\n";
+                echo "   Gateway/Schnittstelle: $parentName (ID: $parentID)\n";
+                echo "   Modultyp: " . $parentModule['ModuleName'] . "\n";  */
+                } 
+            elseif ($debug) echo "\n";
+            }
+        //print_R($result);
+        //print_R($shellies);
+
+        if ($output=="mqtt") return ($result);
+        else return ($shellies);
+        }
+
+    /*
+     * wie analyseClientConfig aber für MQTT Server Devices
+     */
+    public function getMQTTServerDevice($findtopic=false,$debug=true)
+        {
+        $servers=$this->modulhandling->getInstances('MQTT Server Device');
+
+        $result=array();
+        $first=true;
+        $found=false;
+
+        foreach ($servers as $client)
+            {
+            $instanceInfo=IPS_GetInstance($client);
+            if ($first)
+                {
+                $first=false;
+                if ($debug>1) print_R($instanceInfo);
+                if ($debug) echo "  ".str_pad("#",8).str_pad("Name",30)."Type  ".str_pad("Topic",30).str_pad("SendTopic",30).str_pad("Gateway ID/Name",40)."Interface Port    "."\n";
+                }
+            $result[$client]=array();
+            $configuration=json_decode(IPS_GetConfiguration($client),true);
+            $gatewayID=$instanceInfo["ConnectionID"];
+
+            $gatewayName = IPS_GetName($gatewayID);
+            $result[$client]["GatewayID"]=$gatewayID;
+            $result[$client]["GatewayName"]=$gatewayName;
+            //print_R($configuration);
+            $type=$configuration["Type"];
+            $result[$client]["Type"]=$type;
+            if ($debug) 
+                {
+                echo "  ".str_pad($client,8).str_pad(IPS_GetName($client),30);
+                echo str_pad($type,6);
+                echo str_pad($configuration["Topic"],30);
+                }
+            if ($configuration["Topic"]==$findtopic) $found=$client;
+            $result[$client]["Topic"]=$configuration["Topic"];
+            if ($configuration["UseSendTopic"])
+                {
+                $result[$client]["SendTopic"]=$configuration["SendTopic"];
+                if ($debug) echo str_pad($configuration["SendTopic"],30);
+                if ($configuration["SendTopic"]==$findtopic) $found=$client;
+                }
+            elseif ($debug)  echo str_pad("",30);
+
+            /*if ($type==3)           // value einlesen, register a Component
+                {
+                if ($client==$registerId) 
+                    {
+                    echo "*";
+                    $childs=IPS_GetChildrenIDs($client);
+                    foreach ($childs as $child)
+                        {
+                        $messageHandler->RegisterOnChangeEvent($child, "IPSComponentMQTT_ClientDevice,$client,,", 'IPSModuleMQTT_ClientDevice,');
+                        }
+                    }
+                else echo " ";
+                }
+            else echo " ";  */          
+            if ($gatewayID)          // es gibt eine Connection, weiter auswerten
+                {
+                // Infos zum Gateway/Schnittstelle auslesen
+                $parentObj = IPS_GetInstance($gatewayID);
+                $connectionID = $parentObj['ConnectionID'];
+                $result[$client]["InterfaceID"]=$connectionID;
+                $parentModule = IPS_GetModule($parentObj['ModuleInfo']['ModuleID'])["ModuleName"];
+                $result[$client]["InterfaceModule"]=$parentModule;
+                if ($debug) echo str_pad($gatewayID,10).str_pad(IPS_GetName($gatewayID),30);
+                if ($connectionID)  
+                    {
+                    //echo "   $connectionID ".str_pad(IPS_GetName($connectionID),45);
+                    if ($debug) echo str_pad($connectionID,10);
+                    $config = json_decode(IPS_GetConfiguration($connectionID),true);
+                    //print_r($config);
+
+                    if ($debug) echo $config["Port"]."  \n";
+                    $result[$client]["Port"]=$config["Port"];
+                    }
+                elseif ($debug)  echo "  \n";
+                //print_R($parentObj);
+                //print_R($parentModule);
+
+                /* Ausgabe
+                echo "   Instanz: " . IPS_GetName($instanceID) . " (ID: $instanceID)\n";
+                echo "   Gateway/Schnittstelle: $parentName (ID: $parentID)\n";
+                echo "   Modultyp: " . $parentModule['ModuleName'] . "\n";  */
+                } 
+            elseif ($debug)  echo "\n";     
+
+            }
+        return ($result);
+        }
+
+    /*
+     * analyze Config of MQTT Device Konfigurator
+     * do it for all of them
+     */
+    public function getMQTTClientConfigurator($debug=false)
+        {
+        $clients=$this->modulhandling->getInstances('MQTT Client Configurator');
+        $result=array();
+        $first=true;
+        foreach ($clients as $client)
+            {  
+            $instanceInfo=IPS_GetInstance($client);
+            if ($first)
+                {
+                $first=false;
+                if ($debug>1) print_R($instanceInfo);
+                if ($debug) echo "  ".str_pad("#",8).str_pad("Name",50).str_pad("Gateway ID/Name",40).str_pad("Username/Password",30)."Interface Host IP    "."\n";
+                }
+
+            $result[$client]=array();
+            $configuration=json_decode(IPS_GetConfiguration($client),true);         // empty, der Konfigurator kennt keine Konfiguration
+            $gatewayID=$instanceInfo["ConnectionID"];
+            if (IPS_ObjectExists($gatewayID)) 
+                {
+                $gatewayName = IPS_GetName($gatewayID);
+                $gatewayConfig = json_decode(IPS_GetConfiguration($gatewayID),true);
+                //print_R($gatewayConfig);
+                }
+            else 
+                {
+                $gatewayName = "unknow instance";
+                $gatewayID=false;
+                }
+            $result[$client]["GatewayID"]=$gatewayID;
+            $result[$client]["GatewayName"]=$gatewayName;
+            if ($debug) 
+                {
+                echo "  ".str_pad($client,8).str_pad(IPS_GetName($client),50);
+                }
+
+            if ($gatewayID)          // es gibt eine Connection, weiter auswerten, gleich zu analyseClientConfig
+                {
+                $result[$client]["GatewayConfig"]=$gatewayConfig;                    
+                
+                // Infos zum Gateway/Schnittstelle auslesen
+                $parentObj = IPS_GetInstance($gatewayID);
+                $connectionID = $parentObj['ConnectionID'];
+                $result[$client]["InterfaceID"]=$connectionID;
+                $parentModule = IPS_GetModule($parentObj['ModuleInfo']['ModuleID'])["ModuleName"];
+                $result[$client]["InterfaceModule"]=$parentModule;
+                if ($debug) 
+                    {
+                    echo str_pad($gatewayID,8).str_pad(IPS_GetName($gatewayID),32);
+                    echo str_pad($gatewayConfig["UserName"]."/".$gatewayConfig["Password"],30);
+                    }
+                if ($connectionID)  
+                    {
+                    //echo "   $connectionID ".str_pad(IPS_GetName($connectionID),45);
+                    if ($debug) echo str_pad($connectionID,10);
+                    $config = json_decode(IPS_GetConfiguration($connectionID),true);
+                    //print_r($config);
+                    if ($debug) echo $config["Host"]."  \n";
+                    $result[$client]["Host"]=$config["Host"];
+                    }
+                elseif ($debug)  echo "  \n";
+                //print_R($parentObj);
+                //print_R($parentModule);
+
+                /* Ausgabe
+                echo "   Instanz: " . IPS_GetName($instanceID) . " (ID: $instanceID)\n";
+                echo "   Gateway/Schnittstelle: $parentName (ID: $parentID)\n";
+                echo "   Modultyp: " . $parentModule['ModuleName'] . "\n";  */
+                } 
+            elseif ($debug) echo "\n";
+            }    
+        //print_R($configuration);
+        //print_R($result);
+
+        return ($result);
+        }
+
+    /*
+     * analyze Config of MQTT Device Konfigurator
+     * do it for all of them
+     */
+    public function getMQTTServerConfigurator($debug=false)
+        {
+        $clients=$this->modulhandling->getInstances('MQTT Server Configurator');
+        $result=array();
+        $first=true;
+        foreach ($clients as $client)
+            {  
+            $instanceInfo=IPS_GetInstance($client);
+            if ($first)
+                {
+                $first=false;
+                if ($debug>1) print_R($instanceInfo);
+                if ($debug) echo "  ".str_pad("#",8).str_pad("Name",50).str_pad("Gateway ID/Name",40).str_pad("Username/Password",30)."Interface Host IP    "."\n";
+                }
+
+            $result[$client]=array();
+            $configuration=json_decode(IPS_GetConfiguration($client),true);         // empty, der Konfigurator kennt keine Konfiguration
+            $gatewayID=$instanceInfo["ConnectionID"];
+            if (IPS_ObjectExists($gatewayID)) 
+                {
+                $gatewayName = IPS_GetName($gatewayID);
+                $gatewayConfig = json_decode(IPS_GetConfiguration($gatewayID),true);
+                //print_R($gatewayConfig);
+                }
+            else 
+                {
+                $gatewayName = "unknow instance";
+                $gatewayID=false;
+                }
+            $result[$client]["GatewayID"]=$gatewayID;
+            $result[$client]["GatewayName"]=$gatewayName;
+            if ($debug) 
+                {
+                echo "  ".str_pad($client,8).str_pad(IPS_GetName($client),50);
+                }
+
+            if ($gatewayID)          // es gibt eine Connection, weiter auswerten, gleich zu analyseClientConfig
+                {
+                $result[$client]["GatewayConfig"]=$gatewayConfig;                    
+                
+                // Infos zum Gateway/Schnittstelle auslesen
+                $parentObj = IPS_GetInstance($gatewayID);
+                $connectionID = $parentObj['ConnectionID'];
+                $result[$client]["InterfaceID"]=$connectionID;
+                $parentModule = IPS_GetModule($parentObj['ModuleInfo']['ModuleID'])["ModuleName"];
+                $result[$client]["InterfaceModule"]=$parentModule;
+                if ($debug) 
+                    {
+                    echo str_pad($gatewayID,8).str_pad(IPS_GetName($gatewayID),32);
+                    echo str_pad($gatewayConfig["UserName"]."/".$gatewayConfig["Password"],30);
+                    }
+                if ($connectionID)  
+                    {
+                    //echo "   $connectionID ".str_pad(IPS_GetName($connectionID),45);
+                    if ($debug) echo str_pad($connectionID,10);
+                    $config = json_decode(IPS_GetConfiguration($connectionID),true);
+                    //print_r($config);
+                    if ($debug) echo $config["Host"]."  \n";
+                    $result[$client]["Host"]=$config["Host"];
+                    }
+                elseif ($debug)  echo "  \n";
+                //print_R($parentObj);
+                //print_R($parentModule);
+
+                /* Ausgabe
+                echo "   Instanz: " . IPS_GetName($instanceID) . " (ID: $instanceID)\n";
+                echo "   Gateway/Schnittstelle: $parentName (ID: $parentID)\n";
+                echo "   Modultyp: " . $parentModule['ModuleName'] . "\n";  */
+                } 
+            elseif ($debug) echo "\n";
+            }    
+        //print_R($configuration);
+        //print_R($result);
+
+        return ($result);
+        }
+
+    /*
+     * ConfigurationForm Analyse
+     * ConfigurationForm auslesen, einzeln durchgehen, actions finden
+     * actions durchgehen und nach values suchen
+     * die topics analysieren, wenn combine dann auf das erste topic fokussieren, wenn items dann alle Zeilen ausgeben
+     */
+    public function analyzeConfigForm($client)
+        {
+        $itemslist=array();             // alle angelegten Objekte sammeln
+        $combineInfo=true;
+        $combine=array();
+        $debug=true;
+        $first=true;
+
+        $config=json_decode(IPS_GetConfiguration($client),true);
+        if ($debug>1) echo "Instance MQTT Client Configurator : $client ".IPS_GetName($client)."\n";
+        $configForm=json_decode(IPS_GetConfigurationForm($client),true);
+        //print_R($config);
+        $actions=false;
+        foreach ($configForm as $type => $item)
+            {
+            if ($type=="actions") $actions=sizeof($item); 
+            
+            if ($debug>1)            // draw action form
+                {
+                echo "    ".str_pad($type,23)." |  ";
+                if (is_array($item)) echo sizeof($item);
+                echo "\n";                
+                if (is_array($item)) foreach ($item as $index => $entry) 
+                    {
+                    echo "        ".str_pad($index,20)." | ";
+                    if (is_array($entry)) echo sizeof($entry);
+                    echo "\n"; 
+                    if ($index=="de") ;
+                    elseif (is_array($entry)) foreach ($entry as $topic => $subentry)
+                        {
+                        echo "           ".str_pad($topic,17)."  | ";
+                        if (is_array($subentry)) echo sizeof($subentry);
+                        echo "\n";   
+                        }  
+                    }
+                }
+            }
+        if ($actions)       // look for values, find instanceId
+            {
+            if ($debug>1) echo "Do detailed actions:\n";
+            foreach ($configForm["actions"] as $index => $entry)
+                {
+                if ($debug>1) echo str_pad($index,20)." | ".sizeof($entry)."\n";  
+                foreach ($entry as $topic => $subentry)
+                    {
+                    if ($debug>1) echo "           ".str_pad($topic,20)."\n";  
+                    if ($topic=="values") 
+                        {
+                        if ($combineInfo)
+                            {
+                            foreach ($subentry as $itemIndex => $itemConfig)            // itemindex sind die zeilen
+                                {
+                                $items=explode("/",$itemConfig["topic"]);
+                                //if (isset($combine[$client][$items[0]]))
+                                    {
+                                    $combine[$client][$items[0]][$items[1]]="";
+                                    }
+                                if ($debug>1)
+                                    {
+                                    echo "    ";
+                                    //echo str_pad($itemConfig["name"],50);
+                                    echo str_pad($itemConfig["topic"],50);
+                                    echo "\n";
+                                    }
+                                }
+                            }
+                        else
+                            {
+                            //print_r($entry);                // übergeordnet struktur
+                            if ($first)
+                                {
+                                if ($debug) print_r($subentry);             // hier sind die daten
+                                $first=false;
+                                }
+                            foreach ($subentry as $itemIndex => $itemConfig)            // itemondex sind die zeilen
+                                {
+                                echo "    ";
+                                //echo str_pad($itemConfig["name"],50);
+                                echo str_pad($itemConfig["topic"],50).str_pad($itemConfig["payload"],100);
+                                if (isset($itemConfig["instanceID"]))
+                                    {
+                                    $instanceID=$itemConfig["instanceID"];
+                                    // wenn instanceId 0 ist einfach nicht angelegten Werte ignorieren
+                                    if ($instanceID != 0) 
+                                        {
+                                        $itemslist[$instanceID] = $itemConfig;   
+                                        $itemslist[$instanceID]["clientID"] = $client;   
+                                        echo "   MQTT Client Device  $instanceID   ";
+                                        //echo " MQTT Client Configurator   $client ";          // redundant
+                                        }
+                                    }
+                                echo "\n";
+                                }
+                            }
+                        }
+                    }
+                }
+            return ($combine);
+            //return ($itemslist);
+            }               // actions
+
+
+
+        }
+
+    public function getMQTTClients($debug=true)
+        {
+        $clients=$this->modulhandling->getInstances('MQTT Client');
+        //print_r($clients);
+        
+        $result=array();
+        $first=true;
+        foreach ($clients as $client)
+            {  
+            $instanceInfo=IPS_GetInstance($client);
+            if ($first)
+                {
+                $first=false;
+                if ($debug>1) print_R($instanceInfo);
+                if ($debug) echo "  ".str_pad("#",8).str_pad("Name",50).str_pad("ClientID",22).str_pad("Username/Password",30)."Interface ".str_pad("Host IP",18)."Port   "."\n";
+                }
+            $result[$client]=array();
+            $gatewayConfig=json_decode(IPS_GetConfiguration($client),true);         // Konfiguration
+            $clientID=$gatewayConfig["ClientID"];
+            $result[$client]["ClientID"]=$clientID;
+            $result[$client]["Config"]=$gatewayConfig;
+                                
+            $socketID=$instanceInfo["ConnectionID"];
+            if (IPS_ObjectExists($socketID)) 
+                {
+                $socketName = IPS_GetName($socketID);
+                $socketConfig = json_decode(IPS_GetConfiguration($socketID),true);
+                //print_R($gatewayConfig);
+                }
+            else 
+                {
+                $socketName = "unknow instance";
+                $socketID=false;
+                }
+            $result[$client]["SocketID"]=$socketID;
+            $result[$client]["SocketName"]=$socketName;
+
+            if ($debug) 
+                {
+                echo "  ".str_pad($client,8).str_pad(IPS_GetName($client),50);
+                echo str_pad($clientID,22);
+                echo str_pad($gatewayConfig["UserName"]."/".$gatewayConfig["Password"],30);
+
+                //echo IPS_GetConfiguration($client);
+                }
+
+            if ($socketID)  
+                {
+                //echo "   $connectionID ".str_pad(IPS_GetName($connectionID),45);
+                $config = json_decode(IPS_GetConfiguration($socketID),true); 
+                $result[$client]["Host"]=$config["Host"];
+                $result[$client]["Port"]=$config["Port"];
+                if ($debug) 
+                    {
+                    echo str_pad($socketID,10);
+                    echo str_pad($config["Host"],18).$config["Port"];
+                    //echo IPS_GetConfiguration($socketID);
+                    }
+                }              
+            echo "\n";
+            }
+
+
+
+
+        }
+
+
 
     }
 

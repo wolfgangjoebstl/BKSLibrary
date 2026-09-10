@@ -201,10 +201,14 @@
                 $result=IPS_GetObject($variable);
                 $this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist immer der Parent Name 
             
+                //$nachrichtenID=CreateCategoryByName($this->MQTTNachrichtenID,IPS_GetName(IPS_GetParent($variable))),0)
+
                 // Get Category to store the Move-LogNachrichten und Spiegelregister	
-                $this->MQTTNachrichtenID  = $this->CreateCategoryNachrichten("MQTT",$this->CategoryIdData);
+                $this->MQTTNachrichtenAllID  = $this->CreateCategoryNachrichten("MQTT",$this->CategoryIdData);
                 $this->MQTTAuswertungID   = $this->CreateCategoryAuswertung("MQTT",$this->CategoryIdData);;
                 if ($this->debug) echo "  MQTT_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)." anlegen : [".$this->MQTTNachrichtenID.",".$this->MQTTAuswertungID."]\n";
+
+                $this->MQTTNachrichtenID  = $this->CreateCategoryNachrichten("OID".$variable,$this->MQTTNachrichtenAllID);          // unterschiedliche Nachrichtenbuffer
 
                 // lokale Spiegelregister aufsetzen 
                 if ($variable<>null)
@@ -249,13 +253,100 @@
 
 		function MQTT_LogValue($param=false)
 			{
-			$result=GetValue($this->variable);
-			SetValue($this->variableLogID,GetValue($this->variable));          // nur Status wird gespiegelt
-			echo "Neuer Wert fuer $param ".$this->variablename." ist ".GetValue($this->variable).", ".$this->variableLogID." ist updated.\n";
-			//parent::LogMessage($result);
-			parent::LogNachrichten($result);
-			//echo "done.\n";
+            if ($param)         // nicht noch einmal nachladen, könnte sich schon wieder egändert haben, wichtig bei MQTT
+                {
+                parent::LogNachrichten($param);
+                }
+            else
+                {    
+                $result=GetValue($this->variable);
+                SetValue($this->variableLogID,GetValue($this->variable));          // nur Status wird gespiegelt
+                echo "Neuer Wert fuer $param ".$this->variablename." ist ".GetValue($this->variable).", ".$this->variableLogID." ist updated.\n";
+                    
+                //parent::LogMessage($result);
+                parent::LogNachrichten($result);
+    			//echo "done.\n";
+                }
 			}
+
+        public function analyzingLoggingEntries()
+            {
+            // aus Parent class holen
+            $config=$this->LogConfig();                     
+            $storeTableID=$this->storeTableID();
+            //print_R($config);
+            // OperationCenter als Storage
+            IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+            $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+
+            $moduleManagerOC = new IPSModuleManager("OperationCenter",$repository);
+            $CategoryIdData     = $moduleManagerOC->GetModuleCategoryID('data');
+            $categoryId         = CreateCategoryByName(0,"MQTT",0);       // Parent Name Position     
+            $CategoryIdDataMqtt = CreateCategoryByName($CategoryIdData,"MQTT",940);
+
+            $first=true; $firstjson=true;
+            $alive=array();
+            if ($config["HTMLOutput"] && $storeTableID)
+                {
+                $messageJson=GetValue($storeTableID);
+                $messages = json_decode($messageJson,true);
+                //IPSLogger_Inf(__file__, "Logging:PrintNachrichten ".$messageJson."   ".$this->log_File."   ".$this->zeile1);
+                if (is_array($messages))
+                    {
+                    if (count($messages)>0) 
+                        {
+                        foreach ($messages as $timeIndex => $message)
+                            {
+                            $json_items=json_decode($message,true);
+                            if (is_array($json_items))                      // Nachricht json kodiert
+                                {
+                                if ($firstjson) 
+                                    {
+                                    print_R($json_items);
+                                    $firstjson=false;
+                                    }
+
+                                }
+                            else
+                                {
+                                $items=explode(" ",$message);
+                                if (count($items)==4)
+                                    {
+                                    $time=strtotime($items[1].$items[0]);
+                                    switch ($items[2])
+                                        {
+                                        case "alive":
+                                        case "Alive":
+                                            $server=$items[3];
+                                            if (isset($alive[$server]))
+                                                {
+                                                if ($time>$alive[$server]) $alive[$server]=$time;
+                                                }
+                                            else $alive[$server]=$time;
+                                            break;
+                                        default:
+                                            echo "not found ".$items[2];
+                                            break;
+                                        }
+                                    if ($first) 
+                                        {
+                                        print_R($items);
+                                        $first=false;
+                                        }
+                                    echo date("d.m.Y H:i:s",$time)."  ".$message."\n";
+                                    }
+                                else echo $message."\n";
+                                }
+                            }
+                        }
+                    }
+                }  
+            //print_r($alive);
+            foreach ($alive as $server => $time)
+                {
+                echo str_pad($server,20).date("d.m.Y H:i:s",$time)."\n";
+                }
+            }
 
 		public function GetComponent() {
 			return ($this);
