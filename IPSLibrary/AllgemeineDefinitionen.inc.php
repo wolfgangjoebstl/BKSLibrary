@@ -15440,6 +15440,9 @@ class timerOps
 			{
 			if ($debug) echo "   Timer Event ".$name." bereits angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
 			IPS_SetEventActive($timID,true);
+
+            // Migration bis alle umgestellt sind, auslesen etwas schwierig
+            IPS_SetEventAction($tim4ID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);            
 			}
 		return($timID);
 		}
@@ -15471,6 +15474,9 @@ class timerOps
 			if ($debug) echo "   Timer Event ".$name." bereits angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
 			IPS_SetEventCyclicTimeFrom($timID,0,2,$sekunden%60);  // damit die Timer hintereinander ausgeführt werden 
 			//IPS_SetEventActive($tim2ID,true);
+
+            // Migration bis alle umgestellt sind, auslesen etwas schwierig
+            IPS_SetEventAction($tim4ID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);            
 			}
 		return($timID);
 		}	
@@ -15493,7 +15499,7 @@ class timerOps
             IPS_SetEventCyclic($tim4ID,0,1,0,0,2,$minutes);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
             IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
             // Seit IP-Symcon 6.0 erforderlich, sofern das Ereignis eine Automation ausführen soll (z.B. ein PHP-Skript)
-            IPS_SetEventAction($timID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);
+            IPS_SetEventAction($tim4ID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);
 
             IPS_SetEventActive($tim4ID,true);
             if ($debug) echo "   Timer Event $name neu angelegt. Timer $minutes Minuten ist aktiviert.\n";
@@ -15504,6 +15510,9 @@ class timerOps
             IPS_SetEventActive($tim4ID,true);
             IPS_SetEventCyclic($tim4ID,0,1,0,0,2,$minutes);      /* Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
             IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
+
+            // Migration bis alle umgestellt sind, auslesen etwas schwierig
+            IPS_SetEventAction($tim4ID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);
             }
         return ($tim4ID);
         }

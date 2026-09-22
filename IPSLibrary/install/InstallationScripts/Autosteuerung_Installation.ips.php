@@ -460,8 +460,15 @@
      * es gibt für Helligkeit auch Gruppen die eine Vereinheitlichung der Werte unterstützen
      */
 	$categoryId_Global = CreateCategory('Global',   $CategoryIdData, 220); 
-    $illuminationID = CreateVariable("Illumination",1, $categoryId_Global,0,"~Illumination",null,null,"");              //  in Lux, Umrechnung mglw erforderlich     
-    $daylevelID     = CreateVariable("DayLevel",    1, $categoryId_Global,0,"~Intensity.100",null,null,"");              //  in %, direkt wert für Level
+    $illuminationID = CreateVariableByName($categoryId_Global,"Illumination",1,"~Illumination",null,0,null,200);              //  in Lux, Umrechnung mglw erforderlich     
+    $daylevelID     = CreateVariableByName($categoryId_Global,"DayLevel",    1,"~Intensity.100",null,0,null,50);              //  in %, direkt wert für Level
+    $outdoorID        = CreateVariableByName($categoryId_Global,"OutdoorTemp",      2,"~Temperature",null,0,null,15);              //  in %, direkt wert für Level
+    $outdoorMeansID   = CreateVariableByName($categoryId_Global,"OutdoorMeansTemp", 2,"~Temperature",null,0,null,15);              //  in %, direkt wert für Level
+
+    $ao =  new archOps();
+    $ao->setArchiving($outdoorID,true,false);
+    $ao->setArchiving($outdoorMeansID,true,false);
+
     $convert = new convertOps();
     $daystart=$convert->daystart();
     $newLevel = $convert->convert(time()-$daystart);
@@ -1146,17 +1153,20 @@
  * Wecker programmierung ist bei GutenMorgen Funktion
  *
  ***********************************************************************/
-		
-	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
+    $timerOps = new timerOps();
+    $tim1ID   = $timerOps->setTimerPerMinute("Aufruftimer",$scriptIdAutosteuerung,5);
+    $tim5ID   = $timerOps->setTimerPerMinute("WetterIst",$scriptIdAutosteuerung,30);    		
+
+	/* $tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
 	if ($tim1ID==false)
 		{
 		$tim1ID = IPS_CreateEvent(1);
 		IPS_SetParent($tim1ID, $scriptIdAutosteuerung);
 		IPS_SetName($tim1ID, "Aufruftimer");
-		IPS_SetEventCyclic($tim1ID,0,0,0,0,2,5);		/* alle 5 Minuten */
-		//IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  /* immer um 02:20 */
+		IPS_SetEventCyclic($tim1ID,0,0,0,0,2,5);		// alle 5 Minuten 
+		//IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  
 		}
-	IPS_SetEventActive($tim1ID,true);
+	IPS_SetEventActive($tim1ID,true);*/
 		
 	$tim3ID = @IPS_GetEventIDByName("Anwesendtimer", $scriptIdAutosteuerung);
 	if ($tim3ID==false)
@@ -1185,7 +1195,6 @@
 
     if (isset($setup["Weather"]))
         {
-        $timerOps = new timerOps();
         $updateTime=60*60*4;            // default every 4 hour
         if (isset($setup["Weather"]["update"])) $updateTime=$setup["Weather"]["update"];           
         echo "install weathermen, update time $updateTime Secs:\n";

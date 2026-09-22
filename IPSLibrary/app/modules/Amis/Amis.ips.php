@@ -59,6 +59,8 @@
     IPSUtils_Include ('Amis_Constants.inc.php', 'IPSLibrary::app::modules::Amis');
 
     IPSUtils_Include ('DeviceManagement_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');
+    IPSUtils_Include ("Backup_Library.class.php","IPSLibrary::app::modules::OperationCenter");    
+
     IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
     IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');          // unbedingt erforderlich
 

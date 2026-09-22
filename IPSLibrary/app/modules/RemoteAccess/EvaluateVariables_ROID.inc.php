@@ -1,10 +1,10 @@
 <?php
-/*erstellt von RemoteAccess::add_Guthabensteuerung() am 31.08.2026 05:05
+/*erstellt von RemoteAccess::add_Guthabensteuerung() am 22.09.2026 05:05
  */
 function GuthabensteuerungList() { return array(
-    "Phone_Load" => array(
-         "OID" => 15501, 
-         "Name" => "Phone_Load", 
+    "Phone_CL_Change" => array(
+         "OID" => 22337, 
+         "Name" => "Phone_CL_Change", 
          "Typ" => 2, 
          "Order" => "500", 
              	),
@@ -14,22 +14,22 @@ function GuthabensteuerungList() { return array(
          "Typ" => 1, 
          "Order" => "501", 
              	),
+    "Phone_Load" => array(
+         "OID" => 15501, 
+         "Name" => "Phone_Load", 
+         "Typ" => 2, 
+         "Order" => "502", 
+             	),
     "Phone_Cost" => array(
          "OID" => 17479, 
          "Name" => "Phone_Cost", 
          "Typ" => 2, 
-         "Order" => "502", 
+         "Order" => "503", 
              	),
     "ScriptTimer" => array(
          "OID" => 28552, 
          "Name" => "ScriptTimer", 
          "Typ" => 3, 
-         "Order" => "503", 
-             	),
-    "Phone_CL_Change" => array(
-         "OID" => 22337, 
-         "Name" => "Phone_CL_Change", 
-         "Typ" => 2, 
          "Order" => "504", 
              	),
     "checkScriptCounter" => array(
@@ -53,7 +53,7 @@ function GuthabensteuerungList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_Amis() am 31.08.2026 05:05
+/*erstellt von RemoteAccess::add_Amis() am 22.09.2026 05:05
  */
 function AmisStromverbrauchList() { return array(
     "Wohnung-LBG70_Wirkenergie" => array(
@@ -311,7 +311,7 @@ function AmisStromverbrauchList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_SysInfo() am 31.08.2026 05:05
+/*erstellt von RemoteAccess::add_SysInfo() am 22.09.2026 05:05
  */
 function SysInfoList() { return array(
     "Hostname" => array(
@@ -366,7 +366,7 @@ function SysInfoList() { return array(
 
       );}
 
-/*erstellt von RemoteAccess::add_RemoteServer() am 31.08.2026 05:05
+/*erstellt von RemoteAccess::add_RemoteServer() am 22.09.2026 05:05
  */
 function ROID_List() { return array(
       );}

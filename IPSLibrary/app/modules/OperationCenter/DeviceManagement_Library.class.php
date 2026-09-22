@@ -965,6 +965,7 @@ class DeviceManagement
 			$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
 			foreach ($this->HMIs as $HMI)
 				{
+                if ($debug>1) echo "    $HMI  ".IPS_GetName($HMI)."\n";                
                 $HomeMaticEntries=false;
                 if ($DeviceListe=$this->updateHmiReport($HMI,$debug, $supress))
                     {
@@ -982,7 +983,7 @@ class DeviceManagement
                         {
                         if (isset($HomeMaticEntry["HM_address"])) 
                             {
-                            if ($debug) echo "Addresse: ".$HomeMaticEntry["HM_address"]." Type ".$HomeMaticEntry["HM_device"]." Devicetyp ".$HomeMaticEntry["HM_devtype"]."\n";
+                            if ($debug) echo "       Addresse: ".$HomeMaticEntry["HM_address"]." Type ".$HomeMaticEntry["HM_device"]." Devicetyp ".$HomeMaticEntry["HM_devtype"]."\n";
                             $addresses[$HomeMaticEntry["HM_address"]]=$HomeMaticEntry["HM_device"];
                             //print_r($HomeMaticEntry);
                             }
@@ -3992,14 +3993,22 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
 
     /* DeviceManagement_HueV2::createItemlist
      * die itemlist erzeugen, Basis sind die values aus dem configurationForm
-     * sucht nach einer instanceID, sonst ist die Instanz nicht angelegt, diese mal so komplett in der itemList abspeichern
+     * Hue baut seine devicebase sehr rasch aus, es kommen immer neue Gerätetypen und childtypes heraus
+     *
+     * moderne Variante, derzeit im Einsatz für Homematic HCU, Hue V1 und V2 und Shelly
+     * zuerst das configurationform einlesen und den interessanten Berich herausfiltern
+     * sucht dann in diesem vorverarbeiteten configurationform nach einer instanceID, 
+     * sonst ist die Instanz nicht angelegt, diese mal so komplett in der itemList abspeichern
+     *
      * Struktur ist immer je Hardware Configurator unterschiedlich 
      *      "instanceID"        die DeviceID die schlussendlich in Category Hardware/Shelly abgespeichert wird
      *      unter der InstanceId wird die gesamte Konfiguration in der itemList angespeichert. Dann wird weiter analysiert
      * zusätzliche Auswertung über ganzes Array:
-     *             Type     aus dem Wert den Wert für TypeDev ableiten
+     *          Type        aus dem Wert den Wert für TypeDev ableiten
+     *          ModelID     Zigbee identifier zur besseren Klassifizierung der Eigenschaften
+     *          TypeChild   Untergruppen unter denen dann erst das TypeDev erkannt wird, hier Child aber eigentlich die Struktur Device->Component
+     *
      * es werden immer neue Gerätetypen erkannt, kontinuierlich erweitern:
-     *          Hue filament bulb
      *
      *      Abfrage nach Zigbee Device identifier https://zigbee.blakadder.com/search.html
      *      LCA001                  Hue White and Color Ambiance A60 E27
@@ -4139,6 +4148,7 @@ class DeviceManagement_HueV2 extends DeviceManagement_Hue
                     $this->itemslist[$oid]["TypeDev"]="TYPE_GROUP";
                     //print_r($item);
                     break;
+                case "Hue outdoor motion sensor":
                 case "Hue motion sensor":
                     //echo "Hue motion sensor, $oid ".json_encode($item)."\n";
                     switch ($item["TypeChild"])

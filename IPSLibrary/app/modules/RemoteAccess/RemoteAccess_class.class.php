@@ -50,6 +50,10 @@ class XConfigurator extends RemoteAccess
         return ($this->xconfiguration);
         }
 
+    /* übernimmt die Component Data
+     * beispielsweise: IPSComponentSensor_Temperatur,,LBG70-2Virt:16671;BKS01:27604;,TEMPERATUR
+     *
+     */
     public function checkRemoteOIDData($data,$debug=false)
         {
         $result=true; $info=""; $output=array();
@@ -67,19 +71,27 @@ class XConfigurator extends RemoteAccess
                 if (strlen($serverinfo)>4)          // immer ein leerer Parameter am Ende durch zusätzlichen ;
                     {
                     $serverdata = explode(":",$serverinfo);
-                    if ($debug) echo " ".str_pad($serverinfo,30);   
-                    if (isset($this->xconfiguration[$serverdata[0]][$serverdata[1]]))
+                    if ($debug) echo " ".str_pad($serverinfo,30); 
+                    if ( (isset($serverdata[0])) &&  (isset($serverdata[1])) )
                         {
-                        if ($debug) echo " ok  ";
-                        $output[$serverdata[0]][$serverdata[1]]=true;
-                        } 
-                    else 
-                        {
-                        if ($debug) echo " fail";
-                        $info .= $serverdata[0].":".$serverdata[1]." failed";
-                        $result=false;
-                        $output[$serverdata[0]][$serverdata[1]]=false;
+                        if (isset($this->xconfiguration[$serverdata[0]][$serverdata[1]]))
+                            {
+                            if ($debug) echo " ok  ";
+                            $output[$serverdata[0]][$serverdata[1]]=true;
+                            } 
+                        else 
+                            {
+                            if ($debug) echo " fail";
+                            $info .= $serverdata[0].":".$serverdata[1]." failed";
+                            $result=false;
+                            $output[$serverdata[0]][$serverdata[1]]=false;
+                            }
                         }
+                    else
+                        {
+                        if ($debug) echo " unknown";
+                        $info .= " unknown";
+                        }                      
                     }
                 }
             }
@@ -425,17 +437,25 @@ class RemoteAccess extends RemoteAccess_Configuration
                 if (strlen($serverinfo)>4)          // immer ein leerer Parameter am Ende durch zusätzlichen ;
                     {
                     $serverdata = explode(":",$serverinfo);
-                    if ($debug) echo "       ".str_pad($serverinfo,30);   
-                    if (isset($input[$serverdata[0]][$serverdata[1]]))
+                    if ($debug) echo "       ".str_pad($serverinfo,30);  
+                    if ( (isset($serverdata[0])) &&  (isset($serverdata[1])) )
                         {
-                        if ($debug) echo " ok  \n";
-                        } 
-                    else 
-                        {
-                        if ($debug) echo " fail   \n";
-                        $info .= $serverdata[0].":".$serverdata[1]." failed";
-                        $result=false;
+                        if (isset($input[$serverdata[0]][$serverdata[1]]))
+                            {
+                            if ($debug) echo " ok  \n";
+                            } 
+                        else 
+                            {
+                            if ($debug) echo " fail   \n";
+                            $info .= $serverdata[0].":".$serverdata[1]." failed";
+                            $result=false;
+                            }
                         }
+                    else
+                        {
+                        if ($debug) echo " unknown";
+                        $info .= " unknown";
+                        }                    
                     }
                 }
             }

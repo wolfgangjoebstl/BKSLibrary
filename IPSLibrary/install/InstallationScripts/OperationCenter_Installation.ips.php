@@ -77,7 +77,8 @@
 
 	IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-    IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");    
+    IPSUtils_Include ("DeviceManagement_Library.class.php","IPSLibrary::app::modules::OperationCenter");   
+    IPSUtils_Include ("Backup_Library.class.php","IPSLibrary::app::modules::OperationCenter"); 
 
     IPSUtils_Include ("ModuleManagerIps7.class.php","IPSLibrary::app::modules::OperationCenter");
     IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -93,7 +94,7 @@
         echo "Script Execute, Darstellung automatisch mit Debug aktiviert. \n";
         $debug=false;
         $execscript=false;
-        $oplevel=4;         // 3 without webfront install
+        $oplevel=5;         // 3 without webfront install
         }
     else 
         {
@@ -1935,6 +1936,15 @@ if ($oplevel>2)                 // Init HM Inventory, MQTT Gerätedarstellung
     *---------------------------------------------------*/
 if ($oplevel>3)                 // Webfront Install
     {
+
+    $configWF = $configWFront["Administrator"];
+    $wfcHandling->read_WebfrontConfig($WFC10_ConfigId);         // register Webfront Confígurator ID, wir arbeiten im internen Speicher und müssen nachher speichern
+    $wfcHandling->CreateWFCItemTabPane($configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // OperationCenter Tabpane
+    $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);
+    }
+
+if ($oplevel>4)
+    {
     /* easySetupWebfront braucht im einfachsten Fall folgende Struktur
      * Tabpane 
      *   Subtabpane Auswertung
@@ -1949,8 +1959,8 @@ if ($oplevel>3)                 // Webfront Install
      *
      */
     $wo = new WebfrontOrganisation();
-    $webfront_links = $wo->prepareHomematicInventory();
-    //print_r($webfront_links);
+    $webfront_links = $wo->prepareHomematicInventory();             // for Debug see NewWebfrontDesignInstall
+    print_r($webfront_links);
 
 	if ($WFC10_Enabled)
 		{
@@ -1973,6 +1983,7 @@ if ($oplevel>3)                 // Webfront Install
         $wfcHandling->easySetupWebfront($configWF,$webfront_links,$config,true);            // true für Debug
         $wfcHandling->write_WebfrontConfig($WFC10_ConfigId);
 
+        echo "\n=============================\nAusgabe Konfiguration Webfront:\n";
         $wfcHandling->read_WebfrontConfig($WFC10_ConfigId); 
         $wfc=$wfcHandling->read_wfcByInstance(false,1);                 // false interne Datanbank für Config nehmen
         foreach ($wfc as $index => $entry)                              // Index ist User, Administrator
@@ -1983,7 +1994,7 @@ if ($oplevel>3)                 // Webfront Install
 
         }
     }
-if ($oplevel>4)
+if ($oplevel>5)
     {																																
 	/* ----------------------------------------------------------------------------------------------------------------------------
 	 * WebFront Installation

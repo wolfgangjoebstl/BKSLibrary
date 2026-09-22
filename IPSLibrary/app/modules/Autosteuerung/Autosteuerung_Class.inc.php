@@ -10484,8 +10484,12 @@ function parseParameter($params,$result=array())
 	}
 
 /* class Webfront support
- *
- *
+ * wird in Autosteuerung_Installation verwendet
+ *      arrangeWebfrontLinks
+ *      mergeWebfrontLinks
+ *      readWeatherInformation
+ *          getDivTextByClass        
+ *          htmlTableToArray            
  *
  */
 class AutosteuerungWebfront
@@ -10570,18 +10574,52 @@ class AutosteuerungWebfront
         return (array_merge($links,$webfront_link));             
         }
 
-    function readWeatherInformation()
+    /* überkomplette Abfrage des aktuellen Wetters von der ORF Seite
+     * schreibt die Daten der folgenden Urls nach c:/Scripts/download/
+     *      https://wetter.orf.at/wien/prognose
+     *      https://wetter.orf.at/wien/
+     * liest sie zurück als String und sucht eine Tabelle, diese als datat array wandeln
+     *
+     */
+    function readWeatherInformation($config=false,$debug=false)
         {
-        echo "Wetterinformation von ORF abfragen:\n";
+        $readtofile=false;          // url direkt in den String speichern
+        $stations=false;            // default line 4
+        $configParsed=array();
+        if (is_array($config))
+            {
+            configfileParser($config, $configParsed, ["ReadToFile","READTOFILE","readtofile" ],"ReadToFile" ,false); 
+            configfileParser($config, $configParsed, ["Stations","STATIONS","stations" ],"Stations" ,false);
+            if ($configParsed["ReadToFile"]) $readtofile=true;     
+            if ($configParsed["Stations"]) 
+                {
+                if (is_array($configParsed["Stations"])) $stations=$configParsed["Stations"];
+                else $stations[0]=$configParsed["Stations"];
+                }
+            }
+        $delivered=array();
+        if ($debug) echo "Wetterinformation von ORF abfragen:\n";
+        $orfUrl="https://wetter.orf.at/wien/prognose";
         $curlOps = new curlOps();
         $dosOps = new dosOps();
 
-        $orfUrl="https://wetter.orf.at/wien/prognose";
         $dir="C:/Scripts/download/";
-        $curlOps->downloadFile($orfUrl, $dir); 
+        if ($readtofile)
+            {
+            $curlOps->downloadFile($orfUrl, $dir); 
 
-        $fileName="prognose";           // table class="prognoseTable"
-        $prognose=$dosOps->readFileToString($dir.$fileName);
+            $fileName="prognose";           // table class="prognoseTable"
+            $prognose=$dosOps->readFileToString($dir.$fileName);
+            }
+        else
+            {
+            $prognose=@file_get_contents($orfUrl);
+            if ($prognose===false) {
+                IPSLogger_Dbg(__file__, 'ORF Detail Forcast is empty ...');
+                echo 'ORF Detail Forcast is empty ...';
+                return false;
+                }                
+            }
         $pos=mb_strpos($prognose,"prognoseTable");
         $pos1=mb_strpos(mb_substr($prognose,$pos-20,6000,"UTF-8"),"<table");
         $pos1=$pos-20+$pos1;
@@ -10590,7 +10628,7 @@ class AutosteuerungWebfront
         //echo "Tabelle gefunden auf $pos1 $len \n";
         $tabelle=mb_substr($prognose,$pos1,$len,"UTF-8");
         //echo $tabelle."\n";
-        $data = htmlTableToArray($tabelle);
+        $data = $this->htmlTableToArray($tabelle);
         //print_r($data);
         $range=""; $text=false;
         foreach ($data as $line => $col)
@@ -10609,15 +10647,26 @@ class AutosteuerungWebfront
             if ($text) echo "\n";
             }
         $range="Prognose heute : ".str_replace("ï¿œ","ö",$range);
-        echo "   $range \n";
+        if ($debug) echo "   $range \n";
         
         $orfUrl="https://wetter.orf.at/wien/";
-        $curlOps->downloadFile($orfUrl, $dir);
-        
-        //$result=$dosOps->readdirToArray($dir); print_R($result);
+        if ($readtofile)
+            {
+            $curlOps->downloadFile($orfUrl, $dir);
+            //$result=$dosOps->readdirToArray($dir); print_R($result);
 
-        $fileName="wien";           // table class="prognoseTable"
-        $wien=$dosOps->readFileToString($dir.$fileName);
+            $fileName="wien";           // table class="prognoseTable"
+            $wien=$dosOps->readFileToString($dir.$fileName);
+            }
+        else  
+            {
+            $wien=@file_get_contents($orfUrl);
+            if ($wien===false) {
+                IPSLogger_Dbg(__file__, 'ORF Wien Forcast is empty ...');
+                echo 'ORF Wien Forcast is empty ...';
+                return false;
+                }                
+            }    
         //echo $wien;
         $text = $this->getDivTextByClass($wien,"details");
         //echo $text;
@@ -10628,7 +10677,7 @@ class AutosteuerungWebfront
             if (trim($line)!="") echo "   ".trim($line)."\n";
             }
 
-        // $text = getDivTextByClass($wien,"stationData");  echo $text;            // Stammersdorf
+        // $text = $this->getDivTextByClass($wien,"stationData");  echo $text;            // Stammersdorf
 
         $pos=mb_strpos($wien,'class="stationsHeadline"');
         $text = mb_substr($wien,$pos,6000,"UTF-8");
@@ -10636,94 +10685,157 @@ class AutosteuerungWebfront
         //echo $text;
         $data = $this->htmlTableToArray($text);
         //print_R($data);
-        $range=""; $text=true;
+
+        $range=""; $text=$debug;            // ausgabe wenn true
+        $measured=array(); $station=false;
         foreach ($data as $line => $col)
             {
             //print_r($col);
             foreach ($col as $index => $item)
                 {
+                if ($index==0) $station=$item;
                 if ($text)
                     {
                     echo "   ";
-                    if ($index==0) echo mb_str_pad($item,45);
-                    else echo mb_str_pad($item,25);
+                    if ($index==0) echo mb_str_pad($item,45);                   // den Ort breiter machen
+                    else echo mb_str_pad($item,25);                             // di eanderen Daten reichen schmäler
                     }
-                if (($index==1) && ($line==4)) $range.=$item."  ";
-                if (($index==2) && ($line==4)) $range.=$item."  ";
+                // Line 4 ist Stammersdorf
+                if ($index==1)
+                    	{
+                        $status=$item;
+                        if ($line==4) $range.=$item."  ";              // heiter
+                        }
+                if ($index==2) 
+                    {
+                    if ($line==4) 
+                        {
+                        $range.=$item."  ";              // 24,2 °C Grad
+                        $actual=$item;
+                        }
+                    if ($station) 
+                        {
+                        $measured[$station]["State"]=$status;
+                        $measured[$station]["Temp"]=$item;
+                        $station=false;
+                        }
+                    }
                 }
             if ($text) echo "\n";
             }
         echo "   Aktuelles Wetter : $range  \n";
-
+        print_r($measured);
         /* Entscheidungskriterien erwartete Höchsttemperatur, Regen oder bewölkt, aktuelle Version */ 
 
-
-
-        function getDivTextByClass(string $html, string $className): string
+        if ($stations)
             {
-            libxml_use_internal_errors(true);
+            $temp=0; $tempct=0;
+            foreach ($measured as $station => $item)
+                {
+                if (in_array($station, $stations)) 
+                    {
+                    echo "   $station :".json_encode($item)."\n";
+                    $temp += $this->extractFloatingPoint($item["Temp"]);
+                    $tempct++;
+                    }
+                }
+            $tempactual=round($temp/$tempct,1);
+            echo "Actual temperature ".$data["Actual"]."   berechnet ".$tempactual."\n";
+            $delivered["Means"]=$tempactual;
 
-            $dom = new DOMDocument('1.0', 'UTF-8');
-            $dom->loadHTML(
-                mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'),
-                LIBXML_NOERROR | LIBXML_NOWARNING
+
+            }
+        /* Example usage:
+        $html = file_get_contents('table.html'); // or your HTML string
+        $data = $this->htmlTableToArray($html);
+        print_r($data);
+        */
+        $delivered["Actual"]=$actual;
+        $delivered["Stations"]=$measured;
+        return ($delivered);
+        }
+
+
+    function getDivTextByClass(string $html, string $className): string
+        {
+        libxml_use_internal_errors(true);
+
+        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom->loadHTML(
+            mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'),
+            LIBXML_NOERROR | LIBXML_NOWARNING
             );
 
-            $xpath = new DOMXPath($dom);
+        $xpath = new DOMXPath($dom);
 
-            // XPath: div mit bestimmter Klasse
-            $nodes = $xpath->query(
-                "//div[contains(concat(' ', normalize-space(@class), ' '), ' {$className} ')]"
+        // XPath: div mit bestimmter Klasse
+        $nodes = $xpath->query(
+            "//div[contains(concat(' ', normalize-space(@class), ' '), ' {$className} ')]"
             );
 
-            if ($nodes->length === 0) {
-                return '';
+        if ($nodes->length === 0) {
+            return '';
             }
 
-            // textContent entfernt automatisch alle HTML-Tags
-            return trim($nodes->item(0)->textContent);
+        // textContent entfernt automatisch alle HTML-Tags
+        return trim($nodes->item(0)->textContent);
+        }
+
+
+
+    function htmlTableToArray(string $html): array
+        {
+        libxml_use_internal_errors(true);
+
+        $dom = new DOMDocument();
+        // Wrap in a full HTML document for safer parsing
+        $dom->loadHTML('<meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $html);
+
+        $xpath = new DOMXPath($dom);
+
+        // Select first table; adjust if you need a specific one
+        $table = $xpath->query('//table')->item(0);
+        if (!$table) {
+            return [];
             }
 
-
-
-        function htmlTableToArray(string $html): array
-            {
-            libxml_use_internal_errors(true);
-
-            $dom = new DOMDocument();
-            // Wrap in a full HTML document for safer parsing
-            $dom->loadHTML('<meta http-equiv="Content-Type" content="text/html; charset=utf-8">' . $html);
-
-            $xpath = new DOMXPath($dom);
-
-            // Select first table; adjust if you need a specific one
-            $table = $xpath->query('//table')->item(0);
-            if (!$table) {
-                return [];
-            }
-
-            $rows = [];
-            foreach ($xpath->query('.//tr', $table) as $tr) {
-                $cells = [];
-                // Take both th and td
-                foreach ($xpath->query('./th|./td', $tr) as $cell) {
-                    $cells[] = trim(preg_replace('/\s+/', ' ', $cell->textContent));
+        $rows = [];
+        foreach ($xpath->query('.//tr', $table) as $tr) {
+            $cells = [];
+            // Take both th and td
+            foreach ($xpath->query('./th|./td', $tr) as $cell) {
+                $cells[] = trim(preg_replace('/\s+/', ' ', $cell->textContent));
                 }
-                // Skip empty rows
-                if (count($cells) > 0) {
-                    $rows[] = $cells;
+            // Skip empty rows
+            if (count($cells) > 0) {
+                $rows[] = $cells;
                 }
             }
-
         return $rows;
         }
 
-        /* Example usage:
-        $html = file_get_contents('table.html'); // or your HTML string
-        $data = htmlTableToArray($html);
-        print_r($data);
-        */
-
+    function extractFloatingPoint($string4)
+        {
+        // Entfernt alle Tausender-Punkte, falls vorhanden, und wandelt das Dezimalkomma in einen Punkt um
+        // regex filtert nach Ziffern, Punkten und Kommas
+        if (preg_match('/[0-9.,]+/', $string4, $matches)) {
+            $rawNumber = $matches[0]; // Extrahiert "1.250,45"
+            
+            // Konvertierung in valides englisches Format (1250.45)
+            if (strpos($rawNumber, ',') !== false && strpos($rawNumber, '.') !== false) {
+                // Wenn beides existiert: Tausenderpunkt weg, Komma zu Punkt
+                $cleanNumber = str_replace('.', '', $rawNumber);
+                $cleanNumber = str_replace(',', '.', $cleanNumber);
+            } else {
+                // Wenn nur ein Komma existiert (z.B. "45,67")
+                $cleanNumber = str_replace(',', '.', $rawNumber);
+            }
+            
+            $float4 = (float)$cleanNumber;
+            //echo "Fall 4 (Gefiltert): " . $float4 . "\n"; 
+            // Ausgabe: 1250.45
+            }
+        return ($float4);
         }
 
     }

@@ -113,8 +113,9 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
  *
  ********************************/
         
-    $timerAufrufID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
-    $tim3ID = @IPS_GetEventIDByName("Anwesendtimer", $scriptIdAutosteuerung);
+    $timerAufrufID = @IPS_GetEventIDByName("Aufruftimer",    $scriptIdAutosteuerung);
+    $tim3ID        = @IPS_GetEventIDByName("Anwesendtimer",  $scriptIdAutosteuerung);
+    $tim5ID        = @IPS_GetEventIDByName("WetterIst",      $scriptIdAutosteuerung);
 
     if ($timerAufrufID==false) $fatalerror=true;
 
@@ -152,6 +153,9 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
     $categoryId_Global  = IPS_GetCategoryIDByName('Global',   $CategoryIdData); 
     $illuminationID     = IPS_GetObjectIDByName("Illumination", $categoryId_Global);              //  in Lux, Umrechnung mglw erforderlich     
     $daylevelID         = IPS_GetObjectIDByName("DayLevel",      $categoryId_Global);              //  in %, direkt wert für Level
+
+    $outdoorID          = IPS_GetObjectIDByName("OutdoorTemp",$categoryId_Global);
+    $outdoorMeansID     = IPS_GetObjectIDByName("OutdoorMeansTemp",$categoryId_Global);
 
     $StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AnwesenheitserkennungID, 1010, '~HTMLBox');
 
@@ -421,6 +425,20 @@ if ($_IPS['SENDER']=="TimerEvent")
 	 ****************************************************************/
 	switch ($_IPS['EVENT'])
 		{
+        case $tim5ID:
+            // Level Illumination, easyone
+            $convert = new convertOps();
+            $daystart=$convert->daystart();
+            $newLevel = $convert->convert(time()-$daystart);
+            SetValue($daylevelID,$newLevel);
+            echo "Aktueller Wert für Level : ".GetValueIfFormatted($daylevelID)."\n";             
+
+            // Outdoor temp from Orf
+            $autoWebfront = new AutosteuerungWebfront();
+            $temp=$autoWebfront->readWeatherInformation();              // default line 4 Stammersdorf
+            echo "Aktueller Wert fuer Outdoor Temperatur $temp \n";
+            SetValue($outdoorID,$temp);        
+            break;            
         case $tim3ID:
 			/* alle 60 Sekunden aufrufen */
             $changesDetected=$auto->statusMonitorSteuerung($debug);            //true für Debug
@@ -658,7 +676,7 @@ if ($_IPS['SENDER']=="Execute")
 	echo "--------------------------------------------------------------\n\n";
     echo "Timerprogrammierung: \n";
     $timerOps->getEventData($timerAufrufID);
-    //$timerOps->getEventData($tim2ID);                         // Kalendertimer gibt es nicht
+    $timerOps->getEventData($tim5ID);                         // Global Variable Update
     $timerOps->getEventData($tim3ID);
     $changesDetected=$auto->statusMonitorSteuerung(true);            //true für Debug
 	
