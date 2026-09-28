@@ -194,7 +194,9 @@ class AutosteuerungHandler
             if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
             $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
 
-            configfileParser($configInput, $config, ["Weather" ],"Weather" ,false);
+            configfileParser($configInput, $config, ["Weather","weather","Wetter","WEATHER","wetter","WETTER" ],"Weather" ,false);
+
+            configfileParser($configInput, $config, ["Heating", "OELHEIZUNG", "HEIZUNG", "HEATING", "heating", "heizung", "Heizung" ],"Heating" ,false);
             
             configfileParser($configInput, $configHeatControl, ["HeatControl" ],"HeatControl" ,array());  
             //print_R($configHeatControl);
@@ -8059,38 +8061,78 @@ abstract class AutosteuerungFunktionen
  * Default: kein Logging in einem File, Verzeichnis
  *
  *  __construct
+ *  InitHeating             for Installation
+ *  DoHeating               for Operation
+ *
  *  WriteLink
  *  InitMesagePuffer
  *
+ *  getConfiguration
+ *  getConfigHeating
+ *  checkHeatingMode            delivers input for heatingmode, writes class variable innen
+ *  getHeatingMode
  *
+ *  heatingPower
+ *      calcHeatingPower
+ *
+ *  getConfig_xID
  *
  **************************************************************************************************************/
 
 
 class AutosteuerungRegler extends AutosteuerungFunktionen
 	{
+    public $heatingPowerID,$heatingTimeID,$heatingPowerAdjustID,$waterPowerID,$firePowerID,$heatingStatus,$heatingfullStatus,$stateEngineID;
+
+    protected $categoryId_Autosteuerung=false;
 
 	protected $log_File="Default";
 	protected $script_Id="Default";
 	protected $nachrichteninput_Id="Default";
+
 	protected $installedmodules;
+    protected $heatManager;
+
     protected $categoryIdData,$categoryIdApp;
 	protected $zeile=array();
 	protected $scriptIdHeatControl;	
 
-    protected $configuration;                   // Configuration from Config File
+    protected $configuration=array();                   // Configuration from Config File
+    protected $configHeating=array();                     // Heating relevant part of Configurtion, set if there is data
     protected $config=array();                  // internal configuration
+
+    protected $heatingMode=false;
+    protected $innen=array();
 
     protected $htmlLogging=true;
 
     /* construct 
+     * heatingMode needs innen, aussen, 
      */
 
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
 		//echo "Logfile Construct\n";
         $this->configuration = $this->set_Configuration();
+        $this->configHeating = $this->configuration["Heating"];             // can be empty or false
 		
+        // installed modules
+		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		if (!isset($moduleManager)) 
+			{
+			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+			$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+			}
+		$this->installedModules 				= $moduleManager->GetInstalledModules();
+		if ( isset($this->installedModules["Stromheizung"] ) )
+			{
+			include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");						
+			$this->heatManager = new IPSHeat_Manager();
+            }
+
+        // Check, all or nothing for HeatingMode
+        $this->heatingMode = $this->checkHeatingMode();
+
 		/******************************* Init *********/
 		$this->log_File=$logfile;
 		$this->nachrichteninput_Id=$nachrichteninput_Id;			
@@ -8106,6 +8148,69 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
         $this->config["HTMLOutput"]=$this->htmlLogging;        
 		$this->InitLogNachrichten($type,$profile);		/*  ruft das Geraete spezifische InitMesagePuffer() auf, logging in Objekten mit String und ohne Profil festlegen, keien Abstrkte Routine, auf jeden Fall programmieren */
 		}
+
+    function InitHeating($categoryId_Autosteuerung=false)
+        {
+        if ($categoryId_Autosteuerung===false) $categoryId_Autosteuerung=$this->categoryId_Autosteuerung;
+        if (IPS_ObjectExists($categoryId_Autosteuerung))
+            {
+            $this->categoryId_Autosteuerung=$categoryId_Autosteuerung;
+            $ao =  new archOps();
+            if ($this->getHeatingMode())
+                {
+                echo "Heating Mode active, add Categories and Variables.\n";
+                $categoryId_Heating        = CreateCategory("Heating",$categoryId_Autosteuerung,10);
+
+                $heatingTimeID             = CreateVariableByName($categoryId_Heating,"heatingTime",        1,"",null,0,null,0);                    // in Stunden
+                $heatingPowerID            = CreateVariableByName($categoryId_Heating,"heatingPower",       2,"~Power",null,0,null,0);           // from Spreizung Vorlauf-Ruecklauf
+                $heatingPowerAdjustID      = CreateVariableByName($categoryId_Heating,"heatingPowerAdjust", 2,"~Power",null,0,null,0);           // Anpassungen aufgrund von Messfehlern
+                $waterPowerID              = CreateVariableByName($categoryId_Heating,"waterPower",         2,"~Power",null,0,null,0);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
+                $firePowerID               = CreateVariableByName($categoryId_Heating,"firePower",          2,"~Power",null,0,null,0);                // 5 Stundenwert gemittelt aus der brennerperformance
+
+                $heatingStatus			   = CreateVariableByName($categoryId_Heating,"simpleStatusView",   3,'~HTMLBox');          
+                $heatingfullStatus		   = CreateVariableByName($categoryId_Heating,"fullStatusView",     3,'~HTMLBox');          
+
+                $stateEngineID             = CreateVariableByName($categoryId_Heating,"stateEngine",        3,"",null,0,null,"off");    
+
+                // Archiving            
+                $ao->setArchiving($heatingPowerID,true,false);  
+                $ao->setArchiving($heatingPowerAdjustID,true,false);  
+                $ao->setArchiving($waterPowerID,true,false);  
+                $ao->setArchiving($firePowerID,true,false);  
+                }
+            }
+        else
+            {
+            echo "Error, , InitHeating cannot Init. \n";
+            return (false);    
+            }
+        }
+
+    /* kleines construct
+     *
+     */
+    function DoHeating($categoryId_Autosteuerung)
+        {
+        $this->categoryId_Autosteuerung=$categoryId_Autosteuerung;
+
+        if ( $this->getHeatingMode() && IPS_ObjectExists($categoryId_Autosteuerung) )
+            {
+            $categoryId_Heating        = IPS_GetCategoryIDByName("Heating",$categoryId_Autosteuerung);
+            $this->heatingTimeID             = IPS_GetVariableIDByName("heatingTime",$categoryId_Heating);                    // in Stunden
+
+            $this->heatingPowerID            = IPS_GetVariableIDByName("heatingPower",$categoryId_Heating);
+            $this->heatingPowerAdjustID      = IPS_GetVariableIDByName("heatingPowerAdjust",$categoryId_Heating);           // Anpassungen aufgrund von Messfehlern
+            $this->waterPowerID              = IPS_GetVariableIDByName("waterPower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
+            $this->firePowerID               = IPS_GetVariableIDByName("firePower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der brennerperformance
+
+            $this->heatingStatus			   = IPS_GetVariableIDByName("simpleStatusView",$categoryId_Heating);          
+            $this->heatingfullStatus		   = IPS_GetVariableIDByName("fullStatusView",$categoryId_Heating);          
+
+            $this->stateEngineID             = IPS_GetVariableIDByName("stateEngine",$categoryId_Heating);
+            if ($debug) echo "Heating Mode  $categoryId_Heating $heatingPowerID $stateEngineID \n";
+            }
+
+        }
 
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
 		{
@@ -8157,7 +8262,317 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
             }            
 		}
 
+    public function getConfiguration()
+        {
+        return($this->configuration);    
+        }
 
+    public function getConfigHeating()
+        {
+        return($this->configHeating);    
+        }
+
+    /*
+     * writes innen
+     * provides output for heatingMode
+     */    
+    public function checkHeatingMode()
+        {
+        $error=false;
+        if (isset( $this->configHeating["innen"]))
+            {
+            $this->innen=array();
+            if (is_array($this->configHeating["innen"])) $this->innen=$this->configHeating["innen"];
+            else $this->innen[0]=$this->configHeating["innen"];
+            }
+        else $error=true;
+        if (isset( $this->configHeating["aussen"])===false) $error=true;
+        if (isset( $this->configHeating["kesseltemp"])===false) $error=true; 
+        if (isset( $this->configHeating["vorlauf"])===false) $error=true; 
+        if (isset( $this->configHeating["ruecklauf"])===false) $error=true; 
+        if ($error===false) return(true);            
+        return (false);
+        }
+
+    public function checkHeatingOperationMode()
+        {
+        $error=false;
+        if (getHeatingMode())
+            {
+            if (isset( $this->configHeating["pumpe"])===false) $error=true;         // xID
+            if (isset( $this->configHeating["brenner"])===false) $error=true;           // xID
+            if (isset( $this->configHeating["firestatus"])===false) $error=true;        // OID
+            //if (isset( $this->configHeating["power"])===false) $error=true;             // xID   Power on or off
+            //if (isset( $this->configHeating["powerswitch"])===false) $error=true;             // xID, request for Power on or off
+            if ($error===false) return(true);  
+            }          
+        return (false);
+        }
+
+    public function getHeatingMode()
+        {
+        return($this->heatingMode);
+        }
+
+    /*
+     * calcs from temperature difference the energy that was provided to the building
+     * there might be measurement errors, they have to be adjusted.
+     *
+     */
+    public function heatingPower($debug=false)
+        {
+        if ($this->heatingMode===false) 
+            {
+            if ($debug) echo "heatingPower, heatingMode off, config incomplete.\n";
+            return (false);
+            }
+        $tVL=GetValueFloat($this->configHeating["vorlauf"]);
+        $tRL=GetValueFloat($this->configHeating["ruecklauf"]);
+        $leistungKW=$this->calcHeatingPower($tVL,$tRL);
+
+        // defaults are important, when heating is off the temperature difference shall be 0 
+        if ($tVL<30) 
+            {
+            echo "Leistung im Leerlauf, Werte zum thermischen Abgleich verwenden. $leistungKW kW  $tVL $tRL Unterschied.\n";
+            if ($tRL<27) return (0);
+            }
+
+        return ($leistungKW);
+        }
+
+    /*
+     *  evaluates last change from 0 to 1 
+     */
+    public function heatingTime($debug=false)
+        {
+        $archiveOps = new archiveOps();  
+        $config=array();
+        $config["Warning"]=false;
+        if (isset($this->configHeating["pumpe"]))           // no need actually
+            {
+            $pumpe = $this->configHeating["pumpe"];
+            $xOID1 = $this->getConfig_xID($pumpe,$debug);
+            //print_R($xOID1);         // entweder array oder eine normale OID
+            }
+        if (isset($this->configHeating["pumpe"])===false) return(false);
+        
+        $brenner = $this->configHeating["brenner"];
+        $xOID2 = $this->getConfig_xID($brenner,$debug);
+        //print_R($xOID2);         // entweder array oder eine normale OID
+
+        if (is_array($xOID2)) $oid=$xOID2["ID"];
+        else $oid=$xOID2;
+        //echo "Brenner Betrieb : ".GetValue($oid)."\n";
+        $variable=IPS_GetVariable($oid);
+        //print_r($variable);
+        $duration=time()-$variable["VariableChanged"];
+        $heating=GetValue($oid);
+        if ($debug) echo "Brenner Betrieb : ".($heating?"Ein":"Aus")." , unverändert seit ".nf($duration,"s")."\n";
+        $heatinghours=(integer)($duration/3600);
+        $fireOnTime=false; $onFire=false; $power=0;
+        if ($heatinghours==0) $heatinghours=1;
+        if ($heating) return ($heatinghours);
+        else return (0);
+        }
+
+    public function calcHeatingPower($tVL,$tRL,$volumenstrom = 0.8)
+        {
+        // Angenommener Durchfluss der Heizkreispumpe in m³/h (z. B. 0.8 m³/h)
+        // Besser: Auslesen aus smarter Pumpe oder Durchflusssensor
+        //$volumenstrom = 0.8;
+
+        // Spreizung berechnen
+        $deltaT = $tVL - $tRL;
+
+        // Wärmeleistung in kW berechnen: Q = V * 1.163 * deltaT
+        $leistungKW = 0.0;
+        if ($deltaT > 0) {
+            $leistungKW = $volumenstrom * 1.163 * $deltaT;
+            }
+        // Hydraulische Diagnose für Heizkörperbetrieb
+        $status = "Normal";
+
+        if ($deltaT < 3.0 && $tVL > 40.0) {
+            $status = "Warnung: Spreizung zu gering (<3K). Möglicher hydraulischer Kurzschluss oder Pumpe zu hoch eingestellt.";
+        } elseif ($deltaT > 20.0) {
+            $status = "Warnung: Spreizung sehr hoch (>20K). Geringer Durchfluss oder hoher Wärmebedarf (Aufheizphase).";
+        } elseif ($tRL > 50.0) {
+            $status = "Hinweis: Rücklauf hoch (>50°C). Bei Öl-Brennwert verringert sich der Kondensationsnutzungsgrad.";
+            } 
+        return ($leistungKW);
+        }
+
+
+    /* reads history for calc Firepower
+     *
+     */
+    public function calcFirePower($statusID,$hours=5,$debug=false)
+        {
+        $fireOnTime=false; $onFire=false; $power=0;
+        $maxpower=20; $delay=10; $literhour=2;          // 20 kW und 2 Liter pro Stunde
+        $archiveOps = new archiveOps();  
+        $config=array();
+        $config["Warning"]=false;            
+        $config["StartTime"]=time()-8*60*60;                // kann Unixtime und string Time
+        $data=$archiveOps->getValues($statusID,$config);
+        //print_R($data["Values"]);
+
+        foreach ($data["Values"] as $entry)
+            {
+            $duration=$entry["Duration"];
+            $time=$entry["TimeStamp"];
+            $value=$entry["Value"];
+            if ($value>1) 
+                	{
+                    if ($onFire===false)
+                        {
+                        if ($debug>1) echo date("d.m.Y H:i",$entry["TimeStamp"]).str_pad("",10)."   Fire On \n";
+                        $onFire=true;
+                        $fireOnTime=$entry["TimeStamp"];
+                        }
+                    }
+            if ($value==1) 
+                {
+                $onFire=false;
+                $duration=time()-$time;
+                if ($debug) echo date("d.m.Y H:i",$entry["TimeStamp"])."  ".str_pad(nf($duration,"s"),10);
+                if ($fireOnTime) 
+                    {
+                    $firetime=$entry["TimeStamp"]-$fireOnTime;
+                    if ($debug) echo " Firetime ".nf($firetime,"s");
+                    if ( ($duration<($hours*60*60)) && ($firetime>60) ) $power += ($firetime-$delay);     
+                    }
+                if ($debug) echo "\n";
+                }
+            }
+        $power = $power/$hours;
+        echo "Firetime  ".round($power/36)." % of hour.  ".round($power/3600*24*2,1)." Liter per Day. Maxpower is $maxpower kW with $literhour l/h \n";
+        return ($power/3600*$maxpower*1000);
+        }
+
+    public function calcWaterPower($heatingPowerID,$hours=5,$debug=false)
+        {
+        $archiveOps = new archiveOps();  
+        $config=array();
+        $config["Warning"]=false;   
+        $config["StartTime"]=time()-($hours+3)*60*60;                // kann Unixtime und string Time
+        $data=$archiveOps->getValues($heatingPowerID,$config);
+        $config["ShowTable"]["doecho"]=true;
+        $result = $archiveOps->showValues(false,$config);
+
+        $power=0; $powerct=0; $hours=5;
+        foreach ($data["Values"] as $entry)
+            {
+            $duration=time()-$entry["TimeStamp"];
+            if ($duration<($hours*60*60)) 
+                {
+                $power += $entry["Value"];
+                $powerct++;
+                }
+            }
+        $powerWater=$power/$powerct;
+        echo "Power Water $hours hours mean value: $powerWater \n";
+        return ($powerWater);
+        }
+
+    public function OutdoorTemp($idAktuell,$idGedaempft,$tauStunden=24)
+        {
+        // Zeitkonstante Tau in Stunden (Gebäude-Dämmung):
+        // 12-18h = Leichtbau / Ungedämmt | 24h = Standard/Teilsaniert | 48h = Massiv/Gut gedämmt
+        //$tauStunden = 24;
+        $tauSekunden = $tauStunden * 3600;
+
+        // Ist-Werte abrufen
+        $tempAktuell      = GetValueFloat($idAktuell);
+        $tempGedaempftAlt = GetValueFloat($idGedaempft);
+
+        // Zeitdifferenz seit der letzten Berechnung ermitteln
+        $varInfo = IPS_GetVariable($idGedaempft);
+        $lastUpdate = $varInfo['VariableUpdated'];
+        $dt = time() - $lastUpdate;
+
+        $this->calcOutdoorTemp($tempAktuell,$tempGedaempftAlt,$lastUpdate, $tauSekunden);
+        }
+
+    public function calcOutdoorTemp($tempAktuell,$tempGedaempftAlt,$lastUpdate, $tauSekunden)
+        {
+        // Erststart-Prüfung (falls Variable neu ist oder tagelang nicht aktualisiert wurde)
+        if ($lastUpdate == 0 || $dt > (86400 * 2)) 
+            {
+            return($tempAktuell);
+            }
+
+        // PT1-Filter Glättungskoeffizient Alpha: Alpha = 1 - e^(-dt / Tau)
+        $alpha = 1 - exp(-$dt / $tauSekunden);
+
+        // Formel: T_neu = T_alt + Alpha * (T_aktuell - T_alt)
+        $tempGedaempftNeu = $tempGedaempftAlt + $alpha * ($tempAktuell - $tempGedaempftAlt);
+
+        return($tempGedaempftNeu);
+        }
+
+
+    /* getConfig_xID
+     * immer gleiche Vereinheitlichung der Auswertung für OIDs, auch in IPSHeat
+     * kann ein Integerwert oder ein String sein
+     * wenn String kann es ein Wert aus IPSHeat sein
+     *  wenn string
+     *      ist IPSHeat installiert
+     *      schauen ob Switch, Group oder Program, auflösen in ID, TYP, NAME, MODULE
+     *  wenn Nummer
+     *      check ob Variable oder Object return Nummer
+     *  sonst false
+     */
+    public function getConfig_xID($configID,$debug=false)
+        {
+        $result=false;    
+        if ((integer)$configID==0) 
+            {
+            if (isset($this->installedModules["Stromheizung"] ))
+                {
+                /* wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!! */
+                if ($debug) echo "   Alternative Erkennung der von \"$configID\", String als OID Wert angegeben, jetzt in Stromheizung/IPLights schauen ob vorhanden.\n";
+                $result=array();
+                $lightName=$configID;
+                $switchId = @$this->heatManager->GetSwitchIdByName($lightName);
+                $groupId = @$this->heatManager->GetGroupIdByName($lightName);
+                $programId = @$this->heatManager->GetProgramIdByName($lightName);
+                //echo "IPSHeat Switch ".$switchId." Group ".$groupId." Program ".$programId."\n";
+                if ($switchId)
+                    {
+                    $result["ID"]=$switchId;
+                    $result["TYP"]="Switch";
+                    $result["NAME"]=$lightName;
+                    $result["MODULE"]="IPSHeat";
+                    }
+                elseif ($groupId)
+                    {	
+                    $result["ID"]=$groupId;
+                    $result["TYP"]="Group";
+                    $result["NAME"]=$lightName;
+                    $result["MODULE"]="IPSHeat";
+                    }
+                elseif ($programId)
+                    {	
+                    $result["ID"]=$programId;
+                    $result["TYP"]="Program";
+                    $result["NAME"]=$lightName;
+                    $result["MODULE"]="IPSHeat";
+                    }
+                }
+            }    
+        else 
+            {
+            $result=(integer)$configID;
+            if ($result !==false) 
+                {
+                if (@IPS_VariableExists($result)) return($result);
+                if (@IPS_ObjectExists($result)) return($result);                     // die Switching Instanz
+                return (false);                                             // vielleicht eine korrekte Evaluierung der Zahl, aber die Variable gibt es nicht 
+                }		
+            }
+        return ($result);
+        }  
 
 	}
 	
@@ -10495,21 +10910,42 @@ function parseParameter($params,$result=array())
 class AutosteuerungWebfront
     {
 
-    /* die Zusammenstellung der Wwebfrontlinks hat sich geändert, aus webfrontlinks udn tabs eine gemeinsame Darstellung machen
+    /* die Zusammenstellung der Wwebfrontlinks hat sich geändert, aus webfrontlinks und tabs eine gemeinsame Darstellung machen
+     * die Tabs haben ein neues übersichtlicheres Format, aktuell nur bei Denon und Measurement
      */
     function arrangeWebfrontLinks($webfront_links,$tabs,$user,$debug=false)
         {
         if ($debug) echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
         if ($debug>1) print_r($webfront_links);
+
+        // zusaetzliche Parameter für die Gestaltung des Webfronts, praktisch anordnen nach dem Namen (parameter # 3)
+        $wfc = Autosteuerung_GetWebFrontConfiguration()[$user];         // Zusatzparametrierung
+        foreach ($wfc as $index => $entries)
+            {
+            if (is_array($entries)==false) $entries[]=$entries;
+            foreach ($entries as $entry)
+                {
+                //echo "$index      "; print_r($entry);
+                $data=array();
+                $data["type"]="SplitPane";
+                $data["vertical"]=$entry[5];
+                $data["width"]=$entry[6]; 
+                $data["icon"]=$entry[4];                
+                if ( (isset($entry[3])) && ($entry[3] != "") ) $webFrontConfiguration[$entry[3]]=$data;
+                else $webFrontConfiguration[$index]=$data;
+                }
+            }
+
+
         foreach ($webfront_links as $OID => $webfront_link)
             {
-            if ($debug>1)echo str_pad($OID,10);
+            if ($debug>1) echo str_pad($OID,10);
             $tab = $webfront_link["TAB"];
             $auswertungID  = $webfront_link["OID_L"];
             $nachrichtenID = $webfront_link["OID_R"];
             if (isset($tabs[$tab])===false)     
                 {
-                if ($debug>1)echo "n/a";
+                if ($debug>1) echo "n/a";
                 $tabs[$tab]=array();
                 $tabs[$tab]["Auswertung"][$auswertungID]=array();
                 $tabs[$tab]["Auswertung"][$auswertungID]["NAME"]=$webfront_link["NAME"];
@@ -10518,14 +10954,38 @@ class AutosteuerungWebfront
                 $tabs[$tab]["Nachrichten"][$nachrichtenID]["NAME"]=$webfront_link["NAME"];
                 $tabs[$tab]["Nachrichten"][$nachrichtenID]["ORDER"]=100;        
                 }
-            else        // gibts schon, nicht mehr neu schreiben
+            else        // gibts schon, nicht mehr neu schreiben, kommt wahrscheinlich von Denon oder Measurement
                 {
-                if ($debug>1)echo "   ";
-                //echo "    das war schon einmal da.\n";
+                if ($debug>1) echo "$tab gibts schon, nicht mehr neu schreiben :  \n";    
+                //echo "   ";
+
+                foreach ($tabs[$tab] as $index=>$entry) 
+                    {
+                    if ($debug>1) echo "$index ";
+                    switch ($index)
+                        {
+                        case "Auswertung":
+                            $numeric=false;
+                            foreach ($entry as $subindex => $subentry)
+                                {
+                                if (is_numeric($subindex)) $numeric=true;
+                                }
+                            if (($numeric==false) && (isset($webFrontConfiguration[$index])) ) $tabs[$tab][$index]["@CONFIG"] = $webFrontConfiguration[$index];
+                            break;
+                        case "Nachrichten":    
+                            break;
+                        }
+                    }
+                if ($debug>1) echo "\n";
+
                 $auswertungID  = $webfront_link["OID_L"];
-                $tabs[$tab]["Auswertung"][$auswertungID]=array();
-                $tabs[$tab]["Auswertung"][$auswertungID]["NAME"]=$webfront_link["NAME"];
-                $tabs[$tab]["Auswertung"][$auswertungID]["ORDER"]=100;            
+                if (isset($tabs[$tab]["Auswertung"])===false)
+                    {
+                    $tabs[$tab]["Auswertung"][$auswertungID]=array();
+                    $tabs[$tab]["Auswertung"][$auswertungID]["NAME"]=$webfront_link["NAME"];
+                    $tabs[$tab]["Auswertung"][$auswertungID]["ORDER"]=100; 
+                    }
+                if (isset($webFrontConfiguration[$tab])) $tabs[$tab]["@CONFIG"] = $webFrontConfiguration[$tab];
                 }
             if ($debug>1)echo "\n";
             }
@@ -10539,8 +10999,18 @@ class AutosteuerungWebfront
             if ($debug) echo "    Subtab:    ".str_pad($Name,25)."  ";
             if (isset($webFrontConfiguration[$Name])) 
                 {
-                echo json_encode($webFrontConfiguration[$Name]);
-                $webfront_links[$Name]["CONFIG"]=$webFrontConfiguration[$Name];
+                $wf=array();
+                if (is_array($webFrontConfiguration[$Name])) $wf=$webFrontConfiguration[$Name];
+                else $wf[]=$webFrontConfiguration[$Name];
+                foreach ($wf as $index => $entry)
+                    {
+                    if (isset($webfront_links[$Name]["@CONFIG"])===false)
+                        {
+                        echo json_encode($webFrontConfiguration[$Name]);
+                        $webfront_links[$Name]["CONFIG"]=$webFrontConfiguration[$Name];
+                        break;      // take the first one
+                        }
+                    }
                 }
             else 
                 {
@@ -10579,7 +11049,9 @@ class AutosteuerungWebfront
      *      https://wetter.orf.at/wien/prognose
      *      https://wetter.orf.at/wien/
      * liest sie zurück als String und sucht eine Tabelle, diese als datat array wandeln
-     *
+     * config transports configuration options
+     *      ReadToFile
+     *      Stations            Array or one Station or null/false
      */
     function readWeatherInformation($config=false,$debug=false)
         {
@@ -10742,16 +11214,10 @@ class AutosteuerungWebfront
             $tempactual=round($temp/$tempct,1);
             echo "Actual temperature ".$data["Actual"]."   berechnet ".$tempactual."\n";
             $delivered["Means"]=$tempactual;
-
-
+            $delivered["Stations"]=$measured;
+            $delivered["Actual"]=$tempactual;
             }
-        /* Example usage:
-        $html = file_get_contents('table.html'); // or your HTML string
-        $data = $this->htmlTableToArray($html);
-        print_r($data);
-        */
-        $delivered["Actual"]=$actual;
-        $delivered["Stations"]=$measured;
+        else $delivered["Actual"]=$actual;
         return ($delivered);
         }
 

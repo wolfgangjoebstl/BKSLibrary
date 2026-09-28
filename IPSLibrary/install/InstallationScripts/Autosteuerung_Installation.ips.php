@@ -150,8 +150,9 @@
 	$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
 	$scriptIdAlexaControl   = IPS_GetScriptIDByName('Autosteuerung_AlexaControl', $CategoryIdApp);
 	
-	$eventType='OnChange';
 	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);            // Unterfunktionen wie Stromheizung, Anwesenheitsberechnung sind hier
+
+	$eventType='OnChange';
 	$categoryId_Status  = CreateCategory("Status", $CategoryIdData, 100);                 // ein paar Spiegelregister für die Statusberechnung, Debounce Funktion
 
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
@@ -184,6 +185,16 @@
 	    define ('IPSHEAT_WFCGROUP',			'WFCGroup');
 	    define ('IPSHEAT_WFCLINKS',			'WFCLinks');
 	    }
+
+/*******************************
+ *
+ * Heizungs Regler Vorbereitung
+ *
+ ********************************/
+
+    $ao =  new archOps();
+    $ar = new AutosteuerungRegler();            // Heizungssteuerung, immer in der Loop
+    $ar->InitHeating($categoryId_Autosteuerung);
 
 /*******************************
  *
@@ -485,6 +496,7 @@
     
     $tabs=array();                          // neue Darstellung
 	$webfront_links=array();
+    $appcount=array();
 	foreach ($AutoSetSwitches as $nameAuto => $AutoSetSwitch)
 		{
         // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
@@ -821,7 +833,20 @@
                  *      TABNAME     hier Measurmeent
                  *      OWNTAB      der Tabname im Autosteuerungs Webfront
                  *      NAME        die Kategorie und der Switch, könnte man auch Measurement nennen
-                 */            
+                 */  
+                $appname=strtoupper($AutoSetSwitch["TABNAME"]);
+                if (isset($appcount[$appname])===false) $appcount[$appname]=1;
+                else $appcount[$appname]++;
+                $count=$appcount[$appname];
+                if ($count>1)                       // Mehrfachnennungen von TABNAME sind möglich, Index und Name können unzterschiedlich sein
+                    {
+                    // AutosteuerungMeasure
+                    $categoryId_NachrichtenMeasurement    = CreateCategory('Nachrichtenverlauf-Measurement'.$count,   $CategoryIdData, 20);
+                    $inputMeasurement = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenMeasurement, 0, "",null,null,""  );   
+                    $log_AlarmMeasurement=new Logging($setup["LogDirectory"]."Measurement.csv",$inputMeasurement,IPS_GetName(0).";Measurement;");
+                    }
+                // zusaetzlich werden auch noich Funktionen eingeführt, um Bezug zur Setup config herstellen zu können
+
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Measurement'));
                 $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
 
@@ -834,8 +859,19 @@
                  * Abhilfe das eine ist die Category und das andere ist die Variable
                  */
                 $tabs[$tab]=array();
-                $tabs[$tab]["Auswertung"][$auswertungID]=array();
-                $tabs[$tab]["Auswertung"][$auswertungID]["NAME"]=$AutoSetSwitch["NAME"];
+                if (isset($AutoSetSwitch["FUNCTION"]))                  // bessere Darstellung mit Subtabs
+                    {
+                    $tabs[$tab]["Auswertung"]["Up"][$auswertungID]=array();
+                    $tabs[$tab]["Auswertung"]["Up"][$auswertungID]["NAME"]=$AutoSetSwitch["NAME"];
+                    $tabs[$tab]["Auswertung"]["Down"][$auswertungID]=array();
+                    $tabs[$tab]["Auswertung"]["Down"][$auswertungID]["NAME"]="Down";
+                    $tabs[$tab]["Auswertung"]["@CONFIG"]="WFCSplitpanel";                           // Default Config
+                    }
+                else    
+                    {
+                    $tabs[$tab]["Auswertung"][$auswertungID]=array();
+                    $tabs[$tab]["Auswertung"][$auswertungID]["NAME"]=$AutoSetSwitch["NAME"];
+                    }
 
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {  				
@@ -1268,7 +1304,7 @@
         }   */
 
         
-    if ($debug==false) { 
+    if ($debug==true) { 
         echo "****************Ausgabe Webfront Links               ";    
 	    print_r($webfront_links); 
         }
@@ -1319,11 +1355,18 @@
         echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$configWF["TabPaneItem"]." in ".$configWF["TabPaneParent"]."\n";
         CreateWFCItemTabPane   ($WFC10_ConfigId, $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);
 
+        $config = array();
+        $config["Scope"]="Administrator";
+        $config["EmptyCategory"]=false;                 // clears root
+        $config["EmptyTabCategory"]=true;              // Debug purposes, otherwise category changes after each install
+        $config["EmptyTabPanes"]=true;
+        $config["Active"]=true;
+
         $configWF = $configWFront["Administrator"];
         $configWF["TabPaneParent"]=$configWF["TabPaneItem"];          // überschreiben wenn roottp, wir sind jetzt bereits eins drunter, Autosteuerungs Auto wurde bereits angelegt
         echo "\n\n===================================================================================================\n";
         //$wfcHandling =  new WfcHandling($WFC10_ConfigId);         // moderne Umsetzung, schneller
-        $wfcHandling->easySetupWebfront($configWF,$webfront_links,"Administrator",true);            //true für Debug
+        $wfcHandling->easySetupWebfront($configWF,$webfront_links,$config,true);            //true für Debug
         } 
 
     if (isset($configWFront["User"]))

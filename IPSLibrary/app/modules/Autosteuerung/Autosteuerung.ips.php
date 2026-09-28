@@ -84,8 +84,29 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
     $register = new AutosteuerungHandler($scriptIdAutosteuerung);
     $operate  = new AutosteuerungOperator($debug);
     $auto     = new Autosteuerung();
-
     $timerOps = new timerOps();
+  
+    $categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
+
+    $ar = new AutosteuerungRegler();            // Heizungssteuerung, immer in der Loop
+    $ar->DoHeating($categoryId_Autosteuerung);
+ 
+    if ($ar->getHeatingMode())
+        {
+        $categoryId_Heating        = IPS_GetCategoryIDByName("Heating",$categoryId_Autosteuerung);
+        $heatingTimeID             = IPS_GetVariableIDByName("heatingTime",$categoryId_Heating);                    // in Stunden
+
+        $heatingPowerID            = IPS_GetVariableIDByName("heatingPower",$categoryId_Heating);
+        $heatingPowerAdjustID      = IPS_GetVariableIDByName("heatingPowerAdjust",$categoryId_Heating);           // Anpassungen aufgrund von Messfehlern
+        $waterPowerID              = IPS_GetVariableIDByName("waterPower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der berichtigten Spreizung
+        $firePowerID               = IPS_GetVariableIDByName("firePower",$categoryId_Heating);                // 5 Stundenwert gemittelt aus der brennerperformance
+
+        $heatingStatus			   = IPS_GetVariableIDByName("simpleStatusView",$categoryId_Heating);          
+        $heatingfullStatus		   = IPS_GetVariableIDByName("fullStatusView",$categoryId_Heating);          
+
+        $stateEngineID             = IPS_GetVariableIDByName("stateEngine",$categoryId_Heating);
+        if ($debug) echo "Heating Mode  $categoryId_Heating $heatingPowerID $stateEngineID \n";
+        }
 
 /********************************************************************************************
  *
@@ -133,7 +154,6 @@ IPSUtils_Include ("Autosteuerung_Class.inc.php","IPSLibrary::app::modules::Autos
     /* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
     /* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
 
-    $categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
     //function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     /*   $AnwesenheitssimulationID = @IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
     if ($AnwesenheitssimulationID === false)
@@ -404,9 +424,10 @@ if ($_IPS['SENDER']=="Variable")
 if ($_IPS['SENDER']=="TimerEvent")
 	{
 	/********************************
-	 * zwei Timer implementert:
+	 * Timer implementert:
      *   (1)  Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun
 	 *   (2)  wird alle 60 Sekunden aufgerufen, Anwesenheit erkennen etc
+     *   (3)  wird alle 30 Minuten aufgerufen
      *
      * Aufgaben 60sec Anwesendtimer
      *      Monitor ein/ausschalten     $AutoSetSwitches["MonitorMode"]["NAME"]
@@ -425,7 +446,30 @@ if ($_IPS['SENDER']=="TimerEvent")
 	 ****************************************************************/
 	switch ($_IPS['EVENT'])
 		{
-        case $tim5ID:
+        case $tim5ID:                   // alle 30 Minuten, Wetterinfos einlesen
+            if ($ar->getHeatingMode())
+                {
+                $heatinghours = $ar->heatingTime();
+                echo "Brenner Betrieb seit $heatinghours Stunden. 0 wenn aus.\n";
+                SetValue($ar->heatingTimeID,$heatinghours);
+
+                $powerWater=$ar->heatingPower();                // Heizleistung wird alle 5 Minuten berechnet, hier eigentlich doppelt 
+                if ($powerWater) 
+                    {
+                    echo "Aktuelle Heizleistung, Abgabe an die Räume:  $powerWater kW   ($heatingPowerID)\n";
+                    $hours=5;               // to integrate
+                    if ($heatinghours<$hours) $hours=$heatinghours;
+
+                    $powerWaterMeans=$ar->calcWaterPower($ar->heatingPowerID,$hours);
+                    SetValue($ar->waterPowerID,$powerWaterMeans);     // in kW          // könnte auch setWaterPower heissen
+
+                    if ($ar->checkHeatingOperationMode())
+                        {
+                        $powerFireMeans=$ar->calcFirePower($ar->heatingPowerID,$hours);
+                        SetValue($ar->waterPowerID,$powerWaterMeans);     // in kW          // könnte auch setWaterPower heissen
+                        }
+                    }
+                }
             // Level Illumination, easyone
             $convert = new convertOps();
             $daystart=$convert->daystart();
@@ -435,12 +479,12 @@ if ($_IPS['SENDER']=="TimerEvent")
 
             // Outdoor temp from Orf
             $autoWebfront = new AutosteuerungWebfront();
-            $temp=$autoWebfront->readWeatherInformation();              // default line 4 Stammersdorf
+            $tempdata=$autoWebfront->readWeatherInformation();              // default line 4 Stammersdorf
+            $temp=$tempdata["Actual"];
             echo "Aktueller Wert fuer Outdoor Temperatur $temp \n";
             SetValue($outdoorID,$temp);        
             break;            
-        case $tim3ID:
-			/* alle 60 Sekunden aufrufen */
+        case $tim3ID:                   // alle 60 Sekunden aufrufen 
             $changesDetected=$auto->statusMonitorSteuerung($debug);            //true für Debug
             $configZutritt = $operate->Zutritt(false,$debug);                                       // wenn keine function Autosteuerung_Zutritt vorhanden, return false
              if ($configZutritt) SetValue( $StatusAnwesenheitID,$configZutritt["PRESENCE"]);
@@ -522,8 +566,16 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 			if ($changesDetected) IPSLogger_Not(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , Monitor : '.($state?"Ein":"Aus").' Anwesend : '.($StatusAnwesend ?"Ja":"Nein"));
             break;
-		case $timerAufrufID:
-			/* alle 5 Minuten aufrufen */
+		case $timerAufrufID:            // alle 5 Minuten aufrufen Anweseheitsberechnung, Szenen, Heizungssteuerung
+            $power=$ar->heatingPower();         // power is only zero when Heating Config is incomplete
+            if ($power) 
+                {
+                if ($debug) echo "Aktuelle Heizleistung, Abgabe an die Räume:  $power kW\n";
+                SetValue($ar->heatingPowerID,$power);     // in kW 
+
+                // waterPower and FirePower moved to 30min or 1 hour cycle
+                }            
+
             $scenes=Autosteuerung_GetScenes();
 			$StatusAnwesend=$operate->Anwesend();            
             $Anwesenheitssimulation=GetValue($AnwesenheitssimulationID);            
@@ -678,6 +730,22 @@ if ($_IPS['SENDER']=="Execute")
     $timerOps->getEventData($timerAufrufID);
     $timerOps->getEventData($tim5ID);                         // Global Variable Update
     $timerOps->getEventData($tim3ID);
+    
+    if ($ar->getHeatingMode())
+        {
+        $time=$ar->heatingTime();
+        if ($time)
+            {
+
+            }
+        $power=$ar->heatingPower();
+        if ($power) 
+            {
+            echo "Aktuelle Heizleistung, Abgabe an die Räume:  $power kW  (".$ar->heatingPowerID.")\n";
+            //SetValue($heatingPowerID,$power);     // in kW 
+            }
+        }
+
     $changesDetected=$auto->statusMonitorSteuerung(true);            //true für Debug
 	
 

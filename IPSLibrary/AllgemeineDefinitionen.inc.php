@@ -15442,7 +15442,7 @@ class timerOps
 			IPS_SetEventActive($timID,true);
 
             // Migration bis alle umgestellt sind, auslesen etwas schwierig
-            IPS_SetEventAction($tim4ID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);            
+            IPS_SetEventAction($timID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);            
 			}
 		return($timID);
 		}
@@ -15476,7 +15476,7 @@ class timerOps
 			//IPS_SetEventActive($tim2ID,true);
 
             // Migration bis alle umgestellt sind, auslesen etwas schwierig
-            IPS_SetEventAction($tim4ID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);            
+            IPS_SetEventAction($timID, '{7938A5A2-0981-5FE0-BE6C-8AA610D654EB}', []);            
 			}
 		return($timID);
 		}	
@@ -19613,7 +19613,7 @@ class WfcHandling
             } 
         $info=$this->anzahlItems($webfront_group);
         if (sizeof($info->config)>0) $paneConfig=$info->config;
-        else $paneconfig = $this->paneConfig;
+        else $paneConfig = $this->paneConfig;
         $width=40; $right=false; $left=false; $type=false;
         $webfrontGroup=$info->tabs;
         foreach ($paneConfig as $itemname => $value)
